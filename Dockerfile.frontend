@@ -1,0 +1,17 @@
+FROM oven/bun:1 AS builder
+
+WORKDIR /app
+
+COPY ./Frontend/package.json ./Frontend/bun.lockb ./
+RUN bun install --frozen-lockfile
+COPY ./Frontend .
+
+# Asegúrate de usar las variables de producción
+#COPY ./Frontend/.env.production ./Frontend/.env
+
+ENV NODE_ENV=production
+
+RUN bun run build
+
+# Exportamos el dist a volumen compartido
+RUN mkdir -p /frontend_dist && cp -r dist/* /frontend_dist

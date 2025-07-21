@@ -1,0 +1,17 @@
+# Ignorar node_modules en Frontend y Backend
+Frontend/node_modules/
+Backend/node_modules/
+
+# Ignorar entorno virtual y pycache en ApiModels
+ApiModels/env-server/
+ApiModels/__pycache__/
+ApiModels/*.py[cod]
+
+# Ignorar archivos de entorno (por seguridad)
+*.env
+
+# Ignorar logs y otros archivos innecesarios
+*.log
+.DS_Store
+.vscode/
+*~

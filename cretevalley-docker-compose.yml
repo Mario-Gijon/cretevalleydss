@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: mariogijon/cretevalleydss_frontend:latest
+    # Este servicio solo construye, no necesita exponer puertos
+    volumes:
+      - frontend_dist:/frontend_dist
+    # No necesita mantenerse vivo
+    command: echo "Frontend built"
+
+  backend:
+    image: mariogijon/cretevalleydss_backend:latest
+    volumes:
+      - frontend_dist:/app/dist
+    ports:
+      - "80:5000"
+    depends_on:
+      - frontend
+
+  apimodels:
+    image: mariogijon/cretevalleydss_apimodels:latest
+    ports:
+      - "7000:7000"
+
+volumes:
+  frontend_dist:
