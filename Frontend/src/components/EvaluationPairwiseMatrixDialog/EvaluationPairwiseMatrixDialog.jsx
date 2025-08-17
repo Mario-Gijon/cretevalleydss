@@ -1,9 +1,9 @@
 
 import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider, IconButton, Tabs, Typography, Tab, Backdrop, DialogContentText } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { MatrixAltPair } from "../MatrixAltPair/MatrixAltPair"
+import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix"
 import { useEffect, useState } from "react";
-import { extractLeafCriteria, validateFinalEvaluations } from "../../utils/evaluationMatrixAltPairDialogUtils";
+import { extractLeafCriteria, validateFinalEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
 import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
@@ -12,7 +12,7 @@ import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 
 
-export const EvaluationMatrixAltPairDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
+export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
 
   const { showSnackbarAlert } = useSnackbarAlertContext()
 
@@ -255,7 +255,7 @@ export const EvaluationMatrixAltPairDialog = ({ isRatingAlternatives, setIsRatin
             {/* Matriz de evaluación */}
             {
               criterionId && !loading && (
-                <MatrixAltPair
+                <PairwiseMatrix
                   alternatives={selectedIssue.alternatives}
                   evaluations={evaluations[criterionId] || []}
                   setEvaluations={updateMatrix}

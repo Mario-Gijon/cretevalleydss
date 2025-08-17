@@ -1,7 +1,7 @@
-import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Paper, Accordion, AccordionSummary } from "@mui/material";
+import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Paper, Accordion, AccordionSummary, Dialog, DialogTitle, DialogActions } from "@mui/material";
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
 
-export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives }) => {
+export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
   return (
 
@@ -165,13 +165,29 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
       </DialogContent>
 
       {/* Acciones del modal */}
-      {!selectedIssue.evaluated && (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}>
+        {!selectedIssue.evaluated && (
           <Button onClick={handleRateAlternatives} size="small" color="secondary" variant="outlined">
             Rate alternatives
           </Button>
-        </Stack>
-      )}
+        )}
+      <Button onClick={() => setOpenLeaveConfirmDialog(true)} size="small" color="error" variant="outlined">
+        Leave
+      </Button>
+      </Stack>
+
+      {/* Diálogo de confirmación de salir el issue */}
+      <Dialog open={openLeaveConfirmDialog} onClose={() => setOpenLeaveConfirmDialog(false)}>
+        <DialogTitle>Are you sure you want to leave this issue?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setOpenLeaveConfirmDialog(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleLeaveIssue} color="error" loading={leaveLoading} loadingPosition="end">
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </>
 

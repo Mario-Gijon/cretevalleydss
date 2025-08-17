@@ -2,7 +2,7 @@
 import { DataGrid } from "@mui/x-data-grid";
 import { Chip, Stack, useTheme } from "@mui/material";
 
-export function MatrixAltPair({
+export function PairwiseMatrix({
   alternatives,
   evaluations,
   setEvaluations,

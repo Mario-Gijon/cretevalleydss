@@ -3,7 +3,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { IsAdminIssueContentDialog } from "./IsAdminIssueContentDialog";
 import { IsNotAdminIssueContentDialog } from "./isNotAdminIssueContentDialog";
 
-export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleAddExpert, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip }) => {
+export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleAddExpert, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
   return (
 
@@ -46,6 +46,10 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
             <IsNotAdminIssueContentDialog
               selectedIssue={selectedIssue}
               handleRateAlternatives={handleRateAlternatives}
+              setOpenLeaveConfirmDialog={setOpenLeaveConfirmDialog}
+              openLeaveConfirmDialog={openLeaveConfirmDialog}
+              handleLeaveIssue={handleLeaveIssue}
+              leaveLoading={leaveLoading}
             />
           )}
         </>

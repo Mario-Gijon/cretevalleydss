@@ -6,9 +6,9 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { StyledCard, StyledChip } from "./customStyles/StyledCard";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
-import { editExperts, removeIssue, resolveIssue } from "../../src/controllers/issueController";
+import { editExperts, leaveIssue, removeIssue, resolvePairwiseIssue } from "../../src/controllers/issueController";
 import { IssueDialog } from "../../src/components/IssueDialog/IssueDialog";
-import { EvaluationMatrixAltPairDialog } from "../../src/components/EvaluationMatrixAltPairDialog/EvaluationMatrixAltPairDialog";
+import { EvaluationPairwiseMatrixDialog } from "../../src/components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
 import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
 
@@ -30,6 +30,8 @@ const ActiveIssuesPage = () => {
   const [expertsToAdd, setExpertsToAdd] = useState([]); // lista provisional de emails
   const [hoveredChip, setHoveredChip] = useState(null);
   const [editExpertsLoading, setEditExpertsLoading] = useState(false);
+  const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
 
   const { issueCreated, setIssueCreated, initialExperts, loading, setLoading, activeIssues, setActiveIssues, fetchActiveIssues, fetchFinishedIssues } = useIssuesDataContext();
 
@@ -190,7 +192,7 @@ const ActiveIssuesPage = () => {
   const handleResolveIssue = async () => {
     setResolveLoading(true)
     setOpenResolveConfirmDialog(false)
-    const response = await resolveIssue(selectedIssue.name)
+    const response = await resolvePairwiseIssue(selectedIssue.name)
     if (response.success) {
       if (response.finished === true) {
         console.log(response.rankedAlternatives)
@@ -207,8 +209,23 @@ const ActiveIssuesPage = () => {
       handleCloseIssueDialog();
       setLoading(false)
     }
-    console.log(response)
     setResolveLoading(false)
+  }
+
+  const handleLeaveIssue = async () => {
+    console.log("Leaving issue: ", selectedIssue.name);
+    setLeaveLoading(true)
+    setOpenLeaveConfirmDialog(false)
+    const response = await leaveIssue(selectedIssue.name); // true para indicar que es un leave
+
+    if (response.success) {
+      setActiveIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
+      handleCloseIssueDialog();
+      showSnackbarAlert(response.msg, "success");
+    } else {
+      showSnackbarAlert(response.msg, "error");
+    }
+    setLeaveLoading(false)
   }
 
   if (loading) {
@@ -344,11 +361,19 @@ const ActiveIssuesPage = () => {
           setExpertsToAdd={setExpertsToAdd}
           hoveredChip={hoveredChip}
           setHoveredChip={setHoveredChip}
+          openLeaveConfirmDialog={openLeaveConfirmDialog}
+          setOpenLeaveConfirmDialog={setOpenLeaveConfirmDialog}
+          handleLeaveIssue={handleLeaveIssue}
+          leaveLoading={leaveLoading}
         />
 
       </Stack>
 
-      <EvaluationMatrixAltPairDialog
+      {
+        
+      }
+
+      <EvaluationPairwiseMatrixDialog
         isRatingAlternatives={isRatingAlternatives}
         setIsRatingAlternatives={setIsRatingAlternatives}
         selectedIssue={selectedIssue}
@@ -419,10 +444,10 @@ const ActiveIssuesPage = () => {
           
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelEditExperts} color="info" variant="outlined">
+          <Button onClick={handleCancelEditExperts} color="info" size="small">
             Cancel
           </Button>
-          <Button onClick={handleConfirmEditExperts} color="warning" variant="outlined" loading={editExpertsLoading} loadingPosition="end">
+          <Button onClick={handleConfirmEditExperts} color="warning" loading={editExpertsLoading} loadingPosition="end" size="small">
             Confirm
           </Button>
         </DialogActions>

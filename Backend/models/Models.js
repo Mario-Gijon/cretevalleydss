@@ -17,43 +17,30 @@ export const IssueModel = model("IssueModel", issueModelSchema);
   {
     name: "TOPSIS",
     isConsensus: false,
+    isPairwise: false,
     smallDescription: "Método para ordenación por similitud a la solución ideal.",
     extendDescription:
-      "TOPSIS es una técnica de decisión multicriterio que selecciona la mejor alternativa basándose en la proximidad a una solución ideal.",
+      "TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) es un método de decisión multicriterio que ayuda a clasificar y seleccionar alternativas basándose en su proximidad a una solución ideal.",
     moreInfoUrl: "https://ejemplo.com/topsis",
   },
   {
-    name: "AHP",
+    name: "Herrera Viedma CRP",
     isConsensus: true,
-    smallDescription: "Proceso Analítico Jerárquico.",
+    isPairwise: true,
+    smallDescription: "Small description for herrera viedma crp.",
     extendDescription:
-      "AHP estructura problemas de decisión complejos en una jerarquía para comparar criterios y alternativas de manera estructurada.",
-    moreInfoUrl: "https://ejemplo.com/ahp",
+      "Extended description for Herrera Viedma CRP, a consensus-based method for decision making.",
+    moreInfoUrl: "https://ejemplo.com/herrera-viedma-crp",
   },
   {
-    name: "DEA",
+    name: "Herrera Viedma CRP",
     isConsensus: false,
-    smallDescription: "Análisis Envolvente de Datos.",
+    isPairwise: true,
+    smallDescription: "Small description for herrera viedma crp.",
     extendDescription:
-      "DEA mide la eficiencia relativa de unidades de decisión usando programación lineal, comparando insumos y productos.",
-    moreInfoUrl: "https://ejemplo.com/dea",
-  },
-  {
-    name: "VIKOR",
-    isConsensus: true,
-    smallDescription: "Método de Compromiso Multicriterio.",
-    extendDescription:
-      "VIKOR se usa para encontrar soluciones de compromiso en problemas con múltiples criterios conflictivos.",
-    moreInfoUrl: "https://ejemplo.com/vikor",
-  },
-  {
-    name: "PROMETHEE",
-    isConsensus: true,
-    smallDescription: "Método de Preferencia para la Ordenación.",
-    extendDescription:
-      "PROMETHEE es una técnica de decisión multicriterio que permite comparar alternativas basado en preferencias explícitas.",
-    moreInfoUrl: "https://ejemplo.com/promethee",
-  },
+      "Extended description for Herrera Viedma CRP, a consensus-based method for decision making.",
+    moreInfoUrl: "https://ejemplo.com/herrera-viedma-crp",
+  }
 ];
 
 const seedDB = async () => {

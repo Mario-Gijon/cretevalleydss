@@ -75,6 +75,7 @@ export const createIssue = async (req, res) => {
       issueDescription,
       selectedModel,
       alternatives,
+      withConsensus,
       criteria,
       addedExperts,
       domainExpressions,
@@ -113,7 +114,7 @@ export const createIssue = async (req, res) => {
     }
 
     // Validar que haya al menos dos expertos
-    if (addedExperts.length <= 1) {
+    if (addedExperts.length <= 0) {
       await session.abortTransaction();
       session.endSession();
       return res
@@ -125,7 +126,7 @@ export const createIssue = async (req, res) => {
     const issue = new Issue({
       admin: req.uid,
       model: model._id,
-      isConsensus: model.isConsensus,
+      isConsensus: withConsensus,
       name: issueName,
       description: issueDescription,
       active: true,
@@ -225,194 +226,254 @@ export const createIssue = async (req, res) => {
 };
 
 
+// Devuelve todos los problemas activos para el usuario actual
 export const getAllActiveIssues = async (req, res) => {
   try {
+    // Obtener el ID del usuario a partir del token (añadido previamente en middleware)
     const userId = req.uid;
 
-    // Obtener los IDs de los problemas donde participa el usuario
+    // Obtener todos los IDs de problemas activos en los que participa el usuario (como admin o experto)
     const issueIds = await getUserActiveIssueIds(userId);
+
+    // Si el usuario no participa en ningún problema activo, devolver una lista vacía
     if (issueIds.length === 0) {
       return res.json({ success: true, issues: [] });
     }
 
-    // Consultar los problemas activos y sus datos
+    // Buscar todos los problemas activos por ID y poblar los campos necesarios (modelo y admin)
     const issues = await Issue.find({ _id: { $in: issueIds } })
-      .populate("model", "name isConsensus isPairwise")
-      .populate("admin", "email")
-      .lean();
+      .populate("model", "name isConsensus isPairwise") // Poblar solo los campos relevantes del modelo
+      .populate("admin", "email") // Poblar solo el email del admin
+      .lean(); // Convertir documentos a objetos JS "planos"
 
-    // Obtener todas las participaciones de expertos
+    // Obtener todas las participaciones de expertos relacionadas con esos problemas
     const allParticipations = await Participation.find({ issue: { $in: issueIds } })
-      .populate("expert", "email")
+      .populate("expert", "email") // Poblar solo el email del experto
       .lean();
 
-    // Obtener alternativas y criterios
+    // Obtener todas las alternativas asociadas a los problemas
     const alternatives = await Alternative.find({ issue: { $in: issueIds } }).lean();
+
+    // Obtener todos los criterios asociados a los problemas
     const criteria = await Criterion.find({ issue: { $in: issueIds } }).lean();
 
-    // Obtener todos los registros de consenso relacionados con estos problemas
+    // Obtener las fases de consenso de los problemas (solo campos issue y phase)
     const consensusPhases = await Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean();
 
-    // Crear un mapa de issueId -> número de fases
+    // Crear un mapa con el número de fases de consenso por problema (issueId -> count)
     const consensusPhaseCountMap = consensusPhases.reduce((acc, curr) => {
       const issueId = curr.issue.toString();
       acc[issueId] = acc[issueId] ? acc[issueId] + 1 : 1;
       return acc;
     }, {});
 
-
-    // Formatear los issues
+    // Formatear los datos de cada problema para enviarlos al frontend
     const formattedIssues = issues.map((issue) => {
+      // Clasificar las participaciones por tipo (participaron, pendientes, etc.)
       const {
         participatedExperts,
         pendingExperts,
         notAcceptedExperts,
-        acceptedButNotEvaluated, // Nueva categoría
+        acceptedButNotEvaluated,
         isExpert
       } = categorizeParticipations(
         allParticipations.filter((part) => part.issue._id.equals(issue._id)),
         userId
       );
 
+      // Devolver un objeto con todos los datos necesarios del problema
       return {
-        name: issue.name,
-        creator: issue.admin.email,
-        description: issue.description,
-        model: issue.model.name,
-        isPairwise: issue.model.isPairwise,
-        isConsensus: issue.model.isConsensus,
+        name: issue.name, // Nombre del problema
+        creator: issue.admin.email, // Email del administrador
+        description: issue.description, // Descripción del problema
+        model: issue.model.name, // Nombre del modelo asociado
+        isPairwise: issue.model.isPairwise, // Si se usan evaluaciones pareadas
+        isConsensus: issue.isConsensus, // Si tiene fases de consenso
+
+        // Si es de consenso, incluir información adicional
         ...(issue.model.isConsensus && {
-          consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
-          consensusThreshold: issue.consensusThreshold,
-          consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1,
+          consensusMaxPhases: issue.consensusMaxPhases || "Unlimited", // Máx. fases permitidas
+          consensusThreshold: issue.consensusThreshold, // Umbral de consenso
+          consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1, // Fase actual (la siguiente a la última registrada)
         }),
+
+        // Fechas formateadas como string (YYYY-MM-DD)
         creationDate: issue.creationDate.toISOString().split("T")[0],
         closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null,
-        isAdmin: issue.admin._id.toString() === userId,
-        isExpert,
-        alternatives: alternatives.filter((alt) => alt.issue.toString() === issue._id.toString()).map((alt) => alt.name).sort(),
+
+        isAdmin: issue.admin._id.toString() === userId, // Si el usuario actual es admin
+        isExpert, // Si el usuario actual es experto en este problema
+
+        // Listado de alternativas del problema (ordenadas alfabéticamente)
+        alternatives: alternatives
+          .filter((alt) => alt.issue.toString() === issue._id.toString())
+          .map((alt) => alt.name)
+          .sort(),
+
+        // Criterios del problema estructurados en árbol
         criteria: buildCriterionTree(criteria, issue._id),
+
+        // Si el usuario ha evaluado (aparece como experto que ya completó la evaluación)
         evaluated: participatedExperts.map((part) => part.expert._id.toString()).includes(userId),
-        totalExperts: participatedExperts.length + pendingExperts.length + notAcceptedExperts.length + acceptedButNotEvaluated.length, // Incluye la nueva categoría
+
+        // Número total de expertos (participaron, pendientes, rechazaron, aceptaron pero no evaluaron)
+        totalExperts: participatedExperts.length + pendingExperts.length + notAcceptedExperts.length + acceptedButNotEvaluated.length,
+
+        // Listado de expertos por categoría (ordenados por email)
         participatedExperts: participatedExperts.map((part) => part.expert.email).sort(),
         pendingExperts: pendingExperts.map((part) => part.expert.email).sort(),
         notAcceptedExperts: notAcceptedExperts.map((part) => part.expert.email).sort(),
-        acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((part) => part.expert.email).sort(), // Agrega los expertos que aceptaron pero no evaluaron
+        acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((part) => part.expert.email).sort(),
       };
     });
 
+    // Devolver la respuesta con los problemas formateados
     res.json({ success: true, issues: formattedIssues });
 
   } catch (error) {
+    // Capturar errores y devolver una respuesta con status 500
     console.error(error);
     res.status(500).json({ success: false, msg: "Error fetching active issues" });
   }
 };
 
+
 export const removeIssue = async (req, res) => {
   const { issueName } = req.body;
-  const userId = req.uid; // ID del usuario autenticado
+  const userId = req.uid; // ID del usuario autenticado extraído del token
+
+  // Iniciar una sesión de Mongoose para la transacción
+  const session = await mongoose.startSession();
 
   try {
-    // Verificar si el Issue existe
-    const issue = await Issue.findOne({ name: issueName });
+    // Iniciar transacción
+    session.startTransaction();
 
+    // Buscar el Issue por nombre
+    const issue = await Issue.findOne({ name: issueName }).session(session);
+
+    // Comprobar si el Issue existe
     if (!issue) {
+      await session.abortTransaction(); // Cancelar la transacción si no existe
+      session.endSession();
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // Verificar si el usuario es el administrador del Issue
+    // Comprobar si el usuario autenticado es el admin del Issue
     if (issue.admin.toString() !== userId) {
+      await session.abortTransaction(); // Cancelar si no es admin
+      session.endSession();
       return res.status(403).json({ success: false, msg: "You are not the admin of this issue" });
     }
 
-    // Verificar si el Issue está activo
+    // Comprobar si el Issue está activo
     if (!issue.active) {
+      await session.abortTransaction(); // Cancelar si no está activo
+      session.endSession();
       return res.status(400).json({ success: false, msg: "Issue is not active and cannot be deleted" });
     }
 
-    // Eliminar evaluaciones asociadas a las alternativas antes de eliminar las alternativas
-    await Evaluation.deleteMany({ issue: issue._id });
+    // Eliminar todas las evaluaciones relacionadas con este Issue
+    await Evaluation.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar alternativas asociadas al Issue
-    await Alternative.deleteMany({ issue: issue._id });
+    // Eliminar todas las alternativas relacionadas
+    await Alternative.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar criterios asociados al Issue
-    await Criterion.deleteMany({ issue: issue._id });
+    // Eliminar todos los criterios relacionados
+    await Criterion.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar participaciones asociadas al Issue
-    await Participation.deleteMany({ issue: issue._id });
+    // Eliminar todas las participaciones relacionadas
+    await Participation.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar registros de consenso asociados al Issue
-    await Consensus.deleteMany({ issue: issue._id });
+    // Eliminar todos los registros de consenso relacionados
+    await Consensus.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar notificaciones asociados al Issue
-    await Notification.deleteMany({ issue: issue._id });
+    // Eliminar todas las notificaciones relacionadas
+    await Notification.deleteMany({ issue: issue._id }).session(session);
 
-    // Eliminar el Issue en sí
-    await Issue.deleteOne({ _id: issue._id });
+    // Finalmente eliminar el propio Issue
+    await Issue.deleteOne({ _id: issue._id }).session(session);
 
+    // Confirmar la transacción
+    await session.commitTransaction();
+    session.endSession();
+
+    // Devolver respuesta exitosa
     return res.status(200).json({ success: true, msg: `Issue ${issue.name} removed` });
+
   } catch (err) {
+    // Si ocurre cualquier error, hacer rollback de los cambios
+    await session.abortTransaction();
+    session.endSession();
     console.error(err);
     return res.status(500).json({ success: false, msg: "An error occurred while deleting the issue", error: err.message });
   }
 };
 
+// Controlador para obtener todos los issues finalizados en los que participa el usuario autenticado
 export const getAllFinishedIssues = async (req, res) => {
   try {
-    const userId = req.uid;
+    const userId = req.uid; // Obtener el ID del usuario autenticado desde el token (middleware)
 
-    // Obtener los IDs de los problemas donde participa el usuario
+    // Obtener los IDs de los issues finalizados donde participa el usuario
     const issueIds = await getUserFinishedIssueIds(userId);
+
+    // Si el usuario no participa en ningún issue finalizado, devolver una lista vacía
     if (issueIds.length === 0) {
       return res.json({ success: true, issues: [] });
     }
 
-    // Consultar los problemas activos y sus datos
+    // Buscar en la base de datos todos los issues correspondientes a los IDs obtenidos
     const issues = await Issue.find({ _id: { $in: issueIds } })
-      .populate("model", "name isConsensus")
-      .populate("admin", "email")
-      .lean();
+      .populate("model", "name isConsensus") // Obtener información del modelo (solo nombre y si usa consenso)
+      .populate("admin", "email")            // Obtener información del administrador (solo email)
+      .lean();                               // Convertir documentos Mongoose a objetos JS planos para mejor rendimiento
 
-    // Formatear los issues
-    const formattedIssues = issues.map((issue) => (
-      {
-        name: issue.name,
-        description: issue.description,
-        creationDate: issue.creationDate.toISOString().split("T")[0],
-        closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null,
-        isAdmin: issue.admin._id.toString() === userId,
-      }
-    ));
+    // Formatear los issues para enviar solo la información necesaria al frontend
+    const formattedIssues = issues.map((issue) => ({
+      name: issue.name, // Nombre del issue
+      description: issue.description, // Descripción del issue
+      creationDate: issue.creationDate.toISOString().split("T")[0], // Formatear fecha de creación (solo YYYY-MM-DD)
+      closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null, // Fecha de cierre si existe
+      isAdmin: issue.admin._id.toString() === userId, // Indicar si el usuario autenticado es el admin del issue
+    }));
 
+    // Devolver los issues formateados
     res.json({ success: true, issues: formattedIssues });
 
   } catch (error) {
+    // Capturar y mostrar errores inesperados
     console.error(error);
-    res.status(500).json({ success: false, msg: "Error fetching active issues" });
+    res.status(500).json({ success: false, msg: "Error fetching finished issues" });
   }
 };
 
 export const getNotifications = async (req, res) => {
+  // Obtenemos el ID del usuario autenticado desde el token
   const userId = req.uid;
 
   try {
-    // Obtenemos las notificaciones del usuario
+    // Obtenemos todas las notificaciones del usuario ordenadas por fecha de creación descendente
+    // También populamos el email del experto y el nombre del problema asociado
     const notifications = await Notification.find({ expert: userId })
       .sort({ createdAt: -1 })
-      .populate("expert", "email") // Obtener solo el email del experto
-      .populate("issue", "name");  // Obtener solo el nombre del issue
+      .populate("expert", "email")
+      .populate("issue", "name");
 
-    // Obtenemos las participaciones del usuario
+    // Obtenemos las participaciones del usuario como experto
     const participations = await Participation.find({ expert: userId });
 
-    // Transformamos las notificaciones para agregar la respuesta del experto
+    // Transformamos las notificaciones para incluir el estado de respuesta del experto
     const formattedNotifications = notifications.map((notification) => {
-      // Buscamos la participación correspondiente para este problema
-      const participation = participations.find(p => p.issue.toString() === notification.issue._id.toString());
+      // Buscamos la participación del experto para el problema relacionado con esta notificación
+      const participation = participations.find(p =>
+        p.issue.toString() === notification.issue._id.toString()
+      );
 
+      // Inicializamos el estado de respuesta
       let responseStatus = false;
+
+      // Si existe participación, comprobamos el estado de la invitación
       if (participation) {
         if (participation.invitationStatus === "accepted") {
           responseStatus = "Invitation accepted";
@@ -421,6 +482,7 @@ export const getNotifications = async (req, res) => {
         }
       }
 
+      // Devolvemos la notificación formateada con todos los campos necesarios
       return {
         _id: notification._id,
         header: notification.type === "invitation" ? "Invitation" : notification.issue.name,
@@ -430,97 +492,150 @@ export const getNotifications = async (req, res) => {
         requiresAction: notification.requiresAction,
         read: notification.read ?? false,
         createdAt: notification.createdAt,
-        responseStatus: responseStatus, // Añadimos el estado de respuesta aquí
+        responseStatus: responseStatus,
       };
     });
 
-    return res.status(200).json({ success: true, notifications: formattedNotifications });
+    // Respondemos con la lista de notificaciones ya formateadas
+    return res.status(200).json({
+      success: true,
+      notifications: formattedNotifications
+    });
 
   } catch (err) {
+    // En caso de error, devolvemos un estado 500 con mensaje de error
     console.error(err);
-    return res.status(500).json({ success: false, msg: "An error occurred while getting notifications" });
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while getting notifications"
+    });
   }
 };
 
-
+// Marcar todas las notificaciones como leídas para el usuario autenticado
 export const markAllNotificationsAsRead = async (req, res) => {
-  const userId = req.uid; // ID del usuario autenticado
+  const userId = req.uid;
 
   try {
+    // Actualizar todas las notificaciones no leídas del usuario como leídas
     await Notification.updateMany(
-      { expert: userId, read: false }, // Filtrar solo las no leídas del usuario
-      { read: true } // Marcar como leídas
+      { expert: userId, read: false },
+      { read: true }
     );
 
-    return res.status(200).json({ success: true, msg: "Notifications marked as read" });
+    return res.status(200).json({
+      success: true,
+      msg: "Notifications marked as read",
+    });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, msg: "An error occurred while updating notifications" });
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while updating notifications",
+    });
   }
 };
 
+// Cambiar el estado de la invitación del usuario para un problema específico
 export const changeInvitationStatus = async (req, res) => {
-  const userId = req.uid; // ID del usuario autenticado
-  const { issueName, action } = req.body; // El nombre del issue y el nuevo estado de la invitación
+  const userId = req.uid;
+  const { issueName, action } = req.body;
+
+  const session = await mongoose.startSession();
 
   try {
+    // Iniciar la transacción
+    session.startTransaction();
+
     // Buscar el problema por su nombre
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findOne({ name: issueName }).session(session);
 
     if (!issue) {
-      return res.status(404).json({ success: false, msg: "Issue not found" });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        msg: "Issue not found",
+      });
     }
 
     // Buscar la participación del usuario en ese problema
-    const participation = await Participation.findOne({ issue: issue._id, expert: userId });
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+    }).session(session);
 
     if (!participation) {
-      return res.status(404).json({ success: false, msg: "No participation found for the user in this issue" });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        msg: "No participation found for the user in this issue",
+      });
     }
 
     // Actualizar el estado de la invitación
-    participation.invitationStatus = action; // action debe ser "accepted" o "declined"
+    participation.invitationStatus = action;
 
-    // Si el estado es "accepted", puede ser útil actualizar también si la evaluación ha comenzado
+    // Si acepta la invitación, dejar la evaluación como no completada
     if (action === "accepted") {
-      participation.evaluationCompleted = false; // Esto depende de cómo lo manejes
+      participation.evaluationCompleted = false;
     }
 
-    // Guardar los cambios en la base de datos
-    await participation.save();
+    // Guardar los cambios en la participación
+    await participation.save({ session });
 
-    // Enviar un mensaje personalizado dependiendo de la acción
-    const message = action === "accepted"
-      ? `Invitation to issue ${issueName} accepted`
-      : `Invitation to issue ${issueName} declined`;
+    // Confirmar la transacción
+    await session.commitTransaction();
+    session.endSession();
 
-    // Responder con éxito y el mensaje adecuado
-    return res.status(200).json({ success: true, msg: message });
+    // Preparar el mensaje de respuesta
+    const message =
+      action === "accepted"
+        ? `Invitation to issue ${issueName} accepted`
+        : `Invitation to issue ${issueName} declined`;
+
+    return res.status(200).json({
+      success: true,
+      msg: message,
+    });
   } catch (err) {
+    // Cancelar la transacción en caso de error
+    await session.abortTransaction();
+    session.endSession();
     console.error(err);
-    return res.status(500).json({ success: false, msg: "An error occurred while updating invitation status" });
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while updating invitation status",
+    });
   }
 };
 
+// Controlador para eliminar una notificación específica de un usuario
 export const removeNotificationById = async (req, res) => {
-  const userId = req.uid; // ID del usuario autenticado
-  const { notificationId } = req.body; // ID de la notificación a eliminar desde el cuerpo de la solicitud
+  // Obtener el ID del usuario autenticado desde el token (middleware)
+  const userId = req.uid;
+
+  // Obtener el ID de la notificación a eliminar desde el cuerpo de la petición
+  const { notificationId } = req.body;
 
   try {
-    // Busca la notificación por ID y asegúrate de que pertenece al usuario
+    // Buscar la notificación por ID y asegurarse de que pertenece al usuario autenticado
     const notification = await Notification.findOne({ _id: notificationId, expert: userId });
 
+    // Si no se encuentra la notificación o no pertenece al usuario, devolver 404
     if (!notification) {
       return res.status(404).json({ success: false, msg: "Notification not found" });
     }
 
-    // Elimina la notificación
+    // Eliminar la notificación de la base de datos
     await Notification.deleteOne({ _id: notificationId });
 
-    // Responder con éxito
+    // Responder con éxito si se ha eliminado correctamente
     return res.status(200).json({ success: true, msg: "Message removed" });
 
   } catch (err) {
+    // En caso de error inesperado, registrar el error y devolver un error 500
     console.error(err);
     return res.status(500).json({ success: false, msg: "An error occurred while removing notification" });
   }
@@ -550,10 +665,7 @@ export const saveEvaluations = async (req, res) => {
     });
 
     if (!participation) {
-      return res.status(403).json({
-        success: false,
-        msg: "You are no longer a participant in this issue"
-      });
+      return res.status(403).json({ success: false, msg: "You are no longer a participant in this issue" });
     }
 
 
@@ -614,10 +726,6 @@ export const saveEvaluations = async (req, res) => {
     if (bulkOperations.length > 0) {
       await Evaluation.bulkWrite(bulkOperations);
     }
-
-    console.log("Received evaluations:", evaluations);
-    console.log("Generated bulk operations:", bulkOperations.length);
-
 
     if (res) {
       return res.status(200).json({ success: true, msg: "Evaluations saved successfully" });
@@ -760,11 +868,11 @@ export const sendEvaluations = async (req, res) => {
 };
 
 // Método para resolver el problema
-export const resolveIssue = async (req, res) => {
+export const resolvePairwiseIssue = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
-    const { issueName } = req.body;
+    const { issueName, forceFinalize = false } = req.body;
 
     // Buscar el problema por nombre
     const issue = await Issue.findOne({ name: issueName });
@@ -847,6 +955,8 @@ export const resolveIssue = async (req, res) => {
       { headers: { "Content-Type": "application/json" } }
     );
 
+    console.log("Response from API:", response.data);
+
     const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data;
 
     if (!success) {
@@ -917,6 +1027,7 @@ export const resolveIssue = async (req, res) => {
         });
 
         for (const evaluation of evaluations) {
+          console.log(evaluation)
           if (evaluation.consensusPhase !== null) {
             // Solo guardamos si ya hay una fase previa (para no guardar si es la primera vez)
             evaluation.history.push({
@@ -934,6 +1045,18 @@ export const resolveIssue = async (req, res) => {
         }
       }));
     }));
+
+    if (issue.isConsensus && forceFinalize) {
+      // Si es de consenso y se está cerrando por fecha, se finaliza directamente
+      issue.active = false;
+      await issue.save();
+      return res.status(200).json({
+        success: true,
+        finished: true,
+        msg: `Issue '${issueName}' resolved as final round due to closure date.`,
+        rankedAlternatives
+      });
+    }
 
     // Verificar si se llegó a la fase máxima
     if (issue.consensusMaxPhases && currentPhase >= issue.consensusMaxPhases) {
@@ -996,11 +1119,6 @@ export const getFinishedIssueInfo = async (req, res) => {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // 2. Verificar si el usuario es el administrador del Issue
-    /* if (issue.admin.toString() !== userId) {]]
-      return res.status(403).json({ success: false, msg: "You are not the admin of this issue" });
-    } */
-
     const summary = await createSummarySection(issue._id);
 
     const alternativesRankings = await createAlternativesRankingsSection(issue._id)
@@ -1026,26 +1144,23 @@ export const getFinishedIssueInfo = async (req, res) => {
 
 export const removeFinishedIssue = async (req, res) => {
   const { issueName } = req.body;
-  const userId = req.uid; // ID del usuario autenticado
+  const userId = req.uid;
 
   try {
-    // Buscar el issue por nombre
     const issue = await Issue.findOne({ name: issueName });
 
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // Verificar si está activo
     if (issue.active) {
       return res.status(400).json({ success: false, msg: "Issue is still active" });
     }
 
-    // Buscar si ya existe un registro previo
-    const previousExit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
+    // Buscar si ya existe un registro de salida para este usuario
+    let previousExit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
 
     if (previousExit) {
-      // Guardar evento anterior en history
       const past = {
         timestamp: previousExit.timestamp,
         phase: previousExit.phase,
@@ -1055,22 +1170,43 @@ export const removeFinishedIssue = async (req, res) => {
       previousExit.history = previousExit.history ? [...previousExit.history, past] : [past];
       previousExit.timestamp = new Date();
       previousExit.phase = null;
-      previousExit.reason = null;
+      previousExit.reason = "Issue finished and removed for user";
+      previousExit.hidden = true;
 
       await previousExit.save();
     } else {
-      // Crear nuevo registro de salida
       await ExitUserIssue.create({
         issue: issue._id,
         user: userId,
         timestamp: new Date(),
         phase: null,
         reason: "Issue finished and removed for user",
-        hidden: true, // el usuario lo oculta
+        hidden: true,
       });
     }
 
+    // === Nueva parte: comprobar si todos los usuarios ya lo ocultaron ===
+    const participants = await Participation.find({ issue: issue._id });
+    const exits = await ExitUserIssue.find({ issue: issue._id, hidden: true });
+
+    const allUsersHaveHidden = participants.every(p =>
+      exits.some(e => e.user.toString() === p.expert.toString())
+    );
+
+    if (allUsersHaveHidden) {
+      // eliminar definitivamente el issue y sus datos
+      await Evaluation.deleteMany({ issue: issue._id });
+      await Alternative.deleteMany({ issue: issue._id });
+      await Criterion.deleteMany({ issue: issue._id });
+      await Participation.deleteMany({ issue: issue._id });
+      await Consensus.deleteMany({ issue: issue._id });
+      await Notification.deleteMany({ issue: issue._id });
+      await ExitUserIssue.deleteMany({ issue: issue._id });
+      await Issue.deleteOne({ _id: issue._id });
+    }
+
     return res.status(200).json({ success: true, msg: `Issue ${issue.name} removed` });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -1081,55 +1217,73 @@ export const removeFinishedIssue = async (req, res) => {
   }
 };
 
+
+// Exporta la función editExperts como un controlador asincrónico
 export const editExperts = async (req, res) => {
+  // Extrae los datos del cuerpo de la petición
   const { issueName, expertsToAdd, expertsToRemove } = req.body;
+  // Obtiene el ID del usuario autenticado (admin)
   const userId = req.uid;
 
   try {
+    // Busca el issue por nombre y trae también el modelo asociado
     const issue = await Issue.findOne({ name: issueName }).populate('model');
+    // Si no existe el issue, devuelve error 404
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
+    // Verifica que el usuario autenticado es el admin del issue
     if (!issue.admin.equals(userId)) {
       return res.status(403).json({ success: false, msg: "Not authorized to edit this issue's experts." });
     }
 
+    // Carga en paralelo las alternativas, criterios y último consenso del issue
     const [alternatives, criteria, latestConsensus] = await Promise.all([
       Alternative.find({ issue: issue._id }),
       Criterion.find({ issue: issue._id }),
-      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 })
+      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }) // el último por fase
     ]);
 
+    // Calcula la fase actual (si hay consenso previo, la siguiente; si no, fase 1)
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
     console.log("Current phase:", currentPhase);
 
+    // Mapa para vincular emails con IDs de usuarios expertos
     const expertMap = new Map();
 
+    // Recorre los expertos que se quieren añadir
     for (const email of expertsToAdd) {
+      // Busca al usuario por email
       const expertUser = await User.findOne({ email });
-      if (!expertUser) continue;
+      if (!expertUser) continue; // si no existe, salta
 
+      // Comprueba si ya participaba en este issue
       const existingParticipation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
 
-      // Si no ha participado nunca, lo añadimos y creamos evaluaciones
+      // Si nunca participó, se crea su participación y evaluaciones
       if (!existingParticipation) {
+        // Comprueba si es el propio admin
         const isAdmin = expertUser._id.equals(userId);
 
+        // Crea la participación del experto en el issue
         await Participation.create({
           issue: issue._id,
           expert: expertUser._id,
-          invitationStatus: isAdmin ? "accepted" : "pending",
+          invitationStatus: isAdmin ? "accepted" : "pending", // admin aceptado automáticamente
           evaluationCompleted: false,
-          entryPhase: currentPhase   // 👈 registrar la fase de entrada
+          entryPhase: currentPhase   // guarda la fase en la que entra
         });
 
+        // Añade al mapa de expertos
         expertMap.set(email, expertUser._id);
 
-        // Solo se notifica si no es el propio admin
+        // Si no es el admin, se envía invitación y notificación
         if (!isAdmin) {
+          // Busca los datos del admin que invita
           const admin = await User.findById(userId);
 
+          // Envía email de invitación
           await resend.emails.send({
             from: 'onboarding@resend.dev',
             to: email,
@@ -1146,6 +1300,7 @@ export const editExperts = async (req, res) => {
             `
           });
 
+          // Crea una notificación interna en el sistema
           await Notification.create({
             expert: expertUser._id,
             issue: issue._id,
@@ -1156,17 +1311,20 @@ export const editExperts = async (req, res) => {
           });
         }
 
-        // Solo crear evaluaciones si nunca ha tenido antes
+        // Comprueba si ya tenía evaluaciones previas
         const hasEvaluations = await Evaluation.exists({
           issue: issue._id,
           expert: expertUser._id
         });
 
+        // Si nunca tuvo, se crean evaluaciones nuevas
         if (!hasEvaluations) {
+          // Se define un objeto de dominios de expresión por cada alternativa y criterio
           const domainExpressions = {
             [email]: {}
           };
 
+          // Recorre alternativas y criterios para crear estructura de evaluaciones
           for (const alt of alternatives) {
             domainExpressions[email][alt.name] = {};
             for (const crit of criteria) {
@@ -1178,34 +1336,40 @@ export const editExperts = async (req, res) => {
             }
           }
 
+          // Llama a la función que genera las evaluaciones
           await createEvaluations(
             domainExpressions,
             expertMap,
             alternatives,
             criteria,
             issue._id,
-            issue.model.isPairwise,
+            issue.model.isPairwise, // indica si el modelo es por comparaciones pareadas
             currentPhase
           );
         }
       }
     }
 
-    // Eliminar (expulsar) expertos
+    // Recorre los expertos que se quieren eliminar (expulsar)
     for (const email of expertsToRemove) {
+      // Busca al usuario por email
       const expertUser = await User.findOne({ email });
       if (!expertUser) continue;
 
+      // Busca su participación en el issue
       const participation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
 
+      // Si participaba, se elimina su participación
       if (participation) {
         await Participation.deleteOne({ _id: participation._id });
 
-        // NO se eliminan las evaluaciones (mantener historial)
+        // Las evaluaciones no se eliminan (se mantiene el historial)
         const reason = "Expelled by admin";
 
+        // Busca si ya hay un registro de salida del usuario en el issue
         const exit = await ExitUserIssue.findOne({ issue: issue._id, user: expertUser._id });
 
+        // Si no hay, crea uno nuevo con historial
         if (!exit) {
           await ExitUserIssue.create({
             issue: issue._id,
@@ -1221,19 +1385,22 @@ export const editExperts = async (req, res) => {
             }]
           });
         } else {
+          // Si ya existe, se actualiza añadiendo nueva entrada en el historial
           exit.history.push({
             timestamp: new Date(),
             phase: currentPhase,
             reason
           });
-          exit.phase = currentPhase;
+          exit.phase = currentPhase; // se actualiza la fase de salida
           await exit.save();
         }
       }
     }
 
+    // Respuesta exitosa
     return res.status(200).json({ success: true, msg: "Experts updated successfully." });
   } catch (err) {
+    // Manejo de errores en caso de fallo
     console.error(err);
     return res.status(500).json({
       success: false,
@@ -1241,4 +1408,110 @@ export const editExperts = async (req, res) => {
       error: err.message
     });
   }
+};
+
+export const leaveIssue = async (req, res) => {
+  const { issueName } = req.body;   // nombre del issue
+  const userId = req.uid;           // ID del usuario que quiere salir
+
+  try {
+    // Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // Un admin no puede salirse de su propio issue
+    if (issue.admin.equals(userId)) {
+      return res.status(403).json({ success: false, msg: "An admin can not leave an issue" });
+    }
+
+    // Buscar la participación del usuario en el issue
+    const participation = await Participation.findOne({ issue: issue._id, expert: userId });
+    if (!participation) {
+      return res.status(400).json({ success: false, msg: "You are not a participant of this issue" });
+    }
+
+    // Eliminar la participación activa (ya no aparece como miembro)
+    await Participation.deleteOne({ _id: participation._id });
+
+    // No se borran evaluaciones -> mantienen historial
+    const reason = "Left by user";
+
+    // Calcular fase actual (si hay consenso previo, fase+1, si no, fase 1)
+    const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
+    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
+
+    // Revisar si ya existe un registro de salidas del usuario
+    const exit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
+
+    if (!exit) {
+      // Si no existe, crear un nuevo documento de salida
+      await ExitUserIssue.create({
+        issue: issue._id,
+        user: userId,
+        hidden: true,
+        timestamp: new Date(),
+        phase: currentPhase,
+        reason,
+        history: [{
+          timestamp: new Date(),
+          phase: currentPhase,
+          reason
+        }]
+      });
+    } else {
+      // Si ya existe, añadir un nuevo registro al historial
+      exit.history.push({
+        timestamp: new Date(),
+        phase: currentPhase,
+        reason
+      });
+      exit.phase = currentPhase;
+      await exit.save();
+    }
+
+    return res.status(200).json({ success: true, msg: "You have left the issue successfully" });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while leaving issue",
+      error: err.message
+    });
+  }
+};
+
+/**
+ * Función interna que resuelve un issue usando su _id
+ */
+export const resolveIssueLogic = async (issueId, { forceFinalize = false } = {}) => {
+  const issue = await Issue.findById(issueId);
+  if (!issue) return;
+
+  await resolveIssue({
+    uid: issue.admin,
+    body: { issueName: issue.name, forceFinalize }
+  }, {
+    status: () => ({ json: (obj) => console.log(obj) }),
+    json: (obj) => console.log(obj)
+  });
+};
+
+
+/**
+ * Función interna que elimina un issue usando su _id
+ */
+export const removeIssueLogic = async (issueId) => {
+  const issue = await Issue.findById(issueId);
+  if (!issue) return;
+
+  await removeIssue({
+    uid: issue.admin,
+    body: { issueName: issue.name }
+  }, {
+    status: () => ({ json: (obj) => console.log(obj) }),
+    json: (obj) => console.log(obj)
+  });
 };

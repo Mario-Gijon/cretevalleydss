@@ -14,13 +14,16 @@ import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
 import { createIssue } from "../../src/controllers/issueController";
 import { ColorlibConnector, ColorlibStepIcon, DeactivateColorlibStepIcon } from "./customStyles/StepperLibConnector";
 import { dataTypeOptions, generateDomainExpressions, steps, validateIssueDescription, validateIssueName, processGroupedData, hasUndefinedDataTypes } from "../../src/utils/createIssueUtils";
-import dayjs from "dayjs";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { useNavigate } from "react-router-dom";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
+import dayjs from "dayjs";
+import utc from 'dayjs/plugin/utc';
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
+
+dayjs.extend(utc);
 
 const CreateIssuePage = () => {
 
@@ -147,7 +150,12 @@ const CreateIssuePage = () => {
 
     setLoading(true); // Establece loading en true antes de la creación del problema
 
-    const createdIssue = await createIssue(allData);
+    const payload = {
+      ...allData,
+      closureDate: closureDate ? dayjs(closureDate).utc().toISOString() : null, // <-- UTC
+    };
+
+    const createdIssue = await createIssue(payload);
 
     setLoading(false); // Establece loading en false cuando la creación haya terminado
 

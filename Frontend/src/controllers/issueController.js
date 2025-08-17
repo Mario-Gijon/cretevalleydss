@@ -296,7 +296,7 @@ export const sendEvaluations = async (issueName, evaluations) => {
   }
 }
 
-export const resolveIssue = async (issueName) => {
+export const resolvePairwiseIssue = async (issueName) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
@@ -315,7 +315,7 @@ export const resolveIssue = async (issueName) => {
 
   try {
     // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/resolveIssue`, options);
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/resolvePairwiseIssue`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
@@ -403,4 +403,32 @@ export const editExperts = async (issueName, expertsToAdd, expertsToRemove) => {
     return false; // En caso de error, devuelve false
   }
 }
+
+export const leaveIssue = async (issueName) => {
+  const token = await getToken();
+  if (!token) {
+    console.error("No token available");
+    return false;
+  }
+
+  // Opciones de la solicitud para datos protegidos
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ issueName })
+  };
+
+  try {
+    // Realiza la solicitud para obtener datos protegidos
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/leaveIssue`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching protected data:", err);
+    return false; // En caso de error, devuelve false
+  }
+}
+
 

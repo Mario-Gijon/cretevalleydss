@@ -7,6 +7,7 @@ import authRouter from "./routes/auth.route.js" // Rutas de autenticación.
 import issueRouter from "./routes/issue.route.js"
 import cookieParser from 'cookie-parser' // Para poder manejar las cookies en las solicitudes HTTP.
 import path from 'path';
+import "./jobs/autoCloseIssues.js"
 
 // Configura las variables de entorno.
 dotenv.config({ path: `.env.${process.env.NODE_ENV}`});

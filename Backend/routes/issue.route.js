@@ -1,7 +1,7 @@
 // Importa el enrutador de Express para definir rutas.
 import { Router } from 'express'
 
-import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts } from '../controllers/issue.controller.js'
+import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, saveEvaluations, getEvaluations, sendEvaluations, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue } from '../controllers/issue.controller.js'
 
 // Importa el middleware para verificar el token de acceso.
 import { requireToken } from '../middlewares/requireToken.js'
@@ -37,11 +37,13 @@ router.post("/getEvaluations", requireToken, getEvaluations)
 
 router.post("/sendEvaluations", requireToken, sendEvaluations)
 
-router.post("/resolveIssue", requireToken, resolveIssue)
+router.post("/resolvePairwiseIssue", requireToken, resolvePairwiseIssue)
 
 router.post("/getFinishedIssueInfo", requireToken, getFinishedIssueInfo)
 
 router.post("/removeFinishedIssue", requireToken, removeFinishedIssue)
+
+router.post("/leaveIssue", requireToken, leaveIssue)
 
 router.post("/editExperts", requireToken, editExperts)
 
