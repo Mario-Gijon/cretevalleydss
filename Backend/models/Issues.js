@@ -14,8 +14,8 @@ const issueSchema = new Schema({
   consensusThreshold: { type: Number, default: null }, // Umbral de consenso a alcanzar (null si no es un problema de consenso).
   description: { type: String, required: true }, // Descripción detallada
   active: { type: Boolean, default: true }, // Estado del problema (abierto/cerrado)
-  creationDate: { type: Date, default: Date.now }, // Fecha de creación
-  closureDate: { type: Date, default: null }, // Fecha de cierre opcional
+  creationDate: { type: String, default: null }, // Fecha de creación
+  closureDate: { type: String, default: null }, // Fecha de cierre opcional
 });
 
 // Middleware para eliminar todo lo relacionado con un Issue antes de eliminarlo

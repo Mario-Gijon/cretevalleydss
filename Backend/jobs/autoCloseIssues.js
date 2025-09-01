@@ -1,9 +1,9 @@
-// cron/closeIssuesDaily.js
 import cron from "node-cron";
 import mongoose from "mongoose";
 import { Issue } from "../models/Issues.js";
 import { Participation } from "../models/Participations.js";
 import { resolveIssueLogic, removeIssueLogic } from "../controllers/issue.controller.js";
+import dayjs from "dayjs";
 
 /**
  * Función que revisa los issues que han llegado a su fecha de cierre
@@ -11,20 +11,20 @@ import { resolveIssueLogic, removeIssueLogic } from "../controllers/issue.contro
  */
 const checkAndCloseIssues = async () => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Solo consideramos el día, ignorando la hora
+    // Obtener la fecha de hoy en formato 'DD-MM-YYYY'
+    const todayStr = dayjs().format("DD-MM-YYYY");
 
-    // Buscar todos los issues activos cuya fecha de cierre ya pasó o es hoy
+    // Buscar todos los issues activos cuya closureDate coincide con hoy
     const issuesToClose = await Issue.find({
       active: true,
-      closureDate: { $lte: today }
+      closureDate: todayStr,
     });
 
     for (const issue of issuesToClose) {
       // Obtener los expertos aceptados
       const participations = await Participation.find({
         issue: issue._id,
-        invitationStatus: "accepted"
+        invitationStatus: "accepted",
       });
 
       const allEvaluated = participations.every(p => p.evaluationCompleted);
@@ -32,19 +32,15 @@ const checkAndCloseIssues = async () => {
       if (allEvaluated) {
         // Todos valoraron
         if (issue.isConsensus) {
-          // Issue de consenso: resolvemos y finalizamos como si fuese la última ronda
           await resolveIssueLogic(issue._id, { forceFinalize: true });
         } else {
-          // Issue normal: resolvemos y finalizamos
           await resolveIssueLogic(issue._id);
         }
       } else {
         // No todos valoraron
         if (!issue.isConsensus || !issueHasPreviousConsensus(issue)) {
-          // Issue normal o primera ronda de consenso: borrar
           await removeIssueLogic(issue._id);
         } else {
-          // Issue de consenso con al menos una ronda previa: finalizar sin resolver
           issue.active = false;
           await issue.save();
           console.log(`Issue de consenso finalizado sin resolverse: ${issue.name}`);
@@ -56,14 +52,11 @@ const checkAndCloseIssues = async () => {
   }
 };
 
-/**
- * Función auxiliar para comprobar si ya hay fases de consenso previas
- */
 const issueHasPreviousConsensus = (issue) => {
   return issue.consensusMaxPhases && issue.consensusMaxPhases > 0;
 };
 
-// Configuración del cron job: se ejecuta todos los días a las 00:00
+// Cron job: se ejecuta todos los días a las 00:00 del servidor
 cron.schedule("0 0 * * *", () => {
   console.log("Ejecutando cron job para cerrar issues por fecha...");
   checkAndCloseIssues();

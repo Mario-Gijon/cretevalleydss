@@ -17,6 +17,7 @@ import axios from "axios"
 import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
 import mongoose from 'mongoose';
 import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
+import dayjs from 'dayjs';
 
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
@@ -116,7 +117,6 @@ export const createIssue = async (req, res) => {
         .json({ success: false, obj: "addedExperts", msg: "Must be at least two experts" });
     }
 
-    // Crear el nuevo problema con los datos proporcionados
     const issue = new Issue({
       admin: req.uid,
       model: model._id,
@@ -124,8 +124,8 @@ export const createIssue = async (req, res) => {
       name: issueName,
       description: issueDescription,
       active: true,
-      creationDate: new Date(),
-      closureDate: closureDate || null,
+      creationDate: dayjs().format("DD-MM-YYYY"),
+      closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
       ...(model.isConsensus && {
         consensusMaxPhases,
         consensusThreshold,
@@ -290,9 +290,8 @@ export const getAllActiveIssues = async (req, res) => {
           consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1, // Fase actual (la siguiente a la última registrada)
         }),
 
-        // Fechas formateadas como string (YYYY-MM-DD)
-        creationDate: issue.creationDate.toISOString().split("T")[0],
-        closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null,
+        creationDate: issue.creationDate || null,
+        closureDate: issue.closureDate || null,
 
         isAdmin: issue.admin._id.toString() === userId, // Si el usuario actual es admin
         isExpert, // Si el usuario actual es experto en este problema
@@ -1789,7 +1788,7 @@ export const resolveIssue = async (req, res) => {
 
     console.log("Response from API:", response.data);
 
-    const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data;
+    /* const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data; */
 
 
     /* if (!success) {

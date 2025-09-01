@@ -13,10 +13,12 @@ import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackba
 import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
 import { EvaluationMatrixDialog } from "../../src/components/EvaluationMatrixDialog/EvaluationMatrixDialog";
 
 dayjs.extend(utc);
-
+dayjs.extend(timezone);
 
 const ActiveIssuesPage = () => {
 
@@ -197,7 +199,7 @@ const ActiveIssuesPage = () => {
   const handleResolveIssue = async () => {
     setResolveLoading(true)
     setOpenResolveConfirmDialog(false)
-    
+
     const response = await resolveIssue(selectedIssue.name, selectedIssue.isPairwise)
     if (response.success) {
       if (response.finished === true) {
@@ -335,15 +337,14 @@ const ActiveIssuesPage = () => {
 
                   {/* Fechas */}
                   <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                    Creation: {dayjs(issue.creationDate).format("DD/MM/YYYY")}
+                    Creation: {issue.creationDate}
                   </Typography>
                   {
                     issue.closureDate &&
                     <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                      Closure: {dayjs(issue.closureDate).format("DD/MM/YYYY")}
+                      Closure: {issue.closureDate}
                     </Typography>
                   }
-
                 </CardContent>
               </CardActionArea>
             </GlassCard>

@@ -11,6 +11,9 @@ import duration from "dayjs/plugin/duration";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRemainingTime } from "../../../../src/utils/createIssueUtils";
 import { GlassAccordion, GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
+import 'dayjs/locale/de';
+import 'dayjs/locale/en-gb';
+import 'dayjs/locale/zh-cn';
 
 dayjs.extend(duration);
 dayjs.extend(customParseFormat);
@@ -200,7 +203,7 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
           <Grid item size={withConsensus ? { xs: 12, sm: 12, md: 6, lg: 4 } : { xs: 12 }}>
             <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="flex-start" flexGrow={1} width={"100%"}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
                   <DatePicker
                     label="Closure date"
                     value={closureDate}
@@ -275,7 +278,7 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   </Stack>
                 </GlassPaper>
               </Grid>
-              
+
               {/* Consensus threshold */}
               <Grid item size={{ xs: 12, sm: 12, md: 12, lg: 3.5 }}>
                 <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>

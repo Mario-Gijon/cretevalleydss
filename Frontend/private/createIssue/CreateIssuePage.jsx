@@ -152,7 +152,7 @@ const CreateIssuePage = () => {
 
     const payload = {
       ...allData,
-      closureDate: closureDate ? dayjs(closureDate).startOf("day").toISOString() : null,
+      closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
     };
 
 

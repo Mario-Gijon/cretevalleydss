@@ -10,6 +10,7 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
+import { GlassDialog } from "../../../private/activeIssues/customStyles/StyledCard";
 
 
 export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
@@ -210,7 +211,7 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
           </Backdrop>
         )
       }
-      <Dialog open={isRatingAlternatives} onClose={handleCloseDialog} fullScreen PaperProps={{ elevation: 0 }}>
+      <GlassDialog open={isRatingAlternatives} onClose={handleCloseDialog} fullScreen PaperProps={{ elevation: 0 }}>
         <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
           <DialogTitle variant="h5" sx={{ fontWeight: "bold", color: "text.primary" }}>
             {selectedIssue?.name}
@@ -294,7 +295,7 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
             Send
           </Button>
         </DialogActions>
-      </Dialog>
+      </GlassDialog>
 
       {/* Diálogo de confirmación */}
       <Dialog open={openCloseDialog} onClose={() => setOpenCloseDialog(false)}>
