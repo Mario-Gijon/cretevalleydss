@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
-import { Table, TableHead, TableCell, TableBody, TableRow, Paper, IconButton, TextField, Stack, TableContainer, Chip } from "@mui/material";
+import { Table, TableHead, TableCell, TableBody, TableRow, IconButton, TextField, Stack, TableContainer, Chip, styled } from "@mui/material";
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { removeAccents } from "../../../../src/utils/createIssueUtils";
+import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
+
+
+import { tableCellClasses } from '@mui/material/TableCell';
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: "#26495b5a",
+    color: theme.palette.common.white,
+    fontSize: theme.typography.body1.fontSize,
+  },
+  [`&.${tableCellClasses.body}`]: {
+    fontSize: 34,
+  },
+}));
 
 export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) => {
   const [searchFilter, setSearchFilter] = useState(""); // Un único filtro para todo
@@ -27,7 +42,7 @@ export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) =
   };
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -69,13 +84,13 @@ export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) =
         </Stack>
         {/* Tabla de expertos */}
         <TableContainer sx={{ maxHeight: "50vh" }}>
-          <Table stickyHeader>
+          <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>University</TableCell>
-                <TableCell>Add</TableCell>
+                <StyledTableCell>Name</StyledTableCell>
+                <StyledTableCell>Email</StyledTableCell>
+                <StyledTableCell>University</StyledTableCell>
+                <StyledTableCell>Add</StyledTableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -97,6 +112,6 @@ export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) =
 
       </Stack>
 
-    </Paper>
+    </GlassPaper>
   );
 };

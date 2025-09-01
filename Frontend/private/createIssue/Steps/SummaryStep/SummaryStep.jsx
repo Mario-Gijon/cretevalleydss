@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Paper, Typography, Stack, Chip, Accordion, AccordionSummary, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid2 as Grid, Box, TextField, ToggleButton, } from "@mui/material";
+import { Typography, Stack, Chip, AccordionSummary, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid2 as Grid, Box, TextField, ToggleButton, } from "@mui/material";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRemainingTime } from "../../../../src/utils/createIssueUtils";
+import { GlassAccordion, GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
 
 dayjs.extend(duration);
 dayjs.extend(customParseFormat);
@@ -28,7 +29,7 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
   const [openCalendar, setOpenCalendar] = useState(false); // Para controlar la apertura del calendario
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -54,7 +55,7 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
 
           {/* Nombre del problema */}
           <Grid item size={{ xs: 12, md: 5, lg: 4 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction="row" spacing={1} alignItems="center" flexGrow={1} width={"100%"}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                   Issue name:
@@ -72,12 +73,12 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   sx={{ flex: 1, width: "100%" }}
                 />
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Descripción */}
           <Grid item size={{ xs: 12, md: 7, lg: 8 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction="row" spacing={1} alignItems="center" flexGrow={1} width={"100%"}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                   Description:
@@ -95,12 +96,12 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   sx={{ flex: 1, width: "100%" }}
                 />
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Modelo */}
           <Grid item size={{ xs: 12, sm: 6, md: 4 }}>
-            <Paper variant="outlined" elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={3} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction="row" spacing={1}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                   Model:
@@ -109,23 +110,23 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   {selectedModel}
                 </Typography>
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Consenso */}
           <Grid item size={{ xs: 12, sm: 6, md: 5 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction="row" spacing={1}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                   {withConsensus ? "With Consensus" : "Without consensus"}
                 </Typography>
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Numeros de expertos en el problema */}
           <Grid item size={{ xs: 12, sm: 12, md: 3 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction="row" spacing={1}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                   NºExperts:
@@ -134,18 +135,18 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   {addedExperts.length}
                 </Typography>
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Alternativas */}
           <Grid item size={{ xs: 12, md: 6 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                 Alternatives:
               </Typography>
               <Stack flexDirection="column" spacing={0} flexWrap={"wrap"}>
                 {alternatives.map((alt, index) => (
-                  <Accordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
+                  <GlassAccordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
                     <AccordionSummary
                       sx={{
                         m: 0,
@@ -156,15 +157,15 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                         {alt}
                       </Typography>
                     </AccordionSummary>
-                  </Accordion>
+                  </GlassAccordion>
                 ))}
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Criterios */}
           <Grid item size={{ xs: 12, md: 6 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                 Criteria:
               </Typography>
@@ -173,12 +174,12 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   <CriterionAccordion key={index} criterion={criterion} />
                 ))}
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Expertos */}
           <Grid size={{ xs: 12 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                 Experts:
               </Typography>
@@ -192,12 +193,12 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   />
                 ))}
               </Box>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {/* Fecha de cierre */}
           <Grid item size={withConsensus ? { xs: 12, sm: 12, md: 6, lg: 4 } : { xs: 12 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="flex-start" flexGrow={1} width={"100%"}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
@@ -227,14 +228,14 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   </Typography>
                 </LocalizationProvider>
               </Stack>
-            </Paper>
+            </GlassPaper>
           </Grid>
 
           {withConsensus &&
             <>
               {/* NºMax de fases de consenso */}
               <Grid item size={{ xs: 12, sm: 12, md: 6, lg: 4.5 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Stack direction="row" spacing={1} alignItems={"center"}>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                       NºMax consensus rounds
@@ -272,12 +273,12 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                       Unlimited
                     </ToggleButton>
                   </Stack>
-                </Paper>
+                </GlassPaper>
               </Grid>
               
               {/* Consensus threshold */}
               <Grid item size={{ xs: 12, sm: 12, md: 12, lg: 3.5 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Stack direction="row" spacing={1} alignItems={"center"}>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                       Consensus threshold:
@@ -316,18 +317,18 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                       }}
                     />
                   </Stack>
-                </Paper>
+                </GlassPaper>
               </Grid>
             </>
           }
 
           {/* Dominios de expresión */}
           <Grid item size={{ xs: 12 }}>
-            <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+            <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                 Data Types:
               </Typography>
-              <TableContainer variant="outlined" component={Paper} sx={{ maxHeight: "45vh" }}>
+              <TableContainer variant="outlined" component={GlassPaper} sx={{ maxHeight: "45vh" }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -371,7 +372,7 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
                   </TableBody>
                 </Table>
               </TableContainer>
-            </Paper>
+            </GlassPaper>
 
           </Grid>
 
@@ -382,6 +383,6 @@ export const SummaryStep = ({ allData, issueName, issueDescription, issueNameErr
 
 
       }
-    </Paper >
+    </GlassPaper >
   );
 };

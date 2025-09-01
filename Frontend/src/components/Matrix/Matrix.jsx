@@ -1,45 +1,37 @@
-
 import { DataGrid } from "@mui/x-data-grid";
 import { Chip, Stack, useTheme } from "@mui/material";
 
-export const PairwiseMatrix = ({
-  alternatives,
-  evaluations,
-  setEvaluations,
-  collectiveEvaluations,
-  permitEdit = true, // Por defecto es true si no se especifica
-}) => {
+export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, collectiveEvaluations, permitEdit = true }) => {
+
   const theme = useTheme();
 
-  // Configuración de las columnas
+  // Configuración de las columnas: la primera columna es "Alternatives", luego cada criterio
   const columns = [
-    { field: "id", headerName: "Alternatives", minWidth: 90, flex: 1 },
-    ...alternatives.map((alt) => ({
-      field: alt,
-      headerName: alt,
-      editable: permitEdit, // Aquí usamos permitEdit
+    { field: "id", headerName: "Alternative/Criterion", minWidth: 120, flex: 1 },
+    ...criteria.map((criterion) => ({
+      field: criterion, // 👈 aquí va el nombre del criterio como key única
+      headerName: criterion,
+      editable: permitEdit,
       flex: 1,
-      minWidth: 90,
+      minWidth: 100,
       renderCell: (params) => {
-        const rowId = params.row.id;
-        const altCol = params.field;
+        const rowId = params.row.id; // alternativa
+        const criterion = params.field; // criterio actual
         const userValue = parseFloat(params.value);
         const collectiveValue = parseFloat(
-          collectiveEvaluations.find((r) => r.id === rowId)?.[altCol]
+          collectiveEvaluations?.find((r) => r.id === rowId)?.[criterion]
         );
-
-        const isDiagonal = rowId === altCol;
 
         return (
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             {isNaN(userValue) ? "" : userValue}
-            {!isNaN(collectiveValue) && !isDiagonal && (
+            {!isNaN(collectiveValue) && (
               <Chip
                 label={collectiveValue}
                 variant="outlined"
                 size="small"
                 sx={{
-                  ml: 1.5,
+                  ml: 1,
                   fontSize: "0.75rem",
                   height: 20,
                   pointerEvents: "none",
@@ -62,56 +54,35 @@ export const PairwiseMatrix = ({
     if (!changedField) return newRow;
 
     const updatedRow = { ...newRow };
-
-    if (newRow.id === changedField) {
-      updatedRow[changedField] = 0.5;
-      setEvaluations(
-        evaluations.map((row) => (row.id === updatedRow.id ? updatedRow : row))
-      );
-      return updatedRow;
-    }
-
     let value = parseFloat(updatedRow[changedField]);
 
     if (isNaN(value) || value < 0 || value > 1) {
       updatedRow[changedField] = null;
-      setEvaluations(
-        evaluations.map((row) => {
-          if (row.id === updatedRow.id) {
-            return updatedRow;
-          }
-          if (row.id === changedField) {
-            return { ...row, [updatedRow.id]: null };
-          }
-          return row;
-        })
-      );
     } else {
-      const newValue = Math.round(value * 100) / 100;
-      const inverseValue = Math.round((1 - newValue) * 100) / 100;
-
-      setEvaluations(
-        evaluations.map((row) => {
-          if (!row || typeof row !== "object" || !row.id) return row;
-          if (row.id === updatedRow.id) {
-            return { ...updatedRow, [changedField]: newValue };
-          }
-          if (row.id === changedField) {
-            return { ...row, [updatedRow.id]: inverseValue };
-          }
-          return row;
-        })
-      );
-
-      updatedRow[changedField] = newValue;
+      updatedRow[changedField] = Math.round(value * 100) / 100;
     }
+
+    // Actualizar evaluaciones globales
+    setEvaluations((prev) => ({
+      ...prev,
+      [updatedRow.id]: {
+        ...(prev[updatedRow.id] || {}),
+        [changedField]: updatedRow[changedField],
+      },
+    }));
 
     return updatedRow;
   };
 
+  // Prepara las filas con alternativas como id y valores de evaluaciones
+  const rows = alternatives.map((alt) => ({
+    id: alt,
+    ...(evaluations[alt] || {}),
+  }));
+
   return (
     <DataGrid
-      rows={evaluations}
+      rows={rows}
       columns={columns}
       disableColumnMenu
       hideFooter
@@ -125,17 +96,9 @@ export const PairwiseMatrix = ({
       density="compact"
       getCellClassName={(params) => {
         if (params.field === "id") return "first-column";
-        if (params.row.id === params.field) return "diagonal-cell";
         return "grid-cell";
       }}
       sx={{
-        "& .diagonal-cell": {
-          backgroundColor: theme.palette.action.disabledBackground,
-          color: theme.palette.text.disabled,
-          fontWeight: "bold",
-          pointerEvents: "none",
-          cursor: "not-allowed",
-        },
         "& .MuiDataGrid-row:hover": { backgroundColor: "transparent" },
         "& .MuiDataGrid-cell:hover": { backgroundColor: "transparent" },
         "& .first-column": {
@@ -156,7 +119,6 @@ export const PairwiseMatrix = ({
           fontWeight: 'bold',
         },
       }}
-
     />
   );
-}
+};

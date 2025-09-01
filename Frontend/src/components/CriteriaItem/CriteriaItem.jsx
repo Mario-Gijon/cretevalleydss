@@ -1,4 +1,4 @@
-import { Chip, Collapse, IconButton, List, ListItem, ListItemText, MenuItem, Paper, Select, Stack, TextField } from "@mui/material";
+import { Chip, Collapse, IconButton, List, ListItem, ListItemText, MenuItem, Select, Stack, TextField } from "@mui/material";
 import { Fragment } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -8,7 +8,7 @@ import EditIcon from "@mui/icons-material/Edit";
 
 export const CriteriaItem = ({
   item,
-  level=0,
+  level = 0,
   editingCriterion,
   editCriterionValue,
   setEditCriterionValue,
@@ -32,10 +32,10 @@ export const CriteriaItem = ({
 
   return (
     <>
-      <ListItem key={item.name} sx={{ pl: { xs: 0, sm: level * 3 }, display: "flex", flexDirection: { xs: "column", sm: "row" } }}>
+      <ListItem key={item.name} sx={{ pl: { xs: 0, sm: level * 2 } }}>
         <ListItemText
           primary={
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
               {editingCriterion?.name === item.name ? (
                 <>
                   {/* Input para editar el nombre */}
@@ -118,34 +118,32 @@ export const CriteriaItem = ({
       {/* Renderizado de hijos */}
       {hasChildren && (
         <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
-          <Paper elevation={1}>
-            <List disablePadding>
-              {item.children.map((child, index) => (
-                <Fragment key={index}>
-                  <CriteriaItem
-                      item={child}
-                      level={level+1}
-                      editingCriterion={editingCriterion}
-                      editCriterionValue={editCriterionValue}
-                      setEditCriterionValue={setEditCriterionValue}
-                      editBlur={editBlur}
-                      handleSaveCriterionEdit={handleSaveCriterionEdit}
-                      editCriterionError={editCriterionError}
-                      editCriterionType={editCriterionType}
-                      setEditCriterionType={setEditCriterionType}
-                      setEditBlur={setEditBlur}
-                      handleEditCriterion={handleEditCriterion}
-                      handleToggle={handleToggle}
-                      openItems={openItems}
-                      setSelectedParent={setSelectedParent}
-                      handleRemoveCriteria={handleRemoveCriteria}
-                      setOpenDialog={setOpenDialog}
-                    />
-                </Fragment>
-              ))}
-            </List>
-          </Paper>
-        </Collapse>
+          <List disablePadding>
+            {item.children.map((child, index) => (
+              <Fragment key={index}>
+                <CriteriaItem
+                  item={child}
+                  level={level + 1}
+                  editingCriterion={editingCriterion}
+                  editCriterionValue={editCriterionValue}
+                  setEditCriterionValue={setEditCriterionValue}
+                  editBlur={editBlur}
+                  handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  editCriterionError={editCriterionError}
+                  editCriterionType={editCriterionType}
+                  setEditCriterionType={setEditCriterionType}
+                  setEditBlur={setEditBlur}
+                  handleEditCriterion={handleEditCriterion}
+                  handleToggle={handleToggle}
+                  openItems={openItems}
+                  setSelectedParent={setSelectedParent}
+                  handleRemoveCriteria={handleRemoveCriteria}
+                  setOpenDialog={setOpenDialog}
+                />
+              </Fragment>
+            ))}
+          </List>
+        </Collapse >
       )}
     </>
   );

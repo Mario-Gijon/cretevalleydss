@@ -1,7 +1,7 @@
 
 import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, Paper, Typography, Tabs, Tab, MobileStepper, Button, List, ListItemButton, Collapse, ListItem, Chip, Backdrop, ImageList, ImageListItem, FormControl, InputLabel, Select, MenuItem, ToggleButton, useMediaQuery } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { styled, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from "react";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -11,26 +11,19 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { getFinishedIssueInfo } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { MatrixAltPair } from "../MatrixAltPair/MatrixAltPair";
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-
-
-const CustomPaper = styled(Paper)(({ theme }) => ({
-  width: "100%",
-  height: "auto",
-  minHeight: 200,
-  padding: theme.spacing(2),
-  ...theme.typography.body2,
-  textAlign: 'center',
-  borderRadius: "10px",
-}));
+import { Chart } from "chart.js/auto";
+import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";
+import { Matrix } from "../Matrix/Matrix";
 
 export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, handleCloseFinishedIssueDialog, setOpenRemoveConfirmDialog }) => {
 
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up('md'));
-
+  const scatterPlotRef = useRef(null);  // Referencia para el gráfico
+  const consensusLevelChartRef = useRef(null);  // Referencia para el gráfico
   const cols = isMd ? 4 : 2;
+  const resetZoom = (chart) => (chart.current) && chart.current.resetZoom()
 
   const [currentPhaseIndex, setcurrentPhaseIndex] = useState(0);
   const [openDescriptionList, setOpenDescriptionList] = useState(false);
@@ -43,31 +36,18 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
   const [loadingInfo, setLoadingInfo] = useState(false)
   const [issue, setIssue] = useState({})
   const [activeStep, setActiveStep] = useState(0);
+  const handleNext = () => setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  const handleBack = () => setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  const handleChangeCriterion = (index) => setcurrentPhaseIndex(index)
   const [showCollective, setShowCollective] = useState(false);
-
-
   const initialExpert = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {})[0] || "";
   const initialCriterion = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[initialExpert] || {})[0] || "";
-
   const [selectedExpert, setSelectedExpert] = useState(initialExpert);
   const [selectedCriterion, setSelectedCriterion] = useState(initialCriterion);
-
   const expertList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {});
   const criterionList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {});
-
   const evaluations = issue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert]?.[selectedCriterion] || [];
-
   const collectiveEvaluations = showCollective ? issue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations?.[selectedCriterion] || [] : [];
-
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  const handleChangeCriterion = (index) => setcurrentPhaseIndex(index)
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -100,286 +80,299 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
     setSelectedCriterion(newCriterion);
   }, [issue, currentPhaseIndex]);
 
-  const scatterPlotRef = useRef(null);  // Referencia para el gráfico
-  const consensusLevelChartRef = useRef(null);  // Referencia para el gráfico
-
-  // Función para resetear el zoom
-  const resetZoom = (chart) => {
-    if (chart.current) {
-      chart.current.resetZoom();  // Cambio aquí: acceder directamente al método de reset
-    }
-  }
-
-
-
   return (
-    <>
-      <Dialog open={openFinishedIssueDialog} onClose={handleCloseFinishedIssueDialog} fullScreen PaperProps={{ elevation: 0, sx: { bgcolor: "#1D1D1B" } }} >
-        <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
-          <DialogTitle variant="h5" sx={{ fontWeight: "bold", color: "text.primary" }}>
-            {selectedIssue.name}
-          </DialogTitle>
-          <DialogActions>
-            <IconButton onClick={() => setOpenRemoveConfirmDialog(true)} color="error" variant="outlined" sx={{ mr: 0.5 }}>
-              <DeleteOutlineIcon />
-            </IconButton>
-            <IconButton onClick={handleCloseFinishedIssueDialog} color="inherit" variant="outlined" sx={{ mr: 0.5 }}>
-              <CloseIcon />
-            </IconButton>
-          </DialogActions>
-        </Stack>
-        <Divider />
-        {
-          loadingInfo || !issue.summary ? (
-            <Backdrop open={loadingInfo} sx={{ zIndex: 999999 }}>
-              <CircularLoading color="secondary" size={50} height="50vh" />
-            </Backdrop>
-          ) : (
-            <DialogContent sx={{ p: 1, pb: 2 }}>
-              <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
-                {issue.summary.consensusInfo.consensusReachedPhase > 1 && (
-                  <Tabs
-                    value={currentPhaseIndex}
-                    onChange={(event, newIndex) => handleChangeCriterion(newIndex)}
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    allowScrollButtonsMobile
-                    sx={{ width: "100%", pl: 2 }}
-                    indicatorColor="secondary"
-                    textColor="contrastText"
-                  >
-                    {/* Aquí generamos las pestañas dinámicamente basadas en el número de fases */}
-                    {Array.from({ length: issue.summary.consensusInfo.consensusReachedPhase }).map((_, index) => (
-                      <Tab
-                        key={index}
-                        label={`Round ${index + 1}`}  // Muestra la fase como "Phase 1", "Phase 2", etc.
-                        sx={{ width: "auto", px: 5 }}
-                      />
-                    ))}
-                  </Tabs>
-                )}
-
-                <ImageList
-                  sx={{ width: "100%" }}
-                  variant="quilted"
-                  cols={cols}
-                  rowHeight={"auto"}
+    <Dialog open={openFinishedIssueDialog} onClose={handleCloseFinishedIssueDialog} fullScreen PaperProps={{ elevation: 0, sx: { bgcolor: "#00070dd5" } }} >
+      <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
+        <DialogTitle variant="h5" sx={{ fontWeight: "bold", color: "text.primary" }}>
+          {selectedIssue.name}
+        </DialogTitle>
+        <DialogActions>
+          <IconButton onClick={() => setOpenRemoveConfirmDialog(true)} color="error" variant="outlined" sx={{ mr: 0.5 }}>
+            <DeleteOutlineIcon />
+          </IconButton>
+          <IconButton onClick={handleCloseFinishedIssueDialog} color="inherit" variant="outlined" sx={{ mr: 0.5 }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogActions>
+      </Stack>
+      <Divider />
+      {
+        loadingInfo || !issue.summary ? (
+          <Backdrop open={loadingInfo} sx={{ zIndex: 999999 }}>
+            <CircularLoading color="secondary" size={50} height="50vh" />
+          </Backdrop>
+        ) : (
+          <DialogContent sx={{ p: 1, pb: 2 }}>
+            <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
+              {issue.summary.consensusInfo.consensusReachedPhase > 1 && (
+                <Tabs
+                  value={currentPhaseIndex}
+                  onChange={(event, newIndex) => handleChangeCriterion(newIndex)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  allowScrollButtonsMobile
+                  sx={{ width: "100%", pl: 2 }}
+                  indicatorColor="secondary"
+                  textColor="contrastText"
                 >
-                  <ImageListItem cols={2} sx={{ p: 1 }}>
-                    <Stack direction={{ xs: "column", xl: "row" }} spacing={2}>
-                      <CustomPaper elevation={0}>
-                        <Stack spacing={2}>
-                          <Typography variant="h5">Summary</Typography>
-                          <Stack>
-                            <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
-                              <ListItem>
-                                <Stack direction="row" spacing={1}>
-                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                    Name:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                    {issue.summary.name}
-                                  </Typography>
-                                </Stack>
-                              </ListItem>
-                              <ListItem>
-                                <Stack direction="row" spacing={1}>
-                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                    Admin:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                    {issue.summary.admin}
-                                  </Typography>
-                                </Stack>
-                              </ListItem>
-                              <ListItemButton onClick={() => setOpenDescriptionList(!openDescriptionList)}>
+                  {/* Aquí generamos las pestañas dinámicamente basadas en el número de fases */}
+                  {Array.from({ length: issue.summary.consensusInfo.consensusReachedPhase }).map((_, index) => (
+                    <Tab
+                      key={index}
+                      label={`Round ${index + 1}`}  // Muestra la fase como "Phase 1", "Phase 2", etc.
+                      sx={{ width: "auto", px: 5 }}
+                    />
+                  ))}
+                </Tabs>
+              )}
+
+              <ImageList
+                sx={{ width: "100%" }}
+                variant="quilted"
+                cols={cols}
+                rowHeight={"auto"}
+              >
+                {/* SUMMARY AND RANKING*/}
+                <ImageListItem cols={2} sx={{ p: 1 }}>
+                  <Stack direction={{ xs: "column", xl: "row" }} spacing={2}>
+                    <GlassPaper elevation={0} sx={{
+                      width: "100%",
+                      height: "auto",
+                      minHeight: 200,
+                      padding: theme.spacing(2),
+                      ...theme.typography.body2,
+                      textAlign: 'center',
+                      borderRadius: "10px",
+                    }}>
+                      <Stack spacing={2}>
+                        <Typography variant="h5">Summary</Typography>
+                        <Stack>
+                          <List sx={{ width: '100%' }}>
+                            <ListItem>
+                              <Stack direction="row" spacing={1}>
                                 <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                  Description
+                                  Name:
                                 </Typography>
-                                {openDescriptionList ? <ExpandLess /> : <ExpandMore />}
-                              </ListItemButton>
-                              <Collapse in={openDescriptionList} timeout="auto" unmountOnExit>
-                                <List disablePadding>
-                                  <ListItem sx={{ ml: 1 }}>
+                                <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                  {issue.summary.name}
+                                </Typography>
+                              </Stack>
+                            </ListItem>
+                            <ListItem>
+                              <Stack direction="row" spacing={1}>
+                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                  Admin:
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                  {issue.summary.admin}
+                                </Typography>
+                              </Stack>
+                            </ListItem>
+                            <ListItemButton onClick={() => setOpenDescriptionList(!openDescriptionList)}>
+                              <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                Description
+                              </Typography>
+                              {openDescriptionList ? <ExpandLess /> : <ExpandMore />}
+                            </ListItemButton>
+                            <Collapse in={openDescriptionList} timeout="auto" unmountOnExit>
+                              <List disablePadding>
+                                <ListItem sx={{ ml: 1 }}>
+                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                    {issue.summary.description}
+                                  </Typography>
+                                </ListItem>
+                              </List>
+                            </Collapse>
+                            <ListItem>
+                              <Stack direction="row" spacing={1}>
+                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                  Model:
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                  {issue.summary.model}
+                                </Typography>
+                              </Stack>
+                            </ListItem>
+                            {issue.summary.criteria.lenght > 1 ?
+
+                              <>
+                                <ListItemButton onClick={() => setOpenCriteriaList(!openCriteriaList)}>
+                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                    Criteria
+                                  </Typography>
+                                  {openCriteriaList ? <ExpandLess /> : <ExpandMore />}
+                                </ListItemButton>
+                                <Collapse in={openCriteriaList} timeout="auto" unmountOnExit>
+                                  <List disablePadding>
+                                    <ListItem sx={{ ml: 2 }}>
+                                      {issue.summary.criteria.map((criterion) => (
+                                        <>
+                                          <Stack direction={"row"} spacing={2}>
+                                            <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                              {criterion.name}
+                                            </Typography>
+                                            <Chip
+                                              variant="outlined"
+                                              label={criterion.type === "cost" ? "Cost" : "Benefit"}
+                                              color={criterion.type === "cost" ? "error" : "success"}
+                                              size="small"
+                                            />
+                                          </Stack>
+
+                                        </>
+                                      ))}
+                                    </ListItem>
+                                  </List>
+                                </Collapse>
+                              </>
+                              :
+                              <ListItem>
+                                <Stack direction="row" spacing={1}>
+                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                    Criterion:
+                                  </Typography>
+                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                    {issue.summary.criteria[0].name}
+                                  </Typography>
+                                </Stack>
+                              </ListItem>
+                            }
+                            <ListItemButton onClick={() => setOpenAlternativesList(!openAlternativeList)}>
+                              <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                Alternatives
+                              </Typography>
+                              {openAlternativeList ? <ExpandLess /> : <ExpandMore />}
+                            </ListItemButton>
+                            <Collapse in={openAlternativeList} timeout="auto" unmountOnExit>
+                              <List disablePadding>
+                                {issue.summary.alternatives.map((alternative, index) => (
+                                  <ListItem key={index} sx={{ ml: 2 }}>
                                     <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                      {issue.summary.description}
+                                      {alternative}
                                     </Typography>
                                   </ListItem>
-                                </List>
-                              </Collapse>
-                              <ListItem>
-                                <Stack direction="row" spacing={1}>
-                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                    Model:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                    {issue.summary.model}
-                                  </Typography>
-                                </Stack>
-                              </ListItem>
-                              <ListItemButton onClick={() => setOpenCriteriaList(!openCriteriaList)}>
-                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                  Criteria
-                                </Typography>
-                                {openCriteriaList ? <ExpandLess /> : <ExpandMore />}
-                              </ListItemButton>
-                              <Collapse in={openCriteriaList} timeout="auto" unmountOnExit>
-                                <List disablePadding>
-                                  <ListItem sx={{ ml: 2 }}>
-                                    {issue.summary.criteria.map((criterion) => (
-                                      <>
-                                        <Stack direction={"row"} spacing={2}>
-                                          <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                            {criterion.name}
-                                          </Typography>
-                                          <Chip
-                                            variant="outlined"
-                                            label={criterion.type === "cost" ? "Cost" : "Benefit"}
-                                            color={criterion.type === "cost" ? "error" : "success"}
-                                            size="small"
-                                          />
-                                        </Stack>
-
-                                      </>
-                                    ))}
-                                  </ListItem>
-                                </List>
-                              </Collapse>
-                              <ListItemButton onClick={() => setOpenAlternativesList(!openAlternativeList)}>
-                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                  Alternatives
-                                </Typography>
-                                {openAlternativeList ? <ExpandLess /> : <ExpandMore />}
-                              </ListItemButton>
-                              <Collapse in={openAlternativeList} timeout="auto" unmountOnExit>
-                                <List disablePadding>
-                                  {issue.summary.alternatives.map((alternative, index) => (
-                                    <ListItem key={index} sx={{ ml: 2 }}>
-                                      <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                        {alternative}
+                                ))}
+                              </List>
+                            </Collapse>
+                            {issue.summary.experts.notAccepted.length === 0 ?
+                              (
+                                <>
+                                  <ListItemButton onClick={() => setOpenParticipatedExpertsList(!openParticipatedExpertsList)}>
+                                    <Stack direction="row" spacing={1} pr={1}>
+                                      <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                        Experts:
                                       </Typography>
-                                    </ListItem>
-                                  ))}
-                                </List>
-                              </Collapse>
-                              {issue.summary.experts.notAccepted.length === 0 ?
-                                (
-                                  <>
-                                    <ListItemButton onClick={() => setOpenParticipatedExpertsList(!openParticipatedExpertsList)}>
-                                      <Stack direction="row" spacing={1} pr={1}>
-                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                          Experts:
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                          {issue.summary.experts.participated.length}
-                                        </Typography>
-                                      </Stack>
-                                      {openParticipatedExpertsList ? <ExpandLess /> : <ExpandMore />}
-                                    </ListItemButton>
-                                    <Collapse in={openParticipatedExpertsList} timeout="auto" unmountOnExit>
-                                      <List disablePadding>
-                                        <ListItem sx={{ ml: 2 }}>
-                                          <Stack spacing={0.5}>
-                                            {issue.summary.experts.participated.map((expert, index) => (
-                                              <>
-                                                <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
-                                                  {expert}
-                                                </Typography>
-                                                {issue.summary.experts.participated.length - 1 !== index && <Divider />}
-                                              </>
-                                            ))}
-                                          </Stack>
-                                        </ListItem>
-                                      </List>
-                                    </Collapse>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ListItemButton onClick={() => setOpenExpertsList(!openExpertsList)}>
-                                      <Stack direction="row" spacing={1} pr={1}>
-                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                          Experts:
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                          {issue.summary.experts.participated.length + issue.summary.experts.notAccepted.length}
-                                        </Typography>
-                                      </Stack>
-                                      {openExpertsList ? <ExpandLess /> : <ExpandMore />}
-                                    </ListItemButton>
-                                    <Collapse in={openExpertsList} timeout="auto" unmountOnExit>
-                                      <List disablePadding>
-                                        <ListItemButton onClick={() => setOpenParticipatedExpertsList(!openParticipatedExpertsList)} sx={{ ml: 2 }}>
-                                          <Stack direction="row" spacing={1} pr={1}>
-                                            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                              Participated
-                                            </Typography>
-                                            <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                              {issue.summary.experts.participated.length}
-                                            </Typography>
-                                          </Stack>
-                                          {openParticipatedExpertsList ? <ExpandLess /> : <ExpandMore />}
-                                        </ListItemButton>
-                                        <Collapse in={openParticipatedExpertsList} timeout="auto" unmountOnExit>
-                                          <List disablePadding>
-                                            <ListItem sx={{ ml: 4 }}>
-                                              <Stack spacing={0.5}>
-                                                {issue.summary.experts.participated.map((expert, index) => (
-                                                  <>
-                                                    <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
-                                                      {expert}
-                                                    </Typography>
-                                                    {issue.summary.experts.participated.length - 1 !== index && <Divider />}
-                                                  </>
-                                                ))}
-                                              </Stack>
-                                            </ListItem>
-                                          </List>
-                                        </Collapse>
-                                      </List>
-                                    </Collapse>
-                                    <Collapse in={openExpertsList} timeout="auto" unmountOnExit>
-                                      <List disablePadding>
-                                        <ListItemButton onClick={() => setOpenNotAcceptedExpertsList(!openNotAcceptedExpertsList)} sx={{ ml: 2 }}>
-                                          <Stack direction="row" spacing={1} pr={1}>
-                                            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                              Not accepted
-                                            </Typography>
-                                            <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                              {issue.summary.experts.notAccepted.length}
-                                            </Typography>
-                                          </Stack>
-                                          {openNotAcceptedExpertsList ? <ExpandLess /> : <ExpandMore />}
-                                        </ListItemButton>
-                                        <Collapse in={openNotAcceptedExpertsList} timeout="auto" unmountOnExit>
-                                          <List disablePadding>
-                                            <ListItem sx={{ ml: 4 }}>
-                                              <Stack spacing={0.5}>
-                                                {issue.summary.experts.notAccepted.map((expert, index) => (
-                                                  <>
-                                                    <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
-                                                      {expert}
-                                                    </Typography>
-                                                    {issue.summary.experts.notAccepted.length - 1 !== index && <Divider />}
-                                                  </>
-                                                ))}
-                                              </Stack>
-                                            </ListItem>
-                                          </List>
-                                        </Collapse>
-                                      </List>
-                                    </Collapse>
-                                  </>
-                                )}
-                              <ListItem>
-                                <Stack direction="row" spacing={1}>
-                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                    Creation date:
-                                  </Typography>
-                                  <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                    {issue.summary.creationDate}
-                                  </Typography>
-                                </Stack>
-                              </ListItem>
+                                      <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                        {issue.summary.experts.participated.length}
+                                      </Typography>
+                                    </Stack>
+                                    {openParticipatedExpertsList ? <ExpandLess /> : <ExpandMore />}
+                                  </ListItemButton>
+                                  <Collapse in={openParticipatedExpertsList} timeout="auto" unmountOnExit>
+                                    <List disablePadding>
+                                      <ListItem sx={{ ml: 2 }}>
+                                        <Stack spacing={0.5}>
+                                          {issue.summary.experts.participated.map((expert, index) => (
+                                            <>
+                                              <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
+                                                {expert}
+                                              </Typography>
+                                              {issue.summary.experts.participated.length - 1 !== index && <Divider />}
+                                            </>
+                                          ))}
+                                        </Stack>
+                                      </ListItem>
+                                    </List>
+                                  </Collapse>
+                                </>
+                              ) : (
+                                <>
+                                  <ListItemButton onClick={() => setOpenExpertsList(!openExpertsList)}>
+                                    <Stack direction="row" spacing={1} pr={1}>
+                                      <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                        Experts:
+                                      </Typography>
+                                      <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                        {issue.summary.experts.participated.length + issue.summary.experts.notAccepted.length}
+                                      </Typography>
+                                    </Stack>
+                                    {openExpertsList ? <ExpandLess /> : <ExpandMore />}
+                                  </ListItemButton>
+                                  <Collapse in={openExpertsList} timeout="auto" unmountOnExit>
+                                    <List disablePadding>
+                                      <ListItemButton onClick={() => setOpenParticipatedExpertsList(!openParticipatedExpertsList)} sx={{ ml: 2 }}>
+                                        <Stack direction="row" spacing={1} pr={1}>
+                                          <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            Participated
+                                          </Typography>
+                                          <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                            {issue.summary.experts.participated.length}
+                                          </Typography>
+                                        </Stack>
+                                        {openParticipatedExpertsList ? <ExpandLess /> : <ExpandMore />}
+                                      </ListItemButton>
+                                      <Collapse in={openParticipatedExpertsList} timeout="auto" unmountOnExit>
+                                        <List disablePadding>
+                                          <ListItem sx={{ ml: 4 }}>
+                                            <Stack spacing={0.5}>
+                                              {issue.summary.experts.participated.map((expert, index) => (
+                                                <>
+                                                  <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
+                                                    {expert}
+                                                  </Typography>
+                                                  {issue.summary.experts.participated.length - 1 !== index && <Divider />}
+                                                </>
+                                              ))}
+                                            </Stack>
+                                          </ListItem>
+                                        </List>
+                                      </Collapse>
+                                    </List>
+                                  </Collapse>
+                                  <Collapse in={openExpertsList} timeout="auto" unmountOnExit>
+                                    <List disablePadding>
+                                      <ListItemButton onClick={() => setOpenNotAcceptedExpertsList(!openNotAcceptedExpertsList)} sx={{ ml: 2 }}>
+                                        <Stack direction="row" spacing={1} pr={1}>
+                                          <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            Not accepted
+                                          </Typography>
+                                          <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                            {issue.summary.experts.notAccepted.length}
+                                          </Typography>
+                                        </Stack>
+                                        {openNotAcceptedExpertsList ? <ExpandLess /> : <ExpandMore />}
+                                      </ListItemButton>
+                                      <Collapse in={openNotAcceptedExpertsList} timeout="auto" unmountOnExit>
+                                        <List disablePadding>
+                                          <ListItem sx={{ ml: 4 }}>
+                                            <Stack spacing={0.5}>
+                                              {issue.summary.experts.notAccepted.map((expert, index) => (
+                                                <>
+                                                  <Typography key={index} variant="body1" sx={{ color: "text.primary" }}>
+                                                    {expert}
+                                                  </Typography>
+                                                  {issue.summary.experts.notAccepted.length - 1 !== index && <Divider />}
+                                                </>
+                                              ))}
+                                            </Stack>
+                                          </ListItem>
+                                        </List>
+                                      </Collapse>
+                                    </List>
+                                  </Collapse>
+                                </>
+                              )}
+                            <ListItem>
+                              <Stack direction="row" spacing={1}>
+                                <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                  Creation date:
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                  {issue.summary.creationDate}
+                                </Typography>
+                              </Stack>
+                            </ListItem>
+                            {issue.summary.closureDate &&
                               <ListItem>
                                 <Stack direction="row" spacing={1}>
                                   <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -390,16 +383,30 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                   </Typography>
                                 </Stack>
                               </ListItem>
-                              {issue.summary.consensusInfo && (
-                                <>
-                                  <ListItemButton onClick={() => setOpenConsensusInfoList(!openConsensusInfoList)}>
-                                    <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                                      Consensus info
-                                    </Typography>
-                                    {openConsensusInfoList ? <ExpandLess /> : <ExpandMore />}
-                                  </ListItemButton>
-                                  <Collapse in={openConsensusInfoList} timeout="auto" unmountOnExit>
-                                    <List disablePadding>
+                            }
+                            {issue.summary.consensusInfo && (
+                              <>
+                                <ListItemButton onClick={() => setOpenConsensusInfoList(!openConsensusInfoList)}>
+                                  <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                    Consensus info
+                                  </Typography>
+                                  {openConsensusInfoList ? <ExpandLess /> : <ExpandMore />}
+                                </ListItemButton>
+                                <Collapse in={openConsensusInfoList} timeout="auto" unmountOnExit>
+                                  <List disablePadding>
+                                    {issue.summary.consensusInfo.consensusReached &&
+                                      <ListItem sx={{ ml: 2 }}>
+                                        <Stack direction="row" spacing={1}>
+                                          <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            Consensus reached:
+                                          </Typography>
+                                          <Typography variant="body1" sx={{ color: "text.primary" }}>
+                                            {issue.summary.consensusInfo.consensusReached}
+                                          </Typography>
+                                        </Stack>
+                                      </ListItem>
+                                    }
+                                    {issue.summary.consensusInfo.maximumPhases &&
                                       <ListItem sx={{ ml: 2 }}>
                                         <Stack direction="row" spacing={1}>
                                           <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -410,6 +417,8 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                           </Typography>
                                         </Stack>
                                       </ListItem>
+                                    }
+                                    {issue.summary.consensusInfo.threshold &&
                                       <ListItem sx={{ ml: 2 }}>
                                         <Stack direction="row" spacing={1}>
                                           <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -420,49 +429,77 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                           </Typography>
                                         </Stack>
                                       </ListItem>
-                                    </List>
-                                  </Collapse>
-                                </>
-                              )}
-                            </List>
-                          </Stack>
+                                    }
+                                  </List>
+                                </Collapse>
+                              </>
+                            )}
+                          </List>
                         </Stack>
-                      </CustomPaper>
-                      <CustomPaper elevation={0}>
-                        <Stack spacing={2}>
-                          <Typography variant="h5">Results ranking</Typography>
-                          <Stack>
-                            <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
-                              {issue.alternativesRankings[currentPhaseIndex].ranking.map((alternative, index) => (
-                                <ListItem key={alternative}>
-                                  <Stack direction="row" spacing={1}>
-                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                                      {index + 1}. {/* Aquí mostramos la posición (1, 2, 3...) */}
-                                    </Typography>
-                                    <Typography variant="h6" sx={{ color: "text.primary" }}>
-                                      {alternative} {/* Aquí mostramos el nombre de la alternativa */}
-                                    </Typography>
-                                  </Stack>
-                                </ListItem>
-                              ))}
-                            </List>
-
-                          </Stack>
-                        </Stack>
-                      </CustomPaper>
-                    </Stack>
-                  </ImageListItem>
-
-                  <ImageListItem cols={2} sx={{ p: 1 }}>
-                    <CustomPaper elevation={0} sx={{ height: "100%" }}>
-                      <Stack spacing={2}>
-                        <Typography variant="h5">Consensus</Typography>
                       </Stack>
-                    </CustomPaper>
-                  </ImageListItem>
+                    </GlassPaper>
+                    <GlassPaper elevation={0} sx={{
+                      width: "100%",
+                      height: "auto",
+                      minHeight: 200,
+                      padding: theme.spacing(2),
+                      ...theme.typography.body2,
+                      textAlign: 'center',
+                      borderRadius: "10px",
+                    }}>
+                      <Stack spacing={2}>
+                        <Typography variant="h5">Results ranking</Typography>
+                        <Stack>
+                          <List sx={{ width: '100%' }}>
+                            {issue.alternativesRankings[currentPhaseIndex].ranking.map((alternative, index) => (
+                              <ListItem key={alternative}>
+                                <Stack direction="row" spacing={1}>
+                                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                    {index + 1}. {/* Aquí mostramos la posición (1, 2, 3...) */}
+                                  </Typography>
+                                  <Typography variant="h6" sx={{ color: "text.primary" }}>
+                                    {alternative} {/* Aquí mostramos el nombre de la alternativa */}
+                                  </Typography>
+                                </Stack>
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Stack>
+                      </Stack>
+                    </GlassPaper>
+                  </Stack>
+                </ImageListItem>
 
+                {/* CONSENSUS */}
+                <ImageListItem cols={2} sx={{ p: 1 }}>
+                  <GlassPaper elevation={0} sx={{
+                    height: "100%",
+                    minHeight: 200,
+                    padding: theme.spacing(2),
+                    ...theme.typography.body2,
+                    textAlign: 'center',
+                    borderRadius: "10px",
+                  }}>
+                    <Stack spacing={2}>
+                      <Typography variant="h5">Consensus</Typography>
+                      <Stack>
+                        {!issue.consensusSection && <Typography variant="body1" sx={{ color: "text.secondary" }}>Section is not available yet</Typography>}
+                      </Stack>
+                    </Stack>
+                  </GlassPaper>
+                </ImageListItem>
+
+                {/* ANALYTICAL GRAPHS */}
+                {issue.analyticalGraphs &&
                   <ImageListItem cols={isMd ? 4 : 2} rows={2} sx={{ p: 1 }}>
-                    <CustomPaper elevation={0}>
+                    <GlassPaper elevation={0} sx={{
+                      height: "100%",
+                      minHeight: 200,
+                      padding: theme.spacing(2),
+                      ...theme.typography.body2,
+                      textAlign: 'center',
+                      borderRadius: "10px",
+                    }}>
                       <Stack
                         spacing={3}
                         alignItems="center"
@@ -475,71 +512,89 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                           <Stack width={"100%"} justifyContent={"center"} alignItems={"center"}>
                             {activeStep === 0 &&
                               <>
-                                <Stack width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
-                                  <Stack direction={"row"} width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
-                                    <Typography variant="h6">Scatter plot</Typography>
-                                    <Divider flexItem orientation="vertical" />
-                                    <Button variant="outlined" color="secondary" onClick={() => resetZoom(scatterPlotRef)} size="small">
-                                      Reset
-                                    </Button>
+                                {issue.analyticalGraphs.scatterPlot &&
+                                  <Stack width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
+                                    <Stack direction={"row"} width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
+                                      <Typography variant="h6">Scatter plot</Typography>
+                                      <Divider flexItem orientation="vertical" />
+                                      <Button variant="outlined" color="secondary" onClick={() => resetZoom(scatterPlotRef)} size="small">
+                                        Reset
+                                      </Button>
+                                    </Stack>
+                                    <Stack width={{ xs: "100%", md: "90%" }} justifyContent={"center"} alignItems={"center"} height={{ xs: 290, md: 500 }} >
+                                      <AnalyticalScatterChart data={issue.analyticalGraphs.scatterPlot} phase={currentPhaseIndex} scatterPlotRef={scatterPlotRef} />
+                                    </Stack>
                                   </Stack>
-                                  <Stack width={{ xs: "100%", md: "90%" }} justifyContent={"center"} alignItems={"center"} height={{ xs: 290, md: 500 }} >
-                                    <AnalyticalScatterChart data={issue.analyticalGraphs.scatterPlot} phase={currentPhaseIndex} scatterPlotRef={scatterPlotRef} />
-                                  </Stack>
-                                </Stack>
+                                }
                               </>
                             }
                             {activeStep === 1 &&
                               <>
-                                <Stack width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
-                                  <Typography variant="h6">Consensus level chart</Typography>
-                                  <Stack width={{ xs: "100%", md: "90%" }} justifyContent={"center"} alignItems={"center"} height={{ xs: 290, md: 500 }} >
-                                    <AnalyticalConsensusLineChart data={issue.analyticalGraphs.consensusLevelLineChart} consensusLevelChartRef={consensusLevelChartRef} />
+                                {issue.analyticalGraphs.consensusLevelLineChart &&
+                                  <Stack width={"100%"} justifyContent={"center"} alignItems={"center"} spacing={2}>
+                                    <Typography variant="h6">Consensus level chart</Typography>
+                                    <Stack width={{ xs: "100%", md: "90%" }} justifyContent={"center"} alignItems={"center"} height={{ xs: 290, md: 500 }} >
+                                      <AnalyticalConsensusLineChart data={issue.analyticalGraphs.consensusLevelLineChart} consensusLevelChartRef={consensusLevelChartRef} />
+                                    </Stack>
                                   </Stack>
-                                </Stack>
+                                }
                               </>
                             }
                           </Stack>
-                          <MobileStepper
-                            variant="dots"
-                            steps={2}
-                            position="static"
-                            activeStep={activeStep}
-                            sx={{
-                              width: "auto", // opcional, puedes controlar el ancho total
-                              bgcolor: "transparent",
-                              pb: 0,
-                            }}
-                            slotProps={{
-                              dot: {
-                                sx: {
-                                  backgroundColor: 'grey.400',
-                                  '&.MuiMobileStepper-dotActive': {
-                                    backgroundColor: 'secondary.main',
+                          {issue.analyticalGraphs.consensusLevelLineChart.data.length > 1 &&
+                            <MobileStepper
+                              variant="dots"
+                              steps={2}
+                              position="static"
+                              activeStep={activeStep}
+                              sx={{
+                                width: "auto", // opcional, puedes controlar el ancho total
+                                bgcolor: "transparent",
+                                pb: 0,
+                              }}
+                              slotProps={{
+                                dot: {
+                                  sx: {
+                                    backgroundColor: 'grey.400',
+                                    '&.MuiMobileStepper-dotActive': {
+                                      backgroundColor: 'secondary.main',
+                                    },
                                   },
                                 },
-                              },
-                            }}
-                            nextButton={
-                              <Button size="small" onClick={handleNext} disabled={activeStep === 5} color="secondary" sx={{ mx: 1 }}>
-                                {theme.direction === 'rtl' ? <KeyboardArrowLeft /> : <KeyboardArrowRight />}
-                              </Button>
-                            }
-                            backButton={
-                              <Button size="small" onClick={handleBack} disabled={activeStep === 0} color="secondary" sx={{ mx: 1 }}>
-                                {theme.direction === 'rtl' ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
-                              </Button>
-                            }
-                          />
+                              }}
+                              nextButton={
+                                <Button size="small" onClick={handleNext} disabled={activeStep === 5} color="secondary" sx={{ mx: 1 }}>
+                                  {theme.direction === 'rtl' ? <KeyboardArrowLeft /> : <KeyboardArrowRight />}
+                                </Button>
+                              }
+                              backButton={
+                                <Button size="small" onClick={handleBack} disabled={activeStep === 0} color="secondary" sx={{ mx: 1 }}>
+                                  {theme.direction === 'rtl' ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
+                                </Button>
+                              }
+                            />
+                          }
+
                         </Stack>
 
 
                       </Stack>
-                    </CustomPaper>
+                    </GlassPaper>
                   </ImageListItem>
+                }
 
+                {/* EXPERTS RATINGS */}
+                {issue.summary.isPairwise ?
                   <ImageListItem cols={isMd ? 4 : 2} rows={2} sx={{ p: 1 }}>
-                    <CustomPaper elevation={0} sx={{ pb: 2.5 }}>
+                    <GlassPaper elevation={0} sx={{
+                      height: "100%",
+                      minHeight: 200,
+                      padding: theme.spacing(2),
+                      ...theme.typography.body2,
+                      textAlign: 'center',
+                      borderRadius: "10px",
+                      pb: 2.5
+                    }}>
                       <Stack spacing={2}>
                         <Typography variant="h5">Experts ratings</Typography>
 
@@ -597,19 +652,86 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                           </ToggleButton>
                         </Stack>
 
-                        <MatrixAltPair
+                        <PairwiseMatrix
                           alternatives={issue.summary.alternatives}
                           evaluations={evaluations}
                           collectiveEvaluations={collectiveEvaluations}
                           permitEdit={false}
                         />
                       </Stack>
-                    </CustomPaper>
+                    </GlassPaper>
 
                   </ImageListItem>
-                </ImageList>
+                  :
+                  <ImageListItem cols={isMd ? 4 : 2} rows={2} sx={{ p: 1 }}>
 
-                {issue.summary.consensusInfo.consensusReachedPhase !== 1 && (
+                    <GlassPaper elevation={0} sx={{
+                      height: "100%",
+                      minHeight: 200,
+                      padding: theme.spacing(2),
+                      ...theme.typography.body2,
+                      textAlign: 'center',
+                      borderRadius: "10px",
+                      pb: 2.5
+                    }}>
+                      <Stack spacing={2}>
+                        <Typography variant="h5">Experts ratings</Typography>
+
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={2}
+                          alignItems="center"
+                          sx={{ width: "100%" }}
+                        >
+                          <FormControl size="small" sx={{ width: { xs: "100%", sm: "auto" } }}>
+                            <InputLabel color="info">Expert</InputLabel>
+                            <Select
+                              value={selectedExpert}
+                              label="Expert"
+                              color="info"
+                              onChange={(e) => {
+                                setSelectedExpert(e.target.value);
+                                const newCriteria = Object.keys(
+                                  issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[e.target.value] || {}
+                                );
+                                setSelectedCriterion(newCriteria[0] || "");
+                              }}
+                            >
+                              {expertList.map((expert) => (
+                                <MenuItem key={expert} value={expert}>
+                                  {expert}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+
+                          <ToggleButton
+                            selected={showCollective}
+                            onChange={() => setShowCollective(!showCollective)}
+                            color="secondary"
+                            sx={{ width: { xs: "100%", sm: "auto" } }}
+                          >
+                            Show collective
+                          </ToggleButton>
+                        </Stack>
+
+                        <Matrix
+                          alternatives={issue.summary.alternatives}
+                          criteria={extractLeafCriteria(issue.summary.alternatives).map(c => c.name)} // solo hijos
+                          evaluations={evaluations}
+                          collectiveEvaluations={collectiveEvaluations}
+                          permitEdit={false}
+                        />
+                      </Stack>
+                    </GlassPaper>
+
+                  </ImageListItem>
+                }
+
+              </ImageList>
+
+              {
+                issue.summary.consensusInfo.consensusReachedPhase > 1 && (
                   <Stack direction="row" spacing={2}>
                     <IconButton
                       variant="text"
@@ -628,12 +750,12 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                       <ArrowForwardIosIcon />
                     </IconButton>
                   </Stack>
-                )}
-              </Stack>
-            </DialogContent>
-          )}
-      </Dialog >
-    </>
+                )
+              }
+            </Stack >
+          </DialogContent >
+        )}
+    </Dialog >
 
   );
 };
@@ -650,6 +772,8 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Scatter } from 'react-chartjs-2';
 import { useRef } from 'react';
+import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
+import { GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
 
 // Registrar lo necesario
 ChartJS.register(
@@ -770,8 +894,6 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
     </>
   );
 }
-
-import { Chart } from "chart.js/auto";
 
 export const AnalyticalConsensusLineChart = ({ data, consensusLevelChartRef }) => {
   const canvasRef = useRef(null);

@@ -1,5 +1,6 @@
-import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Paper, Accordion, AccordionSummary, Dialog, DialogTitle, DialogActions } from "@mui/material";
+import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Accordion, AccordionSummary, Dialog, DialogTitle, DialogActions } from "@mui/material";
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
+import { GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
 
 export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
@@ -17,7 +18,7 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
           <Grid container spacing={2}>
             {/* Creador */}
             <Grid item size={(selectedIssue.closureDate ? { xs: 12, sm: 12, md: 5 } : { xs: 12, sm: 7 })}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Grid container alignItems="center" spacing={1}>
                   <Grid item>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
@@ -28,14 +29,14 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                     <Chip label={selectedIssue.creator} size="small" />
                   </Grid>
                 </Grid>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Fecha de creación */}
             <Grid item size={
               selectedIssue.closureDate ? ({ xs: 12, sm: 6, md: 3.5 }) : ({ xs: 12, sm: 5 })
             }>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" spacing={1}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Creation:
@@ -44,13 +45,13 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                     {selectedIssue.creationDate}
                   </Typography>
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Fecha de cierre */}
             {selectedIssue.closureDate && (
               <Grid item size={{ xs: 12, sm: 6, md: 3.5 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Stack direction="row" spacing={1}>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                       Closure:
@@ -59,7 +60,7 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                       {selectedIssue.closureDate}
                     </Typography>
                   </Stack>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
 
@@ -67,7 +68,7 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
             {selectedIssue.isConsensus &&
               <>
                 <Grid item size={{ xs: 12, md: 4.5 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus max rounds:
@@ -76,10 +77,10 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                         {selectedIssue.consensusMaxPhases}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
                 <Grid item size={{ xs: 12, md: 3.75 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus threshold:
@@ -88,10 +89,10 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                         {selectedIssue.consensusThreshold}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
                 <Grid item size={{ xs: 12, md: 3.75 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus current round:
@@ -100,14 +101,14 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                         {selectedIssue.consensusCurrentPhase}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
               </>
             }
 
             {/* Alternativas */}
             <Grid item size={{ xs: 12, md: 6 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                   Alternatives:
                 </Typography>
@@ -127,12 +128,12 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                     </Accordion>
                   ))}
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Criterios */}
             <Grid item size={{ xs: 12, md: 6 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                   Criteria:
                 </Typography>
@@ -141,14 +142,14 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                     <CriterionAccordion key={criterion.name} criterion={criterion} />
                   )}
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
 
             {/* Consenso */}
             {selectedIssue.consensus &&
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Stack direction="row" spacing={1}>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                       Consensus:
@@ -157,7 +158,7 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                       {selectedIssue.consensusInfo.level + ", " + selectedIssue.consensusInfo.details}
                     </Typography>
                   </Stack>
-                </Paper>
+                </GlassPaper>
               </Grid>
             }
           </Grid>

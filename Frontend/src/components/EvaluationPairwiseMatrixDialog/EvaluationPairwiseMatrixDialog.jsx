@@ -3,7 +3,7 @@ import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divid
 import CloseIcon from '@mui/icons-material/Close';
 import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix"
 import { useEffect, useState } from "react";
-import { extractLeafCriteria, validateFinalEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
+import { extractLeafCriteria, validatePairwiseEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
 import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
@@ -35,7 +35,7 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
     const fetchEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await getEvaluations(selectedIssue.name);
+        const response = await getEvaluations(selectedIssue.name, selectedIssue.isPairwise);
         if (response.success && response.evaluations) {
           console.log("collective", response.collectiveEvaluations)
           setCollectiveEvaluations(response.collectiveEvaluations)
@@ -140,7 +140,9 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
 
     setOpenCloseDialog(false)
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.name, evaluations)
+    console.log("evaluations", evaluations)
+
+    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations)
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -155,7 +157,7 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
 
   const handleOpenSendEvaluationsDialog = async () => {
     // Validar las evaluaciones antes de dar por finalizada la evaluación
-    const validation = validateFinalEvaluations(evaluations);
+    const validation = validatePairwiseEvaluations(evaluations);
 
     if (!validation.valid) {
       const { criterion, message } = validation.error;
@@ -179,7 +181,7 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
     setOpenSendEvaluationsDialog(false);
     setLoading(true);
     console.log(evaluations)
-    const response = await sendEvaluations(selectedIssue.name, evaluations);
+    const response = await sendEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
     if (response.success) {
       selectedIssue.evaluated = true
       selectedIssue.participatedExperts.push(email);

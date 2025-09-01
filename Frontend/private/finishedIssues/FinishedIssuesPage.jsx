@@ -2,13 +2,14 @@
 import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, DialogContent, DialogContentText } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import { StyledCard, StyledChip } from "./customStyles/StyledCard";
+import { StyledChip } from "./customStyles/StyledCard";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useEffect, useState } from "react";
 import { removeFinishedIssue } from "../../src/controllers/issueController";
 import { FinishedIssueDialog } from "../../src/components/FinishedIssueDialog/FinishedIssueDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
+import { GlassCard } from "../activeIssues/customStyles/StyledCard";
 
 
 // Componente Dashboard
@@ -80,7 +81,7 @@ const FinishedIssuesPage = () => {
         {/* Masonry con las cards */}
         <Masonry columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} spacing={2} sequential>
           {finishedIssues?.map((issue, index) => (
-            <StyledCard key={index} elevation={0}>
+            <GlassCard key={index} elevation={0}>
               <CardActionArea onClick={() => handleOpenFinishedIssueDialog(issue)}>
                 <CardContent>
                   {/* Título del issue */}
@@ -130,7 +131,7 @@ const FinishedIssuesPage = () => {
 
                 </CardContent>
               </CardActionArea>
-            </StyledCard>
+            </GlassCard>
           ))}
         </Masonry>
 

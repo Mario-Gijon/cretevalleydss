@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Paper, Stack, TextField, Button, List, Divider, Collapse } from "@mui/material";
+import { Stack, TextField, Button, List, Divider, Collapse } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 /* import DomainVerificationIcon from '@mui/icons-material/DomainVerification'; */
 
 import { TransitionGroup } from "react-transition-group";
 import { addAlternative, removeAlternative, saveEditAlternative } from "../../../../src/utils/createIssueUtils.js";
 import { AlternativeItem } from "../../../../src/components/AlternativeItem/AlternativeItem.jsx";
+import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard.jsx";
 
 export const AlternativesStep = ({ alternatives, setAlternatives }) => {
   const [inputValue, setInputValue] = useState("");
@@ -33,7 +34,7 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
   };
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -110,6 +111,6 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
           )}
         </Stack>
       </Stack>
-    </Paper>
+    </GlassPaper>
   );
 };

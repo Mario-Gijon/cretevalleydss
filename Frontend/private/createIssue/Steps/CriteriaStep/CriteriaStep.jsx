@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Button, TextField, Paper, List, Collapse, Stack, Divider, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { Button, TextField, List, Collapse, Stack, Divider, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
 import { removeCriteriaItemRecursively, updateCriterion, validateCriterion } from "../../../../src/utils/createIssueUtils";
 import { CriteriaItem } from "../../../../src/components/CriteriaItem/CriteriaItem";
+import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
 
 export const CriteriaStep = ({ criteria, setCriteria }) => {
   const [inputValue, setInputValue] = useState(""); // Para el criterio principal
@@ -90,7 +91,7 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
   };
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -202,6 +203,6 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </GlassPaper>
   );
 };

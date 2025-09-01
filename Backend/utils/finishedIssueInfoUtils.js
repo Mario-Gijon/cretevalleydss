@@ -42,6 +42,7 @@ export const createSummarySection = async (issueId) => {
     alternatives: alternatives.map(a => a.name).sort(),
     creationDate: issue.creationDate ? issue.creationDate.toISOString().split("T")[0] : null,
     closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null,
+    isPairwise: issue.model.isPairwise,
     consensusInfo: issue.isConsensus
       ? {
         maximumPhases: issue.consensusMaxPhases,
@@ -53,7 +54,7 @@ export const createSummarySection = async (issueId) => {
     experts: {
       participated,
       notAccepted,
-    },
+    }
   };
 };
 

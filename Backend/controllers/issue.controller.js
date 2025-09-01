@@ -12,7 +12,7 @@ import { ExitUserIssue } from '../models/ExitUserIssue.js';
 import { buildCriterionTree, categorizeParticipations, getUserActiveIssueIds, getUserFinishedIssueIds } from '../utils/getAllActiveIssuesUtils.js';
 import { createAlternatives, createCriteria, createEvaluations, createParticipations } from '../utils/createIssueUtils.js';
 import { Resend } from 'resend'
-import { validateFinalEvaluations } from '../utils/validateFinalEvaluations.js';
+import { validateFinalEvaluations, validateFinalPairwiseEvaluations } from '../utils/validateFinalEvaluations.js';
 import axios from "axios"
 import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
 import mongoose from 'mongoose';
@@ -21,9 +21,7 @@ import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
 
-/**
- * Controlador para obtener información de los modelos.
- */
+// Controlador para obtener información de los modelos.
 export const modelsInfo = async (req, res) => {
   try {
     // Obtener todos los documentos de IssueModel, excluyendo los campos _id y __v
@@ -40,9 +38,7 @@ export const modelsInfo = async (req, res) => {
   }
 }
 
-/**
- * Controlador para obtener todos los usuarios con cuenta confirmada.
- */
+// Controlador para obtener todos los usuarios con cuenta confirmada.
 export const getAllUsers = async (req, res) => {
   try {
     // Buscar usuarios con cuenta confirmada, seleccionar solo campos necesarios
@@ -59,9 +55,7 @@ export const getAllUsers = async (req, res) => {
   }
 }
 
-/**
- * Controlador para crear un nuevo problema (issue) usando transacción.
- */
+// Controlador para crear un nuevo problema (issue) usando transacción.
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -225,7 +219,6 @@ export const createIssue = async (req, res) => {
   }
 };
 
-
 // Devuelve todos los problemas activos para el usuario actual
 export const getAllActiveIssues = async (req, res) => {
   try {
@@ -336,7 +329,6 @@ export const getAllActiveIssues = async (req, res) => {
     res.status(500).json({ success: false, msg: "Error fetching active issues" });
   }
 };
-
 
 export const removeIssue = async (req, res) => {
   const { issueName } = req.body;
@@ -641,15 +633,18 @@ export const removeNotificationById = async (req, res) => {
   }
 };
 
-export const saveEvaluations = async (req, res) => {
-  const userId = req.uid; // ID del usuario autenticado
+export const savePairwiseEvaluations = async (req, res) => {
+  // Obtenemos el ID del usuario autenticado a partir del token
+  const userId = req.uid;
 
   try {
+    // Extraemos del body el nombre del problema y las evaluaciones enviadas
     const { issueName, evaluations } = req.body;
 
-    // Buscar el problema (Issue) por nombre
+    // Buscamos el Issue en la base de datos por su nombre
     const issue = await Issue.findOne({ name: issueName }).lean();
     if (!issue) {
+      // Si no se encuentra el Issue, devolvemos 404 si hay res, o un objeto si es llamada interna
       if (res) {
         return res.status(404).json({ success: false, msg: "Issue not found" });
       } else {
@@ -657,48 +652,52 @@ export const saveEvaluations = async (req, res) => {
       }
     }
 
-    // Verificar que el usuario tiene participación activa como experto en este Issue
+    // Verificamos que el usuario tiene participación activa como experto en este Issue
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
-      invitationStatus: "accepted"
+      invitationStatus: "accepted" // Solo participantes aceptados
     });
 
     if (!participation) {
+      // Si no tiene participación activa, se bloquea el guardado de evaluaciones
       return res.status(403).json({ success: false, msg: "You are no longer a participant in this issue" });
     }
 
-
-    // Obtener todas las alternativas asociadas a este problema y mapear por nombre
-    const alternatives = await Alternative.find({ issue: issue._id }).lean();
+    // Obtenemos todas las alternativas del problema y creamos un mapa para acceder por nombre
+    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 }).lean();
     const alternativeMap = new Map(alternatives.map((alt) => [alt.name, alt._id]));
 
-    // Obtener todos los criterios asociados al problema y mapear por nombre
+    // Obtenemos todos los criterios del problema y creamos un mapa por nombre
     const criteria = await Criterion.find({ issue: issue._id }).lean();
     const criterionMap = new Map(criteria.map((crit) => [crit.name, crit._id]));
 
+    // Inicializamos array para operaciones bulkWrite
     const bulkOperations = [];
 
-    // Obtener última fase de consenso
+    // Obtenemos la última fase de consenso registrada, si existe
     const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
-    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
+    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1; // Si no hay, fase = 1
 
-
+    // Iteramos sobre cada criterio en las evaluaciones enviadas
     for (const [criterionName, evaluationsByExpert] of Object.entries(evaluations)) {
       const criterionId = criterionMap.get(criterionName);
-      if (!criterionId) continue; // Ignorar si el criterio no existe
+      if (!criterionId) continue; // Si el criterio no existe en DB, ignoramos
 
+      // Iteramos sobre las evaluaciones de cada alternativa para ese criterio
       for (const evaluationData of evaluationsByExpert) {
-        const { id: alternativeName, ...comparisons } = evaluationData;
+        const { id: alternativeName, ...comparisons } = evaluationData; // extraemos nombre de alternativa
         const alternativeId = alternativeMap.get(alternativeName);
-        if (!alternativeId) continue; // Ignorar si la alternativa no existe
+        if (!alternativeId) continue; // Ignorar si la alternativa no existe en DB
 
+        // Iteramos sobre cada comparación (otra alternativa) para este par
         for (const [comparedAlternativeName, value] of Object.entries(comparisons)) {
-          if (comparedAlternativeName === alternativeName) continue; // Saltar la diagonal
+          if (comparedAlternativeName === alternativeName) continue; // Saltamos diagonal
 
           const comparedAlternativeId = alternativeMap.get(comparedAlternativeName);
           if (!comparedAlternativeId) continue; // Ignorar si la alternativa comparada no existe
 
+          // Preparamos operación de actualización/upsert para MongoDB
           bulkOperations.push({
             updateOne: {
               filter: {
@@ -709,37 +708,38 @@ export const saveEvaluations = async (req, res) => {
               },
               update: {
                 $set: {
-                  value,
-                  timestamp: new Date(),
-                  issue: issue._id,
-                  consensusPhase: currentPhase,
+                  value, // Valor de la evaluación
+                  timestamp: new Date(), // Fecha actual
+                  issue: issue._id, // Referencia al Issue
+                  consensusPhase: currentPhase, // Fase de consenso actual
                 },
               },
-              upsert: true,
+              upsert: true, // Insertar si no existe
             },
           });
-
         }
       }
     }
 
+    // Si hay operaciones pendientes, ejecutamos bulkWrite
     if (bulkOperations.length > 0) {
       await Evaluation.bulkWrite(bulkOperations);
     }
 
+    // Devolvemos respuesta exitosa
     if (res) {
       return res.status(200).json({ success: true, msg: "Evaluations saved successfully" });
     }
     return { success: true, msg: "Evaluations saved successfully" };
 
   } catch (err) {
+    // Capturamos errores y devolvemos error 500
     console.error(err);
     return res.status(500).json({ success: false, msg: "An error occurred while saving evaluations" });
   }
 };
 
-
-export const getEvaluations = async (req, res) => {
+export const getPairwiseEvaluations = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
@@ -825,20 +825,20 @@ export const getEvaluations = async (req, res) => {
 };
 
 // Método para enviar las valoraciones
-export const sendEvaluations = async (req, res) => {
+export const sendPairwiseEvaluations = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
     const { issueName, evaluations } = req.body;
 
     // Primero validamos las evaluaciones antes de guardarlas
-    const validation = validateFinalEvaluations(evaluations);
+    const validation = validateFinalPairwiseEvaluations(evaluations);
     if (!validation.valid) {
       return res.status(400).json({ success: false, criterion: validation.error.criterion, msg: validation.error.message }); // Cambié error.message por message
     }
 
-    // Llamamos al método saveEvaluations para guardar las valoraciones
-    const saveResult = await saveEvaluations(req);
+    // Llamamos al método savePairwiseEvaluations para guardar las valoraciones
+    const saveResult = await savePairwiseEvaluations(req);
     if (!saveResult.success) {
       return res.status(500).json({ success: false, msg: saveResult.msg });
     }
@@ -898,7 +898,7 @@ export const resolvePairwiseIssue = async (req, res) => {
     }
 
     // Obtener alternativas y solo los criterios hoja
-    const alternatives = await Alternative.find({ issue: issue._id });
+    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 });
 
     const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }); // Solo criterios hoja
     /* const participations = await Participation.find({ issue: issue._id }).populate("expert"); */
@@ -943,10 +943,9 @@ export const resolvePairwiseIssue = async (req, res) => {
       }));
     }));
 
-
-    const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000"; // Fallback a localhost si no está definida
-
     console.log("Matrices to send:", matrices);
+
+    const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000"; // Fallback a localhost si no está definida    
 
     // Hacer la petición POST a la API con el objeto matrices
     const response = await axios.post(
@@ -974,7 +973,6 @@ export const resolvePairwiseIssue = async (req, res) => {
       expert_points: expertPointsMap,
       collective_point: plots_graphic.collective_point,
     };
-
 
     const rankedAlternatives = alternatives_rankings.map(index => alternatives[index].name);
 
@@ -1217,7 +1215,6 @@ export const removeFinishedIssue = async (req, res) => {
   }
 };
 
-
 // Exporta la función editExperts como un controlador asincrónico
 export const editExperts = async (req, res) => {
   // Extrae los datos del cuerpo de la petición
@@ -1240,7 +1237,7 @@ export const editExperts = async (req, res) => {
 
     // Carga en paralelo las alternativas, criterios y último consenso del issue
     const [alternatives, criteria, latestConsensus] = await Promise.all([
-      Alternative.find({ issue: issue._id }),
+      Alternative.find({ issue: issue._id }).sort({ name: 1 }),
       Criterion.find({ issue: issue._id }),
       Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }) // el último por fase
     ]);
@@ -1483,14 +1480,12 @@ export const leaveIssue = async (req, res) => {
   }
 };
 
-/**
- * Función interna que resuelve un issue usando su _id
- */
+// Función interna que resuelve un issue usando su _id
 export const resolveIssueLogic = async (issueId, { forceFinalize = false } = {}) => {
   const issue = await Issue.findById(issueId);
   if (!issue) return;
 
-  await resolveIssue({
+  await resolvePairwiseIssue({
     uid: issue.admin,
     body: { issueName: issue.name, forceFinalize }
   }, {
@@ -1499,10 +1494,7 @@ export const resolveIssueLogic = async (issueId, { forceFinalize = false } = {})
   });
 };
 
-
-/**
- * Función interna que elimina un issue usando su _id
- */
+// Función interna que elimina un issue usando su _id
 export const removeIssueLogic = async (issueId) => {
   const issue = await Issue.findById(issueId);
   if (!issue) return;
@@ -1515,3 +1507,434 @@ export const removeIssueLogic = async (issueId) => {
     json: (obj) => console.log(obj)
   });
 };
+
+// Función para guardar evaluaciones de tipo AxC (Alternativa x Criterio)
+export const saveEvaluations = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, evaluations } = req.body;
+
+    // Buscar el Issue
+    const issue = await Issue.findOne({ name: issueName }).lean();
+    if (!issue) {
+      if (res) {
+        return res.status(404).json({ success: false, msg: "Issue not found" });
+      } else {
+        return { success: false, msg: "Issue not found" };
+      }
+    }
+
+    // Verificar participación del experto
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+      invitationStatus: "accepted"
+    });
+
+    if (!participation) {
+      return res
+        ? res.status(403).json({ success: false, msg: "You are no longer a participant in this issue" })
+        : { success: false, msg: "You are no longer a participant in this issue" };
+    }
+
+    // Mapas de alternativas y criterios
+    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 }).lean();
+    const alternativeMap = new Map(alternatives.map((alt) => [alt.name, alt._id]));
+
+    const criteria = await Criterion.find({ issue: issue._id }).lean();
+    const criterionMap = new Map(criteria.map((crit) => [crit.name, crit._id]));
+
+    // Preparar operaciones bulkWrite
+    const bulkOperations = [];
+
+    // Última fase de consenso (si aplica)
+    const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
+    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
+
+    // Iterar sobre alternativas
+    for (const [alternativeName, criterionEvaluations] of Object.entries(evaluations)) {
+      const alternativeId = alternativeMap.get(alternativeName);
+      if (!alternativeId) continue;
+
+      // Iterar sobre criterios de esa alternativa
+      for (const [criterionName, value] of Object.entries(criterionEvaluations)) {
+        const criterionId = criterionMap.get(criterionName);
+        if (!criterionId) continue;
+
+        bulkOperations.push({
+          updateOne: {
+            filter: {
+              expert: userId,
+              alternative: alternativeId,
+              criterion: criterionId,
+              comparedAlternative: null, // en AxC siempre null
+            },
+            update: {
+              $set: {
+                value,
+                timestamp: new Date(),
+                issue: issue._id,
+                consensusPhase: currentPhase,
+              },
+            },
+            upsert: true,
+          },
+        });
+      }
+    }
+
+    if (bulkOperations.length > 0) {
+      await Evaluation.bulkWrite(bulkOperations);
+    }
+
+    if (res) {
+      return res.status(200).json({ success: true, msg: "Evaluations saved successfully" });
+    }
+    return { success: true, msg: "Evaluations saved successfully" };
+  } catch (err) {
+    console.error(err);
+    return res
+      ? res.status(500).json({ success: false, msg: "An error occurred while saving evaluations" })
+      : { success: false, msg: "An error occurred while saving evaluations" };
+  }
+};
+
+export const getEvaluations = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName } = req.body;
+
+    // Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // Buscar todas las evaluaciones de este usuario para este issue
+    const evaluations = await Evaluation.find({
+      issue: issue._id,
+      expert: userId,
+      comparedAlternative: null, // solo evaluaciones AxC
+      $and: [
+        { value: { $ne: "" } },
+        { value: { $ne: null } }
+      ]
+    })
+      .populate("alternative")
+      .populate("criterion");
+
+    // Transformar a formato { altName: { critName: value } }
+    const evaluationsByAlternative = {};
+
+    evaluations.forEach((evaluation) => {
+      const { alternative, criterion, value } = evaluation;
+      if (!alternative || !criterion) return;
+
+      const alternativeName = alternative.name;
+      const criterionName = criterion.name;
+
+      if (!evaluationsByAlternative[alternativeName]) {
+        evaluationsByAlternative[alternativeName] = {};
+      }
+      evaluationsByAlternative[alternativeName][criterionName] = value;
+    });
+
+    // Último consenso
+    const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
+
+    return res.status(200).json({
+      success: true,
+      evaluations: evaluationsByAlternative,
+      collectiveEvaluations: latestConsensus?.collectiveEvaluations || null,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, msg: "An error occurred while fetching evaluations" });
+  }
+};
+
+export const sendEvaluations = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, evaluations } = req.body;
+
+    // Validar las evaluaciones
+    const validation = validateFinalEvaluations(evaluations);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        alternative: validation.error.alternative,
+        criterion: validation.error.criterion,
+        msg: validation.error.message,
+      });
+    }
+
+    // Guardar evaluaciones en BD
+    const saveResult = await saveEvaluations(req); // -> este lo adaptamos abajo
+    if (!saveResult.success) {
+      return res.status(500).json({ success: false, msg: saveResult.msg });
+    }
+
+    // Obtener issueId
+    const issue = await Issue.findOne({ name: issueName }).lean();
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // Marcar participación como completada
+    const participation = await Participation.findOneAndUpdate(
+      { issue: issue._id, expert: userId },
+      { $set: { evaluationCompleted: true } },
+      { new: true }
+    );
+
+    if (!participation) {
+      return res.status(404).json({ success: false, msg: "Participation not found" });
+    }
+
+    return res.status(200).json({ success: true, msg: "Evaluations sent successfully" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, msg: "An error occurred while sending evaluations" });
+  }
+};
+
+// Método para resolver el problema
+export const resolveIssue = async (req, res) => {
+  const userId = req.uid; // ID del usuario autenticado
+
+  try {
+    const { issueName, forceFinalize = false } = req.body;
+
+    // Buscar el problema por nombre
+    const issue = await Issue.findOne({ name: issueName });
+
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // Verificar que el usuario sea el creador del problema
+    if (issue.admin.toString() !== userId) {
+      return res.status(403).json({ success: false, msg: "Unauthorized: Only the issue creator can resolve it" });
+    }
+
+    // Verificar que todos los expertos hayan completado su evaluación
+    const pendingEvaluations = await Participation.find({
+      issue: issue._id,
+      evaluationCompleted: false,
+      invitationStatus: "accepted"
+    });
+
+    if (pendingEvaluations.length > 0) {
+      return res.status(400).json({ success: false, msg: "Not all experts have completed their evaluations" });
+    }
+
+    // Obtener alternativas y solo los criterios hoja
+    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 });
+
+    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 }); // Solo criterios hoja
+
+    const participations = await Participation.find({
+      issue: issue._id,
+      invitationStatus: "accepted"
+    }).populate("expert");
+
+    const matrices = {};
+
+    // Para cada experto
+    await Promise.all(participations.map(async participation => {
+      const expertName = participation.expert.email;
+
+      // Inicializamos la matriz completa Alternativas x Criterios
+      const matrixForExpert = [];
+
+      // Iteramos sobre alternativas (filas)
+      for (const alt of alternatives) {
+        const rowValues = [];
+
+        // Iteramos sobre criterios (columnas)
+        for (const criterion of criteria) {
+          // Buscamos la evaluación del experto para esta alternativa y criterio
+          const evaluation = await Evaluation.findOne({
+            issue: issue._id,
+            expert: participation.expert._id,
+            criterion: criterion._id,
+            alternative: alt._id
+          });
+
+          // Si no hay valor, usamos 0 (o puedes usar null si prefieres)
+          rowValues.push(evaluation?.value ?? null);
+        }
+
+        matrixForExpert.push(rowValues);
+      }
+
+      matrices[expertName] = matrixForExpert;
+    }));
+
+    console.log("Matrices to send:", matrices);
+
+
+    const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000"; // Fallback a localhost si no está definida
+
+    // Hacer la petición POST a la API con el objeto matrices
+    const response = await axios.post(
+      `${apimodelsUrl}/topsis`,
+      { matrices: matrices },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    console.log("Response from API:", response.data);
+
+    const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data;
+
+
+    /* if (!success) {
+      return res.status(400).json({ success: false, msg });
+    }
+
+    // Asociar los correos electrónicos a los puntos de los expertos
+    const expertPointsMap = {};
+    participations.forEach((participation, index) => {
+      const email = participation.expert.email;
+      expertPointsMap[email] = plots_graphic.expert_points[index];
+    });
+
+    const plotsGraphicWithEmails = {
+      expert_points: expertPointsMap,
+      collective_point: plots_graphic.collective_point,
+    };
+
+    const rankedAlternatives = alternatives_rankings.map(index => alternatives[index].name);
+
+    // Transformar collective_evaluations a formato legible con nombres de alternativas
+    const transformedCollectiveEvaluations = {};
+
+    criteria.forEach((criterion, critIdx) => {
+      collective_evaluations
+      const matrix = collective_evaluations[criterion.name]; // matriz del criterio
+      if (!matrix) return;
+
+      const transformedMatrix = matrix.map((row, rowIndex) => {
+        const obj = { id: alternatives[rowIndex].name };
+        row.forEach((value, colIndex) => {
+          obj[alternatives[colIndex].name] = value;
+        });
+        return obj;
+      });
+
+      transformedCollectiveEvaluations[criterion.name] = transformedMatrix;
+    });
+
+    // Obtener el último consenso guardado para este issue
+    const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
+
+    // Si hay consenso anterior, la siguiente fase es +1; si no, empezamos en 1
+    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
+
+    const consensus = new Consensus({
+      issue: issue._id,
+      phase: currentPhase,
+      level: cm,
+      timestamp: new Date(),
+      collectiveEvaluations: transformedCollectiveEvaluations, // Ahora con nombres
+      details: {
+        rankedAlternatives,
+        matrices,
+        plotsGraphic: plotsGraphicWithEmails
+      }
+    });
+
+    await consensus.save();
+
+    await Promise.all(participations.map(async participation => {
+      await Promise.all(criteria.map(async criterion => {
+        const evaluations = await Evaluation.find({
+          issue: issue._id,
+          expert: participation.expert._id,
+          criterion: criterion._id
+        });
+
+        for (const evaluation of evaluations) {
+          console.log(evaluation)
+          if (evaluation.consensusPhase !== null) {
+            // Solo guardamos si ya hay una fase previa (para no guardar si es la primera vez)
+            evaluation.history.push({
+              phase: evaluation.consensusPhase,
+              value: evaluation.value,
+              timestamp: evaluation.timestamp,
+            });
+          }
+
+          // Actualizamos a la nueva fase (aunque después lo vuelvas a sobreescribir con los resultados)
+          evaluation.consensusPhase = currentPhase + 1;
+          evaluation.timestamp = new Date();
+
+          await evaluation.save();
+        }
+      }));
+    }));
+
+    if (issue.isConsensus && forceFinalize) {
+      // Si es de consenso y se está cerrando por fecha, se finaliza directamente
+      issue.active = false;
+      await issue.save();
+      return res.status(200).json({
+        success: true,
+        finished: true,
+        msg: `Issue '${issueName}' resolved as final round due to closure date.`,
+        rankedAlternatives
+      });
+    }
+
+    // Verificar si se llegó a la fase máxima
+    if (issue.consensusMaxPhases && currentPhase >= issue.consensusMaxPhases) {
+
+      issue.active = false;
+      await issue.save();
+
+      return res.status(200).json({
+        success: true,
+        finished: true,
+        msg: `Issue '${issueName}' resolved: maximum number of consensus rounds reached.`,
+        rankedAlternatives
+      });
+
+    }
+
+    // Verificar si se alcanzó el umbral de consenso
+    if (cm >= issue.consensusThreshold) {
+
+      issue.active = false;
+      await issue.save();
+
+      return res.status(200).json({
+        success: true,
+        finished: true,
+        msg: `Issue '${issueName}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+        rankedAlternatives
+      });
+    }
+
+    // Mensaje por defecto si no se alcanzó ni el umbral ni el número máximo
+    await Participation.updateMany(
+      { issue: issue._id },
+      { $set: { evaluationCompleted: false } }
+    ); */
+
+    // Mensaje por defecto si no se alcanzó ni el umbral ni el número máximo
+    return res.status(200).json({
+      success: true,
+      finished: false,
+      msg: `Issue '${issueName}' resolved.`,
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, msg: "An error occurred while resolving the issue" });
+  }
+};
+

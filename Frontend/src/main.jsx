@@ -216,11 +216,11 @@ createRoot(document.getElementById('root')).render(
               backgroundColor: "transparent",
             },
             "&::-webkit-scrollbar-thumb": {
-              background: '#1D1D1B',
-              borderRadius: "4px",
+              background: '#26495b5a',
             },
             "&::-webkit-scrollbar-thumb:hover": {
-              background: 'linear-gradient(95deg, #3d909e 0%, #5a9e8a 60%, #7a9e4a 100%)',
+              background: '#366c87ff',
+              borderRadius: "4px",
             },
           }
         }}

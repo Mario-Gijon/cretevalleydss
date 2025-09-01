@@ -215,7 +215,7 @@ export const changeInvitationStatus = async (issueName, action) => {
   }
 }
 
-export const saveEvaluations = async (issueName, evaluations) => {
+export const saveEvaluations = async (issueName, isPairwise, evaluations) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
@@ -234,7 +234,8 @@ export const saveEvaluations = async (issueName, evaluations) => {
 
   try {
     // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/saveEvaluations`, options);
+    const url = isPairwise ? 'savePairwiseEvaluations' : 'saveEvaluations';
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
@@ -242,7 +243,7 @@ export const saveEvaluations = async (issueName, evaluations) => {
   }
 }
 
-export const getEvaluations = async (issueName) => {
+export const getEvaluations = async (issueName, isPairwise) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
@@ -261,7 +262,8 @@ export const getEvaluations = async (issueName) => {
 
   try {
     // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getEvaluations`, options);
+    const url = isPairwise ? 'getPairwiseEvaluations' : 'getEvaluations';
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
@@ -269,7 +271,7 @@ export const getEvaluations = async (issueName) => {
   }
 }
 
-export const sendEvaluations = async (issueName, evaluations) => {
+export const sendEvaluations = async (issueName, isPairwise, evaluations) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
@@ -288,7 +290,8 @@ export const sendEvaluations = async (issueName, evaluations) => {
 
   try {
     // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/sendEvaluations`, options);
+    const url = isPairwise ? 'sendPairwiseEvaluations' : 'sendEvaluations';
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
@@ -296,7 +299,7 @@ export const sendEvaluations = async (issueName, evaluations) => {
   }
 }
 
-export const resolvePairwiseIssue = async (issueName) => {
+export const resolveIssue = async (issueName, isPairwise) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
@@ -315,7 +318,8 @@ export const resolvePairwiseIssue = async (issueName) => {
 
   try {
     // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/resolvePairwiseIssue`, options);
+    const url = isPairwise ? 'resolvePairwiseIssue' : 'resolveIssue';
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options)
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);

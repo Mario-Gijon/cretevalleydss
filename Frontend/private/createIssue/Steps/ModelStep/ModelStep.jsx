@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Stack, Typography, Card, CardContent, Grid2 as Grid, TextField, Paper, IconButton } from "@mui/material";
+import { Stack, Typography, CardContent, Grid2 as Grid, TextField, IconButton } from "@mui/material";
 import InputAdornment from '@mui/material/InputAdornment';
 import ToggleButton from '@mui/material/ToggleButton';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { filterModels } from "../../../../src/utils/createIssueUtils";
+import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
 
 export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsensus, setWithConsensus }) => {
   const [searchQuery, setSearchQuery] = useState(""); // Estado para el buscador
@@ -19,7 +20,7 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
   }
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -90,7 +91,7 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
         }}>
           {filteredModels.map((model, index) => (
             <Grid key={index} item size={{ xs: 12, sm: 6, lg: 4 }}>
-              <Card
+              <GlassPaper
                 onClick={() => setSelectedModel(model.name)}
                 sx={{
                   cursor: "pointer",
@@ -111,12 +112,12 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
                     {model.smallDescription}
                   </Typography>
                 </CardContent>
-              </Card>
+              </GlassPaper>
             </Grid>
           ))}
         </Grid>
       </Stack>
-    </Paper>
+    </GlassPaper>
 
   );
 };

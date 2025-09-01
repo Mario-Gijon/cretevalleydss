@@ -1,5 +1,5 @@
 // Función de validación en el backend (similar a la del frontend)
-export const validateFinalEvaluations = (evaluations) => {
+export const validateFinalPairwiseEvaluations = (evaluations) => {
   let firstInvalidCell = null; // Guardar la primera celda vacía encontrada
 
   for (const criterionName in evaluations) {
@@ -64,4 +64,53 @@ export const validateFinalEvaluations = (evaluations) => {
   }
 
   return firstInvalidCell ? { valid: false, error: firstInvalidCell } : { valid: true, message: "" };
+};
+
+export const validateFinalEvaluations = (evaluations) => {
+  let firstInvalidCell = null;
+
+  for (const altName in evaluations) {
+    const criteriaValues = evaluations[altName];
+
+    for (const critName in criteriaValues) {
+      const value = criteriaValues[critName];
+
+      // Verificar que no esté vacío o nulo
+      if (value === "" || value === null || value === undefined) {
+        firstInvalidCell = {
+          alternative: altName,
+          criterion: critName,
+          message: `Value for Alternative "${altName}" and Criterion "${critName}" must not be empty.`,
+        };
+        break;
+      }
+
+      // Verificar que sea un número entre 0 y 1
+      if (isNaN(value) || value < 0 || value > 1) {
+        firstInvalidCell = {
+          alternative: altName,
+          criterion: critName,
+          message: `Value for Alternative "${altName}" and Criterion "${critName}" must be between 0 and 1.`,
+        };
+        break;
+      }
+
+      // Verificar que tenga máximo dos decimales
+      const roundedValue = Math.round(value * 100) / 100;
+      if (value !== roundedValue) {
+        firstInvalidCell = {
+          alternative: altName,
+          criterion: critName,
+          message: `Value for Alternative "${altName}" and Criterion "${critName}" must have at most two decimals.`,
+        };
+        break;
+      }
+    }
+
+    if (firstInvalidCell) break;
+  }
+
+  return firstInvalidCell
+    ? { valid: false, error: firstInvalidCell }
+    : { valid: true, message: "" };
 };

@@ -189,7 +189,7 @@ export const ResponsiveNavbar = (props) => {
   };
 
 
-  const handleMenuNavigation = ({label, url}) => {
+  const handleMenuNavigation = ({ label, url }) => {
     label === "Models" ? showSnackbarAlert("Models page is not available yet", "info") : navigate(url)
     handleCloseNavMenu(); // Cerramos el menú
   };
@@ -209,8 +209,18 @@ export const ResponsiveNavbar = (props) => {
   return (
     <>
       <HideOnScroll {...props}>
-        <AppBar elevation={8} enableColorOnDark>
-          <Toolbar sx={{ background: mode === "dark" ? 'linear-gradient(95deg,rgb(22, 130, 169) 0%, #224261 25%)' : 'linear-gradient(95deg,#6cb7e5 0%, #134F8A 25%)' }} >
+        <AppBar
+          elevation={3}
+          enableColorOnDark
+          sx={{
+            background: "rgba(10, 24, 38, 0.85)",      // transparente tipo glass
+            backdropFilter: "blur(5px)",
+            WebkitBackdropFilter: "blur(1px)",
+            borderBottom: "0.01px solid rgba(255,255,255,0.1)",
+            boxShadow: "none",
+          }}
+        >
+          <Toolbar sx={{ position: "relative", color: "#FFFFFF", overflow: "hidden" }}>
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", flexGrow: 1 }} >
               {/* Pantalla grande */}
               <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: 'none', md: 'flex' } }} >

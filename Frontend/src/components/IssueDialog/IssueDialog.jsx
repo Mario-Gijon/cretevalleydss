@@ -1,13 +1,14 @@
-import { Stack, Dialog, DialogTitle, DialogActions, Divider, IconButton } from "@mui/material";
+import { Stack, DialogTitle, DialogActions, Divider, IconButton } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { IsAdminIssueContentDialog } from "./IsAdminIssueContentDialog";
 import { IsNotAdminIssueContentDialog } from "./isNotAdminIssueContentDialog";
+import { GlassDialog } from "../../../private/activeIssues/customStyles/StyledCard";
 
 export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleAddExpert, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
   return (
 
-    <Dialog open={openIssueDialog} onClose={handleCloseIssueDialog} maxWidth="lg" PaperProps={{ elevation: 0 }} >
+    <GlassDialog open={openIssueDialog} onClose={handleCloseIssueDialog} maxWidth="lg" PaperProps={{ elevation: 0 }} >
       { selectedIssue && (
         <>
           <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
@@ -55,6 +56,6 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
         </>
       )
     }
-    </Dialog >
+    </GlassDialog >
   )
 }

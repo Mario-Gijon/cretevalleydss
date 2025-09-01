@@ -3,14 +3,20 @@ import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, Di
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import { StyledCard, StyledChip } from "./customStyles/StyledCard";
+import { GlassCard, StyledChip } from "./customStyles/StyledCard";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
-import { editExperts, leaveIssue, removeIssue, resolvePairwiseIssue } from "../../src/controllers/issueController";
+import { editExperts, leaveIssue, removeIssue, resolveIssue } from "../../src/controllers/issueController";
 import { IssueDialog } from "../../src/components/IssueDialog/IssueDialog";
 import { EvaluationPairwiseMatrixDialog } from "../../src/components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
 import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { EvaluationMatrixDialog } from "../../src/components/EvaluationMatrixDialog/EvaluationMatrixDialog";
+
+dayjs.extend(utc);
+
 
 const ActiveIssuesPage = () => {
 
@@ -74,7 +80,6 @@ const ActiveIssuesPage = () => {
   }
 
   const handleDeleteExpert = (expert) => {
-    console.log("delete expert:" + expert)
     setExpertsToRemove(prev => [...new Set([...prev, expert])]); // evita duplicados
   }
 
@@ -192,7 +197,8 @@ const ActiveIssuesPage = () => {
   const handleResolveIssue = async () => {
     setResolveLoading(true)
     setOpenResolveConfirmDialog(false)
-    const response = await resolvePairwiseIssue(selectedIssue.name)
+    
+    const response = await resolveIssue(selectedIssue.name, selectedIssue.isPairwise)
     if (response.success) {
       if (response.finished === true) {
         console.log(response.rankedAlternatives)
@@ -243,6 +249,8 @@ const ActiveIssuesPage = () => {
     );
   }
 
+  console.log(selectedIssue?.isPairwise)
+
   return (
     <>
       <Backdrop open={resolveLoading} sx={{ zIndex: 999999 }}>
@@ -258,7 +266,7 @@ const ActiveIssuesPage = () => {
         {/* Masonry con las cards */}
         <Masonry columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} spacing={2} sequential>
           {activeIssues?.map((issue, index) => (
-            <StyledCard key={index} elevation={0}>
+            <GlassCard key={index} elevation={0}>
               <CardActionArea onClick={() => handleOpenIssueDialog(issue)}>
                 <CardContent>
                   {/* Título del issue */}
@@ -327,18 +335,18 @@ const ActiveIssuesPage = () => {
 
                   {/* Fechas */}
                   <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                    Creation: {issue.creationDate}
+                    Creation: {dayjs(issue.creationDate).format("DD/MM/YYYY")}
                   </Typography>
                   {
                     issue.closureDate &&
                     <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                      Closure: {issue.closureDate}
+                      Closure: {dayjs(issue.closureDate).format("DD/MM/YYYY")}
                     </Typography>
                   }
 
                 </CardContent>
               </CardActionArea>
-            </StyledCard>
+            </GlassCard>
           ))}
         </Masonry>
 
@@ -369,15 +377,20 @@ const ActiveIssuesPage = () => {
 
       </Stack>
 
-      {
-        
-      }
+      {selectedIssue?.isPairwise ? (
+        <EvaluationPairwiseMatrixDialog
+          isRatingAlternatives={isRatingAlternatives}
+          setIsRatingAlternatives={setIsRatingAlternatives}
+          selectedIssue={selectedIssue}
+        />
+      ) : (
+        <EvaluationMatrixDialog
+          isRatingAlternatives={isRatingAlternatives}
+          setIsRatingAlternatives={setIsRatingAlternatives}
+          selectedIssue={selectedIssue}
+        />
+      )}
 
-      <EvaluationPairwiseMatrixDialog
-        isRatingAlternatives={isRatingAlternatives}
-        setIsRatingAlternatives={setIsRatingAlternatives}
-        selectedIssue={selectedIssue}
-      />
 
       {/* Diálogo de confirmación de borrar el issue */}
       <Dialog open={openRemoveConfirmDialog} onClose={() => setOpenRemoveConfirmDialog(false)}>
@@ -412,36 +425,36 @@ const ActiveIssuesPage = () => {
         <DialogTitle>Confirm changes</DialogTitle> */}
         <DialogContent>
           <Stack spacing={3} sx={{ width: "100%" }}>
-          {expertsToRemove.length > 0 &&
-            <Box>
-              <Typography>
-                The following experts will be removed:
-              </Typography>
-              <Box sx={{ mt: 1 }}>
-                {expertsToRemove.map((expert, idx) => (
-                  <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
-                    • {expert}
-                  </Typography>
-                ))}
+            {expertsToRemove.length > 0 &&
+              <Box>
+                <Typography>
+                  The following experts will be removed:
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  {expertsToRemove.map((expert, idx) => (
+                    <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
+                      • {expert}
+                    </Typography>
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          }
-          {expertsToAdd.length > 0 &&
-            <Box>
-              <Typography>
-                The following experts will be added:
-              </Typography>
-              <Box sx={{ mt: 0.8 }}>
-                {expertsToAdd.map((expert, idx) => (
-                  <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
-                    • {expert}
-                  </Typography>
-                ))}
+            }
+            {expertsToAdd.length > 0 &&
+              <Box>
+                <Typography>
+                  The following experts will be added:
+                </Typography>
+                <Box sx={{ mt: 0.8 }}>
+                  {expertsToAdd.map((expert, idx) => (
+                    <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
+                      • {expert}
+                    </Typography>
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          }
+            }
           </Stack>
-          
+
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelEditExperts} color="info" size="small">

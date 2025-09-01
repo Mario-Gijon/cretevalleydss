@@ -152,8 +152,9 @@ const CreateIssuePage = () => {
 
     const payload = {
       ...allData,
-      closureDate: closureDate ? dayjs(closureDate).utc().toISOString() : null, // <-- UTC
+      closureDate: closureDate ? dayjs(closureDate).startOf("day").toISOString() : null,
     };
+
 
     const createdIssue = await createIssue(payload);
 

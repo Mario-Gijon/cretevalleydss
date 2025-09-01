@@ -1,7 +1,8 @@
-import { Divider, InputLabel, ListSubheader, Paper, Stack } from "@mui/material";
+import { Divider, InputLabel, ListSubheader, Stack } from "@mui/material";
 import { Fragment, useState } from "react";
 import { Typography, Select, MenuItem, FormControl } from "@mui/material";
 import { updateCriterionRecursively, getLeafCriteria } from "../../../../src/utils/createIssueUtils";
+import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
 
 export const DomainExpressionStep = ({ allData, dataTypes, setDataTypes, dataTypeOptions }) => {
 
@@ -24,7 +25,7 @@ export const DomainExpressionStep = ({ allData, dataTypes, setDataTypes, dataTyp
   };
 
   return (
-    <Paper
+    <GlassPaper
       variant="elevation"
       elevation={0}
       sx={{
@@ -139,6 +140,6 @@ export const DomainExpressionStep = ({ allData, dataTypes, setDataTypes, dataTyp
           ))}
         </Stack>
       )}
-    </Paper>
+    </GlassPaper>
   );
 };

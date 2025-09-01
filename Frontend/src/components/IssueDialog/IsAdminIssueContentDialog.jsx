@@ -1,6 +1,7 @@
-import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Paper, Box, Accordion, AccordionSummary } from "@mui/material";
+import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Box, AccordionSummary } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
+import { GlassAccordion, GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
 
 export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip }) => {
 
@@ -20,14 +21,14 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
           <Grid container spacing={2}>
             {/* Creador */}
             <Grid item size={({ xs: 12, sm: 4.1, md: 3, lg: 3 })}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>You are the admin</Typography>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Modelo */}
             <Grid item size={{ xs: 12, sm: 7.9, md: 7 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" spacing={1}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Model:
@@ -36,12 +37,12 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                     {selectedIssue.model}
                   </Typography>
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Numeros de expertos en el problema */}
             <Grid item size={selectedIssue.closureDate ? { xs: 12, sm: 2.9, md: 2 } : { xs: 12, sm: 5, md: 2 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" spacing={1}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Experts:
@@ -50,13 +51,13 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                     {selectedIssue.totalExperts}
                   </Typography>
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
 
             {/* Fecha de creación */}
             <Grid item size={selectedIssue.closureDate ? ({ xs: 12, sm: 4.6, md: 6 }) : ({ xs: 12, sm: 7, md: 12 })}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" spacing={1}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                     Creation:
@@ -65,13 +66,13 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                     {selectedIssue.creationDate}
                   </Typography>
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Fecha de cierre */}
             {selectedIssue.closureDate && (
               <Grid item size={{ xs: 12, sm: 4.5, md: 6 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Stack direction="row" spacing={1}>
                     <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                       Closure:
@@ -80,7 +81,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                       {selectedIssue.closureDate}
                     </Typography>
                   </Stack>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
 
@@ -88,7 +89,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
             {selectedIssue.isConsensus &&
               <>
                 <Grid item size={{ xs: 12, md: 4 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus max rounds:
@@ -97,10 +98,10 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         {selectedIssue.consensusMaxPhases}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
                 <Grid item size={{ xs: 12, md: 4 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus threshold:
@@ -109,10 +110,10 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         {selectedIssue.consensusThreshold}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
                 <Grid item size={{ xs: 12, md: 4 }}>
-                  <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                  <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
                         Consensus current round:
@@ -121,20 +122,20 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         {selectedIssue.consensusCurrentPhase}
                       </Typography>
                     </Stack>
-                  </Paper>
+                  </GlassPaper>
                 </Grid>
               </>
             }
 
             {/* Alternativas */}
             <Grid item size={{ xs: 12, md: 6 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                   Alternatives:
                 </Typography>
                 <Stack flexDirection="column" spacing={0} flexWrap={"wrap"}>
                   {selectedIssue.alternatives.map((alt, index) => (
-                    <Accordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
+                    <GlassAccordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
                       <AccordionSummary
                         sx={{
                           m: 0,
@@ -145,15 +146,15 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                           {alt}
                         </Typography>
                       </AccordionSummary>
-                    </Accordion>
+                    </GlassAccordion>
                   ))}
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Criterios */}
             <Grid item size={{ xs: 12, md: 6 }}>
-              <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                   Criteria:
                 </Typography>
@@ -162,13 +163,13 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                     <CriterionAccordion key={criterion.name} criterion={criterion} />
                   )}
                 </Stack>
-              </Paper>
+              </GlassPaper>
             </Grid>
 
             {/* Expertos que han participado */}
             {selectedIssue.participatedExperts?.filter(expert => !expertsToRemove.includes(expert)).length !== 0 && (
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                     Participated:
                   </Typography>
@@ -189,13 +190,13 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                       />
                     ))}
                   </Box>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
             {/* Expertos que no han participado pero han aceptado*/}
             {selectedIssue.acceptedButNotEvaluatedExperts?.filter(expert => !expertsToRemove.includes(expert)).length !== 0 && (
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                     Accepted:
                   </Typography>
@@ -216,14 +217,14 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         />
                       ))}
                   </Box>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
 
             {/* Expertos que no han respondido*/}
             {selectedIssue.pendingExperts?.filter(expert => !expertsToRemove.includes(expert)).length !== 0 && (
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                     Not accepted yet:
                   </Typography>
@@ -244,14 +245,14 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         />
                       ))}
                   </Box>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
 
             {/* Expertos que no han aceptado */}
             {selectedIssue.notAcceptedExperts?.filter(expert => !expertsToRemove.includes(expert)).length !== 0 && (
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                     Rejected:
                   </Typography>
@@ -272,13 +273,13 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                         />
                       ))}
                   </Box>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
             {/* Expertos para añadir */}
             {isEditingExperts && (
               <Grid item size={{ xs: 12 }}>
-                <Paper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
+                <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                     Added:
                   </Typography>
@@ -317,7 +318,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                       />
                     )}
                   </Box>
-                </Paper>
+                </GlassPaper>
               </Grid>
             )}
           </Grid>
