@@ -2,11 +2,10 @@ import { useState } from "react";
 import { Stack, TextField, Button, List, Divider, Collapse } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 /* import DomainVerificationIcon from '@mui/icons-material/DomainVerification'; */
-
 import { TransitionGroup } from "react-transition-group";
 import { addAlternative, removeAlternative, saveEditAlternative } from "../../../../src/utils/createIssueUtils.js";
 import { AlternativeItem } from "../../../../src/components/AlternativeItem/AlternativeItem.jsx";
-import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard.jsx";
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper.jsx";
 
 export const AlternativesStep = ({ alternatives, setAlternatives }) => {
   const [inputValue, setInputValue] = useState("");
@@ -46,6 +45,7 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
         minHeight: 0,
         maxWidth: "95vw",
         width: { xs: "95vw", sm: "auto" },
+        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
       }}
     >
       <Stack justifyContent="center" useFlexGap spacing={alternatives.length > 0 ? { xs: 0, sm: 2 } : { xs: 0, sm: 0 }}>

@@ -111,7 +111,7 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         },
         maxWidth: "100%",
         minWidth: "60%",
-        backgroundColor: 'rgba(5, 41, 55, 0.01)', // fondo del datagrid
+        backgroundColor: "rgba(5, 41, 55, 0.01)",
         '& .MuiDataGrid-withBorderColor': {
           backgroundColor: 'rgba(1, 12, 29, 0.8)', // fondo del datagrid
           backdropFilter: 'blur(15px)',

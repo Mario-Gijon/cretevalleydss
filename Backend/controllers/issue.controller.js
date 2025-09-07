@@ -14,10 +14,11 @@ import { createAlternatives, createCriteria, createEvaluations, createParticipat
 import { Resend } from 'resend'
 import { validateFinalEvaluations, validateFinalPairwiseEvaluations } from '../utils/validateFinalEvaluations.js';
 import axios from "axios"
-import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
+import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsPairwiseRatingsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
 import mongoose from 'mongoose';
 import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
 import dayjs from 'dayjs';
+import { normalizeParams } from '../utils/normalizeParams.js';
 
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
@@ -77,6 +78,7 @@ export const createIssue = async (req, res) => {
       closureDate,
       consensusMaxPhases,
       consensusThreshold,
+      paramValues
     } = req.body.issueInfo;
 
     // Validar que no exista un problema con el mismo nombre
@@ -90,7 +92,7 @@ export const createIssue = async (req, res) => {
     }
 
     // Validar que el modelo seleccionado exista
-    const model = await IssueModel.findOne({ name: selectedModel }).session(session);
+    const model = await IssueModel.findOne({ name: selectedModel.name }).session(session);
     if (!model) {
       await session.abortTransaction();
       session.endSession();
@@ -130,10 +132,13 @@ export const createIssue = async (req, res) => {
         consensusMaxPhases,
         consensusThreshold,
       }),
+      modelParameters: paramValues
     });
 
     // Guardar el problema en la base de datos con sesión
     await issue.save({ session });
+
+    console.log(issue)
 
     // Crear alternativas asociadas al problema con sesión
     const createdAlternatives = await createAlternatives(alternatives, issue._id, session);
@@ -273,6 +278,8 @@ export const getAllActiveIssues = async (req, res) => {
         allParticipations.filter((part) => part.issue._id.equals(issue._id)),
         userId
       );
+
+      console.log(issue)
 
       // Devolver un objeto con todos los datos necesarios del problema
       return {
@@ -416,7 +423,7 @@ export const getAllFinishedIssues = async (req, res) => {
 
     // Buscar en la base de datos todos los issues correspondientes a los IDs obtenidos
     const issues = await Issue.find({ _id: { $in: issueIds } })
-      .populate("model", "name isConsensus") // Obtener información del modelo (solo nombre y si usa consenso)
+      .populate("model", "name") // Obtener información del modelo (solo nombre y si usa consenso)
       .populate("admin", "email")            // Obtener información del administrador (solo email)
       .lean();                               // Convertir documentos Mongoose a objetos JS planos para mejor rendimiento
 
@@ -424,8 +431,8 @@ export const getAllFinishedIssues = async (req, res) => {
     const formattedIssues = issues.map((issue) => ({
       name: issue.name, // Nombre del issue
       description: issue.description, // Descripción del issue
-      creationDate: issue.creationDate.toISOString().split("T")[0], // Formatear fecha de creación (solo YYYY-MM-DD)
-      closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null, // Fecha de cierre si existe
+      creationDate: issue.creationDate, // Formatear fecha de creación (solo YYYY-MM-DD)
+      closureDate: issue.closureDate ?? null, // Fecha de cierre si existe
       isAdmin: issue.admin._id.toString() === userId, // Indicar si el usuario autenticado es el admin del issue
     }));
 
@@ -946,10 +953,12 @@ export const resolvePairwiseIssue = async (req, res) => {
 
     const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000"; // Fallback a localhost si no está definida    
 
+    const normalizedParams = normalizeParams(issue.modelParameters);
+
     // Hacer la petición POST a la API con el objeto matrices
     const response = await axios.post(
       `${apimodelsUrl}/herrera_viedma_crp`,
-      { matrices: matrices, consensusThreshold: issue.consensusThreshold },
+      { matrices: matrices, consensusThreshold: issue.consensusThreshold, modelParameters: normalizedParams },
       { headers: { "Content-Type": "application/json" } }
     );
 
@@ -1100,42 +1109,6 @@ export const resolvePairwiseIssue = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, msg: "An error occurred while resolving the issue" });
-  }
-};
-
-export const getFinishedIssueInfo = async (req, res) => {
-  const userId = req.uid;
-
-  try {
-    const { issueName } = req.body;
-
-    // 1. Buscar el problema por nombre
-    const issue = await Issue.findOne({ name: issueName });
-
-    if (!issue) {
-      return res.status(404).json({ success: false, msg: "Issue not found" });
-    }
-
-    const summary = await createSummarySection(issue._id);
-
-    const alternativesRankings = await createAlternativesRankingsSection(issue._id)
-
-    const expertsRatings = await createExpertsRatingsSection(issue._id)
-
-    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id)
-
-    const issueInfo = {
-      summary,
-      alternativesRankings,
-      expertsRatings,
-      analyticalGraphs
-    };
-
-    res.json({ success: true, msg: "Issue info sent", issueInfo });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, msg: "Error fetching full issue info" });
   }
 };
 
@@ -1736,6 +1709,8 @@ export const resolveIssue = async (req, res) => {
 
     const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 }); // Solo criterios hoja
 
+    const criterionTypes = criteria.map(c => c.type === "benefit" ? "max" : "min");
+
     const participations = await Participation.find({
       issue: issue._id,
       invitationStatus: "accepted"
@@ -1774,7 +1749,7 @@ export const resolveIssue = async (req, res) => {
       matrices[expertName] = matrixForExpert;
     }));
 
-    console.log("Matrices to send:", matrices);
+    const normalizedModelParams = normalizeParams(issue.modelParameters);
 
 
     const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000"; // Fallback a localhost si no está definida
@@ -1782,153 +1757,142 @@ export const resolveIssue = async (req, res) => {
     // Hacer la petición POST a la API con el objeto matrices
     const response = await axios.post(
       `${apimodelsUrl}/topsis`,
-      { matrices: matrices },
+      { matrices: matrices, modelParameters: normalizedModelParams, criterionTypes: criterionTypes },
       { headers: { "Content-Type": "application/json" } }
     );
 
     console.log("Response from API:", response.data);
 
-    /* const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data; */
-
-
-    /* if (!success) {
+    // Después de recibir la respuesta del modelo
+    const { success, msg, results } = response.data;
+    if (!success) {
       return res.status(400).json({ success: false, msg });
     }
 
-    // Asociar los correos electrónicos a los puntos de los expertos
-    const expertPointsMap = {};
-    participations.forEach((participation, index) => {
-      const email = participation.expert.email;
-      expertPointsMap[email] = plots_graphic.expert_points[index];
-    });
+    // Mapear índices a nombres
+    const altNames = alternatives.map((a) => a.name);
 
-    const plotsGraphicWithEmails = {
-      expert_points: expertPointsMap,
-      collective_point: plots_graphic.collective_point,
-    };
+    // 1. Ranking colectivo → con nombres
+    const rankedAlternatives = results.collective_ranking.map((idx) => altNames[idx]);
 
-    const rankedAlternatives = alternatives_rankings.map(index => alternatives[index].name);
-
-    // Transformar collective_evaluations a formato legible con nombres de alternativas
-    const transformedCollectiveEvaluations = {};
-
-    criteria.forEach((criterion, critIdx) => {
-      collective_evaluations
-      const matrix = collective_evaluations[criterion.name]; // matriz del criterio
-      if (!matrix) return;
-
-      const transformedMatrix = matrix.map((row, rowIndex) => {
-        const obj = { id: alternatives[rowIndex].name };
-        row.forEach((value, colIndex) => {
-          obj[alternatives[colIndex].name] = value;
-        });
-        return obj;
-      });
-
-      transformedCollectiveEvaluations[criterion.name] = transformedMatrix;
-    });
-
-    // Obtener el último consenso guardado para este issue
     const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
-
-    // Si hay consenso anterior, la siguiente fase es +1; si no, empezamos en 1
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
+    // 2. Scores colectivos → objeto { alternativa: score }
+    const collectiveScoresByName = {};
+    results.collective_scores.forEach((score, idx) => {
+      collectiveScoresByName[altNames[idx]] = score;
+    });
+
+    // 3. Ranking y scores de expertos → con nombres
+    const expertScoresByName = {};
+    const expertRankingsByName = {};
+    Object.keys(results.expert_scores).forEach((expert) => {
+      expertScoresByName[expert] = {};
+      results.expert_scores[expert].forEach((score, idx) => {
+        expertScoresByName[expert][altNames[idx]] = score;
+      });
+
+      expertRankingsByName[expert] = results.expert_rankings[expert].map((idx) => altNames[idx]);
+    });
+
+    // 4. Dispersion también con nombres
+    const dispersionByName = {};
+    Object.keys(results.dispersion).forEach((expert) => {
+      dispersionByName[expert] = {};
+      results.dispersion[expert].forEach((val, idx) => {
+        dispersionByName[expert][altNames[idx]] = val;
+      });
+    });
+
+    // 5. Heatmap: sustituimos cada fila por objeto { alternativa: valor }
+    const heatmapDataByName = {};
+    Object.keys(results.heatmap_data).forEach((rowIdx) => {
+      const expertRow = results.heatmap_data[rowIdx];
+      heatmapDataByName[rowIdx] = {};
+      expertRow.forEach((val, idx) => {
+        heatmapDataByName[rowIdx][altNames[idx]] = val;
+      });
+    });
+
+    // Guardar en Consensus
     const consensus = new Consensus({
       issue: issue._id,
       phase: currentPhase,
-      level: cm,
+      level: issue.isConsensus ? (results.cm ?? 0) : null,
       timestamp: new Date(),
-      collectiveEvaluations: transformedCollectiveEvaluations, // Ahora con nombres
       details: {
         rankedAlternatives,
         matrices,
-        plotsGraphic: plotsGraphicWithEmails
-      }
+        expert_scores: expertScoresByName,
+        expert_rankings: expertRankingsByName,
+        expert_mean: results.expert_mean,
+        expert_std: results.expert_std,
+        collective_scores: collectiveScoresByName,
+        collective_ranking: rankedAlternatives,
+        dispersion: dispersionByName,
+        heatmap_data: heatmapDataByName,
+      },
     });
 
     await consensus.save();
 
-    await Promise.all(participations.map(async participation => {
-      await Promise.all(criteria.map(async criterion => {
-        const evaluations = await Evaluation.find({
-          issue: issue._id,
-          expert: participation.expert._id,
-          criterion: criterion._id
+
+    // --- Lógica de cierre ---
+    if (issue.isConsensus) {
+      if (forceFinalize) {
+        issue.active = false;
+        await issue.save();
+        return res.status(200).json({
+          success: true,
+          finished: true,
+          msg: `Issue '${issueName}' resolved as final round due to closure date.`,
+          rankedAlternatives,
         });
+      }
 
-        for (const evaluation of evaluations) {
-          console.log(evaluation)
-          if (evaluation.consensusPhase !== null) {
-            // Solo guardamos si ya hay una fase previa (para no guardar si es la primera vez)
-            evaluation.history.push({
-              phase: evaluation.consensusPhase,
-              value: evaluation.value,
-              timestamp: evaluation.timestamp,
-            });
-          }
+      if (issue.consensusMaxPhases && currentPhase >= issue.consensusMaxPhases) {
+        issue.active = false;
+        await issue.save();
+        return res.status(200).json({
+          success: true,
+          finished: true,
+          msg: `Issue '${issueName}' resolved: maximum number of consensus rounds reached.`,
+          rankedAlternatives,
+        });
+      }
 
-          // Actualizamos a la nueva fase (aunque después lo vuelvas a sobreescribir con los resultados)
-          evaluation.consensusPhase = currentPhase + 1;
-          evaluation.timestamp = new Date();
+      if (results.cm && results.cm >= issue.consensusThreshold) {
+        issue.active = false;
+        await issue.save();
+        return res.status(200).json({
+          success: true,
+          finished: true,
+          msg: `Issue '${issueName}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+          rankedAlternatives,
+        });
+      }
 
-          await evaluation.save();
-        }
-      }));
-    }));
-
-    if (issue.isConsensus && forceFinalize) {
-      // Si es de consenso y se está cerrando por fecha, se finaliza directamente
-      issue.active = false;
-      await issue.save();
-      return res.status(200).json({
-        success: true,
-        finished: true,
-        msg: `Issue '${issueName}' resolved as final round due to closure date.`,
-        rankedAlternatives
-      });
-    }
-
-    // Verificar si se llegó a la fase máxima
-    if (issue.consensusMaxPhases && currentPhase >= issue.consensusMaxPhases) {
-
-      issue.active = false;
-      await issue.save();
+      // Si no se alcanzó el umbral → otra ronda
+      await Participation.updateMany(
+        { issue: issue._id },
+        { $set: { evaluationCompleted: false } }
+      );
 
       return res.status(200).json({
         success: true,
-        finished: true,
-        msg: `Issue '${issueName}' resolved: maximum number of consensus rounds reached.`,
-        rankedAlternatives
-      });
-
-    }
-
-    // Verificar si se alcanzó el umbral de consenso
-    if (cm >= issue.consensusThreshold) {
-
-      issue.active = false;
-      await issue.save();
-
-      return res.status(200).json({
-        success: true,
-        finished: true,
-        msg: `Issue '${issueName}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
-        rankedAlternatives
+        finished: false,
+        msg: `Issue '${issueName}' consensus threshold not reached. Another round is needed.`,
       });
     }
-
-    // Mensaje por defecto si no se alcanzó ni el umbral ni el número máximo
-    await Participation.updateMany(
-      { issue: issue._id },
-      { $set: { evaluationCompleted: false } }
-    ); */
-
-    // Mensaje por defecto si no se alcanzó ni el umbral ni el número máximo
+    // --- Si NO es de consenso, finalizamos directamente ---
+    issue.active = false;
+    await issue.save();
     return res.status(200).json({
       success: true,
-      finished: false,
+      finished: true,
       msg: `Issue '${issueName}' resolved.`,
+      rankedAlternatives,
     });
 
   } catch (err) {
@@ -1937,3 +1901,38 @@ export const resolveIssue = async (req, res) => {
   }
 };
 
+export const getFinishedIssueInfo = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName } = req.body;
+
+    // 1. Buscar el problema por nombre
+    const issue = await Issue.findOne({ name: issueName }).populate('model');
+
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    const summary = await createSummarySection(issue._id);
+
+    const alternativesRankings = await createAlternativesRankingsSection(issue._id)
+
+    const expertsRatings = issue.model.isPairwise ? await createExpertsPairwiseRatingsSection(issue._id) : await createExpertsRatingsSection(issue._id)
+
+    const analyticalGraphs = issue.model.isPairwise ? await createAnalyticalGraphsSection(issue._id) : null
+
+    const issueInfo = {
+      summary,
+      alternativesRankings,
+      expertsRatings,
+      analyticalGraphs
+    };
+
+    res.json({ success: true, msg: "Issue info sent", issueInfo });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, msg: "Error fetching full issue info" });
+  }
+};

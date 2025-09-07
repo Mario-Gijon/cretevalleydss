@@ -84,25 +84,6 @@ export const DeactivateColorlibStepIconRoot = styled('div')(({ theme }) => ({
   ...theme.applyStyles('dark', {
     backgroundColor: theme.palette.grey[700],
   }),
-  /* variants: [
-    {
-      props: ({ ownerState }) => ownerState.active,
-      style: {
-        backgroundImage: theme.palette.mode === 'light'
-          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 10%, #45C5C5 50%)' // Modo claro
-          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 10%, #45C5C5 50%)', // Modo oscuro
-        boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
-      },
-    },
-    {
-      props: ({ ownerState }) => ownerState.completed,
-      style: {
-        backgroundImage: theme.palette.mode === 'light'
-          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 60%, #45C5C5 100%)' // Modo claro
-          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 50%, #45C5C5 100%)', // Modo oscuro
-      },
-    },
-  ], */
 }));
 
 export const ColorlibStepIcon = (props) => {

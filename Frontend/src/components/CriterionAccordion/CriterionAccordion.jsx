@@ -1,10 +1,11 @@
 
 import { Typography, Stack, Chip, AccordionSummary, AccordionDetails } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { GlassAccordion } from "../../../private/activeIssues/customStyles/StyledCard";
+import { GlassAccordion } from "../StyledComponents/GlassAccordion";
+
 export const CriterionAccordion = ({ criterion, elevation = 1 }) => {
   return (
-    <GlassAccordion variant="outlined" disableGutters elevation={elevation} square={false}>
+    <GlassAccordion disableGutters elevation={elevation} square={false}>
       <AccordionSummary
         expandIcon={criterion.children.length > 0 ? <ExpandMoreIcon /> : null}
         sx={{

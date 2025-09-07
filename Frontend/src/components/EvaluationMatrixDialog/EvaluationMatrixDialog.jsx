@@ -8,7 +8,8 @@ import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { Matrix } from "../Matrix/Matrix";
-import { GlassDialog } from "../../../private/activeIssues/customStyles/StyledCard";
+import { GlassDialog } from "../StyledComponents/GlassDialog";
+
 
 
 export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
@@ -22,8 +23,6 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
   const [collectiveEvaluations, setCollectiveEvaluations] = useState(null)
   const [loading, setLoading] = useState(false);
   const { value: { email } } = useAuthContext();
-
-  console.log(evaluations)
 
   useEffect(() => {
     if (!isRatingAlternatives || !selectedIssue?.name) return;
@@ -180,13 +179,13 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
         <Divider />
 
         <DialogContent sx={{ p: 1 }}>
-          <Stack sx={{ width: "100%" }} p={10} alignItems={"center"} justifyContent={"center"}>
+          <Stack sx={{ width: "100%" }} pt={10} alignItems={"center"} justifyContent={"center"}>
             {/* Matriz de evaluación */}
             {
               selectedIssue && !loading && (
                 <Matrix
                   alternatives={selectedIssue.alternatives} // solo hijos
-                  criteria={extractLeafCriteria(selectedIssue?.criteria || []).map(c => c.name)} // solo hijos
+                  criteria={extractLeafCriteria(selectedIssue?.criteria || []).map(c => c.name).sort()} // solo hijos
                   evaluations={evaluations}
                   setEvaluations={setEvaluations}
                   collectiveEvaluations={collectiveEvaluations}

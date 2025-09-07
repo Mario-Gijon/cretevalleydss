@@ -2,15 +2,14 @@
 import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, DialogContent, DialogContentText } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import { StyledChip } from "./customStyles/StyledCard";
+import {StyledChip} from "../../src/components/StyledComponents/StyledChip"
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useEffect, useState } from "react";
 import { removeFinishedIssue } from "../../src/controllers/issueController";
 import { FinishedIssueDialog } from "../../src/components/FinishedIssueDialog/FinishedIssueDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
-import { GlassCard } from "../activeIssues/customStyles/StyledCard";
-
+import { GlassCard } from "../../src/components/StyledComponents/GlassCard";
 
 // Componente Dashboard
 const FinishedIssuesPage = () => {

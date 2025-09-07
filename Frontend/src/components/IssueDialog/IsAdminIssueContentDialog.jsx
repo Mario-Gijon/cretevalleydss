@@ -1,11 +1,10 @@
 import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Box, AccordionSummary } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
+import { GlassAccordion } from "../StyledComponents/GlassAccordion";
+import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
-import { GlassAccordion, GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
 
 export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip }) => {
-
-
 
   return (
 
@@ -21,7 +20,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
           <Grid container spacing={2}>
             {/* Creador */}
             <Grid item size={({ xs: 12, sm: 4.1, md: 3, lg: 3 })}>
-              <GlassPaper sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>You are the admin</Typography>
               </GlassPaper>
             </Grid>
@@ -135,7 +134,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                 </Typography>
                 <Stack flexDirection="column" spacing={0} flexWrap={"wrap"}>
                   {selectedIssue.alternatives.map((alt, index) => (
-                    <GlassAccordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
+                    <GlassAccordion key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
                       <AccordionSummary
                         sx={{
                           m: 0,

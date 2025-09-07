@@ -6,17 +6,19 @@ import { Participation } from "./Participations.js";
 import { Consensus } from "./Consensus.js";
 
 const issueSchema = new Schema({
-  admin: { type: Schema.Types.ObjectId, ref: "User", required: true }, // Usuario creador
-  model: { type: Schema.Types.ObjectId, ref: "IssueModel", required: true }, // Modelo DSS asociado
-  name: { type: String, required: true, unique: true }, // Nombre del problema
-  isConsensus: { type: Boolean, required: true }, // Indica si el modelo es de consenso
-  consensusMaxPhases: { type: Number, default: null }, // // Número máximo de rondas de consenso (null si no hay límite).
-  consensusThreshold: { type: Number, default: null }, // Umbral de consenso a alcanzar (null si no es un problema de consenso).
-  description: { type: String, required: true }, // Descripción detallada
-  active: { type: Boolean, default: true }, // Estado del problema (abierto/cerrado)
-  creationDate: { type: String, default: null }, // Fecha de creación
-  closureDate: { type: String, default: null }, // Fecha de cierre opcional
+  admin: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  model: { type: Schema.Types.ObjectId, ref: "IssueModel", required: true },
+  name: { type: String, required: true, unique: true },
+  isConsensus: { type: Boolean, required: true },
+  consensusMaxPhases: { type: Number, default: null },
+  consensusThreshold: { type: Number, default: null },
+  description: { type: String, required: true },
+  active: { type: Boolean, default: true },
+  creationDate: { type: String, default: null },
+  closureDate: { type: String, default: null },
+  modelParameters: { type: Schema.Types.Mixed, default: {} } // <-- valores concretos elegidos
 });
+
 
 // Middleware para eliminar todo lo relacionado con un Issue antes de eliminarlo
 issueSchema.pre('remove', async function(next) {

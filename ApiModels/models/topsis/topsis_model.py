@@ -1,17 +1,15 @@
 import numpy as np
 from pyDecision.algorithm import topsis_method
 
-import numpy as np
-
 def run_topsis(matrices, weights, criterion_type):
     expert_rankings = {}
     expert_scores = {}
     expert_mean = {}
     expert_std = {}
-    pairwise_correlations = {}
 
     for expert, matrix in matrices.items():
         matrix_np = np.array(matrix, dtype=float)
+
         scores = topsis_method(matrix_np, weights, criterion_type)
 
         # Guardamos los scores del experto
@@ -38,14 +36,19 @@ def run_topsis(matrices, weights, criterion_type):
 
     # Heatmap data: matriz de correlaciones entre expertos
     expert_names = list(expert_scores.keys())
-    correlation_matrix = np.corrcoef(all_scores)
-    correlation_dict = {
-        expert_names[i]: {
-            expert_names[j]: float(correlation_matrix[i, j])
-            for j in range(len(expert_names))
+    if len(expert_names) > 1:
+        correlation_matrix = np.corrcoef(all_scores)
+        correlation_dict = {
+            expert_names[i]: {
+                expert_names[j]: float(correlation_matrix[i, j])
+                for j in range(len(expert_names))
+            }
+            for i in range(len(expert_names))
         }
-        for i in range(len(expert_names))
-    }
+    else:
+        # Si solo hay un experto, la correlación es trivial (1.0 consigo mismo)
+        correlation_dict = {expert_names[0]: {expert_names[0]: 1.0}}
+
 
     # Puntos de dispersión (ej: diferencias de cada experto vs. media colectiva)
     dispersion = {

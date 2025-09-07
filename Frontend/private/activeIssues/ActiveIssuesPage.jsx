@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-
-import { GlassCard, StyledChip } from "./customStyles/StyledCard";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { editExperts, leaveIssue, removeIssue, resolveIssue } from "../../src/controllers/issueController";
@@ -14,8 +12,10 @@ import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-
 import { EvaluationMatrixDialog } from "../../src/components/EvaluationMatrixDialog/EvaluationMatrixDialog";
+import { GlassCard } from "../../src/components/StyledComponents/GlassCard";
+import { StyledChip } from "../../src/components/StyledComponents/StyledChip";
+import { GlassDialog } from "../../src/components/StyledComponents/GlassDialog";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -467,34 +467,19 @@ const ActiveIssuesPage = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <GlassDialog
         open={openAddExpertsDialog}
         onClose={() => setOpenAddExpertsDialog(false)}
-        maxWidth="md"
-        fullWidth
         PaperProps={{ elevation: 0 }}
+        maxWidth="auto"
       >
         <ExpertsStep
           initialExperts={availableExperts}
           addedExperts={expertsToAdd}
           setAddedExperts={setExpertsToAdd}
+          closeAddExpertsDialog={{ closeAddExpertsDialog: () => setOpenAddExpertsDialog(false) }}
         />
-
-        <DialogActions>
-          <Button onClick={() => setOpenAddExpertsDialog(false)} color="info" variant="outlined">
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setOpenAddExpertsDialog(false);
-            }}
-            variant="outlined"
-            color="success"
-          >
-            Add Selected
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </GlassDialog>
 
 
     </>

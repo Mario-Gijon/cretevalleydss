@@ -1,7 +1,7 @@
 // Importar hooks y componentes necesarios de React y MUI
 import { useState, useEffect, forwardRef } from 'react';
 // Importar componentes de MUI
-import { Dialog, Slide, Container, Backdrop, Typography, Stack, CircularProgress } from '@mui/material';
+import { Slide, Container, Backdrop, Typography, Stack, CircularProgress, Divider } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 // Importar contexto de autenticación
 import { useAuthContext } from '../../context/auth/auth.context';
@@ -22,6 +22,7 @@ import DeleteAccountButton from './Fields/DeleteAccountButton';
 import ConfirmDeleteDialog from './Fields/ConfirmDeleteDialog';
 import ConfirmPasswordDialog from './Fields/ConfirmPasswordDialog';
 import { useSnackbarAlertContext } from '../../context/snackbarAlert/snackbarAlert.context';
+import { GlassDialog } from '../StyledComponents/GlassDialog';
 
 // Definir el componente de transición para el Dialog
 const Transition = forwardRef(function Transition(props, ref) {
@@ -311,16 +312,13 @@ export function Settings({ open, setOpen }) {
 
   return (
     <>
-      <Dialog
-        PaperProps={{
-          elevation: 0,
-        }}
-        /* fullScreen */
+      <GlassDialog
         open={open}
         onClose={handleClose}
         TransitionComponent={Transition}
       >
-        <SettingsHeader sx={{ bgcolor: "red" }} handleClose={handleClose} />
+        <SettingsHeader handleClose={handleClose} />
+        <Divider />
 
         <Container maxWidth="md" sx={{ p: 3 }}>
           <Grid container spacing={3} justifyContent={"center"} alignItems={"center"}>
@@ -377,7 +375,7 @@ export function Settings({ open, setOpen }) {
               </Stack>
             )}
         </Backdrop>
-      </Dialog>
+      </GlassDialog>
     </>
   );
 }

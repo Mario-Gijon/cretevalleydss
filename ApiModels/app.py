@@ -15,7 +15,17 @@ async def herrera_viedma_crp(request: Request):
     
     consensusThreshold = data["consensusThreshold"]
   
-    results = run_herrera_viedma(matrices, maxRounds=1, cl=consensusThreshold, ag_lq=[0.3, 0.8], ex_lq=[0.5, 1.0], b=1.0, beta=0.8, w_crit=[1.0])
+    results = run_herrera_viedma(
+      matrices,
+      maxRounds=1,
+      cl=consensusThreshold,
+      ag_lq=data["modelParameters"]["ag_lq"],
+      ex_lq=data["modelParameters"]["ex_lq"],
+      b=data["modelParameters"]["b"],
+      beta=data["modelParameters"]["beta"],
+      w_crit=[1.0]
+    )
+
 
     results["alternatives_rankings"] = results["alternatives_rankings"][-1].tolist()
   
@@ -31,10 +41,8 @@ async def topsis(request: Request):
     data = await request.json()
     
     matrices = data["matrices"]
-    
-    print(matrices)
   
-    results = run_topsis(matrices, weights=[0.25, 0.25, 0.25, 0.25], criterion_type=["max", "max", "max", "max"])
+    results = run_topsis(matrices, weights=data["modelParameters"]["weights"], criterion_type=data["criterionTypes"])
   
     return { "success": True, "msg": "Topsis executed successfully", "results": results } 
   except Exception as e:

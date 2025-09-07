@@ -1,9 +1,11 @@
 // Importaciones necesarias
-import { Backdrop, Paper, Typography, Stack, Box, Divider, IconButton } from '@mui/material';
+import { Backdrop, Typography, Stack, Box, Divider, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useEffect } from 'react';
 import { useAuthContext } from '../../context/auth/auth.context';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import { GlassPaper } from '../StyledComponents/GlassPaper';
+import { GlassDialog } from '../StyledComponents/GlassDialog';
 /* import { useColorScheme } from '@mui/material'; */
 
 // Componente Account
@@ -45,7 +47,7 @@ export const Account = ({ setOpenBackdrop }) => {
 
   return (
     // Componente Backdrop de Material UI
-    <Backdrop
+    <GlassDialog
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
         display: 'flex',
@@ -57,7 +59,7 @@ export const Account = ({ setOpenBackdrop }) => {
       onClick={handleCloseBackdrop} // Cierra el Backdrop si se hace clic fuera del Paper
     >
       {/* Componente Paper de Material UI */}
-      <Paper
+      <GlassPaper
         sx={{
           p: "40px",
           px: "70px",
@@ -67,7 +69,7 @@ export const Account = ({ setOpenBackdrop }) => {
           boxShadow: 3,
           position: 'relative', // Necesario para la posición de la cruz
           maxWidth: '600px', // Limita el ancho máximo del Paper
-          minWidth: { xs: "300px", sm: "430px" }
+          minWidth: { xs: "300px", sm: "430px" },
         }}
         elevation={6}
         square={false}
@@ -109,7 +111,7 @@ export const Account = ({ setOpenBackdrop }) => {
             ))}
           </Box>
         </Stack>
-      </Paper>
-    </Backdrop>
+      </GlassPaper>
+    </GlassDialog>
   );
 };

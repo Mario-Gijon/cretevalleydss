@@ -11,7 +11,7 @@ import { useAuthContext } from "../../context/auth/auth.context";
 import { logout, markAllNotificationsAsRead, removeNotification } from '../../controllers/authController';
 import { Account } from "../Account/Account";
 import { Settings } from "../Settings/Settings";
-import { GradientTabs } from './customStyles/GradientTabs';
+import { GradientTabs } from '../StyledComponents/GradientTabs';
 /* import { MaterialUISwitch } from './customStyles/MaterialUISwitch'; */
 import { options, pages, samePageLinkNavigation } from './navbarUtils';
 import CloseIcon from '@mui/icons-material/Close';
@@ -213,11 +213,10 @@ export const ResponsiveNavbar = (props) => {
           elevation={3}
           enableColorOnDark
           sx={{
-            background: "rgba(10, 24, 38, 0.85)",      // transparente tipo glass
+            background: "rgba(12, 23, 34, 0.85)",      // transparente tipo glass
             backdropFilter: "blur(5px)",
             WebkitBackdropFilter: "blur(1px)",
-            borderBottom: "0.01px solid rgba(255,255,255,0.1)",
-            boxShadow: "none",
+            boxShadow: "0 1px 30px 0 rgba(34, 79, 98, 0.44)",
           }}
         >
           <Toolbar sx={{ position: "relative", color: "#FFFFFF", overflow: "hidden" }}>
@@ -291,6 +290,7 @@ export const ResponsiveNavbar = (props) => {
                     }}
                     open={Boolean(anchorElNav)}
                     onClose={handleCloseNavMenu}
+                    MenuListProps={{ sx: { bgcolor: "background.paper", color: "text.primary" } }}
                   >
                     {pages.map((page) => (
                       <MenuItem key={page.label} onClick={() => { handleMenuNavigation(page) }}>
@@ -362,7 +362,6 @@ export const ResponsiveNavbar = (props) => {
       </Dialog>
       {/* Menú de opciones del usuario */}
       <Menu
-        sx={{ mt: '40px' }}
         id="menu-appbar"
         anchorEl={anchorElUser}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
@@ -371,6 +370,8 @@ export const ResponsiveNavbar = (props) => {
         open={Boolean(anchorElUser)}
         onClose={handleCloseUserMenu}
         TransitionComponent={Grow}
+        sx={{ mt: '40px' }}
+        MenuListProps={{ sx: { bgcolor: "background.paper", color: "text.primary" } }}
       >
         {options.map((option) => (
           <MenuItem key={option} onClick={() => handleCloseUserMenu(option)}>
@@ -399,6 +400,16 @@ export const ResponsiveNavbar = (props) => {
         open={openDrawer}
         onClose={() => setOpenDrawer(false)}
         elevation={1}
+        PaperProps={{
+          sx: {
+            background: "rgba(23, 30, 36, 1)",
+            border: "1px solid rgba(255,255,255,0.05)",
+          }
+        }}
+        sx={{
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+        }}
       >
         <Stack width={{ xs: "100%" }} justifyContent={"center"} p={2} spacing={1.5}>
           {/* Contenedor flex para alinear el título y el botón */}
@@ -415,9 +426,8 @@ export const ResponsiveNavbar = (props) => {
               You have no notifications
             </Typography>
           ) : (
-            <List sx={{ maxWidth: 550, display: "flex", flexDirection: "column", gap: 2 }} >
+            <List sx={{ maxWidth: 550, display: "flex", flexDirection: "column", gap: 2 }}>
               {notifications.map((notification) => {
-
                 const date = new Date(notification.createdAt);
                 const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.toLocaleTimeString("es-ES", {
                   hour: "2-digit",

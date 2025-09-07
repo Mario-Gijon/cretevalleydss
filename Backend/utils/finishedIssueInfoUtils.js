@@ -9,6 +9,7 @@ import { Evaluation } from '../models/Evaluations.js';
 import { Consensus } from '../models/Consensus.js';
 import { Notification } from '../models/Notificacions.js';
 import { ExitUserIssue } from '../models/ExitUserIssue.js';
+import { buildCriterionTree } from './getAllActiveIssuesUtils.js';
 
 export const createSummarySection = async (issueId) => {
   const issue = await Issue.findById(issueId)
@@ -38,19 +39,18 @@ export const createSummarySection = async (issueId) => {
     admin: issue.admin.email,
     description: issue.description,
     model: issue.model.name,
-    criteria: criteria.map(c => ({ name: c.name, type: c.type })).sort(),
+    /* criteria: criteria.map(c => ({ name: c.name, type: c.type, isLeaf: c.isLeaf })).sort(), */
+    criteria: buildCriterionTree(criteria, issue._id),
     alternatives: alternatives.map(a => a.name).sort(),
-    creationDate: issue.creationDate ? issue.creationDate.toISOString().split("T")[0] : null,
-    closureDate: issue.closureDate ? issue.closureDate.toISOString().split("T")[0] : null,
+    creationDate: issue.creationDate ?? null,
+    closureDate: issue.closureDate ?? null,
     isPairwise: issue.model.isPairwise,
-    consensusInfo: issue.isConsensus
-      ? {
-        maximumPhases: issue.consensusMaxPhases,
-        threshold: issue.consensusThreshold,
-        consensusReached: lastConsensus?.level ?? null,
-        consensusReachedPhase: lastConsensus?.phase ?? null,
-      }
-      : null,
+    consensusInfo: issue.isConsensus ? {
+      maximumPhases: issue.consensusMaxPhases,
+      threshold: issue.consensusThreshold,
+      consensusReached: lastConsensus?.level ?? null,
+      consensusReachedPhase: lastConsensus?.phase ?? 1,
+    } : null,
     experts: {
       participated,
       notAccepted,
@@ -112,7 +112,7 @@ function isExpertActiveInPhase(expertId, phaseNumber, exitRecord, expertEvaluati
     const start = entryPhases[i];
     // Buscar la siguiente salida que sea mayor o igual a start
     const nextExit = exitPhases.find(phase => phase >= start);
-    
+
     // Si no hay salida posterior a esta entrada, intervalo abierto [start, +∞)
     if (nextExit === undefined) {
       if (phaseNumber >= start) return true;
@@ -125,7 +125,7 @@ function isExpertActiveInPhase(expertId, phaseNumber, exitRecord, expertEvaluati
   return false; // No está activo en esta fase
 }
 
-export const createExpertsRatingsSection = async (issueId) => {
+export const createExpertsPairwiseRatingsSection = async (issueId) => {
   const consensusData = {};
 
   const [consensusPhases, allEvaluations] = await Promise.all([
@@ -199,13 +199,101 @@ export const createExpertsRatingsSection = async (issueId) => {
     }
 
     consensusData[phaseNumber] = {
-      collectiveEvaluations: phase.collectiveEvaluations,
+      collectiveEvaluations: Object.keys(phase.collectiveEvaluations).length !== 0 ? phase.collectiveEvaluations : null,
       expertEvaluations
     };
   }
 
   return consensusData;
 };
+
+export const createExpertsRatingsSection = async (issueId) => {
+  const consensusData = {};
+
+  const [consensusPhases, allEvaluations] = await Promise.all([
+    Consensus.find({ issue: issueId }),
+    Evaluation.find({ issue: issueId }).populate("expert"),
+  ]);
+
+  // Mapas para nombres de criterios y alternativas
+  const criteria = await Criterion.find({ issue: issueId });
+  const alternatives = await Alternative.find({ issue: issueId });
+
+  const criterionMap = new Map(criteria.map((c) => [c._id.toString(), c.name]));
+  const alternativeMap = new Map(alternatives.map((a) => [a._id.toString(), a.name]));
+
+  // Agrupar evaluaciones por experto
+  const evaluationsByExpert = new Map();
+
+  for (const evalDoc of allEvaluations) {
+    const expertId = evalDoc.expert._id.toString();
+    if (!evaluationsByExpert.has(expertId)) {
+      evaluationsByExpert.set(expertId, []);
+    }
+    evaluationsByExpert.get(expertId).push(evalDoc);
+  }
+
+  for (const phase of consensusPhases) {
+    const phaseNumber = phase.phase;
+    const expertEvaluations = {};
+
+    for (const [expertId, evals] of evaluationsByExpert.entries()) {
+      // Filtrar evaluaciones que correspondan a esta fase
+      const evalsInPhase = evals.filter((ev) => {
+        if (!ev.history || ev.history.length === 0) return true; // No hay history -> tomar valor directo
+        return ev.history.some((h) => h.phase === phaseNumber);
+      });
+
+      if (evalsInPhase.length === 0) continue;
+
+      const expertEmail = evalsInPhase[0].expert.email;
+      let rows = {};
+
+      for (const alt of alternatives) {
+
+        let col = {}
+
+        for (const criterion of criteria) {
+          const evaluation = evalsInPhase.find(
+            (ev) =>
+              ev.criterion.toString() === criterion._id.toString() &&
+              ev.alternative.toString() === alt._id.toString()
+          );
+
+          if (evaluation) {
+            let value;
+            if (evaluation.history && evaluation.history.length > 0) {
+              const relevantHistory = evaluation.history.find(
+                (entry) => entry.phase === phaseNumber
+              );
+              value = relevantHistory?.value ?? evaluation.value;
+            } else {
+              value = evaluation.value; // No hay history
+            }
+
+            /* if (value !== undefined) row[criterion.name] = value; */
+            if (value !== undefined) col[criterion.name] = value;
+          }
+        }
+
+        rows[alt.name] = col
+      }
+
+      expertEvaluations[expertEmail] = rows;
+    }
+
+    consensusData[phaseNumber] = {
+      collectiveEvaluations: Object.keys(phase.collectiveEvaluations).length !== 0 ? phase.collectiveEvaluations : null,
+      expertEvaluations,
+    };
+
+  }
+
+
+  return consensusData;
+};
+
+
 
 
 export const createAnalyticalGraphsSection = async (issueId) => {

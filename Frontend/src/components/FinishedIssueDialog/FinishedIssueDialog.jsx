@@ -1,5 +1,5 @@
 
-import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, Typography, Tabs, Tab, MobileStepper, Button, List, ListItemButton, Collapse, ListItem, Chip, Backdrop, ImageList, ImageListItem, FormControl, InputLabel, Select, MenuItem, ToggleButton, useMediaQuery } from "@mui/material";
+import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, Typography, Tabs, Tab, MobileStepper, Button, List, ListItemButton, Collapse, ListItem, Backdrop, ImageList, ImageListItem, FormControl, InputLabel, Select, MenuItem, ToggleButton, useMediaQuery } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from "react";
@@ -15,6 +15,21 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Chart } from "chart.js/auto";
 import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";
 import { Matrix } from "../Matrix/Matrix";
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { Scatter } from 'react-chartjs-2';
+import { useRef } from 'react';
+import {
+  Chart as ChartJS,
+  ScatterController,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend,
+  Title,
+} from 'chart.js';
+import { GlassPaper } from "../StyledComponents/GlassPaper";
+import { CriterionItem } from "../CriteriaList/CriteriaList";
+import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
 
 export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, handleCloseFinishedIssueDialog, setOpenRemoveConfirmDialog }) => {
 
@@ -38,16 +53,56 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
   const [activeStep, setActiveStep] = useState(0);
   const handleNext = () => setActiveStep((prevActiveStep) => prevActiveStep + 1);
   const handleBack = () => setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  const handleChangeCriterion = (index) => setcurrentPhaseIndex(index)
+  const handleChangePhase = (index) => setcurrentPhaseIndex(index)
   const [showCollective, setShowCollective] = useState(false);
-  const initialExpert = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {})[0] || "";
-  const initialCriterion = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[initialExpert] || {})[0] || "";
+
+  // Hooks siempre al nivel superior
+  const initialExpert =
+    Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {})[0] || "";
   const [selectedExpert, setSelectedExpert] = useState(initialExpert);
+
+  const initialCriterion =
+    issue?.summary?.isPairwise
+      ? Object.keys(
+        issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[initialExpert] || {}
+      )[0] || ""
+      : null;
   const [selectedCriterion, setSelectedCriterion] = useState(initialCriterion);
-  const expertList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {});
-  const criterionList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {});
-  const evaluations = issue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert]?.[selectedCriterion] || [];
-  const collectiveEvaluations = showCollective ? issue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations?.[selectedCriterion] || [] : [];
+
+  // Ahora calculamos valores según tipo de issue
+  let expertList = [];
+  let criterionList = [];
+  let evaluations = {};
+  let collectiveEvaluations = {};
+  /* let alternatives = [];
+  let criteria = []; */
+
+  if (issue?.summary?.isPairwise) {
+    expertList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {});
+    criterionList = Object.keys(
+      issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {}
+    );
+    evaluations =
+      issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert]?.[
+      selectedCriterion
+      ] || [];
+    collectiveEvaluations = showCollective
+      ? issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations?.[selectedCriterion] ||
+      []
+      : [];
+  } else {
+    expertList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {});
+    evaluations =
+      issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {};
+    collectiveEvaluations = showCollective
+      ? issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations || null
+      : null;
+    /* alternatives = Object.keys(evaluations); // ["A1", "A1.1", "A2"]
+    criteria = alternatives.length ? Object.keys(evaluations[alternatives[0]]) : []; // ["C1","C2",...] */
+  }
+
+
+
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -104,27 +159,32 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
         ) : (
           <DialogContent sx={{ p: 1, pb: 2 }}>
             <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
-              {issue.summary.consensusInfo.consensusReachedPhase > 1 && (
-                <Tabs
-                  value={currentPhaseIndex}
-                  onChange={(event, newIndex) => handleChangeCriterion(newIndex)}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                  allowScrollButtonsMobile
-                  sx={{ width: "100%", pl: 2 }}
-                  indicatorColor="secondary"
-                  textColor="contrastText"
-                >
-                  {/* Aquí generamos las pestañas dinámicamente basadas en el número de fases */}
-                  {Array.from({ length: issue.summary.consensusInfo.consensusReachedPhase }).map((_, index) => (
-                    <Tab
-                      key={index}
-                      label={`Round ${index + 1}`}  // Muestra la fase como "Phase 1", "Phase 2", etc.
-                      sx={{ width: "auto", px: 5 }}
-                    />
-                  ))}
-                </Tabs>
-              )}
+              {
+                issue.summary.consensusInfo &&
+
+                issue.summary.consensusInfo?.consensusReachedPhase > 1 && (
+                  <Tabs
+                    value={currentPhaseIndex}
+                    onChange={(event, newIndex) => handleChangePhase(newIndex)}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    sx={{ width: "100%", pl: 2 }}
+                    indicatorColor="secondary"
+                    textColor="contrastText"
+                  >
+                    {/* Aquí generamos las pestañas dinámicamente basadas en el número de fases */}
+                    {Array.from({ length: issue.summary.consensusInfo.consensusReachedPhase }).map((_, index) => (
+                      <Tab
+                        key={index}
+                        label={`Round ${index + 1}`}  // Muestra la fase como "Phase 1", "Phase 2", etc.
+                        sx={{ width: "auto", px: 5 }}
+                      />
+                    ))}
+                  </Tabs>
+                )
+              }
+
 
               <ImageList
                 sx={{ width: "100%" }}
@@ -193,8 +253,7 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                 </Typography>
                               </Stack>
                             </ListItem>
-                            {issue.summary.criteria.lenght > 1 ?
-
+                            {issue.summary.criteria.length > 1 ? (
                               <>
                                 <ListItemButton onClick={() => setOpenCriteriaList(!openCriteriaList)}>
                                   <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -202,30 +261,16 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                   </Typography>
                                   {openCriteriaList ? <ExpandLess /> : <ExpandMore />}
                                 </ListItemButton>
+
                                 <Collapse in={openCriteriaList} timeout="auto" unmountOnExit>
                                   <List disablePadding>
-                                    <ListItem sx={{ ml: 2 }}>
-                                      {issue.summary.criteria.map((criterion) => (
-                                        <>
-                                          <Stack direction={"row"} spacing={2}>
-                                            <Typography variant="body1" sx={{ color: "text.primary" }}>
-                                              {criterion.name}
-                                            </Typography>
-                                            <Chip
-                                              variant="outlined"
-                                              label={criterion.type === "cost" ? "Cost" : "Benefit"}
-                                              color={criterion.type === "cost" ? "error" : "success"}
-                                              size="small"
-                                            />
-                                          </Stack>
-
-                                        </>
-                                      ))}
-                                    </ListItem>
+                                    {issue.summary.criteria.map((criterion, index) => (
+                                      <CriterionItem key={index} criterion={criterion} level={2} isChild={false} />
+                                    ))}
                                   </List>
                                 </Collapse>
                               </>
-                              :
+                            ) : (
                               <ListItem>
                                 <Stack direction="row" spacing={1}>
                                   <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -236,7 +281,8 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                                   </Typography>
                                 </Stack>
                               </ListItem>
-                            }
+                            )}
+
                             <ListItemButton onClick={() => setOpenAlternativesList(!openAlternativeList)}>
                               <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                                 Alternatives
@@ -438,35 +484,42 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                         </Stack>
                       </Stack>
                     </GlassPaper>
-                    <GlassPaper elevation={0} sx={{
-                      width: "100%",
-                      height: "auto",
-                      minHeight: 200,
-                      padding: theme.spacing(2),
-                      ...theme.typography.body2,
-                      textAlign: 'center',
-                      borderRadius: "10px",
-                    }}>
-                      <Stack spacing={2}>
-                        <Typography variant="h5">Results ranking</Typography>
-                        <Stack>
-                          <List sx={{ width: '100%' }}>
-                            {issue.alternativesRankings[currentPhaseIndex].ranking.map((alternative, index) => (
-                              <ListItem key={alternative}>
-                                <Stack direction="row" spacing={1}>
-                                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                                    {index + 1}. {/* Aquí mostramos la posición (1, 2, 3...) */}
-                                  </Typography>
-                                  <Typography variant="h6" sx={{ color: "text.primary" }}>
-                                    {alternative} {/* Aquí mostramos el nombre de la alternativa */}
-                                  </Typography>
-                                </Stack>
-                              </ListItem>
-                            ))}
-                          </List>
+
+
+                    {/* RANKING */}
+                    {
+                      issue.alternativesRankings &&
+                      <GlassPaper elevation={0} sx={{
+                        width: "100%",
+                        height: "auto",
+                        minHeight: 200,
+                        padding: theme.spacing(2),
+                        ...theme.typography.body2,
+                        textAlign: 'center',
+                        borderRadius: "10px",
+                      }}>
+                        <Stack spacing={2}>
+                          <Typography variant="h5">Results ranking</Typography>
+                          <Stack>
+                            <List sx={{ width: '100%' }}>
+                              {issue?.alternativesRankings[currentPhaseIndex]?.ranking?.map((alternative, index) => (
+                                <ListItem key={alternative}>
+                                  <Stack direction="row" spacing={1}>
+                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                      {index + 1}. {/* Aquí mostramos la posición (1, 2, 3...) */}
+                                    </Typography>
+                                    <Typography variant="h6" sx={{ color: "text.primary" }}>
+                                      {alternative} {/* Aquí mostramos el nombre de la alternativa */}
+                                    </Typography>
+                                  </Stack>
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Stack>
                         </Stack>
-                      </Stack>
-                    </GlassPaper>
+                      </GlassPaper>
+                    }
+
                   </Stack>
                 </ImageListItem>
 
@@ -705,19 +758,22 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                             </Select>
                           </FormControl>
 
-                          <ToggleButton
-                            selected={showCollective}
-                            onChange={() => setShowCollective(!showCollective)}
-                            color="secondary"
-                            sx={{ width: { xs: "100%", sm: "auto" } }}
-                          >
-                            Show collective
-                          </ToggleButton>
+                          {collectiveEvaluations &&
+                            <ToggleButton
+                              selected={showCollective}
+                              onChange={() => setShowCollective(!showCollective)}
+                              color="secondary"
+                              sx={{ width: { xs: "100%", sm: "auto" } }}
+                            >
+                              Show collective
+                            </ToggleButton>
+                          }
+
                         </Stack>
 
                         <Matrix
                           alternatives={issue.summary.alternatives}
-                          criteria={extractLeafCriteria(issue.summary.alternatives).map(c => c.name)} // solo hijos
+                          criteria={extractLeafCriteria(issue.summary.criteria || []).map(c => c.name)}
                           evaluations={evaluations}
                           collectiveEvaluations={collectiveEvaluations}
                           permitEdit={false}
@@ -731,13 +787,14 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
               </ImageList>
 
               {
+                issue.summary.consensusInfo &&
                 issue.summary.consensusInfo.consensusReachedPhase > 1 && (
                   <Stack direction="row" spacing={2}>
                     <IconButton
                       variant="text"
                       color="secondary"
                       disabled={currentPhaseIndex === 0}
-                      onClick={() => handleChangeCriterion(currentPhaseIndex - 1)}
+                      onClick={() => handleChangePhase(currentPhaseIndex - 1)}
                     >
                       <ArrowBackIosIcon />
                     </IconButton>
@@ -745,7 +802,7 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                       variant="text"
                       color="secondary"
                       disabled={currentPhaseIndex === issue.summary.consensusInfo.consensusReachedPhase - 1}
-                      onClick={() => handleChangeCriterion(currentPhaseIndex + 1)}
+                      onClick={() => handleChangePhase(currentPhaseIndex + 1)}
                     >
                       <ArrowForwardIosIcon />
                     </IconButton>
@@ -760,20 +817,7 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
   );
 };
 
-import {
-  Chart as ChartJS,
-  ScatterController,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-  Title,
-} from 'chart.js';
-import zoomPlugin from 'chartjs-plugin-zoom';
-import { Scatter } from 'react-chartjs-2';
-import { useRef } from 'react';
-import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import { GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
+
 
 // Registrar lo necesario
 ChartJS.register(

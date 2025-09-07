@@ -2,7 +2,7 @@ import { Divider, InputLabel, ListSubheader, Stack } from "@mui/material";
 import { Fragment, useState } from "react";
 import { Typography, Select, MenuItem, FormControl } from "@mui/material";
 import { updateCriterionRecursively, getLeafCriteria } from "../../../../src/utils/createIssueUtils";
-import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 
 export const DomainExpressionStep = ({ allData, dataTypes, setDataTypes, dataTypeOptions }) => {
 
@@ -36,6 +36,7 @@ export const DomainExpressionStep = ({ allData, dataTypes, setDataTypes, dataTyp
         flexDirection: "column",
         maxWidth: "95vw",
         width: { xs: "95vw", sm: "auto" },
+        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
       }}
     >
       {!selectedModel || addedExperts.length === 0 || alternatives.length === 0 || criteria.length === 0 ? (

@@ -1,6 +1,7 @@
-import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, Accordion, AccordionSummary, Dialog, DialogTitle, DialogActions } from "@mui/material";
+import { Stack, Grid2 as Grid, Typography, Chip, DialogContent, Button, AccordionSummary, Dialog, DialogTitle, DialogActions } from "@mui/material";
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
-import { GlassPaper } from "../../../private/activeIssues/customStyles/StyledCard";
+import { GlassPaper } from "../StyledComponents/GlassPaper";
+import { GlassAccordion } from "../StyledComponents/GlassAccordion";
 
 export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
@@ -114,18 +115,13 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                 </Typography>
                 <Stack flexDirection="column" spacing={0} flexWrap={"wrap"}>
                   {selectedIssue.alternatives.map((alt, index) => (
-                    <Accordion variant="outlined" key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
-                      <AccordionSummary
-                        sx={{
-                          m: 0,
-                          pl: 1.5,
-                        }}
-                      >
+                    <GlassAccordion key={index} disableGutters elevation={1} square={false} sx={{ pointerEvents: "none" }}>
+                      <AccordionSummary sx={{ pl: 1.5 }}>
                         <Typography variant="body1" sx={{ color: "text.primary" }}>
                           {alt}
                         </Typography>
                       </AccordionSummary>
-                    </Accordion>
+                    </GlassAccordion>
                   ))}
                 </Stack>
               </GlassPaper>
@@ -172,9 +168,9 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
             Rate alternatives
           </Button>
         )}
-      <Button onClick={() => setOpenLeaveConfirmDialog(true)} size="small" color="error" variant="outlined">
-        Leave
-      </Button>
+        <Button onClick={() => setOpenLeaveConfirmDialog(true)} size="small" color="error" variant="outlined">
+          Leave
+        </Button>
       </Stack>
 
       {/* Diálogo de confirmación de salir el issue */}

@@ -10,13 +10,13 @@ export const dataTypeOptions = [
 ];
 
 // Mapeo de los valores numéricos a descripciones legibles
-const dataTypeLabels = {
+/* const dataTypeLabels = {
   1: "Linguistic", // Representa un tipo de dato lingüístico
   2: "Numeric Integer",    // Representa un número entero
   3: "Numeric Float",      // Representa un número con decimales
   4: "Interval Integer",    // Intervalo con enteros
   5: "Interval Float"       // Intervalo con números decimales
-};
+}; */
 
 /* export const generateDomainExpressions = (data) => {
   const { dataTypes, alternatives, criteria, addedExperts } = data;
@@ -363,4 +363,97 @@ export const getLeafCriteria = (criteria) => {
   });
 
   return leafCriteria;
+};
+
+export const validateModelParams = (selectedModel, paramValues, criteria) => {
+  // Obtiene el valor efectivo a validar (paramValues -> default -> pesos iguales)
+  const resolveValue = (param) => {
+    const { name, type, restrictions, default: def } = param;
+    let v = paramValues?.[name];
+
+    const isEmpty =
+      v === undefined ||
+      v === null ||
+      (typeof v === "string" && v.trim() === "");
+
+    if (isEmpty) {
+      if (def !== undefined) return def;
+
+      // Si son pesos por criterio y no hay valor ni default, generar iguales
+      if (type === "array" && restrictions?.length === "matchCriteria") {
+        const len = Array.isArray(criteria) ? criteria.length : 0;
+        if (len <= 0) return null;
+        const eq = 1 / len;
+        return Array(len).fill(eq);
+      }
+    }
+    return v;
+  };
+
+  for (const param of selectedModel.parameters) {
+    const { type, restrictions } = param;
+    const value = resolveValue(param);
+
+    if (value === null || value === undefined) return false;
+
+    // --- NUMBER ---
+    if (type === "number") {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return false;
+
+      // allowed tiene prioridad
+      if (Array.isArray(restrictions?.allowed)) {
+        const allowedNums = restrictions.allowed.map(Number);
+        if (!allowedNums.includes(num)) return false;
+      }
+
+      if (restrictions?.min !== undefined && restrictions.min !== null) {
+        if (num < restrictions.min) return false;
+      }
+      if (restrictions?.max !== undefined && restrictions.max !== null) {
+        if (num > restrictions.max) return false;
+      }
+      continue;
+    }
+
+    // --- ARRAY ---
+    if (type === "array") {
+      if (!Array.isArray(value)) return false;
+
+      const expectedLength =
+        restrictions?.length === "matchCriteria"
+          ? criteria.length
+          : restrictions?.length || value.length;
+
+      if (value.length !== expectedLength) return false;
+
+      const nums = value.map((v) => Number(v));
+      if (nums.some((n) => !Number.isFinite(n))) return false;
+
+      const hasMin = restrictions?.min !== undefined && restrictions?.min !== null;
+      const hasMax = restrictions?.max !== undefined && restrictions?.max !== null;
+
+      if (hasMin && nums.some((n) => n < restrictions.min)) return false;
+      if (hasMax && nums.some((n) => n > restrictions.max)) return false;
+
+      // Intervalo [a,b]: izquierda < derecha
+      const isMatchCriteria = restrictions?.length === "matchCriteria";
+      const hasSumRule = typeof restrictions?.sum === "number";
+      if (!isMatchCriteria && !hasSumRule && expectedLength === 2) {
+        if (nums[0] > nums[1]) return false;
+      }
+
+      // Suma exacta (p. ej. TOPSIS = 1). Sin tolerancia.
+      if (hasSumRule) {
+        const sum = nums.reduce((acc, n) => acc + n, 0);
+        if (sum !== restrictions.sum) return false;
+      }
+      continue;
+    }
+
+    // Tipo desconocido
+    return false;
+  }
+
+  return true;
 };

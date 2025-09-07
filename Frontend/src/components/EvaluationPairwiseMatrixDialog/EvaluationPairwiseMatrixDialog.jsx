@@ -10,7 +10,7 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import { GlassDialog } from "../../../private/activeIssues/customStyles/StyledCard";
+import { GlassDialog } from "../StyledComponents/GlassDialog";
 
 
 export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {

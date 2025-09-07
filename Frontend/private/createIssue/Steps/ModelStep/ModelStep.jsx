@@ -6,7 +6,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { filterModels } from "../../../../src/utils/createIssueUtils";
-import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 
 export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsensus, setWithConsensus }) => {
   const [searchQuery, setSearchQuery] = useState(""); // Estado para el buscador
@@ -33,6 +33,7 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
         minHeight: 0, // Permite que el contenido interno se expanda sin romper el layout
         maxWidth: "95vw",
         width: { xs: "95vw", sm: "auto" },
+        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
       }}
     >
       <Stack spacing={3} sx={{ width: "100%", maxWidth: 1000 }}>
@@ -92,11 +93,11 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
           {filteredModels.map((model, index) => (
             <Grid key={index} item size={{ xs: 12, sm: 6, lg: 4 }}>
               <GlassPaper
-                onClick={() => setSelectedModel(model.name)}
+                onClick={() => setSelectedModel(model)}
                 sx={{
                   cursor: "pointer",
                   border:
-                    selectedModel === model.name
+                    selectedModel === model
                       ? "1px solid #45C5C5"
                       : "1px solid grey",
                   borderRadius: 2,

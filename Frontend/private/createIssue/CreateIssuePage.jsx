@@ -12,8 +12,8 @@ import { ExpertsStep } from "./Steps/ExpertsStep/ExpertsStep";
 import { DomainExpressionStep } from "./Steps/DomainExpressionStep/DomainExpressionStep";
 import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
 import { createIssue } from "../../src/controllers/issueController";
-import { ColorlibConnector, ColorlibStepIcon, DeactivateColorlibStepIcon } from "./customStyles/StepperLibConnector";
-import { dataTypeOptions, generateDomainExpressions, steps, validateIssueDescription, validateIssueName, processGroupedData, hasUndefinedDataTypes } from "../../src/utils/createIssueUtils";
+import { ColorlibConnector, ColorlibStepIcon, DeactivateColorlibStepIcon } from "../../src/components/StyledComponents/StepperLibConnector";
+import { dataTypeOptions, generateDomainExpressions, steps, validateIssueDescription, validateIssueName, processGroupedData, hasUndefinedDataTypes, validateModelParams } from "../../src/utils/createIssueUtils";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +52,8 @@ const CreateIssuePage = () => {
   const [shouldClearStorage, setShouldClearStorage] = useState(false);
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(storedData.consensusMaxPhases || 3);
   const [consensusThreshold, setConsensusThreshold] = useState(storedData.consensusThreshold || 0.7);
+  const [paramValues, setParamValues] = useState({});
+  const [defaultModelParams, setDefaultModelParams] = useState(true);
 
   useEffect(() => {
     if (shouldClearStorage) return; // Evitar que el efecto vuelva a escribir en localStorage
@@ -76,6 +78,17 @@ const CreateIssuePage = () => {
 
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
   }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, dataTypes, issueName, issueDescription, closureDate, shouldClearStorage, consensusMaxPhases, consensusThreshold]);
+
+  useEffect(() => {
+    if (selectedModel && selectedModel.parameters) {
+      const defaults = selectedModel.parameters.reduce((acc, param) => {
+        acc[param.name] = param.default;
+        return acc;
+      }, {});
+      setParamValues(defaults);
+    }
+  }, [selectedModel]);
+
 
   // Funciones de navegación
   const handleNext = () => setActiveStep((prev) => Math.min(prev + 1, steps.length - 1) === 4 ? 5 : Math.min(prev + 1, steps.length - 1));
@@ -108,6 +121,7 @@ const CreateIssuePage = () => {
     if (selectedDate) {
       if (closureDateObj.isBefore(today.add(2, "day"), "day")) {
         setClosureDateError(true)
+        showSnackbarAlert("Closure date is not valid", "error");
         return;
       }
     }
@@ -125,6 +139,7 @@ const CreateIssuePage = () => {
     addedExperts,
     domainExpressions,
     closureDate,
+    paramValues,
     ...(withConsensus && {
       consensusMaxPhases,
       consensusThreshold,
@@ -138,6 +153,8 @@ const CreateIssuePage = () => {
   const handleComplete = async () => {
     handleClosureDateError();
 
+    if (closureDateError) return
+
     if (issueNameError) return
     validateIssueName(issueName, setIssueNameError);
     validateIssueDescription(issueDescription, setIssueDescriptionError);
@@ -147,6 +164,12 @@ const CreateIssuePage = () => {
       showSnackbarAlert("There are undefined domain expressions", "error");
       return;
     }
+
+    if (!validateModelParams(selectedModel, paramValues, criteria)) {
+      showSnackbarAlert("There are invalid model parameters", "error");
+      return;
+    }
+
 
     setLoading(true); // Establece loading en true antes de la creación del problema
 
@@ -234,6 +257,10 @@ const CreateIssuePage = () => {
                 setConsensusMaxPhases={setConsensusMaxPhases}
                 consensusThreshold={consensusThreshold}
                 setConsensusThreshold={setConsensusThreshold}
+                paramValues={paramValues}
+                setParamValues={setParamValues}
+                defaultModelParams={defaultModelParams}
+                setDefaultModelParams={setDefaultModelParams}
               />
             }
           </Stack>

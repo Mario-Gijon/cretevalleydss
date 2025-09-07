@@ -1,4 +1,3 @@
-
 import { DataGrid } from "@mui/x-data-grid";
 import { Chip, Stack, useTheme } from "@mui/material";
 
@@ -7,17 +6,25 @@ export const PairwiseMatrix = ({
   evaluations,
   setEvaluations,
   collectiveEvaluations,
-  permitEdit = true, // Por defecto es true si no se especifica
+  permitEdit = true,
 }) => {
   const theme = useTheme();
+
+  const sortedAlternatives = [...alternatives].sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  const sortedEvaluations = [...evaluations].sort((a, b) =>
+    a.id.localeCompare(b.id)
+  );
 
   // Configuración de las columnas
   const columns = [
     { field: "id", headerName: "Alternatives", minWidth: 90, flex: 1 },
-    ...alternatives.map((alt) => ({
+    ...sortedAlternatives.map((alt) => ({
       field: alt,
       headerName: alt,
-      editable: permitEdit, // Aquí usamos permitEdit
+      editable: permitEdit,
       flex: 1,
       minWidth: 90,
       renderCell: (params) => {
@@ -111,7 +118,7 @@ export const PairwiseMatrix = ({
 
   return (
     <DataGrid
-      rows={evaluations}
+      rows={sortedEvaluations}
       columns={columns}
       disableColumnMenu
       hideFooter
@@ -148,15 +155,14 @@ export const PairwiseMatrix = ({
         },
         maxWidth: "100%",
         minWidth: "60%",
-        backgroundColor: 'rgba(5, 41, 55, 0.01)', // fondo del datagrid
-        '& .MuiDataGrid-withBorderColor': {
-          backgroundColor: 'rgba(1, 12, 29, 0.8)', // fondo del datagrid
-          backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)',
-          fontWeight: 'bold',
+        backgroundColor: "rgba(5, 41, 55, 0.01)",
+        "& .MuiDataGrid-withBorderColor": {
+          backgroundColor: "rgba(1, 12, 29, 0.8)",
+          backdropFilter: "blur(15px)",
+          WebkitBackdropFilter: "blur(15px)",
+          fontWeight: "bold",
         },
       }}
-
     />
   );
-}
+};

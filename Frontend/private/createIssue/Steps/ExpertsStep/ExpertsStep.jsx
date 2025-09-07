@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { Table, TableHead, TableCell, TableBody, TableRow, IconButton, TextField, Stack, TableContainer, Chip, styled } from "@mui/material";
+import { Table, TableHead, TableCell, TableBody, TableRow, IconButton, TextField, Stack, TableContainer, Chip, styled, Button } from "@mui/material";
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { removeAccents } from "../../../../src/utils/createIssueUtils";
-import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
-
-
 import { tableCellClasses } from '@mui/material/TableCell';
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -18,7 +16,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) => {
+export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts, closeAddExpertsDialog = false }) => {
   const [searchFilter, setSearchFilter] = useState(""); // Un único filtro para todo
 
   // Filtrar expertos para eliminar los que ya han sido añadidos
@@ -47,13 +45,15 @@ export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) =
       elevation={0}
       sx={{
         p: { xs: 3, sm: 4, md: 5 },
+        pb: { xs: 1, sm: 2, md: 3 },
         borderRadius: 2,
         flexGrow: 1,
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
         maxWidth: { xs: "95vw", lg: "65vw" },
-        width: { xs: "95vw", sm: "auto" },
+        minWidth: { xs: "80vw", sm: "90vw", md: "90vw", lg: "50vw" },
+        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
       }}
     >
       <Stack spacing={2} justifyContent={"center"} alignItems={"center"}>
@@ -109,6 +109,23 @@ export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts }) =
             </TableBody>
           </Table>
         </TableContainer>
+
+        {closeAddExpertsDialog &&
+          <Stack direction={{sx: "column-reverse",sm: "row"}} spacing={2} justifyContent={"flex-end"} width={"100%"} sx={{ pt: 1 }}>
+            <Button onClick={closeAddExpertsDialog.closeAddExpertsDialog} color="info" variant="outlined">
+              Cancel
+            </Button>
+            <Button
+              onClick={closeAddExpertsDialog.closeAddExpertsDialog}
+              variant="outlined"
+              color="success"
+            >
+              Add Selected
+            </Button>
+          </Stack>
+
+        }
+
 
       </Stack>
 

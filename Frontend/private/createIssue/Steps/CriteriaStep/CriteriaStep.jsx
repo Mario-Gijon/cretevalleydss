@@ -4,7 +4,7 @@ import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
 import { removeCriteriaItemRecursively, updateCriterion, validateCriterion } from "../../../../src/utils/createIssueUtils";
 import { CriteriaItem } from "../../../../src/components/CriteriaItem/CriteriaItem";
-import { GlassPaper } from "../../../activeIssues/customStyles/StyledCard";
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 
 export const CriteriaStep = ({ criteria, setCriteria }) => {
   const [inputValue, setInputValue] = useState(""); // Para el criterio principal
@@ -103,6 +103,7 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
         minHeight: 0,
         maxWidth: "95vw",
         width: { xs: "95vw", sm: "auto" },
+        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
       }}
     >
       <Stack justifyContent="center" useFlexGap spacing={criteria.length > 0 ? { xs: 0, sm: 2 } : { xs: 0, sm: 0 }}>
