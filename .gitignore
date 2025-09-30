@@ -15,3 +15,6 @@ ApiModels/*.py[cod]
 .DS_Store
 .vscode/
 *~
+
+# Ignorar build and push de docker
+build_and_push.sh
