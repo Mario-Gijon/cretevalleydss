@@ -2,10 +2,11 @@
 Frontend/node_modules/
 Backend/node_modules/
 
-# Ignorar entorno virtual y pycache en ApiModels
-ApiModels/env-server/
-ApiModels/__pycache__/
-ApiModels/*.py[cod]
+# Ignorar entornos virtuales y pycache en todo el proyecto
+env/
+env-server/
+__pycache__/
+*.py[cod]
 
 # Ignorar archivos de entorno (por seguridad)
 *.env
