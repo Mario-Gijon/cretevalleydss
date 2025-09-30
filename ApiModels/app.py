@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request # type: ignore
 from models.herrera_viedma_crp.herrera_viedma_crp_model import run_herrera_viedma
 from models.topsis.topsis_model import run_topsis
+from models.borda.borda_model import run_borda
+from models.aras.aras_model import run_aras
+from models.fuzzy_topsis.fuzzy_topsis_model import run_fuzzy_topsis
 
 
 app = FastAPI()
@@ -47,3 +50,51 @@ async def topsis(request: Request):
     return { "success": True, "msg": "Topsis executed successfully", "results": results } 
   except Exception as e:
     return { "success": False, "msg": f"Error executing Topsis: {str(e)}" }
+  
+  
+@app.post("/borda")
+async def topsis(request: Request):
+  try:
+    
+    data = await request.json()
+    
+    matrices = data["matrices"]
+  
+    results = run_borda(matrices, criterion_type=data["criterionTypes"])
+  
+    return { "success": True, "msg": "Borda executed successfully", "results": results } 
+  except Exception as e:
+    return { "success": False, "msg": f"Error executing Borda: {str(e)}" }
+  
+@app.post("/aras")
+async def topsis(request: Request):
+  try:
+    
+    data = await request.json()
+    
+    matrices = data["matrices"]
+  
+    results = run_aras(matrices, weights=data["modelParameters"]["weights"], criterion_type=data["criterionTypes"])
+  
+    return { "success": True, "msg": "Aras executed successfully", "results": results } 
+  except Exception as e:
+    return { "success": False, "msg": f"Error executing Aras: {str(e)}" }
+
+
+@app.post("/fuzzy_topsis")
+async def fuzzy_topsis(request: Request):
+    try:
+        data = await request.json()
+        matrices = data["matrices"]
+        weights = data["modelParameters"]["weights"]
+        criterion_type = data["criterionTypes"]
+
+        results = run_fuzzy_topsis(matrices, weights, criterion_type)
+
+        return {
+            "success": True,
+            "msg": "Fuzzy TOPSIS executed successfully",
+            "results": results
+        }
+    except Exception as e:
+        return {"success": False, "msg": f"Error executing Fuzzy TOPSIS: {str(e)}"}

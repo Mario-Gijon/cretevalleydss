@@ -1,22 +1,21 @@
 import numpy as np
-from pyDecision.algorithm import topsis_method
+from pyDecision.algorithm import borda_method
 
-def clean_matrix(matrix, weights, criterion_type):
+def clean_matrix(matrix, criterion_type):
   """
   Elimina columnas constantes (todo 0, todo 1, o todo igual).
   Ajusta pesos y tipo de criterio en consecuencia.
   """
   matrix = np.array(matrix, dtype=float)
-  weights = np.array(weights, dtype=float)
   criterion_type = np.array(criterion_type)
 
   # Seleccionamos columnas que tengan variabilidad (ptp = max - min)
   keep_cols = (np.ptp(matrix, axis=0) != 0)
 
-  return matrix[:, keep_cols], weights[keep_cols], criterion_type[keep_cols]
+  return matrix[:, keep_cols], criterion_type[keep_cols]
 
 
-def run_topsis(matrices, weights, criterion_type):
+def run_borda(matrices, criterion_type):
   # Convertimos todas las matrices de los expertos a numpy arrays
   matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
 
@@ -24,16 +23,13 @@ def run_topsis(matrices, weights, criterion_type):
   collective_matrix = np.mean(matrices_np, axis=0)
 
   # Limpiar matriz antes de pasar a TOPSIS
-  matrix_clean, weights_clean, criteria_clean = clean_matrix(
-      collective_matrix, weights, criterion_type
+  matrix_clean, criteria_clean = clean_matrix(
+      collective_matrix, criterion_type
   )
 
   # Aplicamos TOPSIS una sola vez sobre la matriz colectiva limpia
-  collective_scores = topsis_method(matrix_clean, weights_clean, criteria_clean).tolist()
+  collective_scores = borda_method(matrix_clean, criteria_clean).tolist()
   collective_ranking = np.argsort(collective_scores)[::-1].tolist()
-  
-  print("collective_scores:", collective_scores)
-  print("collective_ranking:", collective_ranking)
 
   return {
     "collective_matrix": collective_matrix.tolist(),   # matriz promedio original

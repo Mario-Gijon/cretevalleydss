@@ -1,7 +1,7 @@
 // Importa el enrutador de Express para definir rutas.
 import { Router } from 'express'
 
-import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue } from '../controllers/issue.controller.js'
+import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain } from '../controllers/issue.controller.js'
 
 // Importa el middleware para verificar el token de acceso.
 import { requireToken } from '../middlewares/requireToken.js'
@@ -15,6 +15,10 @@ router.get("/getModelsInfo", requireToken, modelsInfo)
 
 router.get("/getAllUsers", requireToken, getAllUsers)
 
+router.get("/getExpressionsDomain", requireToken, getExpressionsDomain)
+
+router.post("/createExpressionDomain", requireToken, createExpressionDomain)
+
 router.post("/createIssue", requireToken, createIssue)
 
 router.get("/getAllActiveIssues", requireToken, getAllActiveIssues)
@@ -22,6 +26,10 @@ router.get("/getAllActiveIssues", requireToken, getAllActiveIssues)
 router.get("/getAllFinishedIssues", requireToken, getAllFinishedIssues)
 
 router.post("/removeIssue", requireToken, removeIssue)
+
+router.post("/removeExpressionDomain", requireToken, removeExpressionDomain)
+
+router.post("/updateExpressionDomain", requireToken, updateExpressionDomain)
 
 router.get("/getNotifications", requireToken, getNotifications)
 

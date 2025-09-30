@@ -1,4 +1,4 @@
-import { Stack, DialogTitle, DialogActions, Divider, IconButton } from "@mui/material";
+import { Stack, Divider, IconButton, Typography } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { IsAdminIssueContentDialog } from "./IsAdminIssueContentDialog";
 import { IsNotAdminIssueContentDialog } from "./isNotAdminIssueContentDialog";
@@ -9,20 +9,18 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
 
   return (
 
-    <GlassDialog open={openIssueDialog} onClose={handleCloseIssueDialog} maxWidth="lg" PaperProps={{ elevation: 0 }} >
-      { selectedIssue && (
+    <GlassDialog open={openIssueDialog} onClose={handleCloseIssueDialog} maxWidth="lg" >
+      {selectedIssue && (
         <>
-          <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
+          <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap p={1.4} px={2} pl={3}>
             {/* Título del modal */}
-            <DialogTitle variant="h5" sx={{ fontWeight: "bold", color: "text.primary" }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               {selectedIssue.name}
-            </DialogTitle>
+            </Typography>
             {/* Acciones del modal */}
-            <DialogActions >
-              <IconButton onClick={handleCloseIssueDialog} color="inherit" variant="outlined" sx={{ mr: 0.5 }}>
-                <CloseIcon />
-              </IconButton>
-            </DialogActions>
+            <IconButton onClick={handleCloseIssueDialog} color="inherit" variant="outlined">
+              <CloseIcon />
+            </IconButton>
           </Stack>
 
           <Divider />
@@ -56,7 +54,7 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
           )}
         </>
       )
-    }
+      }
     </GlassDialog >
   )
 }

@@ -9,11 +9,11 @@ import { ModelStep } from "./Steps/ModelStep/ModelStep";
 import { AlternativesStep } from "./Steps/AlternativesStep/AlternativesStep";
 import { CriteriaStep } from "./Steps/CriteriaStep/CriteriaStep"
 import { ExpertsStep } from "./Steps/ExpertsStep/ExpertsStep";
-import { DomainExpressionStep } from "./Steps/DomainExpressionStep/DomainExpressionStep";
+import { ExpressionDomainStep } from "./Steps/ExpressionDomainStep/ExpressionDomainStep";
 import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
 import { createIssue } from "../../src/controllers/issueController";
-import { ColorlibConnector, ColorlibStepIcon, DeactivateColorlibStepIcon } from "../../src/components/StyledComponents/StepperLibConnector";
-import { dataTypeOptions, generateDomainExpressions, steps, validateIssueDescription, validateIssueName, processGroupedData, hasUndefinedDataTypes, validateModelParams } from "../../src/utils/createIssueUtils";
+import { ColorlibConnector, ColorlibStepIcon } from "../../src/components/StyledComponents/StepperLibConnector";
+import { dataTypeOptions, steps, validateIssueDescription, validateIssueName, validateModelParams } from "../../src/utils/createIssueUtils";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { useNavigate } from "react-router-dom";
@@ -42,18 +42,18 @@ const CreateIssuePage = () => {
   const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
   const [criteria, setCriteria] = useState(storedData.criteria || []);
   const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
-  const [dataTypes, setDataTypes] = useState(storedData.dataTypes || {});
   const [issueName, setIssueName] = useState(storedData.issueName || "");
   const [issueDescription, setissueDescription] = useState(storedData.issueDescription || "");
   const [issueNameError, setIssueNameError] = useState("");
   const [issueDescriptionError, setIssueDescriptionError] = useState(false);
-  const [closureDate, setClosureDate] = useState(storedData.closureDate ? dayjs(storedData.closureDate) : null);
+  const [closureDate, setClosureDate] = useState(null);
   const [closureDateError, setClosureDateError] = useState(false);
   const [shouldClearStorage, setShouldClearStorage] = useState(false);
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(storedData.consensusMaxPhases || 3);
   const [consensusThreshold, setConsensusThreshold] = useState(storedData.consensusThreshold || 0.7);
-  const [paramValues, setParamValues] = useState({});
+  const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
+  const [domainAssignments, setDomainAssignments] = useState(storedData.domainAssignments || {});
 
   useEffect(() => {
     if (shouldClearStorage) return; // Evitar que el efecto vuelva a escribir en localStorage
@@ -66,9 +66,10 @@ const CreateIssuePage = () => {
       alternatives,
       criteria,
       addedExperts,
-      dataTypes,
       issueName,
       issueDescription,
+      domainAssignments,
+      paramValues,
       closureDate: closureDate ? closureDate.toJSON() : null,
       ...(withConsensus && {
         consensusMaxPhases,
@@ -77,36 +78,46 @@ const CreateIssuePage = () => {
     };
 
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-  }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, dataTypes, issueName, issueDescription, closureDate, shouldClearStorage, consensusMaxPhases, consensusThreshold]);
+  }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, issueName, issueDescription, closureDate, shouldClearStorage, consensusMaxPhases, consensusThreshold, domainAssignments, paramValues]);
 
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
+      // 1️⃣ Asignar valores por defecto
       const defaults = selectedModel.parameters.reduce((acc, param) => {
         acc[param.name] = param.default;
         return acc;
       }, {});
+
+      // 2️⃣ Ajustar los arrays que dependen del número de criterios
+      selectedModel.parameters.forEach((param) => {
+        const { name, type, restrictions } = param;
+
+        if (type === "array" && restrictions?.length === "matchCriteria") {
+          const length = allData?.criteria?.length || 1; // número de criterios
+          const equalWeight = 1 / length;
+
+          if (!Array.isArray(defaults[name]) || defaults[name].length !== length) {
+            defaults[name] = Array(length).fill(equalWeight);
+          }
+        }
+      });
+
       setParamValues(defaults);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModel]);
 
 
+
   // Funciones de navegación
-  const handleNext = () => setActiveStep((prev) => Math.min(prev + 1, steps.length - 1) === 4 ? 5 : Math.min(prev + 1, steps.length - 1));
-  const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0) === 4 ? 3 : Math.max(prev - 1, 0));
-  const handleStep = (step) => () => {
-    if (step !== 4) {
-      setActiveStep(step)
-    } else {
-      showSnackbarAlert("This step is disabled for now, please continue with the next steps.", "info");
-    }
-  }
+  const handleNext = () => setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
+  const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0));
+  const handleStep = (step) => () => { setActiveStep(step) }
 
   // Dentro de CreateIssuePage
   const handleValidateIssueName = (newIssueName) => { validateIssueName(newIssueName, setIssueNameError); setIssueName(newIssueName) };
 
   const handleValidateIssueDescription = (newIssueDescription) => { validateIssueDescription(newIssueDescription, setIssueDescriptionError); setissueDescription(newIssueDescription) };
-
-  const domainExpressions = generateDomainExpressions({ dataTypes, alternatives, criteria, addedExperts });
 
   const handleClosureDateError = (selectedDate) => {
     if (!selectedDate) {
@@ -137,8 +148,8 @@ const CreateIssuePage = () => {
     alternatives,
     criteria,
     addedExperts,
-    domainExpressions,
     closureDate,
+    domainAssignments,
     paramValues,
     ...(withConsensus && {
       consensusMaxPhases,
@@ -146,30 +157,46 @@ const CreateIssuePage = () => {
     }),
   };
 
-  // Obtener groupedData ya procesado
-  const groupedData = processGroupedData(criteria, domainExpressions);
-
+  // Manejar la creación del problema
   // Manejar la creación del problema
   const handleComplete = async () => {
     handleClosureDateError();
 
-    if (closureDateError) return
+    if (closureDateError) return;
 
-    if (issueNameError) return
+    if (issueNameError) return;
     validateIssueName(issueName, setIssueNameError);
     validateIssueDescription(issueDescription, setIssueDescriptionError);
 
     if (!issueName || !issueDescription || issueNameError || issueDescriptionError) return;
-    if (hasUndefinedDataTypes(groupedData)) {
-      showSnackbarAlert("There are undefined domain expressions", "error");
-      return;
-    }
 
     if (!validateModelParams(selectedModel, paramValues, criteria)) {
       showSnackbarAlert("There are invalid model parameters", "error");
       return;
     }
 
+    // 🚨 Validación de dominios de expresión
+    let missingDomain = false;
+
+    if (domainAssignments?.experts) {
+      for (const [, altData] of Object.entries(domainAssignments.experts)) {
+        for (const [, critData] of Object.entries(altData.alternatives)) {
+          for (const [, domainId] of Object.entries(critData.criteria)) {
+            if (!domainId || domainId === "undefined") {
+              missingDomain = true;
+              break;
+            }
+          }
+          if (missingDomain) break;
+        }
+        if (missingDomain) break;
+      }
+    }
+
+    if (missingDomain) {
+      showSnackbarAlert("You must assign an expression domain to all criteria before creating the issue.", "error");
+      return;
+    }
 
     setLoading(true); // Establece loading en true antes de la creación del problema
 
@@ -178,7 +205,6 @@ const CreateIssuePage = () => {
       closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
     };
 
-
     const createdIssue = await createIssue(payload);
 
     setLoading(false); // Establece loading en false cuando la creación haya terminado
@@ -186,11 +212,12 @@ const CreateIssuePage = () => {
     if (createdIssue.success) {
       setShouldClearStorage(false);
       //localStorage.removeItem(LOCAL_STORAGE_KEY);
-      console.log(createdIssue)
+      console.log(createdIssue);
       setIssueCreated(createdIssue);
-      navigate('/dashboard');
-      return
+      navigate("/dashboard");
+      return;
     }
+
     if (createdIssue.obj === "issueName") setIssueNameError(createdIssue.msg);
     showSnackbarAlert(createdIssue.msg, "error");
   };
@@ -208,7 +235,8 @@ const CreateIssuePage = () => {
           {steps.map((label, index) => (
             <Step key={label} completed={completed[index]} sx={{ cursor: "pointer" }} onClick={handleStep(index)}>
               <StepButton color="inherit" onClick={handleStep(index)}>
-                <StepLabel slots={label === "Expression domain" ? { stepIcon: DeactivateColorlibStepIcon } : { stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
+                {/* <StepLabel slots={label === "Expression domain" ? { stepIcon: DeactivateColorlibStepIcon } : { stepIcon: ColorlibStepIcon }}>{label}</StepLabel> */}
+                <StepLabel slots={{ stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
               </StepButton>
             </Step>
           ))}
@@ -225,19 +253,25 @@ const CreateIssuePage = () => {
                 setSelectedModel={setSelectedModel}
                 withConsensus={withConsensus}
                 setWithConsensus={setWithConsensus}
+                criteria={criteria}
               />
             }
             {activeStep === 1 &&
               <AlternativesStep alternatives={alternatives} setAlternatives={setAlternatives} />
             }
             {activeStep === 2 &&
-              <CriteriaStep criteria={criteria} setCriteria={setCriteria} />
+              <CriteriaStep criteria={criteria} setCriteria={setCriteria} isMultiCriteria={selectedModel.isMultiCriteria} />
             }
             {activeStep === 3 &&
               <ExpertsStep initialExperts={initialExperts} addedExperts={addedExperts} setAddedExperts={setAddedExperts} />
             }
             {activeStep === 4 &&
-              <DomainExpressionStep allData={allData} dataTypes={dataTypes} setDataTypes={setDataTypes} dataTypeOptions={dataTypeOptions} />
+              <ExpressionDomainStep
+                allData={allData}
+                dataTypeOptions={dataTypeOptions}
+                domainAssignments={domainAssignments}
+                setDomainAssignments={setDomainAssignments}
+              />
             }
             {activeStep === 5 &&
               <SummaryStep
@@ -252,7 +286,6 @@ const CreateIssuePage = () => {
                 setClosureDate={setClosureDate}
                 closureDateError={closureDateError}
                 handleClosureDateError={handleClosureDateError}
-                groupedData={groupedData}
                 consensusMaxPhases={consensusMaxPhases}
                 setConsensusMaxPhases={setConsensusMaxPhases}
                 consensusThreshold={consensusThreshold}
@@ -263,6 +296,7 @@ const CreateIssuePage = () => {
                 setDefaultModelParams={setDefaultModelParams}
               />
             }
+
           </Stack>
 
           <Stack direction="row" gap={{ xs: 1, sm: 4 }} sx={{ justifyContent: "center", alignItems: "flex-end" }}>

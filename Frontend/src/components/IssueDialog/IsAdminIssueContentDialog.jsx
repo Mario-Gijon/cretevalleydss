@@ -20,7 +20,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
           <Grid container spacing={2}>
             {/* Creador */}
             <Grid item size={({ xs: 12, sm: 4.1, md: 3, lg: 3 })}>
-              <GlassPaper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <GlassPaper sx={{ p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>You are the admin</Typography>
               </GlassPaper>
             </Grid>

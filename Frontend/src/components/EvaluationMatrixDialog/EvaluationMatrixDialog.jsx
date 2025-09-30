@@ -24,6 +24,9 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
   const [loading, setLoading] = useState(false);
   const { value: { email } } = useAuthContext();
 
+  const getDomain = (cell) =>
+    cell && typeof cell === "object" && cell.domain ? cell.domain : null;
+
   useEffect(() => {
     if (!isRatingAlternatives || !selectedIssue?.name) return;
 
@@ -60,12 +63,13 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
   const mergeEvaluations = (fetchedEvaluations = {}) => {
     const merged = {};
 
+    console.log(fetchedEvaluations)
+
     selectedIssue.alternatives.forEach((alt) => {
       merged[alt] = {};
       extractLeafCriteria(selectedIssue.criteria || []).forEach((criterion) => {
         const critName = criterion.name;
-        // Si hay evaluación guardada en DB la usamos, si no vacío
-        merged[alt][critName] = fetchedEvaluations?.[alt]?.[critName] ?? "";
+        merged[alt][critName] = fetchedEvaluations?.[alt]?.[critName] ?? { value: "", domain: null };
       });
     });
 
@@ -80,7 +84,9 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
     alternatives.forEach((alt) => {
       cleared[alt] = {};
       criteria.forEach((crit) => {
-        cleared[alt][crit] = "";
+        const prev = evaluations?.[alt]?.[crit];
+        const domain = getDomain(prev);
+        cleared[alt][crit] = { value: "", domain };
       });
     });
 
@@ -104,26 +110,40 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
   };
 
   const handleOpenSendEvaluationsDialog = async () => {
-    // Validar las evaluaciones antes de dar por finalizada la evaluación
-    const validation = validateEvaluations(evaluations, false);
+    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
+
+    const validation = validateEvaluations(evaluations, {
+      leafCriteria: leafNames,
+      allowEmpty: false, // aquí exiges que TODO esté relleno
+    });
 
     if (!validation.valid) {
-      const { message } = validation.error;
-
-      showSnackbarAlert(`${message}`, "error");
-
+      const { alternative, criterion, message } = validation.error;
+      showSnackbarAlert(`Alternative: ${alternative}, Criterion: ${criterion}, ${message}`, "error");
     } else {
-      // Si todo es válido, proceder con el envío de las tasas
       setOpenSendEvaluationsDialog(true);
     }
-    setOpenSendEvaluationsDialog(true);
   };
 
   const handleSaveEvaluations = async () => {
-    setLoading(true)
-    setOpenCloseDialog(false)
+    // 🔹 Si guardas como borrador, puedes permitir vacíos:
+    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations)
+    const validation = validateEvaluations(evaluations, {
+      leafCriteria: leafNames,
+      allowEmpty: true,
+    });
+
+    if (!validation.valid) {
+      const { alternative, criterion, message } = validation.error;
+      showSnackbarAlert(`Alternative: ${alternative}, Criterion: ${criterion}, ${message}`, "error");
+      return;
+    }
+
+    setLoading(true);
+    setOpenCloseDialog(false);
+
+    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -133,8 +153,8 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
       evaluationSaved.msg && showSnackbarAlert(evaluationSaved.msg, "error");
     }
 
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleSendEvaluations = async () => {
     setOpenSendEvaluationsDialog(false);

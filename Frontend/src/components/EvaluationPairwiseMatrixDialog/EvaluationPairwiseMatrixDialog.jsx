@@ -136,14 +136,28 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
   }
 
   const handleSaveEvaluations = async () => {
+    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
 
-    setLoading(true)
+    const validation = validatePairwiseEvaluations(evaluations, {
+      leafCriteria: leafNames,
+      allowEmpty: true, // como borrador, permite incompletos
+    });
 
-    setOpenCloseDialog(false)
+    if (!validation.valid) {
+      const { criterion, row, col, message } = validation.error;
+      showSnackbarAlert(`Criterion: ${criterion}, Row: ${row}, Col: ${col}, ${message}`, "error");
 
-    console.log("evaluations", evaluations)
+      const indexOfCriterion = leafCriteria.findIndex((c) => c.name === criterion);
+      if (indexOfCriterion !== -1) {
+        setCurrentCriterionIndex(indexOfCriterion);
+      }
+      return;
+    }
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations)
+    setLoading(true);
+    setOpenCloseDialog(false);
+
+    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -153,29 +167,29 @@ export const EvaluationPairwiseMatrixDialog = ({ isRatingAlternatives, setIsRati
       evaluationSaved.msg && showSnackbarAlert(evaluationSaved.msg, "error");
     }
 
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleOpenSendEvaluationsDialog = async () => {
-    // Validar las evaluaciones antes de dar por finalizada la evaluación
-    const validation = validatePairwiseEvaluations(evaluations);
+    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
+
+    const validation = validatePairwiseEvaluations(evaluations, {
+      leafCriteria: leafNames,
+      allowEmpty: false, // exige completo al enviar
+    });
 
     if (!validation.valid) {
-      const { criterion, message } = validation.error;
+      const { criterion, row, col, message } = validation.error;
+      showSnackbarAlert(`Criterion: ${criterion}, Row: ${row}, Col: ${col}, ${message}`, "error");
 
-      showSnackbarAlert(`Criterion: ${criterion}, ${message}`, "error");
-
-      // Redirigir el tab al campo vacío
+      // 🔹 Redirigir tab al criterio con error
       const indexOfCriterion = leafCriteria.findIndex((c) => c.name === criterion);
       if (indexOfCriterion !== -1) {
-        // Actualizar el índice del tab para redirigir al criterio correspondiente
         setCurrentCriterionIndex(indexOfCriterion);
       }
     } else {
-      // Si todo es válido, proceder con el envío de las tasas
       setOpenSendEvaluationsDialog(true);
     }
-    setOpenSendEvaluationsDialog(true);
   };
 
   const handleSendEvaluations = async () => {

@@ -2,6 +2,7 @@ import { Alternative } from "../models/Alternatives.js"
 import { Criterion } from "../models/Criteria.js";
 import { Participation } from "../models/Participations.js";
 import { Evaluation } from "../models/Evaluations.js";
+import { ExpressionDomain } from "../models/ExpressionDomain.js";
 import { User } from "../models/Users.js";
 import mongoose from "mongoose";
 
@@ -28,8 +29,6 @@ export const createAlternatives = async (alternatives, issueId, session = null) 
     })
   );
 };
-
-
 
 /**
  * Crea criterios asociados a un problema de forma recursiva.
@@ -80,8 +79,6 @@ export const createCriteria = async (criteriaList, issueId, parentId = null, ses
   return leafCriteria;
 };
 
-
-
 /**
  * Crea participaciones de expertos para un problema.
  * Marca al administrador como aceptado, el resto como pendientes.
@@ -123,8 +120,6 @@ export const createParticipations = async (addedExperts, issueId, adminEmail, se
   return expertMap;
 };
 
-
-
 /**
  * Busca el dominio de expresión de un criterio en la estructura de datos proporcionada.
  * @param {Object|string} criteriaData - Objeto o string que contiene dominios.
@@ -160,7 +155,6 @@ export const findExpressionDomain = (criteriaData, criterionName) => {
   return null;
 };
 
-
 /**
  * Crea evaluaciones iniciales para expertos, alternativas y criterios hoja.
  * @param {Object} domainExpressions - Datos con dominios por experto y criterio.
@@ -172,8 +166,9 @@ export const findExpressionDomain = (criteriaData, criterionName) => {
  * @param {number|null} currentConsensusPhase - Fase de consenso actual.
  * @param {mongoose.ClientSession|null} session - Sesión de transacción.
  */
+
 export const createEvaluations = async (
-  domainExpressions,
+  domainAssignments,
   expertMap,
   createdAlternatives,
   leafCriteria,
@@ -182,63 +177,58 @@ export const createEvaluations = async (
   currentConsensusPhase = null,
   session = null
 ) => {
-  // Recorremos cada experto
-  for (const [email, altData] of Object.entries(domainExpressions)) {
-    // Ignoramos si el experto no existe
+  for (const [email, altData] of Object.entries(domainAssignments.experts)) {
     if (!expertMap.has(email)) continue;
-
     const expertId = expertMap.get(email);
 
-    // Recorremos cada alternativa evaluada por el experto
-    for (const [altName, criteriaData] of Object.entries(altData)) {
+    for (const [altName, critMap] of Object.entries(altData.alternatives)) {
       const alternative = createdAlternatives.find((alt) => alt.name === altName);
       if (!alternative) continue;
 
-      // Recorremos todos los criterios hoja
       for (const leafCriterion of leafCriteria) {
-        // Buscamos el dominio de expresión para ese criterio
-        const expressionDomain = findExpressionDomain(criteriaData, leafCriterion.name);
-        if (!expressionDomain) continue;
+        const expressionDomainId = critMap.criteria[leafCriterion.name];
+        if (!expressionDomainId) {
+          throw new Error(`Missing domain assignment for criterion '${leafCriterion.name}'`);
+        }
 
-        // Si el modelo requiere comparaciones pareadas
+        // ✅ validar que exista en la colección ExpressionDomain
+        const exists = await ExpressionDomain.findById(expressionDomainId).session(session);
+        if (!exists) {
+          throw new Error(`ExpressionDomain with id '${expressionDomainId}' not found`);
+        }
+
+        // 🔹 Crear evaluaciones
         if (pairwise) {
           for (const comparedAlternative of createdAlternatives) {
-            // No se compara consigo misma
             if (alternative._id.equals(comparedAlternative._id)) continue;
 
-            // Creamos evaluación pareada
             const evaluation = new Evaluation({
               issue: issueId,
               expert: expertId,
               alternative: alternative._id,
               comparedAlternative: comparedAlternative._id,
               criterion: leafCriterion._id,
-              expressionDomain,
+              expressionDomain: expressionDomainId,
               value: null,
               timestamp: null,
               history: [],
               consensusPhase: currentConsensusPhase,
             });
-
-            // Guardamos con sesión
             await evaluation.save({ session });
           }
         } else {
-          // Evaluación directa (no pareada)
           const evaluation = new Evaluation({
             issue: issueId,
             expert: expertId,
             alternative: alternative._id,
             comparedAlternative: null,
             criterion: leafCriterion._id,
-            expressionDomain,
+            expressionDomain: expressionDomainId,
             value: null,
             timestamp: null,
             history: [],
             consensusPhase: currentConsensusPhase,
           });
-
-          // Guardamos con sesión
           await evaluation.save({ session });
         }
       }

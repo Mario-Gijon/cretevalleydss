@@ -2,13 +2,15 @@
 import { useState, useEffect } from "react";
 // Importa la librería PropTypes para la validación de tipos
 import { IssuesDataContext } from "./issues.context.js";
-import { getAllActiveIssues, getAllFinishedIssues, getAllUsers, getModelsInfo } from "../../controllers/issueController.js";
+import { getAllActiveIssues, getAllFinishedIssues, getAllUsers, getExpressionsDomain, getModelsInfo } from "../../controllers/issueController.js";
 
 export const IssuesDataProvider = ({ children }) => {
   const [initialExperts, setInitialExperts] = useState([]);
   const [models, setModels] = useState([]);
   const [activeIssues, setActiveIssues] = useState([]);
   const [finishedIssues, setFinishedIssues] = useState([]);
+  const [globalDomains, setGlobalDomains] = useState([]);
+  const [expressionDomains, setExpressionDomains] = useState([]); // solo del usuario
   const [loading, setLoading] = useState(true);
   const [issueCreated, setIssueCreated] = useState("");
 
@@ -45,8 +47,11 @@ export const IssuesDataProvider = ({ children }) => {
     const fetchData = async () => {
       const initExpertsData = await getAllUsers();
       const initModelsData = await getModelsInfo();
+      const { globals, userDomains } = await getExpressionsDomain();
       setInitialExperts(initExpertsData);
       setModels(initModelsData);
+      setGlobalDomains(globals || []);
+      setExpressionDomains(userDomains || []);
     };
     fetchData();  // Este efecto carga los expertos y modelos
   }, []);  // Este solo se ejecuta una vez, al montar el componente
@@ -59,8 +64,27 @@ export const IssuesDataProvider = ({ children }) => {
   }, [issueCreated]);  // Este efecto se ejecuta cuando issueCreated cambia
 
   return (
-    <IssuesDataContext.Provider value={{ initialExperts, models, loading, setLoading, setIssueCreated, issueCreated, activeIssues, finishedIssues, setActiveIssues, setFinishedIssues, fetchActiveIssues, fetchFinishedIssues }}>
+    <IssuesDataContext.Provider
+      value={{
+        initialExperts,
+        models,
+        globalDomains,
+        expressionDomains,
+        setExpressionDomains,
+        loading,
+        setLoading,
+        setIssueCreated,
+        issueCreated,
+        activeIssues,
+        finishedIssues,
+        setActiveIssues,
+        setFinishedIssues,
+        fetchActiveIssues,
+        fetchFinishedIssues
+      }}
+    >
       {children}
     </IssuesDataContext.Provider>
+
   );
 };

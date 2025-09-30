@@ -1,5 +1,5 @@
 // Importaciones necesarias
-import { Backdrop, Typography, Stack, Box, Divider, IconButton } from '@mui/material';
+import { Typography, Stack, Box, Divider, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useEffect } from 'react';
 import { useAuthContext } from '../../context/auth/auth.context';

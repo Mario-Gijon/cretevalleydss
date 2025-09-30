@@ -1,84 +1,155 @@
 import { DataGrid } from "@mui/x-data-grid";
-import { Chip, Stack, useTheme } from "@mui/material";
+import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
 export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, collectiveEvaluations, permitEdit = true }) => {
 
+  console.log(evaluations)
+
   const theme = useTheme();
 
-  // Configuración de las columnas: la primera columna es "Alternatives", luego cada criterio
+  const getDomain = (cell) =>
+    cell && typeof cell === "object" && cell.domain ? cell.domain : null;
+
+  const getValue = (cell) =>
+    cell && typeof cell === "object" ? cell.value : cell;
+
   const columns = [
     { field: "id", headerName: "Alternative/Criterion", minWidth: 120, flex: 1 },
     ...criteria.map((criterion) => ({
-      field: criterion, // 👈 aquí va el nombre del criterio como key única
+      field: criterion,
       headerName: criterion,
       editable: permitEdit,
       flex: 1,
-      minWidth: 100,
+      minWidth: 120,
+      // 🔹 Esto evita el [Object object]
+      valueGetter: (params) => {
+        const cell = params.row?.[criterion];
+        if (!cell) return "";
+        return typeof cell === "object" ? cell.value ?? "" : cell;
+      },
       renderCell: (params) => {
-        const rowId = params.row.id; // alternativa
-        const criterion = params.field; // criterio actual
-        const userValue = parseFloat(params.value);
-        const collectiveValue = parseFloat(
-          collectiveEvaluations?.find((r) => r.id === rowId)?.[criterion]
-        );
+        const rowId = params.row.id;
+        const critName = params.field;
+        const cell = evaluations?.[rowId]?.[critName];
 
-        return (
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            {isNaN(userValue) ? "" : userValue}
-            {!isNaN(collectiveValue) && (
-              <Chip
-                label={collectiveValue}
-                variant="outlined"
-                size="small"
-                sx={{
-                  ml: 1,
-                  fontSize: "0.75rem",
-                  height: 20,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-          </Stack>
-        );
+        if (cell == null) return "";
+
+        const domain = getDomain(cell);
+        const value = getValue(cell);
+
+        if (domain?.type === "numeric") {
+          const userValue = value;
+          const collectiveValue = parseFloat(
+            collectiveEvaluations?.[rowId]?.[critName]?.value
+          );
+
+          return (
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              {userValue !== null && userValue !== "" ? userValue : ""}
+              {!isNaN(collectiveValue) && (
+                <Chip
+                  label={collectiveValue}
+                  variant="outlined"
+                  size="small"
+                  sx={{ ml: 1, fontSize: "0.75rem", height: 20, pointerEvents: "none" }}
+                />
+              )}
+            </Stack>
+          );
+        }
+
+        if (domain?.type === "linguistic") {
+          return (
+            <Select
+              size="small"
+              fullWidth
+              color="secondary"
+              value={value || ""}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setEvaluations((prev) => ({
+                  ...prev,
+                  [rowId]: {
+                    ...(prev[rowId] || {}),
+                    [critName]: { value: newValue, domain },
+                  },
+                }));
+              }}
+              sx={{ minWidth: 120 }}
+            >
+              {(domain.labels || []).map((lbl, idx) => (
+                <MenuItem key={idx} value={lbl.label}>{lbl.label}</MenuItem>
+              ))}
+            </Select>
+          );
+        }
+
+        return <span>{value ?? ""}</span>;
       },
     })),
   ];
+
+
 
   const handleProcessRowUpdate = (newRow, oldRow) => {
     if (!permitEdit) return oldRow;
 
     const changedField = Object.keys(newRow).find(
-      (key) => key !== "id" && newRow[key] !== oldRow[key]
+      (key) => key !== "id" && JSON.stringify(newRow[key]) !== JSON.stringify(oldRow[key])
     );
-
     if (!changedField) return newRow;
 
-    const updatedRow = { ...newRow };
-    let value = parseFloat(updatedRow[changedField]);
+    const prevCell = oldRow[changedField];
+    const prevDomain = getDomain(prevCell);
 
-    if (isNaN(value) || value < 0 || value > 1) {
-      updatedRow[changedField] = null;
+    // Lo que el usuario ha tecleado (puede ser string/number o {value, domain})
+    const raw = newRow[changedField];
+
+    let nextCell;
+
+    if (prevDomain?.type === "numeric") {
+      // Tomamos el valor crudo (si es objeto, cojo su value; si es string, lo uso tal cual)
+      const rawVal = getValue(raw);
+      const num = parseFloat(rawVal);
+      const min = prevDomain.range?.min ?? 0;
+      const max = prevDomain.range?.max ?? 1;
+
+      if (Number.isNaN(num) || num < min || num > max) {
+        nextCell = { value: "", domain: prevDomain };
+      } else {
+        nextCell = { value: Math.round(num * 100) / 100, domain: prevDomain };
+      }
+    } else if (prevDomain?.type === "linguistic") {
+      // Normalmente no entra aquí porque se usa <Select/>, pero por si acaso
+      const rawVal = getValue(raw) ?? "";
+      nextCell = { value: rawVal, domain: prevDomain };
     } else {
-      updatedRow[changedField] = Math.round(value * 100) / 100;
+      // Si no tenemos dominio, deja el valor como vino
+      nextCell = raw;
     }
 
-    // Actualizar evaluaciones globales
+    const resultRow = { ...newRow, [changedField]: nextCell };
+
     setEvaluations((prev) => ({
       ...prev,
-      [updatedRow.id]: {
-        ...(prev[updatedRow.id] || {}),
-        [changedField]: updatedRow[changedField],
+      [resultRow.id]: {
+        ...(prev[resultRow.id] || {}),
+        [changedField]: nextCell,
       },
     }));
 
-    return updatedRow;
+    return resultRow;
   };
 
   // Prepara las filas con alternativas como id y valores de evaluaciones
-  const rows = alternatives.map((alt) => ({
-    id: alt,
-    ...(evaluations[alt] || {}),
-  }));
+  const rows = alternatives.map((alt) => {
+    const row = { id: alt };
+    criteria.forEach((crit) => {
+      row[crit] = evaluations[alt]?.[crit] ?? { value: "", domain: null };
+    });
+    return row;
+  });
+
 
   return (
     <DataGrid
@@ -108,6 +179,8 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         "& .grid-cell": {
           borderRight: `1px solid ${theme.palette.divider}`,
           borderBottom: `1px solid ${theme.palette.divider}`,
+          p: 0,
+          textAlign: "center",
         },
         maxWidth: "100%",
         minWidth: "60%",

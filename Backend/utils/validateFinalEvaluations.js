@@ -1,59 +1,83 @@
-// Función de validación en el backend (similar a la del frontend)
 export const validateFinalPairwiseEvaluations = (evaluations) => {
-  let firstInvalidCell = null; // Guardar la primera celda vacía encontrada
+  let firstInvalidCell = null;
 
   for (const criterionName in evaluations) {
     const criterionMatrix = evaluations[criterionName];
 
     for (const row of criterionMatrix) {
       for (const altCol in row) {
-        if (altCol === "id") continue; // Saltar el campo "id"
-        const value = row[altCol];
+        if (altCol === "id") continue;
 
-        // Verificar que el valor esté en el rango [0, 1]
-        if (isNaN(value) || value < 0 || value > 1) {
-          firstInvalidCell = { 
-            row: row.id, 
-            col: altCol, 
-            criterion: criterionName, 
-            message: `Invalid value for ${altCol} in row ${row.id}. It must be between 0 and 1.` 
-          };
-          break; // Detener la búsqueda después de encontrar el primer error
-        }
+        const cell = row[altCol];
+        const value = getCellValue(cell);
+        const domain = getCellDomain(cell);
 
-        // Verificar que no haya celdas vacías o nulas
-        if (value === "" || value === null) {
-          firstInvalidCell = { 
-            row: row.id, 
-            col: altCol, 
-            criterion: criterionName, 
-            message: `Cell ${altCol} in row ${row.id} must be evaluated.` 
+        // 🔹 Vacío o nulo
+        if (value === "" || value === null || value === undefined) {
+          firstInvalidCell = {
+            row: row.id,
+            col: altCol,
+            criterion: criterionName,
+            message: `Cell [${row.id}, ${altCol}] must be evaluated.`,
           };
           break;
         }
 
-        // Verificar que el valor esté redondeado a dos decimales
-        const roundedValue = Math.round(value * 100) / 100;
-        if (value !== roundedValue) {
-          firstInvalidCell = { 
-            row: row.id, 
-            col: altCol, 
-            criterion: criterionName, 
-            message: `Value for ${altCol} in row ${row.id} must have at most two decimals.` 
-          };
-          break;
+        if (domain?.type === "numeric") {
+          const min = domain.range?.min ?? 0;
+          const max = domain.range?.max ?? 1;
+          const num = parseFloat(value);
+
+          if (isNaN(num) || num < min || num > max) {
+            firstInvalidCell = {
+              row: row.id,
+              col: altCol,
+              criterion: criterionName,
+              message: `Invalid value for [${row.id}, ${altCol}]. Must be between ${min} and ${max}.`,
+            };
+            break;
+          }
+
+          const roundedValue = Math.round(num * 100) / 100;
+          if (num !== roundedValue) {
+            firstInvalidCell = {
+              row: row.id,
+              col: altCol,
+              criterion: criterionName,
+              message: `Value for [${row.id}, ${altCol}] must have at most two decimals.`,
+            };
+            break;
+          }
+        } else if (domain?.type === "linguistic") {
+          const validLabels = domain.labels?.map((l) => l.label) || [];
+          if (!validLabels.includes(value)) {
+            firstInvalidCell = {
+              row: row.id,
+              col: altCol,
+              criterion: criterionName,
+              message: `Invalid label for [${row.id}, ${altCol}]. Must be one of: ${validLabels.join(", ")}.`,
+            };
+            break;
+          }
         }
 
-        // Verificar que los valores inversos estén presentes
-        const inverseRow = evaluations[criterionName].find(r => r.id === altCol);
+        // 🔹 Validar inverso
+        const inverseRow = criterionMatrix.find((r) => r.id === altCol);
         const inverseCell = inverseRow?.[row.id];
+        const inverseValue = getCellValue(inverseCell);
 
-        if (inverseCell === "" || inverseCell === null || isNaN(inverseCell) || inverseCell < 0 || inverseCell > 1) {
-          firstInvalidCell = { 
-            row: row.id, 
-            col: altCol, 
-            criterion: criterionName, 
-            message: `Cell for ${altCol} and row ${row.id} has no inverse evaluation.` 
+        if (
+          inverseValue === "" ||
+          inverseValue === null ||
+          inverseValue === undefined ||
+          (domain?.type === "numeric" &&
+            (isNaN(inverseValue) || inverseValue < 0 || inverseValue > 1))
+        ) {
+          firstInvalidCell = {
+            row: row.id,
+            col: altCol,
+            criterion: criterionName,
+            message: `Cell for [${row.id}, ${altCol}] has no valid inverse evaluation.`,
           };
           break;
         }
@@ -63,7 +87,20 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
     if (firstInvalidCell) break;
   }
 
-  return firstInvalidCell ? { valid: false, error: firstInvalidCell } : { valid: true, message: "" };
+  return firstInvalidCell
+    ? { valid: false, error: firstInvalidCell }
+    : { valid: true, message: "" };
+};
+
+// Normalizador de celdas (para soportar { value, domain } o valores planos antiguos)
+const getCellValue = (cell) => {
+  if (cell && typeof cell === "object" && "value" in cell) return cell.value;
+  return cell;
+};
+
+const getCellDomain = (cell) => {
+  if (cell && typeof cell === "object" && "domain" in cell) return cell.domain;
+  return null;
 };
 
 export const validateFinalEvaluations = (evaluations) => {
@@ -73,37 +110,53 @@ export const validateFinalEvaluations = (evaluations) => {
     const criteriaValues = evaluations[altName];
 
     for (const critName in criteriaValues) {
-      const value = criteriaValues[critName];
+      const cell = criteriaValues[critName];
+      const value = getCellValue(cell);
+      const domain = getCellDomain(cell);
 
-      // Verificar que no esté vacío o nulo
+      // 🔹 Vacío o nulo
       if (value === "" || value === null || value === undefined) {
         firstInvalidCell = {
           alternative: altName,
           criterion: critName,
-          message: `Value for Alternative "${altName}" and Criterion "${critName}" must not be empty.`,
+          message: `Cell [${altName}, ${critName}] must be evaluated.`,
         };
         break;
       }
 
-      // Verificar que sea un número entre 0 y 1
-      if (isNaN(value) || value < 0 || value > 1) {
-        firstInvalidCell = {
-          alternative: altName,
-          criterion: critName,
-          message: `Value for Alternative "${altName}" and Criterion "${critName}" must be between 0 and 1.`,
-        };
-        break;
-      }
+      if (domain?.type === "numeric") {
+        const min = domain.range?.min ?? 0;
+        const max = domain.range?.max ?? 1;
 
-      // Verificar que tenga máximo dos decimales
-      const roundedValue = Math.round(value * 100) / 100;
-      if (value !== roundedValue) {
-        firstInvalidCell = {
-          alternative: altName,
-          criterion: critName,
-          message: `Value for Alternative "${altName}" and Criterion "${critName}" must have at most two decimals.`,
-        };
-        break;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < min || num > max) {
+          firstInvalidCell = {
+            alternative: altName,
+            criterion: critName,
+            message: `Invalid value for [${altName}, ${critName}]. Must be between ${min} and ${max}.`,
+          };
+          break;
+        }
+
+        const roundedValue = Math.round(num * 100) / 100;
+        if (num !== roundedValue) {
+          firstInvalidCell = {
+            alternative: altName,
+            criterion: critName,
+            message: `Value for [${altName}, ${critName}] must have at most two decimals.`,
+          };
+          break;
+        }
+      } else if (domain?.type === "linguistic") {
+        const validLabels = domain.labels?.map((l) => l.label) || [];
+        if (!validLabels.includes(value)) {
+          firstInvalidCell = {
+            alternative: altName,
+            criterion: critName,
+            message: `Invalid label for [${altName}, ${critName}]. Must be one of: ${validLabels.join(", ")}.`,
+          };
+          break;
+        }
       }
     }
 

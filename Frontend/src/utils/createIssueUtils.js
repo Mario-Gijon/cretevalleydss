@@ -91,6 +91,16 @@ export const generateDomainExpressions = ({ alternatives, criteria, addedExperts
   return domainExpressions;
 };
 
+// helper para construir triángulos
+export const buildFuzzyTriangles = (nLabels) => {
+  const step = 1 / (nLabels - 1);
+  return Array.from({ length: nLabels }, (_, i) => {
+    const m = i * step;
+    const l = Math.max(0, m - step);
+    const u = Math.min(1, m + step);
+    return { label: `Etiqueta ${i + 1}`, values: [l, m, u] };
+  });
+};
 
 export const fetchExpertsAndModels = async (setInitialExperts, setModels) => {
   const initExpertsData = await getAllUsers();
@@ -379,16 +389,24 @@ export const validateModelParams = (selectedModel, paramValues, criteria) => {
     if (isEmpty) {
       if (def !== undefined) return def;
 
-      // Si son pesos por criterio y no hay valor ni default, generar iguales
       if (type === "array" && restrictions?.length === "matchCriteria") {
         const len = Array.isArray(criteria) ? criteria.length : 0;
         if (len <= 0) return null;
         const eq = 1 / len;
         return Array(len).fill(eq);
       }
+
+      if (type === "fuzzyArray" && restrictions?.length === "matchCriteria") {
+        const len = Array.isArray(criteria) ? criteria.length : 0;
+        if (len <= 0) return null;
+        // ⚡️ aquí corregido: cada posición es un array distinto
+        return Array.from({ length: len }, () => [0, 0.5, 1]);
+      }
     }
+
     return v;
   };
+
 
   for (const param of selectedModel.parameters) {
     const { type, restrictions } = param;
@@ -401,18 +419,14 @@ export const validateModelParams = (selectedModel, paramValues, criteria) => {
       const num = Number(value);
       if (!Number.isFinite(num)) return false;
 
-      // allowed tiene prioridad
       if (Array.isArray(restrictions?.allowed)) {
         const allowedNums = restrictions.allowed.map(Number);
         if (!allowedNums.includes(num)) return false;
       }
 
-      if (restrictions?.min !== undefined && restrictions.min !== null) {
-        if (num < restrictions.min) return false;
-      }
-      if (restrictions?.max !== undefined && restrictions.max !== null) {
-        if (num > restrictions.max) return false;
-      }
+      if (restrictions?.min !== undefined && num < restrictions.min) return false;
+      if (restrictions?.max !== undefined && num > restrictions.max) return false;
+
       continue;
     }
 
@@ -430,24 +444,45 @@ export const validateModelParams = (selectedModel, paramValues, criteria) => {
       const nums = value.map((v) => Number(v));
       if (nums.some((n) => !Number.isFinite(n))) return false;
 
-      const hasMin = restrictions?.min !== undefined && restrictions?.min !== null;
-      const hasMax = restrictions?.max !== undefined && restrictions?.max !== null;
+      if (restrictions?.min !== undefined && nums.some((n) => n < restrictions.min)) return false;
+      if (restrictions?.max !== undefined && nums.some((n) => n > restrictions.max)) return false;
 
-      if (hasMin && nums.some((n) => n < restrictions.min)) return false;
-      if (hasMax && nums.some((n) => n > restrictions.max)) return false;
-
-      // Intervalo [a,b]: izquierda < derecha
-      const isMatchCriteria = restrictions?.length === "matchCriteria";
-      const hasSumRule = typeof restrictions?.sum === "number";
-      if (!isMatchCriteria && !hasSumRule && expectedLength === 2) {
+      if (expectedLength === 2 && restrictions?.length !== "matchCriteria" && !restrictions?.sum) {
         if (nums[0] > nums[1]) return false;
       }
 
-      // Suma exacta (p. ej. TOPSIS = 1). Sin tolerancia.
-      if (hasSumRule) {
+      if (typeof restrictions?.sum === "number") {
         const sum = nums.reduce((acc, n) => acc + n, 0);
         if (sum !== restrictions.sum) return false;
       }
+
+      continue;
+    }
+
+    // --- FUZZY ARRAY ---
+    if (type === "fuzzyArray") {
+      if (!Array.isArray(value)) return false;
+
+      const expectedLength =
+        restrictions?.length === "matchCriteria"
+          ? criteria.length
+          : restrictions?.length || value.length;
+
+      if (value.length !== expectedLength) return false;
+
+      for (const triple of value) {
+        if (!Array.isArray(triple) || triple.length !== 3) return false;
+
+        const [l, m, u] = triple.map(Number);
+        if (![l, m, u].every((n) => Number.isFinite(n))) return false;
+
+        // regla fuzzy: l <= m <= u
+        if (!(l <= m && m <= u)) return false;
+
+        if (restrictions?.min !== undefined && [l, m, u].some((n) => n < restrictions.min)) return false;
+        if (restrictions?.max !== undefined && [l, m, u].some((n) => n > restrictions.max)) return false;
+      }
+
       continue;
     }
 

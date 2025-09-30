@@ -95,11 +95,13 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
     evaluations =
       issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {};
     collectiveEvaluations = showCollective
-      ? issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations || null
-      : null;
+      ? issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations || {}
+      : {};
     /* alternatives = Object.keys(evaluations); // ["A1", "A1.1", "A2"]
     criteria = alternatives.length ? Object.keys(evaluations[alternatives[0]]) : []; // ["C1","C2",...] */
   }
+
+  console.log(issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations)
 
 
 

@@ -5,8 +5,21 @@ import AddIcon from "@mui/icons-material/Add";
 import { removeCriteriaItemRecursively, updateCriterion, validateCriterion } from "../../../../src/utils/createIssueUtils";
 import { CriteriaItem } from "../../../../src/components/CriteriaItem/CriteriaItem";
 import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
+import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
 
-export const CriteriaStep = ({ criteria, setCriteria }) => {
+const countLeafCriteria = (items) => {
+  return items.reduce((acc, item) => {
+    if (!item.children || item.children.length === 0) {
+      return acc + 1; // hoja
+    }
+    return acc + countLeafCriteria(item.children);
+  }, 0);
+};
+
+export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
+
+  const { showSnackbarAlert } = useSnackbarAlertContext()
+
   const [inputValue, setInputValue] = useState(""); // Para el criterio principal
   const [inputError, setInputError] = useState("");
   const [childInputValue, setChildInputValue] = useState(""); // Para el criterio hijo
@@ -41,22 +54,71 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
   };
 
   const handleAddCriteria = () => {
+    if (!inputValue.trim()) return;
+
+    // 🔒 Si no es multicriterio, validar hojas
+    if (!isMultiCriteria) {
+      const leaves = countLeafCriteria(criteria);
+      if (leaves >= 1) {
+        showSnackbarAlert("This model only allows one leaf criterion", "warning");
+        return;
+      }
+    }
+
     const error = validateCriterion(inputValue, criteria);
     if (error) {
       setInputError(error);
       return;
     }
 
-    setCriteria((prev) => [...prev, { name: inputValue.trim(), type: selectedType, children: [] }]);
+    setCriteria((prev) => [
+      ...prev,
+      { name: inputValue.trim(), type: selectedType, children: [] }
+    ]);
+
     setInputValue("");
     setInputError(false);
   };
+
 
   const handleRemoveCriteria = (item) => {
     setCriteria((prev) => removeCriteriaItemRecursively(prev, item));
   };
 
   const handleAddChild = () => {
+    if (!childInputValue.trim()) return;
+
+    // 🛠️ Validación especial para no-multicriterio
+    if (!isMultiCriteria) {
+      // simular qué pasa si añadimos el hijo
+      const tempCriteria = JSON.parse(JSON.stringify(criteria));
+
+      const addChildSim = (items) => {
+        return items.map((item) => {
+          if (item.name === selectedParent.name) {
+            return {
+              ...item,
+              children: [
+                ...item.children,
+                { name: childInputValue.trim(), type: selectedParent.type, children: [] },
+              ],
+            };
+          } else if (item.children?.length) {
+            return { ...item, children: addChildSim(item.children) };
+          }
+          return item;
+        });
+      };
+
+      const simulated = addChildSim(tempCriteria);
+      const leavesAfter = countLeafCriteria(simulated);
+
+      if (leavesAfter > 1) {
+        showSnackbarAlert("This model only allows one leaf criterion", "warning");
+        return;
+      }
+    }
+
     const error = validateCriterion(childInputValue, criteria);
     if (error) {
       setChildInputError(error);
@@ -68,7 +130,10 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
         if (item.name === selectedParent.name) {
           return {
             ...item,
-            children: [...item.children, { name: childInputValue.trim(), type: selectedParent.type, children: [] }],
+            children: [
+              ...item.children,
+              { name: childInputValue.trim(), type: selectedParent.type, children: [] },
+            ],
           };
         } else if (item.children?.length) {
           return { ...item, children: addChild(item.children) };
@@ -82,6 +147,7 @@ export const CriteriaStep = ({ criteria, setCriteria }) => {
     setChildInputError(false);
     setOpenDialog(false);
   };
+
 
   const handleToggle = (itemName) => {
     setOpenItems((prev) => ({

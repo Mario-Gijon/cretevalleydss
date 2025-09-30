@@ -2,7 +2,7 @@ import { styled, Dialog, Paper } from "@mui/material";
 
 const GlassDialogPaper = styled(Paper)(() => ({
   borderRadius: "12px",
-  background: "rgba(7, 10, 14, 0.9)",
+  background: "rgba(16, 24, 34, 0.9)",
   color: "#FFFFFF",
   boxShadow: "0 8px 24px rgba(40, 86, 122, 0.12)",
   backdropFilter: "blur(25px)",

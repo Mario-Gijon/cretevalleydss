@@ -213,7 +213,7 @@ export const ResponsiveNavbar = (props) => {
           elevation={3}
           enableColorOnDark
           sx={{
-            background: "rgba(12, 23, 34, 0.85)",      // transparente tipo glass
+            background: "rgba(30, 51, 72, 0.85)",      // transparente tipo glass
             backdropFilter: "blur(5px)",
             WebkitBackdropFilter: "blur(1px)",
             boxShadow: "0 1px 30px 0 rgba(34, 79, 98, 0.44)",

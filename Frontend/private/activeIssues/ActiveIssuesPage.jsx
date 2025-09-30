@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent } from "@mui/material";
+import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent, LinearProgress } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
@@ -251,7 +251,7 @@ const ActiveIssuesPage = () => {
     );
   }
 
-  console.log(selectedIssue?.isPairwise)
+  console.log(selectedIssue)
 
   return (
     <>
@@ -262,90 +262,118 @@ const ActiveIssuesPage = () => {
         direction="column"
         spacing={2}
         sx={{
-          justifyContent: "center",
+          alignItems: "center",
         }}
       >
         {/* Masonry con las cards */}
-        <Masonry columns={{ xs: 1, sm: 2, md: 3, lg: 4 }} spacing={2} sequential>
+        <Masonry columns={{ xs: 1, md: 2, lg: 3, xl: 3 }} spacing={2} sequential sx={{ maxWidth: 2200, alignItems: "center" }}>
           {activeIssues?.map((issue, index) => (
             <GlassCard key={index} elevation={0}>
               <CardActionArea onClick={() => handleOpenIssueDialog(issue)}>
                 <CardContent>
-                  {/* Título del issue */}
-                  <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                    <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, color: "text.primary" }}>
-                      {issue.name}
-                    </Typography>
-                    {issue.isAdmin && <AccountCircleIcon />}
+                  <Stack spacing={2}>
+                    <Stack direction={"row"} alignItems={"stretch"} justifyContent={"space-between"}>
+                      {/* Nombre */}
+                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                        {issue.name}
+                      </Typography>
+                      {issue.isAdmin && <AccountCircleIcon />}
+                    </Stack>
+                    <Stack alignItems={"space-between"}>
+                      <Stack direction="row" spacing={2} justifyContent={"space-between"} >
+                        {/* Columna izquierda */}
+                        <Stack direction={"column"} flexWrap={"wrap"}>
+                          {/* Descripción */}
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              mb: 1,
+                              display: "-webkit-box",
+                              WebkitBoxOrient: "vertical",
+                              WebkitLineClamp: 2,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "normal",
+                            }}
+                          >
+                            {issue.description}
+                          </Typography>
+                          {/* Info extra */}
+                          <Stack spacing={0.5} sx={{ color: "text.secondary" }}>
+                            <Typography variant="body2">
+                              <strong>Model:</strong> {issue.model}
+                            </Typography>
+                            {
+                              issue.isConsensus &&
+                              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                                <strong>Type:</strong> Consensus
+                              </Typography>
+                            }
+                            <Typography variant="body2">
+                              <strong>Alternatives:</strong> {issue.alternatives.join(", ")}
+                            </Typography>
+                            {/* <Typography variant="body2" color="text.secondary">
+                            <strong>Closure date: </strong>
+                            {issue.closureDate
+                              ? dayjs(issue.closureDate).diff(dayjs(), "days") > 0
+                                ? `${dayjs(issue.closureDate).diff(dayjs(), "days")} days left`
+                                : issue.closureDate
+                              : "No deadline"}
+                          </Typography> */}
+                          {!issue.closureDate &&<Typography variant="body2" color="text.secondary" fontWeight={"bold"}>No deadline</Typography>}
+                            
+                            {/* Estado */}
+                            <Box sx={{ pt: 1 }}>
+                              <StyledChip
+                                label={
+                                  issue.isExpert
+                                    ? !issue.evaluated
+                                      ? "Pending Evaluation"
+                                      : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
+                                        ? "Waiting experts"
+                                        : "All experts evaluated"
+                                    : issue.evaluated
+                                      ? "Evaluated"
+                                      : "Pending Evaluation"
+                                }
+                                color={
+                                  issue.isExpert
+                                    ? !issue.evaluated
+                                      ? "error"
+                                      : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
+                                        ? "info"
+                                        : "success"
+                                    : issue.evaluated
+                                      ? "success"
+                                      : "error"
+                                }
+                                size="small"
+                                variant="outlined"
+                              />
+                            </Box>
+                          </Stack>
+                        </Stack>
+                        {/* Columna derecha: gráfico */}
+                        <Stack>
+                          <ExpertParticipationChart
+                            total={issue.totalExperts}
+                            pending={issue.pendingExperts.length}
+                            accepted={issue.participatedExperts.length}
+                            notEvaluated={issue.acceptedButNotEvaluatedExperts.length}
+                          />
+                        </Stack>
+                      </Stack>
+                      {
+                        issue.closureDate &&
+                        <IssueTimeline creationDate={issue.creationDate} closureDate={issue.closureDate} />
+                      }
+                    </Stack>
+
                   </Stack>
 
-                  {/* Información resumida */}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mb: 1.6,
-                      display: "-webkit-box",
-                      WebkitBoxOrient: "vertical",
-                      WebkitLineClamp: 2,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "normal",
-                      color: "text.secondary",
-                    }}
-                  >
-                    {issue.description}
-                  </Typography>
-
-                  {/* Estado de evaluación */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                    <StyledChip
-                      label={
-                        issue.isAdmin
-                          ? issue.isExpert
-                            ? !issue.evaluated
-                              ? "Pending Evaluation" // admin experto y no ha evaluado
-                              : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                                ? "Waiting experts" // admin experto evaluó, pero otros expertos no
-                                : "All experts evaluated" // todos evaluaron
-                            : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                              ? "Waiting experts" // admin no experto
-                              : "All experts evaluated"
-                          : issue.evaluated
-                            ? "Evaluated"  // usuario normal que ya evaluó
-                            : "Pending Evaluation" // usuario normal pendiente
-                      }
-                      color={
-                        issue.isAdmin
-                          ? issue.isExpert
-                            ? !issue.evaluated
-                              ? "error"     // admin experto sin evaluar
-                              : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                                ? "info"    // admin experto evaluó, resto pendientes
-                                : "success" // todos evaluaron
-                            : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                              ? "info"    // admin no experto
-                              : "success"
-                          : issue.evaluated
-                            ? "success"   // usuario normal evaluó
-                            : "error"     // usuario normal pendiente
-                      }
-                      size="small"
-                      variant="outlined"
-                    />
-
-                  </Box>
-
-                  {/* Fechas */}
-                  <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                    Creation: {issue.creationDate}
-                  </Typography>
-                  {
-                    issue.closureDate &&
-                    <Typography variant="caption" display="block" sx={{ color: "text.secondary" }}>
-                      Closure: {issue.closureDate}
-                    </Typography>
-                  }
                 </CardContent>
+
+
               </CardActionArea>
             </GlassCard>
           ))}
@@ -488,3 +516,126 @@ const ActiveIssuesPage = () => {
 
 export default ActiveIssuesPage;
 
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip);
+
+const ExpertParticipationChart = ({ total, pending, accepted, notEvaluated }) => {
+  const evaluated = accepted;
+  const percent = total > 0 ? Math.round((evaluated / total) * 100) : 0;
+
+  const data = {
+    labels: ["Evaluated", "Not Evaluated", "Pending"],
+    datasets: [
+      {
+        data: [evaluated, notEvaluated, pending],
+        backgroundColor: [
+          "rgba(76, 175, 80, 0.8)",   // success (verde)
+          "rgba(255, 193, 7, 0.8)",   // warning (amarillo)
+          "rgba(244, 67, 54, 0.8)",   // error (rojo)
+        ],
+        borderWidth: 0, // sin borde grueso
+        cutout: "80%",  // donut fino
+        spacing: 1, // espacio entre segmentos
+      },
+    ],
+  };
+
+  const options = {
+    plugins: { tooltip: { enabled: false }, legend: { display: false } },
+    maintainAspectRatio: false,
+  };
+
+  return (
+    <Box sx={{ position: "relative", width: 120, height: 120 }}>
+      <Doughnut data={data} options={options} />
+      {/* Texto central */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="h6" fontWeight={"bold"}>
+          {percent} %
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block">
+          {pending + notEvaluated + evaluated} experts
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
+dayjs.extend(customParseFormat);
+
+const IssueTimeline = ({ creationDate, closureDate }) => {
+  const creation = dayjs(creationDate, "DD-MM-YYYY");
+  const today = dayjs();
+  const closure = closureDate ? dayjs(closureDate, "DD-MM-YYYY") : null;
+
+  let progress = 0;
+  let totalDays = 0;
+  let elapsedDays = 0;
+
+  if (closure) {
+    totalDays = closure.diff(creation, "days");
+    elapsedDays = today.diff(creation, "days");
+    progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+  }
+
+  return (
+    <Box sx={{ width: "100%", mt: 1 }}>
+      {/* Fechas */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+        <Typography variant="caption" color="text.secondary">
+          {creation.format("DD MMM")}
+        </Typography>
+        {closure && (
+          <Typography variant="caption" color="text.secondary">
+            {closure.format("DD MMM")}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Barra */}
+      {closure ? (
+        <LinearProgress
+          variant="determinate"
+          value={progress}
+          sx={{
+            height: 8,
+            borderRadius: 5,
+            backgroundColor: "rgba(200,200,200,0.2)",
+            "& .MuiLinearProgress-bar": {
+              backgroundColor:
+                progress >= 100 ? "#f44336" : "#2196f3",
+            },
+          }}
+        />
+      ) : (
+        <Typography variant="caption" color="text.secondary">
+          No deadline
+        </Typography>
+      )}
+
+      {/* Texto */}
+      {closure && (
+        <Box sx={{ textAlign: "center", mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            {progress >= 100
+              ? "Closed"
+              : `${Math.max(0, closure.diff(today, "days"))} days left`}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+};

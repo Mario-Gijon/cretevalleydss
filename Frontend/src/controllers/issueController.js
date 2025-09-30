@@ -52,6 +52,34 @@ export const getModelsInfo = async () => {
 }
 
 // Función para obtener datos protegidos
+export const getExpressionsDomain = async () => {
+  const token = await getToken();
+  if (!token) {
+    console.error("No token available");
+    return false;
+  }
+
+  // Opciones de la solicitud para datos protegidos
+  const options = {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+  try {
+    // Realiza la solicitud para obtener datos protegidos
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getExpressionsDomain`, options);
+    const jsonData = await response.json();
+    return jsonData.success ? jsonData.data : [];
+  } catch (err) {
+    console.error("Error fetching protected data:", err);
+    return false; // En caso de error, devuelve false
+  }
+}
+
+// Función para obtener datos protegidos
 export const getAllUsers = async () => {
   const token = await getToken();
   if (!token) {
@@ -79,6 +107,34 @@ export const getAllUsers = async () => {
     return false; // En caso de error, devuelve false
   }
 }
+
+export const createExpressionDomain = async (domain) => {
+  const token = await getToken();
+  if (!token) {
+    console.error("No token available");
+    return false;
+  }
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(domain),
+  };
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BACK}/issues/createExpressionDomain`,
+      options
+    );
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching protected data:", err);
+    return false;
+  }
+};
 
 export const createIssue = async (issueInfo) => {
   const token = await getToken();
@@ -187,6 +243,56 @@ export const removeIssue = async (issueName) => {
     return false; // En caso de error, devuelve false
   }
 }
+
+export const removeExpressionDomain = async (id) => {
+  const token = await getToken();
+  if (!token) {
+    console.error("No token available");
+    return false;
+  }
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id }),
+  };
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/removeExpressionDomain`,options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error deleting domain:", err);
+    return false;
+  }
+};
+
+export const updateExpressionDomain = async (id, updatedDomain) => {
+  const token = await getToken();
+  if (!token) {
+    console.error("No token available");
+    return false;
+  }
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id, updatedDomain }),
+  };
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/updateExpressionDomain`,options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error updating domain:", err);
+    return false;
+  }
+};
 
 export const changeInvitationStatus = async (issueName, action) => {
   const token = await getToken();

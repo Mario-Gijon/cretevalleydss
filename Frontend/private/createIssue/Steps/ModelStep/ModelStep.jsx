@@ -7,8 +7,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { filterModels } from "../../../../src/utils/createIssueUtils";
 import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
+import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
 
-export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsensus, setWithConsensus }) => {
+export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsensus, setWithConsensus, criteria }) => {
+
+  const { showSnackbarAlert } = useSnackbarAlertContext()
+
   const [searchQuery, setSearchQuery] = useState(""); // Estado para el buscador
 
   // Filtrar modelos según el tipo de consenso y la búsqueda
@@ -16,8 +20,26 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
 
   const handleConsensus = () => {
     setWithConsensus(!withConsensus)
-    setSelectedModel(null)
   }
+
+  // 🔎 contar criterios hoja (recursivo)
+  const countLeafCriteria = (items) => {
+    return items.reduce((acc, item) => {
+      if (!item.children || item.children.length === 0) return acc + 1;
+      return acc + countLeafCriteria(item.children);
+    }, 0);
+  };
+
+  const handleSelectModel = (model) => {
+    if (!model.isMultiCriteria) {
+      const leafCount = countLeafCriteria(criteria);
+      if (leafCount > 1) {
+        showSnackbarAlert("This model only allows one criterion. Please reduce your criteria first.","error");
+        return; // 🚫 bloqueo preventivo
+      }
+    }
+    setSelectedModel(model);
+  };
 
   return (
     <GlassPaper
@@ -30,7 +52,7 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
         flexGrow: 1,
         display: "flex",
         flexDirection: "column",
-        minHeight: 0, // Permite que el contenido interno se expanda sin romper el layout
+        minHeight: 0,
         maxWidth: "95vw",
         width: { xs: "95vw", sm: "auto" },
         boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
@@ -39,7 +61,6 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
       <Stack spacing={3} sx={{ width: "100%", maxWidth: 1000 }}>
         {/* Buscador y filtro de consenso */}
         <Stack direction="row" spacing={2} alignItems="flex-end" justifyContent={"flex-start"}>
-          {/* Switch para con/sin consenso */}
           <ToggleButton
             value="check"
             selected={withConsensus}
@@ -50,9 +71,7 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
             <FilterListIcon sx={{ mr: 1 }} />
             Consensus
           </ToggleButton>
-          {/* Buscador */}
           <TextField
-            defaultValue="Small"
             size="small"
             color="info"
             slotProps={{
@@ -64,15 +83,11 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
                 ),
                 endAdornment: searchQuery && (
                   <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setSearchQuery("")}
-                      size="small"
-                      edge="end"
-                    >
+                    <IconButton onClick={() => setSearchQuery("")} size="small" edge="end">
                       <ClearIcon fontSize="small" />
                     </IconButton>
                   </InputAdornment>
-                )
+                ),
               },
             }}
             placeholder="Search model"
@@ -83,21 +98,17 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
             autoComplete="off"
           />
         </Stack>
-        {/* Lista de modelos disponibles */}
-        <Grid container spacing={2} sx={{
-          flexGrow: 1,
-          maxHeight: "90vh", // Altura máxima del contenedor
-          minHeight: 0,
-          overflowY: "auto",  // Habilitar scroll vertical
-        }}>
+
+        {/* Lista de modelos */}
+        <Grid container spacing={2} sx={{ flexGrow: 1, maxHeight: "90vh", overflowY: "auto" }}>
           {filteredModels.map((model, index) => (
             <Grid key={index} item size={{ xs: 12, sm: 6, lg: 4 }}>
               <GlassPaper
-                onClick={() => setSelectedModel(model)}
+                onClick={() => handleSelectModel(model)} // 👈 validación aquí
                 sx={{
                   cursor: "pointer",
                   border:
-                    selectedModel === model
+                    selectedModel?.name === model?.name
                       ? "1px solid #45C5C5"
                       : "1px solid grey",
                   borderRadius: 2,
@@ -119,6 +130,5 @@ export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsens
         </Grid>
       </Stack>
     </GlassPaper>
-
   );
 };
