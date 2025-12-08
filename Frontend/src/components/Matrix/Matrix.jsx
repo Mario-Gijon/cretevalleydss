@@ -3,7 +3,9 @@ import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
 export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, collectiveEvaluations, permitEdit = true }) => {
 
-  console.log(evaluations)
+  console.log("Evaluations", evaluations)
+  console.log("Collectiva", collectiveEvaluations)
+
 
   const theme = useTheme();
 
@@ -37,7 +39,8 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         const domain = getDomain(cell);
         const value = getValue(cell);
 
-        if (domain?.type === "numeric") {
+        // Mostrar colectiva siempre que evaluations tenga un valor numérico
+        if (typeof value === "number") {
           const userValue = value;
           const collectiveValue = parseFloat(
             collectiveEvaluations?.[rowId]?.[critName]?.value
@@ -52,6 +55,7 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
                   variant="outlined"
                   size="small"
                   sx={{ ml: 1, fontSize: "0.75rem", height: 20, pointerEvents: "none" }}
+                  color="info"
                 />
               )}
             </Stack>
@@ -179,7 +183,7 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         "& .grid-cell": {
           borderRight: `1px solid ${theme.palette.divider}`,
           borderBottom: `1px solid ${theme.palette.divider}`,
-          p: 0,
+          px: 2,
           textAlign: "center",
         },
         maxWidth: "100%",

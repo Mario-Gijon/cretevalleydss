@@ -5,16 +5,16 @@ import { useEffect, useState } from "react";
 import { extractLeafCriteria, validateEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
 import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { Matrix } from "../Matrix/Matrix";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
+import { useIssuesDataContext } from "../../context/issues/issues.context";
 
-
-
-export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
+export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
 
   const { showSnackbarAlert } = useSnackbarAlertContext()
+
+  const { fetchActiveIssues, fetchFinishedIssues } = useIssuesDataContext();
 
   const [evaluations, setEvaluations] = useState({}); // Estado global para las evaluations de cada criterio
   const [openCloseDialog, setOpenCloseDialog] = useState(false);
@@ -22,7 +22,6 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [collectiveEvaluations, setCollectiveEvaluations] = useState(null)
   const [loading, setLoading] = useState(false);
-  const { value: { email } } = useAuthContext();
 
   const getDomain = (cell) =>
     cell && typeof cell === "object" && cell.domain ? cell.domain : null;
@@ -163,10 +162,10 @@ export const EvaluationMatrixDialog = ({ isRatingAlternatives, setIsRatingAltern
     const response = await sendEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
 
     if (response.success) {
-      selectedIssue.evaluated = true
-      selectedIssue.participatedExperts.push(email);
-      selectedIssue.acceptedButNotEvaluatedExperts = selectedIssue.acceptedButNotEvaluatedExperts.filter(filtEmail => filtEmail !== email);
       showSnackbarAlert(response.msg, "success");
+      await fetchActiveIssues();
+      await fetchFinishedIssues();
+      setOpenIssueDialog(false);
       setIsRatingAlternatives(false);
     } else {
       showSnackbarAlert(response.msg, "error");

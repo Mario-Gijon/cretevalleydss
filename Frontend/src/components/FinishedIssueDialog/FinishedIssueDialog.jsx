@@ -1,5 +1,5 @@
 
-import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, Typography, Tabs, Tab, MobileStepper, Button, List, ListItemButton, Collapse, ListItem, Backdrop, ImageList, ImageListItem, FormControl, InputLabel, Select, MenuItem, ToggleButton, useMediaQuery } from "@mui/material";
+import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Divider, IconButton, Typography, Tabs, Tab, MobileStepper, Button, List, ListItemButton, Collapse, ListItem, Backdrop, ImageList, ImageListItem, FormControl, InputLabel, Select, MenuItem, ToggleButton, useMediaQuery, Chip } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from "react";
@@ -101,8 +101,10 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
     criteria = alternatives.length ? Object.keys(evaluations[alternatives[0]]) : []; // ["C1","C2",...] */
   }
 
-  console.log(issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations)
 
+
+  const ranking = issue?.alternativesRankings?.[currentPhaseIndex]?.ranking ?? [];
+  const lastIndex = ranking.length - 1;
 
 
 
@@ -136,6 +138,12 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
     setSelectedExpert(newExpert);
     setSelectedCriterion(newCriterion);
   }, [issue, currentPhaseIndex]);
+
+  const formatScore = (num) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(num);
 
   return (
     <Dialog open={openFinishedIssueDialog} onClose={handleCloseFinishedIssueDialog} fullScreen PaperProps={{ elevation: 0, sx: { bgcolor: "#00070dd5" } }} >
@@ -504,15 +512,39 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                           <Typography variant="h5">Results ranking</Typography>
                           <Stack>
                             <List sx={{ width: '100%' }}>
-                              {issue?.alternativesRankings[currentPhaseIndex]?.ranking?.map((alternative, index) => (
-                                <ListItem key={alternative}>
-                                  <Stack direction="row" spacing={1}>
-                                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                                      {index + 1}. {/* Aquí mostramos la posición (1, 2, 3...) */}
-                                    </Typography>
-                                    <Typography variant="h6" sx={{ color: "text.primary" }}>
-                                      {alternative} {/* Aquí mostramos el nombre de la alternativa */}
-                                    </Typography>
+                              {ranking.map((item, index) => (
+                                <ListItem key={item.name}>
+                                  <Stack direction="row" spacing={2} alignItems="center" justifyContent={"space-between"} width={"100%"}>
+
+                                    <Stack direction="row" spacing={1}>
+                                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                        {index + 1}.
+                                      </Typography>
+
+                                      <Typography variant="h6" sx={{ color: "text.primary" }}>
+                                        {item.name}
+                                      </Typography>
+                                    </Stack>
+
+                                    <Stack direction="row" spacing={1}>
+                                      <Divider flexItem orientation="vertical" />
+                                      <Stack minWidth={50}>
+
+                                        <Chip
+                                          label={formatScore(item.score)}
+                                          variant="outlined"
+                                          color={
+                                            index === 0
+                                              ? "success"       // 1º → verde
+                                              : index === lastIndex
+                                                ? "error"        // último → rojo
+                                                : "secondary"    // intermedios → gris
+                                          }
+                                        />
+
+                                      </Stack>
+                                    </Stack>
+
                                   </Stack>
                                 </ListItem>
                               ))}
@@ -536,9 +568,9 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                     borderRadius: "10px",
                   }}>
                     <Stack spacing={2}>
-                      <Typography variant="h5">Consensus</Typography>
+                      <Typography variant="h5">Results analysis</Typography>
                       <Stack>
-                        {!issue.consensusSection && <Typography variant="body1" sx={{ color: "text.secondary" }}>Section is not available yet</Typography>}
+                        {!issue.consensusSection && <Typography variant="body1" sx={{ color: "text.info" }}>Section is not available yet</Typography>}
                       </Stack>
                     </Stack>
                   </GlassPaper>

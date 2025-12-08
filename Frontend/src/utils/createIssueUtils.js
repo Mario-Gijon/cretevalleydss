@@ -153,7 +153,7 @@ export const removeAccents = (str) => {
 };
 
 export const getRemainingTime = (closureDate) => {
-  if (!closureDate) return "Selecciona una fecha";
+  if (!closureDate) return "Without closure date";
 
   const now = dayjs();
   const years = closureDate.diff(now, "year");
@@ -356,23 +356,18 @@ export const updateCriterionRecursively = (criteria, expertIndex, altIndex, valu
 };
 
 export const getLeafCriteria = (criteria) => {
-  const leafCriteria = [];
-
-  const traverse = (criterion, path) => {
-    if (criterion.children && criterion.children.length > 0) {
-      criterion.children.forEach((child, childIndex) => {
-        traverse(child, `${path}-${childIndex}`);
-      });
-    } else {
-      leafCriteria.push({ ...criterion, path });
-    }
+  const leaves = [];
+  const traverse = (nodes) => {
+    nodes.forEach((node) => {
+      if (!node.children || node.children.length === 0) {
+        leaves.push(node);
+      } else {
+        traverse(node.children);
+      }
+    });
   };
-
-  criteria.forEach((criterion, critIndex) => {
-    traverse(criterion, critIndex.toString());
-  });
-
-  return leafCriteria;
+  traverse(criteria || []);
+  return leaves;
 };
 
 export const validateModelParams = (selectedModel, paramValues, criteria) => {
@@ -491,4 +486,231 @@ export const validateModelParams = (selectedModel, paramValues, criteria) => {
   }
 
   return true;
+};
+
+export const validateDomainAssigments = (domainAssignments) => {
+  // Si no existe la estructura base
+  if (!domainAssignments?.experts) return false;
+
+  // Recorremos cada experto
+  for (const [, expertData] of Object.entries(domainAssignments.experts)) {
+    // Cada alternativa del experto
+    for (const [, altData] of Object.entries(expertData.alternatives || {})) {
+      // Cada criterio de la alternativa
+      for (const [, domainId] of Object.entries(altData.criteria || {})) {
+        // Si falta el dominio o es "undefined", no es válido
+        if (!domainId || domainId === "undefined") {
+          return false;
+        }
+      }
+    }
+  }
+
+  // Si llegamos aquí, todo tiene dominio asignado
+  return true;
+};
+
+
+// Función para establecer los valores por defecto
+export const setDefaults = (allData) => {
+  const newValues = {};
+
+  allData.selectedModel.parameters.forEach((param) => {
+    const { name, type, restrictions, default: defaultValue } = param;
+
+    if (type === "number") {
+      newValues[name] = defaultValue ?? "";
+    }
+
+    if (type === "array") {
+      const length =
+        restrictions?.length === "matchCriteria"
+          ? allData.criteria.length
+          : restrictions?.length || 2;
+
+      let values;
+
+      if (restrictions?.length === "matchCriteria") {
+        const equalWeight = (1 / length);
+        values = Array(length).fill(equalWeight);
+      } else if (restrictions?.min !== null && restrictions?.max !== null) {
+        values = defaultValue ?? [restrictions.min, restrictions.max];
+      } else {
+        values = defaultValue ?? Array(length).fill("");
+      }
+
+      newValues[name] = values;
+    }
+    if (type === "fuzzyArray") {
+      const length =
+        restrictions?.length === "matchCriteria"
+          ? allData.criteria.length
+          : restrictions?.length || 1;
+
+      const delta = 0.05; // tolerancia
+
+      let values;
+
+      if (restrictions?.length === "matchCriteria") {
+        const equalWeight = 1 / length;
+        values = Array(length).fill(null).map(() => [
+          Math.max(0, +(equalWeight - delta).toFixed(2)),
+          +equalWeight.toFixed(2),
+          Math.min(1, +(equalWeight + delta).toFixed(2))
+        ]);
+      } else {
+        values = defaultValue ?? Array(length).fill([0, 0, 0]);
+      }
+
+      newValues[name] = values;
+    }
+
+  });
+
+  return newValues;
+};
+
+// utils/updateParamValues.js
+export const updateParamValues = (prev, selectedModel, criteria) => {
+  const newValues = { ...prev };
+
+  selectedModel?.parameters.forEach((param) => {
+    const { name, type, restrictions } = param;
+
+    if (type === "array" && restrictions?.length === "matchCriteria") {
+      const length = criteria.length;
+      const equalWeight = 1 / length;
+
+      if (!Array.isArray(newValues[name]) || newValues[name].length !== length) {
+        newValues[name] = Array(length).fill(equalWeight);
+      }
+    }
+
+    if (type === "fuzzyArray" && restrictions?.length === "matchCriteria") {
+      const length = criteria.length;
+      const equalWeight = 1 / length;
+      const delta = 0.05;
+
+      if (
+        !Array.isArray(newValues[name]) ||
+        newValues[name].length !== length ||
+        newValues[name].some((t) => !Array.isArray(t) || t.length !== 3)
+      ) {
+        newValues[name] = Array(length)
+          .fill(null)
+          .map(() => [
+            Math.max(0, +(equalWeight - delta).toFixed(2)),
+            +equalWeight.toFixed(2),
+            Math.min(1, +(equalWeight + delta).toFixed(2)),
+          ]);
+      }
+    }
+  });
+
+  return newValues;
+};
+
+export const groupDomainData = (domainAssignments) => {
+  if (!domainAssignments?.experts) return {};
+
+  const data = {};
+
+  Object.entries(domainAssignments.experts).forEach(([expert, expertData]) => {
+    data[expert] = {};
+
+    Object.entries(expertData.alternatives).forEach(([alt, altData]) => {
+      data[expert][alt] = Object.entries(altData.criteria).map(([criterion, dataType]) => ({
+        criterion,
+        dataType,
+      }));
+    });
+  });
+
+  return data;
+};
+
+export const buildInitialAssignments = (
+  experts,
+  alternatives,
+  criteria,
+  currentAssignments = { experts: {} },
+  selectedModel,
+  globalDomains,
+  expressionDomains
+) => {
+  // 🧠 Detectar soporte del modelo
+  const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
+  const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
+
+  // 🔍 Calcular dominio por defecto y válidos
+  const numericDomains = supportsNumeric
+    ? globalDomains.filter((d) => d.type === "numeric")
+    : [];
+  const linguisticDomains = supportsLinguistic
+    ? [...globalDomains, ...expressionDomains].filter((d) => d.type === "linguistic")
+    : [];
+
+  const validDomainIds = [
+    ...numericDomains.map((d) => d._id),
+    ...linguisticDomains.map((d) => d._id),
+  ];
+
+  const defaultDomainId =
+    numericDomains.find((d) => d.numericRange?.min === 0 && d.numericRange?.max === 1)?._id ||
+    linguisticDomains[0]?._id ||
+    "undefined";
+
+  // 🧩 Crear copia actualizable
+  const updated = structuredClone(currentAssignments || { experts: {} });
+  if (!updated.experts) updated.experts = {};
+
+  // 🧹 1️⃣ Eliminar expertos que ya no están
+  Object.keys(updated.experts).forEach((exp) => {
+    if (!experts.includes(exp)) delete updated.experts[exp];
+  });
+
+  // 🔧 2️⃣ Añadir nuevos expertos
+  experts.forEach((exp) => {
+    if (!updated.experts[exp]) updated.experts[exp] = { alternatives: {} };
+  });
+
+  // 🔁 3️⃣ Actualizar alternativas y criterios
+  experts.forEach((exp) => {
+    const expertData = updated.experts[exp];
+
+    // 🧹 eliminar alternativas que ya no existen
+    Object.keys(expertData.alternatives || {}).forEach((alt) => {
+      if (!alternatives.includes(alt)) delete expertData.alternatives[alt];
+    });
+
+    // 🔧 añadir alternativas y criterios nuevos
+    alternatives.forEach((alt) => {
+      if (!expertData.alternatives[alt]) expertData.alternatives[alt] = { criteria: {} };
+      const criteriaData = expertData.alternatives[alt].criteria;
+
+      // 🧹 eliminar criterios que ya no existen
+      Object.keys(criteriaData || {}).forEach((critName) => {
+        if (!criteria.some((c) => c.name === critName)) delete criteriaData[critName];
+      });
+
+      // 🔧 añadir criterios nuevos o corregir dominios inválidos
+      criteria.forEach((crit) => {
+        const critName = crit.name;
+        const currentDomain = criteriaData[critName];
+        if (!currentDomain || !validDomainIds.includes(currentDomain)) {
+          criteriaData[critName] = defaultDomainId;
+        }
+      });
+    });
+  });
+
+  return updated;
+};
+
+
+export const getMixedOrValue = (values) => {
+  const unique = [...new Set(values.filter((v) => v !== undefined && v !== null))];
+  if (unique.length === 1) return unique[0];
+  if (unique.length > 1) return "mixed";
+  return null;
 };

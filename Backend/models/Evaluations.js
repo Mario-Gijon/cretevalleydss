@@ -8,8 +8,7 @@ const evaluationSchema = new Schema({
   criterion: { type: Schema.Types.ObjectId, ref: "Criterion", required: true }, // Criterio evaluado
   expressionDomain: {
     type: Schema.Types.ObjectId,
-    ref: "ExpressionDomain", // 👈 referencia explícita
-    required: true,
+    ref: "ExpressionDomain",
   },
 
   value: { type: Schema.Types.Mixed, default: null }, // Para numérico = número | Para lingüístico = nombre de la etiqueta

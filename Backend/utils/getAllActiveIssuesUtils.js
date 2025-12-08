@@ -109,21 +109,70 @@ export const getUserFinishedIssueIds = async (userId, { excludeHidden = true, se
 };
 
 
-// Clasifica las participaciones de expertos en categorías
-export const categorizeParticipations = (allParticipations, userId) => {
-  const participatedExperts = allParticipations.filter((part) => part.evaluationCompleted);
-  const pendingExperts = allParticipations.filter((part) => part.invitationStatus === 'pending');
-  const notAcceptedExperts = allParticipations.filter((part) => part.invitationStatus === 'declined');
-  const acceptedButNotEvaluated = allParticipations.filter((part) =>
-    part.invitationStatus === 'accepted' && !part.evaluationCompleted
+export const categorizeParticipations = (allParticipations, userId, currentStage) => {
+  const pendingExperts = allParticipations.filter(
+    (part) => part.invitationStatus === "pending"
   );
-  const isExpert = allParticipations.some((part) => part.expert._id.toString() === userId);
+
+  const notAcceptedExperts = allParticipations.filter(
+    (part) => part.invitationStatus === "declined"
+  );
+
+  let participatedExperts = [];
+  let acceptedButNotEvaluated = [];
+
+  // 🔹 En fase de PESOS → usamos weightsCompleted
+  if (currentStage === "criteriaWeighting" || currentStage === "weightsFinished") {
+    participatedExperts = allParticipations.filter(
+      (part) =>
+        part.invitationStatus === "accepted" && part.weightsCompleted === true
+    );
+
+    acceptedButNotEvaluated = allParticipations.filter(
+      (part) =>
+        part.invitationStatus === "accepted" &&
+        (part.weightsCompleted === false || !part.weightsCompleted)
+    );
+  }
+  // 🔹 En fase de ALTERNATIVAS / FINISHED → usamos evaluationCompleted
+  else {
+    participatedExperts = allParticipations.filter(
+      (part) =>
+        part.invitationStatus === "accepted" && part.evaluationCompleted === true
+    );
+
+    acceptedButNotEvaluated = allParticipations.filter(
+      (part) =>
+        part.invitationStatus === "accepted" &&
+        (part.evaluationCompleted === false || !part.evaluationCompleted)
+    );
+  }
+
+  const isExpert = allParticipations.some(
+    (part) => part.expert._id.toString() === userId
+  );
 
   return {
     participatedExperts,
     pendingExperts,
     notAcceptedExperts,
     acceptedButNotEvaluated,
-    isExpert
+    isExpert,
   };
 };
+
+const getLeafNames = (criteriaTree) => {
+  const leaves = [];
+
+  const traverse = (node) => {
+    if (!node.children || node.children.length === 0) {
+      leaves.push(node.name);
+    } else {
+      node.children.forEach(traverse);
+    }
+  };
+
+  criteriaTree.forEach(traverse);
+  return leaves;
+};
+

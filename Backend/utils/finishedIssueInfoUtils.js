@@ -34,13 +34,33 @@ export const createSummarySection = async (issueId) => {
 
   const lastConsensus = consensusPhases[consensusPhases.length - 1];
 
+  // --- MAPEO DE PESOS DE CRITERIOS ---
+  const leafCriteria = await Criterion.find({ issue: issueId, isLeaf: true }).sort({ name: 1 });
+  const weights = issue.modelParameters?.weights || [];
+
+  const weightMap = {};
+  leafCriteria.forEach((c, idx) => {
+    weightMap[c.name] = weights[idx] ?? null;
+  });
+
+  const attachWeights = (node) => {
+    if (node.isLeaf) {
+      return { ...node, weight: weightMap[node.name] ?? null };
+    }
+    return {
+      ...node,
+      children: node.children?.map(attachWeights) ?? []
+    };
+  };
+
+
   return {
     name: issue.name,
     admin: issue.admin.email,
     description: issue.description,
     model: issue.model.name,
     /* criteria: criteria.map(c => ({ name: c.name, type: c.type, isLeaf: c.isLeaf })).sort(), */
-    criteria: buildCriterionTree(criteria, issue._id),
+    criteria: buildCriterionTree(criteria, issue._id).map(attachWeights),
     alternatives: alternatives.map(a => a.name).sort(),
     creationDate: issue.creationDate ?? null,
     closureDate: issue.closureDate ?? null,
@@ -301,19 +321,23 @@ export const createAnalyticalGraphsSection = async (issueId) => {
     .sort({ phase: 1 })
     .lean();
 
-  const scatterPlot = consensusDocs.map(doc => ({
-    phase: doc.phase,
-    expert_points: doc.details.plotsGraphic.expert_points,
-    collective_point: doc.details.plotsGraphic.collective_point,
-  }));
+  // Solo docs que realmente tengan plotsGraphic
+  const scatterPlot = consensusDocs
+    .filter(doc => doc.details && doc.details.plotsGraphic)
+    .map(doc => ({
+      phase: doc.phase,
+      expert_points: doc.details.plotsGraphic.expert_points,
+      collective_point: doc.details.plotsGraphic.collective_point,
+    }));
 
   const consensusLevelLineChart = {
     labels: consensusDocs.map(doc => `${doc.phase}`),
-    data: consensusDocs.map(doc => doc.level) // <-- asegúrate que esa clave existe
+    data: consensusDocs.map(doc => doc.level ?? 0) // para no petar si es null
   };
 
   return { scatterPlot, consensusLevelLineChart };
-}
+};
+
 
 
 

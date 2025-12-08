@@ -16,12 +16,28 @@ const issueSchema = new Schema({
   active: { type: Boolean, default: true },
   creationDate: { type: String, default: null },
   closureDate: { type: String, default: null },
-  modelParameters: { type: Schema.Types.Mixed, default: {} } // <-- valores concretos elegidos
+  modelParameters: { type: Schema.Types.Mixed, default: {} },
+
+  currentStage: {
+    type: String,
+    enum: [
+      "criteriaWeighting",      // Los expertos están valorando los criterios
+      "weightsFinished",        // Todos los expertos terminaron → admin puede calcular pesos
+      "alternativeEvaluation",  // Los expertos evalúan las alternativas
+      "finished"
+    ],
+    default: "criteriaWeighting",
+  },
+
+  weightingMode: {
+    type: String,
+    enum: ["manual", "consensus", "bwm", "consensusBwm", "simulatedConsensusBwm"],
+    default: "manual",
+  },
 });
 
-
 // Middleware para eliminar todo lo relacionado con un Issue antes de eliminarlo
-issueSchema.pre('remove', async function(next) {
+issueSchema.pre("remove", async function (next) {
   try {
     // Eliminar alternativas asociadas al Issue
     await Alternative.deleteMany({ issue: this._id });
@@ -36,9 +52,9 @@ issueSchema.pre('remove', async function(next) {
     // Eliminar evaluaciones asociadas a las alternativas y criterios
     await Evaluation.deleteMany({
       $or: [
-        { alternative: { $in: alternatives.map(a => a._id) } },
-        { criterion: { $in: criteria.map(c => c._id) } }
-      ]
+        { alternative: { $in: alternatives.map((a) => a._id) } },
+        { criterion: { $in: criteria.map((c) => c._id) } },
+      ],
     });
 
     // Eliminar participaciones asociadas al Issue
@@ -54,9 +70,4 @@ issueSchema.pre('remove', async function(next) {
   }
 });
 
-// Crear y exportar el modelo
 export const Issue = model("Issue", issueSchema);
-
-
-
-

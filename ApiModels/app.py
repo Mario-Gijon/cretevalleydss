@@ -4,6 +4,8 @@ from models.topsis.topsis_model import run_topsis
 from models.borda.borda_model import run_borda
 from models.aras.aras_model import run_aras
 from models.fuzzy_topsis.fuzzy_topsis_model import run_fuzzy_topsis
+from models.bwm.bwm_model import run_bwm
+from models.cmcc.cmcc_model import run_cmcc
 
 
 app = FastAPI()
@@ -98,3 +100,73 @@ async def fuzzy_topsis(request: Request):
         }
     except Exception as e:
         return {"success": False, "msg": f"Error executing Fuzzy TOPSIS: {str(e)}"}
+      
+      
+@app.post("/bwm")
+async def bwm(request: Request):
+    try:
+        data = await request.json()
+        experts_data = data.get("experts_data", {})
+        eps_penalty = data.get("eps_penalty", 1)
+
+        results = run_bwm(experts_data, eps_penalty)
+
+        if not results.get("success", False):
+            return {
+                "success": False,
+                "msg": results.get("msg", "Error executing BWM")
+            }
+
+        return {
+            "success": True,
+            "msg": "BWM executed successfully",
+            "results": results
+        }
+
+    except Exception as e:
+        return {"success": False, "msg": f"Error executing BWM: {str(e)}"}
+
+
+@app.post("/cmcc")
+async def cmcc(request: Request):
+    try:
+        data = await request.json()
+
+        # Esperamos algo del estilo:
+        # {
+        #   "o": [...],
+        #   "c": [...],
+        #   "omega": [...],
+        #   "w": [...],
+        #   "eps": 0.1,
+        #   "mu0": 0.85,
+        #   "lower_bound": 0.0,
+        #   "upper_bound": 1.0
+        # }
+        res = run_cmcc(
+          o=data["o"],
+          c=data["c"],
+          omega=data["omega"],
+          w=data["w"],
+          eps=data["eps"],
+          mu0=data["mu0"],
+          lower_bound=data.get("lower_bound", 0.0),
+          upper_bound=data.get("upper_bound", 1.0),
+          msg=False,
+        )
+
+        if not res.get("success", False):
+            return {
+                "success": False,
+                "msg": res.get("msg", "Error executing CMCC"),
+                "results": res,
+            }
+
+        return {
+            "success": True,
+            "msg": "CMCC executed successfully",
+            "results": res,
+        }
+
+    except Exception as e:
+        return {"success": False, "msg": f"Error executing CMCC: {str(e)}"}

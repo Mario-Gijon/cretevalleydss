@@ -1,7 +1,7 @@
 // Importa el enrutador de Express para definir rutas.
 import { Router } from 'express'
 
-import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain } from '../controllers/issue.controller.js'
+import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain, saveBwmWeights, getBwmWeights, sendBwmWeights, computeWeights, saveManualWeights, getManualWeights, sendManualWeights, computeManualWeights } from '../controllers/issue.controller.js'
 
 // Importa el middleware para verificar el token de acceso.
 import { requireToken } from '../middlewares/requireToken.js'
@@ -59,10 +59,15 @@ router.post("/getEvaluations", requireToken, getEvaluations)
 router.post("/sendEvaluations", requireToken, sendEvaluations)
 router.post("/resolveIssue", requireToken, resolveIssue)
 
+router.post("/saveBwmWeights", requireToken, saveBwmWeights)
+router.post("/getBwmWeights", requireToken, getBwmWeights)
+router.post("/sendBwmWeights", requireToken, sendBwmWeights)
+router.post("/computeWeights", requireToken, computeWeights)
 
-
-
-
+router.post("/saveManualWeights", requireToken, saveManualWeights)
+router.post("/getManualWeights", requireToken, getManualWeights)
+router.post("/sendManualWeights", requireToken, sendManualWeights)
+router.post("/computeManualWeights", requireToken, computeManualWeights)
 
 // Exporta el enrutador para que pueda ser utilizado en otros módulos.
 export default router

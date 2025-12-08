@@ -17,21 +17,34 @@ export const CriterionItem = ({ criterion, level = 2, isChild = false }) => {
   const handleToggle = () => setOpen(!open);
 
   const Content = (
-    <Stack direction="row" spacing={1} alignItems="center">
+    <Stack direction="row" spacing={1} alignItems="center" width="100%">
       <Typography variant="body1" sx={{ color: "text.primary", flexGrow: 1 }}>
         {criterion.name}
       </Typography>
 
-      {/* 🟢 Mostrar chip solo si es raíz */}
-      {!isChild && (
+      {/* CHIP TIPO COST / BENEFIT SOLO PARA RAÍCES */}
+      {!isChild && criterion.type && (
         <Chip
-          sx={{ p: 0, m: 0 }}
           variant="outlined"
           label={criterion.type === "cost" ? "Cost" : "Benefit"}
           color={criterion.type === "cost" ? "error" : "success"}
           size="small"
         />
       )}
+
+      
+      {criterion.isLeaf && criterion.weight != null && (
+        <Chip
+          size="small"
+          variant="outlined"
+          color="secondary"
+          label={Number(criterion.weight).toLocaleString("en-US", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+          })}
+        />
+      )}
+
 
       {hasChildren && (open ? <ExpandLess /> : <ExpandMore />)}
     </Stack>
@@ -64,4 +77,5 @@ export const CriterionItem = ({ criterion, level = 2, isChild = false }) => {
     </>
   );
 };
+
 

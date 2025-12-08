@@ -17,7 +17,7 @@ const expressionDomainSchema = new Schema({
     {
       label: { type: String, required: true },
       values: {
-        type: [Number], // [l, m, u]
+        type: [Number], 
         validate: {
           validator: (arr) => arr.length === 3,
           message: "Cada etiqueta lingüística debe tener exactamente 3 valores [l, m, u]."
@@ -31,7 +31,7 @@ const expressionDomainSchema = new Schema({
 
 // 🔒 Índice único: asegura unicidad por usuario o global
 expressionDomainSchema.index(
-  { createdBy: 1, name: 1 },
+  { user: 1, name: 1 },
   { unique: true, partialFilterExpression: { createdBy: { $type: "objectId" } } }
 );
 
@@ -39,8 +39,6 @@ expressionDomainSchema.index(
   { isGlobal: 1, name: 1 },
   { unique: true, partialFilterExpression: { isGlobal: true } }
 );
-
-
 
 // Dominios iniciales globales
 const expressionDomains = [

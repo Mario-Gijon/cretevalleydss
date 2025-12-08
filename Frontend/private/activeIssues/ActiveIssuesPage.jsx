@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent, LinearProgress } from "@mui/material";
+import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
-import { editExperts, leaveIssue, removeIssue, resolveIssue } from "../../src/controllers/issueController";
+import { computeManualWeights, computeWeights, editExperts, leaveIssue, removeIssue, resolveIssue } from "../../src/controllers/issueController";
 import { IssueDialog } from "../../src/components/IssueDialog/IssueDialog";
 import { EvaluationPairwiseMatrixDialog } from "../../src/components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
@@ -16,6 +16,11 @@ import { EvaluationMatrixDialog } from "../../src/components/EvaluationMatrixDia
 import { GlassCard } from "../../src/components/StyledComponents/GlassCard";
 import { StyledChip } from "../../src/components/StyledComponents/StyledChip";
 import { GlassDialog } from "../../src/components/StyledComponents/GlassDialog";
+import { IssueTimeline } from "../../src/components/IssueTimeline/IssueTimeline";
+import { ExpertParticipationChart } from "../../src/components/ExpertParticipationChart/ExpertParticipationChart";
+import AddExpertsDomainsDialog from "../../src/components/AddExpertsDomainsDialog/AddExpertsDomainsDialog";
+import { RateBwmWeightsDialog } from "../../src/components/RateBwmWeightsDialog/RateBwmWeightsDialog";
+import { RateConsensusWeightsDialog } from "../../src/components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -29,8 +34,13 @@ const ActiveIssuesPage = () => {
   const [openRemoveConfirmDialog, setOpenRemoveConfirmDialog] = useState(false);
   const [isEditingExperts, setIsEditingExperts] = useState(false);
   const [isRatingAlternatives, setIsRatingAlternatives] = useState(false)
+  const [isRatingWeights, setIsRatingWeights] = useState(false)
   const [openResolveConfirmDialog, setOpenResolveConfirmDialog] = useState(false);
   const [resolveLoading, setResolveLoading] = useState(false);
+
+  const [openComputeWeightsConfirmDialog, setOpenComputeWeightsConfirmDialog] = useState(false);
+  const [computeWeightsLoading, setComputeWeightsLoading] = useState(false);
+
   const [removeLoading, setRemoveLoading] = useState(false);
   const [expertsToRemove, setExpertsToRemove] = useState([]);
   const [openConfirmEditExpertsDialog, setOpenConfirmEditExpertsDialog] = useState(false);
@@ -40,6 +50,8 @@ const ActiveIssuesPage = () => {
   const [editExpertsLoading, setEditExpertsLoading] = useState(false);
   const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [openAssignDomainsDialog, setOpenAssignDomainsDialog] = useState(false);
+  const [, setNewDomainAssignments] = useState(null);
 
   const { issueCreated, setIssueCreated, initialExperts, loading, setLoading, activeIssues, setActiveIssues, fetchActiveIssues, fetchFinishedIssues } = useIssuesDataContext();
 
@@ -56,9 +68,6 @@ const ActiveIssuesPage = () => {
   const availableExperts = initialExperts.filter(
     (expert) => !existingExpertEmails.includes(expert.email)
   );
-
-  console.log(selectedIssue)
-
 
   useEffect(() => {
     if (issueCreated.success) {
@@ -89,9 +98,7 @@ const ActiveIssuesPage = () => {
     setOpenAddExpertsDialog(true);
   };
 
-
   const handleEditExperts = () => {
-    console.log("Editing experts for issue: ", isEditingExperts);
     if (isEditingExperts) {
       if (expertsToRemove.length > 0 || expertsToAdd.length > 0) {
         setOpenConfirmEditExpertsDialog(true); // Mostrar diálogo
@@ -105,8 +112,6 @@ const ActiveIssuesPage = () => {
   };
 
   const handleConfirmEditExperts = async () => {
-
-    // Calcular total expertos actuales que no se eliminarían
     const currentExperts = [
       ...(selectedIssue.participatedExperts || []),
       ...(selectedIssue.acceptedButNotEvaluatedExperts || []),
@@ -116,54 +121,33 @@ const ActiveIssuesPage = () => {
 
     const remainingExperts = currentExperts.filter(email => !expertsToRemove.includes(email));
 
-    // Validar que quede al menos 1 experto
     if (remainingExperts.length + expertsToAdd.length < 1) {
       showSnackbarAlert("An issue must have at least one expert.", "error");
-      return; // Salir sin hacer la llamada a editExperts
+      return;
     }
 
+    // Si hay nuevos expertos, primero pedimos dominios
+    if (expertsToAdd.length > 0) {
+      setOpenConfirmEditExpertsDialog(false);
+      setOpenAssignDomainsDialog(true);
+      return;
+    }
+
+    // Si no hay nuevos expertos, seguir con la lógica original
+    await processEditExperts();
+  };
+
+  const processEditExperts = async (domainAssignments = null) => {
     setEditExpertsLoading(true);
 
-    const response = await editExperts(selectedIssue.name, expertsToAdd, expertsToRemove);
+    const response = await editExperts(selectedIssue.name, expertsToAdd, expertsToRemove, domainAssignments);
 
     if (response.success) {
-      const updatedIssue = (() => {
-        const removeExpertsFromList = (list) =>
-          (list || []).filter(email => !expertsToRemove.includes(email));
-
-        const alreadyInAnyList = new Set([
-          ...(selectedIssue.notAcceptedExperts || []),
-          ...(selectedIssue.pendingExperts || []),
-          ...(selectedIssue.acceptedButNotEvaluatedExperts || []),
-          ...(selectedIssue.participatedExperts || []),
-        ]);
-
-        const newExpertsToAdd = expertsToAdd.filter(email => !alreadyInAnyList.has(email));
-
-        return {
-          ...selectedIssue,
-          pendingExperts: [
-            ...removeExpertsFromList(selectedIssue.pendingExperts),
-            ...newExpertsToAdd, // ← aquí añadimos los nuevos expertos
-          ],
-          notAcceptedExperts: removeExpertsFromList(selectedIssue.notAcceptedExperts),
-          acceptedButNotEvaluatedExperts: removeExpertsFromList(selectedIssue.acceptedButNotEvaluatedExperts),
-          participatedExperts: removeExpertsFromList(selectedIssue.participatedExperts),
-        };
-      })();
-
-      setSelectedIssue(updatedIssue);
-
-      setActiveIssues(prevIssues =>
-        prevIssues.map(issue =>
-          issue.name === updatedIssue.name ? updatedIssue : issue
-        )
-      );
+      await fetchActiveIssues(); // 🔥 actualiza lista completa
     }
 
     setEditExpertsLoading(false);
     showSnackbarAlert(response.msg, response.success ? "success" : "error");
-    // Limpieza de estado
     setIsEditingExperts(false);
     setOpenConfirmEditExpertsDialog(false);
     setExpertsToRemove([]);
@@ -171,6 +155,11 @@ const ActiveIssuesPage = () => {
     setHoveredChip(null);
   };
 
+  const handleConfirmDomains = async (domainAssignments) => {
+    setNewDomainAssignments(domainAssignments);
+    setOpenAssignDomainsDialog(false);
+    await processEditExperts(domainAssignments);
+  };
 
   const handleCancelEditExperts = () => {
     setOpenConfirmEditExpertsDialog(false);
@@ -182,6 +171,10 @@ const ActiveIssuesPage = () => {
 
   const handleRateAlternatives = () => {
     setIsRatingAlternatives(true)
+  }
+
+  const handleRateWeights = () => {
+    setIsRatingWeights(true)
   }
 
   const handleOpenIssueDialog = (issue) => {
@@ -206,10 +199,10 @@ const ActiveIssuesPage = () => {
         console.log(response.rankedAlternatives)
         setActiveIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
         showSnackbarAlert(response.msg, "success");
-        fetchFinishedIssues()
+        await fetchFinishedIssues()
       } else {
         showSnackbarAlert(response.msg, "info");
-        fetchActiveIssues()
+        await fetchActiveIssues()
       }
       handleCloseIssueDialog();
     } else {
@@ -219,6 +212,40 @@ const ActiveIssuesPage = () => {
     }
     setResolveLoading(false)
   }
+
+  const handleComputeWeightsIssue = async () => {
+    setComputeWeightsLoading(true);
+    setOpenComputeWeightsConfirmDialog(false);
+
+    let response;
+
+    // 👉 Si el modo de ponderación es consenso manual → usar computeManualWeights
+    if (selectedIssue.weightingMode === "consensus") {
+      response = await computeManualWeights(selectedIssue.name);
+    }
+    // 👉 En caso contrario (BWM normal o simulated) → usar computeWeights
+    else {
+      response = await computeWeights(selectedIssue.name);
+    }
+
+    if (response.success) {
+      if (response.finished === true) {
+        showSnackbarAlert(response.msg, "success");
+      } else {
+        showSnackbarAlert(response.msg, "info");
+      }
+      await fetchActiveIssues();
+      await fetchFinishedIssues();
+      handleCloseIssueDialog();
+    } else {
+      showSnackbarAlert(response.msg, "error");
+      handleCloseIssueDialog();
+      setLoading(false);
+    }
+
+    setComputeWeightsLoading(false);
+  };
+
 
   const handleLeaveIssue = async () => {
     console.log("Leaving issue: ", selectedIssue.name);
@@ -255,7 +282,7 @@ const ActiveIssuesPage = () => {
 
   return (
     <>
-      <Backdrop open={resolveLoading} sx={{ zIndex: 999999 }}>
+      <Backdrop open={resolveLoading || computeWeightsLoading} sx={{ zIndex: 999999 }}>
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
       <Stack
@@ -301,57 +328,64 @@ const ActiveIssuesPage = () => {
                           {/* Info extra */}
                           <Stack spacing={0.5} sx={{ color: "text.secondary" }}>
                             <Typography variant="body2">
-                              <strong>Model:</strong> {issue.model}
+                              <strong>Model:</strong> {issue.model.name}
                             </Typography>
-                            {
-                              issue.isConsensus &&
+
+                            {issue.isConsensus && (
                               <Typography variant="body2" sx={{ color: "text.secondary" }}>
                                 <strong>Type:</strong> Consensus
                               </Typography>
-                            }
+                            )}
+
                             <Typography variant="body2">
                               <strong>Alternatives:</strong> {issue.alternatives.join(", ")}
                             </Typography>
-                            {/* <Typography variant="body2" color="text.secondary">
-                            <strong>Closure date: </strong>
-                            {issue.closureDate
-                              ? dayjs(issue.closureDate).diff(dayjs(), "days") > 0
-                                ? `${dayjs(issue.closureDate).diff(dayjs(), "days")} days left`
-                                : issue.closureDate
-                              : "No deadline"}
-                          </Typography> */}
-                          {!issue.closureDate &&<Typography variant="body2" color="text.secondary" fontWeight={"bold"}>No deadline</Typography>}
-                            
-                            {/* Estado */}
+
+                            {!issue.closureDate && (
+                              <Typography variant="body2" color="text.secondary" fontWeight={"bold"}>
+                                No deadline
+                              </Typography>
+                            )}
+
                             <Box sx={{ pt: 1 }}>
+                              {/* ✅ NUEVO CHIP (reemplaza toda la lógica anterior) */}
                               <StyledChip
                                 label={
-                                  issue.isExpert
-                                    ? !issue.evaluated
-                                      ? "Pending Evaluation"
-                                      : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                                        ? "Waiting experts"
-                                        : "All experts evaluated"
-                                    : issue.evaluated
-                                      ? "Evaluated"
-                                      : "Pending Evaluation"
+                                  issue.statusFlags.waitingAdmin
+                                    ? (
+                                      issue.currentStage === "weightsFinished"
+                                        ? "Waiting for admin to compute weights"
+                                        : "Waiting for admin to resolve issue"
+                                    )
+                                    : issue.currentStage === "finished"
+                                      ? "Finished"
+                                      : issue.statusFlags.canEvaluateWeights
+                                        ? "Evaluate Criteria Weights"
+                                        : issue.statusFlags.canComputeWeights
+                                          ? "Ready to Compute Weights"
+                                          : issue.statusFlags.canEvaluateAlternatives
+                                            ? "Evaluate Alternatives"
+                                            : issue.statusFlags.canResolveIssue
+                                              ? "Ready to Resolve"
+                                              : "Waiting experts"
                                 }
                                 color={
-                                  issue.isExpert
-                                    ? !issue.evaluated
-                                      ? "error"
-                                      : (issue.pendingExperts.length > 0 || issue.acceptedButNotEvaluatedExperts.length > 0)
-                                        ? "info"
-                                        : "success"
-                                    : issue.evaluated
+                                  issue.statusFlags.waitingAdmin
+                                    ? "warning"
+                                    : issue.currentStage === "finished"
                                       ? "success"
-                                      : "error"
+                                      : issue.statusFlags.canComputeWeights || issue.statusFlags.canResolveIssue
+                                        ? "warning"
+                                        : issue.statusFlags.canEvaluateWeights || issue.statusFlags.canEvaluateAlternatives
+                                          ? "error"
+                                          : "info"
                                 }
                                 size="small"
                                 variant="outlined"
                               />
                             </Box>
                           </Stack>
+
                         </Stack>
                         {/* Columna derecha: gráfico */}
                         <Stack>
@@ -391,7 +425,9 @@ const ActiveIssuesPage = () => {
           handleDeleteExpert={handleDeleteExpert}
           handleEditExperts={handleEditExperts}
           handleRateAlternatives={handleRateAlternatives}
+          handleRateWeights={handleRateWeights}
           setOpenResolveConfirmDialog={setOpenResolveConfirmDialog}
+          setOpenComputeWeightsConfirmDialog={setOpenComputeWeightsConfirmDialog}
           expertsToRemove={expertsToRemove}
           setOpenAddExpertsDialog={setOpenAddExpertsDialog}
           expertsToAdd={expertsToAdd}
@@ -408,18 +444,35 @@ const ActiveIssuesPage = () => {
 
       {selectedIssue?.isPairwise ? (
         <EvaluationPairwiseMatrixDialog
+          setOpenIssueDialog={setOpenIssueDialog}
           isRatingAlternatives={isRatingAlternatives}
           setIsRatingAlternatives={setIsRatingAlternatives}
           selectedIssue={selectedIssue}
         />
       ) : (
         <EvaluationMatrixDialog
+          setOpenIssueDialog={setOpenIssueDialog}
           isRatingAlternatives={isRatingAlternatives}
           setIsRatingAlternatives={setIsRatingAlternatives}
           selectedIssue={selectedIssue}
         />
       )}
 
+      {selectedIssue?.weightingMode === "consensus" ? (
+        <RateConsensusWeightsDialog
+          isRatingWeights={isRatingWeights}
+          setIsRatingWeights={setIsRatingWeights}
+          selectedIssue={selectedIssue}
+          handleCloseIssueDialog={handleCloseIssueDialog}
+        />
+      ) : (
+        <RateBwmWeightsDialog
+          isRatingWeights={isRatingWeights}
+          setIsRatingWeights={setIsRatingWeights}
+          selectedIssue={selectedIssue}
+          handleCloseIssueDialog={handleCloseIssueDialog}
+        />
+      )}
 
       {/* Diálogo de confirmación de borrar el issue */}
       <Dialog open={openRemoveConfirmDialog} onClose={() => setOpenRemoveConfirmDialog(false)}>
@@ -443,6 +496,19 @@ const ActiveIssuesPage = () => {
           </Button>
           <Button onClick={handleResolveIssue} color="warning">
             Resolve
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de confirmación de calcular pesos */}
+      <Dialog open={openComputeWeightsConfirmDialog} onClose={() => setOpenComputeWeightsConfirmDialog(false)}>
+        <DialogTitle>Are you sure you want to compute weights?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setOpenComputeWeightsConfirmDialog(false)} color="error">
+            Cancel
+          </Button>
+          <Button onClick={handleComputeWeightsIssue} color="warning">
+            Compute weights
           </Button>
         </DialogActions>
       </Dialog>
@@ -509,133 +575,18 @@ const ActiveIssuesPage = () => {
         />
       </GlassDialog>
 
+      <AddExpertsDomainsDialog
+        open={openAssignDomainsDialog}
+        onClose={() => setOpenAssignDomainsDialog(false)}
+        issue={selectedIssue}
+        expertsToAdd={expertsToAdd}
+        onConfirmDomains={handleConfirmDomains}
+      />
+
+
 
     </>
   );
 };
 
 export default ActiveIssuesPage;
-
-import { Doughnut } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
-
-ChartJS.register(ArcElement, Tooltip);
-
-const ExpertParticipationChart = ({ total, pending, accepted, notEvaluated }) => {
-  const evaluated = accepted;
-  const percent = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-
-  const data = {
-    labels: ["Evaluated", "Not Evaluated", "Pending"],
-    datasets: [
-      {
-        data: [evaluated, notEvaluated, pending],
-        backgroundColor: [
-          "rgba(76, 175, 80, 0.8)",   // success (verde)
-          "rgba(255, 193, 7, 0.8)",   // warning (amarillo)
-          "rgba(244, 67, 54, 0.8)",   // error (rojo)
-        ],
-        borderWidth: 0, // sin borde grueso
-        cutout: "80%",  // donut fino
-        spacing: 1, // espacio entre segmentos
-      },
-    ],
-  };
-
-  const options = {
-    plugins: { tooltip: { enabled: false }, legend: { display: false } },
-    maintainAspectRatio: false,
-  };
-
-  return (
-    <Box sx={{ position: "relative", width: 120, height: 120 }}>
-      <Doughnut data={data} options={options} />
-      {/* Texto central */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-        }}
-      >
-        <Typography variant="h6" fontWeight={"bold"}>
-          {percent} %
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block">
-          {pending + notEvaluated + evaluated} experts
-        </Typography>
-      </Box>
-    </Box>
-  );
-};
-
-
-import customParseFormat from "dayjs/plugin/customParseFormat";
-
-dayjs.extend(customParseFormat);
-
-const IssueTimeline = ({ creationDate, closureDate }) => {
-  const creation = dayjs(creationDate, "DD-MM-YYYY");
-  const today = dayjs();
-  const closure = closureDate ? dayjs(closureDate, "DD-MM-YYYY") : null;
-
-  let progress = 0;
-  let totalDays = 0;
-  let elapsedDays = 0;
-
-  if (closure) {
-    totalDays = closure.diff(creation, "days");
-    elapsedDays = today.diff(creation, "days");
-    progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
-  }
-
-  return (
-    <Box sx={{ width: "100%", mt: 1 }}>
-      {/* Fechas */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-        <Typography variant="caption" color="text.secondary">
-          {creation.format("DD MMM")}
-        </Typography>
-        {closure && (
-          <Typography variant="caption" color="text.secondary">
-            {closure.format("DD MMM")}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Barra */}
-      {closure ? (
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          sx={{
-            height: 8,
-            borderRadius: 5,
-            backgroundColor: "rgba(200,200,200,0.2)",
-            "& .MuiLinearProgress-bar": {
-              backgroundColor:
-                progress >= 100 ? "#f44336" : "#2196f3",
-            },
-          }}
-        />
-      ) : (
-        <Typography variant="caption" color="text.secondary">
-          No deadline
-        </Typography>
-      )}
-
-      {/* Texto */}
-      {closure && (
-        <Box sx={{ textAlign: "center", mt: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            {progress >= 100
-              ? "Closed"
-              : `${Math.max(0, closure.diff(today, "days"))} days left`}
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  );
-};

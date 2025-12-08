@@ -13,7 +13,7 @@ import { ExpressionDomainStep } from "./Steps/ExpressionDomainStep/ExpressionDom
 import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
 import { createIssue } from "../../src/controllers/issueController";
 import { ColorlibConnector, ColorlibStepIcon } from "../../src/components/StyledComponents/StepperLibConnector";
-import { dataTypeOptions, steps, validateIssueDescription, validateIssueName, validateModelParams } from "../../src/utils/createIssueUtils";
+import { buildInitialAssignments, getLeafCriteria, steps, updateParamValues, validateDomainAssigments, validateIssueDescription, validateIssueName, /* validateModelParams */ } from "../../src/utils/createIssueUtils";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { useNavigate } from "react-router-dom";
@@ -27,13 +27,11 @@ dayjs.extend(utc);
 
 const CreateIssuePage = () => {
 
-  const { initialExperts, models, loading, setLoading, setIssueCreated } = useIssuesDataContext()
-
-  const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
-
+  const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } = useIssuesDataContext()
+  const { showSnackbarAlert } = useSnackbarAlertContext()
   const navigate = useNavigate();
 
-  const { showSnackbarAlert } = useSnackbarAlertContext()
+  const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
 
   const [activeStep, setActiveStep] = useState(storedData.activeStep || 0);
   const [completed] = useState(storedData.completed || {});
@@ -48,16 +46,15 @@ const CreateIssuePage = () => {
   const [issueDescriptionError, setIssueDescriptionError] = useState(false);
   const [closureDate, setClosureDate] = useState(null);
   const [closureDateError, setClosureDateError] = useState(false);
-  const [shouldClearStorage, setShouldClearStorage] = useState(false);
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(storedData.consensusMaxPhases || 3);
   const [consensusThreshold, setConsensusThreshold] = useState(storedData.consensusThreshold || 0.7);
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   const [domainAssignments, setDomainAssignments] = useState(storedData.domainAssignments || {});
+  const [bwmData, setBwmData] = useState(storedData.bwmData || { best: "", worst: "", bestToOthers: {}, othersToWorst: {} });
+  const [weightingMode, setWeightingMode] = useState(storedData.weightingMode || "manual");
 
   useEffect(() => {
-    if (shouldClearStorage) return; // Evitar que el efecto vuelva a escribir en localStorage
-
     const dataToSave = {
       activeStep,
       completed,
@@ -70,15 +67,16 @@ const CreateIssuePage = () => {
       issueDescription,
       domainAssignments,
       paramValues,
+      bwmData,
+      weightingMode,
       closureDate: closureDate ? closureDate.toJSON() : null,
       ...(withConsensus && {
         consensusMaxPhases,
         consensusThreshold,
       }),
     };
-
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-  }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, issueName, issueDescription, closureDate, shouldClearStorage, consensusMaxPhases, consensusThreshold, domainAssignments, paramValues]);
+  }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, issueName, issueDescription, closureDate, consensusMaxPhases, consensusThreshold, domainAssignments, paramValues, bwmData, weightingMode]);
 
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
@@ -107,14 +105,21 @@ const CreateIssuePage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModel]);
 
+  useEffect(() => {
+    if (addedExperts.length > 0 && alternatives.length > 0 && criteria.length > 0)
+      setDomainAssignments((prev) => buildInitialAssignments(addedExperts, alternatives, getLeafCriteria(criteria), prev, selectedModel, globalDomains, expressionDomains));
+  }, [addedExperts, alternatives, criteria, setDomainAssignments, selectedModel, globalDomains, expressionDomains]);
 
+  useEffect(() => {
+    setParamValues((prev) => updateParamValues(prev, selectedModel, getLeafCriteria(criteria)));
+  }, [criteria, selectedModel]);
 
-  // Funciones de navegación
-  const handleNext = () => setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
-  const handleBack = () => setActiveStep((prev) => Math.max(prev - 1, 0));
-  const handleStep = (step) => () => { setActiveStep(step) }
+  useEffect(() => {
+    if (weightingMode !== "bwm") {
+      setBwmData({ best: "", worst: "", bestToOthers: {}, othersToWorst: {} });
+    }
+  }, [weightingMode]);
 
-  // Dentro de CreateIssuePage
   const handleValidateIssueName = (newIssueName) => { validateIssueName(newIssueName, setIssueNameError); setIssueName(newIssueName) };
 
   const handleValidateIssueDescription = (newIssueDescription) => { validateIssueDescription(newIssueDescription, setIssueDescriptionError); setissueDescription(newIssueDescription) };
@@ -140,6 +145,9 @@ const CreateIssuePage = () => {
     setClosureDateError(false)
   }
 
+  const filteredParams = { ...paramValues };
+  if (weightingMode !== "manual") delete filteredParams.weights;
+
   const allData = {
     issueName,
     issueDescription,
@@ -148,80 +156,47 @@ const CreateIssuePage = () => {
     alternatives,
     criteria,
     addedExperts,
-    closureDate,
+    closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
     domainAssignments,
-    paramValues,
-    ...(withConsensus && {
-      consensusMaxPhases,
-      consensusThreshold,
-    }),
+    weightingMode,
+    paramValues: filteredParams,
+    ...(weightingMode === "bwm" && { bwmData }),
+    ...(withConsensus && { consensusMaxPhases, consensusThreshold }),
   };
 
-  // Manejar la creación del problema
   // Manejar la creación del problema
   const handleComplete = async () => {
     handleClosureDateError();
 
     if (closureDateError) return;
-
     if (issueNameError) return;
     validateIssueName(issueName, setIssueNameError);
     validateIssueDescription(issueDescription, setIssueDescriptionError);
-
     if (!issueName || !issueDescription || issueNameError || issueDescriptionError) return;
-
-    if (!validateModelParams(selectedModel, paramValues, criteria)) {
+    /* if (!validateModelParams(selectedModel, paramValues, criteria)) {
       showSnackbarAlert("There are invalid model parameters", "error");
       return;
-    }
-
-    // 🚨 Validación de dominios de expresión
-    let missingDomain = false;
-
-    if (domainAssignments?.experts) {
-      for (const [, altData] of Object.entries(domainAssignments.experts)) {
-        for (const [, critData] of Object.entries(altData.alternatives)) {
-          for (const [, domainId] of Object.entries(critData.criteria)) {
-            if (!domainId || domainId === "undefined") {
-              missingDomain = true;
-              break;
-            }
-          }
-          if (missingDomain) break;
-        }
-        if (missingDomain) break;
-      }
-    }
-
-    if (missingDomain) {
+    } */
+    if (!validateDomainAssigments(domainAssignments)) {
       showSnackbarAlert("You must assign an expression domain to all criteria before creating the issue.", "error");
       return;
     }
 
-    setLoading(true); // Establece loading en true antes de la creación del problema
+    setLoading(true);
 
-    const payload = {
-      ...allData,
-      closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
-    };
-
-    const createdIssue = await createIssue(payload);
-
-    setLoading(false); // Establece loading en false cuando la creación haya terminado
+    const createdIssue = await createIssue(allData);
 
     if (createdIssue.success) {
-      setShouldClearStorage(false);
-      //localStorage.removeItem(LOCAL_STORAGE_KEY);
-      console.log(createdIssue);
       setIssueCreated(createdIssue);
+      setLoading(false);
       navigate("/dashboard");
       return;
     }
 
     if (createdIssue.obj === "issueName") setIssueNameError(createdIssue.msg);
     showSnackbarAlert(createdIssue.msg, "error");
+    setLoading(false);
   };
-
 
   if (loading) {
     // Mostrar un loader mientras los datos se están cargando
@@ -233,9 +208,8 @@ const CreateIssuePage = () => {
       <Stack direction="column" spacing={{ xs: 2, sm: 2, md: 3 }} useFlexGap sx={{ mt: 1.5, justifyContent: "center", alignItems: "center", width: "100%" }}>
         <Stepper sx={{ display: { xs: "none", sm: "flex" }, width: "100%", flexGrow: 1 }} alternativeLabel activeStep={activeStep} connector={<ColorlibConnector />}>
           {steps.map((label, index) => (
-            <Step key={label} completed={completed[index]} sx={{ cursor: "pointer" }} onClick={handleStep(index)}>
-              <StepButton color="inherit" onClick={handleStep(index)}>
-                {/* <StepLabel slots={label === "Expression domain" ? { stepIcon: DeactivateColorlibStepIcon } : { stepIcon: ColorlibStepIcon }}>{label}</StepLabel> */}
+            <Step key={label} completed={completed[index]} sx={{ cursor: "pointer" }} onClick={() => setActiveStep(index)}>
+              <StepButton color="inherit" onClick={() => setActiveStep(index)}>
                 <StepLabel slots={{ stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
               </StepButton>
             </Step>
@@ -248,7 +222,6 @@ const CreateIssuePage = () => {
           <Stack flexGrow={1} sx={{ width: "100%" }}>
             {activeStep === 0 &&
               <ModelStep
-                models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
                 withConsensus={withConsensus}
@@ -263,12 +236,11 @@ const CreateIssuePage = () => {
               <CriteriaStep criteria={criteria} setCriteria={setCriteria} isMultiCriteria={selectedModel.isMultiCriteria} />
             }
             {activeStep === 3 &&
-              <ExpertsStep initialExperts={initialExperts} addedExperts={addedExperts} setAddedExperts={setAddedExperts} />
+              <ExpertsStep addedExperts={addedExperts} setAddedExperts={setAddedExperts} />
             }
             {activeStep === 4 &&
               <ExpressionDomainStep
                 allData={allData}
-                dataTypeOptions={dataTypeOptions}
                 domainAssignments={domainAssignments}
                 setDomainAssignments={setDomainAssignments}
               />
@@ -294,6 +266,10 @@ const CreateIssuePage = () => {
                 setParamValues={setParamValues}
                 defaultModelParams={defaultModelParams}
                 setDefaultModelParams={setDefaultModelParams}
+                bwmData={bwmData}
+                setBwmData={setBwmData}
+                weightingMode={weightingMode}
+                setWeightingMode={setWeightingMode}
               />
             }
 
@@ -305,22 +281,18 @@ const CreateIssuePage = () => {
               steps={steps.length}
               position="bottom"
               activeStep={activeStep}
-              sx={{
-                display: { xs: "flex", sm: "none" },
-                flexGrow: 1,
-                alignItems: "center",
-              }}
+              sx={{ display: { xs: "flex", sm: "none" }, flexGrow: 1, alignItems: "center", }}
               nextButton={activeStep !== steps.length - 1
-                ? <Button color="success" variant="outlined" onClick={handleNext} endIcon={<ArrowForwardIosIcon />}>Next</Button>
+                ? <Button color="success" variant="outlined" onClick={() => setActiveStep((prev) => prev + 1)} endIcon={<ArrowForwardIosIcon />}>Next</Button>
                 : <Button color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>Create</Button>
               }
               backButton={
-                <Button color="info" variant="outlined" startIcon={<ArrowBackIosIcon />} disabled={activeStep === 0} onClick={handleBack}> Back </Button>
+                <Button color="info" variant="outlined" startIcon={<ArrowBackIosIcon />} disabled={activeStep === 0} onClick={() => setActiveStep((prev) => prev - 1)}> Back </Button>
               }
             />
-            <Button sx={{ display: { xs: "none", sm: "flex" } }} color="info" variant="outlined" startIcon={activeStep !== 0 && <ArrowBackIosIcon />} disabled={activeStep === 0} onClick={handleBack}> Back </Button>
+            <Button sx={{ display: { xs: "none", sm: "flex" } }} color="info" variant="outlined" startIcon={activeStep !== 0 && <ArrowBackIosIcon />} disabled={activeStep === 0} onClick={() => setActiveStep((prev) => prev - 1)}> Back </Button>
             {activeStep !== steps.length - 1
-              ? <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={handleNext} endIcon={<ArrowForwardIosIcon />}>Next</Button>
+              ? <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={() => setActiveStep((prev) => prev + 1)} endIcon={<ArrowForwardIosIcon />}>Next</Button>
               : <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>Create</Button>
             }
           </Stack>

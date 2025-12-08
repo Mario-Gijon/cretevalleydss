@@ -8,9 +8,11 @@ import ClearIcon from '@mui/icons-material/Clear';
 import { filterModels } from "../../../../src/utils/createIssueUtils";
 import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
+import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 
-export const ModelStep = ({ models, selectedModel, setSelectedModel, withConsensus, setWithConsensus, criteria }) => {
+export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setWithConsensus, criteria }) => {
 
+  const { models } = useIssuesDataContext()
   const { showSnackbarAlert } = useSnackbarAlertContext()
 
   const [searchQuery, setSearchQuery] = useState(""); // Estado para el buscador

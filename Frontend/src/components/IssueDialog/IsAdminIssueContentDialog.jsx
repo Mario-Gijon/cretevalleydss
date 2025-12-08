@@ -4,7 +4,7 @@ import { GlassAccordion } from "../StyledComponents/GlassAccordion";
 import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
 
-export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip }) => {
+export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleDeleteExpert, handleEditExperts, handleRateAlternatives, handleRateWeights, setOpenResolveConfirmDialog, setOpenComputeWeightsConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip }) => {
 
   return (
 
@@ -33,7 +33,7 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
                     Model:
                   </Typography>
                   <Typography variant="body2" sx={{ color: "text.primary" }}>
-                    {selectedIssue.model}
+                    {selectedIssue.model.name}
                   </Typography>
                 </Stack>
               </GlassPaper>
@@ -154,12 +154,21 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
             {/* Criterios */}
             <Grid item size={{ xs: 12, md: 6 }}>
               <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                  Criteria:
-                </Typography>
+                <Stack direction={"row"} justifyContent={"space-between"}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+                    Criteria:
+                  </Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1, pr: 1 }}>
+                    Weights
+                  </Typography>
+                </Stack>
                 <Stack flexDirection="column" spacing={0}>
                   {selectedIssue.criteria.map((criterion) =>
-                    <CriterionAccordion key={criterion.name} criterion={criterion} />
+                    <CriterionAccordion
+                      key={criterion.name}
+                      criterion={criterion}
+                      weightMap={selectedIssue.finalWeights}
+                    />
                   )}
                 </Stack>
               </GlassPaper>
@@ -325,28 +334,85 @@ export const IsAdminIssueContentDialog = ({ selectedIssue, setOpenRemoveConfirmD
 
       </DialogContent>
 
-      {/* Acciones del modal */}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}>
-        {/* Solo mostrar este botón si no se ha evaluado y es un experto */}
-        {!selectedIssue.evaluated && selectedIssue.isExpert && (
-          <Button onClick={handleRateAlternatives} size="small" color="secondary" variant="outlined">
+      {/* 🔹 Acciones del modal (para admin o admin-experto) */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}
+      >
+
+        {/* ✅ Si el admin también participa como experto, puede evaluar */}
+        {selectedIssue.isExpert && selectedIssue.statusFlags?.canEvaluateWeights && (
+          <Button
+            onClick={handleRateWeights}
+            size="small"
+            color="secondary"
+            variant="outlined"
+          >
+            Rate weights
+          </Button>
+        )}
+
+        {selectedIssue.isExpert && selectedIssue.statusFlags?.canEvaluateAlternatives && (
+          <Button
+            onClick={handleRateAlternatives}
+            size="small"
+            color="secondary"
+            variant="outlined"
+          >
             Rate alternatives
           </Button>
         )}
-        {/* Acciones solo para el admin */}
-        {
-          (selectedIssue.pendingExperts.length === 0 && selectedIssue.acceptedButNotEvaluatedExperts.length === 0) &&
-          <Button onClick={() => setOpenResolveConfirmDialog(true)} size="small" color="warning" variant="outlined">
+
+        {/* ✅ Admin puede calcular los pesos cuando todos evaluaron los criterios */}
+        {selectedIssue.statusFlags?.canComputeWeights && (
+          <Button
+            onClick={() => setOpenComputeWeightsConfirmDialog(true)} // o abre modal de "Compute Weights"
+            size="small"
+            color="warning"
+            variant="outlined"
+          >
+            Compute Weights
+          </Button>
+        )}
+
+        {/* ✅ Admin puede resolver cuando todos evaluaron las alternativas */}
+        {selectedIssue.statusFlags?.canResolveIssue && (
+          <Button
+            onClick={() => setOpenResolveConfirmDialog(true)}
+            size="small"
+            color="warning"
+            variant="outlined"
+          >
             Resolve
           </Button>
-        }
-        <Button onClick={handleEditExperts} size="small" color="success" variant="outlined">
-          {isEditingExperts ? ((expertsToRemove.length === 0 && expertsToAdd.length === 0) ? "Exit edit" : "Save changes") : ("Edit experts")}
+        )}
+
+        {/* ✅ Botón de edición de expertos (sin cambios) */}
+        <Button
+          onClick={handleEditExperts}
+          size="small"
+          color="success"
+          variant="outlined"
+        >
+          {isEditingExperts
+            ? (expertsToRemove.length === 0 && expertsToAdd.length === 0
+              ? "Exit edit"
+              : "Save changes")
+            : "Edit experts"}
         </Button>
-        <Button onClick={() => setOpenRemoveConfirmDialog(true)} size="small" color="error" variant="outlined">
+
+        {/* ✅ Botón de eliminar issue (sin cambios) */}
+        <Button
+          onClick={() => setOpenRemoveConfirmDialog(true)}
+          size="small"
+          color="error"
+          variant="outlined"
+        >
           Remove
         </Button>
       </Stack>
+
     </>
   )
 }

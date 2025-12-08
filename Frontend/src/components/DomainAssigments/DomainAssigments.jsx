@@ -1,27 +1,9 @@
-import {
-  Typography,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Stack,
-  Divider,
-} from "@mui/material";
+import { Typography, Select, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack, Divider, } from "@mui/material";
 import { GlassPaper } from "../StyledComponents/GlassPaper";
-import { useEffect } from "react";
-import { buildInitialAssignments, getLeafCriteria, getMixedOrValue } from "../../utils/DomainAssigments";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
+import { getLeafCriteria, getMixedOrValue } from "../../utils/createIssueUtils";
 
-export const DomainAssignments = ({
-  allData,
-  expressionDomains,
-  domainAssignments,
-  setDomainAssignments,
-}) => {
+export const DomainAssignments = ({ allData, expressionDomains, domainAssignments, setDomainAssignments, }) => {
   const { addedExperts, alternatives, criteria, selectedModel } = allData;
 
   const { globalDomains } = useIssuesDataContext();
@@ -29,131 +11,6 @@ export const DomainAssignments = ({
   const leafCriteria = getLeafCriteria(criteria);
   const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
   const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
-
-  // 🔧 valor por defecto según soporte/dominios
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const computeDefaultValue = () => {
-    if (supportsNumeric) {
-      const numericGlobal = globalDomains.find(
-        (d) => d.type === "numeric" && d.numericRange?.min === 0 && d.numericRange?.max === 1
-      );
-      return numericGlobal ? numericGlobal._id : "undefined";
-    }
-    if (supportsLinguistic) {
-      const firstDomain = [...globalDomains, ...expressionDomains].find(
-        (d) => d.type === "linguistic"
-      );
-      return firstDomain ? firstDomain._id : "undefined";
-    }
-    return "undefined";
-  };
-
-
-  // 🟢 Inicialización
-  useEffect(() => {
-    if (!domainAssignments || Object.keys(domainAssignments).length === 0) {
-      const initial = buildInitialAssignments(
-        addedExperts,
-        alternatives,
-        leafCriteria,
-        computeDefaultValue()
-      );
-      setDomainAssignments(initial);
-    }
-  }, [domainAssignments, setDomainAssignments, addedExperts, alternatives, leafCriteria, supportsNumeric, supportsLinguistic, expressionDomains, globalDomains, computeDefaultValue]);
-
-  // 🟡 Reconciliación completa: crea claves que falten para TODAS las hojas (incluye raíces sin hijos),
-  // elimina criterios que ya no son hoja, y corrige valores inválidos (p.ej. dominio borrado)
-  useEffect(() => {
-    if (!domainAssignments?.experts) return;
-    const defaultValue = computeDefaultValue();
-
-    const validOptionValues = [
-      ...(supportsNumeric ? globalDomains.filter((d) => d.type === "numeric").map((d) => d._id) : []),
-      ...(supportsLinguistic
-        ? [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains].map((d) => d._id)
-        : []),
-    ];
-
-    setDomainAssignments((prev) => {
-      if (!prev?.experts) return prev;
-      const updated = structuredClone(prev);
-      let changed = false;
-
-      // 1) asegurar estructura y valores para cada hoja
-      addedExperts.forEach((exp) => {
-        if (!updated.experts[exp]) {
-          updated.experts[exp] = { alternatives: {} };
-          changed = true;
-        }
-        alternatives.forEach((alt) => {
-          if (!updated.experts[exp].alternatives[alt]) {
-            updated.experts[exp].alternatives[alt] = { criteria: {} };
-            changed = true;
-          }
-
-          const critMap = updated.experts[exp].alternatives[alt].criteria;
-
-          // a) eliminar claves de criterios que ya no son hoja
-          Object.keys(critMap).forEach((critName) => {
-            const stillLeaf = leafCriteria.some((c) => c.name === critName);
-            if (!stillLeaf) {
-              delete critMap[critName];
-              changed = true;
-            }
-          });
-
-          // b) crear claves que falten y corregir valores inválidos
-          leafCriteria.forEach((crit) => {
-            const curr = critMap[crit.name];
-
-            // crear si falta
-            if (curr === undefined || curr === null) {
-              critMap[crit.name] = defaultValue;
-              changed = true;
-              return;
-            }
-
-            // si el valor actual no es válido para el modelo (p.ej. dominio borrado), forzar fallback
-            if (!validOptionValues.includes(curr)) {
-              critMap[crit.name] = defaultValue;
-              changed = true;
-            }
-          });
-        });
-      });
-
-      return changed ? updated : prev;
-    });
-  }, [addedExperts, alternatives, leafCriteria, supportsNumeric, supportsLinguistic, expressionDomains, domainAssignments?.experts, setDomainAssignments, computeDefaultValue, globalDomains]);
-
-  // 🔄 Si el modelo es SOLO lingüístico y aparecen dominios, sustituir "undefined" por el primero
-  useEffect(() => {
-    if (supportsLinguistic && !supportsNumeric && expressionDomains.length > 0) {
-      setDomainAssignments((prev) => {
-        if (!prev?.experts) return prev;
-        const updated = structuredClone(prev);
-        let changed = false;
-
-        Object.keys(updated.experts).forEach((exp) => {
-          Object.keys(updated.experts[exp].alternatives).forEach((alt) => {
-            leafCriteria.forEach((crit) => {
-              const curr = updated.experts[exp].alternatives[alt].criteria[crit.name];
-              if (curr === "undefined" || curr == null) {
-                updated.experts[exp].alternatives[alt].criteria[crit.name] =
-                  expressionDomains[0].name;
-                changed = true;
-              }
-            });
-          });
-        });
-
-        return changed ? updated : prev;
-      });
-    }
-  }, [supportsLinguistic, supportsNumeric, expressionDomains, leafCriteria, setDomainAssignments]);
-
-
 
   // Opciones del select según soporte del modelo
   const domainOptions = [];
@@ -165,20 +22,6 @@ export const DomainAssignments = ({
   if (supportsLinguistic) {
     [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains].forEach((d) =>
       domainOptions.push({ value: d._id, label: d.name })
-    );
-  }
-
-  // ⚠️ Solo lingüístico y sin dominios → aviso
-  if (supportsLinguistic && !supportsNumeric && domainOptions.length === 0) {
-    return (
-      <GlassPaper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-        <Typography variant="body1" sx={{ fontWeight: "bold", color: "error.main" }}>
-          ⚠️ This model only supports linguistic domains.
-        </Typography>
-        <Typography variant="body2">
-          No linguistic domains are available. Please create one to continue.
-        </Typography>
-      </GlassPaper>
     );
   }
 
@@ -289,8 +132,18 @@ export const DomainAssignments = ({
     );
   };
 
-  console.log(domainAssignments)
-
+  if (supportsLinguistic && !supportsNumeric && domainOptions.length === 0) {
+    return (
+      <GlassPaper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+        <Typography variant="body1" sx={{ fontWeight: "bold", color: "error.main" }}>
+          ⚠️ This model only supports linguistic domains.
+        </Typography>
+        <Typography variant="body2">
+          No linguistic domains are available. Please create one to continue.
+        </Typography>
+      </GlassPaper>
+    );
+  }
 
   return (
     <Stack spacing={2}>

@@ -5,7 +5,7 @@ import { IsNotAdminIssueContentDialog } from "./isNotAdminIssueContentDialog";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 
 
-export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleAddExpert, handleDeleteExpert, handleEditExperts, handleRateAlternatives, setOpenResolveConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
+export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedIssue, setOpenRemoveConfirmDialog, isEditingExperts, handleAddExpert, handleDeleteExpert, handleEditExperts, handleRateAlternatives, handleRateWeights, setOpenResolveConfirmDialog, setOpenComputeWeightsConfirmDialog, expertsToRemove, setOpenAddExpertsDialog, setExpertsToAdd, expertsToAdd, hoveredChip, setHoveredChip, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
   return (
 
@@ -34,7 +34,9 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
               handleDeleteExpert={handleDeleteExpert}
               handleEditExperts={handleEditExperts}
               handleRateAlternatives={handleRateAlternatives}
+              handleRateWeights={handleRateWeights}
               setOpenResolveConfirmDialog={setOpenResolveConfirmDialog}
+              setOpenComputeWeightsConfirmDialog={setOpenComputeWeightsConfirmDialog}
               expertsToRemove={expertsToRemove || []} // Asegurarse de que existe el array
               setOpenAddExpertsDialog={setOpenAddExpertsDialog}
               setExpertsToAdd={setExpertsToAdd}
@@ -50,6 +52,7 @@ export const IssueDialog = ({ openIssueDialog, handleCloseIssueDialog, selectedI
               openLeaveConfirmDialog={openLeaveConfirmDialog}
               handleLeaveIssue={handleLeaveIssue}
               leaveLoading={leaveLoading}
+              handleRateWeights={handleRateWeights}
             />
           )}
         </>

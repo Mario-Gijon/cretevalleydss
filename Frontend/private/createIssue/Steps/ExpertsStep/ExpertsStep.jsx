@@ -4,6 +4,7 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { removeAccents } from "../../../../src/utils/createIssueUtils";
 import { tableCellClasses } from '@mui/material/TableCell';
 import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
+import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -16,7 +17,8 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-export const ExpertsStep = ({ initialExperts, addedExperts, setAddedExperts, closeAddExpertsDialog = false }) => {
+export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDialog = false }) => {
+  const {initialExperts} = useIssuesDataContext()
   const [searchFilter, setSearchFilter] = useState(""); // Un único filtro para todo
 
   // Filtrar expertos para eliminar los que ya han sido añadidos

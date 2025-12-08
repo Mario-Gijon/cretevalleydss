@@ -1,6 +1,6 @@
 import { Stack, Typography, Button } from "@mui/material";
 import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 
 import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
@@ -10,21 +10,6 @@ import { DomainAssignments } from "../../../../src/components/DomainAssigments/D
 import { CircularLoading } from "../../../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 import { removeExpressionDomain } from "../../../../src/controllers/issueController";
-
-// 🔎 crear estructura mínima
-const buildInitialAssignments = (experts, alternatives, criteria, defaultDomainId) => {
-  const base = { experts: {} };
-  experts.forEach((exp) => {
-    base.experts[exp] = { alternatives: {} };
-    alternatives.forEach((alt) => {
-      base.experts[exp].alternatives[alt] = { criteria: {} };
-      criteria.forEach((crit) => {
-        base.experts[exp].alternatives[alt].criteria[crit.name] = defaultDomainId || "Empty";
-      });
-    });
-  });
-  return base;
-};
 
 export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssignments }) => {
   const { selectedModel, addedExperts, alternatives, criteria } = allData;
@@ -36,21 +21,6 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
   const [openCreateDomainExpressionDialog, setOpenCreateDomainExpressionDialog] = useState(false);
   const [openViewDomainExpressions, setOpenViewDomainExpressions] = useState(false);
   const [editingDomain, setEditingDomain] = useState(null);
-
-  // inicializar solo una vez
-  useEffect(() => {
-    if (
-      addedExperts.length > 0 &&
-      alternatives.length > 0 &&
-      criteria.length > 0 &&
-      (!domainAssignments.experts ||
-        Object.keys(domainAssignments.experts).length === 0)
-    ) {
-      setDomainAssignments(
-        buildInitialAssignments(addedExperts, alternatives, criteria)
-      );
-    }
-  }, [addedExperts, alternatives, criteria, domainAssignments, setDomainAssignments]);
 
   const handleOpenEditDomain = (domain = null) => {
     if (domain) setEditingDomain(domain);

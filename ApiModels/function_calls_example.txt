@@ -1,0 +1,59 @@
+# Example usage
+if __name__ == "__main__":
+    o = [0.9, 0.8, 0.4, 0.6, 0.7]
+    c = [1.0, 1.0, 2.0, 1.5, 1.0]
+    omega = [0.2, 0.2, 0.2, 0.2, 0.2]  # must sum to 1
+    eps = 0.1
+    lower_bound = 0.0
+    upper_bound = 1.0
+
+    res = solve_mcc(o, c, omega, eps, lower_bound, upper_bound, msg=False)
+
+    print("Status:", res["status"])
+    if res["status"] == "Optimal":
+        print("Objective value:", res["objective"])
+        print(f"Collective opinion g = {res['g']:.4f}")
+        for k, val in enumerate(res["o_bar"], start=1):
+            print(f"o_bar_{k} = {val:.4f}   (orig o_{k} = {o[k-1]:.3f})")
+
+Status: Optimal
+Objective value: 0.5
+Collective opinion g = 0.7000
+o_bar_1 = 0.8000   (orig o_1 = 0.900)
+o_bar_2 = 0.8000   (orig o_2 = 0.800)
+o_bar_3 = 0.6000   (orig o_3 = 0.400)
+o_bar_4 = 0.6000   (orig o_4 = 0.600)
+o_bar_5 = 0.7000   (orig o_5 = 0.700)
+
+
+
+if __name__ == "__main__":
+    # Example data
+    o = [0.9, 0.8, 0.4, 0.6, 0.7]
+    c = [1.0, 1.2, 2.0, 1.5, 1.0]
+    omega = [0.2, 0.2, 0.2, 0.2, 0.2]  # weights for aggregation
+    w = [0.1, 0.25, 0.25, 0.25, 0.15]  # weights for kappa constraint
+    eps = 0.1
+    mu0 = 0.85
+    lower_bound, upper_bound = 0.3, 0.9
+
+    res = solve_cmcc(o, c, omega, w, eps, mu0, lower_bound, upper_bound)
+
+    print("Status:", res["status"])
+    if res["status"] == "Optimal":
+        print(f"Objective: {res['objective']:.6f}")
+        print(f"Collective opinion g = {res['g']:.4f}")
+        print(f"Consensus level = {res['consenus_level']:.4f}  (≥ μ₀ = {mu0})")
+        for k, val in enumerate(res["o_bar"], start=1):
+            print(f"o_bar_{k} = {val:.4f}   (orig o_{k}={o[k-1]:.2f})")
+
+output: 
+Status: Optimal
+Objective: 0.500000
+Collective opinion g = 0.7000
+Consensus level = 0.8500  (≥ μ₀ = 0.85)
+o_bar_1 = 0.8000   (orig o_1=0.90)
+o_bar_2 = 0.8000   (orig o_2=0.80)
+o_bar_3 = 0.6000   (orig o_3=0.40)
+o_bar_4 = 0.6000   (orig o_4=0.60)
+o_bar_5 = 0.7000   (orig o_5=0.70)

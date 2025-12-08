@@ -3,7 +3,7 @@ import { CriterionAccordion } from "../CriterionAccordion/CriterionAccordion";
 import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { GlassAccordion } from "../StyledComponents/GlassAccordion";
 
-export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
+export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternatives, handleRateWeights, openLeaveConfirmDialog, setOpenLeaveConfirmDialog, handleLeaveIssue, leaveLoading }) => {
 
   return (
 
@@ -27,7 +27,7 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
                     </Typography>
                   </Grid>
                   <Grid item>
-                    <Chip label={selectedIssue.creator} size="small" />
+                    <Chip label={selectedIssue.creator} size="small" variant="outlined"/>
                   </Grid>
                 </Grid>
               </GlassPaper>
@@ -130,12 +130,21 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
             {/* Criterios */}
             <Grid item size={{ xs: 12, md: 6 }}>
               <GlassPaper variant="outlined" elevation={5} sx={{ p: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                  Criteria:
-                </Typography>
+                <Stack direction={"row"} justifyContent={"space-between"}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+                    Criteria:
+                  </Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1, pr: 1 }}>
+                    Weights
+                  </Typography>
+                </Stack>
                 <Stack flexDirection="column" spacing={0}>
                   {selectedIssue.criteria.map((criterion) =>
-                    <CriterionAccordion key={criterion.name} criterion={criterion} />
+                    <CriterionAccordion
+                      key={criterion.name}
+                      criterion={criterion}
+                      weightMap={selectedIssue.finalWeights}
+                    />
                   )}
                 </Stack>
               </GlassPaper>
@@ -162,16 +171,47 @@ export const IsNotAdminIssueContentDialog = ({ selectedIssue, handleRateAlternat
       </DialogContent>
 
       {/* Acciones del modal */}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}>
-        {!selectedIssue.evaluated && (
-          <Button onClick={handleRateAlternatives} size="small" color="secondary" variant="outlined">
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        sx={{ mx: 3, my: 2, mt: 1, justifyContent: "flex-end" }}
+      >
+
+        {/* ✅ Evaluar pesos si corresponde */}
+        {selectedIssue.statusFlags?.canEvaluateWeights && (
+          <Button
+            onClick={handleRateWeights}
+            size="small"
+            color="secondary"
+            variant="outlined"
+          >
+            Rate weights
+          </Button>
+        )}
+
+        {/* ✅ Evaluar alternativas si corresponde */}
+        {selectedIssue.statusFlags?.canEvaluateAlternatives && (
+          <Button
+            onClick={handleRateAlternatives}
+            size="small"
+            color="secondary"
+            variant="outlined"
+          >
             Rate alternatives
           </Button>
         )}
-        <Button onClick={() => setOpenLeaveConfirmDialog(true)} size="small" color="error" variant="outlined">
+
+        {/* ✅ Abandonar el issue */}
+        <Button
+          onClick={() => setOpenLeaveConfirmDialog(true)}
+          size="small"
+          color="error"
+          variant="outlined"
+        >
           Leave
         </Button>
       </Stack>
+
 
       {/* Diálogo de confirmación de salir el issue */}
       <Dialog open={openLeaveConfirmDialog} onClose={() => setOpenLeaveConfirmDialog(false)}>

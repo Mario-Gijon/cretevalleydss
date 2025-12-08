@@ -35,14 +35,6 @@ parameterSchema.path("default").validate(function (value) {
     }
   }
 
-  // Validar que la suma sea igual a restrictions.sum
-  if (this.type === "array" && restrictions?.sum !== null) {
-    const sum = value.reduce((acc, v) => acc + v, 0);
-    if (Math.abs(sum - restrictions.sum) > 1e-9) { // tolerancia flotante
-      return false;
-    }
-  }
-
   // Validar valores permitidos (allowed)
   if (restrictions?.allowed) {
     if (!restrictions.allowed.includes(value)) {

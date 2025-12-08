@@ -20,6 +20,8 @@ import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
 import dayjs from 'dayjs';
 import { normalizeParams } from '../utils/normalizeParams.js';
 import { ExpressionDomain } from '../models/ExpressionDomain.js';
+import { CriteriaWeightEvaluation } from '../models/CriteriaWeightEvaluation.js';
+import { validateFinalWeights } from '../utils/validateFinalWeights.js';
 
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
@@ -67,8 +69,6 @@ export const getExpressionsDomain = async (req, res) => {
       ExpressionDomain.find({ user: userId, isGlobal: { $ne: true } })
     ]);
 
-    console.log(globals, userDomains)
-
     return res.json({
       success: true,
       data: {
@@ -84,8 +84,6 @@ export const getExpressionsDomain = async (req, res) => {
 // Controlador para crear un dominio de expresión
 export const createExpressionDomain = async (req, res) => {
   const { name, type, numericRange, linguisticLabels, isGlobal } = req.body;
-
-  console.log(req.body)
 
   try {
     if (isGlobal && !req.user.isAdmin) {
@@ -110,15 +108,13 @@ export const createExpressionDomain = async (req, res) => {
   }
 };
 
-// Controlador para crear un nuevo problema (issue) usando transacción.
+// Controlador para crear un nuevo problema (issue) usando transacción
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
     session.startTransaction();
 
-    // Extraer información del problema desde el cuerpo de la petición
     const {
       issueName,
       issueDescription,
@@ -131,10 +127,11 @@ export const createIssue = async (req, res) => {
       closureDate,
       consensusMaxPhases,
       consensusThreshold,
-      paramValues
+      paramValues,
+      weightingMode,
     } = req.body.issueInfo;
 
-    // Validar que no exista un problema con el mismo nombre
+    // Validar nombre duplicado
     const existingIssue = await Issue.findOne({ name: issueName }).session(session);
     if (existingIssue) {
       await session.abortTransaction();
@@ -144,7 +141,7 @@ export const createIssue = async (req, res) => {
         .json({ success: false, obj: "issueName", msg: "Issue name already exists" });
     }
 
-    // Validar que el modelo seleccionado exista
+    // Validar modelo
     const model = await IssueModel.findOne({ name: selectedModel.name }).session(session);
     if (!model) {
       await session.abortTransaction();
@@ -154,7 +151,7 @@ export const createIssue = async (req, res) => {
         .json({ success: false, obj: "selectedModel", msg: "Model does not exist" });
     }
 
-    // Validar que haya al menos dos alternativas
+    // Validar alternativas
     if (alternatives.length <= 1) {
       await session.abortTransaction();
       session.endSession();
@@ -163,15 +160,22 @@ export const createIssue = async (req, res) => {
         .json({ success: false, obj: "alternatives", msg: "Must be at least two alternatives" });
     }
 
-    // Validar que haya al menos dos expertos
+    // Validar expertos
     if (addedExperts.length <= 0) {
       await session.abortTransaction();
       session.endSession();
       return res
         .status(400)
-        .json({ success: false, obj: "addedExperts", msg: "Must be at least two experts" });
+        .json({ success: false, obj: "addedExperts", msg: "Must be at least one expert" });
     }
 
+    // Fase inicial según modo
+    const initialStage =
+      ["simulatedConsensusBwm", "consensus"].includes(weightingMode)
+        ? "criteriaWeighting"
+        : "alternativeEvaluation";
+
+    // Crear Issue
     const issue = new Issue({
       admin: req.uid,
       model: model._id,
@@ -181,24 +185,21 @@ export const createIssue = async (req, res) => {
       active: true,
       creationDate: dayjs().format("DD-MM-YYYY"),
       closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
-      ...(model.isConsensus && {
-        consensusMaxPhases,
-        consensusThreshold,
-      }),
-      modelParameters: paramValues
+      weightingMode,
+      currentStage: initialStage,
+      ...(model.isConsensus && { consensusMaxPhases, consensusThreshold }),
+      modelParameters: paramValues,
     });
 
-    // Guardar el problema en la base de datos con sesión
     await issue.save({ session });
 
-
-    // Crear alternativas asociadas al problema con sesión
+    // Crear alternativas
     const createdAlternatives = await createAlternatives(alternatives, issue._id, session);
 
-    // Crear criterios asociados al problema con sesión y obtener solo los criterios hoja
+    // Crear criterios (y obtener los hoja)
     const leafCriteria = await createCriteria(criteria, issue._id, null, session);
 
-    // Obtener el email del administrador que creó el problema con sesión
+    // Buscar admin
     const admin = await User.findById(req.uid).session(session);
     if (!admin) {
       await session.abortTransaction();
@@ -207,10 +208,10 @@ export const createIssue = async (req, res) => {
     }
     const adminEmail = admin.email;
 
-    // Crear participaciones de expertos con sesión, marcando al admin como aceptado
+    // Crear participaciones (admin aceptado)
     const expertMap = await createParticipations(addedExperts, issue._id, adminEmail, session);
 
-    // Crear evaluaciones iniciales con sesión para cada experto, alternativa y criterio hoja
+    // 🔹 Crear evaluaciones de alternativas SIEMPRE (aunque aún no haya pesos)
     await createEvaluations(
       domainAssignments,
       expertMap,
@@ -220,15 +221,50 @@ export const createIssue = async (req, res) => {
       model.isPairwise,
       null,
       session,
-      req.uid // 👈 pasamos el id del admin
+      req.uid
     );
 
+    // 🔹 Si es simulatedConsensusBwm → crear evaluaciones de criterios (BWM)
+    if (weightingMode === "simulatedConsensusBwm") {
+      const expertIds = Array.from(expertMap.values());
+      const criteriaNames = leafCriteria.map((c) => c.name);
 
-    // Enviar invitaciones por correo a los expertos (excepto al admin)
+      const criteriaEvaluations = expertIds.map((expertId) => ({
+        issue: issue._id,
+        expert: expertId,
+        bestCriterion: "",
+        worstCriterion: "",
+        bestToOthers: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+        othersToWorst: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+        consensusPhase: 1,
+        completed: false,
+      }));
+
+      await CriteriaWeightEvaluation.insertMany(criteriaEvaluations, { session });
+
+      await issue.save({ session });
+    }
+
+    // 🔹 Si el modo es consensus → crear evaluaciones manuales de pesos
+    if (weightingMode === "consensus") {
+      const expertIds = Array.from(expertMap.values());
+      const criteriaNames = leafCriteria.map((c) => c.name);
+
+      const criteriaEvaluations = expertIds.map((expertId) => ({
+        issue: issue._id,
+        expert: expertId,
+        manualWeights: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+        consensusPhase: 1,
+        completed: false,
+      }));
+
+      await CriteriaWeightEvaluation.insertMany(criteriaEvaluations, { session });
+    }
+
+
     await Promise.all(
       addedExperts.map(async (expertEmail) => {
         if (expertEmail !== adminEmail) {
-          // Buscar al experto por su email (no necesita sesión para lectura)
           const expert = await User.findOne({ email: expertEmail });
           if (!expert) {
             await session.abortTransaction();
@@ -239,7 +275,6 @@ export const createIssue = async (req, res) => {
             });
           }
 
-          // Crear notificación para el experto invitado (sin sesión)
           const notification = new Notification({
             expert: expert._id,
             issue: issue._id,
@@ -249,143 +284,254 @@ export const createIssue = async (req, res) => {
             requiresAction: true,
           });
 
-          // Guardar notificación en la base de datos
           await notification.save();
 
-          await sendExpertInvitationEmail({ expertEmail, issueName, issueDescription, adminEmail });
+          await sendExpertInvitationEmail({
+            expertEmail,
+            issueName,
+            issueDescription,
+            adminEmail,
+          });
         }
       })
     );
 
-    // Confirmar la transacción
+    // Confirmar
     await session.commitTransaction();
     session.endSession();
 
-    // Responder con éxito indicando que el problema fue creado
-    return res
-      .status(201)
-      .json({ success: true, msg: `Issue ${issue.name} created successfully` });
+    return res.status(201).json({
+      success: true,
+      msg: `Issue ${issue.name} created successfully`,
+    });
   } catch (error) {
-    // Abortamos transacción en caso de error
     await session.abortTransaction();
     session.endSession();
-
-    // Capturar y registrar cualquier error
     console.error(error);
-
-    // Responder con error de servidor
-    return res.status(500).json({ success: false, msg: "Server error creating issue" });
+    return res.status(500).json({
+      success: false,
+      msg: "Server error creating issue",
+    });
   }
 };
 
 // Devuelve todos los problemas activos para el usuario actual
 export const getAllActiveIssues = async (req, res) => {
   try {
-    // Obtener el ID del usuario a partir del token (añadido previamente en middleware)
     const userId = req.uid;
 
-    // Obtener todos los IDs de problemas activos en los que participa el usuario (como admin o experto)
+    // 1️⃣ Obtener los IDs de los issues activos en los que participa el usuario
     const issueIds = await getUserActiveIssueIds(userId);
-
-    // Si el usuario no participa en ningún problema activo, devolver una lista vacía
     if (issueIds.length === 0) {
       return res.json({ success: true, issues: [] });
     }
 
-    // Buscar todos los problemas activos por ID y poblar los campos necesarios (modelo y admin)
-    const issues = await Issue.find({ _id: { $in: issueIds } })
-      .populate("model", "name isConsensus isPairwise") // Poblar solo los campos relevantes del modelo
-      .populate("admin", "email") // Poblar solo el email del admin
-      .lean(); // Convertir documentos a objetos JS "planos"
+    // 2️⃣ Consultar todos los datos necesarios
+    const [issues, allParticipations, alternatives, criteria, consensusPhases] = await Promise.all([
+      Issue.find({ _id: { $in: issueIds } })
+        .populate("model")
+        .populate("admin", "email")
+        .lean(),
+      Participation.find({ issue: { $in: issueIds } })
+        .populate("expert", "email")
+        .lean(),
+      Alternative.find({ issue: { $in: issueIds } }).lean(),
+      Criterion.find({ issue: { $in: issueIds } }).lean(),
+      Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
+    ]);
 
-    // Obtener todas las participaciones de expertos relacionadas con esos problemas
-    const allParticipations = await Participation.find({ issue: { $in: issueIds } })
-      .populate("expert", "email") // Poblar solo el email del experto
-      .lean();
-
-    // Obtener todas las alternativas asociadas a los problemas
-    const alternatives = await Alternative.find({ issue: { $in: issueIds } }).lean();
-
-    // Obtener todos los criterios asociados a los problemas
-    const criteria = await Criterion.find({ issue: { $in: issueIds } }).lean();
-
-    // Obtener las fases de consenso de los problemas (solo campos issue y phase)
-    const consensusPhases = await Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean();
-
-    // Crear un mapa con el número de fases de consenso por problema (issueId -> count)
+    // 3️⃣ Crear mapa de fases de consenso
     const consensusPhaseCountMap = consensusPhases.reduce((acc, curr) => {
       const issueId = curr.issue.toString();
       acc[issueId] = acc[issueId] ? acc[issueId] + 1 : 1;
       return acc;
     }, {});
 
-    // Formatear los datos de cada problema para enviarlos al frontend
+    // 4️⃣ Agrupar participaciones por issue
+    const participationMap = allParticipations.reduce((acc, p) => {
+      const id = p.issue.toString();
+      if (!acc[id]) acc[id] = [];
+      acc[id].push(p);
+      return acc;
+    }, {});
+
+    // 5️⃣ Formatear issues con toda la información necesaria
     const formattedIssues = issues.map((issue) => {
-      // Clasificar las participaciones por tipo (participaron, pendientes, etc.)
+      const issueParticipations = participationMap[issue._id.toString()] || [];
+
+      // Clasificar participaciones
       const {
         participatedExperts,
         pendingExperts,
         notAcceptedExperts,
         acceptedButNotEvaluated,
-        isExpert
-      } = categorizeParticipations(
-        allParticipations.filter((part) => part.issue._id.equals(issue._id)),
-        userId
-      );
+        isExpert,
+      } = categorizeParticipations(issueParticipations, userId, issue.currentStage);
 
+      // Expertos aceptados
+      const acceptedExperts = issueParticipations.filter(p => p.invitationStatus === "accepted");
 
-      // Devolver un objeto con todos los datos necesarios del problema
+      // Progreso general
+      const totalAccepted = acceptedExperts.length;
+      const weightsDone = acceptedExperts.filter(p => p.weightsCompleted).length;
+      const evalsDone = acceptedExperts.filter(p => p.evaluationCompleted).length;
+
+      // ❗ Solo los ACCEPTED participan realmente
+      const realParticipants = acceptedExperts;
+
+      // ❗ Si hay pending, se bloquea todo avance global
+      const hasPending = pendingExperts.length > 0;
+
+      // ❗ Si hay rechazados, simplemente no participan (pero no bloquean)
+      const hasRejected = notAcceptedExperts.length > 0;
+
+      // ❗ Avances de pesos
+      const realWeightsDone = realParticipants.filter(p => p.weightsCompleted).length;
+      const realEvalsDone = realParticipants.filter(p => p.evaluationCompleted).length;
+
+      const isAdminUser = issue.admin._id.toString() === userId;
+
+      // Flags auxiliares
+      const allWeightsDone = realParticipants.length > 0 && realWeightsDone === realParticipants.length;
+      const allEvalsDone = realParticipants.length > 0 && realEvalsDone === realParticipants.length;
+
+      // NEW FLAG: waitingAdmin
+      const waitingAdmin =
+        !isAdminUser &&
+        !hasPending &&
+        (
+          (issue.currentStage === "weightsFinished" && allWeightsDone) ||
+          (issue.currentStage === "alternativeEvaluation" && allEvalsDone)
+        );
+
+      // 🟢 FLAG: El admin solo puede computar pesos SI TODOS los participantes han evaluado pesos
+      const canComputeWeights =
+        issue.currentStage === "weightsFinished" &&
+        issue.admin._id.toString() === userId &&
+        !hasPending &&
+        realParticipants.length > 0 &&
+        realWeightsDone === realParticipants.length;
+
+      // 🟢 FLAG: El admin solo puede resolver SI TODOS los participantes evaluaron alternativas
+      const canResolveIssue =
+        issue.currentStage === "alternativeEvaluation" &&
+        issue.admin._id.toString() === userId &&
+        !hasPending &&
+        realParticipants.length > 0 &&
+        realEvalsDone === realParticipants.length;
+
+      // 🟢 FLAG: El experto puede evaluar pesos SI está aceptado y no ha completado
+      const canEvaluateWeights =
+        issue.currentStage === "criteriaWeighting" &&
+        realParticipants.some(
+          p => p.expert._id.toString() === userId && !p.weightsCompleted
+        );
+
+      // 🟢 FLAG: El experto puede evaluar alternativas SI está aceptado y no ha completado
+      const canEvaluateAlternatives =
+        issue.currentStage === "alternativeEvaluation" &&
+        realParticipants.some(
+          p => p.expert._id.toString() === userId && !p.evaluationCompleted
+        );
+
+      // ------------------------------------------
+      // 🔹 CALCULAR PESOS FINALES (SI EXISTEN)
+      // ------------------------------------------
+
+      const criteriaTree = buildCriterionTree(criteria, issue._id);
+
+      // 1️⃣ Obtener nombres de criterios hoja en orden
+      const getLeafNames = (criteriaTree) => {
+        const leaves = [];
+        const traverse = (node) => {
+          if (!node.children || node.children.length === 0) {
+            leaves.push(node.name);
+          } else {
+            node.children.forEach(traverse);
+          }
+        };
+        criteriaTree.forEach(traverse);
+        return leaves;
+      };
+
+      const leafNames = getLeafNames(criteriaTree);
+
+      // 2️⃣ Obtener array de pesos del issue
+      const weightsArray = issue.modelParameters?.weights || [];
+
+      // 3️⃣ Mapa criterio → peso
+      const finalWeightsMap = leafNames.reduce((acc, name, index) => {
+        acc[name] = weightsArray[index] ?? null;
+        return acc;
+      }, {});
+
+      // Formato final del issue
       return {
-        name: issue.name, // Nombre del problema
-        creator: issue.admin.email, // Email del administrador
-        description: issue.description, // Descripción del problema
-        model: issue.model.name, // Nombre del modelo asociado
-        isPairwise: issue.model.isPairwise, // Si se usan evaluaciones pareadas
-        isConsensus: issue.isConsensus, // Si tiene fases de consenso
-
-        // Si es de consenso, incluir información adicional
+        name: issue.name,
+        creator: issue.admin.email,
+        description: issue.description,
+        model: issue.model,
+        isPairwise: issue.model.isPairwise,
+        isConsensus: issue.isConsensus,
+        currentStage: issue.currentStage,
+        weightingMode: issue.weightingMode,
         ...(issue.model.isConsensus && {
-          consensusMaxPhases: issue.consensusMaxPhases || "Unlimited", // Máx. fases permitidas
-          consensusThreshold: issue.consensusThreshold, // Umbral de consenso
-          consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1, // Fase actual (la siguiente a la última registrada)
+          consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
+          consensusThreshold: issue.consensusThreshold,
+          consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1,
         }),
-
         creationDate: issue.creationDate || null,
         closureDate: issue.closureDate || null,
 
-        isAdmin: issue.admin._id.toString() === userId, // Si el usuario actual es admin
-        isExpert, // Si el usuario actual es experto en este problema
+        isAdmin: issue.admin._id.toString() === userId,
+        isExpert,
 
-        // Listado de alternativas del problema (ordenadas alfabéticamente)
+        // Estructura básica del problema
         alternatives: alternatives
           .filter((alt) => alt.issue.toString() === issue._id.toString())
           .map((alt) => alt.name)
           .sort(),
 
-        // Criterios del problema estructurados en árbol
         criteria: buildCriterionTree(criteria, issue._id),
 
-        // Si el usuario ha evaluado (aparece como experto que ya completó la evaluación)
-        evaluated: participatedExperts.map((part) => part.expert._id.toString()).includes(userId),
+        evaluated: participatedExperts
+          .map((part) => part.expert._id.toString())
+          .includes(userId),
 
-        // Número total de expertos (participaron, pendientes, rechazaron, aceptaron pero no evaluaron)
-        totalExperts: participatedExperts.length + pendingExperts.length + notAcceptedExperts.length + acceptedButNotEvaluated.length,
+        totalExperts:
+          participatedExperts.length +
+          pendingExperts.length +
+          notAcceptedExperts.length +
+          acceptedButNotEvaluated.length,
 
-        // Listado de expertos por categoría (ordenados por email)
-        participatedExperts: participatedExperts.map((part) => part.expert.email).sort(),
-        pendingExperts: pendingExperts.map((part) => part.expert.email).sort(),
-        notAcceptedExperts: notAcceptedExperts.map((part) => part.expert.email).sort(),
-        acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((part) => part.expert.email).sort(),
+        participatedExperts: participatedExperts.map((p) => p.expert.email).sort(),
+        pendingExperts: pendingExperts.map((p) => p.expert.email).sort(),
+        notAcceptedExperts: notAcceptedExperts.map((p) => p.expert.email).sort(),
+        acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((p) => p.expert.email).sort(),
+
+        // 🟢 NUEVOS CAMPOS: control y progreso
+        statusFlags: {
+          canEvaluateWeights,
+          canComputeWeights,
+          canEvaluateAlternatives,
+          canResolveIssue,
+          waitingAdmin
+        },
+        progress: {
+          weightsDone,
+          evalsDone,
+          totalAccepted,
+        },
+        finalWeights: finalWeightsMap,
       };
     });
 
-    // Devolver la respuesta con los problemas formateados
-    res.json({ success: true, issues: formattedIssues });
+    // 6️⃣ Enviar al frontend
+    return res.json({ success: true, issues: formattedIssues });
 
   } catch (error) {
-    // Capturar errores y devolver una respuesta con status 500
     console.error(error);
-    res.status(500).json({ success: false, msg: "Error fetching active issues" });
+    return res.status(500).json({ success: false, msg: "Error fetching active issues" });
   }
 };
 
@@ -463,8 +609,6 @@ export const removeIssue = async (req, res) => {
 
 export const removeExpressionDomain = async (req, res) => {
   const { id } = req.body;
-
-  console.log(id)
 
   try {
     const domain = await ExpressionDomain.findById(id);
@@ -1121,8 +1265,6 @@ export const resolvePairwiseIssue = async (req, res) => {
     // Si hay consenso anterior, la siguiente fase es +1; si no, empezamos en 1
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
-    console.log(rankedAlternatives)
-
     const consensus = new Consensus({
       issue: issue._id,
       phase: currentPhase,
@@ -1147,7 +1289,6 @@ export const resolvePairwiseIssue = async (req, res) => {
         });
 
         for (const evaluation of evaluations) {
-          console.log(evaluation)
           if (evaluation.consensusPhase !== null) {
             // Solo guardamos si ya hay una fase previa (para no guardar si es la primera vez)
             evaluation.history.push({
@@ -1197,6 +1338,7 @@ export const resolvePairwiseIssue = async (req, res) => {
     if (cm >= issue.consensusThreshold) {
 
       issue.active = false;
+      issue.currentStage = "finished";
       await issue.save();
 
       return res.status(200).json({
@@ -1330,7 +1472,6 @@ export const editExperts = async (req, res) => {
 
     // Calcula la fase actual (si hay consenso previo, la siguiente; si no, fase 1)
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
-    console.log("Current phase:", currentPhase);
 
     // Mapa para vincular emails con IDs de usuarios expertos
     const expertMap = new Map();
@@ -1723,8 +1864,6 @@ export const getEvaluations = async (req, res) => {
           true
         );
 
-        console.log(evaluationsByAlternative[alt.name][crit.name])
-
         evaluationsByAlternative[alt.name][crit.name] = {
           value: evalDoc?.value ?? "",
           domain: domain
@@ -1935,6 +2074,12 @@ export const resolveIssue = async (req, res) => {
     // 1. Ranking colectivo → con nombres
     const rankedAlternatives = results.collective_ranking.map((idx) => altNames[idx]);
 
+    //  NEW: ranking con score incluido
+    const rankedWithScores = results.collective_ranking.map((idx) => ({
+      name: altNames[idx],
+      score: results.collective_scores[idx]
+    }));
+
     const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
@@ -1958,9 +2103,23 @@ export const resolveIssue = async (req, res) => {
       // Iteramos por criterios (columnas)
       row.forEach((val, critIdx) => {
         const critName = criteria[critIdx].name;  // nombre del criterio
-        collectiveEvaluations[altName][critName] = val;
+        collectiveEvaluations[altName][critName] = { value: val };
       });
     });
+
+    const { plots_graphic } = results;
+
+    // Mapear puntos a emails según el orden de `participations`
+    const expertPointsMap = {};
+    participations.forEach((participation, index) => {
+      const email = participation.expert.email;
+      expertPointsMap[email] = plots_graphic.expert_points[index];
+    });
+
+    const plotsGraphicWithEmails = {
+      expert_points: expertPointsMap,
+      collective_point: plots_graphic.collective_point,
+    };
 
     // Guardar en Consensus
     const consensus = new Consensus({
@@ -1969,12 +2128,13 @@ export const resolveIssue = async (req, res) => {
       level: issue.isConsensus ? (results.cm ?? 0) : null,
       timestamp: new Date(),
       details: {
-        rankedAlternatives,
+        rankedAlternatives: rankedWithScores,
         matrices,
         collective_scores: collectiveScoresByName,
         collective_ranking: rankedAlternatives,
+        plotsGraphic: plotsGraphicWithEmails,   // ✅ AÑADIDO AQUÍ
       },
-      collectiveEvaluations,  // <--- aquí va la matriz colectiva con formato experto
+      collectiveEvaluations,
     });
 
     await consensus.save();
@@ -2027,9 +2187,11 @@ export const resolveIssue = async (req, res) => {
         msg: `Issue '${issueName}' consensus threshold not reached. Another round is needed.`,
       });
     }
-    // --- Si NO es de consenso, finalizamos directamente ---
+
     issue.active = false;
+    issue.currentStage = "finished";
     await issue.save();
+
     return res.status(200).json({
       success: true,
       finished: true,
@@ -2062,7 +2224,7 @@ export const getFinishedIssueInfo = async (req, res) => {
 
     const expertsRatings = issue.model.isPairwise ? await createExpertsPairwiseRatingsSection(issue._id) : await createExpertsRatingsSection(issue._id)
 
-    const analyticalGraphs = issue.model.isPairwise ? await createAnalyticalGraphsSection(issue._id) : null
+    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id);
 
     const issueInfo = {
       summary,
@@ -2078,3 +2240,649 @@ export const getFinishedIssueInfo = async (req, res) => {
     res.status(500).json({ success: false, msg: "Error fetching full issue info" });
   }
 };
+
+export const saveBwmWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, bwmData, send = false } = req.body;
+
+    // 1️⃣ Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res
+        ? res.status(404).json({ success: false, msg: "Issue not found" })
+        : { success: false, msg: "Issue not found" };
+    }
+
+    // 2️⃣ Verificar participación del experto
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+      invitationStatus: "accepted",
+    });
+
+    if (!participation) {
+      return res
+        ? res.status(403).json({
+          success: false,
+          msg: "You are no longer a participant in this issue",
+        })
+        : { success: false, msg: "You are no longer a participant in this issue" };
+    }
+
+    // 3️⃣ Validar datos mínimos
+    if (!bwmData.bestCriterion || !bwmData.worstCriterion) {
+      return res
+        ? res.status(400).json({
+          success: false,
+          msg: "Missing best or worst criterion",
+        })
+        : { success: false, msg: "Missing best or worst criterion" };
+    }
+
+    // 4️⃣ Crear payload (guardamos números directamente)
+    const toIntMap = (obj) =>
+      Object.fromEntries(
+        Object.entries(obj || {}).map(([key, val]) => [
+          key,
+          val === "" || val == null ? null : parseInt(val, 10),
+        ])
+      );
+
+    const payload = {
+      issue: issue._id,
+      expert: userId,
+      bestCriterion: bwmData.bestCriterion,
+      worstCriterion: bwmData.worstCriterion,
+      bestToOthers: toIntMap(bwmData.bestToOthers),
+      othersToWorst: toIntMap(bwmData.othersToWorst),
+      completed: send, // si es envío final, lo marcamos como completado
+      consensusPhase: 1,
+    };
+
+    // 5️⃣ Insertar o actualizar según exista
+    const existing = await CriteriaWeightEvaluation.findOne({
+      issue: issue._id,
+      expert: userId,
+    });
+
+    if (existing) {
+      await CriteriaWeightEvaluation.updateOne(
+        { _id: existing._id },
+        { $set: payload }
+      );
+    } else {
+      await CriteriaWeightEvaluation.create(payload);
+    }
+
+    // 6️⃣ Responder al cliente
+    return res
+      ? res.status(200).json({
+        success: true,
+        msg: send
+          ? "Weights submitted successfully"
+          : "Weights saved successfully",
+      })
+      : {
+        success: true,
+        msg: send
+          ? "Weights submitted successfully"
+          : "Weights saved successfully",
+      };
+  } catch (err) {
+    console.error(err);
+    return res
+      ? res.status(500).json({
+        success: false,
+        msg: "An error occurred while saving weights",
+      })
+      : { success: false, msg: "An error occurred while saving weights" };
+  }
+};
+
+export const getBwmWeights = async (req, res) => {
+  const userId = req.uid;
+  try {
+    const { issueName } = req.body;
+
+    // 🟢 Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // 🟢 Verificar participación del usuario
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+      invitationStatus: "accepted",
+    });
+
+    if (!participation) {
+      return res
+        .status(403)
+        .json({ success: false, msg: "You are no longer a participant in this issue" });
+    }
+
+    // 🟢 Obtener criterios del problema
+    const criteria = await Criterion.find({ issue: issue._id }).lean();
+
+    // 🟢 Buscar si ya hay una evaluación BWM guardada
+    const existingEvaluation = await CriteriaWeightEvaluation.findOne({
+      issue: issue._id,
+      expert: userId,
+    }).lean();
+
+    // 🟢 Inicializar estructura vacía por defecto
+    const leafCriteria = criteria.filter((c) => c.isLeaf).map((c) => c.name);
+
+    const defaultBwmData = {
+      bestCriterion: "",
+      worstCriterion: "",
+      bestToOthers: Object.fromEntries(leafCriteria.map((name) => [name, ""])),
+      othersToWorst: Object.fromEntries(leafCriteria.map((name) => [name, ""])),
+      completed: false,
+    };
+
+    // 🟢 Si hay evaluación guardada, rellenar con esos valores
+    const bwmData = existingEvaluation
+      ? {
+        bestCriterion: existingEvaluation.bestCriterion || "",
+        worstCriterion: existingEvaluation.worstCriterion || "",
+        bestToOthers: { ...defaultBwmData.bestToOthers, ...existingEvaluation.bestToOthers },
+        othersToWorst: { ...defaultBwmData.othersToWorst, ...existingEvaluation.othersToWorst },
+        completed: existingEvaluation.completed || false,
+      }
+      : defaultBwmData;
+
+    return res.status(200).json({
+      success: true,
+      bwmData,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while fetching weights",
+    });
+  }
+};
+
+export const sendBwmWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, bwmData } = req.body;
+
+    // 🧠 1️⃣ Validar que los datos BWM están completos
+    const validation = validateFinalWeights(bwmData);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        msg: validation.msg,
+        field: validation.field,
+      });
+    }
+
+    // 🔧 2️⃣ Normalizar autocomparaciones (best→best = 1, worst→worst = 1)
+    if (bwmData.bestCriterion) {
+      bwmData.bestToOthers = {
+        ...bwmData.bestToOthers,
+        [bwmData.bestCriterion]: 1,
+      };
+    }
+    if (bwmData.worstCriterion) {
+      bwmData.othersToWorst = {
+        ...bwmData.othersToWorst,
+        [bwmData.worstCriterion]: 1,
+      };
+    }
+
+    // 🧩 3️⃣ Guardar los datos finales (reutilizamos saveWeights)
+    const saveResult = await saveBwmWeights(req);
+    if (!saveResult.success) {
+      return res
+        .status(500)
+        .json({ success: false, msg: saveResult.msg || "Error saving weights" });
+    }
+
+    // 🧾 4️⃣ Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // ✅ 5️⃣ Marcar la evaluación BWM como completada
+    await CriteriaWeightEvaluation.updateOne(
+      { issue: issue._id, expert: userId },
+      { $set: { completed: true } }
+    );
+
+    // 🧍‍♂️ 6️⃣ Marcar la participación del experto
+    await Participation.updateOne(
+      { issue: issue._id, expert: userId },
+      { $set: { weightsCompleted: true } }
+    );
+
+    // ✅ 7️⃣ Comprobar si TODOS los expertos (excepto rechazados) han completado los pesos
+    const [totalParticipants, totalWeightsDone] = await Promise.all([
+      Participation.countDocuments({
+        issue: issue._id,
+        invitationStatus: { $in: ["accepted", "pending"] }, // participan
+      }),
+      Participation.countDocuments({
+        issue: issue._id,
+        invitationStatus: { $in: ["accepted", "pending"] },
+        weightsCompleted: true,
+      }),
+    ]);
+
+    // 🧩 Si todos los expertos participantes (no rechazados) han completado los pesos
+    if (
+      totalParticipants > 0 &&
+      totalWeightsDone === totalParticipants &&
+      issue.currentStage !== "weightsFinished"
+    ) {
+      issue.currentStage = "weightsFinished";
+      await issue.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      msg: "Weights submitted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while sending weights",
+    });
+  }
+};
+
+export const computeWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName } = req.body;
+
+    // 1️⃣ Buscar el issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
+
+    // 2️⃣ Validar que el usuario sea el admin
+    if (issue.admin.toString() !== userId) {
+      return res.status(403).json({ success: false, msg: "Unauthorized: only admin can compute weights" });
+    }
+
+    // 3️⃣ Comprobar que todos los expertos participantes (no rechazados) completaron los pesos
+    const pendingWeights = await Participation.find({
+      issue: issue._id,
+      invitationStatus: { $in: ["accepted", "pending"] },
+      weightsCompleted: false,
+    });
+
+    if (pendingWeights.length > 0) {
+      return res.status(400).json({
+        success: false,
+        msg: "Not all experts have completed their criteria weight evaluations",
+      });
+    }
+
+    // 4️⃣ Obtener los criterios hoja ordenados alfabéticamente
+    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 });
+    const criterionNames = criteria.map(c => c.name);
+
+    // 5️⃣ Obtener todas las evaluaciones de pesos (BWM)
+    const weightEvaluations = await CriteriaWeightEvaluation.find({ issue: issue._id }).populate("expert", "email");
+
+    if (weightEvaluations.length === 0) {
+      return res.status(400).json({ success: false, msg: "No BWM evaluations found for this issue" });
+    }
+
+    // 6️⃣ Construir objeto con los datos por experto
+    const expertsData = {};
+
+    for (const evalDoc of weightEvaluations) {
+      const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } = evalDoc;
+
+      if (!bestCriterion || !worstCriterion) continue;
+
+      const mic = criterionNames.map(c => Number(bestToOthers?.[c]) || 1);
+      const lic = criterionNames.map(c => Number(othersToWorst?.[c]) || 1);
+
+      const email = evalDoc.expert?.email || `expert_${evalDoc.expert?._id}`;
+      expertsData[email] = { mic, lic };
+    }
+
+    if (Object.keys(expertsData).length === 0) {
+      return res.status(400).json({ success: false, msg: "Incomplete BWM data from experts" });
+    }
+
+    // 7️⃣ Llamar a la API de Python
+    const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000";
+
+    const response = await axios.post(`${apimodelsUrl}/bwm`, {
+      experts_data: expertsData,
+      eps_penalty: 1,
+    });
+
+    const { success, msg, results } = response.data;
+
+    if (!success) {
+      return res.status(400).json({ success: false, msg });
+    }
+
+    const weights = results.weights;
+
+    // 8️⃣ Guardar los pesos en el issue (asociados al criterio)
+    issue.modelParameters.weights = [];
+    criterionNames.forEach((name, i) => {
+      issue.modelParameters.weights[i] = weights[i];
+    });
+
+    issue.currentStage = "alternativeEvaluation";
+    await issue.save();
+
+    return res.status(200).json({
+      success: true,
+      finished: true,
+      msg: `Criteria weights for '${issueName}' successfully computed.`,
+      weights: issue.modelParameters.weights,
+    });
+
+  } catch (err) {
+    console.error("Error in computeWeights:", err);
+    return res.status(500).json({ success: false, msg: "An error occurred while computing weights" });
+  }
+};
+
+export const saveManualWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, weigths } = req.body;
+
+    const raw = weigths?.manualWeights || {};
+
+    // Convertir a números
+    const manualWeights = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => {
+        if (v === "" || v === null) return [k, null]; // guardar vacío correctamente
+        return [k, Number(v)];
+      })
+    );
+
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+      invitationStatus: "accepted",
+    });
+
+    if (!participation)
+      return res.status(403).json({ success: false, msg: "You are no longer a participant" });
+
+    // Guardar
+    await CriteriaWeightEvaluation.updateOne(
+      { issue: issue._id, expert: userId },
+      {
+        $set: {
+          issue: issue._id,
+          expert: userId,
+          manualWeights,
+          completed: false,
+          consensusPhase: 1,
+        },
+      },
+      { upsert: true }
+    );
+
+    return res.status(200).json({ success: true, msg: "Manual weights saved successfully" });
+
+  } catch (err) {
+    console.error("saveManualWeights error:", err);
+    return res.status(500).json({ success: false, msg: "An error occurred while saving" });
+  }
+};
+
+export const getManualWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName } = req.body;
+
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: userId,
+      invitationStatus: "accepted",
+    });
+
+    if (!participation)
+      return res.status(403).json({ success: false, msg: "You are no longer a participant" });
+
+    const evaluation = await CriteriaWeightEvaluation.findOne({
+      issue: issue._id,
+      expert: userId,
+    });
+
+    // construir vacío si no hay datos guardados
+    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true });
+    const empty = Object.fromEntries(criteria.map(c => [c.name, ""]));
+
+    // Si hay evaluación, formateamos los valores null → ""
+    let formatted = empty;
+
+    if (evaluation?.manualWeights) {
+      formatted = Object.fromEntries(
+        Object.entries(evaluation.manualWeights).map(([k, v]) => [
+          k,
+          v === null ? "" : v
+        ])
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      manualWeights: formatted,
+    });
+
+  } catch (err) {
+    console.error("getManualWeights error:", err);
+    return res.status(500).json({ success: false, msg: "Error fetching manual weights" });
+  }
+};
+
+export const sendManualWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName, weigths } = req.body;
+
+    const raw = weigths?.manualWeights || {};
+    const manualWeights = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [k, Number(v)])
+    );
+
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue)
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    // validar suma 1
+    const sum = Object.values(manualWeights).reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - 1) > 0.001)
+      return res.status(400).json({
+        success: false,
+        msg: "Manual weights must sum to 1",
+      });
+
+    // guardar pesos manuales
+    await CriteriaWeightEvaluation.updateOne(
+      { issue: issue._id, expert: userId },
+      { $set: { manualWeights, completed: true } },
+      { upsert: true }
+    );
+
+    // marcar participación
+    await Participation.updateOne(
+      { issue: issue._id, expert: userId },
+      { $set: { weightsCompleted: true } }
+    );
+
+    // 🟩 NUEVO: marcar cambio de etapa cuando todos han evaluado
+    const [totalParticipants, totalWeightsDone] = await Promise.all([
+      Participation.countDocuments({
+        issue: issue._id,
+        invitationStatus: { $in: ["accepted", "pending"] }
+      }),
+      Participation.countDocuments({
+        issue: issue._id,
+        invitationStatus: { $in: ["accepted", "pending"] },
+        weightsCompleted: true
+      })
+    ]);
+
+    if (
+      totalParticipants > 0 &&
+      totalWeightsDone === totalParticipants &&
+      issue.currentStage !== "weightsFinished"
+    ) {
+      issue.currentStage = "weightsFinished";
+      await issue.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      msg: "Manual weights submitted successfully",
+    });
+
+  } catch (err) {
+    console.error("sendManualWeights error:", err);
+    return res.status(500).json({
+      success: false,
+      msg: "Error submitting manual weights",
+    });
+  }
+};
+
+export const computeManualWeights = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { issueName } = req.body;
+
+    // 1️⃣ Buscar issue
+    const issue = await Issue.findOne({ name: issueName });
+    if (!issue)
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    // 2️⃣ Solo admin
+    if (issue.admin.toString() !== userId)
+      return res.status(403).json({
+        success: false,
+        msg: "Unauthorized: only admin can compute weights",
+      });
+
+    // 3️⃣ Validar modo
+    if (issue.weightingMode !== "consensus") {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue is not using manual consensus weighting mode",
+      });
+    }
+
+    // 4️⃣ Validar que todos los expertos aceptados han enviado sus pesos
+    const participations = await Participation.find({
+      issue: issue._id,
+      invitationStatus: "accepted",
+    });
+
+    const weightsPending = participations.filter(p => !p.weightsCompleted);
+
+    if (weightsPending.length > 0) {
+      return res.status(400).json({
+        success: false,
+        msg: "Not all experts have completed their criteria weight evaluations",
+      });
+    }
+
+    // 5️⃣ Obtener criterios hoja (ordenados)
+    const criteria = await Criterion.find({
+      issue: issue._id,
+      isLeaf: true,
+    }).sort({ name: 1 });
+
+    const criterionNames = criteria.map((c) => c.name);
+
+    // 6️⃣ Obtener TODAS las evaluaciones manuales de pesos
+    const evaluations = await CriteriaWeightEvaluation.find({
+      issue: issue._id,
+      completed: true,
+    });
+
+    if (evaluations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        msg: "No manual weight evaluations found for this issue",
+      });
+    }
+
+    // 7️⃣ Calcular media aritmética por criterio
+    const collectiveWeights = [];
+
+    for (const critName of criterionNames) {
+      const vals = [];
+
+      for (const evalDoc of evaluations) {
+        const v = evalDoc.manualWeights?.[critName];
+        if (v !== undefined && v !== null && v !== "") {
+          vals.push(Number(v));
+        }
+      }
+
+      if (vals.length === 0) {
+        collectiveWeights.push(0);
+      } else {
+        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        collectiveWeights.push(avg);
+      }
+    }
+
+    // 8️⃣ Normalizar pesos
+    let total = collectiveWeights.reduce((a, b) => a + b, 0);
+
+    if (total <= 0) {
+      const w = 1 / collectiveWeights.length;
+      issue.modelParameters.weights = collectiveWeights.map(() => w);
+    } else {
+      issue.modelParameters.weights = collectiveWeights.map((w) => w / total);
+    }
+
+    // 9️⃣ Pasar a evaluación de alternativas
+    issue.currentStage = "alternativeEvaluation";
+    await issue.save();
+
+    return res.status(200).json({
+      success: true,
+      finished: true,
+      msg: "Criteria weights computed",
+      weights: issue.modelParameters.weights,
+      criteria: criterionNames,
+    });
+  } catch (err) {
+    console.error("Error computing weights:");
+    return res.status(500).json({
+      success: false,
+      msg: "Error computing manual weights",
+    });
+  }
+};
+
