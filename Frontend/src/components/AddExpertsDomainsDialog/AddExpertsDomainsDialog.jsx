@@ -41,9 +41,7 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
   };
 
   if (!open) return null;
-
-  console.log(issue.model)
-
+  
   return (
     <GlassDialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
       <DialogTitle>Assign Expression Domains to New Experts</DialogTitle>

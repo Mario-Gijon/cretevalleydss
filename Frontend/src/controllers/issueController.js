@@ -216,33 +216,27 @@ export const getAllFinishedIssues = async () => {
   }
 }
 
-export const removeIssue = async (issueName) => {
+export const removeIssue = async (id) => {
   const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
+  if (!token) return false;
 
-  // Opciones de la solicitud para datos protegidos
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
-
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/removeIssue`, options);
     return await response.json();
   } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    console.error("Error removing issue:", err);
+    return false;
   }
-}
+};
 
 export const removeExpressionDomain = async (id) => {
   const token = await getToken();
@@ -294,466 +288,397 @@ export const updateExpressionDomain = async (id, updatedDomain) => {
   }
 };
 
-export const changeInvitationStatus = async (issueName, action) => {
+export const changeInvitationStatus = async (id, action) => {
   const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
+  if (!token) return false;
 
-  // Opciones de la solicitud para datos protegidos
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, action })
+    body: JSON.stringify({ id, action }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/changeInvitationStatus`, options);
     return await response.json();
   } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const saveEvaluations = async (issueName, isPairwise, evaluations) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+    console.error("Error changing invitation status:", err);
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const saveEvaluations = async (id, isPairwise, evaluations) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, evaluations })
+    body: JSON.stringify({ id, evaluations }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const url = isPairwise ? 'savePairwiseEvaluations' : 'saveEvaluations';
+    const url = isPairwise ? "savePairwiseEvaluations" : "saveEvaluations";
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const getEvaluations = async (issueName, isPairwise) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+    console.error("Error saving evaluations:", err);
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const getEvaluations = async (id, isPairwise) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const url = isPairwise ? 'getPairwiseEvaluations' : 'getEvaluations';
+    const url = isPairwise ? "getPairwiseEvaluations" : "getEvaluations";
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const sendEvaluations = async (issueName, isPairwise, evaluations) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+    console.error("Error fetching evaluations:", err);
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const sendEvaluations = async (id, isPairwise, evaluations) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, evaluations })
+    body: JSON.stringify({ id, evaluations }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const url = isPairwise ? 'sendPairwiseEvaluations' : 'sendEvaluations';
+    const url = isPairwise ? "sendPairwiseEvaluations" : "sendEvaluations";
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
     return await response.json();
   } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const resolveIssue = async (issueName, isPairwise) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+    console.error("Error sending evaluations:", err);
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const resolveIssue = async (id, isPairwise) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const url = isPairwise ? 'resolvePairwiseIssue' : 'resolveIssue';
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options)
+    const url = isPairwise ? "resolvePairwiseIssue" : "resolveIssue";
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/${url}`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error resolving issue:", err);
+    return false;
+  }
+};
+
+export const getFinishedIssueInfo = async (id) => {
+  const token = await getToken();
+  if (!token) return false;
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id }),
+  };
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BACK}/issues/getFinishedIssueInfo`,
+      options
+    );
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
-}
+};
 
-export const getFinishedIssueInfo = async (issueName) => {
+export const removeFinishedIssue = async (id) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
     return false;
   }
 
-  // Opciones de la solicitud para datos protegidos
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getFinishedIssueInfo`, options);
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BACK}/issues/removeFinishedIssue`,
+      options
+    );
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
-}
+};
 
-export const removeFinishedIssue = async (issueName) => {
+export const editExperts = async (id, expertsToAdd, expertsToRemove, domainAssignments = null) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
     return false;
   }
 
-  // Opciones de la solicitud para datos protegidos
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id, expertsToAdd, expertsToRemove, domainAssignments }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/removeFinishedIssue`, options);
-    return await response.json();
-  } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const editExperts = async (issueName, expertsToAdd, expertsToRemove) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
-
-  // Opciones de la solicitud para datos protegidos
-  const options = {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ issueName, expertsToAdd, expertsToRemove })
-  };
-
-  try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/editExperts`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
-}
+};
 
-export const leaveIssue = async (issueName) => {
+export const leaveIssue = async (id) => {
   const token = await getToken();
   if (!token) {
     console.error("No token available");
     return false;
   }
 
-  // Opciones de la solicitud para datos protegidos
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/leaveIssue`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const saveBwmWeights = async (issueName, bwmData) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const saveBwmWeights = async (id, bwmData) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, bwmData })
+    body: JSON.stringify({ id, bwmData }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/saveBwmWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const getBwmWeights = async (issueName) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const getBwmWeights = async (id) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getBwmWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const sendBwmWeights = async (issueName, bwmData) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const sendBwmWeights = async (id, bwmData) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, bwmData })
+    body: JSON.stringify({ id, bwmData }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/sendBwmWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const saveManualWeights = async (issueName, weigths) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const saveManualWeights = async (id, weights) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, weigths })
+    body: JSON.stringify({ id, weights }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/saveManualWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const getManualWeights = async (issueName) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const getManualWeights = async (id) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getManualWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const sendManualWeights = async (issueName, weigths) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const sendManualWeights = async (id, weights) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName, weigths })
+    body: JSON.stringify({ id, weights }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
     const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/sendManualWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const computeWeights = async (issueName) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const computeWeights = async (id) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/computeWeights`, options)
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/computeWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-export const computeManualWeights = async (issueName) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
     return false;
   }
+};
 
-  // Opciones de la solicitud para datos protegidos
+export const computeManualWeights = async (id) => {
+  const token = await getToken();
+  if (!token) return false;
+
   const options = {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ issueName })
+    body: JSON.stringify({ id }),
   };
 
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/computeManualWeights`, options)
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/computeManualWeights`, options);
     return await response.json();
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
-}
+};
+
 

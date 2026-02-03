@@ -8,7 +8,7 @@ import { Consensus } from "./Consensus.js";
 const issueSchema = new Schema({
   admin: { type: Schema.Types.ObjectId, ref: "User", required: true },
   model: { type: Schema.Types.ObjectId, ref: "IssueModel", required: true },
-  name: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
   isConsensus: { type: Boolean, required: true },
   consensusMaxPhases: { type: Number, default: null },
   consensusThreshold: { type: Number, default: null },
@@ -17,7 +17,6 @@ const issueSchema = new Schema({
   creationDate: { type: String, default: null },
   closureDate: { type: String, default: null },
   modelParameters: { type: Schema.Types.Mixed, default: {} },
-
   currentStage: {
     type: String,
     enum: [
@@ -28,7 +27,6 @@ const issueSchema = new Schema({
     ],
     default: "criteriaWeighting",
   },
-
   weightingMode: {
     type: String,
     enum: ["manual", "consensus", "bwm", "consensusBwm", "simulatedConsensusBwm"],

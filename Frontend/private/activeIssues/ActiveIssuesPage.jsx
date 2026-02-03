@@ -78,17 +78,21 @@ const ActiveIssuesPage = () => {
   }, [issueCreated, setIssueCreated]);
 
   const handleRemoveIssue = async () => {
-    setRemoveLoading(true)
-    const issueRemoved = await removeIssue(selectedIssue.name);
+    setRemoveLoading(true);
+
+    const issueRemoved = await removeIssue(selectedIssue.id);
 
     if (issueRemoved.success) {
-      setActiveIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
+      setActiveIssues(prevIssues =>
+        prevIssues.filter(issue => issue.id !== selectedIssue.id)
+      );
       handleCloseIssueDialog();
     }
-    setRemoveLoading(false)
+
+    setRemoveLoading(false);
     showSnackbarAlert(issueRemoved.msg, issueRemoved.success ? "success" : "error");
-    setOpenRemoveConfirmDialog(false)
-  }
+    setOpenRemoveConfirmDialog(false);
+  };
 
   const handleDeleteExpert = (expert) => {
     setExpertsToRemove(prev => [...new Set([...prev, expert])]); // evita duplicados
@@ -140,10 +144,15 @@ const ActiveIssuesPage = () => {
   const processEditExperts = async (domainAssignments = null) => {
     setEditExpertsLoading(true);
 
-    const response = await editExperts(selectedIssue.name, expertsToAdd, expertsToRemove, domainAssignments);
+    const response = await editExperts(
+      selectedIssue.id,
+      expertsToAdd,
+      expertsToRemove,
+      domainAssignments
+    );
 
     if (response.success) {
-      await fetchActiveIssues(); // 🔥 actualiza lista completa
+      await fetchActiveIssues();
     }
 
     setEditExpertsLoading(false);
@@ -190,28 +199,31 @@ const ActiveIssuesPage = () => {
   };
 
   const handleResolveIssue = async () => {
-    setResolveLoading(true)
-    setOpenResolveConfirmDialog(false)
+    setResolveLoading(true);
+    setOpenResolveConfirmDialog(false);
 
-    const response = await resolveIssue(selectedIssue.name, selectedIssue.isPairwise)
+    const response = await resolveIssue(selectedIssue.id, selectedIssue.isPairwise);
+
     if (response.success) {
       if (response.finished === true) {
-        console.log(response.rankedAlternatives)
-        setActiveIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
+        setActiveIssues(prevIssues =>
+          prevIssues.filter(issue => issue.id !== selectedIssue.id)
+        );
         showSnackbarAlert(response.msg, "success");
-        await fetchFinishedIssues()
+        await fetchFinishedIssues();
       } else {
         showSnackbarAlert(response.msg, "info");
-        await fetchActiveIssues()
+        await fetchActiveIssues();
       }
       handleCloseIssueDialog();
     } else {
       showSnackbarAlert(response.msg, "error");
       handleCloseIssueDialog();
-      setLoading(false)
+      setLoading(false);
     }
-    setResolveLoading(false)
-  }
+
+    setResolveLoading(false);
+  };
 
   const handleComputeWeightsIssue = async () => {
     setComputeWeightsLoading(true);
@@ -219,21 +231,14 @@ const ActiveIssuesPage = () => {
 
     let response;
 
-    // 👉 Si el modo de ponderación es consenso manual → usar computeManualWeights
     if (selectedIssue.weightingMode === "consensus") {
-      response = await computeManualWeights(selectedIssue.name);
-    }
-    // 👉 En caso contrario (BWM normal o simulated) → usar computeWeights
-    else {
-      response = await computeWeights(selectedIssue.name);
+      response = await computeManualWeights(selectedIssue.id);
+    } else {
+      response = await computeWeights(selectedIssue.id);
     }
 
     if (response.success) {
-      if (response.finished === true) {
-        showSnackbarAlert(response.msg, "success");
-      } else {
-        showSnackbarAlert(response.msg, "info");
-      }
+      showSnackbarAlert(response.msg, response.finished ? "success" : "info");
       await fetchActiveIssues();
       await fetchFinishedIssues();
       handleCloseIssueDialog();
@@ -246,22 +251,26 @@ const ActiveIssuesPage = () => {
     setComputeWeightsLoading(false);
   };
 
-
   const handleLeaveIssue = async () => {
-    console.log("Leaving issue: ", selectedIssue.name);
-    setLeaveLoading(true)
-    setOpenLeaveConfirmDialog(false)
-    const response = await leaveIssue(selectedIssue.name); // true para indicar que es un leave
+    console.log("Leaving issue: ", selectedIssue.id);
+
+    setLeaveLoading(true);
+    setOpenLeaveConfirmDialog(false);
+
+    const response = await leaveIssue(selectedIssue.id);
 
     if (response.success) {
-      setActiveIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
+      setActiveIssues(prevIssues =>
+        prevIssues.filter(issue => issue.id !== selectedIssue.id)
+      );
       handleCloseIssueDialog();
       showSnackbarAlert(response.msg, "success");
     } else {
       showSnackbarAlert(response.msg, "error");
     }
-    setLeaveLoading(false)
-  }
+
+    setLeaveLoading(false);
+  };
 
   if (loading) {
     // Mostrar un loader mientras los datos se están cargando

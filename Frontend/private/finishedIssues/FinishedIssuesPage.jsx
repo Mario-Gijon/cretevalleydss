@@ -2,7 +2,7 @@
 import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, DialogContent, DialogContentText } from "@mui/material";
 import Masonry from "@mui/lab/Masonry";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import {StyledChip} from "../../src/components/StyledComponents/StyledChip"
+import { StyledChip } from "../../src/components/StyledComponents/StyledChip"
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useEffect, useState } from "react";
@@ -42,17 +42,22 @@ const FinishedIssuesPage = () => {
   };
 
   const handleRemoveFinishedIssue = async () => {
-    setRemoveLoading(true)
-    const response = await removeFinishedIssue(selectedIssue.name);
+    setRemoveLoading(true);
+
+    const response = await removeFinishedIssue(selectedIssue.id);
+
     if (response.success) {
-      setFinishedIssues(prevIssues => prevIssues.filter(issue => issue.name !== selectedIssue.name));
+      setFinishedIssues(prevIssues =>
+        prevIssues.filter(issue => issue.id !== selectedIssue.id)
+      );
       handleCloseFinishedIssueDialog();
       console.log("Issue deleted successfully");
     }
+
     showSnackbarAlert(response.msg, response.success ? "success" : "error");
-    setRemoveLoading(false)
-    setOpenRemoveConfirmDialog(false)
-  }
+    setRemoveLoading(false);
+    setOpenRemoveConfirmDialog(false);
+  };
 
 
   if (loading) {

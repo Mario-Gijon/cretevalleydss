@@ -48,7 +48,7 @@ export const RateBwmWeightsDialog = ({ handleCloseIssueDialog, isRatingWeights, 
 
   // 🔹 Cargar los pesos guardados cuando el usuario abre el diálogo
   useEffect(() => {
-    if (!isRatingWeights || !selectedIssue?.name) return;
+    if (!isRatingWeights || !selectedIssue?.id) return;
 
     const fetchWeights = async () => {
       // 🧹 Limpiar inmediatamente el estado para evitar mostrar datos antiguos

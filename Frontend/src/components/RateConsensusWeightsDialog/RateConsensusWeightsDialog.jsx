@@ -1,38 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
-import {
-  Stack,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
-  Typography,
-  IconButton,
-  TextField,
-  Button,
-  Dialog,
-  DialogContentText,
-  Backdrop,
-  ToggleButton
-} from "@mui/material";
+import { Stack, DialogTitle, DialogContent, DialogActions, Divider, Typography, IconButton, TextField, Button, Dialog, DialogContentText, Backdrop, ToggleButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { getLeafCriteria } from "../../utils/createIssueUtils";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import {
-  saveManualWeights,
-  getManualWeights,
-  sendManualWeights
-} from "../../controllers/issueController";
+import { saveManualWeights, getManualWeights, sendManualWeights } from "../../controllers/issueController";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 
-export const RateConsensusWeightsDialog = ({
-  handleCloseIssueDialog,
-  isRatingWeights,
-  setIsRatingWeights,
-  selectedIssue,
-}) => {
+export const RateConsensusWeightsDialog = ({ handleCloseIssueDialog, isRatingWeights, setIsRatingWeights, selectedIssue, }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 

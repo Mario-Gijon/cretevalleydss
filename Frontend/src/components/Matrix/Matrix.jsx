@@ -3,10 +3,6 @@ import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
 export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, collectiveEvaluations, permitEdit = true }) => {
 
-  console.log("Evaluations", evaluations)
-  console.log("Collectiva", collectiveEvaluations)
-
-
   const theme = useTheme();
 
   const getDomain = (cell) =>

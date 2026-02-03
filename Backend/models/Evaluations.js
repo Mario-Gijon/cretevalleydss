@@ -6,11 +6,7 @@ const evaluationSchema = new Schema({
   alternative: { type: Schema.Types.ObjectId, ref: "Alternative", required: true }, // Alternativa evaluada
   comparedAlternative: { type: Schema.Types.ObjectId, ref: "Alternative", default: null }, // Alternativa contra la que se compara (null si es AxC)
   criterion: { type: Schema.Types.ObjectId, ref: "Criterion", required: true }, // Criterio evaluado
-  expressionDomain: {
-    type: Schema.Types.ObjectId,
-    ref: "ExpressionDomain",
-  },
-
+  expressionDomain: { type: Schema.Types.ObjectId, ref: "IssueExpressionDomain" },
   value: { type: Schema.Types.Mixed, default: null }, // Para numérico = número | Para lingüístico = nombre de la etiqueta
   timestamp: { type: Date, default: null },
   consensusPhase: { type: Number, default: 1 },

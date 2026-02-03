@@ -27,12 +27,12 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
     cell && typeof cell === "object" && cell.domain ? cell.domain : null;
 
   useEffect(() => {
-    if (!isRatingAlternatives || !selectedIssue?.name) return;
+    if (!isRatingAlternatives || !selectedIssue?.id) return;
 
     const fetchEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await getEvaluations(selectedIssue.name);
+        const response = await getEvaluations(selectedIssue.id);
         if (response.success && response.evaluations) {
           setCollectiveEvaluations(response.collectiveEvaluations);
 
@@ -142,7 +142,7 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
+    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -159,7 +159,7 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
     setOpenSendEvaluationsDialog(false);
     setLoading(true);
 
-    const response = await sendEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
+    const response = await sendEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
 
     if (response.success) {
       showSnackbarAlert(response.msg, "success");

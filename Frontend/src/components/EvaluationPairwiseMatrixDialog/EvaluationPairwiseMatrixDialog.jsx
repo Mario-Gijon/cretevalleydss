@@ -32,12 +32,12 @@ export const EvaluationPairwiseMatrixDialog = ({ setOpenIssueDialog, isRatingAlt
   const criterionId = currentCriterion?.name; // Identificador único para la matriz
 
   useEffect(() => {
-    if (!isRatingAlternatives || !selectedIssue?.name) return;
+    if (!isRatingAlternatives || !selectedIssue?.id) return;
 
     const fetchEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await getEvaluations(selectedIssue.name, selectedIssue.isPairwise);
+        const response = await getEvaluations(selectedIssue.id, selectedIssue.isPairwise);
         if (response.success && response.evaluations) {
           console.log("collective", response.collectiveEvaluations)
           setCollectiveEvaluations(response.collectiveEvaluations)
@@ -158,7 +158,7 @@ export const EvaluationPairwiseMatrixDialog = ({ setOpenIssueDialog, isRatingAlt
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
+    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -197,7 +197,7 @@ export const EvaluationPairwiseMatrixDialog = ({ setOpenIssueDialog, isRatingAlt
     setOpenSendEvaluationsDialog(false);
     setLoading(true);
     console.log(evaluations)
-    const response = await sendEvaluations(selectedIssue.name, selectedIssue.isPairwise, evaluations);
+    const response = await sendEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
     if (response.success) {
       showSnackbarAlert(response.msg, "success");
       await fetchActiveIssues();

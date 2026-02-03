@@ -1,5 +1,4 @@
 import cron from "node-cron";
-import mongoose from "mongoose";
 import { Issue } from "../models/Issues.js";
 import { Participation } from "../models/Participations.js";
 import { resolveIssueLogic, removeIssueLogic } from "../controllers/issue.controller.js";

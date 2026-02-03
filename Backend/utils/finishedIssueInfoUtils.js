@@ -1,15 +1,11 @@
 // Importa el modelo de usuario desde el archivo correspondiente.
-import { User } from '../models/Users.js'
 import { Issue } from '../models/Issues.js';
-import { IssueModel } from '../models/Models.js';
 import { Alternative } from '../models/Alternatives.js';
 import { Criterion } from '../models/Criteria.js';
 import { Participation } from '../models/Participations.js';
 import { Evaluation } from '../models/Evaluations.js';
 import { Consensus } from '../models/Consensus.js';
-import { Notification } from '../models/Notificacions.js';
-import { ExitUserIssue } from '../models/ExitUserIssue.js';
-import { buildCriterionTree } from './getAllActiveIssuesUtils.js';
+import { buildCriterionTree } from './buildCriteriaTree.js';
 
 export const createSummarySection = async (issueId) => {
   const issue = await Issue.findById(issueId)

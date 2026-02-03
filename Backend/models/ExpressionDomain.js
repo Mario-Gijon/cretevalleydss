@@ -2,8 +2,14 @@ import { Schema, model } from "mongoose";
 
 const expressionDomainSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", default: null }, // null si es global
-  name: { type: String, required: true },
-  isGlobal: { type: Boolean, default: false }, // true → accesible a todos
+  name: { type: String, required: true, trim: true },
+
+  // true → accesible a todos
+  isGlobal: { type: Boolean, default: false },
+
+  // 🔒 true → dominio global base (NO editable / NO borrable)
+  locked: { type: Boolean, default: false },
+
   type: { type: String, enum: ["numeric", "linguistic"], required: true },
 
   // Para dominios numéricos
@@ -15,13 +21,17 @@ const expressionDomainSchema = new Schema({
   // Para dominios lingüísticos
   linguisticLabels: [
     {
-      label: { type: String, required: true },
+      label: { type: String, required: true, trim: true },
       values: {
-        type: [Number], 
+        type: [Number],
         validate: {
-          validator: (arr) => arr.length === 3,
-          message: "Cada etiqueta lingüística debe tener exactamente 3 valores [l, m, u]."
-        }
+          validator: (arr) =>
+            Array.isArray(arr) &&
+            arr.length >= 2 &&
+            arr.every((v) => typeof v === "number" && Number.isFinite(v)) &&
+            arr.every((v, i) => i === 0 || arr[i - 1] <= v),
+          message: "values must be an ordered numeric array with at least 2 elements",
+        },
       }
     }
   ],
@@ -29,43 +39,72 @@ const expressionDomainSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// 🔒 Índice único: asegura unicidad por usuario o global
+// ✅ Unicidad por usuario (dominios privados)
 expressionDomainSchema.index(
   { user: 1, name: 1 },
-  { unique: true, partialFilterExpression: { createdBy: { $type: "objectId" } } }
+  { unique: true, partialFilterExpression: { user: { $type: "objectId" } } }
 );
 
+// ✅ Unicidad global (dominios globales)
 expressionDomainSchema.index(
   { isGlobal: 1, name: 1 },
   { unique: true, partialFilterExpression: { isGlobal: true } }
 );
 
-// Dominios iniciales globales
-const expressionDomains = [
+
+export const ExpressionDomain = model("ExpressionDomain", expressionDomainSchema);
+
+const BASE_DOMAINS = [
   {
     name: "Numeric 0-1",
     type: "numeric",
     isGlobal: true,
-    numericRange: { min: 0, max: 1 }
+    locked: true,
+    numericRange: { min: 0, max: 1 },
+    linguisticLabels: [],
+    user: null,
+  },
+  {
+    name: "Numeric 0-9",
+    type: "numeric",
+    isGlobal: true,
+    locked: true,
+    numericRange: { min: 0, max: 9 },
+    linguisticLabels: [],
+    user: null,
+  },
+  {
+    name: "Linguistic 5 (EN)",
+    type: "linguistic",
+    isGlobal: true,
+    locked: true,
+    user: null,
+    numericRange: undefined,
+    linguisticLabels: [
+      { label: "Very Low",  values: [0, 0, 0.25] },
+      { label: "Low",       values: [0, 0.25, 0.5] },
+      { label: "Medium",    values: [0.25, 0.5, 0.75] },
+      { label: "High",      values: [0.5, 0.75, 1] },
+      { label: "Very High", values: [0.75, 1, 1] },
+    ],
   },
 ];
 
 export const seedExpressionDomains = async () => {
   try {
-    // Limpiar antiguos globales para no duplicar
-    await ExpressionDomain.deleteMany({ isGlobal: true });
-    console.log("Dominios globales antiguos eliminados");
+    for (const d of BASE_DOMAINS) {
+      await ExpressionDomain.updateOne(
+        { isGlobal: true, name: d.name }, // clave estable
+        { $set: d },
+        { upsert: true }
+      );
+    }
 
-    await ExpressionDomain.insertMany(expressionDomains);
-    console.log("Dominios globales insertados correctamente");
+    console.log("✅ Base global ExpressionDomains upserted correctly");
   } catch (error) {
-    console.error("Error al insertar los dominios:", error);
+    console.error("❌ Error seeding expression domains:", error);
   }
 };
 
-export const ExpressionDomain = model("ExpressionDomain", expressionDomainSchema);
-
-// Ejecutar manualmente
 /* seedExpressionDomains(); */
-
 

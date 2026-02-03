@@ -1,4 +1,4 @@
-// Importa el modelo de usuario desde el archivo correspondiente.
+// Modelos
 import { User } from '../models/Users.js'
 import { Issue } from '../models/Issues.js';
 import { IssueModel } from '../models/Models.js';
@@ -9,19 +9,23 @@ import { Evaluation } from '../models/Evaluations.js';
 import { Consensus } from '../models/Consensus.js';
 import { Notification } from '../models/Notificacions.js';
 import { ExitUserIssue } from '../models/ExitUserIssue.js';
-import { buildCriterionTree, categorizeParticipations, getUserActiveIssueIds, getUserFinishedIssueIds } from '../utils/getAllActiveIssuesUtils.js';
-import { createAlternatives, createCriteria, createEvaluations, createParticipations } from '../utils/createIssueUtils.js';
-import { Resend } from 'resend'
-import { validateFinalEvaluations, validateFinalPairwiseEvaluations } from '../utils/validateFinalEvaluations.js';
-import axios from "axios"
-import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsPairwiseRatingsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
-import mongoose from 'mongoose';
-import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
-import dayjs from 'dayjs';
-import { normalizeParams } from '../utils/normalizeParams.js';
 import { ExpressionDomain } from '../models/ExpressionDomain.js';
 import { CriteriaWeightEvaluation } from '../models/CriteriaWeightEvaluation.js';
+// Utils
+import { getUserFinishedIssueIds } from '../utils/getUserFinishedIssueIds.js';
+import { validateFinalEvaluations, validateFinalPairwiseEvaluations } from '../utils/validateFinalEvaluations.js';
+import { createAlternativesRankingsSection, createAnalyticalGraphsSection, createExpertsPairwiseRatingsSection, createExpertsRatingsSection, createSummarySection } from '../utils/finishedIssueInfoUtils.js';
+import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
+import { normalizeParams } from '../utils/normalizeParams.js';
 import { validateFinalWeights } from '../utils/validateFinalWeights.js';
+import { buildCriterionTree, getLeafNamesFromTree } from '../utils/buildCriteriaTree.js';
+import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
+// Librerias externas
+import { Resend } from 'resend'
+import axios from "axios"
+import mongoose from 'mongoose';
+import dayjs from 'dayjs';
+import { createIssueDomainSnapshots } from '../models/createIssueDomainSnapshots.js';
 
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
@@ -30,7 +34,7 @@ const resend = new Resend(process.env.APIKEY_RESEND)
 export const modelsInfo = async (req, res) => {
   try {
     // Obtener todos los documentos de IssueModel, excluyendo los campos _id y __v
-    const models = await IssueModel.find().select('-_id -__v')
+    const models = await IssueModel.find().select('-__v')
 
     // Responder con los modelos obtenidos
     return res.status(200).json({ success: true, data: models })
@@ -47,7 +51,7 @@ export const modelsInfo = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     // Buscar usuarios con cuenta confirmada, seleccionar solo campos necesarios
-    const users = await User.find({ accountConfirm: true }).select('-_id name university email')
+    const users = await User.find({ accountConfirm: true }).select('name university email')
 
     // Responder con la lista de usuarios
     return res.status(200).json({ success: true, data: users })
@@ -60,273 +64,561 @@ export const getAllUsers = async (req, res) => {
   }
 }
 
+// Obtener dominios de expresión
 export const getExpressionsDomain = async (req, res) => {
   try {
     const userId = req.uid;
 
     const [globals, userDomains] = await Promise.all([
-      ExpressionDomain.find({ isGlobal: true }),
-      ExpressionDomain.find({ user: userId, isGlobal: { $ne: true } })
+      ExpressionDomain.find({ isGlobal: true, user: null }).sort({ name: 1 }),
+      ExpressionDomain.find({ isGlobal: false, user: userId }).sort({ name: 1 }),
     ]);
 
     return res.json({
       success: true,
-      data: {
-        globals,
-        userDomains
-      }
+      data: { globals, userDomains },
     });
   } catch (err) {
-    res.status(500).json({ success: false, msg: "Error fetching domains" });
+    console.error(err);
+    return res.status(500).json({ success: false, msg: "Error fetching domains" });
   }
 };
 
 // Controlador para crear un dominio de expresión
 export const createExpressionDomain = async (req, res) => {
-  const { name, type, numericRange, linguisticLabels, isGlobal } = req.body;
-
   try {
-    if (isGlobal && !req.user.isAdmin) {
-      return res.status(403).json({ success: false, msg: "Only admin can create global domains" });
+    let { name, type, numericRange, linguisticLabels, isGlobal } = req.body;
+
+    // 1) Normalizar
+    name = (name || "").trim();
+    type = (type || "").trim();
+
+    // ✅ globales no se crean desde aquí
+    if (Boolean(isGlobal)) {
+      return res.status(403).json({
+        success: false,
+        msg: "Global domains are not creatable. They are predefined and non-modifiable.",
+      });
     }
 
+    // 2) Validaciones básicas
+    if (!name) {
+      return res.status(400).json({ success: false, msg: "Name is required" });
+    }
+    if (!["numeric", "linguistic"].includes(type)) {
+      return res.status(400).json({ success: false, msg: "Invalid type" });
+    }
+
+    // 3) Coherencia según tipo
+    if (type === "numeric") {
+      if (!numericRange || numericRange.min == null || numericRange.max == null) {
+        return res.status(400).json({
+          success: false,
+          msg: "numericRange.min and numericRange.max are required for numeric domains",
+        });
+      }
+
+      const min = Number(numericRange.min);
+      const max = Number(numericRange.max);
+
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        return res.status(400).json({ success: false, msg: "min/max must be numbers" });
+      }
+      if (min >= max) {
+        return res.status(400).json({ success: false, msg: "min must be < max" });
+      }
+
+      numericRange = { min, max };
+      linguisticLabels = [];
+    }
+
+    if (type === "linguistic") {
+      if (!Array.isArray(linguisticLabels) || linguisticLabels.length === 0) {
+        return res.status(400).json({
+          success: false,
+          msg: "linguisticLabels is required for linguistic domains",
+        });
+      }
+
+      const seen = new Set();
+
+      for (const lbl of linguisticLabels) {
+        const label = (lbl?.label || "").trim();
+        const values = lbl?.values;
+
+        if (!label) {
+          return res.status(400).json({ success: false, msg: "Label is required" });
+        }
+        if (seen.has(label)) {
+          return res.status(400).json({ success: false, msg: `Duplicated label '${label}'` });
+        }
+        seen.add(label);
+
+        if (!Array.isArray(values) || values.length < 2) {
+          return res.status(400).json({
+            success: false,
+            msg: "values must be an array with at least 2 numbers",
+          });
+        }
+
+        const numericValues = values.map(Number);
+        if (!numericValues.every(Number.isFinite)) {
+          return res.status(400).json({ success: false, msg: "values must be numbers" });
+        }
+
+        for (let j = 1; j < numericValues.length; j++) {
+          if (numericValues[j] < numericValues[j - 1]) {
+            return res.status(400).json({
+              success: false,
+              msg: "values must be ordered (non-decreasing)",
+            });
+          }
+        }
+
+        lbl.label = label;
+        lbl.values = numericValues;
+      }
+
+      numericRange = undefined;
+    }
+
+    // 4) Crear y guardar (SIEMPRE de usuario)
     const newDomain = new ExpressionDomain({
       name,
       type,
-      numericRange,
-      linguisticLabels,
-      isGlobal,
-      user: isGlobal ? null : req.uid // 👈 ahora "user"
+      isGlobal: false,
+      user: req.uid,
+      ...(type === "numeric" ? { numericRange } : {}),
+      ...(type === "linguistic" ? { linguisticLabels } : {}),
     });
 
     await newDomain.save();
 
-    return res.status(201).json({ success: true, msg: `Domain ${newDomain.name} created successfully`, data: newDomain });
+    return res.status(201).json({
+      success: true,
+      msg: `Domain ${newDomain.name} created successfully`,
+      data: newDomain,
+    });
   } catch (err) {
     console.error(err);
+
+    if (err?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        msg: "A domain with the same name already exists (for this user).",
+      });
+    }
+
     return res.status(500).json({ success: false, msg: "Error creating domain" });
   }
 };
 
-// Controlador para crear un nuevo problema (issue) usando transacción
+// Controlador para crear un nuevo problema
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    session.startTransaction();
-
+    const info = req.body?.issueInfo || {};
     const {
       issueName,
       issueDescription,
       selectedModel,
-      alternatives,
+      alternatives = [],
       withConsensus,
-      criteria,
-      addedExperts,
+      criteria = [],
+      addedExperts = [],
       domainAssignments,
       closureDate,
       consensusMaxPhases,
       consensusThreshold,
-      paramValues,
+      paramValues = {},
       weightingMode,
-    } = req.body.issueInfo;
+    } = info;
 
-    // Validar nombre duplicado
-    const existingIssue = await Issue.findOne({ name: issueName }).session(session);
-    if (existingIssue) {
-      await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, obj: "issueName", msg: "Issue name already exists" });
+    const cleanIssueName = (issueName || "").trim();
+    if (!cleanIssueName) {
+      return res.status(400).json({ success: false, obj: "issueName", msg: "Issue name is required" });
+    }
+    if (!Array.isArray(alternatives) || alternatives.length <= 1) {
+      return res.status(400).json({ success: false, obj: "alternatives", msg: "Must be at least two alternatives" });
+    }
+    if (!Array.isArray(addedExperts) || addedExperts.length <= 0) {
+      return res.status(400).json({ success: false, obj: "addedExperts", msg: "Must be at least one expert" });
+    }
+    if (!selectedModel?.name) {
+      return res.status(400).json({ success: false, obj: "selectedModel", msg: "Model is required" });
     }
 
-    // Validar modelo
-    const model = await IssueModel.findOne({ name: selectedModel.name }).session(session);
-    if (!model) {
-      await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, obj: "selectedModel", msg: "Model does not exist" });
-    }
+    const emailsToSend = [];
 
-    // Validar alternativas
-    if (alternatives.length <= 1) {
-      await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, obj: "alternatives", msg: "Must be at least two alternatives" });
-    }
+    await session.withTransaction(async () => {
+      const existingIssue = await Issue.findOne({ name: cleanIssueName }).session(session);
+      if (existingIssue) {
+        const err = new Error("Issue name already exists");
+        err.status = 400;
+        err.obj = "issueName";
+        throw err;
+      }
 
-    // Validar expertos
-    if (addedExperts.length <= 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, obj: "addedExperts", msg: "Must be at least one expert" });
-    }
+      const model = await IssueModel.findOne({ name: selectedModel.name }).session(session);
+      if (!model) {
+        const err = new Error("Model does not exist");
+        err.status = 400;
+        err.obj = "selectedModel";
+        throw err;
+      }
 
-    // Fase inicial según modo
-    const initialStage =
-      ["simulatedConsensusBwm", "consensus"].includes(weightingMode)
+      const admin = await User.findById(req.uid).session(session);
+      if (!admin) {
+        const err = new Error("Admin not found");
+        err.status = 400;
+        throw err;
+      }
+      const adminEmail = admin.email;
+
+      const uniqueEmails = Array.from(new Set(addedExperts.map((e) => String(e).trim()).filter(Boolean)));
+
+      const expertUsers = await User.find({ email: { $in: uniqueEmails } }).session(session);
+      const expertByEmail = new Map(expertUsers.map((u) => [u.email, u]));
+
+      const missing = uniqueEmails.filter((email) => !expertByEmail.has(email));
+      if (missing.length > 0) {
+        const err = new Error(`Experts not found: ${missing.join(", ")}`);
+        err.status = 400;
+        err.obj = "addedExperts";
+        throw err;
+      }
+
+      const weightingModesThatNeedWeightsStage = new Set([
+        "simulatedConsensusBwm",
+        "consensus",
+        "bwm",
+        "consensusBwm",
+      ]);
+
+      const initialStage = weightingModesThatNeedWeightsStage.has(weightingMode)
         ? "criteriaWeighting"
         : "alternativeEvaluation";
 
-    // Crear Issue
-    const issue = new Issue({
-      admin: req.uid,
-      model: model._id,
-      isConsensus: withConsensus,
-      name: issueName,
-      description: issueDescription,
-      active: true,
-      creationDate: dayjs().format("DD-MM-YYYY"),
-      closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
-      weightingMode,
-      currentStage: initialStage,
-      ...(model.isConsensus && { consensusMaxPhases, consensusThreshold }),
-      modelParameters: paramValues,
-    });
-
-    await issue.save({ session });
-
-    // Crear alternativas
-    const createdAlternatives = await createAlternatives(alternatives, issue._id, session);
-
-    // Crear criterios (y obtener los hoja)
-    const leafCriteria = await createCriteria(criteria, issue._id, null, session);
-
-    // Buscar admin
-    const admin = await User.findById(req.uid).session(session);
-    if (!admin) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ success: false, msg: "Admin not found" });
-    }
-    const adminEmail = admin.email;
-
-    // Crear participaciones (admin aceptado)
-    const expertMap = await createParticipations(addedExperts, issue._id, adminEmail, session);
-
-    // 🔹 Crear evaluaciones de alternativas SIEMPRE (aunque aún no haya pesos)
-    await createEvaluations(
-      domainAssignments,
-      expertMap,
-      createdAlternatives,
-      leafCriteria,
-      issue._id,
-      model.isPairwise,
-      null,
-      session,
-      req.uid
-    );
-
-    // 🔹 Si es simulatedConsensusBwm → crear evaluaciones de criterios (BWM)
-    if (weightingMode === "simulatedConsensusBwm") {
-      const expertIds = Array.from(expertMap.values());
-      const criteriaNames = leafCriteria.map((c) => c.name);
-
-      const criteriaEvaluations = expertIds.map((expertId) => ({
-        issue: issue._id,
-        expert: expertId,
-        bestCriterion: "",
-        worstCriterion: "",
-        bestToOthers: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-        othersToWorst: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-        consensusPhase: 1,
-        completed: false,
-      }));
-
-      await CriteriaWeightEvaluation.insertMany(criteriaEvaluations, { session });
+      const issue = new Issue({
+        admin: req.uid,
+        model: model._id,
+        isConsensus: withConsensus,
+        name: cleanIssueName,
+        description: issueDescription,
+        active: true,
+        creationDate: dayjs().format("DD-MM-YYYY"),
+        closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
+        weightingMode,
+        currentStage: initialStage,
+        ...(model.isConsensus && { consensusMaxPhases, consensusThreshold }),
+        modelParameters: paramValues,
+      });
 
       await issue.save({ session });
-    }
 
-    // 🔹 Si el modo es consensus → crear evaluaciones manuales de pesos
-    if (weightingMode === "consensus") {
-      const expertIds = Array.from(expertMap.values());
-      const criteriaNames = leafCriteria.map((c) => c.name);
+      const uniqueAltNames = Array.from(new Set(alternatives.map((a) => String(a).trim()).filter(Boolean)));
+      if (uniqueAltNames.length <= 1) {
+        const err = new Error("Must be at least two valid alternatives");
+        err.status = 400;
+        err.obj = "alternatives";
+        throw err;
+      }
 
-      const criteriaEvaluations = expertIds.map((expertId) => ({
-        issue: issue._id,
-        expert: expertId,
-        manualWeights: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-        consensusPhase: 1,
-        completed: false,
-      }));
+      const createdAlternatives = [];
+      for (const altName of uniqueAltNames) {
+        const alt = new Alternative({ issue: issue._id, name: altName });
+        await alt.save({ session });
+        createdAlternatives.push(alt);
+      }
 
-      await CriteriaWeightEvaluation.insertMany(criteriaEvaluations, { session });
-    }
+      const leafCriteria = [];
+      const createCriteriaRec = async (nodes, parentId = null) => {
+        if (!Array.isArray(nodes)) return;
 
+        for (const node of nodes) {
+          const children = Array.isArray(node?.children) ? node.children : [];
+          const isLeaf = children.length === 0;
 
-    await Promise.all(
-      addedExperts.map(async (expertEmail) => {
-        if (expertEmail !== adminEmail) {
-          const expert = await User.findOne({ email: expertEmail });
-          if (!expert) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({
-              success: false,
-              msg: `Expert with email ${expertEmail} not found`,
-            });
+          const crit = new Criterion({
+            issue: issue._id,
+            parentCriterion: parentId,
+            name: String(node?.name || "").trim(),
+            type: String(node?.type || "").trim(),
+            isLeaf,
+          });
+
+          if (!crit.name) {
+            const err = new Error("Criterion name is required");
+            err.status = 400;
+            err.obj = "criteria";
+            throw err;
           }
 
+          await crit.save({ session });
+
+          if (isLeaf) leafCriteria.push(crit);
+          else await createCriteriaRec(children, crit._id);
+        }
+      };
+
+      await createCriteriaRec(criteria, null);
+
+      if (leafCriteria.length === 0) {
+        const err = new Error("At least one leaf criterion is required");
+        err.status = 400;
+        err.obj = "criteria";
+        throw err;
+      }
+
+      for (const email of uniqueEmails) {
+        const u = expertByEmail.get(email);
+        const isAdminExpert = email === adminEmail;
+
+        const part = new Participation({
+          issue: issue._id,
+          expert: u._id,
+          invitationStatus: isAdminExpert ? "accepted" : "pending",
+          evaluationCompleted: false,
+          weightsCompleted: false,
+          entryPhase: null,
+          entryStage: null,
+          joinedAt: new Date(),
+        });
+
+        await part.save({ session });
+
+        if (!isAdminExpert) {
           const notification = new Notification({
-            expert: expert._id,
+            expert: u._id,
             issue: issue._id,
             type: "invitation",
-            message: `You have been invited by ${admin.name} to participate in ${issueName}.`,
+            message: `You have been invited by ${admin.name} to participate in ${cleanIssueName}.`,
             read: false,
             requiresAction: true,
           });
 
-          await notification.save();
+          await notification.save({ session });
 
-          await sendExpertInvitationEmail({
-            expertEmail,
-            issueName,
+          emailsToSend.push({
+            expertEmail: email,
+            issueName: cleanIssueName,
             issueDescription,
             adminEmail,
           });
         }
-      })
-    );
+      }
 
-    // Confirmar
-    await session.commitTransaction();
-    session.endSession();
+      const initialConsensusPhase = null;
+
+      const usedDomainIds = new Set();
+
+      if (!domainAssignments?.experts || typeof domainAssignments.experts !== "object") {
+        const err = new Error("domainAssignments.experts is required");
+        err.status = 400;
+        err.obj = "domainAssignments";
+        throw err;
+      }
+
+      // ✅ CAMBIO 1: validar contra TODAS las alternativas del issue, no solo las que vengan en altBlock
+      for (const email of Object.keys(domainAssignments.experts)) {
+        if (!expertByEmail.has(email)) continue;
+
+        const altBlock = domainAssignments.experts[email]?.alternatives || {};
+
+        for (const altName of uniqueAltNames) {
+          const critBlock = altBlock[altName]?.criteria || {};
+
+          for (const leaf of leafCriteria) {
+            const domId = critBlock[leaf.name];
+
+            if (!domId) {
+              const err = new Error(
+                `Missing domain assignment for criterion '${leaf.name}' (expert ${email}, alternative ${altName})`
+              );
+              err.status = 400;
+              err.obj = "domainAssignments";
+              throw err;
+            }
+            usedDomainIds.add(String(domId));
+          }
+        }
+      }
+
+      const domainIdList = Array.from(usedDomainIds);
+
+      // ✅ Traer dominios “vivos” para verificar acceso + copiar datos
+      const domainDocs = await ExpressionDomain.find({
+        _id: { $in: domainIdList },
+        $or: [{ isGlobal: true, user: null }, { isGlobal: false, user: req.uid }],
+      })
+        .select("_id name type numericRange linguisticLabels")
+        .session(session);
+
+      const existingSet = new Set(domainDocs.map((d) => String(d._id)));
+      const missingDomains = domainIdList.filter((id) => !existingSet.has(id));
+      if (missingDomains.length > 0) {
+        const err = new Error(`ExpressionDomain not found or not accessible: ${missingDomains.join(", ")}`);
+        err.status = 400;
+        err.obj = "domainAssignments";
+        throw err;
+      }
+
+      // ✅ crear snapshots del issue (una vez) y mapear sourceDomain -> snapshotId
+      const snapshotMap = await createIssueDomainSnapshots({
+        issueId: issue._id,
+        domainDocs,
+        session,
+      });
+
+      const isPairwise = Boolean(model.isPairwise);
+      const altByName = new Map(createdAlternatives.map((a) => [a.name, a]));
+
+      // ✅ CAMBIO 2: crear evaluaciones para TODAS las alternativas del issue
+      for (const email of Object.keys(domainAssignments.experts)) {
+        const expertUser = expertByEmail.get(email);
+        if (!expertUser) continue;
+
+        const altBlock = domainAssignments.experts[email]?.alternatives || {};
+
+        for (const altName of uniqueAltNames) {
+          const altDoc = altByName.get(altName);
+          if (!altDoc) continue;
+
+          const critBlock = altBlock[altName]?.criteria || {};
+
+          for (const leaf of leafCriteria) {
+            const sourceDomainId = critBlock[leaf.name];
+            const issueSnapshotId = snapshotMap.get(String(sourceDomainId));
+
+            if (!issueSnapshotId) {
+              const err = new Error(`Snapshot not found for domain ${String(sourceDomainId)}`);
+              err.status = 400;
+              err.obj = "domainAssignments";
+              throw err;
+            }
+
+            if (isPairwise) {
+              for (const comparedAlt of createdAlternatives) {
+                if (String(comparedAlt._id) === String(altDoc._id)) continue;
+
+                const evaluation = new Evaluation({
+                  issue: issue._id,
+                  expert: expertUser._id,
+                  alternative: altDoc._id,
+                  comparedAlternative: comparedAlt._id,
+                  criterion: leaf._id,
+                  expressionDomain: issueSnapshotId, // ✅ snapshot
+                  value: null,
+                  timestamp: null,
+                  history: [],
+                  consensusPhase: initialConsensusPhase,
+                });
+
+                await evaluation.save({ session });
+              }
+            } else {
+              const evaluation = new Evaluation({
+                issue: issue._id,
+                expert: expertUser._id,
+                alternative: altDoc._id,
+                comparedAlternative: null,
+                criterion: leaf._id,
+                expressionDomain: issueSnapshotId, // ✅ snapshot
+                value: null,
+                timestamp: null,
+                history: [],
+                consensusPhase: initialConsensusPhase,
+              });
+
+              await evaluation.save({ session });
+            }
+          }
+        }
+      }
+
+      const expertIds = uniqueEmails.map((email) => expertByEmail.get(email)._id);
+      const criteriaNames = leafCriteria.map((c) => c.name);
+
+      if (weightingMode === "simulatedConsensusBwm") {
+        const docs = expertIds.map((expertId) => ({
+          issue: issue._id,
+          expert: expertId,
+          bestCriterion: "",
+          worstCriterion: "",
+          bestToOthers: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+          othersToWorst: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+          consensusPhase: 1,
+          completed: false,
+        }));
+        await CriteriaWeightEvaluation.insertMany(docs, { session });
+      }
+
+      if (weightingMode === "consensus") {
+        const docs = expertIds.map((expertId) => ({
+          issue: issue._id,
+          expert: expertId,
+          manualWeights: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+          consensusPhase: 1,
+          completed: false,
+        }));
+        await CriteriaWeightEvaluation.insertMany(docs, { session });
+      }
+    });
+
+    for (const payload of emailsToSend) {
+      try {
+        await sendExpertInvitationEmail(payload);
+      } catch (e) {
+        console.error("Failed sending invitation email:", payload.expertEmail, e);
+      }
+    }
 
     return res.status(201).json({
       success: true,
-      msg: `Issue ${issue.name} created successfully`,
+      msg: `Issue ${String(req.body?.issueInfo?.issueName || "").trim()} created successfully`,
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error(error);
+
+    if (error?.status) {
+      return res.status(error.status).json({
+        success: false,
+        obj: error.obj,
+        msg: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       msg: "Server error creating issue",
     });
+  } finally {
+    session.endSession();
   }
 };
 
-// Devuelve todos los problemas activos para el usuario actual
 export const getAllActiveIssues = async (req, res) => {
+
+  const userId = req.uid;
+
   try {
-    const userId = req.uid;
 
-    // 1️⃣ Obtener los IDs de los issues activos en los que participa el usuario
-    const issueIds = await getUserActiveIssueIds(userId);
-    if (issueIds.length === 0) {
+    const [adminIssues, participations] = await Promise.all([
+      Issue.find({ admin: userId, active: true }).select("_id").lean(),
+      Participation.find({ expert: userId, invitationStatus: "accepted" })
+        .populate({ path: "issue", match: { active: true }, select: "_id" })
+        .lean(),
+    ]);
+
+    const adminIssueIds = adminIssues.map((i) => i._id.toString());
+    const expertIssueIds = participations.filter((p) => p.issue).map((p) => p.issue._id.toString());
+
+    const issueIds = [...new Set([...adminIssueIds, ...expertIssueIds])];
+
+    if (issueIds.length === 0)
       return res.json({ success: true, issues: [] });
-    }
 
-    // 2️⃣ Consultar todos los datos necesarios
     const [issues, allParticipations, alternatives, criteria, consensusPhases] = await Promise.all([
       Issue.find({ _id: { $in: issueIds } })
         .populate("model")
@@ -340,14 +632,12 @@ export const getAllActiveIssues = async (req, res) => {
       Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
     ]);
 
-    // 3️⃣ Crear mapa de fases de consenso
     const consensusPhaseCountMap = consensusPhases.reduce((acc, curr) => {
-      const issueId = curr.issue.toString();
-      acc[issueId] = acc[issueId] ? acc[issueId] + 1 : 1;
+      const id = curr.issue.toString();
+      acc[id] = (acc[id] || 0) + 1;
       return acc;
     }, {});
 
-    // 4️⃣ Agrupar participaciones por issue
     const participationMap = allParticipations.reduce((acc, p) => {
       const id = p.issue.toString();
       if (!acc[id]) acc[id] = [];
@@ -355,56 +645,79 @@ export const getAllActiveIssues = async (req, res) => {
       return acc;
     }, {});
 
-    // 5️⃣ Formatear issues con toda la información necesaria
-    const formattedIssues = issues.map((issue) => {
-      const issueParticipations = participationMap[issue._id.toString()] || [];
+    const categorizeParticipationsInline = (allParts, userId, currentStage) => {
+      const pendingExperts = allParts.filter((p) => p.invitationStatus === "pending");
+      const notAcceptedExperts = allParts.filter((p) => p.invitationStatus === "declined");
 
-      // Clasificar participaciones
+      let participatedExperts = [];
+      let acceptedButNotEvaluated = [];
+
+      if (currentStage === "criteriaWeighting" || currentStage === "weightsFinished") {
+        participatedExperts = allParts.filter(
+          (p) => p.invitationStatus === "accepted" && p.weightsCompleted === true
+        );
+
+        acceptedButNotEvaluated = allParts.filter(
+          (p) =>
+            p.invitationStatus === "accepted" &&
+            (p.weightsCompleted === false || !p.weightsCompleted)
+        );
+      } else {
+        participatedExperts = allParts.filter(
+          (p) => p.invitationStatus === "accepted" && p.evaluationCompleted === true
+        );
+
+        acceptedButNotEvaluated = allParts.filter(
+          (p) =>
+            p.invitationStatus === "accepted" &&
+            (p.evaluationCompleted === false || !p.evaluationCompleted)
+        );
+      }
+
+      const isExpert = allParts.some((p) => p.expert?._id?.toString() === userId);
+
+      return { participatedExperts, pendingExperts, notAcceptedExperts, acceptedButNotEvaluated, isExpert };
+    };
+
+    const formattedIssues = issues.map((issue) => {
+      const issueIdStr = issue._id.toString();
+      const issueParticipations = participationMap[issueIdStr] || [];
+
       const {
         participatedExperts,
         pendingExperts,
         notAcceptedExperts,
         acceptedButNotEvaluated,
         isExpert,
-      } = categorizeParticipations(issueParticipations, userId, issue.currentStage);
+      } = categorizeParticipationsInline(issueParticipations, userId, issue.currentStage);
 
-      // Expertos aceptados
-      const acceptedExperts = issueParticipations.filter(p => p.invitationStatus === "accepted");
+      // accepted
+      const acceptedExperts = issueParticipations.filter((p) => p.invitationStatus === "accepted");
 
-      // Progreso general
+      // progreso global
       const totalAccepted = acceptedExperts.length;
-      const weightsDone = acceptedExperts.filter(p => p.weightsCompleted).length;
-      const evalsDone = acceptedExperts.filter(p => p.evaluationCompleted).length;
+      const weightsDone = acceptedExperts.filter((p) => p.weightsCompleted).length;
+      const evalsDone = acceptedExperts.filter((p) => p.evaluationCompleted).length;
 
-      // ❗ Solo los ACCEPTED participan realmente
+      // reales (accepted)
       const realParticipants = acceptedExperts;
 
-      // ❗ Si hay pending, se bloquea todo avance global
       const hasPending = pendingExperts.length > 0;
 
-      // ❗ Si hay rechazados, simplemente no participan (pero no bloquean)
-      const hasRejected = notAcceptedExperts.length > 0;
-
-      // ❗ Avances de pesos
-      const realWeightsDone = realParticipants.filter(p => p.weightsCompleted).length;
-      const realEvalsDone = realParticipants.filter(p => p.evaluationCompleted).length;
+      const realWeightsDone = realParticipants.filter((p) => p.weightsCompleted).length;
+      const realEvalsDone = realParticipants.filter((p) => p.evaluationCompleted).length;
 
       const isAdminUser = issue.admin._id.toString() === userId;
 
-      // Flags auxiliares
       const allWeightsDone = realParticipants.length > 0 && realWeightsDone === realParticipants.length;
       const allEvalsDone = realParticipants.length > 0 && realEvalsDone === realParticipants.length;
 
-      // NEW FLAG: waitingAdmin
       const waitingAdmin =
         !isAdminUser &&
         !hasPending &&
-        (
-          (issue.currentStage === "weightsFinished" && allWeightsDone) ||
-          (issue.currentStage === "alternativeEvaluation" && allEvalsDone)
-        );
+        ((issue.currentStage === "weightsFinished" && allWeightsDone) ||
+          (issue.currentStage === "alternativeEvaluation" && allEvalsDone));
 
-      // 🟢 FLAG: El admin solo puede computar pesos SI TODOS los participantes han evaluado pesos
       const canComputeWeights =
         issue.currentStage === "weightsFinished" &&
         issue.admin._id.toString() === userId &&
@@ -412,7 +725,6 @@ export const getAllActiveIssues = async (req, res) => {
         realParticipants.length > 0 &&
         realWeightsDone === realParticipants.length;
 
-      // 🟢 FLAG: El admin solo puede resolver SI TODOS los participantes evaluaron alternativas
       const canResolveIssue =
         issue.currentStage === "alternativeEvaluation" &&
         issue.admin._id.toString() === userId &&
@@ -420,53 +732,31 @@ export const getAllActiveIssues = async (req, res) => {
         realParticipants.length > 0 &&
         realEvalsDone === realParticipants.length;
 
-      // 🟢 FLAG: El experto puede evaluar pesos SI está aceptado y no ha completado
       const canEvaluateWeights =
         issue.currentStage === "criteriaWeighting" &&
-        realParticipants.some(
-          p => p.expert._id.toString() === userId && !p.weightsCompleted
-        );
+        realParticipants.some((p) => p.expert._id.toString() === userId && !p.weightsCompleted);
 
-      // 🟢 FLAG: El experto puede evaluar alternativas SI está aceptado y no ha completado
       const canEvaluateAlternatives =
         issue.currentStage === "alternativeEvaluation" &&
-        realParticipants.some(
-          p => p.expert._id.toString() === userId && !p.evaluationCompleted
-        );
+        realParticipants.some((p) => p.expert._id.toString() === userId && !p.evaluationCompleted);
 
-      // ------------------------------------------
-      // 🔹 CALCULAR PESOS FINALES (SI EXISTEN)
-      // ------------------------------------------
-
+      // --- criterios y pesos finales ---
       const criteriaTree = buildCriterionTree(criteria, issue._id);
+      const leafNames = getLeafNamesFromTree(criteriaTree);
 
-      // 1️⃣ Obtener nombres de criterios hoja en orden
-      const getLeafNames = (criteriaTree) => {
-        const leaves = [];
-        const traverse = (node) => {
-          if (!node.children || node.children.length === 0) {
-            leaves.push(node.name);
-          } else {
-            node.children.forEach(traverse);
-          }
-        };
-        criteriaTree.forEach(traverse);
-        return leaves;
-      };
-
-      const leafNames = getLeafNames(criteriaTree);
-
-      // 2️⃣ Obtener array de pesos del issue
       const weightsArray = issue.modelParameters?.weights || [];
-
-      // 3️⃣ Mapa criterio → peso
       const finalWeightsMap = leafNames.reduce((acc, name, index) => {
         acc[name] = weightsArray[index] ?? null;
         return acc;
       }, {});
 
-      // Formato final del issue
+
+      // consenso: fase actual = (#consensos guardados) + 1
+      const savedPhasesCount = consensusPhaseCountMap[issueIdStr] || 0;
+      const consensusCurrentPhase = savedPhasesCount + 1;
+
       return {
+        id: issue._id.toString(),
         name: issue.name,
         creator: issue.admin.email,
         description: issue.description,
@@ -475,28 +765,27 @@ export const getAllActiveIssues = async (req, res) => {
         isConsensus: issue.isConsensus,
         currentStage: issue.currentStage,
         weightingMode: issue.weightingMode,
+
         ...(issue.model.isConsensus && {
           consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
           consensusThreshold: issue.consensusThreshold,
-          consensusCurrentPhase: consensusPhaseCountMap[issue._id.toString()] + 1 || 1,
+          consensusCurrentPhase,
         }),
+
         creationDate: issue.creationDate || null,
         closureDate: issue.closureDate || null,
 
         isAdmin: issue.admin._id.toString() === userId,
         isExpert,
 
-        // Estructura básica del problema
         alternatives: alternatives
-          .filter((alt) => alt.issue.toString() === issue._id.toString())
+          .filter((alt) => alt.issue.toString() === issueIdStr)
           .map((alt) => alt.name)
           .sort(),
 
-        criteria: buildCriterionTree(criteria, issue._id),
+        criteria: criteriaTree,
 
-        evaluated: participatedExperts
-          .map((part) => part.expert._id.toString())
-          .includes(userId),
+        evaluated: participatedExperts.map((p) => p.expert._id.toString()).includes(userId),
 
         totalExperts:
           participatedExperts.length +
@@ -509,26 +798,25 @@ export const getAllActiveIssues = async (req, res) => {
         notAcceptedExperts: notAcceptedExperts.map((p) => p.expert.email).sort(),
         acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((p) => p.expert.email).sort(),
 
-        // 🟢 NUEVOS CAMPOS: control y progreso
         statusFlags: {
           canEvaluateWeights,
           canComputeWeights,
           canEvaluateAlternatives,
           canResolveIssue,
-          waitingAdmin
+          waitingAdmin,
         },
+
         progress: {
           weightsDone,
           evalsDone,
           totalAccepted,
         },
+
         finalWeights: finalWeightsMap,
       };
     });
 
-    // 6️⃣ Enviar al frontend
     return res.json({ success: true, issues: formattedIssues });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, msg: "Error fetching active issues" });
@@ -536,74 +824,59 @@ export const getAllActiveIssues = async (req, res) => {
 };
 
 export const removeIssue = async (req, res) => {
-  const { issueName } = req.body;
-  const userId = req.uid; // ID del usuario autenticado extraído del token
+  const { id } = req.body;
+  const userId = req.uid;
 
-  // Iniciar una sesión de Mongoose para la transacción
   const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
     session.startTransaction();
 
-    // Buscar el Issue por nombre
-    const issue = await Issue.findOne({ name: issueName }).session(session);
+    const issue = await Issue.findById(id).session(session);
 
-    // Comprobar si el Issue existe
     if (!issue) {
-      await session.abortTransaction(); // Cancelar la transacción si no existe
+      await session.abortTransaction();
       session.endSession();
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // Comprobar si el usuario autenticado es el admin del Issue
     if (issue.admin.toString() !== userId) {
-      await session.abortTransaction(); // Cancelar si no es admin
+      await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ success: false, msg: "You are not the admin of this issue" });
     }
 
-    // Comprobar si el Issue está activo
     if (!issue.active) {
-      await session.abortTransaction(); // Cancelar si no está activo
+      await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ success: false, msg: "Issue is not active and cannot be deleted" });
     }
 
-    // Eliminar todas las evaluaciones relacionadas con este Issue
     await Evaluation.deleteMany({ issue: issue._id }).session(session);
-
-    // Eliminar todas las alternativas relacionadas
     await Alternative.deleteMany({ issue: issue._id }).session(session);
-
-    // Eliminar todos los criterios relacionados
     await Criterion.deleteMany({ issue: issue._id }).session(session);
-
-    // Eliminar todas las participaciones relacionadas
     await Participation.deleteMany({ issue: issue._id }).session(session);
-
-    // Eliminar todos los registros de consenso relacionados
     await Consensus.deleteMany({ issue: issue._id }).session(session);
-
-    // Eliminar todas las notificaciones relacionadas
     await Notification.deleteMany({ issue: issue._id }).session(session);
 
-    // Finalmente eliminar el propio Issue
+    // ✅ NUEVO: borrar snapshots del issue
+    await IssueExpressionDomain.deleteMany({ issue: issue._id }).session(session);
+
     await Issue.deleteOne({ _id: issue._id }).session(session);
 
-    // Confirmar la transacción
     await session.commitTransaction();
     session.endSession();
 
-    // Devolver respuesta exitosa
     return res.status(200).json({ success: true, msg: `Issue ${issue.name} removed` });
-
   } catch (err) {
-    // Si ocurre cualquier error, hacer rollback de los cambios
     await session.abortTransaction();
     session.endSession();
     console.error(err);
-    return res.status(500).json({ success: false, msg: "An error occurred while deleting the issue", error: err.message });
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while deleting the issue",
+      error: err.message,
+    });
   }
 };
 
@@ -617,11 +890,16 @@ export const removeExpressionDomain = async (req, res) => {
       return res.status(404).json({ success: false, msg: "Domain not found" });
     }
 
-    if (domain.isGlobal) {
-      if (!req.user.isAdmin) {
-        return res.status(403).json({ success: false, msg: "Only admin can delete global domains" });
-      }
-    } else if (String(domain.user) !== req.uid) { // 👈 aquí también user
+    // ✅ Globales NO se borran
+    if (domain.isGlobal || domain.user === null) {
+      return res.status(403).json({
+        success: false,
+        msg: "Global domains are predefined and cannot be deleted.",
+      });
+    }
+
+    // ✅ Solo dueño
+    if (String(domain.user) !== req.uid) {
       return res.status(403).json({ success: false, msg: "Not authorized to delete this domain" });
     }
 
@@ -654,14 +932,26 @@ export const updateExpressionDomain = async (req, res) => {
       return res.status(404).json({ success: false, msg: "Domain not found" });
     }
 
-    if (!domain.isGlobal && String(domain.user) !== userId) { // 👈 check con user
+    // ✅ Globales NO se editan
+    if (domain.isGlobal || domain.user === null) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(403).json({
+        success: false,
+        msg: "Global domains are predefined and cannot be edited.",
+      });
+    }
+
+    // ✅ Solo dueño
+    if (String(domain.user) !== userId) {
       await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ success: false, msg: "Not authorized" });
     }
 
-    if (updatedDomain.name) domain.name = updatedDomain.name;
-    if (updatedDomain.type) domain.type = updatedDomain.type;
+    // ✅ Permite actualizar campos (igual que antes)
+    if (updatedDomain.name) domain.name = String(updatedDomain.name).trim();
+    if (updatedDomain.type) domain.type = String(updatedDomain.type).trim();
     if (updatedDomain.numericRange) domain.numericRange = updatedDomain.numericRange;
     if (updatedDomain.linguisticLabels) domain.linguisticLabels = updatedDomain.linguisticLabels;
 
@@ -672,10 +962,9 @@ export const updateExpressionDomain = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      msg: `Domain updated successfully`,
-      data: domain
+      msg: "Domain updated successfully",
+      data: domain,
     });
-
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -683,7 +972,7 @@ export const updateExpressionDomain = async (req, res) => {
     return res.status(500).json({
       success: false,
       msg: "An error occurred while updating the domain",
-      error: err.message
+      error: err.message,
     });
   }
 };
@@ -709,6 +998,7 @@ export const getAllFinishedIssues = async (req, res) => {
 
     // Formatear los issues para enviar solo la información necesaria al frontend
     const formattedIssues = issues.map((issue) => ({
+      id: issue._id.toString(),
       name: issue.name, // Nombre del issue
       description: issue.description, // Descripción del issue
       creationDate: issue.creationDate, // Formatear fecha de creación (solo YYYY-MM-DD)
@@ -817,7 +1107,7 @@ export const markAllNotificationsAsRead = async (req, res) => {
 // Cambiar el estado de la invitación del usuario para un problema específico
 export const changeInvitationStatus = async (req, res) => {
   const userId = req.uid;
-  const { issueName, action } = req.body;
+  const { id, action } = req.body;
 
   const session = await mongoose.startSession();
 
@@ -826,7 +1116,7 @@ export const changeInvitationStatus = async (req, res) => {
     session.startTransaction();
 
     // Buscar el problema por su nombre
-    const issue = await Issue.findOne({ name: issueName }).session(session);
+    const issue = await Issue.findById(id).session(session);
 
     if (!issue) {
       await session.abortTransaction();
@@ -868,10 +1158,9 @@ export const changeInvitationStatus = async (req, res) => {
     session.endSession();
 
     // Preparar el mensaje de respuesta
-    const message =
-      action === "accepted"
-        ? `Invitation to issue ${issueName} accepted`
-        : `Invitation to issue ${issueName} declined`;
+    const message = action === "accepted"
+      ? `Invitation to issue ${issue.name} accepted`
+      : `Invitation to issue ${issue.name} declined`;
 
     return res.status(200).json({
       success: true,
@@ -923,9 +1212,9 @@ export const savePairwiseEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, evaluations } = req.body;
+    const { id, evaluations } = req.body;
 
-    const issue = await Issue.findOne({ name: issueName }).lean();
+    const issue = await Issue.findById(id).lean();
     if (!issue) {
       return res
         ? res.status(404).json({ success: false, msg: "Issue not found" })
@@ -935,7 +1224,7 @@ export const savePairwiseEvaluations = async (req, res) => {
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
-      invitationStatus: "accepted"
+      invitationStatus: "accepted",
     });
 
     if (!participation) {
@@ -954,21 +1243,42 @@ export const savePairwiseEvaluations = async (req, res) => {
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
     const bulkOperations = [];
+    const usedSnapshotIds = new Set();
 
-    for (const [criterionName, evaluationsByExpert] of Object.entries(evaluations)) {
+    for (const [criterionName, evaluationsByExpert] of Object.entries(evaluations || {})) {
       const criterionId = criterionMap.get(criterionName);
       if (!criterionId) continue;
 
-      for (const evaluationData of evaluationsByExpert) {
-        const { id: alternativeName, expressionDomain, ...comparisons } = evaluationData;
+      for (const evaluationData of evaluationsByExpert || []) {
+        const { id: alternativeName, ...rest } = evaluationData || {};
         const alternativeId = alternativeMap.get(alternativeName);
         if (!alternativeId) continue;
 
-        for (const [comparedAlternativeName, value] of Object.entries(comparisons)) {
+        // Compatibilidad:
+        // - a veces llega evaluationData.expressionDomain
+        // - a veces llega evaluationData.domain
+        const snapshotId =
+          rest?.expressionDomain?.id ||
+          rest?.domain?.id ||
+          null;
+
+        if (snapshotId) usedSnapshotIds.add(String(snapshotId));
+
+        // quitar posibles campos que no son comparaciones
+        const comparisons = { ...rest };
+        delete comparisons.expressionDomain;
+        delete comparisons.domain;
+
+        for (const [comparedAlternativeName, valueOrObj] of Object.entries(comparisons)) {
           if (comparedAlternativeName === alternativeName) continue;
 
           const comparedAlternativeId = alternativeMap.get(comparedAlternativeName);
           if (!comparedAlternativeId) continue;
+
+          // tu UI a veces guarda {value, domain} en cada celda:
+          const value = (valueOrObj && typeof valueOrObj === "object" && "value" in valueOrObj)
+            ? valueOrObj.value
+            : valueOrObj;
 
           bulkOperations.push({
             updateOne: {
@@ -981,7 +1291,7 @@ export const savePairwiseEvaluations = async (req, res) => {
               update: {
                 $set: {
                   value,
-                  expressionDomain: expressionDomain?.id || null,
+                  expressionDomain: snapshotId, // ✅ snapshot
                   timestamp: new Date(),
                   issue: issue._id,
                   consensusPhase: currentPhase,
@@ -991,6 +1301,21 @@ export const savePairwiseEvaluations = async (req, res) => {
             },
           });
         }
+      }
+    }
+
+    // ✅ validar snapshots
+    if (usedSnapshotIds.size > 0) {
+      const ids = Array.from(usedSnapshotIds);
+      const count = await IssueExpressionDomain.countDocuments({
+        _id: { $in: ids },
+        issue: issue._id,
+      });
+
+      if (count !== ids.length) {
+        return res
+          ? res.status(400).json({ success: false, msg: "Invalid expressionDomain snapshot for this issue" })
+          : { success: false, msg: "Invalid expressionDomain snapshot for this issue" };
       }
     }
 
@@ -1013,8 +1338,9 @@ export const getPairwiseEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName } = req.body;
-    const issue = await Issue.findOne({ name: issueName });
+    const { id } = req.body;
+
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -1095,7 +1421,7 @@ export const sendPairwiseEvaluations = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
-    const { issueName, evaluations } = req.body;
+    const { id, evaluations } = req.body;
 
     // Primero validamos las evaluaciones antes de guardarlas
     const validation = validateFinalPairwiseEvaluations(evaluations);
@@ -1109,8 +1435,8 @@ export const sendPairwiseEvaluations = async (req, res) => {
       return res.status(500).json({ success: false, msg: saveResult.msg });
     }
 
-    // Obtener el issueId a partir del nombre del issue (se asume que el nombre es único)
-    const issue = await Issue.findOne({ name: issueName }).lean();
+    // Obtener el id a partir del nombre del issue (se asume que el nombre es único)
+    const issue = await Issue.findById(id).lean();
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -1138,10 +1464,10 @@ export const resolvePairwiseIssue = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
-    const { issueName, forceFinalize = false } = req.body;
+    const { id, forceFinalize = false } = req.body;
 
     // Buscar el problema por nombre
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
 
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
@@ -1314,7 +1640,7 @@ export const resolvePairwiseIssue = async (req, res) => {
       return res.status(200).json({
         success: true,
         finished: true,
-        msg: `Issue '${issueName}' resolved as final round due to closure date.`,
+        msg: `Issue '${issue.name}' resolved as final round due to closure date.`,
         rankedAlternatives
       });
     }
@@ -1328,7 +1654,7 @@ export const resolvePairwiseIssue = async (req, res) => {
       return res.status(200).json({
         success: true,
         finished: true,
-        msg: `Issue '${issueName}' resolved: maximum number of consensus rounds reached.`,
+        msg: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
         rankedAlternatives
       });
 
@@ -1344,7 +1670,7 @@ export const resolvePairwiseIssue = async (req, res) => {
       return res.status(200).json({
         success: true,
         finished: true,
-        msg: `Issue '${issueName}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+        msg: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
         rankedAlternatives
       });
     }
@@ -1359,7 +1685,7 @@ export const resolvePairwiseIssue = async (req, res) => {
     return res.status(200).json({
       success: true,
       finished: false,
-      msg: `Issue '${issueName}' conensus threshold not reached. Another round is needed.`,
+      msg: `Issue '${issue.name}' conensus threshold not reached. Another round is needed.`,
     });
 
   } catch (err) {
@@ -1369,11 +1695,11 @@ export const resolvePairwiseIssue = async (req, res) => {
 };
 
 export const removeFinishedIssue = async (req, res) => {
-  const { issueName } = req.body;
+  const { id } = req.body;
   const userId = req.uid;
 
   try {
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
 
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
@@ -1383,7 +1709,6 @@ export const removeFinishedIssue = async (req, res) => {
       return res.status(400).json({ success: false, msg: "Issue is still active" });
     }
 
-    // Buscar si ya existe un registro de salida para este usuario
     let previousExit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
 
     if (previousExit) {
@@ -1411,16 +1736,14 @@ export const removeFinishedIssue = async (req, res) => {
       });
     }
 
-    // === Nueva parte: comprobar si todos los usuarios ya lo ocultaron ===
     const participants = await Participation.find({ issue: issue._id });
     const exits = await ExitUserIssue.find({ issue: issue._id, hidden: true });
 
-    const allUsersHaveHidden = participants.every(p =>
-      exits.some(e => e.user.toString() === p.expert.toString())
+    const allUsersHaveHidden = participants.every((p) =>
+      exits.some((e) => e.user.toString() === p.expert.toString())
     );
 
     if (allUsersHaveHidden) {
-      // eliminar definitivamente el issue y sus datos
       await Evaluation.deleteMany({ issue: issue._id });
       await Alternative.deleteMany({ issue: issue._id });
       await Criterion.deleteMany({ issue: issue._id });
@@ -1428,11 +1751,14 @@ export const removeFinishedIssue = async (req, res) => {
       await Consensus.deleteMany({ issue: issue._id });
       await Notification.deleteMany({ issue: issue._id });
       await ExitUserIssue.deleteMany({ issue: issue._id });
+
+      // ✅ NUEVO
+      await IssueExpressionDomain.deleteMany({ issue: issue._id });
+
       await Issue.deleteOne({ _id: issue._id });
     }
 
     return res.status(200).json({ success: true, msg: `Issue ${issue.name} removed` });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -1445,73 +1771,74 @@ export const removeFinishedIssue = async (req, res) => {
 
 // Exporta la función editExperts como un controlador asincrónico
 export const editExperts = async (req, res) => {
-  // Extrae los datos del cuerpo de la petición
-  const { issueName, expertsToAdd, expertsToRemove } = req.body;
-  // Obtiene el ID del usuario autenticado (admin)
+  const { id, expertsToAdd, expertsToRemove } = req.body;
   const userId = req.uid;
 
   try {
-    // Busca el issue por nombre y trae también el modelo asociado
-    const issue = await Issue.findOne({ name: issueName }).populate('model');
-    // Si no existe el issue, devuelve error 404
+    const issue = await Issue.findById(id).populate("model");
+
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // Verifica que el usuario autenticado es el admin del issue
     if (!issue.admin.equals(userId)) {
       return res.status(403).json({ success: false, msg: "Not authorized to edit this issue's experts." });
     }
 
-    // Carga en paralelo las alternativas, criterios y último consenso del issue
-    const [alternatives, criteria, latestConsensus] = await Promise.all([
+    const [alternatives, criteria, latestConsensus, snapshots] = await Promise.all([
       Alternative.find({ issue: issue._id }).sort({ name: 1 }),
       Criterion.find({ issue: issue._id }),
-      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }) // el último por fase
+      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }),
+      IssueExpressionDomain.find({ issue: issue._id }).sort({ createdAt: 1 }).lean(),
     ]);
 
-    // Calcula la fase actual (si hay consenso previo, la siguiente; si no, fase 1)
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
-    // Mapa para vincular emails con IDs de usuarios expertos
-    const expertMap = new Map();
+    // ✅ elegimos un dominio por defecto para crear evaluaciones nuevas
+    // prioridad: uno numérico si existe, si no el primero que haya
+    const defaultSnapshot =
+      snapshots.find((d) => d.type === "numeric") ||
+      snapshots[0] ||
+      null;
 
-    // Recorre los expertos que se quieren añadir
-    for (const email of expertsToAdd) {
-      // Busca al usuario por email
+    if (!defaultSnapshot) {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue has no IssueExpressionDomain snapshots. Cannot add experts until domains are snapshotted.",
+      });
+    }
+
+    const leafCriteria = criteria.filter((c) => c.isLeaf);
+    const isPairwise = Boolean(issue.model?.isPairwise);
+
+    // --- AÑADIR EXPERTOS ---
+    for (const emailRaw of expertsToAdd || []) {
+      const email = String(emailRaw || "").trim();
+      if (!email) continue;
+
       const expertUser = await User.findOne({ email });
-      if (!expertUser) continue; // si no existe, salta
+      if (!expertUser) continue;
 
-      // Comprueba si ya participaba en este issue
       const existingParticipation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
 
-      // Si nunca participó, se crea su participación y evaluaciones
       if (!existingParticipation) {
-        // Comprueba si es el propio admin
         const isAdmin = expertUser._id.equals(userId);
 
-        // Crea la participación del experto en el issue
         await Participation.create({
           issue: issue._id,
           expert: expertUser._id,
-          invitationStatus: isAdmin ? "accepted" : "pending", // admin aceptado automáticamente
+          invitationStatus: isAdmin ? "accepted" : "pending",
           evaluationCompleted: false,
-          entryPhase: currentPhase   // guarda la fase en la que entra
+          entryPhase: currentPhase,
         });
 
-        // Añade al mapa de expertos
-        expertMap.set(email, expertUser._id);
-
-        // Si no es el admin, se envía invitación y notificación
         if (!isAdmin) {
-          // Busca los datos del admin que invita
           const admin = await User.findById(userId);
 
-          // Envía email de invitación
           await resend.emails.send({
-            from: 'onboarding@resend.dev',
+            from: "onboarding@resend.dev",
             to: email,
-            subject: 'You have been invited to an issue',
+            subject: "You have been invited to an issue",
             html: `
               <html>
                 <body>
@@ -1521,79 +1848,84 @@ export const editExperts = async (req, res) => {
                   <p>Accept the invitation to participate.</p>
                 </body>
               </html>
-            `
+            `,
           });
 
-          // Crea una notificación interna en el sistema
           await Notification.create({
             expert: expertUser._id,
             issue: issue._id,
             type: "invitation",
             message: `You have been invited by ${admin.name} to participate in ${issue.name}.`,
             read: false,
-            requiresAction: true
+            requiresAction: true,
           });
         }
 
-        // Comprueba si ya tenía evaluaciones previas
-        const hasEvaluations = await Evaluation.exists({
-          issue: issue._id,
-          expert: expertUser._id
-        });
+        // ✅ crear evaluaciones vacías para el experto nuevo usando snapshots
+        const evalExists = await Evaluation.exists({ issue: issue._id, expert: expertUser._id });
+        if (!evalExists) {
+          const evalDocs = [];
 
-        // Si nunca tuvo, se crean evaluaciones nuevas
-        if (!hasEvaluations) {
-          // Se define un objeto de dominios de expresión por cada alternativa y criterio
-          const domainExpressions = {
-            [email]: {}
-          };
-
-          // Recorre alternativas y criterios para crear estructura de evaluaciones
           for (const alt of alternatives) {
-            domainExpressions[email][alt.name] = {};
-            for (const crit of criteria) {
-              domainExpressions[email][alt.name][crit.name] = {
-                name: crit.name,
-                data: "Numeric Float",
-                children: false,
-              };
+            for (const crit of leafCriteria) {
+              if (isPairwise) {
+                for (const comparedAlt of alternatives) {
+                  if (String(comparedAlt._id) === String(alt._id)) continue;
+
+                  evalDocs.push({
+                    issue: issue._id,
+                    expert: expertUser._id,
+                    alternative: alt._id,
+                    comparedAlternative: comparedAlt._id,
+                    criterion: crit._id,
+                    expressionDomain: defaultSnapshot._id, // ✅ snapshot
+                    value: null,
+                    timestamp: null,
+                    history: [],
+                    consensusPhase: currentPhase,
+                  });
+                }
+              } else {
+                evalDocs.push({
+                  issue: issue._id,
+                  expert: expertUser._id,
+                  alternative: alt._id,
+                  comparedAlternative: null,
+                  criterion: crit._id,
+                  expressionDomain: defaultSnapshot._id, // ✅ snapshot
+                  value: null,
+                  timestamp: null,
+                  history: [],
+                  consensusPhase: currentPhase,
+                });
+              }
             }
           }
 
-          // Llama a la función que genera las evaluaciones
-          await createEvaluations(
-            domainExpressions,
-            expertMap,
-            alternatives,
-            criteria,
-            issue._id,
-            issue.model.isPairwise, // indica si el modelo es por comparaciones pareadas
-            currentPhase
-          );
+          if (evalDocs.length > 0) {
+            await Evaluation.insertMany(evalDocs);
+          }
         }
       }
     }
 
-    // Recorre los expertos que se quieren eliminar (expulsar)
-    for (const email of expertsToRemove) {
-      // Busca al usuario por email
+    // --- ELIMINAR/EXPULSAR EXPERTOS (tu lógica, igual) ---
+    for (const emailRaw of expertsToRemove || []) {
+      const email = String(emailRaw || "").trim();
+      if (!email) continue;
+
       const expertUser = await User.findOne({ email });
       if (!expertUser) continue;
 
-      // Busca su participación en el issue
       const participation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
 
-      // Si participaba, se elimina su participación
       if (participation) {
         await Participation.deleteOne({ _id: participation._id });
 
-        // Las evaluaciones no se eliminan (se mantiene el historial)
         const reason = "Expelled by admin";
 
-        // Busca si ya hay un registro de salida del usuario en el issue
         const exit = await ExitUserIssue.findOne({ issue: issue._id, user: expertUser._id });
 
-        // Si no hay, crea uno nuevo con historial
         if (!exit) {
           await ExitUserIssue.create({
             issue: issue._id,
@@ -1602,45 +1934,44 @@ export const editExperts = async (req, res) => {
             timestamp: new Date(),
             phase: currentPhase,
             reason,
-            history: [{
-              timestamp: new Date(),
-              phase: currentPhase,
-              reason
-            }]
+            history: [
+              {
+                timestamp: new Date(),
+                phase: currentPhase,
+                reason,
+              },
+            ],
           });
         } else {
-          // Si ya existe, se actualiza añadiendo nueva entrada en el historial
           exit.history.push({
             timestamp: new Date(),
             phase: currentPhase,
-            reason
+            reason,
           });
-          exit.phase = currentPhase; // se actualiza la fase de salida
+          exit.phase = currentPhase;
           await exit.save();
         }
       }
     }
 
-    // Respuesta exitosa
     return res.status(200).json({ success: true, msg: "Experts updated successfully." });
   } catch (err) {
-    // Manejo de errores en caso de fallo
     console.error(err);
     return res.status(500).json({
       success: false,
       msg: "An error occurred while editing experts.",
-      error: err.message
+      error: err.message,
     });
   }
 };
 
 export const leaveIssue = async (req, res) => {
-  const { issueName } = req.body;   // nombre del issue
+  const { id } = req.body;
   const userId = req.uid;           // ID del usuario que quiere salir
 
   try {
     // Buscar el issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -1707,42 +2038,14 @@ export const leaveIssue = async (req, res) => {
   }
 };
 
-// Función interna que resuelve un issue usando su _id
-export const resolveIssueLogic = async (issueId, { forceFinalize = false } = {}) => {
-  const issue = await Issue.findById(issueId);
-  if (!issue) return;
-
-  await resolvePairwiseIssue({
-    uid: issue.admin,
-    body: { issueName: issue.name, forceFinalize }
-  }, {
-    status: () => ({ json: (obj) => console.log(obj) }),
-    json: (obj) => console.log(obj)
-  });
-};
-
-// Función interna que elimina un issue usando su _id
-export const removeIssueLogic = async (issueId) => {
-  const issue = await Issue.findById(issueId);
-  if (!issue) return;
-
-  await removeIssue({
-    uid: issue.admin,
-    body: { issueName: issue.name }
-  }, {
-    status: () => ({ json: (obj) => console.log(obj) }),
-    json: (obj) => console.log(obj)
-  });
-};
-
 // Función para guardar evaluaciones de tipo AxC (Alternativa x Criterio)
 export const saveEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, evaluations } = req.body;
+    const { id, evaluations } = req.body;
 
-    const issue = await Issue.findOne({ name: issueName }).lean();
+    const issue = await Issue.findById(id).lean();
     if (!issue) {
       return res
         ? res.status(404).json({ success: false, msg: "Issue not found" })
@@ -1752,7 +2055,7 @@ export const saveEvaluations = async (req, res) => {
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
-      invitationStatus: "accepted"
+      invitationStatus: "accepted",
     });
 
     if (!participation) {
@@ -1771,16 +2074,20 @@ export const saveEvaluations = async (req, res) => {
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
     const bulkOperations = [];
+    const usedSnapshotIds = new Set();
 
-    for (const [alternativeName, criterionEvaluations] of Object.entries(evaluations)) {
+    for (const [alternativeName, criterionEvaluations] of Object.entries(evaluations || {})) {
       const alternativeId = alternativeMap.get(alternativeName);
       if (!alternativeId) continue;
 
-      for (const [criterionName, evalData] of Object.entries(criterionEvaluations)) {
+      for (const [criterionName, evalData] of Object.entries(criterionEvaluations || {})) {
         const criterionId = criterionMap.get(criterionName);
         if (!criterionId) continue;
 
-        const { value, domain } = evalData;
+        const { value, domain } = evalData || {};
+        const snapshotId = domain?.id || null;
+
+        if (snapshotId) usedSnapshotIds.add(String(snapshotId));
 
         bulkOperations.push({
           updateOne: {
@@ -1793,7 +2100,7 @@ export const saveEvaluations = async (req, res) => {
             update: {
               $set: {
                 value,
-                expressionDomain: domain?.id || null, // 👈 guardamos el ObjectId del dominio
+                expressionDomain: snapshotId, // ✅ snapshot
                 timestamp: new Date(),
                 issue: issue._id,
                 consensusPhase: currentPhase,
@@ -1802,6 +2109,21 @@ export const saveEvaluations = async (req, res) => {
             upsert: true,
           },
         });
+      }
+    }
+
+    // ✅ Validar que los snapshots usados pertenecen a ESTE issue
+    if (usedSnapshotIds.size > 0) {
+      const ids = Array.from(usedSnapshotIds);
+      const count = await IssueExpressionDomain.countDocuments({
+        _id: { $in: ids },
+        issue: issue._id,
+      });
+
+      if (count !== ids.length) {
+        return res
+          ? res.status(400).json({ success: false, msg: "Invalid expressionDomain snapshot for this issue" })
+          : { success: false, msg: "Invalid expressionDomain snapshot for this issue" };
       }
     }
 
@@ -1823,57 +2145,55 @@ export const saveEvaluations = async (req, res) => {
 export const getEvaluations = async (req, res) => {
   const userId = req.uid;
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // 🟢 Traer alternativas, criterios y dominios del issue
-    const [alternatives, criteria, expressionDomains] = await Promise.all([
-      Alternative.find({ issue: issue._id }).lean(),
-      Criterion.find({ issue: issue._id }).lean(),
-      ExpressionDomain.find({ issue: issue._id }).lean(),
+    const [alternatives, criteria, evalDocs] = await Promise.all([
+      Alternative.find({ issue: issue._id }).sort({ name: 1 }).lean(),
+      Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 }).lean(),
+      Evaluation.find({
+        issue: issue._id,
+        expert: userId,
+        comparedAlternative: null,
+      })
+        .populate("alternative")
+        .populate("criterion")
+        .populate("expressionDomain"),
     ]);
 
-    const evalDocs = await Evaluation.find({
-      issue: issue._id,
-      expert: userId,
-      comparedAlternative: null,
-    })
-      .populate("alternative")
-      .populate("criterion")
-      .populate("expressionDomain");
+    const evalMap = new Map();
+    for (const e of evalDocs) {
+      const aId = e.alternative?._id?.toString();
+      const cId = e.criterion?._id?.toString();
+      if (!aId || !cId) continue;
+      evalMap.set(`${aId}_${cId}`, e);
+    }
 
     const evaluationsByAlternative = {};
 
-    // 🟢 Inicializamos TODAS las combinaciones alt-crit con dominio
     for (const alt of alternatives) {
       evaluationsByAlternative[alt.name] = {};
-      for (const crit of criteria.filter(c => c.isLeaf)) {
-        // Buscar la evaluación existente
-        const evalDoc = evalDocs.find(e =>
-          e.alternative._id.equals(alt._id) && e.criterion._id.equals(crit._id)
-        );
 
-        // Buscar dominio asociado (si lo tienes en otra colección/tabla)
-        const domain = evalDoc?.expressionDomain || expressionDomains.find(d =>
-          d.issue.equals(issue._id) &&
-          /* si tienes reglas para asociar criterio con dominio, ponlas aquí */
-          true
-        );
+      for (const crit of criteria) {
+        const key = `${alt._id.toString()}_${crit._id.toString()}`;
+        const evalDoc = evalMap.get(key);
+
+        const domain = evalDoc?.expressionDomain || null;
 
         evaluationsByAlternative[alt.name][crit.name] = {
           value: evalDoc?.value ?? "",
           domain: domain
             ? {
-              id: domain._id,
-              name: domain.name,
-              type: domain.type,
-              ...(domain.type === "numeric" && { range: domain.numericRange }),
-              ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
-            }
+                id: domain._id,
+                name: domain.name,
+                type: domain.type,
+                ...(domain.type === "numeric" && { range: domain.numericRange }),
+                ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
+              }
             : null,
         };
       }
@@ -1896,7 +2216,7 @@ export const sendEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, evaluations } = req.body;
+    const { id, evaluations } = req.body;
 
     // Validar las evaluaciones
     const validation = validateFinalEvaluations(evaluations);
@@ -1915,8 +2235,8 @@ export const sendEvaluations = async (req, res) => {
       return res.status(500).json({ success: false, msg: saveResult.msg });
     }
 
-    // Obtener issueId
-    const issue = await Issue.findOne({ name: issueName }).lean();
+    // Obtener id
+    const issue = await Issue.findById(id).lean();
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -1944,10 +2264,10 @@ export const resolveIssue = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
   try {
-    const { issueName, forceFinalize = false } = req.body;
+    const { id, forceFinalize = false } = req.body;
 
     // Buscar el problema por nombre
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
 
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
@@ -2148,7 +2468,7 @@ export const resolveIssue = async (req, res) => {
         return res.status(200).json({
           success: true,
           finished: true,
-          msg: `Issue '${issueName}' resolved as final round due to closure date.`,
+          msg: `Issue '${issue.name}' resolved as final round due to closure date.`,
           rankedAlternatives,
         });
       }
@@ -2159,7 +2479,7 @@ export const resolveIssue = async (req, res) => {
         return res.status(200).json({
           success: true,
           finished: true,
-          msg: `Issue '${issueName}' resolved: maximum number of consensus rounds reached.`,
+          msg: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
           rankedAlternatives,
         });
       }
@@ -2170,7 +2490,7 @@ export const resolveIssue = async (req, res) => {
         return res.status(200).json({
           success: true,
           finished: true,
-          msg: `Issue '${issueName}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+          msg: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
           rankedAlternatives,
         });
       }
@@ -2184,7 +2504,7 @@ export const resolveIssue = async (req, res) => {
       return res.status(200).json({
         success: true,
         finished: false,
-        msg: `Issue '${issueName}' consensus threshold not reached. Another round is needed.`,
+        msg: `Issue '${issue.name}' consensus threshold not reached. Another round is needed.`,
       });
     }
 
@@ -2195,7 +2515,7 @@ export const resolveIssue = async (req, res) => {
     return res.status(200).json({
       success: true,
       finished: true,
-      msg: `Issue '${issueName}' resolved.`,
+      msg: `Issue '${issue.name}' resolved.`,
       rankedAlternatives,
     });
 
@@ -2209,10 +2529,10 @@ export const getFinishedIssueInfo = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
     // 1. Buscar el problema por nombre
-    const issue = await Issue.findOne({ name: issueName }).populate('model');
+    const issue = await Issue.findById(id).populate('model');
 
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
@@ -2245,10 +2565,10 @@ export const saveBwmWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, bwmData, send = false } = req.body;
+    const { id, bwmData, send = false } = req.body;
 
     // 1️⃣ Buscar el issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res
         ? res.status(404).json({ success: false, msg: "Issue not found" })
@@ -2344,10 +2664,10 @@ export const saveBwmWeights = async (req, res) => {
 export const getBwmWeights = async (req, res) => {
   const userId = req.uid;
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
     // 🟢 Buscar el issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -2413,7 +2733,7 @@ export const sendBwmWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, bwmData } = req.body;
+    const { id, bwmData } = req.body;
 
     // 🧠 1️⃣ Validar que los datos BWM están completos
     const validation = validateFinalWeights(bwmData);
@@ -2448,7 +2768,7 @@ export const sendBwmWeights = async (req, res) => {
     }
 
     // 🧾 4️⃣ Buscar el issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -2505,10 +2825,10 @@ export const computeWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
     // 1️⃣ Buscar el issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
@@ -2590,7 +2910,7 @@ export const computeWeights = async (req, res) => {
     return res.status(200).json({
       success: true,
       finished: true,
-      msg: `Criteria weights for '${issueName}' successfully computed.`,
+      msg: `Criteria weights for '${issue.name}' successfully computed.`,
       weights: issue.modelParameters.weights,
     });
 
@@ -2604,7 +2924,7 @@ export const saveManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, weigths } = req.body;
+    const { id, weigths } = req.body;
 
     const raw = weigths?.manualWeights || {};
 
@@ -2616,7 +2936,7 @@ export const saveManualWeights = async (req, res) => {
       })
     );
 
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
     const participation = await Participation.findOne({
@@ -2655,9 +2975,9 @@ export const getManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
     const participation = await Participation.findOne({
@@ -2705,14 +3025,14 @@ export const sendManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName, weigths } = req.body;
+    const { id, weigths } = req.body;
 
     const raw = weigths?.manualWeights || {};
     const manualWeights = Object.fromEntries(
       Object.entries(raw).map(([k, v]) => [k, Number(v)])
     );
 
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue)
       return res.status(404).json({ success: false, msg: "Issue not found" });
 
@@ -2777,10 +3097,10 @@ export const computeManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { issueName } = req.body;
+    const { id } = req.body;
 
     // 1️⃣ Buscar issue
-    const issue = await Issue.findOne({ name: issueName });
+    const issue = await Issue.findById(id);
     if (!issue)
       return res.status(404).json({ success: false, msg: "Issue not found" });
 
@@ -2885,4 +3205,5 @@ export const computeManualWeights = async (req, res) => {
     });
   }
 };
+
 

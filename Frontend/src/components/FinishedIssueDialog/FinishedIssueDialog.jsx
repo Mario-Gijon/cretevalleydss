@@ -18,15 +18,7 @@ import { Matrix } from "../Matrix/Matrix";
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Scatter } from 'react-chartjs-2';
 import { useRef } from 'react';
-import {
-  Chart as ChartJS,
-  ScatterController,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-  Title,
-} from 'chart.js';
+import { Chart as ChartJS, ScatterController, LinearScale, PointElement, Tooltip, Legend, Title, } from 'chart.js';
 import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { CriterionItem } from "../CriteriaList/CriteriaList";
 import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
@@ -74,8 +66,6 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
   let criterionList = [];
   let evaluations = {};
   let collectiveEvaluations = {};
-  /* let alternatives = [];
-  let criteria = []; */
 
   if (issue?.summary?.isPairwise) {
     expertList = Object.keys(issue.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {});
@@ -97,21 +87,15 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
     collectiveEvaluations = showCollective
       ? issue.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations || {}
       : {};
-    /* alternatives = Object.keys(evaluations); // ["A1", "A1.1", "A2"]
-    criteria = alternatives.length ? Object.keys(evaluations[alternatives[0]]) : []; // ["C1","C2",...] */
   }
-
-
 
   const ranking = issue?.alternativesRankings?.[currentPhaseIndex]?.ranking ?? [];
   const lastIndex = ranking.length - 1;
 
-
-
   useEffect(() => {
     const fetchIssue = async () => {
       setLoadingInfo(true);
-      const response = await getFinishedIssueInfo(selectedIssue?.name);
+      const response = await getFinishedIssueInfo(selectedIssue?.id);
       const loadedIssue = response.issueInfo;
 
       // Obtener todas las fases (como enteros)
