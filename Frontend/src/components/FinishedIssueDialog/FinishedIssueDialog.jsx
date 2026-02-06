@@ -612,14 +612,14 @@ export const FinishedIssueDialog = ({ selectedIssue, openFinishedIssueDialog, ha
                               </>
                             }
                           </Stack>
-                          {issue.analyticalGraphs.consensusLevelLineChart.data.length > 1 &&
+                          {issue.analyticalGraphs.consensusLevelLineChart?.data.length > 1 &&
                             <MobileStepper
                               variant="dots"
                               steps={2}
                               position="static"
                               activeStep={activeStep}
                               sx={{
-                                width: "auto", // opcional, puedes controlar el ancho total
+                                width: "auto", 
                                 bgcolor: "transparent",
                                 pb: 0,
                               }}

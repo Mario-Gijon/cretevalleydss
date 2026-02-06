@@ -312,26 +312,36 @@ export const createExpertsRatingsSection = async (issueId) => {
 
 
 
-export const createAnalyticalGraphsSection = async (issueId) => {
+export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
   const consensusDocs = await Consensus.find({ issue: issueId })
     .sort({ phase: 1 })
     .lean();
 
-  // Solo docs que realmente tengan plotsGraphic
+  // scatterPlot: solo si hay plotsGraphic
   const scatterPlot = consensusDocs
-    .filter(doc => doc.details && doc.details.plotsGraphic)
-    .map(doc => ({
+    .filter((doc) => doc?.details?.plotsGraphic?.expert_points)
+    .map((doc) => ({
       phase: doc.phase,
       expert_points: doc.details.plotsGraphic.expert_points,
       collective_point: doc.details.plotsGraphic.collective_point,
     }));
 
-  const consensusLevelLineChart = {
-    labels: consensusDocs.map(doc => `${doc.phase}`),
-    data: consensusDocs.map(doc => doc.level ?? 0) // para no petar si es null
-  };
+  const result = {};
 
-  return { scatterPlot, consensusLevelLineChart };
+  if (scatterPlot.length > 0) {
+    result.scatterPlot = scatterPlot;
+  }
+
+  // consensus line: solo si es consenso y hay > 1 fase
+  if (isConsensus && consensusDocs.length > 1) {
+    result.consensusLevelLineChart = {
+      labels: consensusDocs.map((doc) => `${doc.phase}`),
+      data: consensusDocs.map((doc) => doc.level ?? 0),
+    };
+  }
+
+  // Si no hay nada, devolver null
+  return Object.keys(result).length > 0 ? result : null;
 };
 
 

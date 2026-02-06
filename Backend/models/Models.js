@@ -114,7 +114,7 @@ const issueModels = [
       { name: "beta", type: "number", default: 0.8, restrictions: { min: 0, max: 1 } }
     ],
     supportedDomains: {
-      numeric: { enabled: false },
+      numeric: { enabled: true },
       linguistic: { enabled: false }
     }
   },

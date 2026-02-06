@@ -1057,6 +1057,7 @@ export const getNotifications = async (req, res) => {
         message: notification.message,
         userEmail: notification.expert ? notification.expert.email : "Usuario eliminado",
         issueName: notification.issue ? notification.issue.name : "Problema eliminado",
+        issueId: notification.issue ? notification.issue._id : null,
         requiresAction: notification.requiresAction,
         read: notification.read ?? false,
         createdAt: notification.createdAt,
@@ -1546,7 +1547,7 @@ export const resolvePairwiseIssue = async (req, res) => {
 
     console.log("Response from API:", response.data);
 
-    const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic } } = response.data;
+    const { success, msg, results: { alternatives_rankings, cm, collective_evaluations, plots_graphic, collective_scores } } = response.data;
 
     if (!success) {
       return res.status(400).json({ success: false, msg });
@@ -1564,7 +1565,13 @@ export const resolvePairwiseIssue = async (req, res) => {
       collective_point: plots_graphic.collective_point,
     };
 
-    const rankedAlternatives = alternatives_rankings.map(index => alternatives[index].name);
+    const altNames = alternatives.map(a => a.name);
+
+    const rankedWithScores = alternatives_rankings.map((idx) => ({
+      name: altNames[idx],
+      score: collective_scores?.[idx] ?? null,
+    }));
+
 
     // Transformar collective_evaluations a formato legible con nombres de alternativas
     const transformedCollectiveEvaluations = {};
@@ -1598,10 +1605,14 @@ export const resolvePairwiseIssue = async (req, res) => {
       timestamp: new Date(),
       collectiveEvaluations: transformedCollectiveEvaluations, // Ahora con nombres
       details: {
-        rankedAlternatives,
+        rankedAlternatives: rankedWithScores, 
         matrices,
+        // opcional:
+        collective_scores: Object.fromEntries(altNames.map((n, i) => [n, collective_scores?.[i] ?? null])),
+        collective_ranking: rankedWithScores.map(r => r.name),
         plotsGraphic: plotsGraphicWithEmails
       }
+
     });
 
     await consensus.save();
@@ -1655,7 +1666,7 @@ export const resolvePairwiseIssue = async (req, res) => {
         success: true,
         finished: true,
         msg: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
-        rankedAlternatives
+        rankedAlternatives: rankedWithScores
       });
 
     }
@@ -1671,7 +1682,7 @@ export const resolvePairwiseIssue = async (req, res) => {
         success: true,
         finished: true,
         msg: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
-        rankedAlternatives
+        rankedAlternatives: rankedWithScores
       });
     }
 
@@ -2188,12 +2199,12 @@ export const getEvaluations = async (req, res) => {
           value: evalDoc?.value ?? "",
           domain: domain
             ? {
-                id: domain._id,
-                name: domain.name,
-                type: domain.type,
-                ...(domain.type === "numeric" && { range: domain.numericRange }),
-                ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
-              }
+              id: domain._id,
+              name: domain.name,
+              type: domain.type,
+              ...(domain.type === "numeric" && { range: domain.numericRange }),
+              ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
+            }
             : null,
         };
       }
@@ -2427,19 +2438,25 @@ export const resolveIssue = async (req, res) => {
       });
     });
 
-    const { plots_graphic } = results;
+    // ---- plots_graphic (opcional) ----
+    let plotsGraphicWithEmails = null;
 
-    // Mapear puntos a emails según el orden de `participations`
-    const expertPointsMap = {};
-    participations.forEach((participation, index) => {
-      const email = participation.expert.email;
-      expertPointsMap[email] = plots_graphic.expert_points[index];
-    });
+    const plots_graphic = results?.plots_graphic;
 
-    const plotsGraphicWithEmails = {
-      expert_points: expertPointsMap,
-      collective_point: plots_graphic.collective_point,
-    };
+    // Solo si el modelo lo devuelve y viene con expert_points
+    if (plots_graphic?.expert_points && Array.isArray(plots_graphic.expert_points)) {
+      const expertPointsMap = {};
+
+      participations.forEach((participation, index) => {
+        const email = participation.expert.email;
+        expertPointsMap[email] = plots_graphic.expert_points[index] ?? null;
+      });
+
+      plotsGraphicWithEmails = {
+        expert_points: expertPointsMap,
+        collective_point: plots_graphic.collective_point ?? null,
+      };
+    }
 
     // Guardar en Consensus
     const consensus = new Consensus({
@@ -2452,13 +2469,12 @@ export const resolveIssue = async (req, res) => {
         matrices,
         collective_scores: collectiveScoresByName,
         collective_ranking: rankedAlternatives,
-        plotsGraphic: plotsGraphicWithEmails,   // ✅ AÑADIDO AQUÍ
+        ...(plotsGraphicWithEmails ? { plotsGraphic: plotsGraphicWithEmails } : {}),
       },
       collectiveEvaluations,
     });
 
     await consensus.save();
-
 
     // --- Lógica de cierre ---
     if (issue.isConsensus) {
@@ -2544,16 +2560,16 @@ export const getFinishedIssueInfo = async (req, res) => {
 
     const expertsRatings = issue.model.isPairwise ? await createExpertsPairwiseRatingsSection(issue._id) : await createExpertsRatingsSection(issue._id)
 
-    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id);
+    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id, issue.isConsensus);
 
     const issueInfo = {
       summary,
       alternativesRankings,
       expertsRatings,
-      analyticalGraphs
+      analyticalGraphs,
     };
 
-    res.json({ success: true, msg: "Issue info sent", issueInfo });
+    return res.json({ success: true, msg: "Issue info sent", issueInfo });
 
   } catch (error) {
     console.error(error);

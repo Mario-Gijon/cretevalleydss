@@ -162,16 +162,16 @@ export const ResponsiveNavbar = (props) => {
     setAnchorElUser(null)
   };
 
-  const handleInvitationAction = async (issue, action) => {
+  const handleInvitationAction = async (issueId, action) => {
     if (action !== "accepted" && action !== "declined") return;
 
-    const invitationChanged = await changeInvitationStatus(issue, action);
+    const invitationChanged = await changeInvitationStatus(issueId, action);
 
     if (invitationChanged.success) {
       // Actualizar estado de la notificación sin necesidad de recargar
       setNotifications((prevNotifications) =>
         prevNotifications.map((notification) =>
-          notification.issueName === issue
+          notification.issueId === issueId
             ? { ...notification, responseStatus: action === "accepted" ? "Invitation accepted" : "Invitation declined" }
             : notification
         )
@@ -485,7 +485,7 @@ export const ResponsiveNavbar = (props) => {
                                 variant="outlined"
                                 color="success"
                                 size="small"
-                                onClick={() => handleInvitationAction(notification.issueName, "accepted")}
+                                onClick={() => handleInvitationAction(notification.issueId, "accepted")}
                               >
                                 Accept
                               </Button>
@@ -493,7 +493,7 @@ export const ResponsiveNavbar = (props) => {
                                 variant="outlined"
                                 color="error"
                                 size="small"
-                                onClick={() => handleInvitationAction(notification.issueName, "declined")}
+                                onClick={() => handleInvitationAction(notification.issueId, "declined")}
                               >
                                 Decline
                               </Button>

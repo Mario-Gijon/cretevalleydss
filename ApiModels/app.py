@@ -17,13 +17,10 @@ async def herrera_viedma_crp(request: Request):
     data = await request.json()
     
     matrices = data["matrices"]
-    
-    consensusThreshold = data["consensusThreshold"]
   
     results = run_herrera_viedma(
       matrices,
-      maxRounds=1,
-      cl=consensusThreshold,
+      cl=data["consensusThreshold"],
       ag_lq=data["modelParameters"]["ag_lq"],
       ex_lq=data["modelParameters"]["ex_lq"],
       b=data["modelParameters"]["b"],
@@ -55,7 +52,7 @@ async def topsis(request: Request):
   
   
 @app.post("/borda")
-async def topsis(request: Request):
+async def borda(request: Request):
   try:
     
     data = await request.json()
@@ -69,7 +66,7 @@ async def topsis(request: Request):
     return { "success": False, "msg": f"Error executing Borda: {str(e)}" }
   
 @app.post("/aras")
-async def topsis(request: Request):
+async def aras(request: Request):
   try:
     
     data = await request.json()
@@ -131,18 +128,7 @@ async def bwm(request: Request):
 async def cmcc(request: Request):
     try:
         data = await request.json()
-
-        # Esperamos algo del estilo:
-        # {
-        #   "o": [...],
-        #   "c": [...],
-        #   "omega": [...],
-        #   "w": [...],
-        #   "eps": 0.1,
-        #   "mu0": 0.85,
-        #   "lower_bound": 0.0,
-        #   "upper_bound": 1.0
-        # }
+        
         res = run_cmcc(
           o=data["o"],
           c=data["c"],

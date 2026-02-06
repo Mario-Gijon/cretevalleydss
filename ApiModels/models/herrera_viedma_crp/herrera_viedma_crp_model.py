@@ -6,7 +6,7 @@ from sklearn.manifold import MDS # type: ignore
 
 from models.herrera_viedma_crp.utils import calcular_pesos_OWA, calcular_colectiva_OWA, calcular_QGDD, conjunto_solucion, calcular_diferencia_rankings, calcular_consenso_exp_alt, calcular_consenso_alt, get_plots_graphics, s_owa_or_like, calcular_medidas_proximidad, expertos_mas_alejados, detectar_cambios, aplicar_cambios
 
-def run_herrera_viedma(matrices, maxRounds, cl, ag_lq, ex_lq, b, beta, w_crit):
+def run_herrera_viedma(matrices, cl, ag_lq, ex_lq, b, beta, w_crit):
   # Número de expertos y alternativas
   n_exp = len(matrices)
   first_user_data = next(iter(matrices.values()))
@@ -25,15 +25,15 @@ def run_herrera_viedma(matrices, maxRounds, cl, ag_lq, ex_lq, b, beta, w_crit):
 
   # PARÁMETROS DEL MODELO DE CONSENSO HERRERA-VIEDMA
 
-  ag_lq = [0.3, 0.8] # Parámetros usados para la agregación de preferencias. Cuantificadores lingüísticos most(0.3,0.8), at least half(0,0.5), as many as possible(0.5,1).
-  ex_lq = [0.5, 1.0] # Parámetros usados para obtener el ranking. Cuantificadores lingüísticos most(0.3,0.8), at least half(0,0.5), as many as possible(0.5,1).
-  b = 1.0 # Parámetro de rigurosidad del proceso de consenso. Valores apropiados: 0.5, 0.7, 0.9 y 1.0.
-  beta = 0.8 # Parámetro para controlar el comportamiento del operador OWA OR-LIKE. Valor en [0,1].
+  """ ag_lq = [0.3, 0.8] # Parámetros usados para la agregación de preferencias. Cuantificadores lingüísticos most(0.3,0.8), at least half(0,0.5), as many as possible(0.5,1). """
+  """ ex_lq = [0.5, 1.0] # Parámetros usados para obtener el ranking. Cuantificadores lingüísticos most(0.3,0.8), at least half(0,0.5), as many as possible(0.5,1). """
+  """ b = 1.0 # Parámetro de rigurosidad del proceso de consenso. Valores apropiados: 0.5, 0.7, 0.9 y 1.0. """
+  """ beta = 0.8 # Parámetro para controlar el comportamiento del operador OWA OR-LIKE. Valor en [0,1]. """
 
   # PROCESO DE CONSENSO
   # ====================
 
-  w_crit = [1.0] # Solo hay un criterio, por lo tanto peso 1.0.
+  """ w_crit = [1.0] # Solo hay un criterio, por lo tanto peso 1.0. """
   w_exp = calcular_pesos_OWA(n_exp, ag_lq) # Calculamos los pesos OWA de los expertos mediante los cuantificadores lingüísticos.
   w_alt = calcular_pesos_OWA(n_alt, ex_lq) # Calculamos los pesos OWA de las alternativas mediante los cuantificadores lingüísticos.
 
@@ -48,9 +48,15 @@ def run_herrera_viedma(matrices, maxRounds, cl, ag_lq, ex_lq, b, beta, w_crit):
   plots = get_plots_graphics(pref, 'MDS') # Esto no tiene nada que ver con el modelo, simplemente es una representación gráfica que ayudar a entender cómo evoluciona el proceso.
 
   alternatives_rankings = [None] * (n_exp + 1)
+  qgdd_list = [None] * (n_exp + 1)  
+
   for i in range(n_exp + 1):
-    QGDD = calcular_QGDD(n_alt, pref[i], w_alt) # Calculamos el quantifier guided dominance degree de las alternativas para cada experto y colectiva.
-    alternatives_rankings[i] = np.argsort(QGDD)[::-1] # Obtenemos el ranking de las alternativas en función del valor del QGDD.
+    QGDD = calcular_QGDD(n_alt, pref[i], w_alt)
+    qgdd_list[i] = QGDD           
+    alternatives_rankings[i] = np.argsort(QGDD)[::-1]
+
+  collective_scores = qgdd_list[-1] 
+
 
   xSol = conjunto_solucion(alternatives_rankings[-1]) # Conjunto solución de la/s mejor/es alternativas según la opinión colectiva.
 
@@ -70,8 +76,10 @@ def run_herrera_viedma(matrices, maxRounds, cl, ag_lq, ex_lq, b, beta, w_crit):
   return {
     "alternatives_rankings": alternatives_rankings,
     "cm": round(cm, 2),
+    "collective_scores": [round(float(x), 6) for x in collective_scores],  # ✅ NUEVO
     "collective_evaluations": {criterion_name: [[round(cell, 2) for cell in row] for row in pref[-1]]},
     "plots_graphic": plots
   }
+
 
 
