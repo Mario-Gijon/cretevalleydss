@@ -1,7 +1,28 @@
+import { useEffect, useState, useMemo } from "react";
+import {
+  Stack,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Divider,
+  IconButton,
+  Backdrop,
+  DialogContentText,
+  Avatar,
+  Box,
+  Typography,
+} from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { alpha, useTheme } from "@mui/material/styles";
 
-import { Stack, Dialog, DialogTitle, DialogContent, DialogActions, Button, Divider, IconButton, Backdrop, DialogContentText } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
-import { useEffect, useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import TableChartOutlinedIcon from "@mui/icons-material/TableChartOutlined";
+import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
+import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { extractLeafCriteria, validateEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
 import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
@@ -10,21 +31,49 @@ import { Matrix } from "../Matrix/Matrix";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 
-export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternatives, setIsRatingAlternatives, selectedIssue }) => {
+const auroraBg = (theme, intensity = 0.16) => ({
+  backgroundImage: `radial-gradient(1100px 520px at 12% 0%, ${alpha(theme.palette.info.main, intensity)}, transparent 62%),
+                    radial-gradient(900px 500px at 88% 14%, ${alpha(theme.palette.secondary.main, intensity)}, transparent 58%)`,
+});
 
-  const { showSnackbarAlert } = useSnackbarAlertContext()
+const softIconBtnSx = (theme) => ({
+  borderRadius: 3,
+  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+  bgcolor: alpha(theme.palette.common.white, 0.05),
+  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.08) },
+});
 
+const sectionSx = (theme) => ({
+  borderRadius: 4,
+  bgcolor: alpha(theme.palette.common.white, 0.03),
+  border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+});
+
+export const EvaluationMatrixDialog = ({
+  setOpenIssueDialog,
+  isRatingAlternatives,
+  setIsRatingAlternatives,
+  selectedIssue,
+}) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues, fetchFinishedIssues } = useIssuesDataContext();
 
-  const [evaluations, setEvaluations] = useState({}); // Estado global para las evaluations de cada criterio
+  const [evaluations, setEvaluations] = useState({});
   const [openCloseDialog, setOpenCloseDialog] = useState(false);
   const [openSendEvaluationsDialog, setOpenSendEvaluationsDialog] = useState(false);
   const [initialEvaluations, setInitialEvaluations] = useState(null);
-  const [collectiveEvaluations, setCollectiveEvaluations] = useState(null)
+  const [collectiveEvaluations, setCollectiveEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const getDomain = (cell) =>
-    cell && typeof cell === "object" && cell.domain ? cell.domain : null;
+  const leafCriteriaNames = useMemo(
+    () => extractLeafCriteria(selectedIssue?.criteria || []).map((c) => c.name),
+    [selectedIssue]
+  );
+
+  const getDomain = (cell) => (cell && typeof cell === "object" && cell.domain ? cell.domain : null);
 
   useEffect(() => {
     if (!isRatingAlternatives || !selectedIssue?.id) return;
@@ -33,6 +82,7 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
       setLoading(true);
       try {
         const response = await getEvaluations(selectedIssue.id);
+
         if (response.success && response.evaluations) {
           setCollectiveEvaluations(response.collectiveEvaluations);
 
@@ -40,13 +90,13 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
-          const merged = mergeEvaluations();
+          const merged = mergeEvaluations({});
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         }
       } catch (error) {
         console.error("Error fetching evaluations:", error);
-        const merged = mergeEvaluations();
+        const merged = mergeEvaluations({});
         setEvaluations(merged);
         setInitialEvaluations(JSON.stringify(merged));
       } finally {
@@ -58,15 +108,14 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRatingAlternatives, selectedIssue]);
 
-
   const mergeEvaluations = (fetchedEvaluations = {}) => {
     const merged = {};
+    const alternatives = selectedIssue?.alternatives || [];
+    const leafCriteria = extractLeafCriteria(selectedIssue?.criteria || []);
 
-    console.log(fetchedEvaluations)
-
-    selectedIssue.alternatives.forEach((alt) => {
+    alternatives.forEach((alt) => {
       merged[alt] = {};
-      extractLeafCriteria(selectedIssue.criteria || []).forEach((criterion) => {
+      leafCriteria.forEach((criterion) => {
         const critName = criterion.name;
         merged[alt][critName] = fetchedEvaluations?.[alt]?.[critName] ?? { value: "", domain: null };
       });
@@ -77,7 +126,7 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
 
   const handleClearAllEvaluations = () => {
     const alternatives = selectedIssue?.alternatives || [];
-    const criteria = extractLeafCriteria(selectedIssue?.criteria || []).map(c => c.name);
+    const criteria = leafCriteriaNames;
 
     const cleared = {};
     alternatives.forEach((alt) => {
@@ -96,11 +145,10 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
   const handleCloseDialog = () => {
     setOpenCloseDialog(false);
     setIsRatingAlternatives(false);
-  }
+  };
 
   const handleConfirmChanges = () => {
     if (JSON.stringify(evaluations) === initialEvaluations) {
-      // No hubo cambios, cerrar sin preguntar
       setOpenCloseDialog(false);
       setIsRatingAlternatives(false);
     } else {
@@ -109,11 +157,9 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
   };
 
   const handleOpenSendEvaluationsDialog = async () => {
-    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
-
     const validation = validateEvaluations(evaluations, {
-      leafCriteria: leafNames,
-      allowEmpty: false, // aquí exiges que TODO esté relleno
+      leafCriteria: leafCriteriaNames,
+      allowEmpty: false,
     });
 
     if (!validation.valid) {
@@ -125,11 +171,8 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
   };
 
   const handleSaveEvaluations = async () => {
-    // 🔹 Si guardas como borrador, puedes permitir vacíos:
-    const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map(c => c.name);
-
     const validation = validateEvaluations(evaluations, {
-      leafCriteria: leafNames,
+      leafCriteria: leafCriteriaNames,
       allowEmpty: true,
     });
 
@@ -172,88 +215,120 @@ export const EvaluationMatrixDialog = ({ setOpenIssueDialog, isRatingAlternative
     }
 
     setLoading(false);
-  }
+  };
 
   return (
     <>
-      {
-        loading && (
-          <Backdrop open={loading} sx={{ zIndex: 999999 }}>
-            <CircularLoading color="secondary" size={50} height="50vh" />
-          </Backdrop>
-        )
-      }
-      <GlassDialog open={isRatingAlternatives} onClose={handleCloseDialog} fullScreen PaperProps={{ elevation: 0 }}>
-        <Stack direction={"row"} sx={{ justifyContent: "space-between", alignItems: "center" }} useFlexGap>
-          <DialogTitle variant="h5" sx={{ fontWeight: "bold", color: "text.primary" }}>
-            {selectedIssue?.name}
-          </DialogTitle>
-          <DialogActions>
-            <IconButton onClick={handleConfirmChanges} color="inherit" variant="outlined" sx={{ mr: 0.5 }}>
-              <CloseIcon />
+      {loading && (
+        <Backdrop open={loading} sx={{ zIndex: 999999 }}>
+          <CircularLoading color="secondary" size={50} height="50vh" />
+        </Backdrop>
+      )}
+
+      <GlassDialog
+        open={isRatingAlternatives}
+        onClose={handleCloseDialog}
+        fullScreen={isMobile}
+        fullWidth
+        maxWidth="lg"
+        PaperProps={{ elevation: 0 }}
+      >
+        {/* HEADER */}
+        <Box sx={{ ...auroraBg(theme, 0.18), borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}` }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.6 }}>
+            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+              <Avatar
+                sx={{
+                  width: 44,
+                  height: 44,
+                  bgcolor: alpha(theme.palette.info.main, 0.12),
+                  color: "info.main",
+                  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+                }}
+              >
+                <TableChartOutlinedIcon />
+              </Avatar>
+
+              <Stack spacing={0.15} sx={{ minWidth: 0 }}>
+                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+                  Alternative evaluation
+                </Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                  {selectedIssue?.name}
+                </Typography>
+              </Stack>
+            </Stack>
+
+            <IconButton onClick={handleConfirmChanges} sx={softIconBtnSx(theme)}>
+              <CloseIcon fontSize="small" />
             </IconButton>
-          </DialogActions>
-        </Stack>
-
-        <Divider />
-
-        <DialogContent sx={{ p: 1 }}>
-          <Stack sx={{ width: "100%" }} pt={10} alignItems={"center"} justifyContent={"center"}>
-            {/* Matriz de evaluación */}
-            {
-              selectedIssue && !loading && (
-                <Matrix
-                  alternatives={selectedIssue.alternatives} // solo hijos
-                  criteria={extractLeafCriteria(selectedIssue?.criteria || []).map(c => c.name).sort()} // solo hijos
-                  evaluations={evaluations}
-                  setEvaluations={setEvaluations}
-                  collectiveEvaluations={collectiveEvaluations}
-                />
-              )
-            }
           </Stack>
+        </Box>
+
+        <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2.2 } }}>
+          <Box sx={{ ...sectionSx(theme), maxWidth: 1400, mx: "auto", p: { xs: 1, sm: 1.5 } }}>
+            {selectedIssue && !loading && (
+              <Matrix
+                alternatives={selectedIssue.alternatives}
+                criteria={leafCriteriaNames.slice().sort()}
+                evaluations={evaluations}
+                setEvaluations={setEvaluations}
+                collectiveEvaluations={collectiveEvaluations}
+              />
+            )}
+          </Box>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={handleClearAllEvaluations} color="error">
-            Clear All
+        <DialogActions sx={{ px: 2, py: 1.5, borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`, gap: 1 }}>
+          <Button variant="outlined" color="error" onClick={handleClearAllEvaluations} startIcon={<DeleteSweepOutlinedIcon />}>
+            Clear all
           </Button>
-          <Button onClick={handleOpenSendEvaluationsDialog} color="secondary">
-            Send
+
+          <Box sx={{ flex: 1 }} />
+
+          <Button variant="outlined" color="success" onClick={handleOpenSendEvaluationsDialog} startIcon={<PublishOutlinedIcon />}>
+            Submit
           </Button>
         </DialogActions>
       </GlassDialog>
 
-      {/* Diálogo de confirmación */}
-      <Dialog open={openCloseDialog} onClose={() => setOpenCloseDialog(false)}>
-        <DialogTitle>Do you want to save changes?</DialogTitle>
-        <DialogActions>
-          <Button onClick={handleSaveEvaluations} color="secondary">
-            Save changes
+      {/* SAVE CONFIRM */}
+      <GlassDialog open={openCloseDialog} onClose={() => setOpenCloseDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 950 }}>Save changes?</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "text.secondary" }}>
+            You have unsaved changes. Save as draft or exit without saving.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ gap: 1 }}>
+          <Button variant="outlined" color="info" onClick={handleSaveEvaluations} startIcon={<SaveOutlinedIcon />}>
+            Save draft
           </Button>
-          <Button onClick={handleCloseDialog} color="error">
-            Exit without saving
+          <Button variant="outlined" color="error" onClick={handleCloseDialog} startIcon={<ExitToAppOutlinedIcon />}>
+            Exit
           </Button>
         </DialogActions>
-      </Dialog>
+      </GlassDialog>
 
-      {/* Diálogo de confirmación */}
-      <Dialog open={openSendEvaluationsDialog} onClose={() => setOpenSendEvaluationsDialog(false)}>
-        <DialogTitle>Do you want to send evaluations?</DialogTitle>
+      {/* SUBMIT CONFIRM */}
+      <GlassDialog open={openSendEvaluationsDialog} onClose={() => setOpenSendEvaluationsDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 950 }}>Submit evaluations?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
+          <DialogContentText sx={{ color: "text.secondary" }}>
             You won&apos;t be able to modify them.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleSendEvaluations} color="secondary">
-            Send
+        <DialogActions sx={{ gap: 1 }}>
+          <Button variant="outlined" color="success" onClick={handleSendEvaluations} startIcon={<CheckCircleOutlineIcon />}>
+            Submit
           </Button>
-          <Button onClick={() => setOpenSendEvaluationsDialog(false)} color="error">
+          <Button variant="outlined" color="warning" onClick={() => setOpenSendEvaluationsDialog(false)} startIcon={<CloseIcon />}>
             Cancel
           </Button>
         </DialogActions>
-      </Dialog>
+      </GlassDialog>
     </>
   );
 };

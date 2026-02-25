@@ -1,8 +1,11 @@
-import { Stack, Typography, Button } from "@mui/material";
-import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useState } from "react";
-import AddIcon from "@mui/icons-material/Add";
+import { Stack, Typography, Button, Box, Avatar, Divider } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
+import AddIcon from "@mui/icons-material/Add";
+import TuneIcon from "@mui/icons-material/Tune";
+
+import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
 import { CreateLinguisticExpressionDialog } from "../../../../src/components/CreateLinguisticExpressionDialog/CreateLinguisticExpressionDialog";
 import { ViewExpressionsDomainDialog } from "../../../../src/components/ViewExpressionsDomainDialog/ViewExpressionsDomainDialog";
@@ -11,11 +14,30 @@ import { CircularLoading } from "../../../../src/components/LoadingProgress/Circ
 import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 import { removeExpressionDomain } from "../../../../src/controllers/issueController";
 
+const headerIconSx = (theme) => ({
+  width: 44,
+  height: 44,
+  bgcolor: alpha(theme.palette.info.main, 0.12),
+  color: "info.main",
+  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+});
+
+const actionBtnSx = (theme) => ({
+  borderRadius: 999,
+  px: 1.4,
+  py: 0.8,
+  fontWeight: 950,
+  textTransform: "none",
+  borderColor: alpha(theme.palette.common.white, 0.14),
+  bgcolor: alpha(theme.palette.common.white, 0.03),
+  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.05) },
+});
+
 export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssignments }) => {
+  const theme = useTheme();
   const { selectedModel, addedExperts, alternatives, criteria } = allData;
 
-  const { expressionDomains, setExpressionDomains } = useIssuesDataContext()
-
+  const { expressionDomains, setExpressionDomains } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
 
   const [openCreateDomainExpressionDialog, setOpenCreateDomainExpressionDialog] = useState(false);
@@ -29,7 +51,6 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
   };
 
   const handleDelete = async (id) => {
-
     const result = await removeExpressionDomain(id);
 
     if (result && result.success) {
@@ -44,61 +65,92 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
     return <CircularLoading color="secondary" size={150} height="30vh" />;
   }
 
+  const missingPrevSteps =
+    !selectedModel || addedExperts.length === 0 || alternatives.length === 0 || criteria.length === 0;
+
   return (
     <>
-      <GlassPaper
-        variant="elevation"
-        elevation={0}
-        sx={{
-          p: { xs: 3, sm: 4, md: 5 },
-          pb: { xs: 1, sm: 2, md: 3 },
-          borderRadius: 2,
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-          maxWidth: { xs: "95vw", lg: "75vw" },
-          minWidth: { xs: "80vw", sm: "90vw", md: "90vw", lg: "50vw" },
-          boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
-        }}
-      >
-        {!selectedModel ||
-          addedExperts.length === 0 ||
-          alternatives.length === 0 ||
-          criteria.length === 0 ? (
-          <Typography variant="h5">You must finish previous steps</Typography>
+      <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
+        {/* Header sin caja */}
+        <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
+          <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
+            <Avatar sx={headerIconSx(theme)}>
+              <TuneIcon />
+            </Avatar>
+
+            <Stack spacing={0.15} sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+                Expression domains
+              </Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                Assign a domain to every expert • alternative • criterion cell
+              </Typography>
+            </Stack>
+          </Stack>
+
+          <Box
+            sx={{
+              px: 1.1,
+              py: 0.55,
+              borderRadius: 999,
+              bgcolor: alpha(theme.palette.info.main, 0.10),
+              color: "info.main",
+              fontSize: 12,
+              fontWeight: 950,
+              border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+            }}
+          >
+            {expressionDomains?.length ?? 0} custom
+          </Box>
+        </Stack>
+
+        {missingPrevSteps ? (
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+              You must finish previous steps before assigning expression domains.
+            </Typography>
+          </Box>
         ) : (
-          <Stack spacing={4}>
-            {/* botones de gestión */}
-            <Stack direction="row" spacing={2}>
+          <>
+            {/* Actions bar */}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "stretch", sm: "center" }}>
               <Button
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpenEditDomain()}
                 color="secondary"
+                sx={actionBtnSx(theme)}
               >
                 Create linguistic expression
               </Button>
+
               <Button
                 variant="outlined"
                 onClick={() => setOpenViewDomainExpressions(true)}
                 color="info"
                 disabled={!expressionDomains || expressionDomains.length === 0}
+                sx={actionBtnSx(theme)}
               >
                 Manage domains
               </Button>
+
+              <Box sx={{ flex: 1 }} />
             </Stack>
 
-            {/* asignaciones */}
-            <DomainAssignments
-              allData={allData}
-              expressionDomains={expressionDomains}
-              domainAssignments={domainAssignments}
-              setDomainAssignments={setDomainAssignments}
-            />
-          </Stack>
+            <Divider/>
+
+            {/* Assignments surface */}
+            <Stack variant="elevation" sx={{ p: { xs: 1.4, sm: 1.8 }, bgcolor: "transparent" }}>
+              <DomainAssignments
+                allData={allData}
+                expressionDomains={expressionDomains}
+                domainAssignments={domainAssignments}
+                setDomainAssignments={setDomainAssignments}
+              />
+            </Stack>
+          </>
         )}
-      </GlassPaper>
+      </Stack>
 
       {/* Dialog creación/edición */}
       <CreateLinguisticExpressionDialog

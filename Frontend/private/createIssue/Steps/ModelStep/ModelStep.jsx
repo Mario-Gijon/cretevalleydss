@@ -1,30 +1,83 @@
-import { useState } from "react";
-import { Stack, Typography, CardContent, Grid2 as Grid, TextField, IconButton } from "@mui/material";
-import InputAdornment from '@mui/material/InputAdornment';
-import ToggleButton from '@mui/material/ToggleButton';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+import { useMemo, useState } from "react";
+import {
+  Stack,
+  Typography,
+  Grid2 as Grid,
+  TextField,
+  IconButton,
+  Box,
+  ToggleButton,
+  InputAdornment,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+
 import { filterModels } from "../../../../src/utils/createIssueUtils";
-import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 
+const inputSx = (theme) => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 3,
+    // ✅ ahora que vive dentro del CreateIssuePage (ya con “shell” y blur),
+    // bajamos un pelín la opacidad para que no se “embarre”.
+    bgcolor: alpha(theme.palette.common.white, 0.03),
+    border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+    "& fieldset": { border: "none" },
+  },
+});
+
+const pillToggleSx = (theme) => ({
+  borderRadius: 999,
+  px: 1.4,
+  py: 0.7,
+  fontWeight: 950,
+  textTransform: "none",
+  borderColor: alpha(theme.palette.common.white, 0.14),
+  bgcolor: alpha(theme.palette.common.white, 0.03),
+  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.05) },
+  "&.Mui-selected": {
+    borderColor: alpha(theme.palette.secondary.main, 0.35),
+    bgcolor: alpha(theme.palette.secondary.main, 0.12),
+  },
+});
+
+const modelTileSx = (theme, selected) => ({
+  position: "relative",
+  borderRadius: 4,
+  p: 1.6,
+  height: "100%",
+  cursor: "pointer",
+  border: `1px solid ${
+    selected ? alpha(theme.palette.info.main, 0.40) : alpha(theme.palette.common.white, 0.10)
+  }`,
+  bgcolor: selected ? alpha(theme.palette.info.main, 0.10) : alpha(theme.palette.common.white, 0.02),
+  transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    borderColor: alpha(theme.palette.info.main, 0.30),
+    bgcolor: alpha(theme.palette.common.white, 0.03),
+  },
+});
+
 export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setWithConsensus, criteria }) => {
+  const theme = useTheme();
+  const { models } = useIssuesDataContext();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
 
-  const { models } = useIssuesDataContext()
-  const { showSnackbarAlert } = useSnackbarAlertContext()
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [searchQuery, setSearchQuery] = useState(""); // Estado para el buscador
+  const filteredModels = useMemo(
+    () => filterModels(models, withConsensus, searchQuery),
+    [models, withConsensus, searchQuery]
+  );
 
-  // Filtrar modelos según el tipo de consenso y la búsqueda
-  const filteredModels = filterModels(models, withConsensus, searchQuery)
+  const handleConsensus = () => setWithConsensus((prev) => !prev);
 
-  const handleConsensus = () => {
-    setWithConsensus(!withConsensus)
-  }
-
-  // 🔎 contar criterios hoja (recursivo)
   const countLeafCriteria = (items) => {
     return items.reduce((acc, item) => {
       if (!item.children || item.children.length === 0) return acc + 1;
@@ -36,101 +89,101 @@ export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setW
     if (!model.isMultiCriteria) {
       const leafCount = countLeafCriteria(criteria);
       if (leafCount > 1) {
-        showSnackbarAlert("This model only allows one criterion. Please reduce your criteria first.","error");
-        return; // 🚫 bloqueo preventivo
+        showSnackbarAlert("This model only allows one criterion. Please reduce your criteria first.", "error");
+        return;
       }
     }
     setSelectedModel(model);
   };
 
   return (
-    <GlassPaper
-      variant="elevation"
-      elevation={0}
-      sx={{
-        p: { xs: 3, sm: 4, md: 5 },
-        minWidth: { md: 700, lg: 1000 },
-        borderRadius: 2,
-        flexGrow: 1,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        maxWidth: "95vw",
-        width: { xs: "95vw", sm: "auto" },
-        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
-      }}
-    >
-      <Stack spacing={3} sx={{ width: "100%", maxWidth: 1000 }}>
-        {/* Buscador y filtro de consenso */}
-        <Stack direction="row" spacing={2} alignItems="flex-end" justifyContent={"flex-start"}>
-          <ToggleButton
-            value="check"
-            selected={withConsensus}
-            onChange={handleConsensus}
-            color="secondary"
-            size="small"
-          >
-            <FilterListIcon sx={{ mr: 1 }} />
-            Consensus
-          </ToggleButton>
-          <TextField
-            size="small"
-            color="info"
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-                endAdornment: searchQuery && (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setSearchQuery("")} size="small" edge="end">
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-            placeholder="Search model"
-            variant="outlined"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ flex: 1, maxWidth: 240 }}
-            autoComplete="off"
-          />
-        </Stack>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: 1250, mx: "auto" }}>
+      {/* Controls */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "flex-end" }}>
+        <ToggleButton
+          value="consensus"
+          selected={withConsensus}
+          onChange={handleConsensus}
+          color="secondary"
+          size="small"
+          sx={pillToggleSx(theme)}
+        >
+          <FilterListIcon sx={{ mr: 1 }} />
+          Consensus
+        </ToggleButton>
 
-        {/* Lista de modelos */}
-        <Grid container spacing={2} sx={{ flexGrow: 1, maxHeight: "90vh", overflowY: "auto" }}>
-          {filteredModels.map((model, index) => (
-            <Grid key={index} item size={{ xs: 12, sm: 6, lg: 4 }}>
-              <GlassPaper
-                onClick={() => handleSelectModel(model)} // 👈 validación aquí
-                sx={{
-                  cursor: "pointer",
-                  border:
-                    selectedModel?.name === model?.name
-                      ? "1px solid #45C5C5"
-                      : "1px solid grey",
-                  borderRadius: 2,
-                  transition: "border-color 0.2s",
-                }}
-                elevation={4}
-              >
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                    {model.name}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    {model.smallDescription}
-                  </Typography>
-                </CardContent>
-              </GlassPaper>
-            </Grid>
-          ))}
-        </Grid>
+        <TextField
+          size="small"
+          color="info"
+          placeholder="Search model"
+          variant="outlined"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          sx={{ flex: 1, maxWidth: { xs: "100%", sm: 320 }, ...inputSx(theme) }}
+          autoComplete="off"
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setSearchQuery("")} size="small" edge="end">
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            },
+          }}
+        />
       </Stack>
-    </GlassPaper>
+
+      {/* Model list (tiles) */}
+      <Grid container spacing={1.5} sx={{ width: "100%" }}>
+        {filteredModels.map((model) => {
+          const selected = selectedModel?.name === model?.name;
+
+          return (
+            <Grid key={model._id || model.name} item size={{ xs: 12, sm: 6, lg: 4 }}>
+              <Box sx={modelTileSx(theme, selected)} onClick={() => handleSelectModel(model)}>
+                {selected && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.6,
+                      px: 1,
+                      py: 0.35,
+                      borderRadius: 999,
+                      border: `1px solid ${alpha(theme.palette.info.main, 0.35)}`,
+                      bgcolor: alpha(theme.palette.info.main, 0.12),
+                      color: "info.main",
+                      fontWeight: 950,
+                      fontSize: 12,
+                    }}
+                  >
+                    <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />
+                    Selected
+                  </Box>
+                )}
+
+                <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.15 }}>
+                  {model.name}
+                </Typography>
+
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850, mt: 0.6 }}>
+                  {model.smallDescription}
+                </Typography>
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
+    </Stack>
   );
 };

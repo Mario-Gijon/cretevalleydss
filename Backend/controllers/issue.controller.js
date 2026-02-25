@@ -217,6 +217,38 @@ export const createExpressionDomain = async (req, res) => {
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
+  // ✅ NEW: helper para normalizar pesos cuando hay 1 único leaf criterion
+  const normalizeSingleWeight = (weightsMaybe) => {
+    // undefined / null
+    if (weightsMaybe == null) return [1];
+
+    // number -> [number]
+    if (typeof weightsMaybe === "number") return [weightsMaybe];
+
+    // object {l,m,u} -> [object]
+    if (typeof weightsMaybe === "object" && !Array.isArray(weightsMaybe)) return [weightsMaybe];
+
+    if (Array.isArray(weightsMaybe)) {
+      // Caso: [0.95,1,1] (triangular directo)
+      const isTriangleArray =
+        weightsMaybe.length === 3 &&
+        weightsMaybe.every((x) => typeof x === "number" && Number.isFinite(x));
+
+      if (isTriangleArray) return [weightsMaybe];
+
+      // Caso: [[0.95,1,1]] o [{l,m,u}] o [1]
+      const first = weightsMaybe[0];
+
+      if (Array.isArray(first)) return [first];
+      if (first && typeof first === "object") return [first];
+      if (typeof first === "number") return [first];
+
+      return [1];
+    }
+
+    return [1];
+  };
+
   try {
     const info = req.body?.issueInfo || {};
     const {
@@ -234,6 +266,8 @@ export const createIssue = async (req, res) => {
       paramValues = {},
       weightingMode,
     } = info;
+
+    console.log(info)
 
     const cleanIssueName = (issueName || "").trim();
     if (!cleanIssueName) {
@@ -289,17 +323,9 @@ export const createIssue = async (req, res) => {
         throw err;
       }
 
-      const weightingModesThatNeedWeightsStage = new Set([
-        "simulatedConsensusBwm",
-        "consensus",
-        "bwm",
-        "consensusBwm",
-      ]);
-
-      const initialStage = weightingModesThatNeedWeightsStage.has(weightingMode)
-        ? "criteriaWeighting"
-        : "alternativeEvaluation";
-
+      // ============================
+      // 1) Crear Issue (stage provisional)
+      // ============================
       const issue = new Issue({
         admin: req.uid,
         model: model._id,
@@ -310,13 +336,16 @@ export const createIssue = async (req, res) => {
         creationDate: dayjs().format("DD-MM-YYYY"),
         closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
         weightingMode,
-        currentStage: initialStage,
+        currentStage: "criteriaWeighting", // provisional
         ...(model.isConsensus && { consensusMaxPhases, consensusThreshold }),
-        modelParameters: paramValues,
+        modelParameters: paramValues, // 👈 aquí ya entra lo que mande el front
       });
 
       await issue.save({ session });
 
+      // ============================
+      // 2) Alternativas
+      // ============================
       const uniqueAltNames = Array.from(new Set(alternatives.map((a) => String(a).trim()).filter(Boolean)));
       if (uniqueAltNames.length <= 1) {
         const err = new Error("Must be at least two valid alternatives");
@@ -332,7 +361,11 @@ export const createIssue = async (req, res) => {
         createdAlternatives.push(alt);
       }
 
+      // ============================
+      // 3) Criterios (y detectar leafCriteria)
+      // ============================
       const leafCriteria = [];
+
       const createCriteriaRec = async (nodes, parentId = null) => {
         if (!Array.isArray(nodes)) return;
 
@@ -371,6 +404,46 @@ export const createIssue = async (req, res) => {
         throw err;
       }
 
+      // ============================
+      // ✅ FIX: si hay 1 solo criterio hoja => NO hay fase de pesos
+      // ============================
+      const isSingleLeafCriterion = leafCriteria.length === 1;
+
+      const weightingModesThatNeedWeightsStage = new Set([
+        "simulatedConsensusBwm",
+        "consensus",
+        "bwm",
+        "consensusBwm",
+      ]);
+
+      const needsWeightsStage =
+        !isSingleLeafCriterion && weightingModesThatNeedWeightsStage.has(weightingMode);
+
+      const initialStage = needsWeightsStage ? "criteriaWeighting" : "alternativeEvaluation";
+
+      if (issue.currentStage !== initialStage) {
+        issue.currentStage = initialStage;
+      }
+
+      // ✅ NEW: si es único criterio, NO pises lo que venga.
+      // - Si el front mandó weights (crisp o difuso), lo respetamos.
+      // - Si NO mandó nada, ponemos default.
+      if (isSingleLeafCriterion) {
+        const prevParams = issue.modelParameters || {};
+
+        if (prevParams.weights != null) {
+          // normaliza a "longitud 1" sin destruir formato (number, [l,m,u], {l,m,u}, etc.)
+          issue.modelParameters = { ...prevParams, weights: normalizeSingleWeight(prevParams.weights) };
+        } else {
+          issue.modelParameters = { ...prevParams, weights: [1] };
+        }
+      }
+
+      await issue.save({ session });
+
+      // ============================
+      // 4) Participations + notifications + emails
+      // ============================
       for (const email of uniqueEmails) {
         const u = expertByEmail.get(email);
         const isAdminExpert = email === adminEmail;
@@ -380,7 +453,7 @@ export const createIssue = async (req, res) => {
           expert: u._id,
           invitationStatus: isAdminExpert ? "accepted" : "pending",
           evaluationCompleted: false,
-          weightsCompleted: false,
+          weightsCompleted: isSingleLeafCriterion ? true : false,
           entryPhase: null,
           entryStage: null,
           joinedAt: new Date(),
@@ -409,8 +482,10 @@ export const createIssue = async (req, res) => {
         }
       }
 
+      // ============================
+      // 5) Dominios + snapshots + evaluaciones
+      // ============================
       const initialConsensusPhase = null;
-
       const usedDomainIds = new Set();
 
       if (!domainAssignments?.experts || typeof domainAssignments.experts !== "object") {
@@ -420,7 +495,6 @@ export const createIssue = async (req, res) => {
         throw err;
       }
 
-      // ✅ CAMBIO 1: validar contra TODAS las alternativas del issue, no solo las que vengan en altBlock
       for (const email of Object.keys(domainAssignments.experts)) {
         if (!expertByEmail.has(email)) continue;
 
@@ -447,7 +521,6 @@ export const createIssue = async (req, res) => {
 
       const domainIdList = Array.from(usedDomainIds);
 
-      // ✅ Traer dominios “vivos” para verificar acceso + copiar datos
       const domainDocs = await ExpressionDomain.find({
         _id: { $in: domainIdList },
         $or: [{ isGlobal: true, user: null }, { isGlobal: false, user: req.uid }],
@@ -464,7 +537,6 @@ export const createIssue = async (req, res) => {
         throw err;
       }
 
-      // ✅ crear snapshots del issue (una vez) y mapear sourceDomain -> snapshotId
       const snapshotMap = await createIssueDomainSnapshots({
         issueId: issue._id,
         domainDocs,
@@ -474,7 +546,6 @@ export const createIssue = async (req, res) => {
       const isPairwise = Boolean(model.isPairwise);
       const altByName = new Map(createdAlternatives.map((a) => [a.name, a]));
 
-      // ✅ CAMBIO 2: crear evaluaciones para TODAS las alternativas del issue
       for (const email of Object.keys(domainAssignments.experts)) {
         const expertUser = expertByEmail.get(email);
         if (!expertUser) continue;
@@ -508,7 +579,7 @@ export const createIssue = async (req, res) => {
                   alternative: altDoc._id,
                   comparedAlternative: comparedAlt._id,
                   criterion: leaf._id,
-                  expressionDomain: issueSnapshotId, // ✅ snapshot
+                  expressionDomain: issueSnapshotId,
                   value: null,
                   timestamp: null,
                   history: [],
@@ -524,7 +595,7 @@ export const createIssue = async (req, res) => {
                 alternative: altDoc._id,
                 comparedAlternative: null,
                 criterion: leaf._id,
-                expressionDomain: issueSnapshotId, // ✅ snapshot
+                expressionDomain: issueSnapshotId,
                 value: null,
                 timestamp: null,
                 history: [],
@@ -537,32 +608,64 @@ export const createIssue = async (req, res) => {
         }
       }
 
+      // ============================
+      // 6) CriteriaWeightEvaluation docs
+      // ============================
       const expertIds = uniqueEmails.map((email) => expertByEmail.get(email)._id);
       const criteriaNames = leafCriteria.map((c) => c.name);
 
-      if (weightingMode === "simulatedConsensusBwm") {
-        const docs = expertIds.map((expertId) => ({
-          issue: issue._id,
-          expert: expertId,
-          bestCriterion: "",
-          worstCriterion: "",
-          bestToOthers: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-          othersToWorst: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-          consensusPhase: 1,
-          completed: false,
-        }));
-        await CriteriaWeightEvaluation.insertMany(docs, { session });
-      }
+      if (!isSingleLeafCriterion) {
+        if (weightingMode === "simulatedConsensusBwm") {
+          const docs = expertIds.map((expertId) => ({
+            issue: issue._id,
+            expert: expertId,
+            bestCriterion: "",
+            worstCriterion: "",
+            bestToOthers: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+            othersToWorst: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+            consensusPhase: 1,
+            completed: false,
+          }));
+          await CriteriaWeightEvaluation.insertMany(docs, { session });
+        }
 
-      if (weightingMode === "consensus") {
-        const docs = expertIds.map((expertId) => ({
-          issue: issue._id,
-          expert: expertId,
-          manualWeights: Object.fromEntries(criteriaNames.map((n) => [n, null])),
-          consensusPhase: 1,
-          completed: false,
-        }));
-        await CriteriaWeightEvaluation.insertMany(docs, { session });
+        if (weightingMode === "consensus") {
+          const docs = expertIds.map((expertId) => ({
+            issue: issue._id,
+            expert: expertId,
+            manualWeights: Object.fromEntries(criteriaNames.map((n) => [n, null])),
+            consensusPhase: 1,
+            completed: false,
+          }));
+          await CriteriaWeightEvaluation.insertMany(docs, { session });
+        }
+      } else {
+        if (weightingMode === "consensus") {
+          const only = criteriaNames[0];
+          const docs = expertIds.map((expertId) => ({
+            issue: issue._id,
+            expert: expertId,
+            manualWeights: { [only]: 1 },
+            consensusPhase: 1,
+            completed: true,
+          }));
+          await CriteriaWeightEvaluation.insertMany(docs, { session });
+        }
+
+        if (weightingMode === "simulatedConsensusBwm") {
+          const only = criteriaNames[0];
+          const docs = expertIds.map((expertId) => ({
+            issue: issue._id,
+            expert: expertId,
+            bestCriterion: only,
+            worstCriterion: only,
+            bestToOthers: { [only]: 1 },
+            othersToWorst: { [only]: 1 },
+            consensusPhase: 1,
+            completed: true,
+          }));
+          await CriteriaWeightEvaluation.insertMany(docs, { session });
+        }
       }
     });
 
@@ -598,31 +701,182 @@ export const createIssue = async (req, res) => {
   }
 };
 
-export const getAllActiveIssues = async (req, res) => {
 
-  const userId = req.uid;
+export const getAllActiveIssues = async (req, res) => {
+  const userId = String(req.uid || "");
 
   try {
+    // -----------------------------
+    // ✅ “Constantes” internas
+    // -----------------------------
+    const STAGE_META = {
+      criteriaWeighting: { key: "criteriaWeighting", label: "Criteria weighting", short: "Weighting", colorKey: "info" },
+      weightsFinished: { key: "weightsFinished", label: "Weights finished", short: "Weights done", colorKey: "warning" },
+      alternativeEvaluation: { key: "alternativeEvaluation", label: "Alternative evaluation", short: "Evaluation", colorKey: "info" },
+      // opcional por si tienes un stage real con este nombre en DB
+      alternativeConsensus: { key: "alternativeConsensus", label: "Alternative consensus", short: "Consensus", colorKey: "success" },
+      finished: { key: "finished", label: "Finished", short: "Finished", colorKey: "success" },
+    };
 
-    const [adminIssues, participations] = await Promise.all([
+    // ✅ Colores por tipo (TU regla):
+    // - evaluate => info (azul)
+    // - waiting  => success (verde)
+    // - compute/resolve => warning (amarillo)
+    const ACTION_META = {
+      resolveIssue: {
+        key: "resolveIssue",
+        label: "Resolve issue",
+        role: "admin",
+        severity: "warning",
+        sortPriority: 0,
+      },
+      computeWeights: {
+        key: "computeWeights",
+        label: "Compute weights",
+        role: "admin",
+        severity: "warning",
+        sortPriority: 10,
+      },
+      evaluateWeights: {
+        key: "evaluateWeights",
+        label: "Evaluate weights",
+        role: "expert",
+        severity: "info",
+        sortPriority: 30,
+      },
+      evaluateAlternatives: {
+        key: "evaluateAlternatives",
+        label: "Evaluate alternatives",
+        role: "expert",
+        severity: "info",
+        sortPriority: 40,
+      },
+      waitingAdmin: {
+        key: "waitingAdmin",
+        label: "Waiting admin",
+        role: "expert",
+        severity: "success",
+        sortPriority: 60,
+      },
+    };
+
+    const safeOid = (v) => (v ? String(v) : "");
+    const uniq = (arr) => Array.from(new Set(arr));
+
+    const inc = (obj, key) => {
+      obj[key] = (obj[key] || 0) + 1;
+      return obj;
+    };
+
+    // -----------------------------
+    // ✅ helpers workflow/modelParameters
+    // -----------------------------
+    const cleanModelParameters = (mp) => {
+      const obj = mp && typeof mp === "object" ? { ...mp } : {};
+      // ✅ NO enviar weights (ya aparece en criteria)
+      if ("weights" in obj) delete obj.weights;
+      return obj;
+    };
+
+    const detectHasDirectWeights = (issue) => {
+      // ✅ estable: lo que se decidió al crear el issue
+      const wm = String(issue?.weightingMode || "").toLowerCase();
+      if (["manual", "direct", "predefined", "fixed"].includes(wm)) return true;
+
+      // si el creador metió weights directamente en modelParameters al crear el issue
+      const w = issue?.modelParameters?.weights;
+      if (Array.isArray(w) && w.length > 0 && w.some((x) => x !== null && x !== undefined)) return true;
+
+      return false;
+    };
+
+    // ✅ consenso “enabled” (estable), NO “active”
+    // Ajusta aquí si tienes un flag más específico para consenso de alternativas
+    const detectHasAlternativeConsensusEnabled = (issue) => {
+      return Boolean(issue?.isConsensus);
+    };
+
+    const buildWorkflowStepsStable = ({ hasDirectWeights, hasAlternativeConsensus }) => {
+      if (hasDirectWeights) {
+        return [
+          { key: "weightsAssigned", label: "Weights assigned" },
+          { key: "alternativeEvaluation", label: "Alternative evaluation" },
+          ...(hasAlternativeConsensus ? [{ key: "alternativeConsensus", label: "Alternative consensus" }] : []),
+          { key: "readyResolve", label: "Ready to resolve" },
+        ];
+      }
+
+      return [
+        { key: "criteriaWeighting", label: "Criteria weighting" },
+        { key: "weightsFinished", label: "Weights finished" },
+        { key: "alternativeEvaluation", label: "Alternative evaluation" },
+        ...(hasAlternativeConsensus ? [{ key: "alternativeConsensus", label: "Alternative consensus" }] : []),
+        { key: "readyResolve", label: "Ready to resolve" },
+      ];
+    };
+
+    // -----------------------------
+    // 1) IDs de issues activos (admin + expert accepted)
+    // -----------------------------
+    const [adminIssues, acceptedParticipations] = await Promise.all([
       Issue.find({ admin: userId, active: true }).select("_id").lean(),
       Participation.find({ expert: userId, invitationStatus: "accepted" })
         .populate({ path: "issue", match: { active: true }, select: "_id" })
         .lean(),
     ]);
 
-    const adminIssueIds = adminIssues.map((i) => i._id.toString());
-    const expertIssueIds = participations.filter((p) => p.issue).map((p) => p.issue._id.toString());
+    const adminIssueIds = adminIssues.map((i) => safeOid(i._id));
+    const expertIssueIds = acceptedParticipations
+      .filter((p) => p.issue)
+      .map((p) => safeOid(p.issue._id));
 
-    const issueIds = [...new Set([...adminIssueIds, ...expertIssueIds])];
+    const issueIds = uniq([...adminIssueIds, ...expertIssueIds]);
 
-    if (issueIds.length === 0)
-      return res.json({ success: true, issues: [] });
+    if (issueIds.length === 0) {
+      return res.json({
+        success: true,
+        issues: [],
+        tasks: { total: 0, byType: {} },
+        taskCenter: { total: 0, sections: [] },
+        filtersMeta: {
+          defaults: { role: "all", stage: "all", action: "all", sort: "smart", q: "" },
+          roleOptions: [
+            { value: "all", label: "All roles" },
+            { value: "admin", label: "Admin" },
+            { value: "expert", label: "Expert" },
+            { value: "both", label: "Admin & Expert" },
+            { value: "viewer", label: "Viewer" },
+          ],
+          stageOptions: [
+            { value: "all", label: "All stages" },
+            ...Object.values(STAGE_META).map((s) => ({ value: s.key, label: s.label })),
+          ],
+          actionOptions: [
+            { value: "all", label: "All actions" },
+            { value: "waitingExperts", label: "Waiting experts" },
+            ...Object.values(ACTION_META)
+              .sort((a, b) => a.sortPriority - b.sortPriority)
+              .map((a) => ({ value: a.key, label: a.label })),
+            { value: "none", label: "No pending action" },
+          ],
+          sortOptions: [
+            { value: "smart", label: "Smart" },
+            { value: "nameAsc", label: "Name (A→Z)" },
+            { value: "nameDesc", label: "Name (Z→A)" },
+            { value: "deadlineSoon", label: "Deadline (soonest)" },
+          ],
+          counts: { roles: {}, stages: {}, actions: {} },
+        },
+      });
+    }
 
+    // -----------------------------
+    // 2) Carga masiva de datos
+    // -----------------------------
     const [issues, allParticipations, alternatives, criteria, consensusPhases] = await Promise.all([
       Issue.find({ _id: { $in: issueIds } })
         .populate("model")
-        .populate("admin", "email")
+        .populate("admin", "email name")
         .lean(),
       Participation.find({ issue: { $in: issueIds } })
         .populate("expert", "email")
@@ -632,117 +886,104 @@ export const getAllActiveIssues = async (req, res) => {
       Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
     ]);
 
+    // -----------------------------
+    // 3) Maps para rendimiento
+    // -----------------------------
     const consensusPhaseCountMap = consensusPhases.reduce((acc, curr) => {
-      const id = curr.issue.toString();
+      const id = safeOid(curr.issue);
       acc[id] = (acc[id] || 0) + 1;
       return acc;
     }, {});
 
     const participationMap = allParticipations.reduce((acc, p) => {
-      const id = p.issue.toString();
+      const id = safeOid(p.issue);
       if (!acc[id]) acc[id] = [];
       acc[id].push(p);
       return acc;
     }, {});
 
-    const categorizeParticipationsInline = (allParts, userId, currentStage) => {
-      const pendingExperts = allParts.filter((p) => p.invitationStatus === "pending");
-      const notAcceptedExperts = allParts.filter((p) => p.invitationStatus === "declined");
+    const alternativesMap = alternatives.reduce((acc, a) => {
+      const id = safeOid(a.issue);
+      if (!acc[id]) acc[id] = [];
+      acc[id].push(a);
+      return acc;
+    }, {});
 
-      let participatedExperts = [];
-      let acceptedButNotEvaluated = [];
-
-      if (currentStage === "criteriaWeighting" || currentStage === "weightsFinished") {
-        participatedExperts = allParts.filter(
-          (p) => p.invitationStatus === "accepted" && p.weightsCompleted === true
-        );
-
-        acceptedButNotEvaluated = allParts.filter(
-          (p) =>
-            p.invitationStatus === "accepted" &&
-            (p.weightsCompleted === false || !p.weightsCompleted)
-        );
-      } else {
-        participatedExperts = allParts.filter(
-          (p) => p.invitationStatus === "accepted" && p.evaluationCompleted === true
-        );
-
-        acceptedButNotEvaluated = allParts.filter(
-          (p) =>
-            p.invitationStatus === "accepted" &&
-            (p.evaluationCompleted === false || !p.evaluationCompleted)
-        );
-      }
-
-      const isExpert = allParts.some((p) => p.expert?._id?.toString() === userId);
-
-      return { participatedExperts, pendingExperts, notAcceptedExperts, acceptedButNotEvaluated, isExpert };
+    // -----------------------------
+    // 4) Task Center agregado
+    // -----------------------------
+    const tasksByType = {
+      resolveIssue: [],
+      computeWeights: [],
+      evaluateWeights: [],
+      evaluateAlternatives: [],
+      waitingAdmin: [],
     };
 
+    // -----------------------------
+    // 5) Construcción de issues formateados
+    // -----------------------------
     const formattedIssues = issues.map((issue) => {
-      const issueIdStr = issue._id.toString();
+      const issueIdStr = safeOid(issue._id);
+
+      // participaciones
       const issueParticipations = participationMap[issueIdStr] || [];
+      const isAdminUser = safeOid(issue.admin?._id) === userId;
 
-      const {
-        participatedExperts,
-        pendingExperts,
-        notAcceptedExperts,
-        acceptedButNotEvaluated,
-        isExpert,
-      } = categorizeParticipationsInline(issueParticipations, userId, issue.currentStage);
-
-      // accepted
       const acceptedExperts = issueParticipations.filter((p) => p.invitationStatus === "accepted");
+      const pendingExperts = issueParticipations.filter((p) => p.invitationStatus === "pending");
+      const declinedExperts = issueParticipations.filter((p) => p.invitationStatus === "declined");
 
-      // progreso global
+      const hasPending = pendingExperts.length > 0;
+      const realParticipants = acceptedExperts;
+
+      // progreso
       const totalAccepted = acceptedExperts.length;
       const weightsDone = acceptedExperts.filter((p) => p.weightsCompleted).length;
       const evalsDone = acceptedExperts.filter((p) => p.evaluationCompleted).length;
 
-      // reales (accepted)
-      const realParticipants = acceptedExperts;
-
-      const hasPending = pendingExperts.length > 0;
-
       const realWeightsDone = realParticipants.filter((p) => p.weightsCompleted).length;
       const realEvalsDone = realParticipants.filter((p) => p.evaluationCompleted).length;
 
-      const isAdminUser = issue.admin._id.toString() === userId;
+      const isExpertAccepted = acceptedExperts.some((p) => safeOid(p.expert?._id) === userId);
 
-      const allWeightsDone = realParticipants.length > 0 && realWeightsDone === realParticipants.length;
-      const allEvalsDone = realParticipants.length > 0 && realEvalsDone === realParticipants.length;
+      const myParticipation =
+        issueParticipations.find((p) => safeOid(p.expert?._id) === userId) || null;
 
-      const waitingAdmin =
-        !isAdminUser &&
-        !hasPending &&
-        ((issue.currentStage === "weightsFinished" && allWeightsDone) ||
-          (issue.currentStage === "alternativeEvaluation" && allEvalsDone));
+      // alternativas
+      const altNames = (alternativesMap[issueIdStr] || [])
+        .map((a) => a.name)
+        .sort((a, b) => a.localeCompare(b));
 
-      const canComputeWeights =
-        issue.currentStage === "weightsFinished" &&
-        issue.admin._id.toString() === userId &&
-        !hasPending &&
-        realParticipants.length > 0 &&
-        realWeightsDone === realParticipants.length;
+      // criteria tree + final weights
+      const issueCriteria = criteria
+        .filter((c) => safeOid(c.issue) === issueIdStr)
+        .map((c) => ({
+          id: safeOid(c._id),
+          name: c.name,
+          type: c.type,
+          isLeaf: Boolean(c.isLeaf),
+          parentId: safeOid(c.parentCriterion),
+          children: [],
+        }));
 
-      const canResolveIssue =
-        issue.currentStage === "alternativeEvaluation" &&
-        issue.admin._id.toString() === userId &&
-        !hasPending &&
-        realParticipants.length > 0 &&
-        realEvalsDone === realParticipants.length;
+      const byId = new Map(issueCriteria.map((n) => [n.id, n]));
+      const criteriaTree = [];
+      for (const n of issueCriteria) {
+        if (n.parentId && byId.has(n.parentId)) byId.get(n.parentId).children.push(n);
+        else criteriaTree.push(n);
+      }
 
-      const canEvaluateWeights =
-        issue.currentStage === "criteriaWeighting" &&
-        realParticipants.some((p) => p.expert._id.toString() === userId && !p.weightsCompleted);
-
-      const canEvaluateAlternatives =
-        issue.currentStage === "alternativeEvaluation" &&
-        realParticipants.some((p) => p.expert._id.toString() === userId && !p.evaluationCompleted);
-
-      // --- criterios y pesos finales ---
-      const criteriaTree = buildCriterionTree(criteria, issue._id);
-      const leafNames = getLeafNamesFromTree(criteriaTree);
+      const leafNames = [];
+      const dfsLeaf = (node) => {
+        if (!node) return;
+        if (!node.children || node.children.length === 0) {
+          leafNames.push(node.name);
+          return;
+        }
+        for (const ch of node.children) dfsLeaf(ch);
+      };
+      for (const r of criteriaTree) dfsLeaf(r);
 
       const weightsArray = issue.modelParameters?.weights || [];
       const finalWeightsMap = leafNames.reduce((acc, name, index) => {
@@ -750,23 +991,171 @@ export const getAllActiveIssues = async (req, res) => {
         return acc;
       }, {});
 
+      const decorate = (node, depth = 0) => {
+        const isLeaf = !node.children || node.children.length === 0;
+        node.depth = depth;
+        node.display = {
+          showType: depth === 0,
+          showWeight: isLeaf,
+          weight: isLeaf ? (finalWeightsMap?.[node.name] ?? null) : null,
+        };
+        if (node.children?.length) node.children.forEach((ch) => decorate(ch, depth + 1));
+      };
+      criteriaTree.forEach((r) => decorate(r, 0));
 
-      // consenso: fase actual = (#consensos guardados) + 1
+      // consenso fase actual
       const savedPhasesCount = consensusPhaseCountMap[issueIdStr] || 0;
       const consensusCurrentPhase = savedPhasesCount + 1;
 
+      // deadline meta
+      const closureDateStr = issue.closureDate;
+      let deadline = { hasDeadline: false, daysLeft: null, overdue: false, iso: null };
+      if (closureDateStr) {
+        const d = dayjs(closureDateStr, "DD-MM-YYYY", true);
+        if (d.isValid()) {
+          const daysLeft = d.startOf("day").diff(dayjs().startOf("day"), "day");
+          deadline = { hasDeadline: true, daysLeft, overdue: daysLeft < 0, iso: d.toISOString() };
+        }
+      }
+
+      // statusFlags + acciones
+      const stage = issue.currentStage;
+
+      const allWeightsDone = realParticipants.length > 0 && realWeightsDone === realParticipants.length;
+      const allEvalsDone = realParticipants.length > 0 && realEvalsDone === realParticipants.length;
+
+      const waitingAdmin =
+        !isAdminUser &&
+        !hasPending &&
+        ((stage === "weightsFinished" && allWeightsDone) ||
+          (stage === "alternativeEvaluation" && allEvalsDone));
+
+      const canComputeWeights =
+        stage === "weightsFinished" &&
+        isAdminUser &&
+        !hasPending &&
+        realParticipants.length > 0 &&
+        allWeightsDone;
+
+      const canResolveIssue =
+        stage === "alternativeEvaluation" &&
+        isAdminUser &&
+        !hasPending &&
+        realParticipants.length > 0 &&
+        allEvalsDone;
+
+      const canEvaluateWeights =
+        stage === "criteriaWeighting" &&
+        isExpertAccepted &&
+        realParticipants.some((p) => safeOid(p.expert?._id) === userId && !p.weightsCompleted);
+
+      const canEvaluateAlternatives =
+        stage === "alternativeEvaluation" &&
+        isExpertAccepted &&
+        realParticipants.some((p) => safeOid(p.expert?._id) === userId && !p.evaluationCompleted);
+
+      // ✅ waitingExperts (incluye pendientes y “sin acción”)
+      const waitingExperts =
+        (hasPending && stage !== "finished") ||
+        (!waitingAdmin && !canResolveIssue && !canComputeWeights && !canEvaluateWeights && !canEvaluateAlternatives && stage !== "finished");
+
+      const statusFlags = {
+        canEvaluateWeights,
+        canComputeWeights,
+        canEvaluateAlternatives,
+        canResolveIssue,
+        waitingAdmin,
+        waitingExperts,
+      };
+
+      // acciones (orden inteligente)
+      const actions = [];
+      if (canResolveIssue) actions.push(ACTION_META.resolveIssue);
+      if (canComputeWeights) actions.push(ACTION_META.computeWeights);
+      if (canEvaluateWeights) actions.push(ACTION_META.evaluateWeights);
+      if (canEvaluateAlternatives) actions.push(ACTION_META.evaluateAlternatives);
+      if (waitingAdmin) actions.push(ACTION_META.waitingAdmin);
+
+      actions.sort((a, b) => a.sortPriority - b.sortPriority);
+      const nextAction = actions[0] ?? null;
+
+      // status humano + statusKey (✅ sin pendingInvitations)
+      let statusLabel = STAGE_META[stage]?.label ?? stage;
+      let statusKey = stage;
+
+      if (stage === "finished") {
+        statusLabel = "Finished";
+        statusKey = "finished";
+      } else if (waitingAdmin) {
+        statusLabel = "Waiting for admin";
+        statusKey = "waitingAdmin";
+      } else if (nextAction) {
+        statusLabel = nextAction.label;
+        statusKey = nextAction.key;
+      } else {
+        statusLabel = "Waiting experts";
+        statusKey = "waitingExperts";
+      }
+
+      const sortPriority = nextAction ? nextAction.sortPriority : 80;
+
+      // tasks globales
+      for (const a of actions) {
+        tasksByType[a.key].push({
+          issueId: issueIdStr,
+          issueName: issue.name,
+          stage,
+          role: a.role,
+          severity: a.severity,
+          actionKey: a.key,
+          actionLabel: a.label,
+          sortPriority: a.sortPriority,
+          deadline,
+        });
+      }
+
+      // listas “como antes”
+      const participatedExperts =
+        stage === "criteriaWeighting" || stage === "weightsFinished"
+          ? acceptedExperts.filter((p) => p.weightsCompleted === true)
+          : acceptedExperts.filter((p) => p.evaluationCompleted === true);
+
+      const acceptedButNotEvaluated =
+        stage === "criteriaWeighting" || stage === "weightsFinished"
+          ? acceptedExperts.filter((p) => !p.weightsCompleted)
+          : acceptedExperts.filter((p) => !p.evaluationCompleted);
+
+      const evaluated = participatedExperts.map((p) => safeOid(p.expert?._id)).includes(userId);
+
+      const role =
+        isAdminUser && isExpertAccepted
+          ? "both"
+          : isAdminUser
+          ? "admin"
+          : isExpertAccepted
+          ? "expert"
+          : "viewer";
+
+      // ✅ modelParameters (sin weights)
+      const modelParameters = cleanModelParameters(issue.modelParameters);
+
+      // ✅ workflow estable
+      const hasDirectWeights = detectHasDirectWeights(issue);
+      const hasAlternativeConsensus = detectHasAlternativeConsensusEnabled(issue);
+      const workflowSteps = buildWorkflowStepsStable({ hasDirectWeights, hasAlternativeConsensus });
+
       return {
-        id: issue._id.toString(),
+        id: issueIdStr,
         name: issue.name,
-        creator: issue.admin.email,
+        creator: issue.admin?.email,
         description: issue.description,
         model: issue.model,
-        isPairwise: issue.model.isPairwise,
-        isConsensus: issue.isConsensus,
-        currentStage: issue.currentStage,
+        isPairwise: Boolean(issue.model?.isPairwise),
+        isConsensus: Boolean(issue.isConsensus),
+        currentStage: stage,
         weightingMode: issue.weightingMode,
 
-        ...(issue.model.isConsensus && {
+        ...(issue.model?.isConsensus && {
           consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
           consensusThreshold: issue.consensusThreshold,
           consensusCurrentPhase,
@@ -775,48 +1164,188 @@ export const getAllActiveIssues = async (req, res) => {
         creationDate: issue.creationDate || null,
         closureDate: issue.closureDate || null,
 
-        isAdmin: issue.admin._id.toString() === userId,
-        isExpert,
+        isAdmin: isAdminUser,
+        isExpert: isExpertAccepted,
+        role,
 
-        alternatives: alternatives
-          .filter((alt) => alt.issue.toString() === issueIdStr)
-          .map((alt) => alt.name)
-          .sort(),
-
+        alternatives: altNames,
         criteria: criteriaTree,
 
-        evaluated: participatedExperts.map((p) => p.expert._id.toString()).includes(userId),
+        evaluated,
 
         totalExperts:
           participatedExperts.length +
           pendingExperts.length +
-          notAcceptedExperts.length +
+          declinedExperts.length +
           acceptedButNotEvaluated.length,
 
         participatedExperts: participatedExperts.map((p) => p.expert.email).sort(),
         pendingExperts: pendingExperts.map((p) => p.expert.email).sort(),
-        notAcceptedExperts: notAcceptedExperts.map((p) => p.expert.email).sort(),
+        notAcceptedExperts: declinedExperts.map((p) => p.expert.email).sort(),
         acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((p) => p.expert.email).sort(),
 
-        statusFlags: {
-          canEvaluateWeights,
-          canComputeWeights,
-          canEvaluateAlternatives,
-          canResolveIssue,
-          waitingAdmin,
-        },
-
-        progress: {
-          weightsDone,
-          evalsDone,
-          totalAccepted,
-        },
-
+        statusFlags,
+        progress: { weightsDone, evalsDone, totalAccepted },
         finalWeights: finalWeightsMap,
+
+        // ✅ modelParameters listo para el drawer (sin weights)
+        modelParameters,
+
+        myParticipation: myParticipation
+          ? {
+              invitationStatus: myParticipation.invitationStatus,
+              weightsCompleted: Boolean(myParticipation.weightsCompleted),
+              evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
+              joinedAt: myParticipation.joinedAt || null,
+            }
+          : null,
+
+        actions,
+        nextAction,
+
+        ui: {
+          stage,
+          stageLabel: STAGE_META[stage]?.label ?? stage,
+          stageColorKey: STAGE_META[stage]?.colorKey ?? "default",
+          statusKey,
+          statusLabel,
+          sortPriority,
+          deadline,
+
+          // ✅ workflow estable para el FE
+          hasDirectWeights,
+          hasAlternativeConsensus,
+          workflowSteps,
+
+          permissions: {
+            evaluateWeights: canEvaluateWeights,
+            evaluateAlternatives: canEvaluateAlternatives,
+            computeWeights: canComputeWeights,
+            resolveIssue: canResolveIssue,
+            waitingAdmin: waitingAdmin,
+            waitingExperts: statusKey === "waitingExperts",
+          },
+
+          // ✅ duplicado útil
+          modelParameters,
+        },
       };
     });
 
-    return res.json({ success: true, issues: formattedIssues });
+    // -----------------------------
+    // 6) Orden inteligente + tasks sorting
+    // -----------------------------
+    formattedIssues.sort((a, b) => {
+      const ap = a.ui?.sortPriority ?? 90;
+      const bp = b.ui?.sortPriority ?? 90;
+      if (ap !== bp) return ap - bp;
+
+      const ad = a.ui?.deadline?.hasDeadline ? a.ui.deadline.daysLeft : 999999;
+      const bd = b.ui?.deadline?.hasDeadline ? b.ui.deadline.daysLeft : 999999;
+      if (ad !== bd) return ad - bd;
+
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    for (const k of Object.keys(tasksByType)) {
+      tasksByType[k].sort((a, b) => {
+        if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
+        const ad = a.deadline?.hasDeadline ? a.deadline.daysLeft : 999999;
+        const bd = b.deadline?.hasDeadline ? b.deadline.daysLeft : 999999;
+        if (ad !== bd) return ad - bd;
+        return String(a.issueName).localeCompare(String(b.issueName));
+      });
+    }
+
+    const totalTasks = Object.values(tasksByType).reduce((acc, arr) => acc + arr.length, 0);
+
+    // -----------------------------
+    // 7) ✅ TaskCenter “listo para pintar”
+    // -----------------------------
+    const taskCenterSections = Object.values(ACTION_META)
+      .sort((a, b) => a.sortPriority - b.sortPriority)
+      .map((meta) => {
+        const items = tasksByType[meta.key] || [];
+        return {
+          key: meta.key,
+          title: meta.label,
+          role: meta.role,
+          severity: meta.severity,
+          sortPriority: meta.sortPriority,
+          count: items.length,
+          items,
+        };
+      })
+      .filter((s) => s.count > 0);
+
+    const taskCenter = {
+      total: totalTasks,
+      sections: taskCenterSections,
+    };
+
+    // -----------------------------
+    // 8) ✅ filtersMeta
+    // -----------------------------
+    const roleCounts = {};
+    const stageCounts = {};
+    const actionCounts = {};
+
+    for (const it of formattedIssues) {
+      inc(roleCounts, it.role || "viewer");
+      inc(stageCounts, it.ui?.stage || it.currentStage || "unknown");
+
+      const actionKey = it.ui?.statusKey || (it.nextAction?.key || "none");
+      inc(actionCounts, actionKey);
+    }
+
+    const filtersMeta = {
+      defaults: { role: "all", stage: "all", action: "all", q: "" },
+
+      roleOptions: [
+        { value: "all", label: "All roles" },
+        { value: "admin", label: "Admin" },
+        { value: "expert", label: "Expert" },
+        { value: "both", label: "Admin & Expert" },
+        { value: "viewer", label: "Viewer" },
+      ],
+
+      stageOptions: [
+        { value: "all", label: "All stages" },
+        ...Object.values(STAGE_META).map((s) => ({ value: s.key, label: s.label })),
+      ],
+
+      actionOptions: [
+        { value: "all", label: "All actions" },
+        { value: "waitingExperts", label: "Waiting experts" },
+        ...Object.values(ACTION_META)
+          .sort((a, b) => a.sortPriority - b.sortPriority)
+          .map((a) => ({ value: a.key, label: a.label })),
+        { value: "none", label: "No pending action" },
+      ],
+
+      sortOptions: [
+        { value: "nameAsc", label: "Name (A→Z)" },
+        { value: "nameDesc", label: "Name (Z→A)" },
+        { value: "deadlineSoon", label: "Deadline (soonest)" },
+      ],
+
+      counts: {
+        roles: roleCounts,
+        stages: stageCounts,
+        actions: actionCounts,
+      },
+    };
+
+    // -----------------------------
+    // 9) Respuesta
+    // -----------------------------
+    return res.json({
+      success: true,
+      issues: formattedIssues,
+      tasks: { total: totalTasks, byType: tasksByType },
+      taskCenter,
+      filtersMeta,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, msg: "Error fetching active issues" });

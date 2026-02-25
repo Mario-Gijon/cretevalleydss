@@ -1,466 +1,731 @@
-import { useEffect, useState } from "react";
-import { Stack, Typography, CardContent, CardActionArea, Dialog, DialogTitle, DialogActions, Button, Box, Backdrop, DialogContent } from "@mui/material";
-import Masonry from "@mui/lab/Masonry";
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Stack,
+  Typography,
+  Box,
+  Backdrop,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  useMediaQuery,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
-import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
-import { computeManualWeights, computeWeights, editExperts, leaveIssue, removeIssue, resolveIssue } from "../../src/controllers/issueController";
-import { IssueDialog } from "../../src/components/IssueDialog/IssueDialog";
-import { EvaluationPairwiseMatrixDialog } from "../../src/components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
-import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+
+import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
+import {
+  computeManualWeights,
+  computeWeights,
+  editExperts,
+  leaveIssue,
+  removeIssue,
+  resolveIssue,
+} from "../../src/controllers/issueController";
+
+import { EvaluationPairwiseMatrixDialog } from "../../src/components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
 import { EvaluationMatrixDialog } from "../../src/components/EvaluationMatrixDialog/EvaluationMatrixDialog";
-import { GlassCard } from "../../src/components/StyledComponents/GlassCard";
-import { StyledChip } from "../../src/components/StyledComponents/StyledChip";
+
 import { GlassDialog } from "../../src/components/StyledComponents/GlassDialog";
-import { IssueTimeline } from "../../src/components/IssueTimeline/IssueTimeline";
-import { ExpertParticipationChart } from "../../src/components/ExpertParticipationChart/ExpertParticipationChart";
+
 import AddExpertsDomainsDialog from "../../src/components/AddExpertsDomainsDialog/AddExpertsDomainsDialog";
+import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
+
 import { RateBwmWeightsDialog } from "../../src/components/RateBwmWeightsDialog/RateBwmWeightsDialog";
 import { RateConsensusWeightsDialog } from "../../src/components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
+// ✅ Tus componentes
+import ActiveIssuesHeader, { getNextActionMeta, Pill, auroraBg } from "../../src/components/ActiveIssuesHeader/ActiveIssuesHeader";
+import TaskCenter from "../../src/components/TaskCenter/TaskCenter";
+import IssuesGrid from "../../src/components/IssuesGrid/IssuesGrid";
+import IssueDetailsDrawer from "../../src/components/IssueDetailsDrawer/IssueDetailsDrawer";
+
+const crystalBorder = () => {
+  return { border: "1px solid rgba(117, 199, 209, 0.8)" };
+};
+
+const glassSx = (theme, strength = 0.14) => ({
+  backgroundColor: alpha(theme.palette.background.paper, strength),
+  ...auroraBg(theme, 0.14),
+  backdropFilter: "blur(14px)",
+  boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.10)}`,
+  ...crystalBorder(theme, { level: "crystal" }),
+});
+
+const normalize = (v) => (v == null ? "" : String(v)).toLowerCase();
+
+/** ✅ DFS iterativo para buscar dentro del árbol de criterios */
+const criteriaContains = (nodes, q) => {
+  if (!q) return true;
+  if (!Array.isArray(nodes) || nodes.length === 0) return false;
+  const stack = [...nodes];
+  while (stack.length) {
+    const n = stack.pop();
+    if (!n) continue;
+    if (normalize(n?.name).includes(q)) return true;
+    if (Array.isArray(n?.children) && n.children.length) stack.push(...n.children);
+  }
+  return false;
+};
+
+/** ✅ Extrae texto admin “best effort” */
+const adminContains = (issue, q) => {
+  if (!q) return true;
+  const candidates = [
+    issue?.creator,
+    issue?.adminEmail,
+    issue?.adminName,
+    issue?.admin?.email,
+    issue?.admin?.name,
+    issue?.createdBy?.email,
+    issue?.createdBy?.name,
+    issue?.owner?.email,
+    issue?.owner?.name,
+  ];
+  return candidates.some((c) => normalize(c).includes(q));
+};
+
+const alternativesContains = (issue, q) => {
+  if (!q) return true;
+  const alts = Array.isArray(issue?.alternatives) ? issue.alternatives : [];
+  return alts.some((a) => {
+    if (typeof a === "string") return normalize(a).includes(q);
+    return normalize(a?.name || a?.title || a?.label).includes(q);
+  });
+};
+
+const parseDateDDMMYYYY = (d) => {
+  if (!d || typeof d !== "string") return 0;
+  const [dd, mm, yyyy] = d.split("-").map((x) => Number(x));
+  if (!dd || !mm || !yyyy) return 0;
+  return new Date(yyyy, mm - 1, dd).getTime();
+};
 
 const ActiveIssuesPage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery("(max-width:900px)");
+  const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
-  const { showSnackbarAlert } = useSnackbarAlertContext()
+  const { showSnackbarAlert } = useSnackbarAlertContext();
+  const issuesCtx = useIssuesDataContext();
 
-  const [selectedIssue, setSelectedIssue] = useState(null);
-  const [openIssueDialog, setOpenIssueDialog] = useState(false);
-  const [openRemoveConfirmDialog, setOpenRemoveConfirmDialog] = useState(false);
-  const [isEditingExperts, setIsEditingExperts] = useState(false);
-  const [isRatingAlternatives, setIsRatingAlternatives] = useState(false)
-  const [isRatingWeights, setIsRatingWeights] = useState(false)
-  const [openResolveConfirmDialog, setOpenResolveConfirmDialog] = useState(false);
-  const [resolveLoading, setResolveLoading] = useState(false);
+  const {
+    issueCreated,
+    setIssueCreated,
+    initialExperts,
+    loading,
+    setLoading,
+    activeIssues,
+    fetchActiveIssues,
+    fetchFinishedIssues,
+  } = issuesCtx;
 
-  const [openComputeWeightsConfirmDialog, setOpenComputeWeightsConfirmDialog] = useState(false);
-  const [computeWeightsLoading, setComputeWeightsLoading] = useState(false);
+  // ✅ si tu context ya los expone, los usamos
+  const [serverTaskCenter, setServerTaskCenter] = useState(null);
+  const [serverFiltersMeta, setServerFiltersMeta] = useState(null);
 
-  const [removeLoading, setRemoveLoading] = useState(false);
-  const [expertsToRemove, setExpertsToRemove] = useState([]);
-  const [openConfirmEditExpertsDialog, setOpenConfirmEditExpertsDialog] = useState(false);
-  const [openAddExpertsDialog, setOpenAddExpertsDialog] = useState(false);
-  const [expertsToAdd, setExpertsToAdd] = useState([]); // lista provisional de emails
-  const [hoveredChip, setHoveredChip] = useState(null);
-  const [editExpertsLoading, setEditExpertsLoading] = useState(false);
-  const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
-  const [leaveLoading, setLeaveLoading] = useState(false);
-  const [openAssignDomainsDialog, setOpenAssignDomainsDialog] = useState(false);
-  const [, setNewDomainAssignments] = useState(null);
+  const taskCenter = issuesCtx.taskCenter ?? serverTaskCenter;
+  const filtersMeta = issuesCtx.filtersMeta ?? serverFiltersMeta;
 
-  const { issueCreated, setIssueCreated, initialExperts, loading, setLoading, activeIssues, setActiveIssues, fetchActiveIssues, fetchFinishedIssues } = useIssuesDataContext();
-
-  // Obtenemos los correos de los expertos que ya están en el issue
-  const existingExpertEmails = [
-    ...(selectedIssue?.participatedExperts || []),
-    ...(selectedIssue?.acceptedButNotEvaluatedExperts || []),
-    ...(selectedIssue?.pendingExperts || []),
-    ...(selectedIssue?.notAcceptedExperts || []),
-    ...expertsToAdd, // opcional: para evitar que se repitan en la tabla
-  ];
-
-  // Filtramos los disponibles
-  const availableExperts = initialExperts.filter(
-    (expert) => !existingExpertEmails.includes(expert.email)
+  const [selectedIssueId, setSelectedIssueId] = useState(null);
+  const selectedIssue = useMemo(
+    () => activeIssues?.find((i) => i.id === selectedIssueId) || null,
+    [activeIssues, selectedIssueId]
   );
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ✅ SOLO: buscar + scope + ordenar
+  const [query, setQuery] = useState("");
+  const [searchBy, setSearchBy] = useState("all");
+  const [sortBy, setSortBy] = useState(filtersMeta?.defaults?.sort || "recent");
+
+  // task center filter
+  const [taskType, setTaskType] = useState("all");
+
+  // drawer tabs
+  const [drawerTab, setDrawerTab] = useState(0);
+
+  // dialogs externos
+  const [isRatingAlternatives, setIsRatingAlternatives] = useState(false);
+  const [isRatingWeights, setIsRatingWeights] = useState(false);
+
+  // edición experts
+  const [isEditingExperts, setIsEditingExperts] = useState(false);
+  const [expertsToRemove, setExpertsToRemove] = useState([]);
+  const [expertsToAdd, setExpertsToAdd] = useState([]);
+  const [openAddExpertsDialog, setOpenAddExpertsDialog] = useState(false);
+  const [openAssignDomainsDialog, setOpenAssignDomainsDialog] = useState(false);
+
+  // confirm genérico
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    description: "",
+    confirmText: "Confirm",
+    tone: "warning",
+    action: null,
+  });
+
+  const runConfirm = async () => {
+    const action = confirm.action;
+    setConfirm((c) => ({ ...c, open: false, action: null }));
+    if (typeof action === "function") await action();
+  };
+
+  // busy actions
+  const [busy, setBusy] = useState({
+    resolve: false,
+    compute: false,
+    remove: false,
+    leave: false,
+    editExperts: false,
+  });
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refresh = async ({ alsoFinished = false } = {}) => {
+    const r = await fetchActiveIssues();
+    if (r?.taskCenter) setServerTaskCenter(r.taskCenter);
+    if (r?.filtersMeta) setServerFiltersMeta(r.filtersMeta);
+    if (alsoFinished) await fetchFinishedIssues();
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const r = await fetchActiveIssues();
+      if (r?.taskCenter) setServerTaskCenter(r.taskCenter);
+      if (r?.filtersMeta) setServerFiltersMeta(r.filtersMeta);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    if (issueCreated.success) {
+    if (issueCreated?.success) {
       showSnackbarAlert(issueCreated.msg, "success");
       setIssueCreated("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueCreated, setIssueCreated]);
 
-  const handleRemoveIssue = async () => {
-    setRemoveLoading(true);
+  useEffect(() => {
+    if (drawerOpen && selectedIssueId && !selectedIssue && !loading) {
+      setDrawerOpen(false);
+      setSelectedIssueId(null);
+      setIsEditingExperts(false);
+      setExpertsToAdd([]);
+      setExpertsToRemove([]);
+      setDrawerTab(0);
+    }
+  }, [drawerOpen, selectedIssueId, selectedIssue, loading]);
 
-    const issueRemoved = await removeIssue(selectedIssue.id);
+  const openDetails = (issue) => {
+    setSelectedIssueId(issue.id);
+    setDrawerOpen(true);
+    setDrawerTab(0);
+  };
 
-    if (issueRemoved.success) {
-      setActiveIssues(prevIssues =>
-        prevIssues.filter(issue => issue.id !== selectedIssue.id)
-      );
-      handleCloseIssueDialog();
+  const openDetailsById = (id) => {
+    setSelectedIssueId(id);
+    setDrawerOpen(true);
+    setDrawerTab(0);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setSelectedIssueId(null);
+    setIsEditingExperts(false);
+    setExpertsToAdd([]);
+    setExpertsToRemove([]);
+    setDrawerTab(0);
+  };
+
+  const minimizeDrawerOnly = () => {
+    setDrawerOpen(false);
+  };
+
+  const openConfirm = ({ title, description, confirmText, tone = "warning", action }) => {
+    setConfirm({ open: true, title, description, confirmText: confirmText || "Confirm", tone, action });
+  };
+
+  // ✅ reset “solo lo que existe”
+  const resetFilters = () => {
+    setQuery("");
+    setSearchBy("all");
+    setSortBy(filtersMeta?.defaults?.sort || "smart");
+  };
+
+  // ✅ buscador por scope
+  const matchQuery = (issue) => {
+    const q = normalize(query.trim());
+    if (!q) return true;
+
+    const byIssue = normalize(issue?.name).includes(q);
+    const byModel = normalize(issue?.model?.name).includes(q);
+    const byAdmin = adminContains(issue, q);
+    const byAlts = alternativesContains(issue, q);
+    const byCriteria = criteriaContains(issue?.criteria, q);
+
+    if (searchBy === "issue") return byIssue;
+    if (searchBy === "model") return byModel;
+    if (searchBy === "admin") return byAdmin;
+    if (searchBy === "alternatives") return byAlts;
+    if (searchBy === "criteria") return byCriteria;
+
+    return byIssue || byModel || byAdmin || byAlts || byCriteria;
+  };
+
+  const filteredIssuesBase = useMemo(() => {
+    return (activeIssues || []).filter(matchQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIssues, query, searchBy]);
+
+  // ✅ sort: soporta extras del server si llegan
+  const filteredIssues = useMemo(() => {
+    const arr = [...filteredIssuesBase];
+
+    const deadlineDays = (i) => {
+      const dl = i?.ui?.deadline;
+      if (dl?.hasDeadline && typeof dl.daysLeft === "number") return dl.daysLeft;
+      if (i?.closureDate) {
+        const end = parseDateDDMMYYYY(i.closureDate);
+        const now = Date.now();
+        return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+      }
+      return 999999;
+    };
+
+    const smartPriority = (i) => i?.ui?.sortPriority ?? 90;
+
+    if (sortBy === "name" || sortBy === "nameAsc") {
+      arr.sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
+    } else if (sortBy === "nameDesc") {
+      arr.sort((a, b) => (b?.name || "").localeCompare(a?.name || ""));
+    } else if (sortBy === "deadlineSoon") {
+      arr.sort((a, b) => deadlineDays(a) - deadlineDays(b));
+    } else if (sortBy === "recent") {
+      arr.sort((a, b) => parseDateDDMMYYYY(b?.creationDate) - parseDateDDMMYYYY(a?.creationDate));
+    } else {
+      arr.sort((a, b) => {
+        const p = smartPriority(a) - smartPriority(b);
+        if (p !== 0) return p;
+        const d = deadlineDays(a) - deadlineDays(b);
+        if (d !== 0) return d;
+        return (a?.name || "").localeCompare(b?.name || "");
+      });
     }
 
-    setRemoveLoading(false);
-    showSnackbarAlert(issueRemoved.msg, issueRemoved.success ? "success" : "error");
-    setOpenRemoveConfirmDialog(false);
-  };
+    return arr;
+  }, [filteredIssuesBase, sortBy]);
 
-  const handleDeleteExpert = (expert) => {
-    setExpertsToRemove(prev => [...new Set([...prev, expert])]); // evita duplicados
-  }
+  const tasksCount = useMemo(() => {
+    if (typeof taskCenter?.total === "number") return taskCenter.total;
+    const list = activeIssues || [];
+    return list.filter((i) => {
+      const k = getNextActionMeta(i)?.key;
+      return ["evalW", "evalA", "computeW", "resolve", "waitingAdmin"].includes(k);
+    }).length;
+  }, [taskCenter, activeIssues]);
 
-  const handleAddExpert = () => {
-    setOpenAddExpertsDialog(true);
-  };
+  const overview = useMemo(() => {
+    const list = activeIssues || [];
+    const adminCount = list.filter((i) => i?.isAdmin).length;
 
-  const handleEditExperts = () => {
-    if (isEditingExperts) {
-      if (expertsToRemove.length > 0 || expertsToAdd.length > 0) {
-        setOpenConfirmEditExpertsDialog(true); // Mostrar diálogo
-      } else {
-        setIsEditingExperts(false); // Salir sin cambios
+    // ✅ "Ready to resolve" = issues donde el admin puede resolver ya
+    const readyResolve = list.filter((i) => i?.statusFlags?.canResolveIssue).length;
+
+    return { total: list.length, tasks: tasksCount, admin: adminCount, readyResolve };
+  }, [activeIssues, tasksCount]);
+
+
+  const headerSignals = useMemo(() => {
+    const list = activeIssues || [];
+    let actionable = 0;
+    let waitingAdmin = 0;
+    let waitingExperts = 0;
+
+    list.forEach((i) => {
+      const k = i?.ui?.statusKey || i?.nextAction?.key || null;
+      if (["evaluateWeights", "evaluateAlternatives", "computeWeights", "resolveIssue"].includes(k)) actionable += 1;
+      else if (k === "waitingAdmin") waitingAdmin += 1;
+      else if (k === "pendingInvitations") waitingExperts += 1;
+      else {
+        const k2 = getNextActionMeta(i)?.key;
+        if (k2 === "waitingExperts") waitingExperts += 1;
       }
-      setHoveredChip(null); // Limpiar el chip hover
+    });
+
+    return { actionable, waitingAdmin, waitingExperts };
+  }, [activeIssues]);
+
+  // ✅ legacy taskGroups (solo si NO hay taskCenter del server todavía)
+  const taskGroupsLegacy = useMemo(() => {
+    const list = activeIssues || [];
+    const groups = [
+      { key: "evalAlt", title: "Evaluate alternatives", tone: "info", icon: null, match: (i) => i?.statusFlags?.canEvaluateAlternatives },
+      { key: "evalW", title: "Evaluate weights", tone: "info", icon: null, match: (i) => i?.statusFlags?.canEvaluateWeights },
+      { key: "computeW", title: "Compute weights (admin)", tone: "warning", icon: null, match: (i) => i?.isAdmin && i?.statusFlags?.canComputeWeights },
+      { key: "resolve", title: "Resolve (admin)", tone: "warning", icon: null, match: (i) => i?.isAdmin && i?.statusFlags?.canResolveIssue },
+      { key: "waitingAdmin", title: "Waiting for admin", tone: "warning", icon: null, match: (i) => i?.statusFlags?.waitingAdmin },
+    ];
+    return groups.map((g) => ({ ...g, items: list.filter(g.match) })).filter((g) => g.items.length > 0);
+  }, [activeIssues]);
+
+  const existingExpertEmails = useMemo(() => {
+    if (!selectedIssue) return [...expertsToAdd];
+    return [
+      ...(selectedIssue?.participatedExperts || []),
+      ...(selectedIssue?.acceptedButNotEvaluatedExperts || []),
+      ...(selectedIssue?.pendingExperts || []),
+      ...(selectedIssue?.notAcceptedExperts || []),
+      ...expertsToAdd,
+    ];
+  }, [selectedIssue, expertsToAdd]);
+
+  const availableExperts = useMemo(() => {
+    return (initialExperts || []).filter((e) => !existingExpertEmails.includes(e.email));
+  }, [initialExperts, existingExpertEmails]);
+
+  const handleRemoveIssue = async () => {
+    if (!selectedIssue) return;
+    setBusy((b) => ({ ...b, remove: true }));
+    const res = await removeIssue(selectedIssue.id);
+
+    if (res?.success) {
+      showSnackbarAlert(res.msg, "success");
+      await refresh();
+      closeDrawer();
+    } else {
+      showSnackbarAlert(res?.msg || "Error removing issue", "error");
+    }
+    setBusy((b) => ({ ...b, remove: false }));
+  };
+
+  const handleLeaveIssue = async () => {
+    if (!selectedIssue) return;
+    setBusy((b) => ({ ...b, leave: true }));
+    const res = await leaveIssue(selectedIssue.id);
+
+    if (res?.success) {
+      showSnackbarAlert(res.msg, "success");
+      await refresh();
+      closeDrawer();
+    } else {
+      showSnackbarAlert(res?.msg || "Error leaving issue", "error");
+    }
+    setBusy((b) => ({ ...b, leave: false }));
+  };
+
+  const handleResolveIssue = async () => {
+    if (!selectedIssue) return;
+    setBusy((b) => ({ ...b, resolve: true }));
+
+    const res = await resolveIssue(selectedIssue.id, selectedIssue.isPairwise);
+
+    if (res?.success) {
+      showSnackbarAlert(res.msg, res.finished ? "success" : "info");
+      await refresh({ alsoFinished: Boolean(res.finished) });
+      closeDrawer();
+    } else {
+      showSnackbarAlert(res?.msg || "Error resolving issue", "error");
+      setLoading(false);
+      closeDrawer();
+    }
+
+    setBusy((b) => ({ ...b, resolve: false }));
+  };
+
+  const handleComputeWeights = async () => {
+    if (!selectedIssue) return;
+    setBusy((b) => ({ ...b, compute: true }));
+
+    const res =
+      selectedIssue.weightingMode === "consensus"
+        ? await computeManualWeights(selectedIssue.id)
+        : await computeWeights(selectedIssue.id);
+
+    if (res?.success) {
+      showSnackbarAlert(res.msg, res.finished ? "success" : "info");
+      await refresh({ alsoFinished: true });
+      closeDrawer();
+    } else {
+      showSnackbarAlert(res?.msg || "Error computing weights", "error");
+      setLoading(false);
+      closeDrawer();
+    }
+
+    setBusy((b) => ({ ...b, compute: false }));
+  };
+
+  const toggleEditExperts = () => {
+    if (!selectedIssue) return;
+    if (isEditingExperts) {
+      setIsEditingExperts(false);
+      setExpertsToAdd([]);
+      setExpertsToRemove([]);
     } else {
       setIsEditingExperts(true);
     }
   };
 
-  const handleConfirmEditExperts = async () => {
+  const markRemoveExpert = (email) => {
+    setExpertsToRemove((prev) => [...new Set([...prev, email])]);
+  };
+
+  const saveExpertsChanges = async () => {
+    if (!selectedIssue) return;
+
     const currentExperts = [
       ...(selectedIssue.participatedExperts || []),
       ...(selectedIssue.acceptedButNotEvaluatedExperts || []),
       ...(selectedIssue.pendingExperts || []),
-      ...(selectedIssue.notAcceptedExperts || [])
+      ...(selectedIssue.notAcceptedExperts || []),
     ];
 
-    const remainingExperts = currentExperts.filter(email => !expertsToRemove.includes(email));
-
-    if (remainingExperts.length + expertsToAdd.length < 1) {
+    const remaining = currentExperts.filter((e) => !expertsToRemove.includes(e));
+    if (remaining.length + expertsToAdd.length < 1) {
       showSnackbarAlert("An issue must have at least one expert.", "error");
       return;
     }
 
-    // Si hay nuevos expertos, primero pedimos dominios
     if (expertsToAdd.length > 0) {
-      setOpenConfirmEditExpertsDialog(false);
       setOpenAssignDomainsDialog(true);
       return;
     }
 
-    // Si no hay nuevos expertos, seguir con la lógica original
-    await processEditExperts();
+    await processEditExperts(null);
   };
 
   const processEditExperts = async (domainAssignments = null) => {
-    setEditExpertsLoading(true);
+    if (!selectedIssue) return;
+    setBusy((b) => ({ ...b, editExperts: true }));
 
-    const response = await editExperts(
-      selectedIssue.id,
-      expertsToAdd,
-      expertsToRemove,
-      domainAssignments
-    );
+    const res = await editExperts(selectedIssue.id, expertsToAdd, expertsToRemove, domainAssignments);
 
-    if (response.success) {
-      await fetchActiveIssues();
-    }
+    showSnackbarAlert(res?.msg || "Experts updated", res?.success ? "success" : "error");
+    await refresh();
 
-    setEditExpertsLoading(false);
-    showSnackbarAlert(response.msg, response.success ? "success" : "error");
+    setBusy((b) => ({ ...b, editExperts: false }));
+    setOpenAssignDomainsDialog(false);
     setIsEditingExperts(false);
-    setOpenConfirmEditExpertsDialog(false);
-    setExpertsToRemove([]);
     setExpertsToAdd([]);
-    setHoveredChip(null);
+    setExpertsToRemove([]);
   };
 
   const handleConfirmDomains = async (domainAssignments) => {
-    setNewDomainAssignments(domainAssignments);
-    setOpenAssignDomainsDialog(false);
     await processEditExperts(domainAssignments);
   };
 
-  const handleCancelEditExperts = () => {
-    setOpenConfirmEditExpertsDialog(false);
-    setIsEditingExperts(false);
-    setExpertsToRemove([])
-    setExpertsToAdd([]);
-    setHoveredChip(null);
-  };
+  if (loading) return <CircularLoading color="secondary" size={50} height="30vh" />;
 
-  const handleRateAlternatives = () => {
-    setIsRatingAlternatives(true)
-  }
-
-  const handleRateWeights = () => {
-    setIsRatingWeights(true)
-  }
-
-  const handleOpenIssueDialog = (issue) => {
-    setSelectedIssue(issue);
-    setOpenIssueDialog(true);
-  };
-
-  const handleCloseIssueDialog = () => {
-    setSelectedIssue(null);
-    setIsEditingExperts(false)
-    setOpenIssueDialog(false);
-    handleCancelEditExperts();
-  };
-
-  const handleResolveIssue = async () => {
-    setResolveLoading(true);
-    setOpenResolveConfirmDialog(false);
-
-    const response = await resolveIssue(selectedIssue.id, selectedIssue.isPairwise);
-
-    if (response.success) {
-      if (response.finished === true) {
-        setActiveIssues(prevIssues =>
-          prevIssues.filter(issue => issue.id !== selectedIssue.id)
-        );
-        showSnackbarAlert(response.msg, "success");
-        await fetchFinishedIssues();
-      } else {
-        showSnackbarAlert(response.msg, "info");
-        await fetchActiveIssues();
-      }
-      handleCloseIssueDialog();
-    } else {
-      showSnackbarAlert(response.msg, "error");
-      handleCloseIssueDialog();
-      setLoading(false);
-    }
-
-    setResolveLoading(false);
-  };
-
-  const handleComputeWeightsIssue = async () => {
-    setComputeWeightsLoading(true);
-    setOpenComputeWeightsConfirmDialog(false);
-
-    let response;
-
-    if (selectedIssue.weightingMode === "consensus") {
-      response = await computeManualWeights(selectedIssue.id);
-    } else {
-      response = await computeWeights(selectedIssue.id);
-    }
-
-    if (response.success) {
-      showSnackbarAlert(response.msg, response.finished ? "success" : "info");
-      await fetchActiveIssues();
-      await fetchFinishedIssues();
-      handleCloseIssueDialog();
-    } else {
-      showSnackbarAlert(response.msg, "error");
-      handleCloseIssueDialog();
-      setLoading(false);
-    }
-
-    setComputeWeightsLoading(false);
-  };
-
-  const handleLeaveIssue = async () => {
-    console.log("Leaving issue: ", selectedIssue.id);
-
-    setLeaveLoading(true);
-    setOpenLeaveConfirmDialog(false);
-
-    const response = await leaveIssue(selectedIssue.id);
-
-    if (response.success) {
-      setActiveIssues(prevIssues =>
-        prevIssues.filter(issue => issue.id !== selectedIssue.id)
-      );
-      handleCloseIssueDialog();
-      showSnackbarAlert(response.msg, "success");
-    } else {
-      showSnackbarAlert(response.msg, "error");
-    }
-
-    setLeaveLoading(false);
-  };
-
-  if (loading) {
-    // Mostrar un loader mientras los datos se están cargando
-    return <CircularLoading color="secondary" size={50} height="30vh" />;
-  }
-
-  if (activeIssues?.length === 0) {
+  if (!activeIssues || activeIssues.length === 0) {
     return (
-      <>
-        <Typography variant="h4" sx={{ mt: 5, textAlign: "center" }}>
+      <Stack sx={{ mt: 6 }} spacing={1} alignItems="center">
+        <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 950 }}>
           No active issues
         </Typography>
-      </>
+        <Typography variant="body2" sx={{ color: "text.secondary", textAlign: "center", maxWidth: 520 }}>
+          Create a new issue or accept an invitation and it will appear here.
+        </Typography>
+      </Stack>
     );
   }
 
-  console.log(selectedIssue)
+  // ✅ MISMO ALTO para header y tasks (fila superior)
+  const TOP_H = 265; // ajusta: 320/340/360...
+  // ✅ Header ~2/3 ancho (2fr) y Tasks ~1/3 (1fr). Min widths por ergonomía
+  const COLS = "minmax(560px, 1.4fr) minmax(360px, 1fr)";
 
   return (
     <>
-      <Backdrop open={resolveLoading || computeWeightsLoading} sx={{ zIndex: 999999 }}>
+      <Backdrop open={busy.resolve || busy.compute || busy.remove || busy.leave || busy.editExperts} sx={{ zIndex: 999999 }}>
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
-      <Stack
-        direction="column"
-        spacing={2}
-        sx={{
-          alignItems: "center",
-        }}
-      >
-        {/* Masonry con las cards */}
-        <Masonry columns={{ xs: 1, md: 2, lg: 3, xl: 3 }} spacing={2} sequential sx={{ maxWidth: 2200, alignItems: "center" }}>
-          {activeIssues?.map((issue, index) => (
-            <GlassCard key={index} elevation={0}>
-              <CardActionArea onClick={() => handleOpenIssueDialog(issue)}>
-                <CardContent>
-                  <Stack spacing={2}>
-                    <Stack direction={"row"} alignItems={"stretch"} justifyContent={"space-between"}>
-                      {/* Nombre */}
-                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                        {issue.name}
-                      </Typography>
-                      {issue.isAdmin && <AccountCircleIcon />}
-                    </Stack>
-                    <Stack alignItems={"space-between"}>
-                      <Stack direction="row" spacing={2} justifyContent={"space-between"} >
-                        {/* Columna izquierda */}
-                        <Stack direction={"column"} flexWrap={"wrap"}>
-                          {/* Descripción */}
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              mb: 1,
-                              display: "-webkit-box",
-                              WebkitBoxOrient: "vertical",
-                              WebkitLineClamp: 2,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "normal",
-                            }}
-                          >
-                            {issue.description}
-                          </Typography>
-                          {/* Info extra */}
-                          <Stack spacing={0.5} sx={{ color: "text.secondary" }}>
-                            <Typography variant="body2">
-                              <strong>Model:</strong> {issue.model.name}
-                            </Typography>
 
-                            {issue.isConsensus && (
-                              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                                <strong>Type:</strong> Consensus
-                              </Typography>
-                            )}
+      <Box sx={{ maxWidth: 2500, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2 }}>
+        {isLgUp ? (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: COLS,
+              gridTemplateRows: `${TOP_H}px auto`,
+              gridTemplateAreas: `
+                "header task"
+                "issues issues"
+              `,
+              gap: 2,
+              alignItems: "stretch", // ✅ clave: estirar celdas
+            }}
+          >
+            <Box sx={{ gridArea: "header", minWidth: 0, height: TOP_H }}>
+              <ActiveIssuesHeader
+                isLgUp
+                filteredCount={filteredIssues.length}
+                totalCount={activeIssues.length}
+                headerSignals={headerSignals}
+                overview={overview}
+                resetFilters={resetFilters}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                query={query}
+                setQuery={setQuery}
+                searchBy={searchBy}
+                setSearchBy={setSearchBy}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                // ✅ misma altura que tasks
+                height={TOP_H}
+                filtersMeta={filtersMeta}
+              />
+            </Box>
 
-                            <Typography variant="body2">
-                              <strong>Alternatives:</strong> {issue.alternatives.join(", ")}
-                            </Typography>
+            <Box sx={{ gridArea: "task", minWidth: 0, height: TOP_H }}>
+              <TaskCenter
+                variant="rail"
+                height={TOP_H} minHeight={TOP_H}
+                taskCenter={taskCenter}
+                taskGroups={!taskCenter ? taskGroupsLegacy : null}
+                tasksCount={tasksCount}
+                taskType={taskType}
+                setTaskType={setTaskType}
+                onOpenIssue={openDetails}
+                onOpenIssueId={openDetailsById}
+              />
+            </Box>
 
-                            {!issue.closureDate && (
-                              <Typography variant="body2" color="text.secondary" fontWeight={"bold"}>
-                                No deadline
-                              </Typography>
-                            )}
+            <Box sx={{ gridArea: "issues", minWidth: 0, width: "100%" }}>
+              <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+            </Box>
+          </Box>
+        ) : (
+          <>
+            <ActiveIssuesHeader
+              isLgUp={false}
+              filteredCount={filteredIssues.length}
+              totalCount={activeIssues.length}
+              headerSignals={headerSignals}
+              overview={overview}
+              resetFilters={resetFilters}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              query={query}
+              setQuery={setQuery}
+              searchBy={searchBy}
+              setSearchBy={setSearchBy}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              height="auto"
+              filtersMeta={filtersMeta}
+            />
 
-                            <Box sx={{ pt: 1 }}>
-                              {/* ✅ NUEVO CHIP (reemplaza toda la lógica anterior) */}
-                              <StyledChip
-                                label={
-                                  issue.statusFlags.waitingAdmin
-                                    ? (
-                                      issue.currentStage === "weightsFinished"
-                                        ? "Waiting for admin to compute weights"
-                                        : "Waiting for admin to resolve issue"
-                                    )
-                                    : issue.currentStage === "finished"
-                                      ? "Finished"
-                                      : issue.statusFlags.canEvaluateWeights
-                                        ? "Evaluate Criteria Weights"
-                                        : issue.statusFlags.canComputeWeights
-                                          ? "Ready to Compute Weights"
-                                          : issue.statusFlags.canEvaluateAlternatives
-                                            ? "Evaluate Alternatives"
-                                            : issue.statusFlags.canResolveIssue
-                                              ? "Ready to Resolve"
-                                              : "Waiting experts"
-                                }
-                                color={
-                                  issue.statusFlags.waitingAdmin
-                                    ? "warning"
-                                    : issue.currentStage === "finished"
-                                      ? "success"
-                                      : issue.statusFlags.canComputeWeights || issue.statusFlags.canResolveIssue
-                                        ? "warning"
-                                        : issue.statusFlags.canEvaluateWeights || issue.statusFlags.canEvaluateAlternatives
-                                          ? "error"
-                                          : "info"
-                                }
-                                size="small"
-                                variant="outlined"
-                              />
-                            </Box>
-                          </Stack>
-
-                        </Stack>
-                        {/* Columna derecha: gráfico */}
-                        <Stack>
-                          <ExpertParticipationChart
-                            total={issue.totalExperts}
-                            pending={issue.pendingExperts.length}
-                            accepted={issue.participatedExperts.length}
-                            notEvaluated={issue.acceptedButNotEvaluatedExperts.length}
-                          />
-                        </Stack>
-                      </Stack>
-                      {
-                        issue.closureDate &&
-                        <IssueTimeline creationDate={issue.creationDate} closureDate={issue.closureDate} />
-                      }
-                    </Stack>
-
+            {!isMobile ? (
+              <Box sx={{ mt: 2 }}>
+                <TaskCenter
+                  variant="rail"
+                  taskCenter={taskCenter}
+                  taskGroups={!taskCenter ? taskGroupsLegacy : null}
+                  tasksCount={tasksCount}
+                  taskType={taskType}
+                  setTaskType={setTaskType}
+                  onOpenIssue={openDetails}
+                  onOpenIssueId={openDetailsById}
+                  height="auto"
+                  minHeight={132}
+                />
+              </Box>
+            ) : (
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  mt: 2,
+                  borderRadius: 5,
+                  overflow: "hidden",
+                  position: "relative",
+                  ...glassSx(theme, 0.16),
+                  "&:before": { display: "none" },
+                  "&:after": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 0,
+                    pointerEvents: "none",
+                    background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 40%)`,
+                    opacity: 0.18,
+                  },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 980, flex: 1 }}>
+                      Tasks
+                    </Typography>
+                    <Pill tone={tasksCount ? "warning" : "success"}>{tasksCount}</Pill>
                   </Stack>
+                </AccordionSummary>
 
-                </CardContent>
+                <AccordionDetails>
+                  <TaskCenter
+                    variant="panel"
+                    taskCenter={taskCenter}
+                    taskGroups={!taskCenter ? taskGroupsLegacy : null}
+                    tasksCount={tasksCount}
+                    taskType={taskType}
+                    setTaskType={setTaskType}
+                    onOpenIssue={openDetails}
+                    onOpenIssueId={openDetailsById}
+                    height="auto"
+                    minHeight={260}
+                  />
+                </AccordionDetails>
+              </Accordion>
+            )}
 
+            <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
+          </>
+        )}
+      </Box>
 
-              </CardActionArea>
-            </GlassCard>
-          ))}
-        </Masonry>
+      {/* Drawer details */}
+      <IssueDetailsDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        onMinimize={minimizeDrawerOnly}
+        selectedIssue={selectedIssue}
+        isMobile={isMobile}
+        drawerTab={drawerTab}
+        setDrawerTab={setDrawerTab}
+        busy={busy}
+        openConfirm={openConfirm}
+        handleLeaveIssue={handleLeaveIssue}
+        handleComputeWeights={handleComputeWeights}
+        handleResolveIssue={handleResolveIssue}
+        handleRemoveIssue={handleRemoveIssue}
+        isEditingExperts={isEditingExperts}
+        toggleEditExperts={toggleEditExperts}
+        expertsToRemove={expertsToRemove}
+        markRemoveExpert={markRemoveExpert}
+        expertsToAdd={expertsToAdd}
+        setOpenAddExpertsDialog={setOpenAddExpertsDialog}
+        saveExpertsChanges={saveExpertsChanges}
+        setIsRatingAlternatives={setIsRatingAlternatives}
+        setIsRatingWeights={setIsRatingWeights}
+      />
 
-        {/* Modal con los detalles completos */}
-        <IssueDialog
-          openIssueDialog={openIssueDialog}
-          handleCloseIssueDialog={handleCloseIssueDialog}
-          selectedIssue={selectedIssue}
-          setOpenRemoveConfirmDialog={setOpenRemoveConfirmDialog}
-          isEditingExperts={isEditingExperts}
-          isRatingAlternatives={isRatingAlternatives}
-          handleAddExpert={handleAddExpert}
-          handleDeleteExpert={handleDeleteExpert}
-          handleEditExperts={handleEditExperts}
-          handleRateAlternatives={handleRateAlternatives}
-          handleRateWeights={handleRateWeights}
-          setOpenResolveConfirmDialog={setOpenResolveConfirmDialog}
-          setOpenComputeWeightsConfirmDialog={setOpenComputeWeightsConfirmDialog}
-          expertsToRemove={expertsToRemove}
-          setOpenAddExpertsDialog={setOpenAddExpertsDialog}
-          expertsToAdd={expertsToAdd}
-          setExpertsToAdd={setExpertsToAdd}
-          hoveredChip={hoveredChip}
-          setHoveredChip={setHoveredChip}
-          openLeaveConfirmDialog={openLeaveConfirmDialog}
-          setOpenLeaveConfirmDialog={setOpenLeaveConfirmDialog}
-          handleLeaveIssue={handleLeaveIssue}
-          leaveLoading={leaveLoading}
-        />
-
-      </Stack>
-
+      {/* Dialogs externos */}
       {selectedIssue?.isPairwise ? (
         <EvaluationPairwiseMatrixDialog
-          setOpenIssueDialog={setOpenIssueDialog}
+          setOpenIssueDialog={setDrawerOpen}
           isRatingAlternatives={isRatingAlternatives}
           setIsRatingAlternatives={setIsRatingAlternatives}
           selectedIssue={selectedIssue}
         />
       ) : (
         <EvaluationMatrixDialog
-          setOpenIssueDialog={setOpenIssueDialog}
+          setOpenIssueDialog={setDrawerOpen}
           isRatingAlternatives={isRatingAlternatives}
           setIsRatingAlternatives={setIsRatingAlternatives}
           selectedIssue={selectedIssue}
@@ -472,104 +737,65 @@ const ActiveIssuesPage = () => {
           isRatingWeights={isRatingWeights}
           setIsRatingWeights={setIsRatingWeights}
           selectedIssue={selectedIssue}
-          handleCloseIssueDialog={handleCloseIssueDialog}
+          handleCloseIssueDialog={closeDrawer}
         />
       ) : (
         <RateBwmWeightsDialog
           isRatingWeights={isRatingWeights}
           setIsRatingWeights={setIsRatingWeights}
           selectedIssue={selectedIssue}
-          handleCloseIssueDialog={handleCloseIssueDialog}
+          handleCloseIssueDialog={closeDrawer}
         />
       )}
 
-      {/* Diálogo de confirmación de borrar el issue */}
-      <Dialog open={openRemoveConfirmDialog} onClose={() => setOpenRemoveConfirmDialog(false)}>
-        <DialogTitle>Are you sure you want to remove this issue?</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setOpenRemoveConfirmDialog(false)} color="secondary">
-            Cancel
-          </Button>
-          <Button onClick={handleRemoveIssue} color="error" loading={removeLoading} loadingPosition="end">
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* ✅ Confirm dialog */}
+      <GlassDialog
+        open={confirm.open}
+        onClose={() => setConfirm((c) => ({ ...c, open: false, action: null }))}
+        PaperProps={{ elevation: 0 }}
+        maxWidth="xs"
+      >
+        <Box sx={{ p: 2.25 }}>
+          <Typography variant="h6" sx={{ fontWeight: 980 }}>
+            {confirm.title}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
+            {confirm.description}
+          </Typography>
 
-      {/* Diálogo de confirmación de resolver problema */}
-      <Dialog open={openResolveConfirmDialog} onClose={() => setOpenResolveConfirmDialog(false)}>
-        <DialogTitle>Are you sure you want to resolve this issue?</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setOpenResolveConfirmDialog(false)} color="error">
-            Cancel
-          </Button>
-          <Button onClick={handleResolveIssue} color="warning">
-            Resolve
-          </Button>
-        </DialogActions>
-      </Dialog>
+          <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "flex-end" }}>
+            <Box
+              component="button"
+              style={{
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "transparent",
+                borderRadius: 12,
+                padding: "8px 12px",
+                cursor: "pointer",
+              }}
+              onClick={() => setConfirm((c) => ({ ...c, open: false, action: null }))}
+            >
+              Cancel
+            </Box>
 
-      {/* Diálogo de confirmación de calcular pesos */}
-      <Dialog open={openComputeWeightsConfirmDialog} onClose={() => setOpenComputeWeightsConfirmDialog(false)}>
-        <DialogTitle>Are you sure you want to compute weights?</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setOpenComputeWeightsConfirmDialog(false)} color="error">
-            Cancel
-          </Button>
-          <Button onClick={handleComputeWeightsIssue} color="warning">
-            Compute weights
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={openConfirmEditExpertsDialog}
-        onClose={handleCancelEditExperts}
-      >{/* 
-        <DialogTitle>Confirm changes</DialogTitle> */}
-        <DialogContent>
-          <Stack spacing={3} sx={{ width: "100%" }}>
-            {expertsToRemove.length > 0 &&
-              <Box>
-                <Typography>
-                  The following experts will be removed:
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  {expertsToRemove.map((expert, idx) => (
-                    <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
-                      • {expert}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
-            }
-            {expertsToAdd.length > 0 &&
-              <Box>
-                <Typography>
-                  The following experts will be added:
-                </Typography>
-                <Box sx={{ mt: 0.8 }}>
-                  {expertsToAdd.map((expert, idx) => (
-                    <Typography key={idx} variant="body2" sx={{ ml: 1 }}>
-                      • {expert}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
-            }
+            <Box
+              component="button"
+              style={{
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "transparent",
+                borderRadius: 12,
+                padding: "8px 12px",
+                cursor: "pointer",
+              }}
+              onClick={runConfirm}
+            >
+              {confirm.confirmText}
+            </Box>
           </Stack>
+        </Box>
+      </GlassDialog>
 
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelEditExperts} color="info" size="small">
-            Cancel
-          </Button>
-          <Button onClick={handleConfirmEditExperts} color="warning" loading={editExpertsLoading} loadingPosition="end" size="small">
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
-
+      {/* Add experts dialog */}
       <GlassDialog
         open={openAddExpertsDialog}
         onClose={() => setOpenAddExpertsDialog(false)}
@@ -584,6 +810,7 @@ const ActiveIssuesPage = () => {
         />
       </GlassDialog>
 
+      {/* Domains assignment dialog */}
       <AddExpertsDomainsDialog
         open={openAssignDomainsDialog}
         onClose={() => setOpenAssignDomainsDialog(false)}
@@ -591,9 +818,6 @@ const ActiveIssuesPage = () => {
         expertsToAdd={expertsToAdd}
         onConfirmDomains={handleConfirmDomains}
       />
-
-
-
     </>
   );
 };

@@ -1,4 +1,4 @@
-import { normalizeValue } from "./normalizeValue";
+import { normalizeValue } from "./normalizeValue.js";
 
 export const normalizeParams = (params) => {
   const normalized = {};

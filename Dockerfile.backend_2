@@ -1,0 +1,11 @@
+#FROM oven/bun:1
+
+#WORKDIR /app
+
+#COPY ./Backend/package.json ./Backend/bun.lockb ./
+#RUN bun install --frozen-lockfile
+#COPY ./Backend .
+
+#EXPOSE 5000
+
+#CMD ["bun", "start"]

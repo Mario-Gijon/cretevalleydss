@@ -1,4 +1,4 @@
-import { IssueExpressionDomain } from "./IssueExpressionDomains";
+import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 
 export const createIssueDomainSnapshots = async ({ issueId, domainDocs, session }) => {
   // domainDocs: documentos de ExpressionDomain con campos name/type/numericRange/linguisticLabels

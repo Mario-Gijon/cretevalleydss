@@ -1,34 +1,134 @@
 // Importa hooks de React
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 // Importa componentes de Material UI
-import { Stack, MobileStepper, Typography, Stepper, Step, StepLabel, StepButton, Button } from "@mui/material";
-import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import DoneIcon from '@mui/icons-material/Done';
+import {
+  Stack,
+  MobileStepper,
+  Typography,
+  Stepper,
+  Step,
+  StepLabel,
+  StepButton,
+  Button,
+  Box,
+  Avatar,
+  Divider,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import DoneIcon from "@mui/icons-material/Done";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+
 import { ModelStep } from "./Steps/ModelStep/ModelStep";
 import { AlternativesStep } from "./Steps/AlternativesStep/AlternativesStep";
-import { CriteriaStep } from "./Steps/CriteriaStep/CriteriaStep"
+import { CriteriaStep } from "./Steps/CriteriaStep/CriteriaStep";
 import { ExpertsStep } from "./Steps/ExpertsStep/ExpertsStep";
 import { ExpressionDomainStep } from "./Steps/ExpressionDomainStep/ExpressionDomainStep";
 import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
+
 import { createIssue } from "../../src/controllers/issueController";
 import { ColorlibConnector, ColorlibStepIcon } from "../../src/components/StyledComponents/StepperLibConnector";
-import { buildInitialAssignments, getLeafCriteria, steps, updateParamValues, validateDomainAssigments, validateIssueDescription, validateIssueName, /* validateModelParams */ } from "../../src/utils/createIssueUtils";
+import {
+  buildInitialAssignments,
+  getLeafCriteria,
+  steps,
+  updateParamValues,
+  validateDomainAssigments,
+  validateIssueDescription,
+  validateIssueName,
+  /* validateModelParams */
+} from "../../src/utils/createIssueUtils";
 import { CircularLoading } from "../../src/components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../src/context/issues/issues.context";
 import { useNavigate } from "react-router-dom";
 import { useSnackbarAlertContext } from "../../src/context/snackbarAlert/snackbarAlert.context";
 import dayjs from "dayjs";
-import utc from 'dayjs/plugin/utc';
+import utc from "dayjs/plugin/utc";
+
+// ✅ si ya lo tienes en el proyecto, úsalo (igual que en otros sitios)
+import { GlassPaper } from "../../src/components/StyledComponents/GlassPaper";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
-
 dayjs.extend(utc);
 
-const CreateIssuePage = () => {
+const auroraBg = (theme, intensity = 0.16) => ({
+  backgroundImage: `radial-gradient(1100px 520px at 12% 0%, ${alpha(
+    theme.palette.info.main,
+    intensity
+  )}, transparent 62%)`,
+});
 
-  const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } = useIssuesDataContext()
-  const { showSnackbarAlert } = useSnackbarAlertContext()
+const softIconSx = (theme) => ({
+  width: 44,
+  height: 44,
+  bgcolor: alpha(theme.palette.info.main, 0.12),
+  color: "info.main",
+  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+});
+
+const shellSx = (theme) => ({
+  width: "100%",
+  maxWidth: 1300,
+  borderRadius: 5,
+  overflow: "hidden",
+  position: "relative",
+
+  // ✅ “atmósfera” global para TODA la página de creación
+  backgroundColor: alpha(theme.palette.background.paper, 0.10),
+  ...auroraBg(theme, 0.12),
+  backdropFilter: "blur(16px)",
+
+  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+  boxShadow: `0 18px 60px ${alpha(theme.palette.common.black, 0.12)}`,
+
+  // ✅ highlight superior suave (mantiene tu look sin cajas extra)
+  "&:after": {
+    content: '""',
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 46%)`,
+    opacity: 0.18,
+    zIndex: 0,
+  },
+
+  // ✅ todo el contenido por encima del overlay
+  "& > *": { position: "relative", zIndex: 1 },
+});
+
+const headerSx = (theme) => ({
+  // ✅ como el shell ya tiene aurora, bajamos un poco la intensidad para que no “doble”
+  ...auroraBg(theme, 0.10),
+  borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+  px: { xs: 1.8, sm: 2.2 },
+  py: { xs: 1.6, sm: 1.9 },
+});
+
+const stepperWrapSx = (theme) => ({
+  px: { xs: 1.2, sm: 2.0 },
+  py: { xs: 1.2, sm: 1.4 },
+  borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+  bgcolor: alpha(theme.palette.common.white, 0.015),
+});
+
+const contentSx = {
+  px: { xs: 0.5, sm: 1.2, md: 1.8 },
+  py: { xs: 0.6, sm: 1.0, md: 1.6 },
+};
+
+const footerSx = (theme) => ({
+  px: { xs: 1.5, sm: 2.2 },
+  py: 1.6,
+  pt:5,
+});
+
+const CreateIssuePage = () => {
+  const theme = useTheme();
+
+  const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } = useIssuesDataContext();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
   const navigate = useNavigate();
 
   const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
@@ -76,22 +176,37 @@ const CreateIssuePage = () => {
       }),
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-  }, [activeStep, completed, selectedModel, withConsensus, alternatives, criteria, addedExperts, issueName, issueDescription, closureDate, consensusMaxPhases, consensusThreshold, domainAssignments, paramValues, bwmData, weightingMode]);
+  }, [
+    activeStep,
+    completed,
+    selectedModel,
+    withConsensus,
+    alternatives,
+    criteria,
+    addedExperts,
+    issueName,
+    issueDescription,
+    closureDate,
+    consensusMaxPhases,
+    consensusThreshold,
+    domainAssignments,
+    paramValues,
+    bwmData,
+    weightingMode,
+  ]);
 
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
-      // 1️⃣ Asignar valores por defecto
       const defaults = selectedModel.parameters.reduce((acc, param) => {
         acc[param.name] = param.default;
         return acc;
       }, {});
 
-      // 2️⃣ Ajustar los arrays que dependen del número de criterios
       selectedModel.parameters.forEach((param) => {
         const { name, type, restrictions } = param;
 
         if (type === "array" && restrictions?.length === "matchCriteria") {
-          const length = allData?.criteria?.length || 1; // número de criterios
+          const length = getLeafCriteria(criteria).length || 1;
           const equalWeight = 1 / length;
 
           if (!Array.isArray(defaults[name]) || defaults[name].length !== length) {
@@ -107,7 +222,17 @@ const CreateIssuePage = () => {
 
   useEffect(() => {
     if (addedExperts.length > 0 && alternatives.length > 0 && criteria.length > 0)
-      setDomainAssignments((prev) => buildInitialAssignments(addedExperts, alternatives, getLeafCriteria(criteria), prev, selectedModel, globalDomains, expressionDomains));
+      setDomainAssignments((prev) =>
+        buildInitialAssignments(
+          addedExperts,
+          alternatives,
+          getLeafCriteria(criteria),
+          prev,
+          selectedModel,
+          globalDomains,
+          expressionDomains
+        )
+      );
   }, [addedExperts, alternatives, criteria, setDomainAssignments, selectedModel, globalDomains, expressionDomains]);
 
   useEffect(() => {
@@ -120,15 +245,21 @@ const CreateIssuePage = () => {
     }
   }, [weightingMode]);
 
-  const handleValidateIssueName = (newIssueName) => { validateIssueName(newIssueName, setIssueNameError); setIssueName(newIssueName) };
+  const handleValidateIssueName = (newIssueName) => {
+    validateIssueName(newIssueName, setIssueNameError);
+    setIssueName(newIssueName);
+  };
 
-  const handleValidateIssueDescription = (newIssueDescription) => { validateIssueDescription(newIssueDescription, setIssueDescriptionError); setissueDescription(newIssueDescription) };
+  const handleValidateIssueDescription = (newIssueDescription) => {
+    validateIssueDescription(newIssueDescription, setIssueDescriptionError);
+    setissueDescription(newIssueDescription);
+  };
 
   const handleClosureDateError = (selectedDate) => {
     if (!selectedDate) {
-      setClosureDateError(false)
-      if (closureDate) handleClosureDateError(closureDate)
-      return
+      setClosureDateError(false);
+      if (closureDate) handleClosureDateError(closureDate);
+      return;
     }
 
     const closureDateObj = dayjs(selectedDate);
@@ -136,17 +267,23 @@ const CreateIssuePage = () => {
 
     if (selectedDate) {
       if (closureDateObj.isBefore(today.add(2, "day"), "day")) {
-        setClosureDateError(true)
+        setClosureDateError(true);
         showSnackbarAlert("Closure date is not valid", "error");
         return;
       }
     }
 
-    setClosureDateError(false)
-  }
+    setClosureDateError(false);
+  };
+
+  const leafCount = getLeafCriteria(criteria).length;
+  const isSingleLeaf = leafCount === 1;
 
   const filteredParams = { ...paramValues };
-  if (weightingMode !== "manual") delete filteredParams.weights;
+
+  if (!isSingleLeaf && weightingMode !== "manual") {
+    delete filteredParams.weights;
+  }
 
   const allData = {
     issueName,
@@ -164,7 +301,6 @@ const CreateIssuePage = () => {
     ...(withConsensus && { consensusMaxPhases, consensusThreshold }),
   };
 
-  // Manejar la creación del problema
   const handleComplete = async () => {
     handleClosureDateError();
 
@@ -173,10 +309,7 @@ const CreateIssuePage = () => {
     validateIssueName(issueName, setIssueNameError);
     validateIssueDescription(issueDescription, setIssueDescriptionError);
     if (!issueName || !issueDescription || issueNameError || issueDescriptionError) return;
-    /* if (!validateModelParams(selectedModel, paramValues, criteria)) {
-      showSnackbarAlert("There are invalid model parameters", "error");
-      return;
-    } */
+
     if (!validateDomainAssigments(domainAssignments)) {
       showSnackbarAlert("You must assign an expression domain to all criteria before creating the issue.", "error");
       return;
@@ -198,29 +331,81 @@ const CreateIssuePage = () => {
     setLoading(false);
   };
 
+  // ✅ Solo UI: para el subtitle y el iconito del header
+  const headerSubtitle = useMemo(() => {
+    const label = steps?.[activeStep] ?? "";
+    const total = steps?.length ?? 0;
+    return `${label} • Step ${activeStep + 1}/${total}`;
+  }, [activeStep]);
+
   if (loading) {
-    // Mostrar un loader mientras los datos se están cargando
     return <CircularLoading color="secondary" size={50} height="30vh" />;
   }
 
   return (
-    <>
-      <Stack direction="column" spacing={{ xs: 2, sm: 2, md: 3 }} useFlexGap sx={{ mt: 1.5, justifyContent: "center", alignItems: "center", width: "100%" }}>
-        <Stepper sx={{ display: { xs: "none", sm: "flex" }, width: "100%", flexGrow: 1 }} alternativeLabel activeStep={activeStep} connector={<ColorlibConnector />}>
-          {steps.map((label, index) => (
-            <Step key={label} completed={completed[index]} sx={{ cursor: "pointer" }} onClick={() => setActiveStep(index)}>
-              <StepButton color="inherit" onClick={() => setActiveStep(index)}>
-                <StepLabel slots={{ stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
-              </StepButton>
-            </Step>
-          ))}
-        </Stepper>
-        <Typography display={{ xs: "float", sm: "none" }} variant="h4">
-          {steps[activeStep]}
-        </Typography>
-        <Stack flexGrow={1} gap={5} sx={{ alignItems: "center", justifyContent: "center" }}>
-          <Stack flexGrow={1} sx={{ width: "100%" }}>
-            {activeStep === 0 &&
+    <Stack sx={{ width: "100%", px: { xs: 1.2, sm: 2.2 }, mt: 1.5 }} justifyContent={"center"} alignItems={"center"}>
+      <GlassPaper variant="elevation" elevation={0} sx={shellSx(theme)}>
+        {/* Header bonito */}
+        <Box sx={headerSx(theme)}>
+          <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
+              <Avatar sx={softIconSx(theme)}>
+                <AutoAwesomeIcon />
+              </Avatar>
+
+              <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+                  Create issue
+                </Typography>
+                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                  {headerSubtitle}
+                </Typography>
+              </Stack>
+            </Stack>
+
+            {/* Título mobile solo */}
+            <Typography
+              sx={{ display: { xs: "block", sm: "none" }, fontWeight: 900, color: "text.secondary" }}
+              variant="caption"
+            >
+              {steps[activeStep]}
+            </Typography>
+          </Stack>
+        </Box>
+
+        {/* Stepper (desktop) */}
+        <Box sx={stepperWrapSx(theme)}>
+          <Stepper
+            sx={{ display: { xs: "none", sm: "flex" }, width: "100%" }}
+            alternativeLabel
+            activeStep={activeStep}
+            connector={<ColorlibConnector />}
+          >
+            {steps.map((label, index) => (
+              <Step
+                key={label}
+                completed={completed[index]}
+                sx={{ cursor: "pointer" }}
+                // ✅ No cambies esto: click en Step funciona hacia delante y hacia atrás
+                onClick={() => setActiveStep(index)}
+              >
+                <StepButton
+                  color="inherit"
+                  // ✅ No cambies esto: click en StepButton también
+                  onClick={() => setActiveStep(index)}
+                >
+                  <StepLabel slots={{ stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
+                </StepButton>
+              </Step>
+            ))}
+          </Stepper>
+        </Box>
+
+        {/* Contenido del step */}
+        <Box sx={contentSx}>
+          {/* Importante: no tocamos lógica. Solo wrapper. */}
+          <Stack sx={{ width: "100%", minHeight: 0, mt:2 }}>
+            {activeStep === 0 && (
               <ModelStep
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
@@ -228,24 +413,25 @@ const CreateIssuePage = () => {
                 setWithConsensus={setWithConsensus}
                 criteria={criteria}
               />
-            }
-            {activeStep === 1 &&
-              <AlternativesStep alternatives={alternatives} setAlternatives={setAlternatives} />
-            }
-            {activeStep === 2 &&
-              <CriteriaStep criteria={criteria} setCriteria={setCriteria} isMultiCriteria={selectedModel.isMultiCriteria} />
-            }
-            {activeStep === 3 &&
-              <ExpertsStep addedExperts={addedExperts} setAddedExperts={setAddedExperts} />
-            }
-            {activeStep === 4 &&
+            )}
+
+            {activeStep === 1 && <AlternativesStep alternatives={alternatives} setAlternatives={setAlternatives} />}
+
+            {activeStep === 2 && (
+              <CriteriaStep criteria={criteria} setCriteria={setCriteria} isMultiCriteria={selectedModel?.isMultiCriteria} />
+            )}
+
+            {activeStep === 3 && <ExpertsStep addedExperts={addedExperts} setAddedExperts={setAddedExperts} />}
+
+            {activeStep === 4 && (
               <ExpressionDomainStep
                 allData={allData}
                 domainAssignments={domainAssignments}
                 setDomainAssignments={setDomainAssignments}
               />
-            }
-            {activeStep === 5 &&
+            )}
+
+            {activeStep === 5 && (
               <SummaryStep
                 allData={allData}
                 issueName={issueName}
@@ -271,35 +457,87 @@ const CreateIssuePage = () => {
                 weightingMode={weightingMode}
                 setWeightingMode={setWeightingMode}
               />
-            }
-
+            )}
           </Stack>
+        </Box>
 
-          <Stack direction="row" gap={{ xs: 1, sm: 4 }} sx={{ justifyContent: "center", alignItems: "flex-end" }}>
+        {/* Footer navegación (misma lógica, mejor look) */}
+        <Box sx={footerSx(theme)}>
+          <Stack direction="row" gap={{ xs: 1, sm: 4 }} sx={{ justifyContent: "center", alignItems: "center" }}>
             <MobileStepper
               variant="dots"
               steps={steps.length}
-              position="bottom"
+              position="static"
               activeStep={activeStep}
-              sx={{ display: { xs: "flex", sm: "none" }, flexGrow: 1, alignItems: "center", }}
-              nextButton={activeStep !== steps.length - 1
-                ? <Button color="success" variant="outlined" onClick={() => setActiveStep((prev) => prev + 1)} endIcon={<ArrowForwardIosIcon />}>Next</Button>
-                : <Button color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>Create</Button>
+              sx={{
+                display: { xs: "flex", sm: "none" },
+                flexGrow: 1,
+                bgcolor: "transparent",
+                alignItems: "center",
+                "& .MuiMobileStepper-dots": { mx: 1 },
+                "& .MuiMobileStepper-dot": { bgcolor: alpha(theme.palette.common.white, 0.25) },
+                "& .MuiMobileStepper-dotActive": { bgcolor: alpha(theme.palette.info.main, 0.75) },
+              }}
+              nextButton={
+                activeStep !== steps.length - 1 ? (
+                  <Button
+                    color="success"
+                    variant="outlined"
+                    onClick={() => setActiveStep((prev) => prev + 1)}
+                    endIcon={<ArrowForwardIosIcon />}
+                  >
+                    Next
+                  </Button>
+                ) : (
+                  <Button color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>
+                    Create
+                  </Button>
+                )
               }
               backButton={
-                <Button color="info" variant="outlined" startIcon={<ArrowBackIosIcon />} disabled={activeStep === 0} onClick={() => setActiveStep((prev) => prev - 1)}> Back </Button>
+                <Button
+                  color="info"
+                  variant="outlined"
+                  startIcon={<ArrowBackIosIcon />}
+                  disabled={activeStep === 0}
+                  onClick={() => setActiveStep((prev) => prev - 1)}
+                >
+                  Back
+                </Button>
               }
             />
-            <Button sx={{ display: { xs: "none", sm: "flex" } }} color="info" variant="outlined" startIcon={activeStep !== 0 && <ArrowBackIosIcon />} disabled={activeStep === 0} onClick={() => setActiveStep((prev) => prev - 1)}> Back </Button>
-            {activeStep !== steps.length - 1
-              ? <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={() => setActiveStep((prev) => prev + 1)} endIcon={<ArrowForwardIosIcon />}>Next</Button>
-              : <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>Create</Button>
-            }
+
+            <Button
+              sx={{ display: { xs: "none", sm: "flex" } }}
+              color="info"
+              variant="outlined"
+              startIcon={activeStep !== 0 && <ArrowBackIosIcon />}
+              disabled={activeStep === 0}
+              onClick={() => setActiveStep((prev) => prev - 1)}
+            >
+              Back
+            </Button>
+
+            {activeStep !== steps.length - 1 ? (
+              <Button
+                sx={{ display: { xs: "none", sm: "flex" } }}
+                color="success"
+                variant="outlined"
+                onClick={() => setActiveStep((prev) => prev + 1)}
+                endIcon={<ArrowForwardIosIcon />}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button sx={{ display: { xs: "none", sm: "flex" } }} color="success" variant="outlined" onClick={handleComplete} endIcon={<DoneIcon />}>
+                Create
+              </Button>
+            )}
           </Stack>
-        </Stack>
-      </Stack>
-    </>
+        </Box>
+      </GlassPaper>
+    </Stack>
   );
 };
 
-export default CreateIssuePage
+export default CreateIssuePage;

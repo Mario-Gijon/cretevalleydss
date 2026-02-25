@@ -31,6 +31,6 @@
   },
   "scripts": {
     "dev": "nodemon -r dotenv/config app.js",
-    "start": "NODE_ENV=production bun app.js"
+    "start": "NODE_ENV=production node app.js"
   }
 }

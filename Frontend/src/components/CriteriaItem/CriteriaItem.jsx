@@ -32,7 +32,7 @@ export const CriteriaItem = ({
 
   return (
     <>
-      <ListItem key={item.name} sx={{ pl: { xs: 0, sm: level * 2 } }}>
+      <ListItem key={item.name} sx={{ pl: { xs: 0, sm: level * 2 + 2 } }}>
         <ListItemText
           primary={
             <Stack direction="row" alignItems="center" spacing={1.5}>

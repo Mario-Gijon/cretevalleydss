@@ -1,38 +1,88 @@
-import { useState } from "react";
-import { Button, TextField, List, Collapse, Stack, Divider, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { useMemo, useState } from "react";
+import {
+  Button,
+  TextField,
+  List,
+  Collapse,
+  Stack,
+  Divider,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  Box,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
+
 import { removeCriteriaItemRecursively, updateCriterion, validateCriterion } from "../../../../src/utils/createIssueUtils";
 import { CriteriaItem } from "../../../../src/components/CriteriaItem/CriteriaItem";
-import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useSnackbarAlertContext } from "../../../../src/context/snackbarAlert/snackbarAlert.context";
+import { GlassDialog } from "../../../../src/components/StyledComponents/GlassDialog";
 
-const countLeafCriteria = (items) => {
-  return items.reduce((acc, item) => {
-    if (!item.children || item.children.length === 0) {
-      return acc + 1; // hoja
-    }
+const countLeafCriteria = (items) =>
+  items.reduce((acc, item) => {
+    if (!item.children || item.children.length === 0) return acc + 1;
     return acc + countLeafCriteria(item.children);
   }, 0);
-};
+
+const inputSx = (theme) => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 3,
+    bgcolor: alpha(theme.palette.common.white, 0.04),
+  },
+});
+
+const listSx = (theme) => ({
+  borderRadius: 4,
+  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+  bgcolor: alpha(theme.palette.common.white, 0.02),
+  overflow: "hidden",
+  maxHeight: "52vh",
+  minHeight: 0,
+  overflowY: "auto",
+  scrollbarWidth: "thin",
+  scrollbarColor: `${alpha(theme.palette.common.white, 0.22)} transparent`,
+  "&::-webkit-scrollbar": { width: 8, height: 8 },
+  "&::-webkit-scrollbar-track": { background: "transparent" },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: alpha(theme.palette.common.white, 0.16),
+    borderRadius: 999,
+    border: `2px solid transparent`,
+    backgroundClip: "content-box",
+  },
+  "&::-webkit-scrollbar-thumb:hover": { backgroundColor: alpha(theme.palette.common.white, 0.24) },
+});
 
 export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
+  const theme = useTheme();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
 
-  const { showSnackbarAlert } = useSnackbarAlertContext()
-
-  const [inputValue, setInputValue] = useState(""); // Para el criterio principal
+  const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState("");
-  const [childInputValue, setChildInputValue] = useState(""); // Para el criterio hijo
-  const [openDialog, setOpenDialog] = useState(false); // Estado para abrir el dialog
-  const [selectedParent, setSelectedParent] = useState(null); // Estado para el criterio padre
-  const [openItems, setOpenItems] = useState({});
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedParent, setSelectedParent] = useState(null);
+
+  const [childInputValue, setChildInputValue] = useState("");
   const [childInputError, setChildInputError] = useState(false);
-  const [selectedType, setSelectedType] = useState("benefit"); // "benefit" por defecto
-  const [editingCriterion, setEditingCriterion] = useState(null); // Estado para el criterio en edición
-  const [editCriterionValue, setEditCriterionValue] = useState(""); // Valor del criterio editado
-  const [editCriterionType, setEditCriterionType] = useState(""); // Tipo del criterio editado
-  const [editBlur, setEditBlur] = useState(true); // Estado para el criterio en edición
-  const [editCriterionError, setEditCriterionError] = useState(""); // Estado para errores en edición
+
+  const [openItems, setOpenItems] = useState({});
+  const [selectedType, setSelectedType] = useState("benefit");
+
+  const [editingCriterion, setEditingCriterion] = useState(null);
+  const [editCriterionValue, setEditCriterionValue] = useState("");
+  const [editCriterionType, setEditCriterionType] = useState("");
+  const [editBlur, setEditBlur] = useState(true);
+  const [editCriterionError, setEditCriterionError] = useState("");
+
+  const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
+  const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
 
   const handleEditCriterion = (item) => {
     setEditingCriterion(item);
@@ -46,7 +96,6 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
       setEditCriterionError(error);
       return;
     }
-
     setCriteria((prev) => updateCriterion(prev, editingCriterion, editCriterionValue.trim(), editCriterionType));
     setEditingCriterion(null);
     setEditCriterionError("");
@@ -56,7 +105,6 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
   const handleAddCriteria = () => {
     if (!inputValue.trim()) return;
 
-    // 🔒 Si no es multicriterio, validar hojas
     if (!isMultiCriteria) {
       const leaves = countLeafCriteria(criteria);
       if (leaves >= 1) {
@@ -71,48 +119,36 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
       return;
     }
 
-    setCriteria((prev) => [
-      ...prev,
-      { name: inputValue.trim(), type: selectedType, children: [] }
-    ]);
-
+    setCriteria((prev) => [...prev, { name: inputValue.trim(), type: selectedType, children: [] }]);
     setInputValue("");
     setInputError(false);
   };
 
+  const handleRemoveCriteria = (item) => setCriteria((prev) => removeCriteriaItemRecursively(prev, item));
 
-  const handleRemoveCriteria = (item) => {
-    setCriteria((prev) => removeCriteriaItemRecursively(prev, item));
-  };
+  const handleToggle = (itemName) => setOpenItems((prev) => ({ ...prev, [itemName]: !prev[itemName] }));
 
   const handleAddChild = () => {
     if (!childInputValue.trim()) return;
 
-    // 🛠️ Validación especial para no-multicriterio
     if (!isMultiCriteria) {
-      // simular qué pasa si añadimos el hijo
       const tempCriteria = JSON.parse(JSON.stringify(criteria));
 
-      const addChildSim = (items) => {
-        return items.map((item) => {
+      const addChildSim = (items) =>
+        items.map((item) => {
           if (item.name === selectedParent.name) {
             return {
               ...item,
-              children: [
-                ...item.children,
-                { name: childInputValue.trim(), type: selectedParent.type, children: [] },
-              ],
+              children: [...item.children, { name: childInputValue.trim(), type: selectedParent.type, children: [] }],
             };
           } else if (item.children?.length) {
             return { ...item, children: addChildSim(item.children) };
           }
           return item;
         });
-      };
 
       const simulated = addChildSim(tempCriteria);
       const leavesAfter = countLeafCriteria(simulated);
-
       if (leavesAfter > 1) {
         showSnackbarAlert("This model only allows one leaf criterion", "warning");
         return;
@@ -125,22 +161,18 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
       return;
     }
 
-    const addChild = (items) => {
-      return items.map((item) => {
+    const addChild = (items) =>
+      items.map((item) => {
         if (item.name === selectedParent.name) {
           return {
             ...item,
-            children: [
-              ...item.children,
-              { name: childInputValue.trim(), type: selectedParent.type, children: [] },
-            ],
+            children: [...item.children, { name: childInputValue.trim(), type: selectedParent.type, children: [] }],
           };
         } else if (item.children?.length) {
           return { ...item, children: addChild(item.children) };
         }
         return item;
       });
-    };
 
     setCriteria((prev) => addChild(prev));
     setChildInputValue("");
@@ -148,104 +180,110 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
     setOpenDialog(false);
   };
 
-
-  const handleToggle = (itemName) => {
-    setOpenItems((prev) => ({
-      ...prev,
-      [itemName]: !prev[itemName],
-    }));
-  };
-
   return (
-    <GlassPaper
-      variant="elevation"
-      elevation={0}
-      sx={{
-        p: { xs: 3, sm: 4, md: 5 },
-        borderRadius: 2,
-        flexGrow: 1,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        maxWidth: "95vw",
-        width: { xs: "95vw", sm: "auto" },
-        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
-      }}
-    >
-      <Stack justifyContent="center" useFlexGap spacing={criteria.length > 0 ? { xs: 0, sm: 2 } : { xs: 0, sm: 0 }}>
-        <Stack useFlexGap direction={{ xs: "column", sm: "row" }} justifyContent="center" alignItems="flex-start" gap={2}>
-          <TextField
-            variant="outlined"
-            placeholder="Criterion"
-            autoComplete="off"
-            size="small"
-            value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              setInputError(false);
-            }}
-            onKeyDown={(e) => e.key === "Enter" && handleAddCriteria()}
-            error={inputError}
-            helperText={inputError}
-            flexGrow={1}
-            color="info"
-            sx={{ flex: 1, width: { xs: "100%", sm: 350 } }}
-          />
-          <FormControl size="small" sx={{ minWidth: 120, width: { xs: "100%", sm: "auto" } }}>
-            <InputLabel color="info">Type</InputLabel>
-            <Select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              label="Type"
-              color="info"
-            >
-              <MenuItem value="benefit">Benefit</MenuItem>
-              <MenuItem value="cost">Cost</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Button startIcon={<AddIcon />} flexGrow={1} sx={{ width: { xs: "100%", sm: "auto" } }} color="info" variant="outlined" onClick={handleAddCriteria} disabled={!inputValue.trim()}>
-            Add Criterion
-          </Button>
-        </Stack>
-        <Stack>
-          {criteria.length > 0 &&
-            <List sx={{ flexGrow: 1, maxHeight: "50vh", minHeight: 0, overflowY: "auto", }}>
-              <TransitionGroup>
-                {criteria.slice().reverse().map((item) => (
-                  <Collapse key={item.name}>
-                    <CriteriaItem
-                      item={item}
-                      editingCriterion={editingCriterion}
-                      editCriterionValue={editCriterionValue}
-                      setEditCriterionValue={setEditCriterionValue}
-                      editBlur={editBlur}
-                      handleSaveCriterionEdit={handleSaveCriterionEdit}
-                      editCriterionError={editCriterionError}
-                      editCriterionType={editCriterionType}
-                      setEditCriterionType={setEditCriterionType}
-                      setEditBlur={setEditBlur}
-                      handleEditCriterion={handleEditCriterion}
-                      handleToggle={handleToggle}
-                      openItems={openItems}
-                      setSelectedParent={setSelectedParent}
-                      handleRemoveCriteria={handleRemoveCriteria}
-                      setOpenDialog={setOpenDialog}
-                    />
-                    <Divider sx={{ display: item === criteria[0] ? "none" : "flex" }} />
-                  </Collapse>
-                ))}
-              </TransitionGroup>
-            </List>}
-        </Stack>
+    <Stack spacing={1.5} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
+      {/* Mini header */}
+      <Stack spacing={0.25}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+          Criteria
+        </Typography>
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+          {leafCount} leaf criteria • You can nest with child criteria
+        </Typography>
       </Stack>
 
-      {/* Dialog to add child criterion */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Add Child Criterion</DialogTitle>
-        <DialogContent>
+      {/* Input row */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+        <TextField
+          variant="outlined"
+          placeholder="Criterion"
+          autoComplete="off"
+          size="small"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setInputError(false);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && handleAddCriteria()}
+          error={!!inputError}
+          helperText={inputError}
+          color="info"
+          sx={{ flex: 1, ...inputSx(theme) }}
+        />
+
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel color="info">Type</InputLabel>
+          <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} label="Type" color="info" sx={inputSx(theme)}>
+            <MenuItem value="benefit">Benefit</MenuItem>
+            <MenuItem value="cost">Cost</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Button startIcon={<AddIcon />} color="info" variant="outlined" onClick={handleAddCriteria} disabled={!inputValue.trim()}>
+          Add
+        </Button>
+      </Stack>
+
+      {/* List */}
+      {criteria.length === 0 ? (
+        <Box
+          sx={{
+            mt: 0.5,
+            borderRadius: 4,
+            border: `1px dashed ${alpha(theme.palette.common.white, 0.14)}`,
+            bgcolor: alpha(theme.palette.common.white, 0.015),
+            p: 2,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+            No criteria yet. Add at least 1 leaf criterion.
+          </Typography>
+        </Box>
+      ) : (
+        <List disablePadding sx={listSx(theme)}>
+          <TransitionGroup>
+            {reversed.map((item, idx) => (
+              <Collapse key={item.name}>
+                <CriteriaItem
+                  item={item}
+                  editingCriterion={editingCriterion}
+                  editCriterionValue={editCriterionValue}
+                  setEditCriterionValue={setEditCriterionValue}
+                  editBlur={editBlur}
+                  handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  editCriterionError={editCriterionError}
+                  editCriterionType={editCriterionType}
+                  setEditCriterionType={setEditCriterionType}
+                  setEditBlur={setEditBlur}
+                  handleEditCriterion={handleEditCriterion}
+                  handleToggle={handleToggle}
+                  openItems={openItems}
+                  setSelectedParent={setSelectedParent}
+                  handleRemoveCriteria={handleRemoveCriteria}
+                  setOpenDialog={setOpenDialog}
+                />
+                {idx !== reversed.length - 1 ? (
+                  <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.07) }} />
+                ) : null}
+              </Collapse>
+            ))}
+          </TransitionGroup>
+        </List>
+      )}
+
+      {/* Add child dialog (Glass) */}
+      <GlassDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 950 }}>
+          Add child criterion
+          {selectedParent?.name ? (
+            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", fontWeight: 900, mt: 0.25 }}>
+              Parent: {selectedParent.name}
+            </Typography>
+          ) : null}
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 1.5 }}>
           <TextField
-            sx={{ mt: 2 }}
             color="info"
             variant="outlined"
             label="Child name"
@@ -254,22 +292,24 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
               setChildInputValue(e.target.value);
               setChildInputError(false);
             }}
-            onKeyDown={(e) => { e.key === 'Enter' && handleAddChild() }}
+            onKeyDown={(e) => e.key === "Enter" && handleAddChild()}
             fullWidth
             autoFocus
-            error={childInputError}
+            error={!!childInputError}
             helperText={childInputError}
+            sx={inputSx(theme)}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)} color="error">
-            Exit
+
+        <DialogActions sx={{ gap: 1 }}>
+          <Button variant="outlined" color="warning" onClick={() => setOpenDialog(false)}>
+            Cancel
           </Button>
-          <Button onClick={handleAddChild} color="info" disabled={!childInputValue.trim()}>
+          <Button variant="outlined" color="info" onClick={handleAddChild} disabled={!childInputValue.trim()}>
             Add
           </Button>
         </DialogActions>
-      </Dialog>
-    </GlassPaper>
+      </GlassDialog>
+    </Stack>
   );
 };

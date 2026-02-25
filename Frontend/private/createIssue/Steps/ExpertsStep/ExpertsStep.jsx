@@ -1,136 +1,250 @@
 import { useMemo, useState } from "react";
-import { Table, TableHead, TableCell, TableBody, TableRow, IconButton, TextField, Stack, TableContainer, Chip, styled, Button } from "@mui/material";
-import AddCircleIcon from '@mui/icons-material/AddCircle';
+import {
+  Table,
+  TableHead,
+  TableCell,
+  TableBody,
+  TableRow,
+  IconButton,
+  TextField,
+  Stack,
+  TableContainer,
+  Chip,
+  Button,
+  Typography,
+  Avatar,
+  InputAdornment,
+  Box,
+  Tooltip,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import SearchIcon from "@mui/icons-material/Search";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
+
 import { removeAccents } from "../../../../src/utils/createIssueUtils";
-import { tableCellClasses } from '@mui/material/TableCell';
-import { GlassPaper } from "../../../../src/components/StyledComponents/GlassPaper";
 import { useIssuesDataContext } from "../../../../src/context/issues/issues.context";
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: "#26495b5a",
-    color: theme.palette.common.white,
-    fontSize: theme.typography.body1.fontSize,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 34,
-  },
-}));
-
 export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDialog = false }) => {
-  const {initialExperts} = useIssuesDataContext()
-  const [searchFilter, setSearchFilter] = useState(""); // Un único filtro para todo
+  const theme = useTheme();
+  const { initialExperts } = useIssuesDataContext();
+  const [searchFilter, setSearchFilter] = useState("");
 
-  // Filtrar expertos para eliminar los que ya han sido añadidos
-  const experts = initialExperts.filter(expert => !addedExperts.includes(expert.email));
+  const experts = initialExperts.filter((expert) => !addedExperts.includes(expert.email));
 
-  // Filtrar la lista de expertos según el filtro único
   const filteredExperts = useMemo(() => {
-    return experts.filter(expert =>
-      removeAccents(expert.name.toLowerCase()).includes(removeAccents(searchFilter.toLowerCase())) ||
-      removeAccents(expert.email.toLowerCase()).includes(removeAccents(searchFilter.toLowerCase())) ||
-      removeAccents(expert.university.toLowerCase()).includes(removeAccents(searchFilter.toLowerCase()))
-    );
+    const q = removeAccents(searchFilter.toLowerCase().trim());
+    if (!q) return experts;
+
+    return experts.filter((expert) => {
+      const name = removeAccents((expert.name || "").toLowerCase());
+      const email = removeAccents((expert.email || "").toLowerCase());
+      const uni = removeAccents((expert.university || "").toLowerCase());
+      return name.includes(q) || email.includes(q) || uni.includes(q);
+    });
   }, [experts, searchFilter]);
 
-  const handleAddExpert = (email) => {
-    setAddedExperts((prev) => [...prev, email]);
+  const handleAddExpert = (email) => setAddedExperts((prev) => [...prev, email]);
+  const handleDeleteExpert = (email) => setAddedExperts((prev) => prev.filter((e) => e !== email));
+  const selectedCount = Array.isArray(addedExperts) ? addedExperts.length : 0;
+
+  const headCellSx = {
+    fontWeight: 950,
+    color: alpha(theme.palette.common.white, 0.82),
+    borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+    bgcolor: alpha(theme.palette.common.white, 0.04),
+    py: 1.05,
   };
 
-  const handleDeleteExpert = (email) => {
-    setAddedExperts((prev) => prev.filter(expertEmail => expertEmail !== email));
+  const bodyCellSx = {
+    color: alpha(theme.palette.common.white, 0.90),
+    fontWeight: 850,
+    borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+    py: 1.05,
+  };
+
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      bgcolor: alpha(theme.palette.common.white, 0.04),
+      borderRadius: 3,
+    },
   };
 
   return (
-    <GlassPaper
-      variant="elevation"
-      elevation={0}
-      sx={{
-        p: { xs: 3, sm: 4, md: 5 },
-        pb: { xs: 1, sm: 2, md: 3 },
-        borderRadius: 2,
-        flexGrow: 1,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        maxWidth: { xs: "95vw", lg: "65vw" },
-        minWidth: { xs: "80vw", sm: "90vw", md: "90vw", lg: "50vw" },
-        boxShadow: "0 8px 24px rgba(29, 82, 81, 0.1)",
-      }}
-    >
-      <Stack spacing={2} justifyContent={"center"} alignItems={"center"}>
-        {/* Filtros de búsqueda */}
-        <Stack width={"100%"} direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={"space-between"}>
-          <TextField
-            label="Search by Name, Email or University"
-            variant="outlined"
-            color="info"
-            size="small"
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            autoComplete="off"
-            fullWidth
-          />
+    <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
+      {/* Header (sin caja) */}
+      <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
+        <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
+          <Avatar
+            sx={{
+              width: 44,
+              height: 44,
+              bgcolor: alpha(theme.palette.info.main, 0.12),
+              color: "info.main",
+              border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+            }}
+          >
+            <PeopleAltIcon />
+          </Avatar>
+
+          <Stack spacing={0.15} sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+              Add experts
+            </Typography>
+            <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+              {filteredExperts.length} available • {selectedCount} selected
+            </Typography>
+          </Stack>
         </Stack>
-        {/* Chips para los expertos añadidos */}
-        <Stack flexWrap={"wrap"} direction="row" gap={1} sx={{ display: addedExperts.length > 0 ? "flex" : "none", width: "100%" }}>
-          {addedExperts.map((email, index) => (
+
+        {selectedCount > 0 ? (
+          <Box
+            sx={{
+              px: 1.1,
+              py: 0.55,
+              borderRadius: 999,
+              bgcolor: alpha(theme.palette.info.main, 0.10),
+              color: "info.main",
+              fontSize: 12,
+              fontWeight: 950,
+              border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+            }}
+          >
+            {selectedCount}
+          </Box>
+        ) : null}
+      </Stack>
+
+      {/* Search */}
+      <TextField
+        label="Search by name, email or university"
+        variant="outlined"
+        color="info"
+        size="small"
+        value={searchFilter}
+        onChange={(e) => setSearchFilter(e.target.value)}
+        autoComplete="off"
+        fullWidth
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" style={{ opacity: 0.75 }} />
+            </InputAdornment>
+          ),
+        }}
+        sx={inputSx}
+      />
+
+      {/* Chips */}
+      {selectedCount > 0 ? (
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          {addedExperts.map((email) => (
             <Chip
+              key={email}
               variant="outlined"
-              key={index}
               label={email}
               onDelete={() => handleDeleteExpert(email)}
-
+              sx={{
+                borderColor: alpha(theme.palette.common.white, 0.18),
+                color: alpha(theme.palette.common.white, 0.88),
+                bgcolor: alpha(theme.palette.common.white, 0.03),
+                "& .MuiChip-deleteIcon": { color: alpha(theme.palette.common.white, 0.55) },
+                "& .MuiChip-deleteIcon:hover": { color: alpha(theme.palette.common.white, 0.85) },
+              }}
             />
           ))}
         </Stack>
-        {/* Tabla de expertos */}
-        <TableContainer sx={{ maxHeight: "50vh" }}>
-          <Table>
-            <TableHead>
+      ) : null}
+
+      {/* Table (superficie principal) */}
+      <TableContainer
+        sx={{
+          maxHeight: "52vh",
+          borderRadius: 4,
+          border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+          bgcolor: alpha(theme.palette.common.white, 0.02),
+          overflow: "auto",
+          scrollbarWidth: "thin",
+          scrollbarColor: `${alpha(theme.palette.common.white, 0.22)} transparent`,
+          "&::-webkit-scrollbar": { width: 8, height: 8 },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: alpha(theme.palette.common.white, 0.16),
+            borderRadius: 999,
+            border: `2px solid transparent`,
+            backgroundClip: "content-box",
+          },
+          "&::-webkit-scrollbar-thumb:hover": { backgroundColor: alpha(theme.palette.common.white, 0.24) },
+        }}
+      >
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={headCellSx}>Name</TableCell>
+              <TableCell sx={headCellSx}>Email</TableCell>
+              <TableCell sx={headCellSx}>University</TableCell>
+              <TableCell sx={{ ...headCellSx, width: 72, textAlign: "center" }}>Add</TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {filteredExperts.length === 0 ? (
               <TableRow>
-                <StyledTableCell>Name</StyledTableCell>
-                <StyledTableCell>Email</StyledTableCell>
-                <StyledTableCell>University</StyledTableCell>
-                <StyledTableCell>Add</StyledTableCell>
+                <TableCell colSpan={4} sx={{ ...bodyCellSx, py: 3 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                    No experts match this search.
+                  </Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredExperts.map((expert) => (
-                <TableRow key={expert.email}>
-                  <TableCell>{expert.name}</TableCell>
-                  <TableCell>{expert.email}</TableCell>
-                  <TableCell>{expert.university}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => handleAddExpert(expert.email)}>
-                      <AddCircleIcon color="success" />
-                    </IconButton>
+            ) : (
+              filteredExperts.map((expert) => (
+                <TableRow
+                  key={expert.email}
+                  hover
+                  sx={{ "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.08) } }}
+                >
+                  <TableCell sx={bodyCellSx}>{expert.name}</TableCell>
+                  <TableCell sx={bodyCellSx}>{expert.email}</TableCell>
+                  <TableCell sx={bodyCellSx}>{expert.university}</TableCell>
+                  <TableCell sx={{ ...bodyCellSx, textAlign: "center" }}>
+                    <Tooltip title="Add expert" arrow placement="top">
+                      <IconButton onClick={() => handleAddExpert(expert.email)} size="small">
+                        <AddCircleIcon color="success" />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-        {closeAddExpertsDialog &&
-          <Stack direction={{sx: "column-reverse",sm: "row"}} spacing={2} justifyContent={"flex-end"} width={"100%"} sx={{ pt: 1 }}>
-            <Button onClick={closeAddExpertsDialog.closeAddExpertsDialog} color="info" variant="outlined">
-              Cancel
-            </Button>
-            <Button
-              onClick={closeAddExpertsDialog.closeAddExpertsDialog}
-              variant="outlined"
-              color="success"
-            >
-              Add Selected
-            </Button>
-          </Stack>
+      {/* Footer actions si aplica */}
+      {closeAddExpertsDialog ? (
+        <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1.25} justifyContent="flex-end">
+          <Button
+            onClick={closeAddExpertsDialog.closeAddExpertsDialog}
+            color="info"
+            variant="outlined"
+            startIcon={<CancelOutlinedIcon />}
+          >
+            Cancel
+          </Button>
 
-        }
-
-
-      </Stack>
-
-    </GlassPaper>
+          <Button
+            onClick={closeAddExpertsDialog.closeAddExpertsDialog}
+            variant="outlined"
+            color="success"
+            startIcon={<PersonAddAltOutlinedIcon />}
+          >
+            Add selected
+          </Button>
+        </Stack>
+      ) : null}
+    </Stack>
   );
 };
