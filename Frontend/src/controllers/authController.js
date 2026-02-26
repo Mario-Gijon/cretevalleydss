@@ -1,11 +1,12 @@
 // Estado de autenticación vacío
 export const EmptyAuthState = {
-  value: { university: "", name: "", email: "", accountCreation: "" },
-  setValue: () => { },
-  isLoggedIn: false,
-  loading: true,
+  university: "",
+  name: "",
+  email: "",
+  accountCreation: "",
+  role: "user",
+  isAdmin: false,
 };
-
 // Función para obtener el token actualizado
 export const getToken = async () => {
   // Opciones de la solicitud de actualización

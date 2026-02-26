@@ -10,6 +10,7 @@ import { refreshToken } from '../middlewares/refreshToken.js'
 import { singupValidationRules, loginValidationRules, updatePasswordValidationRules, newUniversityValidationRules, newNameValidationRules, newEmailValidationRules } from '../middlewares/authValidations.js'
 // Importa el middleware para verificar la validez del token de refresco.
 import { requireRefreshToken } from '../middlewares/requireRefreshToken.js'
+import { requireAdmin } from '../middlewares/requireAdmin.js'
 
 // Crea una instancia del enrutador de Express.
 const router = Router()
@@ -61,6 +62,8 @@ router.get("/accountConfirm/:token", accountConfirm)
 // Define la ruta GET para confirmar una cuenta mediante un token de confirmación.
 // Ejecuta el controlador `accountConfirm`.
 router.get("/confirmEmailChange/:token", confirmEmailChange)
+
+router.get("/admin/check", requireToken, requireAdmin, (req, res) => { return res.json({ success: true, msg: "Admin access granted" }) })
 
 // Exporta el enrutador para que pueda ser utilizado en otros módulos.
 export default router

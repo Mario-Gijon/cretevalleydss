@@ -186,8 +186,6 @@ const SectionCard = ({ title, icon, right, children, sx }) => {
   );
 };
 
-const LABEL_W = 130;
-
 const Row = ({ label, value }) => (
   <Stack direction="row" spacing={1}>
     <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>

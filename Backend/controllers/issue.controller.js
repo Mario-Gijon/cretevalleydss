@@ -26,6 +26,7 @@ import axios from "axios"
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
 import { createIssueDomainSnapshots } from '../models/createIssueDomainSnapshots.js';
+import { cleanupExpertDraftsOnExit } from '../utils/cleanupExpertDraftsOnExit.js';
 
 // Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
@@ -701,100 +702,52 @@ export const createIssue = async (req, res) => {
   }
 };
 
-
 export const getAllActiveIssues = async (req, res) => {
   const userId = String(req.uid || "");
 
   try {
-    // -----------------------------
-    // ✅ “Constantes” internas
-    // -----------------------------
     const STAGE_META = {
       criteriaWeighting: { key: "criteriaWeighting", label: "Criteria weighting", short: "Weighting", colorKey: "info" },
       weightsFinished: { key: "weightsFinished", label: "Weights finished", short: "Weights done", colorKey: "warning" },
       alternativeEvaluation: { key: "alternativeEvaluation", label: "Alternative evaluation", short: "Evaluation", colorKey: "info" },
-      // opcional por si tienes un stage real con este nombre en DB
       alternativeConsensus: { key: "alternativeConsensus", label: "Alternative consensus", short: "Consensus", colorKey: "success" },
       finished: { key: "finished", label: "Finished", short: "Finished", colorKey: "success" },
     };
 
-    // ✅ Colores por tipo (TU regla):
-    // - evaluate => info (azul)
-    // - waiting  => success (verde)
-    // - compute/resolve => warning (amarillo)
     const ACTION_META = {
-      resolveIssue: {
-        key: "resolveIssue",
-        label: "Resolve issue",
-        role: "admin",
-        severity: "warning",
-        sortPriority: 0,
-      },
-      computeWeights: {
-        key: "computeWeights",
-        label: "Compute weights",
-        role: "admin",
-        severity: "warning",
-        sortPriority: 10,
-      },
-      evaluateWeights: {
-        key: "evaluateWeights",
-        label: "Evaluate weights",
-        role: "expert",
-        severity: "info",
-        sortPriority: 30,
-      },
-      evaluateAlternatives: {
-        key: "evaluateAlternatives",
-        label: "Evaluate alternatives",
-        role: "expert",
-        severity: "info",
-        sortPriority: 40,
-      },
-      waitingAdmin: {
-        key: "waitingAdmin",
-        label: "Waiting admin",
-        role: "expert",
-        severity: "success",
-        sortPriority: 60,
-      },
+      resolveIssue: { key: "resolveIssue", label: "Resolve issue", role: "admin", severity: "warning", sortPriority: 0 },
+      computeWeights: { key: "computeWeights", label: "Compute weights", role: "admin", severity: "warning", sortPriority: 10 },
+      evaluateWeights: { key: "evaluateWeights", label: "Evaluate weights", role: "expert", severity: "info", sortPriority: 30 },
+      evaluateAlternatives: { key: "evaluateAlternatives", label: "Evaluate alternatives", role: "expert", severity: "info", sortPriority: 40 },
+      waitingAdmin: { key: "waitingAdmin", label: "Waiting admin", role: "expert", severity: "success", sortPriority: 60 },
     };
+
+    const TASK_ACTION_KEYS = ["resolveIssue", "computeWeights", "evaluateWeights", "evaluateAlternatives"];
 
     const safeOid = (v) => (v ? String(v) : "");
     const uniq = (arr) => Array.from(new Set(arr));
-
     const inc = (obj, key) => {
       obj[key] = (obj[key] || 0) + 1;
       return obj;
     };
 
-    // -----------------------------
-    // ✅ helpers workflow/modelParameters
-    // -----------------------------
     const cleanModelParameters = (mp) => {
       const obj = mp && typeof mp === "object" ? { ...mp } : {};
-      // ✅ NO enviar weights (ya aparece en criteria)
       if ("weights" in obj) delete obj.weights;
       return obj;
     };
 
     const detectHasDirectWeights = (issue) => {
-      // ✅ estable: lo que se decidió al crear el issue
       const wm = String(issue?.weightingMode || "").toLowerCase();
       if (["manual", "direct", "predefined", "fixed"].includes(wm)) return true;
 
-      // si el creador metió weights directamente en modelParameters al crear el issue
       const w = issue?.modelParameters?.weights;
       if (Array.isArray(w) && w.length > 0 && w.some((x) => x !== null && x !== undefined)) return true;
 
       return false;
     };
 
-    // ✅ consenso “enabled” (estable), NO “active”
-    // Ajusta aquí si tienes un flag más específico para consenso de alternativas
-    const detectHasAlternativeConsensusEnabled = (issue) => {
-      return Boolean(issue?.isConsensus);
-    };
+    const detectHasAlternativeConsensusEnabled = (issue) => Boolean(issue?.isConsensus);
 
     const buildWorkflowStepsStable = ({ hasDirectWeights, hasAlternativeConsensus }) => {
       if (hasDirectWeights) {
@@ -805,7 +758,6 @@ export const getAllActiveIssues = async (req, res) => {
           { key: "readyResolve", label: "Ready to resolve" },
         ];
       }
-
       return [
         { key: "criteriaWeighting", label: "Criteria weighting" },
         { key: "weightsFinished", label: "Weights finished" },
@@ -815,9 +767,6 @@ export const getAllActiveIssues = async (req, res) => {
       ];
     };
 
-    // -----------------------------
-    // 1) IDs de issues activos (admin + expert accepted)
-    // -----------------------------
     const [adminIssues, acceptedParticipations] = await Promise.all([
       Issue.find({ admin: userId, active: true }).select("_id").lean(),
       Participation.find({ expert: userId, invitationStatus: "accepted" })
@@ -826,17 +775,27 @@ export const getAllActiveIssues = async (req, res) => {
     ]);
 
     const adminIssueIds = adminIssues.map((i) => safeOid(i._id));
+    const adminIssueIdSet = new Set(adminIssueIds);
+
     const expertIssueIds = acceptedParticipations
       .filter((p) => p.issue)
       .map((p) => safeOid(p.issue._id));
 
     const issueIds = uniq([...adminIssueIds, ...expertIssueIds]);
 
+    const emptyTasksByType = {
+      resolveIssue: [],
+      computeWeights: [],
+      evaluateWeights: [],
+      evaluateAlternatives: [],
+      waitingAdmin: [],
+    };
+
     if (issueIds.length === 0) {
       return res.json({
         success: true,
         issues: [],
-        tasks: { total: 0, byType: {} },
+        tasks: { total: 0, byType: emptyTasksByType },
         taskCenter: { total: 0, sections: [] },
         filtersMeta: {
           defaults: { role: "all", stage: "all", action: "all", sort: "smart", q: "" },
@@ -870,25 +829,14 @@ export const getAllActiveIssues = async (req, res) => {
       });
     }
 
-    // -----------------------------
-    // 2) Carga masiva de datos
-    // -----------------------------
     const [issues, allParticipations, alternatives, criteria, consensusPhases] = await Promise.all([
-      Issue.find({ _id: { $in: issueIds } })
-        .populate("model")
-        .populate("admin", "email name")
-        .lean(),
-      Participation.find({ issue: { $in: issueIds } })
-        .populate("expert", "email")
-        .lean(),
+      Issue.find({ _id: { $in: issueIds } }).populate("model").populate("admin", "email name").lean(),
+      Participation.find({ issue: { $in: issueIds } }).populate("expert", "email").lean(),
       Alternative.find({ issue: { $in: issueIds } }).lean(),
       Criterion.find({ issue: { $in: issueIds } }).lean(),
       Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
     ]);
 
-    // -----------------------------
-    // 3) Maps para rendimiento
-    // -----------------------------
     const consensusPhaseCountMap = consensusPhases.reduce((acc, curr) => {
       const id = safeOid(curr.issue);
       acc[id] = (acc[id] || 0) + 1;
@@ -909,9 +857,6 @@ export const getAllActiveIssues = async (req, res) => {
       return acc;
     }, {});
 
-    // -----------------------------
-    // 4) Task Center agregado
-    // -----------------------------
     const tasksByType = {
       resolveIssue: [],
       computeWeights: [],
@@ -920,15 +865,20 @@ export const getAllActiveIssues = async (req, res) => {
       waitingAdmin: [],
     };
 
-    // -----------------------------
-    // 5) Construcción de issues formateados
-    // -----------------------------
     const formattedIssues = issues.map((issue) => {
       const issueIdStr = safeOid(issue._id);
-
-      // participaciones
       const issueParticipations = participationMap[issueIdStr] || [];
-      const isAdminUser = safeOid(issue.admin?._id) === userId;
+
+      const isValidUserId = Boolean(userId) && userId !== "undefined" && userId !== "null" && userId !== "[object Object]";
+      const adminId = (() => {
+        const a = issue?.admin;
+        if (!a) return "";
+        if (typeof a === "string") return a;
+        if (typeof a === "object" && a._id) return safeOid(a._id);
+        return "";
+      })();
+
+      const isAdminUser = isValidUserId && ((adminId && adminId === userId) || adminIssueIdSet.has(issueIdStr));
 
       const acceptedExperts = issueParticipations.filter((p) => p.invitationStatus === "accepted");
       const pendingExperts = issueParticipations.filter((p) => p.invitationStatus === "pending");
@@ -937,7 +887,6 @@ export const getAllActiveIssues = async (req, res) => {
       const hasPending = pendingExperts.length > 0;
       const realParticipants = acceptedExperts;
 
-      // progreso
       const totalAccepted = acceptedExperts.length;
       const weightsDone = acceptedExperts.filter((p) => p.weightsCompleted).length;
       const evalsDone = acceptedExperts.filter((p) => p.evaluationCompleted).length;
@@ -947,15 +896,10 @@ export const getAllActiveIssues = async (req, res) => {
 
       const isExpertAccepted = acceptedExperts.some((p) => safeOid(p.expert?._id) === userId);
 
-      const myParticipation =
-        issueParticipations.find((p) => safeOid(p.expert?._id) === userId) || null;
+      const myParticipation = issueParticipations.find((p) => safeOid(p.expert?._id) === userId) || null;
 
-      // alternativas
-      const altNames = (alternativesMap[issueIdStr] || [])
-        .map((a) => a.name)
-        .sort((a, b) => a.localeCompare(b));
+      const altNames = (alternativesMap[issueIdStr] || []).map((a) => a.name).sort((a, b) => a.localeCompare(b));
 
-      // criteria tree + final weights
       const issueCriteria = criteria
         .filter((c) => safeOid(c.issue) === issueIdStr)
         .map((c) => ({
@@ -1003,11 +947,9 @@ export const getAllActiveIssues = async (req, res) => {
       };
       criteriaTree.forEach((r) => decorate(r, 0));
 
-      // consenso fase actual
       const savedPhasesCount = consensusPhaseCountMap[issueIdStr] || 0;
       const consensusCurrentPhase = savedPhasesCount + 1;
 
-      // deadline meta
       const closureDateStr = issue.closureDate;
       let deadline = { hasDeadline: false, daysLeft: null, overdue: false, iso: null };
       if (closureDateStr) {
@@ -1018,7 +960,6 @@ export const getAllActiveIssues = async (req, res) => {
         }
       }
 
-      // statusFlags + acciones
       const stage = issue.currentStage;
 
       const allWeightsDone = realParticipants.length > 0 && realWeightsDone === realParticipants.length;
@@ -1027,22 +968,13 @@ export const getAllActiveIssues = async (req, res) => {
       const waitingAdmin =
         !isAdminUser &&
         !hasPending &&
-        ((stage === "weightsFinished" && allWeightsDone) ||
-          (stage === "alternativeEvaluation" && allEvalsDone));
+        ((stage === "weightsFinished" && allWeightsDone) || (stage === "alternativeEvaluation" && allEvalsDone));
 
       const canComputeWeights =
-        stage === "weightsFinished" &&
-        isAdminUser &&
-        !hasPending &&
-        realParticipants.length > 0 &&
-        allWeightsDone;
+        stage === "weightsFinished" && isAdminUser && !hasPending && realParticipants.length > 0 && allWeightsDone;
 
       const canResolveIssue =
-        stage === "alternativeEvaluation" &&
-        isAdminUser &&
-        !hasPending &&
-        realParticipants.length > 0 &&
-        allEvalsDone;
+        stage === "alternativeEvaluation" && isAdminUser && !hasPending && realParticipants.length > 0 && allEvalsDone;
 
       const canEvaluateWeights =
         stage === "criteriaWeighting" &&
@@ -1054,7 +986,6 @@ export const getAllActiveIssues = async (req, res) => {
         isExpertAccepted &&
         realParticipants.some((p) => safeOid(p.expert?._id) === userId && !p.evaluationCompleted);
 
-      // ✅ waitingExperts (incluye pendientes y “sin acción”)
       const waitingExperts =
         (hasPending && stage !== "finished") ||
         (!waitingAdmin && !canResolveIssue && !canComputeWeights && !canEvaluateWeights && !canEvaluateAlternatives && stage !== "finished");
@@ -1068,18 +999,15 @@ export const getAllActiveIssues = async (req, res) => {
         waitingExperts,
       };
 
-      // acciones (orden inteligente)
       const actions = [];
       if (canResolveIssue) actions.push(ACTION_META.resolveIssue);
       if (canComputeWeights) actions.push(ACTION_META.computeWeights);
       if (canEvaluateWeights) actions.push(ACTION_META.evaluateWeights);
       if (canEvaluateAlternatives) actions.push(ACTION_META.evaluateAlternatives);
-      if (waitingAdmin) actions.push(ACTION_META.waitingAdmin);
 
       actions.sort((a, b) => a.sortPriority - b.sortPriority);
       const nextAction = actions[0] ?? null;
 
-      // status humano + statusKey (✅ sin pendingInvitations)
       let statusLabel = STAGE_META[stage]?.label ?? stage;
       let statusKey = stage;
 
@@ -1097,10 +1025,13 @@ export const getAllActiveIssues = async (req, res) => {
         statusKey = "waitingExperts";
       }
 
-      const sortPriority = nextAction ? nextAction.sortPriority : 80;
+      const sortPriority = waitingAdmin ? (ACTION_META.waitingAdmin?.sortPriority ?? 60) : nextAction ? nextAction.sortPriority : 80;
 
-      // tasks globales
       for (const a of actions) {
+        if (!TASK_ACTION_KEYS.includes(a.key)) continue;
+        if (a.role === "admin" && !isAdminUser) continue;
+        if (a.role === "expert" && !isExpertAccepted) continue;
+
         tasksByType[a.key].push({
           issueId: issueIdStr,
           issueName: issue.name,
@@ -1114,7 +1045,6 @@ export const getAllActiveIssues = async (req, res) => {
         });
       }
 
-      // listas “como antes”
       const participatedExperts =
         stage === "criteriaWeighting" || stage === "weightsFinished"
           ? acceptedExperts.filter((p) => p.weightsCompleted === true)
@@ -1128,18 +1058,10 @@ export const getAllActiveIssues = async (req, res) => {
       const evaluated = participatedExperts.map((p) => safeOid(p.expert?._id)).includes(userId);
 
       const role =
-        isAdminUser && isExpertAccepted
-          ? "both"
-          : isAdminUser
-          ? "admin"
-          : isExpertAccepted
-          ? "expert"
-          : "viewer";
+        isAdminUser && isExpertAccepted ? "both" : isAdminUser ? "admin" : isExpertAccepted ? "expert" : "viewer";
 
-      // ✅ modelParameters (sin weights)
       const modelParameters = cleanModelParameters(issue.modelParameters);
 
-      // ✅ workflow estable
       const hasDirectWeights = detectHasDirectWeights(issue);
       const hasAlternativeConsensus = detectHasAlternativeConsensusEnabled(issue);
       const workflowSteps = buildWorkflowStepsStable({ hasDirectWeights, hasAlternativeConsensus });
@@ -1154,43 +1076,29 @@ export const getAllActiveIssues = async (req, res) => {
         isConsensus: Boolean(issue.isConsensus),
         currentStage: stage,
         weightingMode: issue.weightingMode,
-
         ...(issue.model?.isConsensus && {
           consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
           consensusThreshold: issue.consensusThreshold,
           consensusCurrentPhase,
         }),
-
         creationDate: issue.creationDate || null,
         closureDate: issue.closureDate || null,
-
         isAdmin: isAdminUser,
         isExpert: isExpertAccepted,
         role,
-
         alternatives: altNames,
         criteria: criteriaTree,
-
         evaluated,
-
         totalExperts:
-          participatedExperts.length +
-          pendingExperts.length +
-          declinedExperts.length +
-          acceptedButNotEvaluated.length,
-
+          participatedExperts.length + pendingExperts.length + declinedExperts.length + acceptedButNotEvaluated.length,
         participatedExperts: participatedExperts.map((p) => p.expert.email).sort(),
         pendingExperts: pendingExperts.map((p) => p.expert.email).sort(),
         notAcceptedExperts: declinedExperts.map((p) => p.expert.email).sort(),
         acceptedButNotEvaluatedExperts: acceptedButNotEvaluated.map((p) => p.expert.email).sort(),
-
         statusFlags,
         progress: { weightsDone, evalsDone, totalAccepted },
         finalWeights: finalWeightsMap,
-
-        // ✅ modelParameters listo para el drawer (sin weights)
         modelParameters,
-
         myParticipation: myParticipation
           ? {
               invitationStatus: myParticipation.invitationStatus,
@@ -1199,10 +1107,8 @@ export const getAllActiveIssues = async (req, res) => {
               joinedAt: myParticipation.joinedAt || null,
             }
           : null,
-
         actions,
         nextAction,
-
         ui: {
           stage,
           stageLabel: STAGE_META[stage]?.label ?? stage,
@@ -1211,30 +1117,22 @@ export const getAllActiveIssues = async (req, res) => {
           statusLabel,
           sortPriority,
           deadline,
-
-          // ✅ workflow estable para el FE
           hasDirectWeights,
           hasAlternativeConsensus,
           workflowSteps,
-
           permissions: {
             evaluateWeights: canEvaluateWeights,
             evaluateAlternatives: canEvaluateAlternatives,
             computeWeights: canComputeWeights,
             resolveIssue: canResolveIssue,
-            waitingAdmin: waitingAdmin,
+            waitingAdmin,
             waitingExperts: statusKey === "waitingExperts",
           },
-
-          // ✅ duplicado útil
           modelParameters,
         },
       };
     });
 
-    // -----------------------------
-    // 6) Orden inteligente + tasks sorting
-    // -----------------------------
     formattedIssues.sort((a, b) => {
       const ap = a.ui?.sortPriority ?? 90;
       const bp = b.ui?.sortPriority ?? 90;
@@ -1247,8 +1145,8 @@ export const getAllActiveIssues = async (req, res) => {
       return String(a.name).localeCompare(String(b.name));
     });
 
-    for (const k of Object.keys(tasksByType)) {
-      tasksByType[k].sort((a, b) => {
+    for (const k of TASK_ACTION_KEYS) {
+      (tasksByType[k] || []).sort((a, b) => {
         if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
         const ad = a.deadline?.hasDeadline ? a.deadline.daysLeft : 999999;
         const bd = b.deadline?.hasDeadline ? b.deadline.daysLeft : 999999;
@@ -1257,12 +1155,10 @@ export const getAllActiveIssues = async (req, res) => {
       });
     }
 
-    const totalTasks = Object.values(tasksByType).reduce((acc, arr) => acc + arr.length, 0);
+    const totalTasks = TASK_ACTION_KEYS.reduce((acc, k) => acc + (tasksByType[k]?.length || 0), 0);
 
-    // -----------------------------
-    // 7) ✅ TaskCenter “listo para pintar”
-    // -----------------------------
     const taskCenterSections = Object.values(ACTION_META)
+      .filter((m) => TASK_ACTION_KEYS.includes(m.key))
       .sort((a, b) => a.sortPriority - b.sortPriority)
       .map((meta) => {
         const items = tasksByType[meta.key] || [];
@@ -1278,14 +1174,8 @@ export const getAllActiveIssues = async (req, res) => {
       })
       .filter((s) => s.count > 0);
 
-    const taskCenter = {
-      total: totalTasks,
-      sections: taskCenterSections,
-    };
+    const taskCenter = { total: totalTasks, sections: taskCenterSections };
 
-    // -----------------------------
-    // 8) ✅ filtersMeta
-    // -----------------------------
     const roleCounts = {};
     const stageCounts = {};
     const actionCounts = {};
@@ -1293,14 +1183,12 @@ export const getAllActiveIssues = async (req, res) => {
     for (const it of formattedIssues) {
       inc(roleCounts, it.role || "viewer");
       inc(stageCounts, it.ui?.stage || it.currentStage || "unknown");
-
-      const actionKey = it.ui?.statusKey || (it.nextAction?.key || "none");
+      const actionKey = it.ui?.statusKey || it.nextAction?.key || "none";
       inc(actionCounts, actionKey);
     }
 
     const filtersMeta = {
       defaults: { role: "all", stage: "all", action: "all", q: "" },
-
       roleOptions: [
         { value: "all", label: "All roles" },
         { value: "admin", label: "Admin" },
@@ -1308,37 +1196,21 @@ export const getAllActiveIssues = async (req, res) => {
         { value: "both", label: "Admin & Expert" },
         { value: "viewer", label: "Viewer" },
       ],
-
-      stageOptions: [
-        { value: "all", label: "All stages" },
-        ...Object.values(STAGE_META).map((s) => ({ value: s.key, label: s.label })),
-      ],
-
+      stageOptions: [{ value: "all", label: "All stages" }, ...Object.values(STAGE_META).map((s) => ({ value: s.key, label: s.label }))],
       actionOptions: [
         { value: "all", label: "All actions" },
         { value: "waitingExperts", label: "Waiting experts" },
-        ...Object.values(ACTION_META)
-          .sort((a, b) => a.sortPriority - b.sortPriority)
-          .map((a) => ({ value: a.key, label: a.label })),
+        ...Object.values(ACTION_META).sort((a, b) => a.sortPriority - b.sortPriority).map((a) => ({ value: a.key, label: a.label })),
         { value: "none", label: "No pending action" },
       ],
-
       sortOptions: [
         { value: "nameAsc", label: "Name (A→Z)" },
         { value: "nameDesc", label: "Name (Z→A)" },
         { value: "deadlineSoon", label: "Deadline (soonest)" },
       ],
-
-      counts: {
-        roles: roleCounts,
-        stages: stageCounts,
-        actions: actionCounts,
-      },
+      counts: { roles: roleCounts, stages: stageCounts, actions: actionCounts },
     };
 
-    // -----------------------------
-    // 9) Respuesta
-    // -----------------------------
     return res.json({
       success: true,
       issues: formattedIssues,
@@ -2134,7 +2006,7 @@ export const resolvePairwiseIssue = async (req, res) => {
       timestamp: new Date(),
       collectiveEvaluations: transformedCollectiveEvaluations, // Ahora con nombres
       details: {
-        rankedAlternatives: rankedWithScores, 
+        rankedAlternatives: rankedWithScores,
         matrices,
         // opcional:
         collective_scores: Object.fromEntries(altNames.map((n, i) => [n, collective_scores?.[i] ?? null])),
@@ -2238,6 +2110,12 @@ export const removeFinishedIssue = async (req, res) => {
   const { id } = req.body;
   const userId = req.uid;
 
+  const mapStage = (stage) => {
+    if (stage === "criteriaWeighting" || stage === "weightsFinished") return "criteriaWeighting";
+    if (stage === "alternativeEvaluation") return "alternativeEvaluation";
+    return null;
+  };
+
   try {
     const issue = await Issue.findById(id);
 
@@ -2249,32 +2127,35 @@ export const removeFinishedIssue = async (req, res) => {
       return res.status(400).json({ success: false, msg: "Issue is still active" });
     }
 
-    let previousExit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
+    const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
+    const currentPhase = latestConsensus ? latestConsensus.phase + 1 : null;
 
-    if (previousExit) {
-      const past = {
-        timestamp: previousExit.timestamp,
-        phase: previousExit.phase,
-        reason: previousExit.reason || null,
-      };
+    const now = new Date();
+    const stageForLog = mapStage(issue.currentStage);
 
-      previousExit.history = previousExit.history ? [...previousExit.history, past] : [past];
-      previousExit.timestamp = new Date();
-      previousExit.phase = null;
-      previousExit.reason = "Issue finished and removed for user";
-      previousExit.hidden = true;
+    const entry = {
+      timestamp: now,
+      phase: currentPhase,
+      stage: stageForLog,
+      action: "exited",
+      reason: "Issue finished and removed for user",
+    };
 
-      await previousExit.save();
-    } else {
-      await ExitUserIssue.create({
-        issue: issue._id,
-        user: userId,
-        timestamp: new Date(),
-        phase: null,
-        reason: "Issue finished and removed for user",
-        hidden: true,
-      });
-    }
+    await ExitUserIssue.findOneAndUpdate(
+      { issue: issue._id, user: userId },
+      {
+        $setOnInsert: { issue: issue._id, user: userId },
+        $set: {
+          hidden: true,
+          timestamp: now,
+          phase: currentPhase,
+          stage: stageForLog,
+          reason: "Issue finished and removed for user",
+        },
+        $push: { history: entry },
+      },
+      { upsert: true, new: true }
+    );
 
     const participants = await Participation.find({ issue: issue._id });
     const exits = await ExitUserIssue.find({ issue: issue._id, hidden: true });
@@ -2292,7 +2173,6 @@ export const removeFinishedIssue = async (req, res) => {
       await Notification.deleteMany({ issue: issue._id });
       await ExitUserIssue.deleteMany({ issue: issue._id });
 
-      // ✅ NUEVO
       await IssueExpressionDomain.deleteMany({ issue: issue._id });
 
       await Issue.deleteOne({ _id: issue._id });
@@ -2314,6 +2194,13 @@ export const editExperts = async (req, res) => {
   const { id, expertsToAdd, expertsToRemove } = req.body;
   const userId = req.uid;
 
+  // ✅ Mapea el currentStage real del Issue a lo que permite ExitUserIssue/Participation
+  const mapStage = (stage) => {
+    if (stage === "criteriaWeighting" || stage === "weightsFinished") return "criteriaWeighting";
+    if (stage === "alternativeEvaluation") return "alternativeEvaluation";
+    return null; // finished u otros -> null (porque tu enum no los permite)
+  };
+
   try {
     const issue = await Issue.findById(id).populate("model");
 
@@ -2333,13 +2220,10 @@ export const editExperts = async (req, res) => {
     ]);
 
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
+    const stageForLog = mapStage(issue.currentStage);
 
     // ✅ elegimos un dominio por defecto para crear evaluaciones nuevas
-    // prioridad: uno numérico si existe, si no el primero que haya
-    const defaultSnapshot =
-      snapshots.find((d) => d.type === "numeric") ||
-      snapshots[0] ||
-      null;
+    const defaultSnapshot = snapshots.find((d) => d.type === "numeric") || snapshots[0] || null;
 
     if (!defaultSnapshot) {
       return res.status(400).json({
@@ -2351,7 +2235,9 @@ export const editExperts = async (req, res) => {
     const leafCriteria = criteria.filter((c) => c.isLeaf);
     const isPairwise = Boolean(issue.model?.isPairwise);
 
+    // =========================
     // --- AÑADIR EXPERTOS ---
+    // =========================
     for (const emailRaw of expertsToAdd || []) {
       const email = String(emailRaw || "").trim();
       if (!email) continue;
@@ -2359,97 +2245,109 @@ export const editExperts = async (req, res) => {
       const expertUser = await User.findOne({ email });
       if (!expertUser) continue;
 
-      const existingParticipation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
+      const existingParticipation = await Participation.findOne({
+        issue: issue._id,
+        expert: expertUser._id,
+      });
 
-      if (!existingParticipation) {
-        const isAdmin = expertUser._id.equals(userId);
+      if (existingParticipation) continue;
 
-        await Participation.create({
-          issue: issue._id,
-          expert: expertUser._id,
-          invitationStatus: isAdmin ? "accepted" : "pending",
-          evaluationCompleted: false,
-          entryPhase: currentPhase,
+      const isAdminExpert = expertUser._id.equals(userId);
+
+      // ✅ weightsCompleted para el nuevo experto:
+      // - si estamos en criteriaWeighting/weightsFinished -> false (debe hacer pesos)
+      // - si estamos en alternativeEvaluation -> true (pesos ya están)
+      const weightsCompleted = stageForLog !== "criteriaWeighting";
+
+      await Participation.create({
+        issue: issue._id,
+        expert: expertUser._id,
+        invitationStatus: isAdminExpert ? "accepted" : "pending",
+        evaluationCompleted: false,
+        weightsCompleted,
+        entryPhase: currentPhase,
+        entryStage: stageForLog,
+        joinedAt: new Date(),
+      });
+
+      // Email + notificación (solo si no es el admin)
+      if (!isAdminExpert) {
+        const admin = await User.findById(userId);
+
+        await resend.emails.send({
+          from: "onboarding@resend.dev",
+          to: email,
+          subject: "You have been invited to an issue",
+          html: `
+            <html>
+              <body>
+                <h2>You have been invited to the issue "${issue.name}"</h2>
+                <p>${admin.email} has invited you as an expert for the issue ${issue.name}. The issue description is:</p>
+                <p>${issue.description}</p>
+                <p>Accept the invitation to participate.</p>
+              </body>
+            </html>
+          `,
         });
 
-        if (!isAdmin) {
-          const admin = await User.findById(userId);
+        await Notification.create({
+          expert: expertUser._id,
+          issue: issue._id,
+          type: "invitation",
+          message: `You have been invited by ${admin.name} to participate in ${issue.name}.`,
+          read: false,
+          requiresAction: true,
+        });
+      }
 
-          await resend.emails.send({
-            from: "onboarding@resend.dev",
-            to: email,
-            subject: "You have been invited to an issue",
-            html: `
-              <html>
-                <body>
-                  <h2>You have been invited to the issue "${issue.name}"</h2>
-                  <p>${admin.email} has invited you as an expert for the issue ${issue.name}. The issue description is:</p>
-                  <p>${issue.description}</p>
-                  <p>Accept the invitation to participate.</p>
-                </body>
-              </html>
-            `,
-          });
+      // ✅ crear evaluaciones vacías (si no existen)
+      const evalExists = await Evaluation.exists({ issue: issue._id, expert: expertUser._id });
+      if (!evalExists) {
+        const evalDocs = [];
 
-          await Notification.create({
-            expert: expertUser._id,
-            issue: issue._id,
-            type: "invitation",
-            message: `You have been invited by ${admin.name} to participate in ${issue.name}.`,
-            read: false,
-            requiresAction: true,
-          });
-        }
+        for (const alt of alternatives) {
+          for (const crit of leafCriteria) {
+            if (isPairwise) {
+              for (const comparedAlt of alternatives) {
+                if (String(comparedAlt._id) === String(alt._id)) continue;
 
-        // ✅ crear evaluaciones vacías para el experto nuevo usando snapshots
-        const evalExists = await Evaluation.exists({ issue: issue._id, expert: expertUser._id });
-        if (!evalExists) {
-          const evalDocs = [];
-
-          for (const alt of alternatives) {
-            for (const crit of leafCriteria) {
-              if (isPairwise) {
-                for (const comparedAlt of alternatives) {
-                  if (String(comparedAlt._id) === String(alt._id)) continue;
-
-                  evalDocs.push({
-                    issue: issue._id,
-                    expert: expertUser._id,
-                    alternative: alt._id,
-                    comparedAlternative: comparedAlt._id,
-                    criterion: crit._id,
-                    expressionDomain: defaultSnapshot._id, // ✅ snapshot
-                    value: null,
-                    timestamp: null,
-                    history: [],
-                    consensusPhase: currentPhase,
-                  });
-                }
-              } else {
                 evalDocs.push({
                   issue: issue._id,
                   expert: expertUser._id,
                   alternative: alt._id,
-                  comparedAlternative: null,
+                  comparedAlternative: comparedAlt._id,
                   criterion: crit._id,
-                  expressionDomain: defaultSnapshot._id, // ✅ snapshot
+                  expressionDomain: defaultSnapshot._id,
                   value: null,
                   timestamp: null,
                   history: [],
                   consensusPhase: currentPhase,
                 });
               }
+            } else {
+              evalDocs.push({
+                issue: issue._id,
+                expert: expertUser._id,
+                alternative: alt._id,
+                comparedAlternative: null,
+                criterion: crit._id,
+                expressionDomain: defaultSnapshot._id,
+                value: null,
+                timestamp: null,
+                history: [],
+                consensusPhase: currentPhase,
+              });
             }
           }
-
-          if (evalDocs.length > 0) {
-            await Evaluation.insertMany(evalDocs);
-          }
         }
+
+        if (evalDocs.length > 0) await Evaluation.insertMany(evalDocs);
       }
     }
 
-    // --- ELIMINAR/EXPULSAR EXPERTOS (tu lógica, igual) ---
+    // ==================================
+    // --- ELIMINAR / EXPULSAR EXPERTOS ---
+    // ==================================
     for (const emailRaw of expertsToRemove || []) {
       const email = String(emailRaw || "").trim();
       if (!email) continue;
@@ -2457,41 +2355,45 @@ export const editExperts = async (req, res) => {
       const expertUser = await User.findOne({ email });
       if (!expertUser) continue;
 
-      const participation = await Participation.findOne({ issue: issue._id, expert: expertUser._id });
+      // ❌ no permitir expulsar al admin
+      if (expertUser._id.equals(issue.admin)) continue;
 
-      if (participation) {
-        await Participation.deleteOne({ _id: participation._id });
+      const participation = await Participation.findOne({
+        issue: issue._id,
+        expert: expertUser._id,
+      });
 
-        const reason = "Expelled by admin";
+      if (!participation) continue;
 
-        const exit = await ExitUserIssue.findOne({ issue: issue._id, user: expertUser._id });
+      await cleanupExpertDraftsOnExit({ issueId: issue._id, expertId: expertUser._id });
 
-        if (!exit) {
-          await ExitUserIssue.create({
-            issue: issue._id,
-            user: expertUser._id,
+      await Participation.deleteOne({ _id: participation._id });
+
+      // ✅ EXIT LOG con enum correcto
+      const now = new Date();
+      const exitEntry = {
+        timestamp: now,
+        phase: currentPhase,
+        stage: stageForLog,
+        action: "exited", // ✅ SOLO "entered" o "exited"
+        reason: "Expelled by admin",
+      };
+
+      await ExitUserIssue.findOneAndUpdate(
+        { issue: issue._id, user: expertUser._id },
+        {
+          $setOnInsert: { issue: issue._id, user: expertUser._id },
+          $set: {
             hidden: true,
-            timestamp: new Date(),
+            timestamp: now,
             phase: currentPhase,
-            reason,
-            history: [
-              {
-                timestamp: new Date(),
-                phase: currentPhase,
-                reason,
-              },
-            ],
-          });
-        } else {
-          exit.history.push({
-            timestamp: new Date(),
-            phase: currentPhase,
-            reason,
-          });
-          exit.phase = currentPhase;
-          await exit.save();
-        }
-      }
+            stage: stageForLog,
+            reason: "Expelled by admin",
+          },
+          $push: { history: exitEntry },
+        },
+        { upsert: true, new: true }
+      );
     }
 
     return res.status(200).json({ success: true, msg: "Experts updated successfully." });
@@ -2507,73 +2409,70 @@ export const editExperts = async (req, res) => {
 
 export const leaveIssue = async (req, res) => {
   const { id } = req.body;
-  const userId = req.uid;           // ID del usuario que quiere salir
+  const userId = req.uid;
+
+  const mapStage = (stage) => {
+    if (stage === "criteriaWeighting" || stage === "weightsFinished") return "criteriaWeighting";
+    if (stage === "alternativeEvaluation") return "alternativeEvaluation";
+    return null;
+  };
 
   try {
-    // Buscar el issue
     const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // Un admin no puede salirse de su propio issue
     if (issue.admin.equals(userId)) {
       return res.status(403).json({ success: false, msg: "An admin can not leave an issue" });
     }
 
-    // Buscar la participación del usuario en el issue
     const participation = await Participation.findOne({ issue: issue._id, expert: userId });
     if (!participation) {
       return res.status(400).json({ success: false, msg: "You are not a participant of this issue" });
     }
 
-    // Eliminar la participación activa (ya no aparece como miembro)
+    await cleanupExpertDraftsOnExit({ issueId: issue._id, expertId: userId });
+
     await Participation.deleteOne({ _id: participation._id });
 
-    // No se borran evaluaciones -> mantienen historial
-    const reason = "Left by user";
-
-    // Calcular fase actual (si hay consenso previo, fase+1, si no, fase 1)
     const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
-    // Revisar si ya existe un registro de salidas del usuario
-    const exit = await ExitUserIssue.findOne({ issue: issue._id, user: userId });
+    const now = new Date();
+    const stageForLog = mapStage(issue.currentStage);
 
-    if (!exit) {
-      // Si no existe, crear un nuevo documento de salida
-      await ExitUserIssue.create({
-        issue: issue._id,
-        user: userId,
-        hidden: true,
-        timestamp: new Date(),
-        phase: currentPhase,
-        reason,
-        history: [{
-          timestamp: new Date(),
+    const exitEntry = {
+      timestamp: now,
+      phase: currentPhase,
+      stage: stageForLog,
+      action: "exited",
+      reason: "Left by user",
+    };
+
+    await ExitUserIssue.findOneAndUpdate(
+      { issue: issue._id, user: userId },
+      {
+        $setOnInsert: { issue: issue._id, user: userId },
+        $set: {
+          hidden: true,
+          timestamp: now,
           phase: currentPhase,
-          reason
-        }]
-      });
-    } else {
-      // Si ya existe, añadir un nuevo registro al historial
-      exit.history.push({
-        timestamp: new Date(),
-        phase: currentPhase,
-        reason
-      });
-      exit.phase = currentPhase;
-      await exit.save();
-    }
+          stage: stageForLog,
+          reason: "Left by user",
+        },
+        $push: { history: exitEntry },
+      },
+      { upsert: true, new: true }
+    );
 
     return res.status(200).json({ success: true, msg: "You have left the issue successfully" });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({
       success: false,
       msg: "An error occurred while leaving issue",
-      error: err.message
+      error: err.message,
     });
   }
 };

@@ -1,25 +1,26 @@
-// Importa el módulo JSON Web Token para la verificación de tokens.
-import jwt from 'jsonwebtoken'
+import jwt from "jsonwebtoken"
 
-// Define un middleware para verificar la existencia y validez del token en las cabeceras.
 export const requireToken = (req, res, next) => {
   try {
-    // Obtiene el token del encabezado de autorización. Se espera el formato "Bearer <token>".
-    const token = req.headers?.authorization.split(' ')[1];
+    const authHeader = req.headers?.authorization
 
-    // Si no se proporciona el token, responde con un mensaje indicando su ausencia.
-    if (!token) return res.json({ msg: "Token does not exist", success: false });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ msg: "Token does not exist", success: false })
+    }
 
-    // Verifica la validez del token utilizando la clave secreta almacenada en las variables de entorno.
-    const { uid } = jwt.verify(token, process.env.JWT_SECRET);
+    const token = authHeader.split(" ")[1]
+    if (!token) {
+      return res.status(401).json({ msg: "Token does not exist", success: false })
+    }
 
-    // Agrega el UID del usuario verificado al objeto de solicitud para su uso posterior.
-    req.uid = uid;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // Llama al siguiente middleware o controlador en la cadena de ejecución.
-    next();
+    req.uid = decoded.uid
+    req.role = decoded.role ?? "user" // ✅ fallback por si hay tokens antiguos
+
+    next()
   } catch (err) {
-    // Captura y registra cualquier error que ocurra durante el proceso de verificación.
-    console.error(err);
+    console.error(err)
+    return res.status(401).json({ msg: "Invalid token", success: false })
   }
-};
+}

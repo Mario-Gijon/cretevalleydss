@@ -357,9 +357,9 @@ const ActiveIssuesHeader = ({
               </Stack>
             </Stack>
 
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap"}}>
+            {/* <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap"}}>
               <Pill tone={headerSignals.actionable ? "info" : "success"}>{headerSignals.actionable} needs action</Pill>
-            </Stack>
+            </Stack> */}
           </Stack>
 
           <Stack direction="row" spacing={1} sx={{ gap: 1 }}>
@@ -398,7 +398,7 @@ const ActiveIssuesHeader = ({
         </Grid>
 
         {/* Controls row */}
-        <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5 }}>
+        <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5, pt: 1.5 }}>
           <Grid item {...cfg.search}>
             <TextField
               value={query}

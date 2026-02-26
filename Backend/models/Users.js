@@ -7,49 +7,19 @@ import moment from 'moment'
 
 // Define un esquema de Mongoose para representar a los usuarios.
 const userSchema = new Schema({
-  // Campo "name" obligatorio para cada usuario.
-  name: {
-    type: String,
-    required: true
-  },
-  // Campo "university" obligatorio, único para cada usuario.
-  university: {
-    type: String,
-    required: true,
-  },
-  // Campo "email" obligatorio, debe estar formateado y ser único.
-  email: {
-    type: String,
-    required: true,
-    trim: true, // Elimina espacios en blanco al inicio y final.
-    unique: true,
-  },
-  // Campo "password" obligatorio para almacenar la contraseña del usuario.
-  password: {
-    type: String,
-    required: true
-  },
-  // Campo "tokenConfirm" para almacenar un token único usado en la confirmación de la cuenta.
-  tokenConfirm: {
-    type: String,
-    default: null // Valor por defecto si no se proporciona.
-  },
-  // Almacenar un token único usado en la confirmación de la cuenta.
-  emailTokenConfirm: {
-    type: String,
-    default: null // Valor por defecto si no se proporciona.
-  },
-  // Campo "accountConfirm" para indicar si la cuenta del usuario está confirmada.
-  accountConfirm: {
-    type: Boolean,
-    default: false // Valor por defecto: no confirmada.
-  },
-  // Campo "accountCreation" para almacenar la fecha de creación de la cuenta.
+  name: { type: String, required: true },
+  university: { type: String, required: true },
+  email: { type: String, required: true, trim: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ["user", "admin"], default: "user", index: true },
+  tokenConfirm: { type: String, default: null },
+  emailTokenConfirm: { type: String, default: null },
+  accountConfirm: { type: Boolean, default: false },
   accountCreation: {
     type: String,
-    default: () => moment().format("D of MMMM, YYYY"), // Guarda la fecha de creación en el formato deseado
+    default: () => moment().format("D of MMMM, YYYY"),
   },
-})
+});
 
 // Middleware de Mongoose que se ejecuta antes de guardar un documento en la base de datos.
 userSchema.pre('save', async function (next) {
@@ -84,7 +54,9 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 }
 
 // Crea un modelo de Mongoose basado en el esquema definido y lo exporta.
-export const User = model('User', userSchema)
+export const User = model('User', userSchema);
+
+
 
 /* const users = [
   {
@@ -216,5 +188,16 @@ const seedDB = async () => {
   }
 };
 
+
+
 seedDB();
  */
+
+/* ===========================
+   DEV SEED: Create Admin User
+   Ejecuta SOLO si SEED_ADMIN=true
+   =========================== */
+
+  
+
+  

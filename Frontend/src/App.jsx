@@ -2,15 +2,17 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { CircularLoading } from "./components/LoadingProgress/CircularLoading";
 import { useAuthContext } from "./context/auth/auth.context";
-import { useColorScheme } from '@mui/material';
+import { Box, useColorScheme } from '@mui/material';
+import AdminPage from './pages/private/admin/AdminPage';
 
-const AuthForm = lazy(() => import("../public/authForm/AuthForm"));
-const LogInForm = lazy(() => import("../public/authForm/login/LogInForm"));
-const SignUpForm = lazy(() => import("../public/authForm/signup/SignUpForm"));
-const Dashboard = lazy(() => import("../private/dashboard/Dashboard"));
-const ActiveIssuesPage = lazy(() => import("../private/activeIssues/ActiveIssuesPage"));
-const FinishedIssuesPage = lazy(() => import("../private/finishedIssues/FinishedIssuesPage"));
-const CreateIssuePage = lazy(() => import("../private/createIssue/CreateIssuePage"));
+const AuthForm = lazy(() => import("./pages/public/authForm/AuthForm"));
+const LogInForm = lazy(() => import("./pages/public/authForm/login/LogInForm"));
+const SignUpForm = lazy(() => import("./pages/public/authForm/signup/SignUpForm"));
+const Dashboard = lazy(() => import("./pages/private/dashboard/Dashboard"));
+const ActiveIssuesPage = lazy(() => import("./pages/private/activeIssues/ActiveIssuesPage"));
+const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/FinishedIssuesPage"));
+const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));
+const AdminRoute = lazy(() => import("./pages/private/admin/AdminRoute"));
 /* const ModelsPage = lazy(() => import("../private/issuesModels/ModelsPage")); */
 
 export const App = () => {
@@ -21,11 +23,37 @@ export const App = () => {
   /* console.log(import.meta.env.VITE_MODE) */
 
   // Mostrar el CircularLoading mientras se obtienen los datos del usuario
-  if (loading) return <CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />;
+  if (loading) return (
+    <Box className="dashboard-background" sx={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "space-between",
+      alignItems: "center",
+      width: "100%",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />;
+    </Box>
+  )
 
   return (
     <Router>
-      <Suspense fallback={<CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />}>
+      <Suspense fallback={
+        <Box className="dashboard-background" sx={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          <CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />;
+        </Box>
+      }>
         <Routes>
           {/* Rutas públicas para autenticación */}
           <Route path="/" element={<AuthForm />}>
@@ -62,6 +90,7 @@ export const App = () => {
             <Route path="active/*" element={<Navigate to="/dashboard/active" replace />} />
             <Route path="finished/*" element={<Navigate to="/dashboard/finished" replace />} />
             <Route path="create/*" element={<Navigate to="/dashboard/create" replace />} />
+            <Route path="admin/*" element={<AdminRoute><AdminPage /></AdminRoute>} />
             {/* <Route path="models/*" element={<Navigate to="/dashboard/models" replace />} /> */}
 
             {/* Ruta por defecto cuando no hay una ruta especificada */}

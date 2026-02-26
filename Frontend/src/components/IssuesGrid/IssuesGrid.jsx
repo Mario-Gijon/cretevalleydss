@@ -431,7 +431,7 @@ const IssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
   const theme = useTheme();
 
   return (
-    <Grid container spacing={2} sx={sx}>
+    <Grid container spacing={1.5} sx={sx}>
       {(issues || []).map((issue) => {
         const meta = getNextActionMeta(issue);
         const tone = meta?.tone || "info";

@@ -9,38 +9,39 @@ import mongoose from 'mongoose';
  * Controlador para manejar el inicio de sesión de usuarios.
  */
 export const loginUser = async (req, res) => {
-  // Extrae email y password del cuerpo de la petición
   const { email, password } = req.body
 
   try {
-    // Busca al usuario por email
     const user = await User.findOne({ email })
 
-    // Si no existe, se responde con error
     if (!user) {
       return res.json({ errors: { email: `User does not exist` }, success: false })
     }
 
-    // Verifica si la cuenta fue confirmada por email
     if (!user.accountConfirm) {
       return res.json({ errors: { email: `Email not verified` }, success: false })
     }
 
-    // Compara la contraseña ingresada con la almacenada
     if (!await user.comparePassword(password)) {
       return res.json({ errors: { password: `Incorrect password` }, success: false })
     }
 
-    // Si todo es correcto, genera token de acceso y de refresco
-    const { token, expiresIn } = generateToken(user._id)
+    // ✅ Token incluye role
+    const role = user.role ?? "user"
+    const { token, expiresIn } = generateToken(user._id, role)
     generateRefreshToken(user._id, res)
 
-    // Devuelve respuesta satisfactoria con token
-    res.json({ msg: "Login successful", token, expiresIn, success: true })
+    return res.json({
+      msg: "Login successful",
+      token,
+      expiresIn,
+      role,
+      isAdmin: role === "admin",
+      success: true
+    })
   } catch (err) {
-    // Captura errores inesperados
     console.error("Error during login:", err)
-    res.json({ errors: { general: "Internal server error" }, success: false })
+    return res.json({ errors: { general: "Internal server error" }, success: false })
   }
 }
 
@@ -419,17 +420,31 @@ export const confirmEmailChange = async (req, res) => {
  */
 export const infoUser = async (req, res) => {
   try {
-    // Obtener datos del usuario autenticado
     const user = await User.findById(req.uid).lean()
 
-    // Enviar datos básicos
-    res.json({ university: user.university, name: user.name, email: user.email, accountCreation: user.accountCreation, success: true })
+    if (!user) {
+      return res.json({ msg: "User not found", success: false })
+    }
+
+    const role = user.role ?? "user"
+
+    return res.json({
+      university: user.university,
+      name: user.name,
+      email: user.email,
+      accountCreation: user.accountCreation,
+
+      // ✅ NUEVO
+      role,
+      isAdmin: role === "admin",
+
+      success: true
+    })
   } catch (err) {
     console.error(err)
-    res.json({ msg: "Error fetching user data", success: false })
+    return res.json({ msg: "Error fetching user data", success: false })
   }
 }
-
 
 
 

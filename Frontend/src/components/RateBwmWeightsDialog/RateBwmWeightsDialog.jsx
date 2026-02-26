@@ -161,7 +161,7 @@ export const RateBwmWeightsDialog = ({
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const response = await saveBwmWeights(selectedIssue.name, bwmData);
+    const response = await saveBwmWeights(selectedIssue.id, bwmData);
 
     setLoading(false);
     if (response.success) {
@@ -176,7 +176,7 @@ export const RateBwmWeightsDialog = ({
     setLoading(true);
     setOpenSendDialog(false);
 
-    const response = await sendBwmWeights(selectedIssue.name, bwmData);
+    const response = await sendBwmWeights(selectedIssue.id, bwmData);
 
     setLoading(false);
     if (response.success) {

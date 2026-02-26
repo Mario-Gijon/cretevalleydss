@@ -30,41 +30,56 @@ export const AuthProvider = ({ children }) => {
 
     if (emailChangeStatus) {
       if (emailChangeStatus === "verified") {
-        logout()
+        logout();
         setLoading(false);
-        return
+        return;
       }
     }
 
     // Función para obtener datos protegidos
     const fetchData = async () => {
-      // Obtiene los datos protegidos
       const data = await fetchProtectedData();
+
       // Si hay datos, actualiza el estado de autenticación
-      if (data) {
+      if (data && data.success) {
         setValue({
           name: data.name,
           university: data.university,
           email: data.email,
           accountCreation: data.accountCreation,
+          role: data.role ?? "user",
+          isAdmin: data.isAdmin ?? (data.role === "admin"),
         });
+
         setIsLoggedIn(true);
+
         // Llamar a fetchNotifications después de autenticación exitosa
         fetchNotifications();
       } else {
+        setValue(EmptyAuthState);
         setIsLoggedIn(false);
       }
-      // Desactiva el indicador de carga
+
       setLoading(false);
     };
 
-    // Llama a la función fetchData
     fetchData();
   }, []);
 
   // Devuelve el proveedor de contexto con los valores de autenticación
   return (
-    <AuthContext.Provider value={{ value, setValue, isLoggedIn, setIsLoggedIn, loading, notifications, fetchNotifications, setNotifications }}>
+    <AuthContext.Provider
+      value={{
+        value,
+        setValue,
+        isLoggedIn,
+        setIsLoggedIn,
+        loading,
+        notifications,
+        fetchNotifications,
+        setNotifications
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
