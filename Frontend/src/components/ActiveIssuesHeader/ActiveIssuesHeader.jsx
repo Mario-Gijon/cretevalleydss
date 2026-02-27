@@ -264,7 +264,6 @@ export const getNextActionMeta = (issue) => {
 
 const ActiveIssuesHeader = ({
   isLgUp,
-  headerSignals,
   overview,
   refreshing,
   onRefresh,

@@ -242,13 +242,37 @@ export const ResponsiveNavbar = (props) => {
     <>
       <HideOnScroll {...props}>
         <AppBar
-          elevation={3}
+          elevation={0}
           enableColorOnDark
           sx={{
-            background: "rgba(30, 51, 72, 0.85)",
-            backdropFilter: "blur(5px)",
-            WebkitBackdropFilter: "blur(1px)",
-            boxShadow: "0 1px 30px 0 rgba(34, 79, 98, 0.44)",
+            
+            backgroundColor: "rgba(10, 16, 24, 0.72)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            
+            boxShadow: "0 18px 50px rgba(0,0,0,0.38)",
+            overflow: "hidden",
+            "&:before": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background: [
+                "linear-gradient(90deg, rgba(74, 187, 175, 0.46) 0%, rgba(21, 63, 76, 0.58) 38%, rgba(6, 11, 17, 0.92) 100%)",
+                "radial-gradient(680px 260px at 0% 45%, rgba(95, 205, 255, 0.22), transparent 62%)",
+                "radial-gradient(520px 200px at 55% -20%, rgba(160, 225, 255, 0.12), transparent 60%)",
+              ].join(","),
+              opacity: 0.95,
+            },
+            "&:after": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 35%, transparent 70%)",
+              opacity: 0.35,
+            },
           }}
         >
           <Toolbar sx={{ position: "relative", color: "#FFFFFF", overflow: "hidden" }}>

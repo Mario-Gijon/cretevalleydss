@@ -532,16 +532,11 @@ const ActiveIssuesPage = () => {
         <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 950 }}>
           No active issues
         </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", textAlign: "center", maxWidth: 520 }}>
-          Create a new issue or accept an invitation and it will appear here.
-        </Typography>
       </Stack>
     );
   }
 
-  // ✅ MISMO ALTO para header y tasks (fila superior)
-  const TOP_H = 235; // ajusta: 320/340/360...
-  // ✅ Header ~2/3 ancho (2fr) y Tasks ~1/3 (1fr). Min widths por ergonomía
+  const TOP_H = 235; 
   const COLS = "minmax(560px, 1.6fr) minmax(360px, 1fr)";
 
   return (
@@ -562,7 +557,7 @@ const ActiveIssuesPage = () => {
                 "issues issues"
               `,
               gap: 1,
-              alignItems: "stretch", // ✅ clave: estirar celdas
+              alignItems: "stretch", 
             }}
           >
             <Box sx={{ gridArea: "header", minWidth: 0 }}>
@@ -581,7 +576,6 @@ const ActiveIssuesPage = () => {
                 setSearchBy={setSearchBy}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
-                // ✅ misma altura que tasks
                 height={TOP_H}
                 filtersMeta={filtersMeta}
               />
@@ -752,7 +746,7 @@ const ActiveIssuesPage = () => {
         />
       )}
 
-      {/* ✅ Confirm dialog */}
+      {/* Confirm dialog */}
       <GlassDialog
         open={confirm.open}
         onClose={() => setConfirm((c) => ({ ...c, open: false, action: null }))}
