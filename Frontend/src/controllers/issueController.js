@@ -681,4 +681,93 @@ export const computeManualWeights = async (id) => {
   }
 };
 
+export const getIssueScenarios = async (issueId) => {
+  const token = await getToken();
+  if (!token) return false;
 
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ issueId }),
+  };
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getIssueScenarios`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching scenarios:", err);
+    return false;
+  }
+};
+
+export const getIssueScenarioById = async (scenarioId) => {
+  const token = await getToken();
+  if (!token) return false;
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ scenarioId }),
+  };
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getIssueScenarioById`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching scenario by id:", err);
+    return false;
+  }
+};
+
+export const createIssueScenario = async ({ issueId, scenarioName, targetModelName, paramOverrides }) => {
+
+  const token = await getToken();
+  if (!token) return false;
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ issueId, scenarioName, targetModelName, paramOverrides }),
+  };
+
+  console.log({ issueId, scenarioName, targetModelName, paramOverrides })
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/createIssueScenario`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error creating scenario:", err);
+    return false;
+  }
+};
+
+export const removeIssueScenario = async (scenarioId) => {
+  const token = await getToken();
+  if (!token) return false;
+
+  const options = {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ scenarioId }),
+  };
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/removeIssueScenario`, options);
+    return await response.json();
+  } catch (err) {
+    console.error("Error removing scenario:", err);
+    return false;
+  }
+};

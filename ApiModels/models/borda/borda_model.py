@@ -1,36 +1,39 @@
 import numpy as np
 from pyDecision.algorithm import borda_method
-from sklearn.manifold import MDS  # ya lo usas en el otro modelo
-from sklearn.decomposition import PCA  # por si quieres cambiar método
 from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
 from utils.clean_matrix import clean_matrix
 
 def run_borda(matrices, criterion_type):
-  # Convertimos todas las matrices de los expertos a numpy arrays
-  matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
+    matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
+    collective_matrix = np.mean(matrices_np, axis=0)
 
-  # Calculamos la matriz colectiva como la media aritmética
-  collective_matrix = np.mean(matrices_np, axis=0)
+    criterion_type = np.array(criterion_type)
+    dummy_weights = np.ones(collective_matrix.shape[1], dtype=float)
 
-  # Limpiar matriz antes de pasar a TOPSIS
-  matrix_clean, criteria_clean = clean_matrix(
-      collective_matrix, criterion_type
-  )
-  
-  plots_graphic = get_plots_graphics_from_matrices(
-      matrices_np,
-      collective_matrix,
-      method='MDS'   # o 'PCA' si algún día cambias
-  )
+    matrix_clean, _, criteria_clean = clean_matrix(
+        collective_matrix, dummy_weights, criterion_type
+    )
 
-  # Aplicamos una sola vez sobre la matriz colectiva limpia
-  collective_scores = borda_method(matrix_clean, criteria_clean).tolist()
-  collective_ranking = np.argsort(collective_scores)[::-1].tolist()
+    plots_graphic = get_plots_graphics_from_matrices(
+        matrices_np,
+        collective_matrix,
+        method="MDS"
+    )
 
-  return {
-    "collective_matrix": collective_matrix.tolist(),   # matriz promedio original
-    "matrix_used": matrix_clean.tolist(),              # matriz realmente usada en TOPSIS
-    "collective_scores": collective_scores,            # puntuaciones TOPSIS
-    "collective_ranking": collective_ranking,           # ranking TOPSIS
-    "plots_graphic": plots_graphic
-  }
+    # borda_method devuelve "rank sums" (menor = mejor)
+    rank_sum = borda_method(matrix_clean, criteria_clean, graph=False, verbose=False)
+
+    m, n = matrix_clean.shape  # m alternatives, n criteria (tras clean)
+    # Puntos Borda: mayor = mejor (rango positivo y consistente)
+    borda_points = (n * (m + 1)) - rank_sum
+
+    collective_scores = borda_points.tolist()
+    collective_ranking = np.argsort(borda_points)[::-1].tolist()
+
+    return {
+        "collective_matrix": collective_matrix.tolist(),
+        "matrix_used": matrix_clean.tolist(),
+        "collective_scores": collective_scores,
+        "collective_ranking": collective_ranking,
+        "plots_graphic": plots_graphic,
+    }

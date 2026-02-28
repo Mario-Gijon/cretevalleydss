@@ -32,6 +32,8 @@ const issueSchema = new Schema({
     enum: ["manual", "consensus", "bwm", "consensusBwm", "simulatedConsensusBwm"],
     default: "manual",
   },
+  alternativeOrder: [{ type: Schema.Types.ObjectId, ref: "Alternative" }],
+  leafCriteriaOrder: [{ type: Schema.Types.ObjectId, ref: "Criterion" }],
 });
 
 // Middleware para eliminar todo lo relacionado con un Issue antes de eliminarlo

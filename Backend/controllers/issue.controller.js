@@ -11,6 +11,7 @@ import { Notification } from '../models/Notificacions.js';
 import { ExitUserIssue } from '../models/ExitUserIssue.js';
 import { ExpressionDomain } from '../models/ExpressionDomain.js';
 import { CriteriaWeightEvaluation } from '../models/CriteriaWeightEvaluation.js';
+import { createIssueDomainSnapshots } from '../models/createIssueDomainSnapshots.js';
 // Utils
 import { getUserFinishedIssueIds } from '../utils/getUserFinishedIssueIds.js';
 import { validateFinalEvaluations, validateFinalPairwiseEvaluations } from '../utils/validateFinalEvaluations.js';
@@ -18,20 +19,19 @@ import { createAlternativesRankingsSection, createAnalyticalGraphsSection, creat
 import { sendExpertInvitationEmail } from '../utils/sendEmails.js';
 import { normalizeParams } from '../utils/normalizeParams.js';
 import { validateFinalWeights } from '../utils/validateFinalWeights.js';
-import { buildCriterionTree, getLeafNamesFromTree } from '../utils/buildCriteriaTree.js';
 import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
+import { cleanupExpertDraftsOnExit } from '../utils/cleanupExpertDraftsOnExit.js';
+import { compareNameId, orderDocsByIdList, ensureIssueOrdersDb, getOrderedAlternativesDb, getOrderedLeafCriteriaDb } from "../utils/issueOrdering.js";
+import { IssueScenario } from "../models/IssueScenarios.js";
+import { getModelEndpointKey, detectIssueDomainTypeOrThrow } from "../utils/ScenarioUtils.js";
 // Librerias externas
 import { Resend } from 'resend'
 import axios from "axios"
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
-import { createIssueDomainSnapshots } from '../models/createIssueDomainSnapshots.js';
-import { cleanupExpertDraftsOnExit } from '../utils/cleanupExpertDraftsOnExit.js';
 
-// Crea una instancia de Resend con la clave API.
 const resend = new Resend(process.env.APIKEY_RESEND)
 
-// Controlador para obtener información de los modelos.
 export const modelsInfo = async (req, res) => {
   try {
     // Obtener todos los documentos de IssueModel, excluyendo los campos _id y __v
@@ -48,7 +48,6 @@ export const modelsInfo = async (req, res) => {
   }
 }
 
-// Controlador para obtener todos los usuarios con cuenta confirmada.
 export const getAllUsers = async (req, res) => {
   try {
     // Buscar usuarios con cuenta confirmada, seleccionar solo campos necesarios
@@ -65,7 +64,6 @@ export const getAllUsers = async (req, res) => {
   }
 }
 
-// Obtener dominios de expresión
 export const getExpressionsDomain = async (req, res) => {
   try {
     const userId = req.uid;
@@ -85,7 +83,6 @@ export const getExpressionsDomain = async (req, res) => {
   }
 };
 
-// Controlador para crear un dominio de expresión
 export const createExpressionDomain = async (req, res) => {
   try {
     let { name, type, numericRange, linguisticLabels, isGlobal } = req.body;
@@ -214,7 +211,6 @@ export const createExpressionDomain = async (req, res) => {
   }
 };
 
-// Controlador para crear un nuevo problema
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -404,6 +400,17 @@ export const createIssue = async (req, res) => {
         err.obj = "criteria";
         throw err;
       }
+
+      // ✅ Guardar orden canónico (estable) en el Issue
+      issue.alternativeOrder = createdAlternatives
+        .slice()
+        .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
+        .map((a) => a._id);
+
+      issue.leafCriteriaOrder = leafCriteria
+        .slice()
+        .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
+        .map((c) => c._id);
 
       // ============================
       // ✅ FIX: si hay 1 solo criterio hoja => NO hay fase de pesos
@@ -613,7 +620,11 @@ export const createIssue = async (req, res) => {
       // 6) CriteriaWeightEvaluation docs
       // ============================
       const expertIds = uniqueEmails.map((email) => expertByEmail.get(email)._id);
-      const criteriaNames = leafCriteria.map((c) => c.name);
+      const orderedLeafCriteria = leafCriteria
+        .slice()
+        .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id));
+
+      const criteriaNames = orderedLeafCriteria.map((c) => c.name);
 
       if (!isSingleLeafCriterion) {
         if (weightingMode === "simulatedConsensusBwm") {
@@ -898,7 +909,9 @@ export const getAllActiveIssues = async (req, res) => {
 
       const myParticipation = issueParticipations.find((p) => safeOid(p.expert?._id) === userId) || null;
 
-      const altNames = (alternativesMap[issueIdStr] || []).map((a) => a.name).sort((a, b) => a.localeCompare(b));
+      const issueAltDocs = alternativesMap[issueIdStr] || [];
+      const orderedAltDocs = orderDocsByIdList(issueAltDocs, issue.alternativeOrder);
+      const altNames = orderedAltDocs.map((a) => a.name);
 
       const issueCriteria = criteria
         .filter((c) => safeOid(c.issue) === issueIdStr)
@@ -918,31 +931,38 @@ export const getAllActiveIssues = async (req, res) => {
         else criteriaTree.push(n);
       }
 
-      const leafNames = [];
-      const dfsLeaf = (node) => {
-        if (!node) return;
-        if (!node.children || node.children.length === 0) {
-          leafNames.push(node.name);
-          return;
-        }
-        for (const ch of node.children) dfsLeaf(ch);
-      };
-      for (const r of criteriaTree) dfsLeaf(r);
+      // ✅ Orden estable de hojas para mapear weights[] correctamente
+      const leafNodes = issueCriteria.filter((n) => n.isLeaf);
+
+      const orderedLeafNodes = orderDocsByIdList(leafNodes, issue.leafCriteriaOrder, {
+        getId: (n) => n.id,      // ojo: aquí tu id ya es string
+        getName: (n) => n.name,
+      });
 
       const weightsArray = issue.modelParameters?.weights || [];
-      const finalWeightsMap = leafNames.reduce((acc, name, index) => {
-        acc[name] = weightsArray[index] ?? null;
+
+      // map por ID (evita líos si un día hay nombres repetidos)
+      const finalWeightsById = orderedLeafNodes.reduce((acc, node, idx) => {
+        acc[node.id] = weightsArray[idx] ?? null;
+        return acc;
+      }, {});
+
+      // compat (tu respuesta actual usa finalWeights por nombre)
+      const finalWeightsMap = orderedLeafNodes.reduce((acc, node, idx) => {
+        acc[node.name] = weightsArray[idx] ?? null;
         return acc;
       }, {});
 
       const decorate = (node, depth = 0) => {
-        const isLeaf = !node.children || node.children.length === 0;
+        const isLeaf = Boolean(node.isLeaf) || !(node.children?.length);
+
         node.depth = depth;
         node.display = {
           showType: depth === 0,
           showWeight: isLeaf,
-          weight: isLeaf ? (finalWeightsMap?.[node.name] ?? null) : null,
+          weight: isLeaf ? (finalWeightsById?.[node.id] ?? null) : null,
         };
+
         if (node.children?.length) node.children.forEach((ch) => decorate(ch, depth + 1));
       };
       criteriaTree.forEach((r) => decorate(r, 0));
@@ -1101,11 +1121,11 @@ export const getAllActiveIssues = async (req, res) => {
         modelParameters,
         myParticipation: myParticipation
           ? {
-              invitationStatus: myParticipation.invitationStatus,
-              weightsCompleted: Boolean(myParticipation.weightsCompleted),
-              evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
-              joinedAt: myParticipation.joinedAt || null,
-            }
+            invitationStatus: myParticipation.invitationStatus,
+            weightsCompleted: Boolean(myParticipation.weightsCompleted),
+            evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
+            joinedAt: myParticipation.joinedAt || null,
+          }
           : null,
         actions,
         nextAction,
@@ -1378,7 +1398,6 @@ export const updateExpressionDomain = async (req, res) => {
   }
 };
 
-// Controlador para obtener todos los issues finalizados en los que participa el usuario autenticado
 export const getAllFinishedIssues = async (req, res) => {
   try {
     const userId = req.uid; // Obtener el ID del usuario autenticado desde el token (middleware)
@@ -1482,7 +1501,6 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// Marcar todas las notificaciones como leídas para el usuario autenticado
 export const markAllNotificationsAsRead = async (req, res) => {
   const userId = req.uid;
 
@@ -1506,7 +1524,6 @@ export const markAllNotificationsAsRead = async (req, res) => {
   }
 };
 
-// Cambiar el estado de la invitación del usuario para un problema específico
 export const changeInvitationStatus = async (req, res) => {
   const userId = req.uid;
   const { id, action } = req.body;
@@ -1580,7 +1597,6 @@ export const changeInvitationStatus = async (req, res) => {
   }
 };
 
-// Controlador para eliminar una notificación específica de un usuario
 export const removeNotificationById = async (req, res) => {
   // Obtener el ID del usuario autenticado desde el token (middleware)
   const userId = req.uid;
@@ -1623,6 +1639,16 @@ export const savePairwiseEvaluations = async (req, res) => {
         : { success: false, msg: "Issue not found" };
     }
 
+    const defaultSnapshot =
+      (await IssueExpressionDomain.findOne({ issue: issue._id, type: "numeric" }).sort({ createdAt: 1 }).lean())
+      || (await IssueExpressionDomain.findOne({ issue: issue._id }).sort({ createdAt: 1 }).lean());
+
+    if (!defaultSnapshot) {
+      return res.status(400).json({ success: false, msg: "This issue has no IssueExpressionDomain snapshots." });
+    }
+
+    const defaultSnapshotId = String(defaultSnapshot._id);
+
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
@@ -1662,7 +1688,7 @@ export const savePairwiseEvaluations = async (req, res) => {
         const snapshotId =
           rest?.expressionDomain?.id ||
           rest?.domain?.id ||
-          null;
+          defaultSnapshotId; // ✅ fallback SIEMPRE
 
         if (snapshotId) usedSnapshotIds.add(String(snapshotId));
 
@@ -1818,7 +1844,6 @@ export const getPairwiseEvaluations = async (req, res) => {
   }
 };
 
-// Método para enviar las valoraciones
 export const sendPairwiseEvaluations = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
@@ -1861,7 +1886,6 @@ export const sendPairwiseEvaluations = async (req, res) => {
   }
 };
 
-// Método para resolver el problema
 export const resolvePairwiseIssue = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
@@ -1891,10 +1915,21 @@ export const resolvePairwiseIssue = async (req, res) => {
       return res.status(400).json({ success: false, msg: "Not all experts have completed their evaluations" });
     }
 
-    // Obtener alternativas y solo los criterios hoja
-    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 });
+    await ensureIssueOrdersDb({ issueId: issue._id });
 
-    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }); // Solo criterios hoja
+    const alternatives = await getOrderedAlternativesDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
+
+    const criteria = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
     /* const participations = await Participation.find({ issue: issue._id }).populate("expert"); */
 
     const participations = await Participation.find({
@@ -2189,7 +2224,6 @@ export const removeFinishedIssue = async (req, res) => {
   }
 };
 
-// Exporta la función editExperts como un controlador asincrónico
 export const editExperts = async (req, res) => {
   const { id, expertsToAdd, expertsToRemove } = req.body;
   const userId = req.uid;
@@ -2477,7 +2511,6 @@ export const leaveIssue = async (req, res) => {
   }
 };
 
-// Función para guardar evaluaciones de tipo AxC (Alternativa x Criterio)
 export const saveEvaluations = async (req, res) => {
   const userId = req.uid;
 
@@ -2698,7 +2731,6 @@ export const sendEvaluations = async (req, res) => {
   }
 };
 
-// Método para resolver el problema
 export const resolveIssue = async (req, res) => {
   const userId = req.uid; // ID del usuario autenticado
 
@@ -2736,9 +2768,21 @@ export const resolveIssue = async (req, res) => {
     }
 
     // Obtener alternativas y solo los criterios hoja
-    const alternatives = await Alternative.find({ issue: issue._id }).sort({ name: 1 });
+    await ensureIssueOrdersDb({ issueId: issue._id });
 
-    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 }); // Solo criterios hoja
+    const alternatives = await getOrderedAlternativesDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
+
+    const criteria = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name type",
+      lean: true,
+    });
 
     const criterionTypes = criteria.map(c => c.type === "benefit" ? "max" : "min");
 
@@ -2838,6 +2882,8 @@ export const resolveIssue = async (req, res) => {
       name: altNames[idx],
       score: results.collective_scores[idx]
     }));
+
+    console.log(rankedWithScores)
 
     const latestConsensus = await Consensus.findOne({ issue: issue._id }).sort({ phase: -1 });
     const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
@@ -2969,39 +3015,227 @@ export const resolveIssue = async (req, res) => {
   }
 };
 
-export const getFinishedIssueInfo = async (req, res) => {
-  const userId = req.uid;
+const ensureLen = (arr, len, filler = null) => {
+  const a = Array.isArray(arr) ? [...arr] : [];
+  if (a.length < len) return [...a, ...Array(len - a.length).fill(filler)];
+  if (a.length > len) return a.slice(0, len);
+  return a;
+};
 
+const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
+  const out = {};
+
+  for (const p of modelDoc?.parameters || []) {
+    const name = p.name;
+    const type = p.type;
+    const def = p.default;
+
+    if (type === "number") {
+      out[name] = def ?? null;
+      continue;
+    }
+
+    if (type === "array") {
+      const len =
+        p?.restrictions?.length === "matchCriteria"
+          ? leafCount
+          : (typeof p?.restrictions?.length === "number" ? p.restrictions.length : null) ??
+          (Array.isArray(def) ? def.length : 2);
+
+      const base = Array.isArray(def) ? def : [];
+      out[name] = ensureLen(base, len, null);
+      continue;
+    }
+
+    if (type === "fuzzyArray") {
+      const len =
+        p?.restrictions?.length === "matchCriteria"
+          ? leafCount
+          : (typeof p?.restrictions?.length === "number" ? p.restrictions.length : null) ??
+          (Array.isArray(def) ? def.length : 1);
+
+      // cada item es [l,m,u]
+      const base = Array.isArray(def) ? def : [];
+      const filled = ensureLen(base, len, [null, null, null]).map((t) =>
+        Array.isArray(t) && t.length === 3 ? t : [null, null, null]
+      );
+      out[name] = filled;
+      continue;
+    }
+
+    // fallback
+    out[name] = def ?? null;
+  }
+
+  return out;
+};
+
+const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
+  // merge simple: saved tiene prioridad
+  const out = { ...(defaultsResolved || {}) };
+
+  for (const [k, v] of Object.entries(savedParams || {})) {
+    out[k] = v;
+  }
+
+  return out;
+};
+
+export const getFinishedIssueInfo = async (req, res) => {
   try {
     const { id } = req.body;
 
-    // 1. Buscar el problema por nombre
-    const issue = await Issue.findById(id).populate('model');
+    // ✅ usa doc (no lean) porque ensureIssueOrdersDb puede backfillear órdenes
+    const issue = await Issue.findById(id).populate("model");
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
-    if (!issue) {
-      return res.status(404).json({ success: false, msg: "Issue not found" });
+    // --- tus secciones actuales ---
+    const summary = await createSummarySection(issue._id);
+    const alternativesRankings = await createAlternativesRankingsSection(issue._id);
+    const expertsRatings = issue.model.isPairwise
+      ? await createExpertsPairwiseRatingsSection(issue._id)
+      : await createExpertsRatingsSection(issue._id);
+    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id, issue.isConsensus);
+
+    // ============================
+    // ✅ NUEVO: modelParams section
+    // ============================
+    const orderedIssue = await ensureIssueOrdersDb({ issueId: issue._id });
+
+    const leafDocs = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: orderedIssue,
+      select: "_id name type",
+      lean: true,
+    });
+
+    const leafCount = leafDocs.length;
+    const leafCriteria = leafDocs.map((c) => ({ id: String(c._id), name: c.name, type: c.type }));
+
+    // domainType del issue (numeric/linguistic). Si falla, lo dejamos null.
+    const parts = await Participation.find({
+      issue: issue._id,
+      invitationStatus: "accepted",
+    }).select("expert").lean();
+
+    const expertIds = parts.map((p) => p.expert);
+    let domainType = null;
+    try {
+      const detected = await detectIssueDomainTypeOrThrow({ issueId: issue._id, expertIds });
+      domainType = detected.domainType;
+    } catch (e) {
+      domainType = null;
     }
 
-    const summary = await createSummarySection(issue._id);
+    // modelos disponibles
+    const allModels = await IssueModel.find()
+      .select("name isConsensus isPairwise isMultiCriteria smallDescription extendDescription moreInfoUrl parameters supportedDomains")
+      .lean();
 
-    const alternativesRankings = await createAlternativesRankingsSection(issue._id)
+    const isPairwiseIssue = Boolean(issue.model?.isPairwise);
 
-    const expertsRatings = issue.model.isPairwise ? await createExpertsPairwiseRatingsSection(issue._id) : await createExpertsRatingsSection(issue._id)
+    const availableModels = allModels.map((m) => {
+      const defaultsResolved = buildDefaultsResolved({ modelDoc: m, leafCount });
 
-    const analyticalGraphs = await createAnalyticalGraphsSection(issue._id, issue.isConsensus);
+      const compat = {
+        pairwise: Boolean(m.isPairwise) === isPairwiseIssue,
+        domain: domainType ? Boolean(m.supportedDomains?.[domainType]?.enabled) : true,
+      };
+
+      return {
+        id: String(m._id),
+        name: m.name,
+        isConsensus: Boolean(m.isConsensus),
+        isPairwise: Boolean(m.isPairwise),
+        isMultiCriteria: Boolean(m.isMultiCriteria),
+        smallDescription: m.smallDescription,
+        moreInfoUrl: m.moreInfoUrl,
+        parameters: m.parameters || [],
+        defaultsResolved,
+        compatibility: compat,
+      };
+    });
+
+    // base model (con el que se resolvió)
+    const baseModel = issue.model; // viene populado
+    const baseDefaultsResolved = buildDefaultsResolved({
+      modelDoc: baseModel?.toObject ? baseModel.toObject() : baseModel,
+      leafCount,
+    });
+
+    const baseParamsSaved = issue.modelParameters || {};
+    const baseParamsResolved = mergeParamsResolved({
+      defaultsResolved: baseDefaultsResolved,
+      savedParams: baseParamsSaved,
+    });
+
+    // ============================
+    // ✅ NUEVO: escenarios ya creados para el issue
+    // ============================
+    const [scenarioDocs, latestConsensus] = await Promise.all([
+      IssueScenario.find({ issue: issue._id })
+        .sort({ createdAt: -1 })
+        .select("_id name targetModel targetModelName domainType isPairwise status createdAt createdBy")
+        .populate("createdBy", "email name")
+        .lean(),
+      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
+    ]);
+
+    const scenarios = (scenarioDocs || []).map((s) => ({
+      id: String(s._id),
+      name: s.name || "",
+      targetModelId: s.targetModel ? String(s.targetModel) : null,
+      targetModelName: s.targetModelName || "",
+      domainType: s.domainType ?? null,
+      isPairwise: Boolean(s.isPairwise),
+      status: s.status || "done",
+      createdAt: s.createdAt || null,
+      createdBy: s.createdBy
+        ? { email: s.createdBy.email, name: s.createdBy.name }
+        : null,
+    }));
+
+    // “Base scenario” virtual (para que nunca aparezca vacío)
+    const baseScenario = {
+      id: null,
+      name: `Base (${baseModel?.name || "Model"})`,
+      targetModelId: String(baseModel?._id),
+      targetModelName: baseModel?.name || "",
+      domainType,
+      isPairwise: Boolean(isPairwiseIssue),
+      status: "done",
+      createdAt: latestConsensus?.timestamp || null,
+      createdBy: null,
+      // opcional: si tu UI quiere pintar ranking rápido sin pedir scenarioById
+      preview: latestConsensus?.details?.rankedAlternatives || null,
+    };
+
+    const scenariosWithBase = [baseScenario, ...scenarios];
 
     const issueInfo = {
       summary,
       alternativesRankings,
       expertsRatings,
       analyticalGraphs,
+      scenarios: scenariosWithBase,
+      modelParams: {
+        leafCriteria,       // para matchCriteria en UI
+        domainType,         // útil para filtrar/avisar
+        base: {
+          modelId: String(baseModel?._id),
+          modelName: baseModel?.name,
+          parameters: baseModel?.parameters || [],
+          paramsSaved: baseParamsSaved,       // lo que realmente se usó/guardó
+          paramsResolved: baseParamsResolved, // con defaults rellenados
+        },
+        availableModels,
+      },
     };
 
     return res.json({ success: true, msg: "Issue info sent", issueInfo });
-
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, msg: "Error fetching full issue info" });
+    return res.status(500).json({ success: false, msg: "Error fetching full issue info" });
   }
 };
 
@@ -3107,16 +3341,17 @@ export const saveBwmWeights = async (req, res) => {
 
 export const getBwmWeights = async (req, res) => {
   const userId = req.uid;
+
   try {
     const { id } = req.body;
 
-    // 🟢 Buscar el issue
+    // 1) Issue
     const issue = await Issue.findById(id);
     if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
     }
 
-    // 🟢 Verificar participación del usuario
+    // 2) Participación
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
@@ -3129,43 +3364,51 @@ export const getBwmWeights = async (req, res) => {
         .json({ success: false, msg: "You are no longer a participant in this issue" });
     }
 
-    // 🟢 Obtener criterios del problema
-    const criteria = await Criterion.find({ issue: issue._id }).lean();
+    // ✅ 3) Asegurar órdenes del issue (por si es antiguo)
+    const orderedIssue = await ensureIssueOrdersDb({ issueId: issue._id });
 
-    // 🟢 Buscar si ya hay una evaluación BWM guardada
+    // ✅ 4) Criterios hoja en orden canónico
+    const leafDocs = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: orderedIssue,
+      select: "_id name",
+      lean: true,
+    });
+
+    const leafNames = leafDocs.map((c) => c.name);
+
+    // 5) Evaluación BWM existente (si existe)
     const existingEvaluation = await CriteriaWeightEvaluation.findOne({
       issue: issue._id,
       expert: userId,
     }).lean();
 
-    // 🟢 Inicializar estructura vacía por defecto
-    const leafCriteria = criteria.filter((c) => c.isLeaf).map((c) => c.name);
+    // ✅ 6) Defaults en orden estable
+    const bestToOthers = {};
+    const othersToWorst = {};
 
-    const defaultBwmData = {
-      bestCriterion: "",
-      worstCriterion: "",
-      bestToOthers: Object.fromEntries(leafCriteria.map((name) => [name, ""])),
-      othersToWorst: Object.fromEntries(leafCriteria.map((name) => [name, ""])),
-      completed: false,
+    for (const name of leafNames) {
+      const v1 = existingEvaluation?.bestToOthers?.[name];
+      const v2 = existingEvaluation?.othersToWorst?.[name];
+
+      bestToOthers[name] = v1 === null || v1 === undefined ? "" : v1;
+      othersToWorst[name] = v2 === null || v2 === undefined ? "" : v2;
+    }
+
+    const bwmData = {
+      bestCriterion: existingEvaluation?.bestCriterion || "",
+      worstCriterion: existingEvaluation?.worstCriterion || "",
+      bestToOthers,
+      othersToWorst,
+      completed: existingEvaluation?.completed || false,
     };
-
-    // 🟢 Si hay evaluación guardada, rellenar con esos valores
-    const bwmData = existingEvaluation
-      ? {
-        bestCriterion: existingEvaluation.bestCriterion || "",
-        worstCriterion: existingEvaluation.worstCriterion || "",
-        bestToOthers: { ...defaultBwmData.bestToOthers, ...existingEvaluation.bestToOthers },
-        othersToWorst: { ...defaultBwmData.othersToWorst, ...existingEvaluation.othersToWorst },
-        completed: existingEvaluation.completed || false,
-      }
-      : defaultBwmData;
 
     return res.status(200).json({
       success: true,
       bwmData,
     });
   } catch (err) {
-    console.error(err);
+    console.error("getBwmWeights error:", err);
     return res.status(500).json({
       success: false,
       msg: "An error occurred while fetching weights",
@@ -3271,18 +3514,16 @@ export const computeWeights = async (req, res) => {
   try {
     const { id } = req.body;
 
-    // 1️⃣ Buscar el issue
     const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({ success: false, msg: "Issue not found" });
-    }
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
-    // 2️⃣ Validar que el usuario sea el admin
     if (issue.admin.toString() !== userId) {
       return res.status(403).json({ success: false, msg: "Unauthorized: only admin can compute weights" });
     }
 
-    // 3️⃣ Comprobar que todos los expertos participantes (no rechazados) completaron los pesos
+    // ✅ Backfill orders si el issue es antiguo
+    await ensureIssueOrdersDb({ issueId: issue._id });
+
     const pendingWeights = await Participation.find({
       issue: issue._id,
       invitationStatus: { $in: ["accepted", "pending"] },
@@ -3296,27 +3537,30 @@ export const computeWeights = async (req, res) => {
       });
     }
 
-    // 4️⃣ Obtener los criterios hoja ordenados alfabéticamente
-    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true }).sort({ name: 1 });
-    const criterionNames = criteria.map(c => c.name);
+    // ✅ criterios hoja en orden canónico
+    const criteria = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
 
-    // 5️⃣ Obtener todas las evaluaciones de pesos (BWM)
+    const criterionNames = criteria.map((c) => c.name);
+
     const weightEvaluations = await CriteriaWeightEvaluation.find({ issue: issue._id }).populate("expert", "email");
 
     if (weightEvaluations.length === 0) {
       return res.status(400).json({ success: false, msg: "No BWM evaluations found for this issue" });
     }
 
-    // 6️⃣ Construir objeto con los datos por experto
     const expertsData = {};
 
     for (const evalDoc of weightEvaluations) {
       const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } = evalDoc;
-
       if (!bestCriterion || !worstCriterion) continue;
 
-      const mic = criterionNames.map(c => Number(bestToOthers?.[c]) || 1);
-      const lic = criterionNames.map(c => Number(othersToWorst?.[c]) || 1);
+      const mic = criterionNames.map((c) => Number(bestToOthers?.[c]) || 1);
+      const lic = criterionNames.map((c) => Number(othersToWorst?.[c]) || 1);
 
       const email = evalDoc.expert?.email || `expert_${evalDoc.expert?._id}`;
       expertsData[email] = { mic, lic };
@@ -3326,7 +3570,6 @@ export const computeWeights = async (req, res) => {
       return res.status(400).json({ success: false, msg: "Incomplete BWM data from experts" });
     }
 
-    // 7️⃣ Llamar a la API de Python
     const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000";
 
     const response = await axios.post(`${apimodelsUrl}/bwm`, {
@@ -3335,19 +3578,11 @@ export const computeWeights = async (req, res) => {
     });
 
     const { success, msg, results } = response.data;
+    if (!success) return res.status(400).json({ success: false, msg });
 
-    if (!success) {
-      return res.status(400).json({ success: false, msg });
-    }
+    const weights = results?.weights || [];
 
-    const weights = results.weights;
-
-    // 8️⃣ Guardar los pesos en el issue (asociados al criterio)
-    issue.modelParameters.weights = [];
-    criterionNames.forEach((name, i) => {
-      issue.modelParameters.weights[i] = weights[i];
-    });
-
+    issue.modelParameters = { ...(issue.modelParameters || {}), weights: weights.slice(0, criterionNames.length) };
     issue.currentStage = "alternativeEvaluation";
     await issue.save();
 
@@ -3356,8 +3591,8 @@ export const computeWeights = async (req, res) => {
       finished: true,
       msg: `Criteria weights for '${issue.name}' successfully computed.`,
       weights: issue.modelParameters.weights,
+      criteriaOrder: criterionNames, // útil para debug
     });
-
   } catch (err) {
     console.error("Error in computeWeights:", err);
     return res.status(500).json({ success: false, msg: "An error occurred while computing weights" });
@@ -3421,44 +3656,51 @@ export const getManualWeights = async (req, res) => {
   try {
     const { id } = req.body;
 
+    // 1) Issue
     const issue = await Issue.findById(id);
     if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
+    // 2) Participación
     const participation = await Participation.findOne({
       issue: issue._id,
       expert: userId,
       invitationStatus: "accepted",
     });
 
-    if (!participation)
+    if (!participation) {
       return res.status(403).json({ success: false, msg: "You are no longer a participant" });
+    }
 
+    // ✅ 3) Asegurar que el issue tiene orden canónico guardado (para issues antiguos)
+    const orderedIssue = await ensureIssueOrdersDb({ issueId: issue._id });
+
+    // ✅ 4) Criterios hoja en orden estable/canónico
+    const leafDocs = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: orderedIssue, // importante para usar leafCriteriaOrder
+      select: "_id name",
+      lean: true,
+    });
+
+    const leafNames = leafDocs.map((c) => c.name);
+
+    // 5) Evaluación guardada (si existe)
     const evaluation = await CriteriaWeightEvaluation.findOne({
       issue: issue._id,
       expert: userId,
-    });
+    }).lean();
 
-    // construir vacío si no hay datos guardados
-    const criteria = await Criterion.find({ issue: issue._id, isLeaf: true });
-    const empty = Object.fromEntries(criteria.map(c => [c.name, ""]));
-
-    // Si hay evaluación, formateamos los valores null → ""
-    let formatted = empty;
-
-    if (evaluation?.manualWeights) {
-      formatted = Object.fromEntries(
-        Object.entries(evaluation.manualWeights).map(([k, v]) => [
-          k,
-          v === null ? "" : v
-        ])
-      );
+    // ✅ 6) Construir objeto SIEMPRE con el mismo orden (leafNames)
+    const manualWeights = {};
+    for (const name of leafNames) {
+      const v = evaluation?.manualWeights?.[name];
+      manualWeights[name] = v === null || v === undefined ? "" : v;
     }
 
     return res.status(200).json({
       success: true,
-      manualWeights: formatted,
+      manualWeights,
     });
-
   } catch (err) {
     console.error("getManualWeights error:", err);
     return res.status(500).json({ success: false, msg: "Error fetching manual weights" });
@@ -3543,85 +3785,55 @@ export const computeManualWeights = async (req, res) => {
   try {
     const { id } = req.body;
 
-    // 1️⃣ Buscar issue
     const issue = await Issue.findById(id);
-    if (!issue)
-      return res.status(404).json({ success: false, msg: "Issue not found" });
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
 
-    // 2️⃣ Solo admin
-    if (issue.admin.toString() !== userId)
-      return res.status(403).json({
-        success: false,
-        msg: "Unauthorized: only admin can compute weights",
-      });
-
-    // 3️⃣ Validar modo
-    if (issue.weightingMode !== "consensus") {
-      return res.status(400).json({
-        success: false,
-        msg: "This issue is not using manual consensus weighting mode",
-      });
+    if (issue.admin.toString() !== userId) {
+      return res.status(403).json({ success: false, msg: "Unauthorized: only admin can compute weights" });
     }
 
-    // 4️⃣ Validar que todos los expertos aceptados han enviado sus pesos
-    const participations = await Participation.find({
-      issue: issue._id,
-      invitationStatus: "accepted",
-    });
+    if (issue.weightingMode !== "consensus") {
+      return res.status(400).json({ success: false, msg: "This issue is not using manual consensus weighting mode" });
+    }
 
-    const weightsPending = participations.filter(p => !p.weightsCompleted);
+    await ensureIssueOrdersDb({ issueId: issue._id });
+
+    const participations = await Participation.find({ issue: issue._id, invitationStatus: "accepted" });
+    const weightsPending = participations.filter((p) => !p.weightsCompleted);
 
     if (weightsPending.length > 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "Not all experts have completed their criteria weight evaluations",
-      });
+      return res.status(400).json({ success: false, msg: "Not all experts have completed their criteria weight evaluations" });
     }
 
-    // 5️⃣ Obtener criterios hoja (ordenados)
-    const criteria = await Criterion.find({
-      issue: issue._id,
-      isLeaf: true,
-    }).sort({ name: 1 });
+    // ✅ criterios hoja en orden canónico
+    const criteria = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
 
     const criterionNames = criteria.map((c) => c.name);
 
-    // 6️⃣ Obtener TODAS las evaluaciones manuales de pesos
-    const evaluations = await CriteriaWeightEvaluation.find({
-      issue: issue._id,
-      completed: true,
-    });
-
+    const evaluations = await CriteriaWeightEvaluation.find({ issue: issue._id, completed: true });
     if (evaluations.length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "No manual weight evaluations found for this issue",
-      });
+      return res.status(400).json({ success: false, msg: "No manual weight evaluations found for this issue" });
     }
 
-    // 7️⃣ Calcular media aritmética por criterio
     const collectiveWeights = [];
 
     for (const critName of criterionNames) {
       const vals = [];
-
       for (const evalDoc of evaluations) {
         const v = evalDoc.manualWeights?.[critName];
-        if (v !== undefined && v !== null && v !== "") {
-          vals.push(Number(v));
-        }
+        if (v !== undefined && v !== null && v !== "") vals.push(Number(v));
       }
-
-      if (vals.length === 0) {
-        collectiveWeights.push(0);
-      } else {
-        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-        collectiveWeights.push(avg);
-      }
+      collectiveWeights.push(vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
     }
 
-    // 8️⃣ Normalizar pesos
-    let total = collectiveWeights.reduce((a, b) => a + b, 0);
+    const total = collectiveWeights.reduce((a, b) => a + b, 0);
+
+    issue.modelParameters = { ...(issue.modelParameters || {}) };
 
     if (total <= 0) {
       const w = 1 / collectiveWeights.length;
@@ -3630,7 +3842,6 @@ export const computeManualWeights = async (req, res) => {
       issue.modelParameters.weights = collectiveWeights.map((w) => w / total);
     }
 
-    // 9️⃣ Pasar a evaluación de alternativas
     issue.currentStage = "alternativeEvaluation";
     await issue.save();
 
@@ -3639,15 +3850,597 @@ export const computeManualWeights = async (req, res) => {
       finished: true,
       msg: "Criteria weights computed",
       weights: issue.modelParameters.weights,
-      criteria: criterionNames,
+      criteriaOrder: criterionNames,
     });
   } catch (err) {
-    console.error("Error computing weights:");
-    return res.status(500).json({
+    console.error("Error computing manual weights:", err);
+    return res.status(500).json({ success: false, msg: "Error computing manual weights" });
+  }
+};
+
+export const createIssueScenario = async (req, res) => {
+  const userId = req.uid;
+
+  const httpError = (status, message) => {
+    const e = new Error(message);
+    e.status = status;
+    throw e;
+  };
+
+  const asOidStr = (v) => (v ? String(v) : "");
+
+  // Para evitar líos: aceptar weights como array o como mapa por nombre/id
+  const resolveWeightsArray = ({ paramsUsed, criteria }) => {
+    const w = paramsUsed?.weights;
+
+    // array directo
+    if (Array.isArray(w)) return w;
+
+    // mapa por nombre
+    if (w && typeof w === "object") {
+      const byName = w;
+      return criteria.map((c) => (byName[c.name] != null ? byName[c.name] : null));
+    }
+
+    return null;
+  };
+
+  try {
+    const {
+      issueId,
+      targetModelName,
+      targetModelId,
+      scenarioName = "",
+      paramOverrides = {},
+    } = req.body || {};
+
+    if (!userId) return res.status(401).json({ success: false, msg: "Unauthorized" });
+    if (!issueId) return res.status(400).json({ success: false, msg: "issueId is required" });
+
+    console.log(req.body)
+
+    // 1) Issue + modelo actual
+    const issue = await Issue.findById(issueId).populate("model");
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    // ✅ permisos: admin del issue (si quieres permitir expertos, lo cambiamos)
+    if (String(issue.admin) !== String(userId)) {
+      return res.status(403).json({ success: false, msg: "Not authorized: only admin can create scenarios" });
+    }
+
+    // 2) checks “no tocar evaluaciones”
+    const [consensusCount, pendingInv, participations] = await Promise.all([
+      Consensus.countDocuments({ issue: issue._id }),
+      Participation.countDocuments({ issue: issue._id, invitationStatus: "pending" }),
+      Participation.find({ issue: issue._id, invitationStatus: "accepted" }).populate("expert", "email"),
+    ]);
+
+    // Si es consenso y hay >1 fase guardada, tú ya lo bloqueabas (bien)
+    if (issue.isConsensus && consensusCount > 1) {
+      return res.status(400).json({
+        success: false,
+        msg: "Simulation disabled: consensus issues with more than 1 saved phase are not supported yet.",
+      });
+    }
+
+    if (pendingInv > 0) {
+      return res.status(400).json({ success: false, msg: "Simulation requires no pending invitations." });
+    }
+
+    if (!participations.length) {
+      return res.status(400).json({ success: false, msg: "No accepted experts found" });
+    }
+
+    // 3) Target model
+    let targetModel = null;
+    if (targetModelId) targetModel = await IssueModel.findById(targetModelId);
+    if (!targetModel && targetModelName) targetModel = await IssueModel.findOne({ name: targetModelName });
+
+    if (!targetModel) {
+      return res.status(404).json({ success: false, msg: "Target model not found" });
+    }
+
+    // 4) Compat AxA/AxC
+    const isPairwiseIssue = Boolean(issue.model?.isPairwise);
+    if (Boolean(targetModel.isPairwise) !== isPairwiseIssue) {
+      return res.status(400).json({
+        success: false,
+        msg: "Incompatible models: pairwise (AxA) does not match this issue input type.",
+      });
+    }
+
+    // 5) Orden canónico + inputs base (alt/crit)
+    await ensureIssueOrdersDb({ issueId: issue._id });
+
+    const [alternatives, criteria] = await Promise.all([
+      getOrderedAlternativesDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name",
+        lean: true,
+      }),
+      getOrderedLeafCriteriaDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name type",
+        lean: true,
+      }),
+    ]);
+
+    if (!alternatives.length || !criteria.length) {
+      httpError(400, "Issue has no alternatives/leaf criteria");
+    }
+
+    const criterionTypes = criteria.map((c) => (c.type === "benefit" ? "max" : "min"));
+    const expertIds = participations.map((p) => p.expert?._id).filter(Boolean);
+
+    // 6) Detect domain type (no mezclar)
+    // (si falla, no rompemos, pero la compat de modelos podría ser menos estricta)
+    let domainType = null;
+    try {
+      const detected = await detectIssueDomainTypeOrThrow({ issueId: issue._id, expertIds });
+      domainType = detected.domainType;
+    } catch (e) {
+      domainType = null;
+    }
+
+    // Si tienes supportedDomains en modelos, puedes mantener esta validación:
+    if (domainType && targetModel?.supportedDomains) {
+      const supportsDomain = Boolean(targetModel.supportedDomains?.[domainType]?.enabled);
+      if (!supportsDomain) {
+        return res.status(400).json({
+          success: false,
+          msg: `Target model does not support '${domainType}' domains. Pick a compatible model.`,
+        });
+      }
+    }
+
+    // 7) Params usados = params del issue + overrides
+    const paramsUsed = {
+      ...(issue.modelParameters || {}),
+      ...(paramOverrides || {}),
+    };
+
+    // ✅ Si weights vienen como mapa (por nombre), convertirlos a array en orden canónico
+    const weightsArr = resolveWeightsArray({ paramsUsed, criteria });
+    if (weightsArr) {
+      paramsUsed.weights = weightsArr;
+    }
+
+    // Normalizar params igual que resolveIssue
+    const normalizedParams = normalizeParams(paramsUsed);
+
+    // ✅ HV-CRP: ignoramos cualquier threshold del issue/overrides
+    const consensusThresholdUsed = 1;
+
+    // ✅ ahora YA puedes loguearlo sin petar
+    console.log("SCENARIO PARAMS DEBUG", {
+      targetModel: targetModel.name,
+      paramOverrides,
+      paramsUsed,
+      normalizedParams,
+      consensusThresholdUsed,
+    });
+
+    // 8) Construir matrices (1 query, NO por celda)
+    let matricesUsed = {};
+    let expertsOrder = participations.map((p) => p.expert.email); // orden estable UI
+    let snapshotIdsUsed = [];
+
+    const apimodelsUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000";
+
+    if (!isPairwiseIssue) {
+      // ===== AxC =====
+      const evalDocs = await Evaluation.find({
+        issue: issue._id,
+        expert: { $in: expertIds },
+        comparedAlternative: null,
+      })
+        .select("expert alternative criterion value expressionDomain")
+        .populate("expressionDomain", "type linguisticLabels numericRange name")
+        .lean();
+
+      const evalMap = new Map();
+      const snapshotSet = new Set();
+
+      for (const e of evalDocs) {
+        const k = `${asOidStr(e.expert)}_${asOidStr(e.alternative)}_${asOidStr(e.criterion)}`;
+        evalMap.set(k, e);
+        if (e.expressionDomain?._id) snapshotSet.add(asOidStr(e.expressionDomain._id));
+      }
+
+      snapshotIdsUsed = Array.from(snapshotSet);
+
+      // montar matrices por experto (como resolveIssue)
+      for (const p of participations) {
+        const email = p.expert.email;
+        const expertId = asOidStr(p.expert._id);
+
+        const matrixForExpert = [];
+
+        for (const alt of alternatives) {
+          const row = [];
+
+          for (const crit of criteria) {
+            const key = `${expertId}_${asOidStr(alt._id)}_${asOidStr(crit._id)}`;
+            const ev = evalMap.get(key);
+
+            let val = ev?.value ?? null;
+
+            // convertir numérico string -> number
+            if (val != null && ev?.expressionDomain?.type === "numeric" && typeof val === "string") {
+              const n = Number(val);
+              val = Number.isFinite(n) ? n : val;
+            }
+
+            // lingüístico: label -> [l,m,u]
+            if (val != null && ev?.expressionDomain?.type === "linguistic") {
+              const labelDef = ev.expressionDomain.linguisticLabels?.find((lbl) => lbl.label === val);
+              val = labelDef ? labelDef.values : null;
+            }
+
+            row.push(val);
+          }
+
+          matrixForExpert.push(row);
+        }
+
+        matricesUsed[email] = matrixForExpert;
+      }
+
+      // asegurar que no hay nulls (si los hay, escenario no se puede simular)
+      const nullCount = Object.values(matricesUsed).reduce((acc, m) => {
+        for (const row of m) for (const v of row) if (v == null) acc++;
+        return acc;
+      }, 0);
+
+      if (nullCount > 0) {
+        httpError(400, "Simulation requires complete evaluations (some values are still null).");
+      }
+    } else {
+      // ===== Pairwise AxA =====
+      const evalDocs = await Evaluation.find({
+        issue: issue._id,
+        expert: { $in: expertIds },
+        comparedAlternative: { $ne: null },
+      })
+        .select("expert alternative comparedAlternative criterion value expressionDomain")
+        .populate("expressionDomain", "type")
+        .lean();
+
+      const snapshotSet = new Set();
+      for (const e of evalDocs) {
+        if (e.expressionDomain?._id) snapshotSet.add(asOidStr(e.expressionDomain._id));
+      }
+      snapshotIdsUsed = Array.from(snapshotSet);
+
+      const altIndex = new Map(alternatives.map((a, i) => [asOidStr(a._id), i]));
+      const critNameById = new Map(criteria.map((c) => [asOidStr(c._id), c.name]));
+
+      // init
+      for (const p of participations) {
+        matricesUsed[p.expert.email] = {};
+        for (const c of criteria) {
+          const n = alternatives.length;
+          const mat = Array.from({ length: n }, (_, i) =>
+            Array.from({ length: n }, (_, j) => (i === j ? 0.5 : null))
+          );
+          matricesUsed[p.expert.email][c.name] = mat;
+        }
+      }
+
+      // fill
+      for (const e of evalDocs) {
+        const email = participations.find((p) => asOidStr(p.expert._id) === asOidStr(e.expert))?.expert.email;
+        if (!email) continue;
+
+        const critName = critNameById.get(asOidStr(e.criterion));
+        if (!critName) continue;
+
+        const i = altIndex.get(asOidStr(e.alternative));
+        const j = altIndex.get(asOidStr(e.comparedAlternative));
+        if (i == null || j == null) continue;
+
+        let v = e.value ?? null;
+        if (v != null && typeof v === "string") {
+          const n = Number(v);
+          v = Number.isFinite(n) ? n : v;
+        }
+
+        matricesUsed[email][critName][i][j] = v;
+      }
+
+      // null check (fuera diagonal)
+      let nullCount = 0;
+      for (const email of Object.keys(matricesUsed)) {
+        for (const critName of Object.keys(matricesUsed[email])) {
+          const mat = matricesUsed[email][critName];
+          for (let i = 0; i < mat.length; i++) {
+            for (let j = 0; j < mat.length; j++) {
+              if (i === j) continue;
+              if (mat[i][j] == null) nullCount++;
+            }
+          }
+        }
+      }
+      if (nullCount > 0) {
+        httpError(400, "Simulation requires complete pairwise evaluations (some values are still null).");
+      }
+    }
+
+    // 9) Endpoint (usa tu mapper actual)
+    const modelKey = getModelEndpointKey(targetModel.name);
+    if (!modelKey) {
+      return res.status(400).json({
+        success: false,
+        msg: `No API endpoint defined for target model ${targetModel.name}`,
+      });
+    }
+
+    // 10) Call API models (✅ compat keys criterionTypes/criterion_type/criterion_types)
+    /* const consensusThresholdUsed =
+      issue.consensusThreshold ?? normalizedParams.consensusThreshold ?? paramsUsed.consensusThreshold; */
+
+    console.log("Parametros", normalizedParams)
+
+    let response;
+    if (modelKey === "herrera_viedma_crp") {
+      response = await axios.post(
+        `${apimodelsUrl}/${modelKey}`,
+        {
+          matrices: matricesUsed,
+          consensusThreshold: consensusThresholdUsed,
+          modelParameters: normalizedParams,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+    } else {
+      response = await axios.post(
+        `${apimodelsUrl}/${modelKey}`,
+        {
+          matrices: matricesUsed,
+          modelParameters: normalizedParams,
+          // ✅ manda los 3 por compat con APIs viejas/nuevas
+          criterionTypes,
+          criterion_type: criterionTypes,
+          criterion_types: criterionTypes,
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const { success, msg, results } = response.data || {};
+    if (!success) httpError(400, msg || "Model execution failed");
+
+    // 11) Normalizar salida “como resolveIssue/resolvePairwiseIssue”
+    const altNames = alternatives.map((a) => a.name);
+
+    let details = {};
+    let collectiveEvaluations = null;
+
+    if (modelKey === "herrera_viedma_crp") {
+      const {
+        alternatives_rankings,
+        cm,
+        collective_evaluations,
+        plots_graphic,
+        collective_scores,
+      } = results || {};
+
+      const rankedWithScores = (alternatives_rankings || []).map((idx) => ({
+        name: altNames[idx],
+        score: collective_scores?.[idx] ?? null,
+      }));
+
+      // plotsGraphic emails
+      let plotsGraphicWithEmails = null;
+      if (plots_graphic?.expert_points && Array.isArray(plots_graphic.expert_points)) {
+        const expertPointsMap = {};
+        participations.forEach((p, index) => {
+          expertPointsMap[p.expert.email] = plots_graphic.expert_points[index] ?? null;
+        });
+        plotsGraphicWithEmails = {
+          expert_points: expertPointsMap,
+          collective_point: plots_graphic.collective_point ?? null,
+        };
+      }
+
+      // collective_evaluations -> readable
+      const transformed = {};
+      for (const crit of criteria) {
+        const mat = collective_evaluations?.[crit.name];
+        if (!mat) continue;
+        transformed[crit.name] = mat.map((row, rIdx) => {
+          const obj = { id: alternatives[rIdx].name };
+          row.forEach((v, cIdx) => (obj[alternatives[cIdx].name] = v));
+          return obj;
+        });
+      }
+
+      collectiveEvaluations = transformed;
+
+      details = {
+        rankedAlternatives: rankedWithScores,
+        matrices: matricesUsed,
+        level: cm ?? null,
+        collective_scores: Object.fromEntries(altNames.map((n, i) => [n, collective_scores?.[i] ?? null])),
+        collective_ranking: rankedWithScores.map((r) => r.name),
+        ...(plotsGraphicWithEmails ? { plotsGraphic: plotsGraphicWithEmails } : {}),
+      };
+    } else {
+      // esquema común TOPSIS/BORDA/ARAS/FUZZY TOPSIS
+      const rankingIdx = results?.collective_ranking || [];
+      const scores = results?.collective_scores || [];
+      const matrix = results?.collective_matrix || [];
+
+      const rankedAlternatives = rankingIdx.map((idx) => altNames[idx]);
+      const rankedWithScores = rankingIdx.map((idx) => ({
+        name: altNames[idx],
+        score: scores?.[idx] ?? null,
+      }));
+
+      const collectiveScoresByName = {};
+      altNames.forEach((n, i) => (collectiveScoresByName[n] = scores?.[i] ?? null));
+
+      // collectiveEvaluations: { altName: { critName: {value} } }
+      const ce = {};
+      matrix.forEach((row, altIdx) => {
+        const aName = altNames[altIdx];
+        ce[aName] = {};
+        row.forEach((v, critIdx) => {
+          const cName = criteria[critIdx]?.name;
+          if (cName) ce[aName][cName] = { value: v };
+        });
+      });
+      collectiveEvaluations = ce;
+
+      // plots_graphic (si existe)
+      let plotsGraphicWithEmails = null;
+      const plots_graphic = results?.plots_graphic;
+      if (plots_graphic?.expert_points && Array.isArray(plots_graphic.expert_points)) {
+        const expertPointsMap = {};
+        participations.forEach((p, index) => {
+          expertPointsMap[p.expert.email] = plots_graphic.expert_points[index] ?? null;
+        });
+        plotsGraphicWithEmails = {
+          expert_points: expertPointsMap,
+          collective_point: plots_graphic.collective_point ?? null,
+        };
+      }
+
+      details = {
+        rankedAlternatives: rankedWithScores,
+        matrices: matricesUsed,
+        collective_scores: collectiveScoresByName,
+        collective_ranking: rankedAlternatives,
+        ...(plotsGraphicWithEmails ? { plotsGraphic: plotsGraphicWithEmails } : {}),
+      };
+    }
+
+    // 12) Guardar Scenario
+    const scenario = await IssueScenario.create({
+      issue: issue._id,
+      createdBy: userId,
+      name: String(scenarioName || "").trim(),
+      targetModel: targetModel._id,
+      targetModelName: targetModel.name,
+      domainType,
+      isPairwise: isPairwiseIssue,
+      status: "done",
+      config: {
+        modelParameters: paramsUsed,
+        normalizedModelParameters: normalizedParams,
+        criterionTypes: isPairwiseIssue ? [] : criterionTypes,
+      },
+      inputs: {
+        consensusPhaseUsed: 1,
+        expertsOrder,
+        alternatives: alternatives.map((a) => ({ id: a._id, name: a.name })),
+        criteria: criteria.map(c => ({
+          id: c._id,
+          name: c.name,
+          criterionType: c.type,
+        })),
+        weightsUsed: paramsUsed?.weights ?? null,
+        matricesUsed,
+        snapshotIdsUsed,
+      },
+      outputs: {
+        details,
+        collectiveEvaluations,
+        rawResults: results,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      msg: "Scenario created successfully",
+      scenarioId: scenario._id,
+    });
+  } catch (err) {
+    const axiosMsg =
+      err?.response?.data?.msg ||
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      null;
+
+    const status = err?.status || err?.response?.status || 500;
+
+    console.error("createIssueScenario error:", {
+      status,
+      message: err?.message,
+      axiosMsg,
+      stack: err?.stack,
+    });
+
+    return res.status(status).json({
       success: false,
-      msg: "Error computing manual weights",
+      msg: axiosMsg || err?.message || "Error creating scenario",
     });
   }
 };
 
+export const getIssueScenarios = async (req, res) => {
+  try {
+    const { issueId } = req.body;
+    if (!issueId) return res.status(400).json({ success: false, msg: "issueId is required" });
 
+    const scenarios = await IssueScenario.find({ issue: issueId })
+      .sort({ createdAt: -1 })
+      .select("_id name targetModelName domainType isPairwise status createdAt createdBy")
+      .populate("createdBy", "email name")
+      .lean();
+
+    return res.json({ success: true, scenarios });
+  } catch (err) {
+    console.error("getIssueScenarios error:", err);
+    return res.status(500).json({ success: false, msg: "Error listing scenarios" });
+  }
+};
+
+export const getScenarioById = async (req, res) => {
+  try {
+    const { scenarioId } = req.body;
+    if (!scenarioId) return res.status(400).json({ success: false, msg: "scenarioId is required" });
+
+    const scenario = await IssueScenario.findById(scenarioId)
+      .populate("createdBy", "email name")
+      .lean();
+
+    if (!scenario) return res.status(404).json({ success: false, msg: "Scenario not found" });
+
+    return res.json({ success: true, scenario });
+  } catch (err) {
+    console.error("getScenarioById error:", err);
+    return res.status(500).json({ success: false, msg: "Error fetching scenario" });
+  }
+};
+
+export const removeScenario = async (req, res) => {
+  const userId = req.uid;
+
+  try {
+    const { scenarioId } = req.body;
+    if (!scenarioId) return res.status(400).json({ success: false, msg: "scenarioId is required" });
+
+    const scenario = await IssueScenario.findById(scenarioId);
+    if (!scenario) return res.status(404).json({ success: false, msg: "Scenario not found" });
+
+    const issue = await Issue.findById(scenario.issue).select("admin").lean();
+    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
+
+    const isCreator = String(scenario.createdBy) === String(userId);
+    const isAdmin = String(issue.admin) === String(userId);
+
+    if (!isCreator && !isAdmin) {
+      return res.status(403).json({ success: false, msg: "Not authorized to delete this scenario" });
+    }
+
+    await IssueScenario.deleteOne({ _id: scenario._id });
+
+    return res.json({ success: true, msg: "Scenario deleted" });
+  } catch (err) {
+    console.error("removeScenario error:", err);
+    return res.status(500).json({ success: false, msg: "Error deleting scenario" });
+  }
+};

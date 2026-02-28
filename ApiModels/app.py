@@ -13,25 +13,23 @@ app = FastAPI()
 @app.post("/herrera_viedma_crp")
 async def herrera_viedma_crp(request: Request):
   try:
-    
     data = await request.json()
-    
+
     matrices = data["matrices"]
-  
+    mp = data.get("modelParameters", {})
+
     results = run_herrera_viedma(
       matrices,
-      cl=data["consensusThreshold"],
-      ag_lq=data["modelParameters"]["ag_lq"],
-      ex_lq=data["modelParameters"]["ex_lq"],
-      b=data["modelParameters"]["b"],
-      beta=data["modelParameters"]["beta"],
+      cl=data.get("consensusThreshold", 1),
+      ag_lq=mp.get("ag_lq"),
+      ex_lq=mp.get("ex_lq"),
+      b=mp.get("b"),
+      beta=mp.get("beta"),
       w_crit=[1.0]
     )
 
-
     results["alternatives_rankings"] = results["alternatives_rankings"][-1].tolist()
-  
-    return { "success": True, "msg": "Herrera Viedma CRP executed successfully", "results": results } 
+    return { "success": True, "msg": "Herrera Viedma CRP executed successfully", "results": results }
   except Exception as e:
     return { "success": False, "msg": f"Error executing Herrera Viedma CRP: {str(e)}" }
 
@@ -72,6 +70,8 @@ async def aras(request: Request):
     data = await request.json()
     
     matrices = data["matrices"]
+    
+    print(data)
   
     results = run_aras(matrices, weights=data["modelParameters"]["weights"], criterion_type=data["criterionTypes"])
   

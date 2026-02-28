@@ -677,11 +677,11 @@ const FinishedIssuesPage = () => {
                             {issue?.description || "—"}
                           </Typography>
 
+                          <Divider sx={{ opacity: 0.14, my: 0.7, borderColor: alpha("#fff", 0.12) }} />
+
                           <Box>
                             <Pill tone="success">Finished</Pill>
                           </Box>
-
-                          <Divider sx={{ opacity: 0.14, my: 0.7, borderColor: alpha("#fff", 0.12) }} />
 
                           <Typography variant="caption" sx={{ fontWeight: 900, color: alpha(theme.palette.common.white, 0.78) }}>
                             Created: {issue?.creationDate || "—"}

@@ -158,7 +158,6 @@ export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setW
                       alignItems: "center",
                       gap: 0.6,
                       px: 1,
-                      py: 0.35,
                       borderRadius: 999,
                       border: `1px solid ${alpha(theme.palette.info.main, 0.35)}`,
                       bgcolor: alpha(theme.palette.info.main, 0.12),
@@ -176,7 +175,7 @@ export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setW
                   {model.name}
                 </Typography>
 
-                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850, mt: 0.6 }}>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850, mt: 1 }}>
                   {model.smallDescription}
                 </Typography>
               </Box>

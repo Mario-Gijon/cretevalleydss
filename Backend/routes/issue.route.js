@@ -1,7 +1,7 @@
 // Importa el enrutador de Express para definir rutas.
 import { Router } from 'express'
 
-import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain, saveBwmWeights, getBwmWeights, sendBwmWeights, computeWeights, saveManualWeights, getManualWeights, sendManualWeights, computeManualWeights } from '../controllers/issue.controller.js'
+import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain, saveBwmWeights, getBwmWeights, sendBwmWeights, computeWeights, saveManualWeights, getManualWeights, sendManualWeights, computeManualWeights, createIssueScenario, getIssueScenarios, getScenarioById, removeScenario } from '../controllers/issue.controller.js'
 
 // Importa el middleware para verificar el token de acceso.
 import { requireToken } from '../middlewares/requireToken.js'
@@ -68,6 +68,13 @@ router.post("/saveManualWeights", requireToken, saveManualWeights)
 router.post("/getManualWeights", requireToken, getManualWeights)
 router.post("/sendManualWeights", requireToken, sendManualWeights)
 router.post("/computeManualWeights", requireToken, computeManualWeights)
+
+// SCENARIOS
+router.post("/createIssueScenario", requireToken, createIssueScenario)
+router.post("/getIssueScenarios", requireToken, getIssueScenarios)
+router.post("/getIssueScenarioById", requireToken, getScenarioById)
+router.post("/removeIssueScenario", requireToken, removeScenario)
+
 
 // Exporta el enrutador para que pueda ser utilizado en otros módulos.
 export default router

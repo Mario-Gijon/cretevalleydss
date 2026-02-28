@@ -11,5 +11,7 @@ def clean_matrix(matrix, weights, criterion_type):
 
   # Seleccionamos columnas que tengan variabilidad (ptp = max - min)
   keep_cols = (np.ptp(matrix, axis=0) != 0)
+  if not np.any(keep_cols):
+      keep_cols[:] = True
 
   return matrix[:, keep_cols], weights[keep_cols], criterion_type[keep_cols]
