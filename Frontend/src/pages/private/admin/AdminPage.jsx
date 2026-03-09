@@ -155,11 +155,11 @@ function AdminHome() {
     <Box sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2, pb: 3 }}>
       <Paper elevation={0} sx={{ ...panelSx(theme, 0.16), p: { xs: 1.6, md: 2.0 }, mb: 2 }}>
         <Box sx={{ position: "relative", zIndex: 1 }}>
-          <Stack direction="row" spacing={1.1} alignItems="center" sx={{ mb: 0.8 }}>
+          <Stack direction="row" spacing={1.1} alignItems="flex-start" sx={{ mb: 0.8 }}>
             <Avatar
               sx={{
-                width: 44,
-                height: 44,
+                width: 45,
+                height: 45,
                 bgcolor: alpha(theme.palette.secondary.main, 0.12),
                 color: "secondary.main",
                 border: "1px solid rgba(255,255,255,0.10)",
@@ -169,7 +169,7 @@ function AdminHome() {
             </Avatar>
 
             <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-              <Typography variant="h4" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
+              <Typography sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
                 Admin panel
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>

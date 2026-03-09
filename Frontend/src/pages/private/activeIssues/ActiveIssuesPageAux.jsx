@@ -8,7 +8,6 @@ import {
   AccordionSummary,
   AccordionDetails,
   useMediaQuery,
-  Paper,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -38,13 +37,13 @@ import { RateBwmWeightsDialog } from "../../../components/RateBwmWeightsDialog/R
 import { RateConsensusWeightsDialog } from "../../../components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
 
 // ✅ Tus componentes
-import ActiveIssuesHeader, { getNextActionMeta, Pill, auroraBg, glassSx as headerGlassSx } from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
+import ActiveIssuesHeader, { getNextActionMeta, Pill, auroraBg } from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
 import TaskCenter from "../../../components/TaskCenter/TaskCenter";
 import IssuesGrid from "../../../components/IssuesGrid/IssuesGrid";
 import IssueDetailsDrawer from "../../../components/IssueDetailsDrawer/IssueDetailsDrawer";
 
 const crystalBorder = () => {
-  return { border: "1px solid rgba(117, 198, 209, 0.24)" };
+  return { border: "1px solid rgba(117, 199, 209, 0.8)" };
 };
 
 const glassSx = (theme, strength = 0.14) => ({
@@ -537,7 +536,7 @@ const ActiveIssuesPage = () => {
     );
   }
 
-  const TOP_H = 235;
+  const TOP_H = 235; 
   const COLS = "minmax(560px, 1.6fr) minmax(360px, 1fr)";
 
   return (
@@ -546,99 +545,60 @@ const ActiveIssuesPage = () => {
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
 
-      <Box sx={{ maxWidth: 2600, p:1 }}>
+      <Box sx={{ maxWidth: 2500, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2 }}>
         {isLgUp ? (
-          <Stack >
-            {/* ✅ Contenedor único (header + tasks) CON aurora */}
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                p: { xs: 1.6, md: 2.0 },
-                height: TOP_H,
-                overflow: "hidden",
-                position: "relative",
-                mb:1,
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: COLS,
+              gridTemplateRows: `${TOP_H}px auto`,
+              gridTemplateAreas: `
+                "header task"
+                "issues issues"
+              `,
+              gap: 1,
+              alignItems: "stretch", 
+            }}
+          >
+            <Box sx={{ gridArea: "header", minWidth: 0 }}>
+              <ActiveIssuesHeader
+                isLgUp
+                filteredCount={filteredIssues.length}
+                totalCount={activeIssues.length}
+                headerSignals={headerSignals}
+                overview={overview}
+                resetFilters={resetFilters}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                query={query}
+                setQuery={setQuery}
+                searchBy={searchBy}
+                setSearchBy={setSearchBy}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                height={TOP_H}
+                filtersMeta={filtersMeta}
+              />
+            </Box>
 
-                // ✅ mismo look del header original
-                ...headerGlassSx(theme, 0.16, "crystal"),
-                ...auroraBg(theme, 0.16),
-                "&:after": {
-                  content: '""',
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
-                  background: `linear-gradient(190deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 45%)`,
-                  opacity: 0.22,
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  position: "relative",
-                  zIndex: 1,
-                  height: "100%",
-                  display: "grid",
-                  gridTemplateColumns: COLS,
-                  gap: 3,
-                  alignItems: "stretch",
-                  minWidth: 0,
-                }}
-              >
-                {/* ✅ Header embebido (SIN su propio aurora/paper) */}
-                <Box sx={{ minWidth: 0, height: "100%" }}>
-                  <ActiveIssuesHeader
-                    isLgUp
-                    filteredCount={filteredIssues.length}
-                    totalCount={activeIssues.length}
-                    headerSignals={headerSignals}
-                    overview={overview}
-                    resetFilters={resetFilters}
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    query={query}
-                    setQuery={setQuery}
-                    searchBy={searchBy}
-                    setSearchBy={setSearchBy}
-                    sortBy={sortBy}
-                    setSortBy={setSortBy}
-                    height="100%"
-                    filtersMeta={filtersMeta}
-                    paperSx={{
-                      // ✅ se “desactiva” su Paper para que el aurora sea el del contenedor común
-                      p: 0,
-                      height: "100%",
-                      bgcolor: "transparent",
-                      backgroundImage: "none",
-                      boxShadow: "none",
-                      border: "none",
-                      backdropFilter: "none",
-                      overflow: "visible",
-                      "&:after": { display: "none" },
-                    }}
-                  />
-                </Box>
+            <Box sx={{ gridArea: "task", minWidth: 0, height: TOP_H }}>
+              <TaskCenter
+                variant="rail"
+                height={TOP_H} minHeight={TOP_H}
+                taskGroups={!taskCenter ? taskGroupsLegacy : null}
+                tasksCount={tasksCount}
+                taskCenter={taskCenter}
+                taskType={taskType}
+                setTaskType={setTaskType}
+                onOpenIssue={openDetails}
+                onOpenIssueId={openDetailsById}
+              />
+            </Box>
 
-                {/* ✅ TaskCenter dentro del MISMO contenedor aurora (TaskCenter no cambia estilos) */}
-                <Box sx={{ minWidth: 0, height: "100%" }}>
-                  <TaskCenter
-                    variant="rail"
-                    height="100%"
-                    minHeight="100%"
-                    taskGroups={!taskCenter ? taskGroupsLegacy : null}
-                    tasksCount={tasksCount}
-                    taskCenter={taskCenter}
-                    taskType={taskType}
-                    setTaskType={setTaskType}
-                    onOpenIssue={openDetails}
-                    onOpenIssueId={openDetailsById}
-                  />
-                </Box>
-              </Box>
-            </Paper>
-
-            <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
-          </Stack>
+            <Box sx={{ gridArea: "issues", minWidth: 0, width: "100%", pt: 0, mt: 0 }}>
+              <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+            </Box>
+          </Box>
         ) : (
           <>
             <ActiveIssuesHeader

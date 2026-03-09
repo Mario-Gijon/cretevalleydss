@@ -25,7 +25,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { Pill, toneColor, stageLabel } from "../ActiveIssuesHeader/ActiveIssuesHeader";
 
-const crystalBorder = () => ({ border: "1px solid rgba(109, 109, 109, 0.58)" });
+const crystalBorder = () => ({ border: "1px solid rgba(109, 109, 109, 0.29)" });
 
 const toneFromSeverity = (severity) => {
   if (severity === "success") return "success";
@@ -67,23 +67,16 @@ const TaskCenter = ({
   const paperRef = useRef(null);
   const railRef = useRef(null);
 
-  const glass = (strength = 0.14) => ({
-    bgcolor: alpha(theme.palette.background.paper, strength),
+  const glass = () => ({
+    bgcolor: "transparent",
     backdropFilter: "blur(12px)",
     boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.10)}`,
     ...crystalBorder(),
   });
 
-  // ✅ Solo consideramos "server mode" si hay secciones con items
-  const serverHasSections = useMemo(() => {
-    const s = taskCenter?.sections;
-    return Array.isArray(s) && s.some((sec) => Array.isArray(sec?.items) && sec.items.length > 0);
-  }, [taskCenter]);
-
   const sections = useMemo(() => {
     const s = taskCenter?.sections;
-
-    if (serverHasSections && Array.isArray(s)) {
+    if (Array.isArray(s) && s.length) {
       return s
         .map((sec) => ({
           key: sec.key,
@@ -96,17 +89,10 @@ const TaskCenter = ({
     }
 
     const legacy = Array.isArray(taskGroups) ? taskGroups : [];
-    return legacy
-      .map((g) => ({ ...g, isServer: false }))
-      .filter((x) => (x.items || []).length > 0);
-  }, [taskCenter, taskGroups, serverHasSections]);
+    return legacy.map((g) => ({ ...g, isServer: false })).filter((x) => (x.items || []).length > 0);
+  }, [taskCenter, taskGroups]);
 
-  // ✅ total coherente con el modo
-  const total = useMemo(() => {
-    if (serverHasSections && typeof taskCenter?.total === "number") return taskCenter.total;
-    if (typeof tasksCount === "number") return tasksCount;
-    return sections.reduce((acc, s) => acc + (s.items?.length || 0), 0);
-  }, [serverHasSections, taskCenter, tasksCount, sections]);
+  const total = tasksCount ?? taskCenter?.total ?? 0;
 
   const options = useMemo(() => {
     const base = [{ value: "all", label: "All" }];
@@ -174,6 +160,8 @@ const TaskCenter = ({
     el.scrollBy({ left: dx, behavior: "smooth" });
   };
 
+  // ✅ Wheel robusto: lo escuchamos en el Paper (más fiable),
+  // y solo actuamos si el evento viene desde dentro del rail.
   useEffect(() => {
     if (variant !== "rail") return;
 
@@ -182,10 +170,14 @@ const TaskCenter = ({
     if (!root || !rail) return;
 
     const onWheel = (e) => {
+      // Solo si el ratón está encima del rail (o sus hijos)
       if (!rail.contains(e.target)) return;
+
+      // Solo si hay overflow horizontal real
       const canScrollX = rail.scrollWidth > rail.clientWidth + 1;
       if (!canScrollX) return;
 
+      // Convertimos wheel vertical a horizontal (trackpad / ratón)
       const dy = e.deltaY || 0;
       const dx = e.deltaX || 0;
       const move = Math.abs(dx) > Math.abs(dy) ? dx : dy;
@@ -201,6 +193,9 @@ const TaskCenter = ({
     return () => root.removeEventListener("wheel", onWheel);
   }, [variant]);
 
+  // -----------------------------
+  // ✅ RAIL
+  // -----------------------------
   if (variant === "rail") {
     return (
       <Paper
@@ -218,6 +213,7 @@ const TaskCenter = ({
           flexDirection: "column",
         }}
       >
+        {/* Header row */}
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.9 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
             <Avatar
@@ -232,8 +228,11 @@ const TaskCenter = ({
             </Avatar>
 
             <Stack spacing={0.05} sx={{ minWidth: 0 }}>
-              <Typography variant="h5" sx={{ fontWeight: 980, lineHeight: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1 }}>
                 Tasks
+              </Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                {total ? `${total} pending` : "No pending actions 🎉"}
               </Typography>
             </Stack>
           </Stack>
@@ -270,10 +269,16 @@ const TaskCenter = ({
           </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.9, mt: 2 }}>
+        {/* Filter row */}
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.9, mt:1.2 }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel color="secondary">Task type</InputLabel>
-            <Select value={taskType} label="Task type" color="secondary" onChange={(e) => setTaskType(e.target.value)}>
+            <Select
+              value={taskType}
+              label="Task type"
+              color="secondary"
+              onChange={(e) => setTaskType(e.target.value)}
+            >
               {options.map((o) => (
                 <MenuItem key={o.value} value={o.value}>
                   {o.label}
@@ -284,6 +289,7 @@ const TaskCenter = ({
           <Box sx={{ flex: 1 }} />
         </Stack>
 
+        {/* Rail viewport (✅ ocupa TODO el alto restante) */}
         <Box sx={{ position: "relative", flex: 1, minHeight: 0, display: "flex" }}>
           {railItems.length === 0 ? (
             <Box sx={{ px: 0.5, py: 0.75 }}>
@@ -298,7 +304,7 @@ const TaskCenter = ({
                 flex: 1,
                 height: "100%",
                 display: "flex",
-                alignItems: "stretch",
+                alignItems: "stretch", // ✅ estira las cards -> adiós “suelo vacío”
                 gap: 1.0,
                 overflowX: "auto",
                 overflowY: "hidden",
@@ -322,7 +328,7 @@ const TaskCenter = ({
                       minWidth: 240,
                       maxWidth: 280,
                       flex: "0 0 auto",
-                      height: "100%",
+                      height: "100%", // ✅ llena el alto del carril
                       display: "flex",
                       flexDirection: "column",
                       scrollSnapAlign: "start",
@@ -375,17 +381,18 @@ const TaskCenter = ({
                         </Stack>
                       </Stack>
 
-                      <Typography variant="body2" sx={{ fontWeight: 980, mt: 1.8, lineHeight: 1.1 }} title={it.issueName}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 980, mt: 1.8, lineHeight: 1.1 }}
+                        title={it.issueName}
+                      >
                         {it.issueName}
                       </Typography>
 
+                      {/* ✅ empuja el footer al fondo para “rellenar” bonito */}
                       <Box sx={{ flex: 1 }} />
 
                       <Stack direction="row" spacing={1} sx={{ alignItems: "center", mt: 0.55 }}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-                          {stageLabel(it.stage)}
-                        </Typography>
-
                         {dlMini ? (
                           <Tooltip title={dlTip || ""}>
                             <Stack direction="row" spacing={0.35} sx={{ alignItems: "center" }}>
@@ -404,6 +411,7 @@ const TaskCenter = ({
             </Box>
           )}
 
+          {/* fades */}
           <Box
             sx={{
               pointerEvents: "none",
@@ -433,6 +441,9 @@ const TaskCenter = ({
     );
   }
 
+  // -----------------------------
+  // ✅ PANEL (sin cambios relevantes)
+  // -----------------------------
   const scrollbarSx = {
     scrollbarWidth: "thin",
     scrollbarColor: `${alpha(theme.palette.text.primary, 0.22)} transparent`,

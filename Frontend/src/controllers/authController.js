@@ -1,3 +1,6 @@
+// src/controllers/auth.controller.js (o donde lo tengas)
+import { authFetch, setAccessToken, clearAccessToken, refreshAccessToken } from "../utils/authFetch";
+
 // Estado de autenticación vacío
 export const EmptyAuthState = {
   university: "",
@@ -7,351 +10,212 @@ export const EmptyAuthState = {
   role: "user",
   isAdmin: false,
 };
-// Función para obtener el token actualizado
-export const getToken = async () => {
-  // Opciones de la solicitud de actualización
-  const refreshOptions = {
-    method: "GET",
-    credentials: "include", // Incluye las credenciales de la sesión (cookies)
-  };
 
+// Helpers
+const API = import.meta.env.VITE_API_BACK;
+
+const safeJson = async (res) => {
   try {
-    // Realiza la solicitud para obtener el token
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/refresh`, refreshOptions);
-    if (!response.ok) {
-      return false; // Si no es ok, devuelve false
-    }
-
-    // Extrae el token y el éxito de la respuesta
-    const { token, success } = await response.json();
-    
-    return success ? token : false; // Devuelve el token o false si no hay éxito
-  } catch (err) {
-    console.error("Error refreshing token:", err);
-    return false; // En caso de error, devuelve false
+    return await res.json();
+  } catch {
+    return null;
   }
+};
+
+// ✅ Opcional pero recomendado: usar al arrancar la app para recuperar sesión tras refresh de página
+export const bootstrapSession = async () => {
+  const token = await refreshAccessToken(); // usa cookie refreshToken
+  return !!token;
 };
 
 // Función para obtener datos protegidos
 export const fetchProtectedData = async () => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
-
-  
-
-  // Opciones de la solicitud para datos protegidos
-  const options = {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  };
-
   try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/protected`, options);
-    const data = await response.json();
-    return data.success ? data : false; // Devuelve los datos si es exitoso
+    const res = await authFetch(`${API}/auth/protected`, { method: "GET" });
+    const data = await safeJson(res);
+    return data?.success ? data : false;
   } catch (err) {
     console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
 };
 
 // Función para registrarse
 export const signup = async (formValues) => {
-  // Configuración de la solicitud POST
   const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(formValues),  // Cuerpo de la solicitud con los valores del formulario
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formValues),
   };
 
   try {
-    // Realiza la solicitud de registro
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/signup`, options);
-    const data = await response.json();
-    return data;
+    const response = await fetch(`${API}/auth/signup`, options);
+    return await response.json();
   } catch (err) {
     console.error("Error fetching form:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
 };
 
 // Función para iniciar sesión
 export const login = async (formValues) => {
-  // Configuración de la solicitud POST
   const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(formValues), // Envía los valores del formulario como JSON
-    credentials: "include", // Incluye cookies en la solicitud
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formValues),
+    credentials: "include", // ✅ para que te guarde la cookie refreshToken
   };
 
   try {
-    // Realiza la solicitud de inicio de sesión
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/login`, options);
+    const response = await fetch(`${API}/auth/login`, options);
     const data = await response.json();
+
+    // ✅ si tu backend devuelve access token en login, lo guardas
+    if (data?.success && data?.token) {
+      setAccessToken(data.token);
+    } else if (data?.success) {
+      // ✅ si NO devuelve token, lo sacas 1 vez vía refresh
+      await refreshAccessToken();
+    }
+
     return data;
   } catch (err) {
     console.error("Error fetching form:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
 };
 
 // Función para realizar el logout
 export const logout = async () => {
-  // Opciones de la solicitud de logout
-  const logoutOptions = {
-    method: "GET",
-    credentials: "include", // Incluye las credenciales de la sesión
-  };
-
   try {
-    // Realiza la solicitud de logout
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/logout`, logoutOptions);
-    const { msg, success } = await response.json();
-    return success ? true : msg; // Devuelve true si el logout es exitoso, de lo contrario el mensaje de error
+    const response = await fetch(`${API}/auth/logout`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    const data = await response.json();
+    clearAccessToken(); // ✅ limpias access token en memoria
+
+    return data?.success ? true : data?.msg;
   } catch (err) {
     console.error("Error logging out:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
 };
 
 // Función para eliminar la cuenta
 export const deleteAccount = async () => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
-
-  // Opciones de la solicitud para eliminar la cuenta
-  const options = {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  };
-
   try {
-    // Realiza la solicitud para eliminar la cuenta
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/deleteAccount`, options);
-    const { msg, success } = await response.json();
-    return success ? true : msg; // Devuelve true si la eliminación es exitosa, de lo contrario el mensaje de error
+    const response = await authFetch(`${API}/auth/deleteAccount`, {
+      method: "DELETE",
+    });
+
+    const data = await safeJson(response);
+    return data?.success ? true : data?.msg ?? false;
   } catch (err) {
     console.error("Error deleting account:", err);
-    return false; // En caso de error, devuelve false
+    return false;
   }
 };
 
 // Función para actualizar la contraseña
 export const updatePassword = async (newPassword, repeatNewPassword) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return false;
-  }
-
-  // Opciones de la solicitud para actualizar la contraseña
-  const options = {
-    method: "PUT", // Usamos PUT para actualizar
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      newPassword,
-      repeatNewPassword
-    }),
-  };
-
   try {
-    // Realiza la solicitud para actualizar la contraseña
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/updatePassword`, options);
-    return await response.json();
+    const response = await authFetch(`${API}/auth/updatePassword`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword, repeatNewPassword }),
+    });
+
+    return await safeJson(response);
   } catch (err) {
     console.error("Error updating password:", err);
-    return "An unexpected error occurred."; // Mensaje en caso de error no relacionado con el backend
+    return "An unexpected error occurred.";
   }
 };
 
-// Función para modificar el nombre de usuario
+// Función para modificar la universidad
 export const modifyUniversity = async (newUniversity) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return { success: false, msg: 'No token available' };
-  }
-
-  // Opciones de la solicitud para modificar el nombre de usuario
-  const options = {
-    method: "PUT", // Método adecuado para verificar datos
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ newUniversity }),
-  };
-
   try {
-    // Realiza la solicitud para modificar el nombre de usuario
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/modifyUniversity`, options);
-    const data = await response.json();
-    return data;
+    const response = await authFetch(`${API}/auth/modifyUniversity`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUniversity }),
+    });
+
+    return await safeJson(response);
   } catch (err) {
     console.error("Error verifying university:", err);
-    return { success: false, msg: 'Unexpected error occurred' };
+    return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
 // Función para modificar el nombre
 export const modifyName = async (newName) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return { success: false, msg: 'No token available' };
-  }
-
-  // Opciones de la solicitud para modificar el nombre
-  const options = {
-    method: "PUT", // Método adecuado para verificar datos
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ newName }),
-  };
-
   try {
-    // Realiza la solicitud para modificar el nombre
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/modifyName`, options);
-    const data = await response.json();
-    return data;
+    const response = await authFetch(`${API}/auth/modifyName`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newName }),
+    });
+
+    return await safeJson(response);
   } catch (err) {
     console.error("Error verifying name:", err);
-    return { success: false, msg: 'Unexpected error occurred' };
+    return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
 // Función para modificar el email
 export const modifyEmail = async (newEmail) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
-    return { success: false, msg: 'No token available' };
-  }
-
-  // Opciones de la solicitud para modificar el nombre
-  const options = {
-    method: "PUT", // Método adecuado para verificar datos
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ newEmail }),
-  };
-
   try {
-    // Realiza la solicitud para modificar el nombre
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/auth/modifyEmail`, options);
-    const data = await response.json();
-    return data;
+    const response = await authFetch(`${API}/auth/modifyEmail`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newEmail }),
+    });
+
+    return await safeJson(response);
   } catch (err) {
     console.error("Error verifying email:", err);
-    return { success: false, msg: 'Unexpected error occurred' };
+    return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
+// 🔔 Notificaciones (rutas protegidas -> authFetch)
 export const getNotifications = async () => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+  try {
+    const response = await authFetch(`${API}/issues/getNotifications`, { method: "GET" });
+    return await safeJson(response);
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
     return false;
   }
-
-  // Opciones de la solicitud para datos protegidos
-  const options = {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    }
-  };
-
-  try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/getNotifications`, options);
-    return await response.json();
-  } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
+};
 
 export const markAllNotificationsAsRead = async () => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+  try {
+    const response = await authFetch(`${API}/issues/markAllNotificationsAsRead`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    return await safeJson(response);
+  } catch (err) {
+    console.error("Error marking notifications as read:", err);
     return false;
   }
-
-  // Opciones de la solicitud para datos protegidos
-  const options = {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    }
-  };
-
-  try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/markAllNotificationsAsRead`, options);
-    return await response.json();
-  } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
+};
 
 export const removeNotification = async (notificationId) => {
-  const token = await getToken();
-  if (!token) {
-    console.error("No token available");
+  try {
+    const response = await authFetch(`${API}/issues/removeNotificationById`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationId }),
+    });
+    return await safeJson(response);
+  } catch (err) {
+    console.error("Error removing notification:", err);
     return false;
   }
-
-  // Opciones de la solicitud para datos protegidos
-  const options = {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ notificationId }),
-  };
-
-  try {
-    // Realiza la solicitud para obtener datos protegidos
-    const response = await fetch(`${import.meta.env.VITE_API_BACK}/issues/removeNotificationById`, options);
-    return await response.json();
-  } catch (err) {
-    console.error("Error fetching protected data:", err);
-    return false; // En caso de error, devuelve false
-  }
-}
-
-
-
-
-
+};

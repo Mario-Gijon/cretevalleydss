@@ -146,7 +146,7 @@ const FinishedIssuesHeader = ({
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 5,
+        borderRadius: 3,
         p: { xs: 1.6, md: 2.0 },
         height: "auto", // ✅ auto SIEMPRE
         overflow: "hidden",
@@ -181,7 +181,7 @@ const FinishedIssuesHeader = ({
               </Avatar>
 
               <Stack spacing={0} sx={{ minWidth: 0 }}>
-                <Typography variant="h4" sx={{ fontWeight: 980, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+                <Typography  sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
                   Finished issues
                 </Typography>
               </Stack>
@@ -303,7 +303,7 @@ const FinishedIssuesPage = () => {
   // filtros
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
-  const [sortBy, setSortBy] = useState("closedRecent");
+  const [sortBy, setSortBy] = useState("createdRecent");
 
   useEffect(() => {
     if (issueCreated?.success) {
@@ -415,7 +415,7 @@ const FinishedIssuesPage = () => {
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
 
-      <Box sx={{ maxWidth: 2500, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2 }}>
+      <Box sx={{ maxWidth: 2600, p:1 }}>
         {isLgUp ? (
           <Box
             sx={{

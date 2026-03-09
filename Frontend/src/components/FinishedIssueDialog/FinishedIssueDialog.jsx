@@ -1761,12 +1761,12 @@ export const FinishedIssueDialog = ({
                       label="Base"
                       clickable
                       onClick={() => handleSelectRun("base")}
-                      color={selectedRunKey === "base" ? "secondary" : "default"}
+                      color={"secondary"}
                       variant={selectedRunKey === "base" ? "filled" : "outlined"}
                       sx={{
                         fontWeight: 950,
                         borderColor: "rgba(255,255,255,0.18)",
-                        bgcolor: selectedRunKey === "base" ? alpha(theme.palette.secondary.main, 0.18) : "transparent",
+                        bgcolor: selectedRunKey === "base" ? alpha(theme.palette.secondary.main, 0.8) : "transparent",
                       }}
                     />
 
@@ -1782,12 +1782,12 @@ export const FinishedIssueDialog = ({
                           label={label}
                           clickable
                           onClick={() => handleSelectRun(id)}
-                          color={selected ? "secondary" : "default"}
+                          color={"secondary"}
                           variant={selected ? "filled" : "outlined"}
                           sx={{
                             fontWeight: 950,
                             borderColor: "rgba(255,255,255,0.18)",
-                            bgcolor: selected ? alpha(theme.palette.secondary.main, 0.18) : "transparent",
+                            bgcolor: selected ? alpha(theme.palette.secondary.main, 0.8) : "transparent",
                             maxWidth: 320,
                             "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
                           }}
@@ -2188,10 +2188,10 @@ export const FinishedIssueDialog = ({
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 2.25, pb: 2 }}>
-          <Button onClick={closeAddDialog} variant="outlined" sx={{ borderColor: "rgba(255,255,255,0.16)" }}>
+          <Button onClick={closeAddDialog} variant="outlined" color="warning">
             Cancel
           </Button>
-          <Button onClick={handleAddModelRun} variant="contained" color="secondary" disabled={addLoading}>
+          <Button onClick={handleAddModelRun} variant="outlined" color="secondary" disabled={addLoading}>
             Add
           </Button>
         </DialogActions>

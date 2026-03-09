@@ -48,14 +48,12 @@ export const Dot = ({ tone = "info" }) => {
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const auroraBg = (theme) => ({
+export const auroraBg = (theme, intensity = 0.16) => ({
   backgroundImage: `radial-gradient(1680px 520px at 5% 10%, ${alpha(theme.palette.info.main, 0.25)}, transparent 62%)`,
 });
 
 const crystalBorder = () => {
-  return {
-    borderBottom: "2px solid rgba(155, 192, 197, 0.25)",
-  };
+  return { border: "1px solid rgba(155, 192, 197, 0.5)" };
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -337,8 +335,8 @@ const ActiveIssuesHeader = ({
             <Stack direction="row" spacing={1.1}>
               <Avatar
                 sx={{
-                  width: 45,
-                  height: 45,
+                  width: 44,
+                  height: 44,
                   bgcolor: alpha(theme.palette.secondary.main, 0.12),
                   color: "secondary.main",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -348,7 +346,7 @@ const ActiveIssuesHeader = ({
               </Avatar>
 
               <Stack spacing={0} sx={{ minWidth: 0 }}>
-                <Typography  sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+                <Typography variant="h4" sx={{ fontWeight: 980, lineHeight: 1.05, whiteSpace: "nowrap" }}>
                   Active issues
                 </Typography>
                 {/* <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
@@ -362,7 +360,7 @@ const ActiveIssuesHeader = ({
             </Stack> */}
           </Stack>
 
-          <Stack direction="row" spacing={12} sx={{ gap: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ gap: 1 }}>
             <Tooltip title="Refresh issues">
               <span>
                 <IconButton

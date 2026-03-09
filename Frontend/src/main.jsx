@@ -10,8 +10,8 @@ import '@fontsource/Source Sans Pro/700.css'; */
 /* import '@fontsource/inter'; */
 
 // Importaciones de Material UI
-import { Box, CssBaseline, GlobalStyles } from "@mui/material";
-import { ThemeProvider, extendTheme, responsiveFontSizes, alpha } from '@mui/material/styles';
+import { CssBaseline, GlobalStyles } from "@mui/material";
+import { ThemeProvider, extendTheme, responsiveFontSizes } from '@mui/material/styles';
 
 // Importaciones de la aplicación
 import { AuthProvider } from "./context/auth/auth.provider.jsx";
