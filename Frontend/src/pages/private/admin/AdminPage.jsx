@@ -152,7 +152,7 @@ function AdminHome() {
   }, []);
 
   return (
-    <Box sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2, pb: 3 }}>
+    <Box sx={{ maxWidth: 2100, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2, pb: 3 }}>
       <Paper elevation={0} sx={{ ...panelSx(theme, 0.16), p: { xs: 1.6, md: 2.0 }, mb: 2 }}>
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <Stack direction="row" spacing={1.1} alignItems="flex-start" sx={{ mb: 0.8 }}>
@@ -278,7 +278,7 @@ function AdminSectionShell({ sectionKey, children }) {
   if (!section) return <Navigate to="/dashboard/admin" replace />;
 
   return (
-    <Box sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2, pb: 3 }}>
+    <Box sx={{ maxWidth: 2300, mx: "auto", px: { xs: 1.5, md: 2.5 }, pt: 2, pb: 3 }}>
       <Paper elevation={0} sx={{ ...panelSx(theme, 0.14), p: { xs: 1.6, md: 2.0 } }}>
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <Stack direction="row" spacing={1.25} alignItems="flex-start" justifyContent="space-between">

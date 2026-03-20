@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
@@ -28,12 +28,21 @@ import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 import { removeAccents } from "../../../../../utils/createIssueUtils";
 import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
 
-export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDialog = false }) => {
+export const ExpertsStep = ({
+  initialExperts: initialExpertsProp,
+  addedExperts,
+  setAddedExperts,
+  closeAddExpertsDialog = false,
+}) => {
   const theme = useTheme();
-  const { initialExperts } = useIssuesDataContext();
+  const { initialExperts: contextExperts } = useIssuesDataContext();
   const [searchFilter, setSearchFilter] = useState("");
 
-  const experts = initialExperts.filter((expert) => !addedExperts.includes(expert.email));
+  // Usa la prop si viene; si no, fallback al context
+  const sourceExperts = Array.isArray(initialExpertsProp) ? initialExpertsProp : (contextExperts || []);
+
+  // Evita mostrar los ya seleccionados en esta misma sesión
+  const experts = sourceExperts.filter((expert) => !addedExperts.includes(expert.email));
 
   const filteredExperts = useMemo(() => {
     const q = removeAccents(searchFilter.toLowerCase().trim());
@@ -47,8 +56,14 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
     });
   }, [experts, searchFilter]);
 
-  const handleAddExpert = (email) => setAddedExperts((prev) => [...prev, email]);
-  const handleDeleteExpert = (email) => setAddedExperts((prev) => prev.filter((e) => e !== email));
+  const handleAddExpert = (email) => {
+    setAddedExperts((prev) => [...new Set([...(prev || []), email])]);
+  };
+
+  const handleDeleteExpert = (email) => {
+    setAddedExperts((prev) => prev.filter((e) => e !== email));
+  };
+
   const selectedCount = Array.isArray(addedExperts) ? addedExperts.length : 0;
 
   const headCellSx = {
@@ -75,7 +90,6 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
 
   return (
     <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-      {/* Header (sin caja) */}
       <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
         <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
           <Avatar
@@ -118,7 +132,6 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
         ) : null}
       </Stack>
 
-      {/* Search */}
       <TextField
         label="Search by name, email or university"
         variant="outlined"
@@ -138,7 +151,6 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
         sx={inputSx}
       />
 
-      {/* Chips */}
       {selectedCount > 0 ? (
         <Stack direction="row" flexWrap="wrap" gap={1}>
           {addedExperts.map((email) => (
@@ -159,7 +171,6 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
         </Stack>
       ) : null}
 
-      {/* Table (superficie principal) */}
       <TableContainer
         sx={{
           maxHeight: "52vh",
@@ -211,7 +222,7 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
                   <TableCell sx={bodyCellSx}>{expert.university}</TableCell>
                   <TableCell sx={{ ...bodyCellSx, textAlign: "center" }}>
                     <Tooltip title="Add expert" arrow placement="top">
-                      <IconButton variant="outlined" onClick={() => handleAddExpert(expert.email)} size="small">
+                      <IconButton onClick={() => handleAddExpert(expert.email)} size="small">
                         <AddCircleOutlineIcon color="success" />
                       </IconButton>
                     </Tooltip>
@@ -223,7 +234,6 @@ export const ExpertsStep = ({ addedExperts, setAddedExperts, closeAddExpertsDial
         </Table>
       </TableContainer>
 
-      {/* Footer actions si aplica */}
       {closeAddExpertsDialog ? (
         <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1.25} justifyContent="flex-end">
           <Button

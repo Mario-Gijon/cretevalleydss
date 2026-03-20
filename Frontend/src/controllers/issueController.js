@@ -306,12 +306,12 @@ export const sendBwmWeights = async (id, bwmData) => {
   }
 };
 
-export const saveManualWeights = async (id, weights) => {
+export const saveManualWeights = async (id, manualWeights) => {
   try {
     const res = await authFetch(`${API}/issues/saveManualWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, weights }),
+      body: JSON.stringify({ id, manualWeights }),
     });
     return await safeJson(res);
   } catch (err) {
@@ -320,6 +320,19 @@ export const saveManualWeights = async (id, weights) => {
   }
 };
 
+export const sendManualWeights = async (id, manualWeights) => {
+  try {
+    const res = await authFetch(`${API}/issues/sendManualWeights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, manualWeights }),
+    });
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Error sending manual weights:", err);
+    return false;
+  }
+};
 export const getManualWeights = async (id) => {
   try {
     const res = await authFetch(`${API}/issues/getManualWeights`, {
@@ -330,20 +343,6 @@ export const getManualWeights = async (id) => {
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching manual weights:", err);
-    return false;
-  }
-};
-
-export const sendManualWeights = async (id, weights) => {
-  try {
-    const res = await authFetch(`${API}/issues/sendManualWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, weights }),
-    });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error sending manual weights:", err);
     return false;
   }
 };

@@ -3603,20 +3603,20 @@ export const saveManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { id, weigths } = req.body;
+    const { id } = req.body;
 
-    const raw = weigths?.manualWeights || {};
-
-    // Convertir a números
-    const manualWeights = Object.fromEntries(
-      Object.entries(raw).map(([k, v]) => {
-        if (v === "" || v === null) return [k, null]; // guardar vacío correctamente
-        return [k, Number(v)];
-      })
-    );
+    const raw =
+      req.body?.manualWeights ||
+      req.body?.weights?.manualWeights ||
+      req.body?.weights ||
+      req.body?.weigths?.manualWeights ||
+      req.body?.weigths ||
+      {};
 
     const issue = await Issue.findById(id);
-    if (!issue) return res.status(404).json({ success: false, msg: "Issue not found" });
+    if (!issue) {
+      return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
 
     const participation = await Participation.findOne({
       issue: issue._id,
@@ -3624,10 +3624,28 @@ export const saveManualWeights = async (req, res) => {
       invitationStatus: "accepted",
     });
 
-    if (!participation)
+    if (!participation) {
       return res.status(403).json({ success: false, msg: "You are no longer a participant" });
+    }
 
-    // Guardar
+    await ensureIssueOrdersDb({ issueId: issue._id });
+
+    const leafDocs = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
+
+    const manualWeights = Object.fromEntries(
+      leafDocs.map((c) => {
+        const v = raw[c.name];
+        if (v === "" || v === null || v === undefined) return [c.name, null];
+        const num = Number(v);
+        return [c.name, Number.isFinite(num) ? num : null];
+      })
+    );
+
     await CriteriaWeightEvaluation.updateOne(
       { issue: issue._id, expert: userId },
       {
@@ -3642,11 +3660,16 @@ export const saveManualWeights = async (req, res) => {
       { upsert: true }
     );
 
-    return res.status(200).json({ success: true, msg: "Manual weights saved successfully" });
-
+    return res.status(200).json({
+      success: true,
+      msg: "Manual weights saved successfully",
+    });
   } catch (err) {
     console.error("saveManualWeights error:", err);
-    return res.status(500).json({ success: false, msg: "An error occurred while saving" });
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while saving",
+    });
   }
 };
 
@@ -3711,49 +3734,99 @@ export const sendManualWeights = async (req, res) => {
   const userId = req.uid;
 
   try {
-    const { id, weigths } = req.body;
+    const { id } = req.body;
 
-    const raw = weigths?.manualWeights || {};
-    const manualWeights = Object.fromEntries(
-      Object.entries(raw).map(([k, v]) => [k, Number(v)])
-    );
+    const raw =
+      req.body?.manualWeights ||
+      req.body?.weights?.manualWeights ||
+      req.body?.weights ||
+      req.body?.weigths?.manualWeights ||
+      req.body?.weigths ||
+      {};
 
     const issue = await Issue.findById(id);
-    if (!issue)
+    if (!issue) {
       return res.status(404).json({ success: false, msg: "Issue not found" });
+    }
 
-    // validar suma 1
-    const sum = Object.values(manualWeights).reduce((a, b) => a + b, 0);
-    if (Math.abs(sum - 1) > 0.001)
+    await ensureIssueOrdersDb({ issueId: issue._id });
+
+    const criteria = await getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    });
+
+    const criterionNames = criteria.map((c) => c.name);
+
+    const manualWeights = Object.fromEntries(
+      criterionNames.map((name) => {
+        const v = raw[name];
+        if (v === "" || v === null || v === undefined) return [name, null];
+        const num = Number(v);
+        return [name, Number.isFinite(num) ? num : null];
+      })
+    );
+
+    const missing = criterionNames.filter((name) => manualWeights[name] == null);
+    if (missing.length > 0) {
       return res.status(400).json({
         success: false,
-        msg: "Manual weights must sum to 1",
+        msg: "All criteria must have a weight",
       });
+    }
 
-    // guardar pesos manuales
+    const invalid = criterionNames.find((name) => {
+      const v = manualWeights[name];
+      return v < 0 || v > 1;
+    });
+
+    if (invalid) {
+      return res.status(400).json({
+        success: false,
+        msg: `Weight for '${invalid}' must be between 0 and 1`,
+      });
+    }
+
+    const sum = criterionNames.reduce((acc, name) => acc + Number(manualWeights[name]), 0);
+
+    if (Math.abs(sum - 1) > 0.001) {
+      return res.status(400).json({
+        success: false,
+        msg: `Manual weights must sum to 1. Current sum: ${sum}`,
+      });
+    }
+
     await CriteriaWeightEvaluation.updateOne(
       { issue: issue._id, expert: userId },
-      { $set: { manualWeights, completed: true } },
+      {
+        $set: {
+          issue: issue._id,
+          expert: userId,
+          manualWeights,
+          completed: true,
+          consensusPhase: 1,
+        },
+      },
       { upsert: true }
     );
 
-    // marcar participación
     await Participation.updateOne(
       { issue: issue._id, expert: userId },
       { $set: { weightsCompleted: true } }
     );
 
-    // 🟩 NUEVO: marcar cambio de etapa cuando todos han evaluado
     const [totalParticipants, totalWeightsDone] = await Promise.all([
       Participation.countDocuments({
         issue: issue._id,
-        invitationStatus: { $in: ["accepted", "pending"] }
+        invitationStatus: { $in: ["accepted", "pending"] },
       }),
       Participation.countDocuments({
         issue: issue._id,
         invitationStatus: { $in: ["accepted", "pending"] },
-        weightsCompleted: true
-      })
+        weightsCompleted: true,
+      }),
     ]);
 
     if (
@@ -3769,7 +3842,6 @@ export const sendManualWeights = async (req, res) => {
       success: true,
       msg: "Manual weights submitted successfully",
     });
-
   } catch (err) {
     console.error("sendManualWeights error:", err);
     return res.status(500).json({

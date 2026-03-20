@@ -86,8 +86,23 @@ export const RateConsensusWeightsDialog = ({
   const applyEqualWeights = () => {
     const n = leafCriteria.length;
     if (n === 0) return;
-    const value = Number((1 / n).toFixed(3));
-    setManualWeights(Object.fromEntries(leafCriteria.map((c) => [c.name, value])));
+
+    const values = [];
+    let acc = 0;
+
+    for (let i = 0; i < n; i++) {
+      if (i < n - 1) {
+        const v = Number((1 / n).toFixed(6));
+        values.push(v);
+        acc += v;
+      } else {
+        values.push(Number((1 - acc).toFixed(6)));
+      }
+    }
+
+    setManualWeights(
+      Object.fromEntries(leafCriteria.map((c, idx) => [c.name, values[idx]]))
+    );
   };
 
   useEffect(() => {
@@ -101,7 +116,7 @@ export const RateConsensusWeightsDialog = ({
     const fetchSaved = async () => {
       setLoading(true);
       try {
-        const response = await getManualWeights(selectedIssue.name);
+        const response = await getManualWeights(selectedIssue.id);
 
         if (response.success && response.manualWeights) {
           setManualWeights(response.manualWeights);
@@ -140,7 +155,9 @@ export const RateConsensusWeightsDialog = ({
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const response = await saveManualWeights(selectedIssue.name, { manualWeights });
+    console.log(manualWeights)
+
+    const response = await saveManualWeights(selectedIssue.id, manualWeights);
 
     setLoading(false);
     if (response.success) {
@@ -155,7 +172,9 @@ export const RateConsensusWeightsDialog = ({
     setLoading(true);
     setOpenSendDialog(false);
 
-    const response = await sendManualWeights(selectedIssue.name, { manualWeights });
+    console.log(manualWeights)
+
+    const response = await sendManualWeights(selectedIssue.id, manualWeights);
 
     setLoading(false);
     if (response.success) {

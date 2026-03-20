@@ -9,9 +9,28 @@ import {
   AccordionDetails,
   useMediaQuery,
   Paper,
+  Avatar,
+  Button,
+  Chip,
+  Divider,
+  IconButton,
+  InputAdornment,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
+import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
+import UndoIcon from "@mui/icons-material/Undo";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
@@ -32,13 +51,17 @@ import { EvaluationMatrixDialog } from "../../../components/EvaluationMatrixDial
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 
 import AddExpertsDomainsDialog from "../../../components/AddExpertsDomainsDialog/AddExpertsDomainsDialog";
-import { ExpertsStep } from "../createIssue/Steps/ExpertsStep/ExpertsStep";
 
 import { RateBwmWeightsDialog } from "../../../components/RateBwmWeightsDialog/RateBwmWeightsDialog";
 import { RateConsensusWeightsDialog } from "../../../components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
 
 // ✅ Tus componentes
-import ActiveIssuesHeader, { getNextActionMeta, Pill, auroraBg, glassSx as headerGlassSx } from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
+import ActiveIssuesHeader, {
+  getNextActionMeta,
+  Pill,
+  auroraBg,
+  glassSx as headerGlassSx,
+} from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
 import TaskCenter from "../../../components/TaskCenter/TaskCenter";
 import IssuesGrid from "../../../components/IssuesGrid/IssuesGrid";
 import IssueDetailsDrawer from "../../../components/IssueDetailsDrawer/IssueDetailsDrawer";
@@ -102,6 +125,282 @@ const parseDateDDMMYYYY = (d) => {
   const [dd, mm, yyyy] = d.split("-").map((x) => Number(x));
   if (!dd || !mm || !yyyy) return 0;
   return new Date(yyyy, mm - 1, dd).getTime();
+};
+
+const AddExpertsPickerDialog = ({
+  open,
+  onClose,
+  availableExperts = [],
+  expertsToAdd = [],
+  setExpertsToAdd,
+}) => {
+  const theme = useTheme();
+  const [searchFilter, setSearchFilter] = useState("");
+
+  useEffect(() => {
+    if (!open) setSearchFilter("");
+  }, [open]);
+
+  const filteredExperts = useMemo(() => {
+    const q = normalize(searchFilter);
+    if (!q) return availableExperts;
+
+    return availableExperts.filter((expert) => {
+      const name = normalize(expert?.name);
+      const email = normalize(expert?.email);
+      const university = normalize(expert?.university);
+      return name.includes(q) || email.includes(q) || university.includes(q);
+    });
+  }, [availableExperts, searchFilter]);
+
+  const toggleExpertSelection = (email) => {
+    if (!email) return;
+
+    setExpertsToAdd((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+    );
+  };
+
+  return (
+    <GlassDialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ elevation: 0 }}>
+      <Box
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          ...auroraBg(theme, 0.14),
+          "&:after": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
+            opacity: 0.18,
+          },
+        }}
+      >
+        <Box sx={{ p: 2.1, position: "relative", zIndex: 1 }}>
+          <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1.1} alignItems="center">
+              <Avatar
+                sx={{
+                  width: 42,
+                  height: 42,
+                  bgcolor: alpha(theme.palette.info.main, 0.12),
+                  color: "info.main",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <PersonAddAlt1Icon />
+              </Avatar>
+
+              <Stack spacing={0.15}>
+                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
+                  Add experts
+                </Typography>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  Select one or more experts to add to this issue.
+                </Typography>
+              </Stack>
+            </Stack>
+
+            <IconButton
+              onClick={onClose}
+              sx={{
+                border: "1px solid rgba(255,255,255,0.10)",
+                bgcolor: alpha(theme.palette.common.white, 0.04),
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Box>
+      </Box>
+
+      <Box sx={{ p: 2.1 }}>
+        <Stack spacing={1.25}>
+          <TextField
+            size="small"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Search by name, email or university..."
+            autoComplete="off"
+            color="info"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+                bgcolor: alpha(theme.palette.common.white, 0.04),
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" sx={{ opacity: 0.72 }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          {expertsToAdd.length > 0 ? (
+            <Stack direction="row" spacing={0.75} flexWrap="wrap">
+              {expertsToAdd.map((email) => (
+                <Chip
+                  key={email}
+                  label={email}
+                  onDelete={() =>
+                    setExpertsToAdd((prev) => prev.filter((e) => e !== email))
+                  }
+                  variant="outlined"
+                  sx={{
+                    borderColor: alpha(theme.palette.common.white, 0.18),
+                    color: alpha(theme.palette.common.white, 0.88),
+                    bgcolor: alpha(theme.palette.common.white, 0.03),
+                    "& .MuiChip-deleteIcon": {
+                      color: alpha(theme.palette.common.white, 0.55),
+                    },
+                    "& .MuiChip-deleteIcon:hover": {
+                      color: alpha(theme.palette.common.white, 0.85),
+                    },
+                  }}
+                />
+              ))}
+            </Stack>
+          ) : null}
+
+          <TableContainer
+            sx={{
+              maxHeight: "52vh",
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+              bgcolor: alpha(theme.palette.common.white, 0.02),
+              overflow: "auto",
+              scrollbarWidth: "thin",
+              scrollbarColor: `${alpha(theme.palette.common.white, 0.22)} transparent`,
+              "&::-webkit-scrollbar": { width: 8, height: 8 },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: alpha(theme.palette.common.white, 0.16),
+                borderRadius: 999,
+                border: "2px solid transparent",
+                backgroundClip: "content-box",
+              },
+            }}
+          >
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf" }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf" }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf" }}>University</TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: 950,
+                      bgcolor: "#1a2a2fcf",
+                      width: 110,
+                      textAlign: "center",
+                    }}
+                  >
+                    Action
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {filteredExperts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                        No available experts found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredExperts.map((expert) => {
+                    const selected = expertsToAdd.includes(expert.email);
+
+                    return (
+                      <TableRow
+                        key={expert.email}
+                        hover
+                        sx={{
+                          "&:hover": {
+                            bgcolor: alpha(theme.palette.info.main, 0.06),
+                          },
+                        }}
+                      >
+                        <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                          <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                            {expert.name || "Unknown"}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                          <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                            {expert.email || "—"}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                          <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                            {expert.university || "—"}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell
+                          align="center"
+                          sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}
+                        >
+                          <Tooltip title={selected ? "Unselect expert" : "Select expert"} arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => toggleExpertSelection(expert.email)}
+                              sx={{
+                                border: "1px solid rgba(255,255,255,0.10)",
+                                bgcolor: alpha(
+                                  selected ? theme.palette.warning.main : theme.palette.common.white,
+                                  selected ? 0.12 : 0.03
+                                ),
+                              }}
+                            >
+                              {selected ? (
+                                <UndoIcon fontSize="small" />
+                              ) : (
+                                <PersonAddAlt1Icon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Divider sx={{ opacity: 0.12 }} />
+
+          <Stack
+            direction={{ xs: "column-reverse", sm: "row" }}
+            spacing={1}
+            justifyContent="flex-end"
+          >
+            <Button onClick={onClose} color="warning" variant="outlined">
+              Close
+            </Button>
+
+            <Button
+              onClick={onClose}
+              color="info"
+              variant="outlined"
+              startIcon={<DoneAllIcon />}
+            >
+              Use selection
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    </GlassDialog>
+  );
 };
 
 const ActiveIssuesPage = () => {
@@ -220,6 +519,8 @@ const ActiveIssuesPage = () => {
       setIsEditingExperts(false);
       setExpertsToAdd([]);
       setExpertsToRemove([]);
+      setOpenAddExpertsDialog(false);
+      setOpenAssignDomainsDialog(false);
       setDrawerTab(0);
     }
   }, [drawerOpen, selectedIssueId, selectedIssue, loading]);
@@ -242,6 +543,8 @@ const ActiveIssuesPage = () => {
     setIsEditingExperts(false);
     setExpertsToAdd([]);
     setExpertsToRemove([]);
+    setOpenAddExpertsDialog(false);
+    setOpenAssignDomainsDialog(false);
     setDrawerTab(0);
   };
 
@@ -250,7 +553,14 @@ const ActiveIssuesPage = () => {
   };
 
   const openConfirm = ({ title, description, confirmText, tone = "warning", action }) => {
-    setConfirm({ open: true, title, description, confirmText: confirmText || "Confirm", tone, action });
+    setConfirm({
+      open: true,
+      title,
+      description,
+      confirmText: confirmText || "Confirm",
+      tone,
+      action,
+    });
   };
 
   // ✅ reset “solo lo que existe”
@@ -323,7 +633,6 @@ const ActiveIssuesPage = () => {
     return arr;
   }, [filteredIssuesBase, sortBy]);
 
-
   const headerSignals = useMemo(() => {
     const list = activeIssues || [];
     let actionable = 0;
@@ -348,10 +657,34 @@ const ActiveIssuesPage = () => {
   const taskGroupsLegacy = useMemo(() => {
     const list = activeIssues || [];
     const groups = [
-      { key: "evalAlt", title: "Evaluate alternatives", tone: "info", icon: null, match: (i) => i?.statusFlags?.canEvaluateAlternatives },
-      { key: "evalW", title: "Evaluate weights", tone: "info", icon: null, match: (i) => i?.statusFlags?.canEvaluateWeights },
-      { key: "computeW", title: "Compute weights (admin)", tone: "warning", icon: null, match: (i) => i?.isAdmin && i?.statusFlags?.canComputeWeights },
-      { key: "resolve", title: "Resolve (admin)", tone: "warning", icon: null, match: (i) => i?.isAdmin && i?.statusFlags?.canResolveIssue },
+      {
+        key: "evalAlt",
+        title: "Evaluate alternatives",
+        tone: "info",
+        icon: null,
+        match: (i) => i?.statusFlags?.canEvaluateAlternatives,
+      },
+      {
+        key: "evalW",
+        title: "Evaluate weights",
+        tone: "info",
+        icon: null,
+        match: (i) => i?.statusFlags?.canEvaluateWeights,
+      },
+      {
+        key: "computeW",
+        title: "Compute weights (admin)",
+        tone: "warning",
+        icon: null,
+        match: (i) => i?.isAdmin && i?.statusFlags?.canComputeWeights,
+      },
+      {
+        key: "resolve",
+        title: "Resolve (admin)",
+        tone: "warning",
+        icon: null,
+        match: (i) => i?.isAdmin && i?.statusFlags?.canResolveIssue,
+      },
     ];
     return groups.map((g) => ({ ...g, items: list.filter(g.match) })).filter((g) => g.items.length > 0);
   }, [activeIssues]);
@@ -472,13 +805,17 @@ const ActiveIssuesPage = () => {
       setIsEditingExperts(false);
       setExpertsToAdd([]);
       setExpertsToRemove([]);
+      setOpenAddExpertsDialog(false);
+      setOpenAssignDomainsDialog(false);
     } else {
       setIsEditingExperts(true);
     }
   };
 
   const markRemoveExpert = (email) => {
-    setExpertsToRemove((prev) => [...new Set([...prev, email])]);
+    setExpertsToRemove((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+    );
   };
 
   const saveExpertsChanges = async () => {
@@ -516,6 +853,7 @@ const ActiveIssuesPage = () => {
 
     setBusy((b) => ({ ...b, editExperts: false }));
     setOpenAssignDomainsDialog(false);
+    setOpenAddExpertsDialog(false);
     setIsEditingExperts(false);
     setExpertsToAdd([]);
     setExpertsToRemove([]);
@@ -546,10 +884,9 @@ const ActiveIssuesPage = () => {
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
 
-      <Box sx={{ maxWidth: 2600, p:1 }}>
+      <Box sx={{ maxWidth: 2600, p: 1 }}>
         {isLgUp ? (
-          <Stack >
-            {/* ✅ Contenedor único (header + tasks) CON aurora */}
+          <Stack>
             <Paper
               elevation={0}
               sx={{
@@ -558,9 +895,7 @@ const ActiveIssuesPage = () => {
                 height: TOP_H,
                 overflow: "hidden",
                 position: "relative",
-                mb:1,
-
-                // ✅ mismo look del header original
+                mb: 1,
                 ...headerGlassSx(theme, 0.16, "crystal"),
                 ...auroraBg(theme, 0.16),
                 "&:after": {
@@ -585,7 +920,6 @@ const ActiveIssuesPage = () => {
                   minWidth: 0,
                 }}
               >
-                {/* ✅ Header embebido (SIN su propio aurora/paper) */}
                 <Box sx={{ minWidth: 0, height: "100%" }}>
                   <ActiveIssuesHeader
                     isLgUp
@@ -605,7 +939,6 @@ const ActiveIssuesPage = () => {
                     height="100%"
                     filtersMeta={filtersMeta}
                     paperSx={{
-                      // ✅ se “desactiva” su Paper para que el aurora sea el del contenedor común
                       p: 0,
                       height: "100%",
                       bgcolor: "transparent",
@@ -619,7 +952,6 @@ const ActiveIssuesPage = () => {
                   />
                 </Box>
 
-                {/* ✅ TaskCenter dentro del MISMO contenedor aurora (TaskCenter no cambia estilos) */}
                 <Box sx={{ minWidth: 0, height: "100%" }}>
                   <TaskCenter
                     variant="rail"
@@ -727,7 +1059,6 @@ const ActiveIssuesPage = () => {
         )}
       </Box>
 
-      {/* Drawer details */}
       <IssueDetailsDrawer
         open={drawerOpen}
         onClose={closeDrawer}
@@ -753,7 +1084,6 @@ const ActiveIssuesPage = () => {
         setIsRatingWeights={setIsRatingWeights}
       />
 
-      {/* Dialogs externos */}
       {selectedIssue?.isPairwise ? (
         <EvaluationPairwiseMatrixDialog
           setOpenIssueDialog={setDrawerOpen}
@@ -786,7 +1116,6 @@ const ActiveIssuesPage = () => {
         />
       )}
 
-      {/* Confirm dialog */}
       <GlassDialog
         open={confirm.open}
         onClose={() => setConfirm((c) => ({ ...c, open: false, action: null }))}
@@ -833,22 +1162,14 @@ const ActiveIssuesPage = () => {
         </Box>
       </GlassDialog>
 
-      {/* Add experts dialog */}
-      <GlassDialog
+      <AddExpertsPickerDialog
         open={openAddExpertsDialog}
         onClose={() => setOpenAddExpertsDialog(false)}
-        PaperProps={{ elevation: 0 }}
-        maxWidth="auto"
-      >
-        <ExpertsStep
-          initialExperts={availableExperts}
-          addedExperts={expertsToAdd}
-          setAddedExperts={setExpertsToAdd}
-          closeAddExpertsDialog={{ closeAddExpertsDialog: () => setOpenAddExpertsDialog(false) }}
-        />
-      </GlassDialog>
+        availableExperts={availableExperts}
+        expertsToAdd={expertsToAdd}
+        setExpertsToAdd={setExpertsToAdd}
+      />
 
-      {/* Domains assignment dialog */}
       <AddExpertsDomainsDialog
         open={openAssignDomainsDialog}
         onClose={() => setOpenAssignDomainsDialog(false)}

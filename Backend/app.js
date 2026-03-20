@@ -5,6 +5,7 @@ import dotenv from "dotenv"
 import "./database/db.js"  // Conexión a la base de datos.
 import authRouter from "./routes/auth.route.js" // Rutas de autenticación.
 import issueRouter from "./routes/issue.route.js"
+import adminRouter from "./routes/admin.route.js"
 import cookieParser from 'cookie-parser' // Para poder manejar las cookies en las solicitudes HTTP.
 import path from 'path';
 
@@ -51,6 +52,8 @@ app.use("/api/auth", authRouter)
 
 // Usa las rutas de autenticación definidas en `authRouter` para las solicitudes a `/auth`.
 app.use("/api/issues", issueRouter)
+
+app.use("/api/admin", adminRouter);
 
 // === Servir Frontend ===
 const distPath = path.join(process.cwd(), 'dist');

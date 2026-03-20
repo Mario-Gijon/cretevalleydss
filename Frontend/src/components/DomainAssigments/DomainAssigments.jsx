@@ -18,10 +18,6 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 import { getLeafCriteria, getMixedOrValue } from "../../utils/createIssueUtils";
 
-const subtleDividerSx = (theme) => ({
-  borderColor: alpha(theme.palette.common.white, 0.08),
-});
-
 const rowSx = {
   width: "100%",
   alignItems: { xs: "stretch", sm: "center" },
@@ -40,11 +36,10 @@ const selectSx = (theme, effectiveValue) => ({
   "& .MuiOutlinedInput-root": {
     borderRadius: 3,
     bgcolor: "transparent", // ✅ sin fondos
-    border: `1px solid ${
-      effectiveValue === "mixed"
-        ? alpha(theme.palette.info.main, 0.35)
-        : alpha(theme.palette.common.white, 0.12)
-    }`,
+    border: `1px solid ${effectiveValue === "mixed"
+      ? alpha(theme.palette.info.main, 0.35)
+      : alpha(theme.palette.common.white, 0.12)
+      }`,
     "& fieldset": { border: "none" },
     "&:hover": {
       borderColor:
@@ -92,16 +87,27 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
   // Opciones del select según soporte del modelo
   const domainOptions = useMemo(() => {
     const opts = [];
+
     if (supportsNumeric) {
       globalDomains
         .filter((d) => d.type === "numeric")
-        .forEach((d) => opts.push({ value: d._id, label: d.name }));
+        .forEach((d) =>
+          opts.push({
+            value: String(d._id),
+            label: d.name,
+          })
+        );
     }
+
     if (supportsLinguistic) {
       [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains].forEach((d) =>
-        opts.push({ value: d._id, label: d.name })
+        opts.push({
+          value: String(d._id),
+          label: d.name,
+        })
       );
     }
+
     return opts;
   }, [supportsNumeric, supportsLinguistic, globalDomains, expressionDomains]);
 
@@ -153,6 +159,10 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
   const renderSelect = (path, values, isSingle = false) => {
     let currentValue = getMixedOrValue(values);
 
+    if (currentValue !== "mixed" && currentValue != null) {
+      currentValue = String(currentValue);
+    }
+
     // Nunca debe ser "mixed" para celdas individuales
     if (isSingle && currentValue === "mixed" && values.length === 1) {
       currentValue = values[0];
@@ -160,9 +170,15 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
     // Fallback según soporte del modelo
     const fallback = supportsNumeric
-      ? globalDomains.find((d) => d.type === "numeric" && d.numericRange?.min === 0 && d.numericRange?.max === 1)?._id
+      ? String(
+        globalDomains.find(
+          (d) => d.type === "numeric" && d.numericRange?.min === 0 && d.numericRange?.max === 1
+        )?._id || ""
+      )
       : supportsLinguistic
-        ? [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains][0]?._id
+        ? String(
+          [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains][0]?._id || ""
+        )
         : "undefined";
 
     let effectiveValue = currentValue ?? fallback;
@@ -317,9 +333,9 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
       </Stack>
 
       {/* ---------- DETAILED TABLE (borde fino) ---------- */}
-      <Divider sx={{pt: 2}}/>
+      <Divider sx={{ pt: 2 }} />
 
-      <Stack spacing={0.35} sx={{pt:2}}>
+      <Stack spacing={0.35} sx={{ pt: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Detailed assignments
         </Typography>

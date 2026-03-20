@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DialogTitle,
   DialogContent,
@@ -20,7 +20,11 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import { buildInitialAssignments, getLeafCriteria, validateDomainAssigments } from "../../utils/createIssueUtils";
+import {
+  buildInitialAssignments,
+  getLeafCriteria,
+  validateDomainAssigments,
+} from "../../utils/createIssueUtils";
 import { DomainAssignments } from "../DomainAssigments/DomainAssigments";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 
@@ -28,6 +32,11 @@ const auroraBg = (theme, intensity = 0.16) => ({
   backgroundImage: `radial-gradient(1100px 480px at 12% 0%, ${alpha(theme.palette.info.main, intensity)}, transparent 62%),
                     radial-gradient(900px 460px at 88% 16%, ${alpha(theme.palette.secondary.main, intensity)}, transparent 58%)`,
 });
+
+const normalizeAlternativeName = (a) => {
+  if (typeof a === "string") return a;
+  return a?.name || "";
+};
 
 const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirmDomains }) => {
   const theme = useTheme();
@@ -37,28 +46,63 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
   const [domainAssignments, setDomainAssignments] = useState({});
   const [loading, setLoading] = useState(true);
 
+  const normalizedAlternatives = useMemo(() => {
+    return Array.isArray(issue?.alternatives)
+      ? issue.alternatives.map(normalizeAlternativeName).filter(Boolean)
+      : [];
+  }, [issue?.alternatives]);
+
+  const normalizedCriteria = useMemo(() => {
+    return Array.isArray(issue?.criteria) ? issue.criteria : [];
+  }, [issue?.criteria]);
+
   useEffect(() => {
-    if (open && expertsToAdd.length > 0 && issue?.alternatives && issue?.criteria) {
-      const leafCriteria = getLeafCriteria(issue.criteria);
+    if (!open) {
+      setLoading(true);
+      setDomainAssignments({});
+      return;
+    }
+
+    if (
+      expertsToAdd.length > 0 &&
+      normalizedAlternatives.length > 0 &&
+      normalizedCriteria.length > 0 &&
+      issue?.model
+    ) {
+      const leafCriteria = getLeafCriteria(normalizedCriteria);
+
       const init = buildInitialAssignments(
         expertsToAdd,
-        issue.alternatives.map((a) => a.name),
+        normalizedAlternatives,
         leafCriteria,
         {},
         issue.model,
         globalDomains,
         expressionDomains
       );
+
       setDomainAssignments(init);
       setLoading(false);
+    } else {
+      setDomainAssignments({});
+      setLoading(false);
     }
-  }, [open, expertsToAdd, issue, globalDomains, expressionDomains]);
+  }, [
+    open,
+    expertsToAdd,
+    normalizedAlternatives,
+    normalizedCriteria,
+    issue?.model,
+    globalDomains,
+    expressionDomains,
+  ]);
 
   const handleConfirm = () => {
     if (!validateDomainAssigments(domainAssignments)) {
       showSnackbarAlert("You must assign expression domains to all new experts.", "error");
       return;
     }
+
     onConfirmDomains(domainAssignments);
     onClose();
   };
@@ -85,7 +129,13 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
           },
         }}
       >
-        <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" sx={{ position: "relative", zIndex: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1.25}
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ position: "relative", zIndex: 1 }}
+        >
           <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
             <Avatar
               sx={{
@@ -128,7 +178,6 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
           borderColor: alpha(theme.palette.common.white, 0.10),
           bgcolor: "transparent",
           py: 2,
-          // ✅ fuerza a inputs internos (si los hay) a verse "info"
           "& .MuiTextField-root .MuiOutlinedInput-root": { borderRadius: 3 },
           "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.info.main },
           "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -137,7 +186,15 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
         }}
       >
         {loading ? (
-          <Box sx={{ py: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 1.25 }}>
+          <Box
+            sx={{
+              py: 6,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.25,
+            }}
+          >
             <CircularProgress size={18} color="info" />
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
               Loading domain assignments...
@@ -149,13 +206,12 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
               Assign a domain for each alternative and leaf criterion.
             </Typography>
 
-            {/* DomainAssignments mantiene su funcionalidad; solo "skin" con el wrapper */}
             <Box sx={{ mt: 0.5 }}>
               <DomainAssignments
                 allData={{
                   addedExperts: expertsToAdd,
-                  alternatives: issue.alternatives.map((a) => a.name ?? a),
-                  criteria: issue.criteria,
+                  alternatives: normalizedAlternatives,
+                  criteria: normalizedCriteria,
                   selectedModel: issue.model,
                 }}
                 expressionDomains={expressionDomains}
