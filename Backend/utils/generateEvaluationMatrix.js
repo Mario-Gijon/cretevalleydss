@@ -1,28 +1,32 @@
+import { Participation } from "../models/Participations.js";
 
-import { Participation } from '../models/Participations.js';
-
+/**
+ * Genera las matrices de evaluación pairwise agrupadas por experto.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Object>}
+ */
 export const generateEvaluationMatrices = async (issueId) => {
-  const evaluaciones = {};
+  const evaluationsByExpert = {};
 
-  // Obtener todas las evaluaciones de los expertos para el problema
   const participations = await Participation.find({ issue: issueId })
-    .populate("expert") // Obtener la información del experto
-    .populate("evaluations"); // Obtener las evaluaciones realizadas
+    .populate("expert")
+    .populate("evaluations");
 
   for (const participation of participations) {
-    const expertName = participation.expert.email; // O usa otro identificador único
+    const expertEmail = participation.expert.email;
 
-    if (!evaluaciones[expertName]) {
-      evaluaciones[expertName] = {};
+    if (!evaluationsByExpert[expertEmail]) {
+      evaluationsByExpert[expertEmail] = {};
     }
 
     for (const evaluation of participation.evaluations) {
-      const criterio = evaluation.criterion.name; // Nombre del criterio
-      const matriz = evaluation.pairwiseMatrix; // Matriz de pares
+      const criterionName = evaluation.criterion.name;
+      const pairwiseMatrix = evaluation.pairwiseMatrix;
 
-      evaluaciones[expertName][criterio] = matriz;
+      evaluationsByExpert[expertEmail][criterionName] = pairwiseMatrix;
     }
   }
 
-  return evaluaciones;
+  return evaluationsByExpert;
 };

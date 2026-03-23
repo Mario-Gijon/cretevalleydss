@@ -1436,8 +1436,6 @@ export default function IssuesSection() {
           <StatCard icon={<AssignmentIcon />} label="Total issues" value={stats.total} tone="info" />
           <StatCard icon={<TimelineIcon />} label="Active" value={stats.active} tone="warning" />
           <StatCard icon={<RuleOutlinedIcon />} label="Finished" value={stats.finished} tone="success" />
-          <StatCard icon={<PeopleAltIcon />} label="Consensus" value={stats.consensus} tone="secondary" />
-          <StatCard icon={<CompareArrowsIcon />} label="Pairwise" value={stats.pairwise} tone="info" />
         </Box>
 
         <Paper elevation={0} sx={{ ...sectionPanelSx(theme), p: 1 }}>

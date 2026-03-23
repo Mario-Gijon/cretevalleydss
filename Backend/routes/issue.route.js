@@ -1,80 +1,162 @@
-// Importa el enrutador de Express para definir rutas.
-import { Router } from 'express'
+import { Router } from "express";
 
-import { createIssue, modelsInfo, getAllUsers, getAllActiveIssues, removeIssue, getNotifications, markAllNotificationsAsRead, changeInvitationStatus, removeNotificationById, getAllFinishedIssues, getFinishedIssueInfo, removeFinishedIssue, editExperts, leaveIssue, resolvePairwiseIssue, savePairwiseEvaluations, getPairwiseEvaluations, sendPairwiseEvaluations, saveEvaluations, getEvaluations, sendEvaluations, resolveIssue, createExpressionDomain, getExpressionsDomain, removeExpressionDomain, updateExpressionDomain, saveBwmWeights, getBwmWeights, sendBwmWeights, computeWeights, saveManualWeights, getManualWeights, sendManualWeights, computeManualWeights, createIssueScenario, getIssueScenarios, getScenarioById, removeScenario } from '../controllers/issue.controller.js'
+import {
+  createIssue,
+  modelsInfo,
+  getAllUsers,
+  getAllActiveIssues,
+  removeIssue,
+  getNotifications,
+  markAllNotificationsAsRead,
+  changeInvitationStatus,
+  removeNotificationById,
+  getAllFinishedIssues,
+  getFinishedIssueInfo,
+  removeFinishedIssue,
+  editExperts,
+  leaveIssue,
+  resolvePairwiseIssue,
+  savePairwiseEvaluations,
+  getPairwiseEvaluations,
+  sendPairwiseEvaluations,
+  saveEvaluations,
+  getEvaluations,
+  sendEvaluations,
+  resolveIssue,
+  createExpressionDomain,
+  getExpressionsDomain,
+  removeExpressionDomain,
+  updateExpressionDomain,
+  saveBwmWeights,
+  getBwmWeights,
+  sendBwmWeights,
+  computeWeights,
+  saveManualWeights,
+  getManualWeights,
+  sendManualWeights,
+  computeManualWeights,
+  createIssueScenario,
+  getIssueScenarios,
+  getScenarioById,
+  removeScenario,
+} from "../controllers/issue.controller.js";
 
-// Importa el middleware para verificar el token de acceso.
-import { requireToken } from '../middlewares/requireToken.js'
+import { requireToken } from "../middlewares/requireToken.js";
 
-// Crea una instancia del enrutador de Express.
-const router = Router()
+const router = Router();
 
-// Define la ruta GET para obtener información de modelos.
-// Ejecuta el controlador `modelsInfo`.
-router.get("/getModelsInfo", requireToken, modelsInfo)
+// Obtener información de modelos
+router.get("/getModelsInfo", requireToken, modelsInfo);
 
-router.get("/getAllUsers", requireToken, getAllUsers)
+// Obtener usuarios
+router.get("/getAllUsers", requireToken, getAllUsers);
 
-router.get("/getExpressionsDomain", requireToken, getExpressionsDomain)
+// Obtener dominios de expresión
+router.get("/getExpressionsDomain", requireToken, getExpressionsDomain);
 
-router.post("/createExpressionDomain", requireToken, createExpressionDomain)
+// Crear dominio de expresión
+router.post("/createExpressionDomain", requireToken, createExpressionDomain);
 
-router.post("/createIssue", requireToken, createIssue)
+// Crear issue
+router.post("/createIssue", requireToken, createIssue);
 
-router.get("/getAllActiveIssues", requireToken, getAllActiveIssues)
+// Obtener issues activos
+router.get("/getAllActiveIssues", requireToken, getAllActiveIssues);
 
-router.get("/getAllFinishedIssues", requireToken, getAllFinishedIssues)
+// Obtener issues finalizados
+router.get("/getAllFinishedIssues", requireToken, getAllFinishedIssues);
 
-router.post("/removeIssue", requireToken, removeIssue)
+// Eliminar issue activo
+router.post("/removeIssue", requireToken, removeIssue);
 
-router.post("/removeExpressionDomain", requireToken, removeExpressionDomain)
+// Eliminar dominio de expresión
+router.post("/removeExpressionDomain", requireToken, removeExpressionDomain);
 
-router.post("/updateExpressionDomain", requireToken, updateExpressionDomain)
+// Actualizar dominio de expresión
+router.post("/updateExpressionDomain", requireToken, updateExpressionDomain);
 
-router.get("/getNotifications", requireToken, getNotifications)
+// Obtener notificaciones
+router.get("/getNotifications", requireToken, getNotifications);
 
-router.post("/markAllNotificationsAsRead", requireToken, markAllNotificationsAsRead)
+// Marcar todas las notificaciones como leídas
+router.post("/markAllNotificationsAsRead", requireToken, markAllNotificationsAsRead);
 
-router.post("/changeInvitationStatus", requireToken, changeInvitationStatus)
+// Cambiar estado de invitación
+router.post("/changeInvitationStatus", requireToken, changeInvitationStatus);
 
-router.post("/removeNotificationById", requireToken, removeNotificationById)
+// Eliminar notificación por id
+router.post("/removeNotificationById", requireToken, removeNotificationById);
 
-router.post("/getFinishedIssueInfo", requireToken, getFinishedIssueInfo)
+// Obtener información de issue finalizado
+router.post("/getFinishedIssueInfo", requireToken, getFinishedIssueInfo);
 
-router.post("/removeFinishedIssue", requireToken, removeFinishedIssue)
+// Eliminar issue finalizado
+router.post("/removeFinishedIssue", requireToken, removeFinishedIssue);
 
-router.post("/leaveIssue", requireToken, leaveIssue)
+// Salir de un issue
+router.post("/leaveIssue", requireToken, leaveIssue);
 
-router.post("/editExperts", requireToken, editExperts)
+// Editar expertos del issue
+router.post("/editExperts", requireToken, editExperts);
 
-// PAIRWISE
-router.post("/savePairwiseEvaluations", requireToken, savePairwiseEvaluations)
-router.post("/getPairwiseEvaluations", requireToken, getPairwiseEvaluations)
-router.post("/sendPairwiseEvaluations", requireToken, sendPairwiseEvaluations)
-router.post("/resolvePairwiseIssue", requireToken, resolvePairwiseIssue)
+// Guardar evaluaciones pairwise
+router.post("/savePairwiseEvaluations", requireToken, savePairwiseEvaluations);
 
-// NO PAIRWISE
-router.post("/saveEvaluations", requireToken, saveEvaluations)
-router.post("/getEvaluations", requireToken, getEvaluations)
-router.post("/sendEvaluations", requireToken, sendEvaluations)
-router.post("/resolveIssue", requireToken, resolveIssue)
+// Obtener evaluaciones pairwise
+router.post("/getPairwiseEvaluations", requireToken, getPairwiseEvaluations);
 
-router.post("/saveBwmWeights", requireToken, saveBwmWeights)
-router.post("/getBwmWeights", requireToken, getBwmWeights)
-router.post("/sendBwmWeights", requireToken, sendBwmWeights)
-router.post("/computeWeights", requireToken, computeWeights)
+// Enviar evaluaciones pairwise
+router.post("/sendPairwiseEvaluations", requireToken, sendPairwiseEvaluations);
 
-router.post("/saveManualWeights", requireToken, saveManualWeights)
-router.post("/getManualWeights", requireToken, getManualWeights)
-router.post("/sendManualWeights", requireToken, sendManualWeights)
-router.post("/computeManualWeights", requireToken, computeManualWeights)
+// Resolver issue pairwise
+router.post("/resolvePairwiseIssue", requireToken, resolvePairwiseIssue);
 
-// SCENARIOS
-router.post("/createIssueScenario", requireToken, createIssueScenario)
-router.post("/getIssueScenarios", requireToken, getIssueScenarios)
-router.post("/getIssueScenarioById", requireToken, getScenarioById)
-router.post("/removeIssueScenario", requireToken, removeScenario)
+// Guardar evaluaciones
+router.post("/saveEvaluations", requireToken, saveEvaluations);
 
+// Obtener evaluaciones
+router.post("/getEvaluations", requireToken, getEvaluations);
 
-// Exporta el enrutador para que pueda ser utilizado en otros módulos.
-export default router
+// Enviar evaluaciones
+router.post("/sendEvaluations", requireToken, sendEvaluations);
+
+// Resolver issue
+router.post("/resolveIssue", requireToken, resolveIssue);
+
+// Guardar pesos BWM
+router.post("/saveBwmWeights", requireToken, saveBwmWeights);
+
+// Obtener pesos BWM
+router.post("/getBwmWeights", requireToken, getBwmWeights);
+
+// Enviar pesos BWM
+router.post("/sendBwmWeights", requireToken, sendBwmWeights);
+
+// Computar pesos BWM
+router.post("/computeWeights", requireToken, computeWeights);
+
+// Guardar pesos manuales
+router.post("/saveManualWeights", requireToken, saveManualWeights);
+
+// Obtener pesos manuales
+router.post("/getManualWeights", requireToken, getManualWeights);
+
+// Enviar pesos manuales
+router.post("/sendManualWeights", requireToken, sendManualWeights);
+
+// Computar pesos manuales
+router.post("/computeManualWeights", requireToken, computeManualWeights);
+
+// Crear escenario de issue
+router.post("/createIssueScenario", requireToken, createIssueScenario);
+
+// Obtener escenarios de un issue
+router.post("/getIssueScenarios", requireToken, getIssueScenarios);
+
+// Obtener escenario por id
+router.post("/getIssueScenarioById", requireToken, getScenarioById);
+
+// Eliminar escenario
+router.post("/removeIssueScenario", requireToken, removeScenario);
+
+export default router;

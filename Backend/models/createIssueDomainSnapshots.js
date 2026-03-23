@@ -1,37 +1,49 @@
 import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 
+/**
+ * Crea snapshots de dominios de expresión para un issue y devuelve un mapa
+ * entre el id del dominio original y el id del snapshot creado.
+ *
+ * @param {Object} params Datos de entrada.
+ * @param {import("mongoose").Types.ObjectId|string} params.issueId Id del issue.
+ * @param {Array<Object>} params.domainDocs Dominios origen.
+ * @param {import("mongoose").ClientSession} [params.session] Sesión de mongoose.
+ * @returns {Promise<Map<string, import("mongoose").Types.ObjectId>>}
+ */
 export const createIssueDomainSnapshots = async ({ issueId, domainDocs, session }) => {
-  // domainDocs: documentos de ExpressionDomain con campos name/type/numericRange/linguisticLabels
   if (!Array.isArray(domainDocs) || domainDocs.length === 0) {
     return new Map();
   }
 
-  // ✅ Deduplicar por _id (por si llega repetido)
-  const uniq = new Map();
-  for (const d of domainDocs) {
-    if (!d?._id) continue;
-    uniq.set(String(d._id), d);
-  }
-  const uniqueDomainDocs = Array.from(uniq.values());
+  const uniqueDomainsById = new Map();
 
-  const snapshotPayload = uniqueDomainDocs.map((d) => ({
+  for (const domain of domainDocs) {
+    if (!domain?._id) continue;
+    uniqueDomainsById.set(String(domain._id), domain);
+  }
+
+  const uniqueDomainDocs = Array.from(uniqueDomainsById.values());
+
+  const snapshotPayload = uniqueDomainDocs.map((domain) => ({
     issue: issueId,
-    sourceDomain: d._id,
-    name: d.name,
-    type: d.type,
-    numericRange: d.type === "numeric" ? d.numericRange : undefined,
-    linguisticLabels: d.type === "linguistic" ? (d.linguisticLabels || []) : [],
+    sourceDomain: domain._id,
+    name: domain.name,
+    type: domain.type,
+    numericRange: domain.type === "numeric" ? domain.numericRange : undefined,
+    linguisticLabels:
+      domain.type === "linguistic" ? domain.linguisticLabels || [] : [],
   }));
 
-  const created = await IssueExpressionDomain.insertMany(snapshotPayload, {
+  const createdSnapshots = await IssueExpressionDomain.insertMany(snapshotPayload, {
     session,
     ordered: true,
   });
 
-  // Map: sourceDomainId -> issueSnapshotId
-  const map = new Map();
-  for (const snap of created) {
-    map.set(String(snap.sourceDomain), snap._id);
+  const snapshotMap = new Map();
+
+  for (const snapshot of createdSnapshots) {
+    snapshotMap.set(String(snapshot.sourceDomain), snapshot._id);
   }
-  return map;
+
+  return snapshotMap;
 };

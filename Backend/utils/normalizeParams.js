@@ -1,13 +1,21 @@
 import { normalizeValue } from "./normalizeValue.js";
 
+/**
+ * Normaliza los parámetros de un modelo.
+ *
+ * @param {Object} params Parámetros a normalizar.
+ * @returns {Object}
+ */
 export const normalizeParams = (params) => {
-  const normalized = {};
+  const normalizedParams = {};
+
   for (const key in params) {
     if (Array.isArray(params[key])) {
-      normalized[key] = params[key].map((v) => normalizeValue(v));
+      normalizedParams[key] = params[key].map((value) => normalizeValue(value));
     } else {
-      normalized[key] = normalizeValue(params[key]);
+      normalizedParams[key] = normalizeValue(params[key]);
     }
   }
-  return normalized;
-}
+
+  return normalizedParams;
+};

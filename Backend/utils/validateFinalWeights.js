@@ -1,3 +1,9 @@
+/**
+ * Valida los datos finales de pesos BWM.
+ *
+ * @param {Object} bwmData Datos enviados.
+ * @returns {{ valid: boolean, msg?: string, field?: string }}
+ */
 export const validateFinalWeights = (bwmData) => {
   if (!bwmData) {
     return { valid: false, msg: "Missing weight data" };
@@ -14,22 +20,31 @@ export const validateFinalWeights = (bwmData) => {
     return { valid: false, msg: "No criteria found for evaluation" };
   }
 
-  // Verificamos que todos los valores estén entre 1 y 9 (excepto best/worst = 1)
-  for (const crit of criteria) {
-    if (crit !== bestCriterion) {
-      const val = Number(bestToOthers[crit]);
-      if (isNaN(val) || val < 1 || val > 9) {
-        return { valid: false, field: crit, msg: `Invalid value in best-to-others for ${crit}` };
-      }
+  for (const criterion of criteria) {
+    if (criterion === bestCriterion) continue;
+
+    const value = Number(bestToOthers[criterion]);
+
+    if (isNaN(value) || value < 1 || value > 9) {
+      return {
+        valid: false,
+        field: criterion,
+        msg: `Invalid value in best-to-others for ${criterion}`,
+      };
     }
   }
 
-  for (const crit of criteria) {
-    if (crit !== worstCriterion) {
-      const val = Number(othersToWorst[crit]);
-      if (isNaN(val) || val < 1 || val > 9) {
-        return { valid: false, field: crit, msg: `Invalid value in others-to-worst for ${crit}` };
-      }
+  for (const criterion of criteria) {
+    if (criterion === worstCriterion) continue;
+
+    const value = Number(othersToWorst[criterion]);
+
+    if (isNaN(value) || value < 1 || value > 9) {
+      return {
+        valid: false,
+        field: criterion,
+        msg: `Invalid value in others-to-worst for ${criterion}`,
+      };
     }
   }
 

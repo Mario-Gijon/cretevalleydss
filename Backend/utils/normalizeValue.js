@@ -1,18 +1,19 @@
-export const normalizeValue = (val) => {
-  if (val === null || val === undefined) return val;
+/**
+ * Normaliza un valor serializado o numérico.
+ *
+ * @param {*} value Valor a normalizar.
+ * @returns {*}
+ */
+export const normalizeValue = (value) => {
+  if (value === null || value === undefined) return value;
 
-  // Caso MongoDB
-  if (typeof val === "object") {
-    if ("$numberDouble" in val) return Number(val["$numberDouble"]);
-    if ("$numberInt" in val) return Number(val["$numberInt"]);
+  if (typeof value === "object") {
+    if ("$numberDouble" in value) return Number(value.$numberDouble);
+    if ("$numberInt" in value) return Number(value.$numberInt);
   }
 
-  // Strings numéricos
-  if (typeof val === "string") return Number(val);
+  if (typeof value === "string") return Number(value);
+  if (typeof value === "number") return value;
 
-  // Si ya es número, lo devolvemos
-  if (typeof val === "number") return val;
-
-  // Por si acaso, devolvemos como está
-  return val;
+  return value;
 };

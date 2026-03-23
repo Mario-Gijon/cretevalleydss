@@ -1,7 +1,4 @@
-// Importa el enrutador de Express para definir rutas.
 import { Router } from "express";
-
-// Importa los controladores de admin.
 import {
   getAllUsersAdmin,
   createUserAdmin,
@@ -19,47 +16,71 @@ import {
   removeIssueAdmin,
 } from "../controllers/admin.controller.js";
 
-// Importa middlewares de seguridad.
 import { requireToken } from "../middlewares/requireToken.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 
-// Crea una instancia del enrutador de Express.
 const router = Router();
 
-// =========================
-// Users / experts
-// =========================
-
-// GET: obtener todos los expertos
+// Obtener todos los expertos
 router.get("/getAllExperts", requireToken, requireAdmin, getAllUsersAdmin);
 
-// POST: crear experto
+// Crear experto
 router.post("/createExpert", requireToken, requireAdmin, createUserAdmin);
 
-// POST: actualizar experto
+// Actualizar experto
 router.post("/updateExpert", requireToken, requireAdmin, updateUserAdmin);
 
-// POST: borrar experto en cascada
+// Eliminar experto
 router.post("/deleteExpert", requireToken, requireAdmin, deleteUserAdmin);
 
-// =========================
-// Issues
-// =========================
-
+// Obtener todos los issues
 router.get("/getAllIssues", requireToken, requireAdmin, getAllIssuesAdmin);
+
+// Obtener un issue por id
 router.get("/getIssue/:id", requireToken, requireAdmin, getIssueAdminById);
-router.get("/getIssueExpertsProgress/:id", requireToken, requireAdmin, getIssueExpertsProgressAdmin);
-router.get("/getIssueExpertEvaluations/:issueId/:expertId", requireToken, requireAdmin, getIssueExpertEvaluationsAdmin);
-router.get("/getIssueExpertWeights/:issueId/:expertId", requireToken, requireAdmin, getIssueExpertWeightsAdmin);
 
-// Cambiar admin/creador responsable del issue
-router.post("/reassignIssueAdmin", requireToken, requireAdmin, reassignIssueAdminAdmin);
+// Obtener progreso de expertos en un issue
+router.get(
+  "/getIssueExpertsProgress/:id",
+  requireToken,
+  requireAdmin,
+  getIssueExpertsProgressAdmin
+);
 
-// Admin actuando como creador del issue
+// Obtener evaluaciones de un experto en un issue
+router.get(
+  "/getIssueExpertEvaluations/:issueId/:expertId",
+  requireToken,
+  requireAdmin,
+  getIssueExpertEvaluationsAdmin
+);
+
+// Obtener pesos de un experto en un issue
+router.get(
+  "/getIssueExpertWeights/:issueId/:expertId",
+  requireToken,
+  requireAdmin,
+  getIssueExpertWeightsAdmin
+);
+
+// Reasignar administrador responsable del issue
+router.post(
+  "/reassignIssueAdmin",
+  requireToken,
+  requireAdmin,
+  reassignIssueAdminAdmin
+);
+
+// Editar expertos del issue
 router.post("/issues/edit-experts", requireToken, requireAdmin, editIssueExpertsAdmin);
+
+// Computar pesos del issue
 router.post("/issues/compute-weights", requireToken, requireAdmin, computeIssueWeightsAdmin);
+
+// Resolver issue
 router.post("/issues/resolve", requireToken, requireAdmin, resolveIssueAdmin);
+
+// Eliminar issue
 router.post("/issues/remove", requireToken, requireAdmin, removeIssueAdmin);
 
-// Exporta el router.
 export default router;

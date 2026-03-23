@@ -1,99 +1,103 @@
-// src/utils/criteriaTree.js
-
 /**
  * Construye el árbol de criterios de un issue a partir de una lista plana.
- * - Filtra por issueId
- * - Enlaza parent -> children
- * - Ordena alfabéticamente (opcional)
  *
- * @param {Array} criteriaList - lista plana de criterios (docs mongoose o lean)
- * @param {String|Object} issueId
- * @param {Object} options
- * @param {boolean} options.sort - ordenar alfabéticamente (default true)
- * @returns {Array} raíz del árbol
+ * @param {Array<Object>} criteriaList Lista plana de criterios.
+ * @param {string|Object} issueId Id del issue.
+ * @param {{ sort?: boolean }} [options] Opciones de construcción.
+ * @returns {Array<Object>}
  */
 export const buildCriterionTree = (criteriaList, issueId, { sort = true } = {}) => {
   const issueIdStr = String(issueId);
   const criteriaMap = new Map();
 
-  // 1) Crear nodos (solo del issue)
-  for (const crit of criteriaList) {
-    if (String(crit.issue) !== issueIdStr) continue;
+  for (const criterion of criteriaList || []) {
+    if (String(criterion.issue) !== issueIdStr) continue;
 
-    const idStr = String(crit._id);
-    criteriaMap.set(idStr, {
-      _id: idStr,
-      name: crit.name,
-      type: crit.type,
-      isLeaf: Boolean(crit.isLeaf),
+    const criterionId = String(criterion._id);
+
+    criteriaMap.set(criterionId, {
+      _id: criterionId,
+      name: criterion.name,
+      type: criterion.type,
+      isLeaf: Boolean(criterion.isLeaf),
       children: [],
-      parentCriterion: crit.parentCriterion ? String(crit.parentCriterion) : null,
+      parentCriterion: criterion.parentCriterion ? String(criterion.parentCriterion) : null,
     });
   }
 
-  // 2) Enlazar padre/hijo + obtener raíces
   const roots = [];
-  for (const crit of criteriaList) {
-    if (String(crit.issue) !== issueIdStr) continue;
 
-    const node = criteriaMap.get(String(crit._id));
+  for (const criterion of criteriaList || []) {
+    if (String(criterion.issue) !== issueIdStr) continue;
+
+    const node = criteriaMap.get(String(criterion._id));
     if (!node) continue;
 
-    if (crit.parentCriterion) {
-      const parent = criteriaMap.get(String(crit.parentCriterion));
-      if (parent) parent.children.push(node);
-      else roots.push(node); // fallback: si el parent no viene en la lista
+    if (criterion.parentCriterion) {
+      const parent = criteriaMap.get(String(criterion.parentCriterion));
+
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
     } else {
       roots.push(node);
     }
   }
 
-  // 3) Ordenar recursivo si procede
   if (sort) {
-    const sortRec = (arr) => {
-      arr.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      for (const n of arr) {
-        if (n.children?.length) sortRec(n.children);
+    const sortRecursively = (nodes) => {
+      nodes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+      for (const node of nodes) {
+        if (node.children?.length) {
+          sortRecursively(node.children);
+        }
       }
     };
-    sortRec(roots);
+
+    sortRecursively(roots);
   }
 
   return roots;
 };
 
 /**
- * Devuelve los nombres de los criterios hoja en el orden en que aparecen
- * al recorrer el árbol (DFS).
+ * Devuelve los nombres de los criterios hoja recorriendo el árbol en profundidad.
  *
- * @param {Array} criteriaTree
+ * @param {Array<Object>} criteriaTree Árbol de criterios.
  * @returns {Array<string>}
  */
 export const getLeafNamesFromTree = (criteriaTree) => {
-  const leaves = [];
-  const dfs = (node) => {
+  const leafNames = [];
+
+  const visitNode = (node) => {
     if (!node?.children?.length) {
-      leaves.push(node.name);
+      leafNames.push(node.name);
       return;
     }
-    node.children.forEach(dfs);
+
+    node.children.forEach(visitNode);
   };
-  (criteriaTree || []).forEach(dfs);
-  return leaves;
+
+  (criteriaTree || []).forEach(visitNode);
+
+  return leafNames;
 };
 
 /**
- * Si NO necesitas árbol y solo quieres hojas ordenadas alfabéticamente,
- * esto suele ser más robusto para mapear weights por nombre.
+ * Devuelve los nombres de criterios hoja ordenados alfabéticamente.
  *
- * @param {Array} criteriaList
- * @param {String|Object} issueId
+ * @param {Array<Object>} criteriaList Lista plana de criterios.
+ * @param {string|Object} issueId Id del issue.
  * @returns {Array<string>}
  */
 export const getLeafNamesSorted = (criteriaList, issueId) => {
   const issueIdStr = String(issueId);
+
   return (criteriaList || [])
-    .filter((c) => String(c.issue) === issueIdStr && c.isLeaf)
-    .map((c) => c.name)
+    .filter((criterion) => String(criterion.issue) === issueIdStr && criterion.isLeaf)
+    .map((criterion) => criterion.name)
     .sort((a, b) => (a || "").localeCompare(b || ""));
 };

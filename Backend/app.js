@@ -1,12 +1,11 @@
-// Importa las dependencias necesarias para la aplicación.
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
-import "./database/db.js"  // Conexión a la base de datos.
-import authRouter from "./routes/auth.route.js" // Rutas de autenticación.
+import "./database/db.js"  
+import authRouter from "./routes/auth.route.js"
 import issueRouter from "./routes/issue.route.js"
 import adminRouter from "./routes/admin.route.js"
-import cookieParser from 'cookie-parser' // Para poder manejar las cookies en las solicitudes HTTP.
+import cookieParser from 'cookie-parser' 
 import path from 'path';
 
 // Configura las variables de entorno.
@@ -47,24 +46,24 @@ app.use(express.json());
 // Middleware para analizar las cookies de las solicitudes entrantes.
 app.use(cookieParser());
 
-// Usa las rutas de autenticación definidas en `authRouter` para las solicitudes a `/auth`.
+// Ruta de autenticación
 app.use("/api/auth", authRouter)
 
-// Usa las rutas de autenticación definidas en `authRouter` para las solicitudes a `/auth`.
+// Ruta de problemas
 app.use("/api/issues", issueRouter)
 
+// Ruta del admin
 app.use("/api/admin", adminRouter);
 
-// === Servir Frontend ===
+// Servir Frontend
 const distPath = path.join(process.cwd(), 'dist');
+
 app.use(express.static(distPath));
-// Todas las rutas no capturadas por la API devuelven el index.html (para React Router)
+// Todas las rutas no capturadas por la API devuelven el index.html (manejado por React Router)
 app.get('*', (_, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-
-
-// Inicia el servidor y lo pone a escuchar en el puerto configurado.
+// Inicia el servidor y lo pone a escuchar en el puerto configurado
 app.listen(PORT, () => { console.log(`Server running on port ${PORT}`) })
 

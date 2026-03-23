@@ -20,10 +20,10 @@ const issueSchema = new Schema({
   currentStage: {
     type: String,
     enum: [
-      "criteriaWeighting",      // Los expertos están valorando los criterios
-      "weightsFinished",        // Todos los expertos terminaron → admin puede calcular pesos
-      "alternativeEvaluation",  // Los expertos evalúan las alternativas
-      "finished"
+      "criteriaWeighting",
+      "weightsFinished",
+      "alternativeEvaluation",
+      "finished",
     ],
     default: "criteriaWeighting",
   },
@@ -36,37 +36,19 @@ const issueSchema = new Schema({
   leafCriteriaOrder: [{ type: Schema.Types.ObjectId, ref: "Criterion" }],
 });
 
-// Middleware para eliminar todo lo relacionado con un Issue antes de eliminarlo
 issueSchema.pre("remove", async function (next) {
   try {
-    // Eliminar alternativas asociadas al Issue
-    await Alternative.deleteMany({ issue: this._id });
+    await Promise.all([
+      Alternative.deleteMany({ issue: this._id }),
+      Criterion.deleteMany({ issue: this._id }),
+      Evaluation.deleteMany({ issue: this._id }),
+      Participation.deleteMany({ issue: this._id }),
+      Consensus.deleteMany({ issue: this._id }),
+    ]);
 
-    // Eliminar criterios asociados al Issue
-    await Criterion.deleteMany({ issue: this._id });
-
-    // Obtener alternativas y criterios asociados al Issue
-    const alternatives = await Alternative.find({ issue: this._id });
-    const criteria = await Criterion.find({ issue: this._id });
-
-    // Eliminar evaluaciones asociadas a las alternativas y criterios
-    await Evaluation.deleteMany({
-      $or: [
-        { alternative: { $in: alternatives.map((a) => a._id) } },
-        { criterion: { $in: criteria.map((c) => c._id) } },
-      ],
-    });
-
-    // Eliminar participaciones asociadas al Issue
-    await Participation.deleteMany({ issue: this._id });
-
-    // Eliminar registros de consenso asociados al Issue
-    await Consensus.deleteMany({ issue: this._id });
-
-    // Continuar con la eliminación del Issue
     next();
   } catch (error) {
-    next(error); // Enviar el error al manejador de errores de Mongoose
+    next(error);
   }
 });
 

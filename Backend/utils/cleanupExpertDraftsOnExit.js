@@ -1,22 +1,31 @@
 import { CriteriaWeightEvaluation } from "../models/CriteriaWeightEvaluation.js";
 import { Evaluation } from "../models/Evaluations.js";
 
+/**
+ * Elimina borradores no enviados de un experto al salir de un issue.
+ *
+ * @param {Object} params Datos de entrada.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.expertId Id del experto.
+ * @returns {Promise<void>}
+ */
 export const cleanupExpertDraftsOnExit = async ({ issueId, expertId }) => {
-  // drafts BWM (si los tienes)
-  await CriteriaWeightEvaluation.deleteMany({ issue: issueId, expert: expertId, completed: false });
+  await CriteriaWeightEvaluation.deleteMany({
+    issue: issueId,
+    expert: expertId,
+    completed: false,
+  });
 
-  // ¿Ha enviado algo alguna vez?
   const hasSubmittedSomething = await Evaluation.exists({
     issue: issueId,
     expert: expertId,
     $or: [
-      { timestamp: { $ne: null } },                 // no-consenso o compat
-      { history: { $elemMatch: { timestamp: { $ne: null } } } }, // consenso (si history=submit)
+      { timestamp: { $ne: null } },
+      { history: { $elemMatch: { timestamp: { $ne: null } } } },
     ],
   });
 
   if (!hasSubmittedSomething) {
-    // ✅ caso “lo añadí y lo quité sin enviar nada”
     await Evaluation.deleteMany({ issue: issueId, expert: expertId });
   }
 };

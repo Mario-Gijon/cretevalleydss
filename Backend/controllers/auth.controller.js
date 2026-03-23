@@ -1,35 +1,107 @@
-import { nanoid } from 'nanoid'
-import { User } from '../models/Users.js'
-import { generateToken, generateRefreshToken } from '../utils/tokenManager.js'
-import { sendEmailChangeConfirmation, sendVerificationEmail } from "../utils/sendEmails.js";
-import jwt from "jsonwebtoken"
-import mongoose from 'mongoose';
+import { nanoid } from "nanoid";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+
+import { User } from "../models/Users.js";
+import { generateToken, generateRefreshToken } from "../utils/tokenManager.js";
+import {
+  sendEmailChangeConfirmation,
+  sendVerificationEmail,
+} from "../utils/sendEmails.js";
+
+const FRONTEND_REDIRECT_URL = `${process.env.ORIGIN_FRONT}/`;
+const STATUS_COOKIE_OPTIONS = {
+  secure: false,
+  sameSite: "strict",
+  maxAge: 30000,
+};
 
 /**
- * Controlador para manejar el inicio de sesión de usuarios.
+ * Añade una cookie temporal de estado para redirecciones del frontend.
+ *
+ * @param {import("express").Response} res Response de Express.
+ * @param {string} name Nombre de la cookie.
+ * @param {string} value Valor de la cookie.
+ * @returns {void}
+ */
+const setStatusCookie = (res, name, value) => {
+  res.cookie(name, value, STATUS_COOKIE_OPTIONS);
+};
+
+/**
+ * Redirige al frontend principal.
+ *
+ * @param {import("express").Response} res Response de Express.
+ * @returns {import("express").Response}
+ */
+const redirectToFrontend = (res) => {
+  return res.redirect(FRONTEND_REDIRECT_URL);
+};
+
+/**
+ * Cierra la sesión de mongoose.
+ *
+ * @param {import("mongoose").ClientSession} session Sesión activa.
+ * @returns {Promise<void>}
+ */
+const endSessionSafely = async (session) => {
+  if (session) {
+    await session.endSession();
+  }
+};
+
+/**
+ * Aborta la transacción si sigue activa.
+ *
+ * @param {import("mongoose").ClientSession} session Sesión activa.
+ * @returns {Promise<void>}
+ */
+const abortTransactionSafely = async (session) => {
+  if (session?.inTransaction()) {
+    await session.abortTransaction();
+  }
+};
+
+/**
+ * Inicia sesión y devuelve el token de acceso y refresh token.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body
+  const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ email });
 
     if (!user) {
-      return res.json({ errors: { email: `User does not exist` }, success: false })
+      return res.json({
+        errors: { email: "User does not exist" },
+        success: false,
+      });
     }
 
     if (!user.accountConfirm) {
-      return res.json({ errors: { email: `Email not verified` }, success: false })
+      return res.json({
+        errors: { email: "Email not verified" },
+        success: false,
+      });
     }
 
-    if (!await user.comparePassword(password)) {
-      return res.json({ errors: { password: `Incorrect password` }, success: false })
+    const isValidPassword = await user.comparePassword(password);
+
+    if (!isValidPassword) {
+      return res.json({
+        errors: { password: "Incorrect password" },
+        success: false,
+      });
     }
 
-    // ✅ Token incluye role
-    const role = user.role ?? "user"
-    const { token, expiresIn } = generateToken(user._id, role)
-    generateRefreshToken(user._id, res)
+    const role = user.role ?? "user";
+    const { token, expiresIn } = generateToken(user._id, role);
+
+    generateRefreshToken(user._id, res);
 
     return res.json({
       msg: "Login successful",
@@ -37,414 +109,443 @@ export const loginUser = async (req, res) => {
       expiresIn,
       role,
       isAdmin: role === "admin",
-      success: true
-    })
+      success: true,
+    });
   } catch (err) {
-    console.error("Error during login:", err)
-    return res.json({ errors: { general: "Internal server error" }, success: false })
+    console.error("Error during login:", err);
+    return res.json({
+      errors: { general: "Internal server error" },
+      success: false,
+    });
   }
-}
+};
 
 /**
- * Controlador para manejar el registro de nuevos usuarios.
+ * Registra un nuevo usuario y envía el correo de verificación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const signupUser = async (req, res) => {
-  // Extrae los datos del cuerpo de la petición
-  const { name, university, email, password } = req.body
-  // Inicia una nueva sesión para usar una transacción
-  const session = await mongoose.startSession()
+  const { name, university, email, password } = req.body;
+  const session = await mongoose.startSession();
 
   try {
-    // Inicia la transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Verifica si ya existe un usuario con ese email
-    const existingUser = await User.findOne({ email }).session(session)
+    const existingUser = await User.findOne({ email }).session(session);
+
     if (existingUser) {
-      // Si existe, aborta la transacción y responde con error
-      await session.abortTransaction()
-      session.endSession()
-      return res.json({ errors: { email: `Email already registered` }, success: false })
+      await session.abortTransaction();
+      return res.json({
+        errors: { email: "Email already registered" },
+        success: false,
+      });
     }
 
-    // Crea el nuevo usuario con un token de confirmación
-    const user = new User({ name, university, email, password, tokenConfirm: nanoid() })
+    const user = new User({
+      name,
+      university,
+      email,
+      password,
+      tokenConfirm: nanoid(),
+    });
 
-    // Guarda el usuario en la base de datos dentro de la sesión
-    await user.save({ session })
+    await user.save({ session });
 
-    // Envía el correo de verificación
-    await sendVerificationEmail({ name: user.name, email: user.email, token: user.tokenConfirm })
+    await sendVerificationEmail({
+      name: user.name,
+      email: user.email,
+      token: user.tokenConfirm,
+    });
 
-    // Si todo va bien, se confirma la transacción
-    await session.commitTransaction()
-    session.endSession()
+    await session.commitTransaction();
 
-    // Devuelve respuesta satisfactoria
-    res.json({ msg: "Signup successful", success: true })
+    return res.json({
+      msg: "Signup successful",
+      success: true,
+    });
   } catch (err) {
-    // En caso de error, se revierte la transacción
-    await session.abortTransaction()
-    session.endSession()
-    console.error("Error during signup:", err)
-    res.json({ errors: { general: err.message }, success: false })
+    await abortTransactionSafely(session);
+    console.error("Error during signup:", err);
+
+    return res.json({
+      errors: { general: err.message },
+      success: false,
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para cerrar sesión.
+ * Cierra la sesión del usuario eliminando la cookie de refresh token.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {void}
  */
 export const logout = (req, res) => {
-  // Limpia la cookie del token de refresco
-  res.clearCookie('refreshToken')
-  // Respuesta satisfactoria
-  res.json({ msg: "Logged out successfully", success: true })
-}
+  res.clearCookie("refreshToken");
+  res.json({ msg: "Logged out successfully", success: true });
+};
 
 /**
- * Controlador para eliminar la cuenta del usuario.
+ * Elimina la cuenta del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const deleteAccount = async (req, res) => {
-  // Inicia una sesión para la transacción
-  const session = await mongoose.startSession()
+  const session = await mongoose.startSession();
 
   try {
-    // Comienza la transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Busca al usuario por su ID (obtenido del token)
-    const user = await User.findById(req.uid).session(session)
+    const user = await User.findById(req.uid).session(session);
 
-    // Si no se encuentra, se cancela la transacción y se responde con error
     if (!user) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.json({ msg: `User not found`, success: false })
+      await session.abortTransaction();
+      return res.json({ msg: "User not found", success: false });
     }
 
-    // Elimina al usuario dentro de la sesión
-    await User.findByIdAndDelete(user._id).session(session)
+    await User.findByIdAndDelete(user._id).session(session);
 
-    // Confirma la transacción
-    await session.commitTransaction()
-    session.endSession()
+    await session.commitTransaction();
 
-    // Respuesta satisfactoria
-    res.json({ msg: "Account deleted successfully", success: true })
+    return res.json({
+      msg: "Account deleted successfully",
+      success: true,
+    });
   } catch (err) {
-    // En caso de error, se revierte la transacción
-    await session.abortTransaction()
-    session.endSession()
-    console.error("Error deleting account:", err)
-    res.json({ msg: "Internal Server Error", success: false })
+    await abortTransactionSafely(session);
+    console.error("Error deleting account:", err);
+
+    return res.json({
+      msg: "Internal Server Error",
+      success: false,
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para actualizar la contraseña del usuario.
+ * Actualiza la contraseña del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const updatePassword = async (req, res) => {
-  // Inicia sesión para transacción
-  const session = await mongoose.startSession()
+  const session = await mongoose.startSession();
 
   try {
-    // Inicia la transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Busca al usuario por su ID
-    const user = await User.findById(req.uid).session(session)
+    const user = await User.findById(req.uid).session(session);
 
-    // Si no existe, se cancela la operación
     if (!user) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.json({ msg: `User not found`, success: false })
+      await session.abortTransaction();
+      return res.json({ msg: "User not found", success: false });
     }
 
-    // Extrae las contraseñas del cuerpo de la solicitud
-    const { newPassword, repeatNewPassword } = req.body
+    const { newPassword, repeatNewPassword } = req.body;
 
-    // Verifica si ambas coinciden
     if (newPassword !== repeatNewPassword) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.json({ msg: "Passwords do not match", success: false })
+      await session.abortTransaction();
+      return res.json({ msg: "Passwords do not match", success: false });
     }
 
-    // Asigna la nueva contraseña
-    user.password = newPassword
-    // Marca explícitamente el campo como modificado (por seguridad con Mongoose)
-    user.markModified('password')
+    user.password = newPassword;
+    user.markModified("password");
 
-    // Guarda los cambios en la sesión
-    await user.save({ session })
+    await user.save({ session });
+    await session.commitTransaction();
 
-    // Confirma los cambios
-    await session.commitTransaction()
-    session.endSession()
-
-    // Respuesta satisfactoria
-    res.json({ msg: "Password updated successfully", success: true })
+    return res.json({
+      msg: "Password updated successfully",
+      success: true,
+    });
   } catch (err) {
-    // Si hay error, revierte la transacción
-    await session.abortTransaction()
-    session.endSession()
-    console.error("Error updating password:", err)
-    res.json({ msg: "Internal Server Error", success: false })
+    await abortTransactionSafely(session);
+    console.error("Error updating password:", err);
+
+    return res.json({
+      msg: "Internal Server Error",
+      success: false,
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para modificar la universidad del usuario.
+ * Actualiza la universidad del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const modifyUniversity = async (req, res) => {
-  const { newUniversity } = req.body
-  const session = await mongoose.startSession()
+  const { newUniversity } = req.body;
+  const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Buscar usuario autenticado
-    const user = await User.findById(req.uid).session(session)
+    const user = await User.findById(req.uid).session(session);
 
-    // Verificar si existe
     if (!user) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.status(404).json({ success: false, msg: 'User not found' })
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        msg: "User not found",
+      });
     }
 
-    // Actualizar universidad
-    user.university = newUniversity
+    user.university = newUniversity;
 
-    // Guardar cambios en la sesión
-    await user.save({ session })
+    await user.save({ session });
+    await session.commitTransaction();
 
-    // Confirmar cambios
-    await session.commitTransaction()
-    session.endSession()
-
-    // Respuesta satisfactoria
-    return res.status(200).json({ success: true, msg: 'University updated successfully' })
+    return res.status(200).json({
+      success: true,
+      msg: "University updated successfully",
+    });
   } catch (err) {
-    // Revertir si hay error
-    await session.abortTransaction()
-    session.endSession()
-    console.error(err)
-    return res.status(500).json({ success: false, msg: 'Server error' })
+    await abortTransactionSafely(session);
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para modificar el nombre del usuario.
+ * Actualiza el nombre del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const modifyName = async (req, res) => {
-  const { newName } = req.body
-  const session = await mongoose.startSession()
+  const { newName } = req.body;
+  const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Buscar usuario
-    const user = await User.findById(req.uid).session(session)
+    const user = await User.findById(req.uid).session(session);
 
-    // Verificar existencia
     if (!user) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.status(404).json({ success: false, msg: 'User not found' })
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        msg: "User not found",
+      });
     }
 
-    // Asignar nuevo nombre
-    user.name = newName
+    user.name = newName;
 
-    // Guardar en la sesión
-    await user.save({ session })
+    await user.save({ session });
+    await session.commitTransaction();
 
-    // Confirmar transacción
-    await session.commitTransaction()
-    session.endSession()
-
-    // Éxito
-    return res.status(200).json({ success: true, msg: 'Name updated successfully' })
+    return res.status(200).json({
+      success: true,
+      msg: "Name updated successfully",
+    });
   } catch (err) {
-    await session.abortTransaction()
-    session.endSession()
-    console.error(err)
-    return res.status(500).json({ success: false, msg: 'Server error' })
+    await abortTransactionSafely(session);
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para solicitar cambio de email (envía email de confirmación).
+ * Inicia el proceso de cambio de email enviando un correo de confirmación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const modifyEmail = async (req, res) => {
-  const { newEmail } = req.body
-  const session = await mongoose.startSession()
+  const { newEmail } = req.body;
+  const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Buscar usuario autenticado
-    const user = await User.findById(req.uid).session(session)
+    const user = await User.findById(req.uid).session(session);
 
     if (!user) {
-      await session.abortTransaction()
-      session.endSession()
-      return res.status(404).json({ success: false, msg: 'User not found' })
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        msg: "User not found",
+      });
     }
 
-    // Generar token con nuevo email encriptado
-    const emailToken = jwt.sign({ newEmail }, process.env.JWT_SECRET)
+    const emailToken = jwt.sign({ newEmail }, process.env.JWT_SECRET);
 
-    // Guardar el token en el usuario
-    user.emailTokenConfirm = emailToken
-    await user.save({ session })
+    user.emailTokenConfirm = emailToken;
+    await user.save({ session });
 
-    // Enviar correo de confirmación a la nueva dirección
-    await sendEmailChangeConfirmation({ newEmail, token: emailToken });
-    // Confirmar transacción
-    await session.commitTransaction()
-    session.endSession()
+    await sendEmailChangeConfirmation({
+      newEmail,
+      token: emailToken,
+    });
 
-    // Confirmación enviada
-    return res.status(200).json({ success: true, msg: 'Please, check new email for confirmation' })
+    await session.commitTransaction();
+
+    return res.status(200).json({
+      success: true,
+      msg: "Please, check new email for confirmation",
+    });
   } catch (err) {
-    await session.abortTransaction()
-    session.endSession()
-    console.error(err)
-    return res.status(500).json({ success: false, msg: 'Server error' })
+    await abortTransactionSafely(session);
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para confirmar una cuenta a través del token.
+ * Confirma una cuenta a partir del token de verificación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<import("express").Response>}
  */
 export const accountConfirm = async (req, res) => {
-  const { token } = req.params
-  const session = await mongoose.startSession()
+  const { token } = req.params;
+  const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Buscar usuario con ese token
-    const user = await User.findOne({ tokenConfirm: token }).session(session)
+    const user = await User.findOne({ tokenConfirm: token }).session(session);
 
     if (!user) {
-      // Si no se encuentra, configurar cookie de error y redirigir
-      res.cookie("accountStatus", "verification_failed", { secure: false, sameSite: "strict", maxAge: 30000 })
-      return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+      await session.abortTransaction();
+      setStatusCookie(res, "accountStatus", "verification_failed");
+      return redirectToFrontend(res);
     }
 
-    // Confirmar cuenta
-    user.accountConfirm = true
-    user.tokenConfirm = null
+    user.accountConfirm = true;
+    user.tokenConfirm = null;
 
-    // Guardar cambios en sesión
-    await user.save({ session })
+    await user.save({ session });
+    await session.commitTransaction();
 
-    // Confirmar transacción
-    await session.commitTransaction()
-    session.endSession()
-
-    // Configurar cookie de éxito
-    res.cookie("accountStatus", "verified", { secure: false, sameSite: "strict", maxAge: 30000 })
-
-    // Redirigir al frontend
-    return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+    setStatusCookie(res, "accountStatus", "verified");
+    return redirectToFrontend(res);
   } catch (err) {
-    await session.abortTransaction()
-    session.endSession()
-    console.error(err)
+    await abortTransactionSafely(session);
+    console.error(err);
 
-    // Configurar cookie de error general
-    res.cookie("accountStatus", "error", { secure: false, sameSite: "strict", maxAge: 30000 })
-    return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+    setStatusCookie(res, "accountStatus", "error");
+    return redirectToFrontend(res);
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para confirmar el cambio de email.
+ * Confirma el cambio de email a partir del token recibido.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<import("express").Response>}
  */
 export const confirmEmailChange = async (req, res) => {
-  const { token } = req.params
-  const session = await mongoose.startSession()
+  const { token } = req.params;
+  const session = await mongoose.startSession();
 
   try {
-    // Iniciar transacción
-    session.startTransaction()
+    session.startTransaction();
 
-    // Buscar usuario con el token
-    const user = await User.findOne({ emailTokenConfirm: token }).session(session)
+    const user = await User.findOne({ emailTokenConfirm: token }).session(session);
 
     if (!user) {
-      res.cookie("emailChangeStatus", "verification_failed", { secure: false, sameSite: "strict", maxAge: 30000, })
-      return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+      await session.abortTransaction();
+      setStatusCookie(res, "emailChangeStatus", "verification_failed");
+      return redirectToFrontend(res);
     }
 
-    // Decodificar el token para obtener el nuevo email
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Aplicar el nuevo email y eliminar el token
-    user.email = decoded.newEmail
-    user.emailTokenConfirm = null
+    user.email = decoded.newEmail;
+    user.emailTokenConfirm = null;
 
-    // Guardar en sesión
-    await user.save({ session })
+    await user.save({ session });
+    await session.commitTransaction();
 
-    // Confirmar transacción
-    await session.commitTransaction()
-    session.endSession()
-
-    // Cookie de éxito
-    res.cookie("emailChangeStatus", "verified", { secure: false, sameSite: "strict", maxAge: 30000, })
-
-    // Redirigir al frontend
-    return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+    setStatusCookie(res, "emailChangeStatus", "verified");
+    return redirectToFrontend(res);
   } catch (err) {
-    await session.abortTransaction()
-    session.endSession()
-    console.error(err)
+    await abortTransactionSafely(session);
+    console.error(err);
 
-    res.cookie("emailChangeStatus", "error", { secure: false, sameSite: "strict", maxAge: 30000, })
-    return res.redirect(`${process.env.ORIGIN_FRONT}/`)
+    setStatusCookie(res, "emailChangeStatus", "error");
+    return redirectToFrontend(res);
+  } finally {
+    await endSessionSafely(session);
   }
-}
+};
 
 /**
- * Controlador para obtener los datos del usuario autenticado.
+ * Obtiene los datos del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const infoUser = async (req, res) => {
   try {
-    const user = await User.findById(req.uid).lean()
+    const user = await User.findById(req.uid).lean();
 
     if (!user) {
-      return res.json({ msg: "User not found", success: false })
+      return res.json({
+        msg: "User not found",
+        success: false,
+      });
     }
 
-    const role = user.role ?? "user"
+    const role = user.role ?? "user";
 
     return res.json({
       university: user.university,
       name: user.name,
       email: user.email,
       accountCreation: user.accountCreation,
-
-      // ✅ NUEVO
       role,
       isAdmin: role === "admin",
-
-      success: true
-    })
+      success: true,
+    });
   } catch (err) {
-    console.error(err)
-    return res.json({ msg: "Error fetching user data", success: false })
+    console.error(err);
+
+    return res.json({
+      msg: "Error fetching user data",
+      success: false,
+    });
   }
-}
-
-
-
+};

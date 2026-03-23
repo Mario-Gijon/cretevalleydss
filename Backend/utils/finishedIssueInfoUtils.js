@@ -1,131 +1,181 @@
-// Importa el modelo de usuario desde el archivo correspondiente.
-import { Issue } from '../models/Issues.js';
-import { Alternative } from '../models/Alternatives.js';
-import { Criterion } from '../models/Criteria.js';
-import { Participation } from '../models/Participations.js';
-import { Evaluation } from '../models/Evaluations.js';
-import { Consensus } from '../models/Consensus.js';
-import { buildCriterionTree } from './buildCriteriaTree.js';
+import { Issue } from "../models/Issues.js";
+import { Alternative } from "../models/Alternatives.js";
+import { Criterion } from "../models/Criteria.js";
+import { Participation } from "../models/Participations.js";
+import { Evaluation } from "../models/Evaluations.js";
+import { Consensus } from "../models/Consensus.js";
+import { buildCriterionTree } from "./buildCriteriaTree.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
-  const m = phaseDoc?.details?.matrices;
-  if (m && typeof m === "object") {
-    return new Set(Object.keys(m)); // emails
+  const matrices = phaseDoc?.details?.matrices;
+
+  if (matrices && typeof matrices === "object") {
+    return new Set(Object.keys(matrices));
   }
-  return null; // legacy / no data -> no filtramos
+
+  return null;
 };
 
-const hasValue = (v) => v !== undefined && v !== null && v !== "";
+const hasValue = (value) => value !== undefined && value !== null && value !== "";
 
-const getSubmittedValueForPhase = (ev, phaseNumber, isConsensus) => {
+const getSubmittedValueForPhase = (evaluation, phaseNumber, isConsensus) => {
   if (isConsensus) {
-    const h = ev.history?.find((x) => x.phase === phaseNumber && hasValue(x.value));
-    if (h) return h.value;
+    const historyEntry = evaluation.history?.find(
+      (entry) => entry.phase === phaseNumber && hasValue(entry.value)
+    );
 
-    // ✅ compat (solo si lo marcas como enviado con timestamp)
-    if (ev.timestamp && (ev.consensusPhase ?? 1) === phaseNumber && hasValue(ev.value)) {
-      return ev.value;
+    if (historyEntry) {
+      return historyEntry.value;
     }
+
+    if (
+      evaluation.timestamp &&
+      (evaluation.consensusPhase ?? 1) === phaseNumber &&
+      hasValue(evaluation.value)
+    ) {
+      return evaluation.value;
+    }
+
     return undefined;
   }
 
-  // no-consenso: SOLO cuenta si se envió (timestamp != null)
   if (phaseNumber !== 1) return undefined;
-  if (!ev.timestamp) return undefined;
-  return hasValue(ev.value) ? ev.value : undefined;
+  if (!evaluation.timestamp) return undefined;
+
+  return hasValue(evaluation.value) ? evaluation.value : undefined;
 };
 
-export const createSummarySection = async (issueId) => {
-  const issue = await Issue.findById(issueId)
-    .populate("admin")
-    .populate("model");
+const buildWeightMap = (leafCriteria, weights) => {
+  const weightMap = {};
 
-  const [alternatives, criteria, participations, consensusPhases] =
+  leafCriteria.forEach((criterion, index) => {
+    weightMap[criterion.name] = weights[index] ?? null;
+  });
+
+  return weightMap;
+};
+
+const attachWeightsToTree = (node, weightMap) => {
+  if (node.isLeaf) {
+    return {
+      ...node,
+      weight: weightMap[node.name] ?? null,
+    };
+  }
+
+  return {
+    ...node,
+    children: node.children?.map((child) => attachWeightsToTree(child, weightMap)) ?? [],
+  };
+};
+
+const groupEvaluationsByExpert = (evaluations) => {
+  const evaluationsByExpert = new Map();
+
+  for (const evaluation of evaluations) {
+    const expertId = evaluation.expert?._id?.toString();
+    if (!expertId) continue;
+
+    if (!evaluationsByExpert.has(expertId)) {
+      evaluationsByExpert.set(expertId, []);
+    }
+
+    evaluationsByExpert.get(expertId).push(evaluation);
+  }
+
+  return evaluationsByExpert;
+};
+
+/**
+ * Crea la sección resumen de un issue finalizado.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Object>}
+ */
+export const createSummarySection = async (issueId) => {
+  const issue = await Issue.findById(issueId).populate("admin").populate("model");
+
+  const [alternatives, criteria, participations, consensusPhases, leafCriteria] =
     await Promise.all([
       Alternative.find({ issue: issueId }),
       Criterion.find({ issue: issueId }),
       Participation.find({ issue: issueId }).populate("expert"),
-      Consensus.find({ issue: issueId }).sort({ phase: 1 }), // Ordenar para encontrar la última
+      Consensus.find({ issue: issueId }).sort({ phase: 1 }),
+      Criterion.find({ issue: issueId, isLeaf: true }).sort({ name: 1 }),
     ]);
 
   const participated = participations
-    .filter(p => p.invitationStatus === "accepted" && p.evaluationCompleted)
-    .map(p => p.expert.email).sort();
+    .filter((participation) => participation.invitationStatus === "accepted" && participation.evaluationCompleted)
+    .map((participation) => participation.expert.email)
+    .sort();
 
   const notAccepted = participations
-    .filter(p => p.invitationStatus === "declined")
-    .map(p => p.expert.email).sort();
+    .filter((participation) => participation.invitationStatus === "declined")
+    .map((participation) => participation.expert.email)
+    .sort();
 
   const lastConsensus = consensusPhases[consensusPhases.length - 1];
-
-  // --- MAPEO DE PESOS DE CRITERIOS ---
-  const leafCriteria = await Criterion.find({ issue: issueId, isLeaf: true }).sort({ name: 1 });
   const weights = issue.modelParameters?.weights || [];
-
-  const weightMap = {};
-  leafCriteria.forEach((c, idx) => {
-    weightMap[c.name] = weights[idx] ?? null;
-  });
-
-  const attachWeights = (node) => {
-    if (node.isLeaf) {
-      return { ...node, weight: weightMap[node.name] ?? null };
-    }
-    return {
-      ...node,
-      children: node.children?.map(attachWeights) ?? []
-    };
-  };
-
+  const weightMap = buildWeightMap(leafCriteria, weights);
 
   return {
     name: issue.name,
     admin: issue.admin.email,
     description: issue.description,
     model: issue.model.name,
-    /* criteria: criteria.map(c => ({ name: c.name, type: c.type, isLeaf: c.isLeaf })).sort(), */
-    criteria: buildCriterionTree(criteria, issue._id).map(attachWeights),
-    alternatives: alternatives.map(a => a.name).sort(),
+    criteria: buildCriterionTree(criteria, issue._id).map((node) =>
+      attachWeightsToTree(node, weightMap)
+    ),
+    alternatives: alternatives.map((alternative) => alternative.name).sort(),
     creationDate: issue.creationDate ?? null,
     closureDate: issue.closureDate ?? null,
     isPairwise: issue.model.isPairwise,
-    consensusInfo: issue.isConsensus ? {
-      maximumPhases: issue.consensusMaxPhases,
-      threshold: issue.consensusThreshold,
-      consensusReached: lastConsensus?.level ?? null,
-      consensusReachedPhase: lastConsensus?.phase ?? 1,
-    } : null,
+    consensusInfo: issue.isConsensus
+      ? {
+          maximumPhases: issue.consensusMaxPhases,
+          threshold: issue.consensusThreshold,
+          consensusReached: lastConsensus?.level ?? null,
+          consensusReachedPhase: lastConsensus?.phase ?? 1,
+        }
+      : null,
     experts: {
       participated,
       notAccepted,
-    }
+    },
   };
 };
 
+/**
+ * Crea la sección de rankings de alternativas por fase.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Array<Object>>}
+ */
 export const createAlternativesRankingsSection = async (issueId) => {
-
-  // Suponiendo que tienes un modelo de Consensus en Mongoose
   const consensusData = await Consensus.find({ issue: issueId }).sort({ phase: 1 });
 
-  // Organizar los rankings por fase
-  const rankingsArray = consensusData.reduce((acc, consensus) => {
+  const rankingsByPhase = consensusData.reduce((accumulator, consensus) => {
     const { phase, details } = consensus;
 
-    // Si la fase no existe en el acumulador, la creamos
-    if (!acc[phase]) {
-      acc[phase] = {
-        phase: phase,
-        ranking: details.rankedAlternatives
+    if (!accumulator[phase]) {
+      accumulator[phase] = {
+        phase,
+        ranking: details.rankedAlternatives,
       };
     }
-    return acc;
+
+    return accumulator;
   }, {});
 
-  // Convertimos el objeto a un array de fases y rankings
-  return Object.values(rankingsArray);
+  return Object.values(rankingsByPhase);
 };
 
-
+/**
+ * Crea la sección de evaluaciones pairwise por experto y fase.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Object>}
+ */
 export const createExpertsPairwiseRatingsSection = async (issueId) => {
   const consensusData = {};
 
@@ -143,17 +193,12 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     ? consensusPhasesRaw
     : [{ phase: 1, collectiveEvaluations: {}, details: {} }];
 
-  const criterionMap = new Map(criteria.map((c) => [c._id.toString(), c.name]));
-  const alternativeMap = new Map(alternatives.map((a) => [a._id.toString(), a.name]));
+  const criterionMap = new Map(criteria.map((criterion) => [criterion._id.toString(), criterion.name]));
+  const alternativeMap = new Map(
+    alternatives.map((alternative) => [alternative._id.toString(), alternative.name])
+  );
 
-  // Agrupar por experto
-  const evaluationsByExpert = new Map();
-  for (const ev of allEvaluations) {
-    const expertId = ev.expert?._id?.toString();
-    if (!expertId) continue;
-    if (!evaluationsByExpert.has(expertId)) evaluationsByExpert.set(expertId, []);
-    evaluationsByExpert.get(expertId).push(ev);
-  }
+  const evaluationsByExpert = groupEvaluationsByExpert(allEvaluations);
 
   for (const phaseDoc of consensusPhases) {
     const participants = getPhaseParticipantsSet(phaseDoc);
@@ -161,48 +206,59 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     const phaseNumber = phaseDoc.phase;
     const expertEvaluations = {};
 
-    for (const [, evals] of evaluationsByExpert.entries()) {
-      const expertEmail = evals?.[0]?.expert?.email;
+    for (const [, evaluations] of evaluationsByExpert.entries()) {
+      const expertEmail = evaluations?.[0]?.expert?.email;
       if (!expertEmail) continue;
+      if (hasFilter && !participants.has(expertEmail)) continue;
 
-      if (hasFilter && !participants.has(expertEmail)) continue; // ✅ filtro por matrices
-
-      const evalsInPhase = evals.filter((ev) =>
-        getSubmittedValueForPhase(ev, phaseNumber, isConsensus) !== undefined
+      const evaluationsInPhase = evaluations.filter(
+        (evaluation) => getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !== undefined
       );
-      if (evalsInPhase.length === 0) continue;
+
+      if (evaluationsInPhase.length === 0) continue;
 
       expertEvaluations[expertEmail] = {};
 
-      for (const ev of evalsInPhase) {
-        const criterionName = criterionMap.get(ev.criterion.toString());
-        const altName = alternativeMap.get(ev.alternative.toString());
-        const compAltName = ev.comparedAlternative ? alternativeMap.get(ev.comparedAlternative.toString()) : null;
+      for (const evaluation of evaluationsInPhase) {
+        const criterionName = criterionMap.get(evaluation.criterion.toString());
+        const alternativeName = alternativeMap.get(evaluation.alternative.toString());
+        const comparedAlternativeName = evaluation.comparedAlternative
+          ? alternativeMap.get(evaluation.comparedAlternative.toString())
+          : null;
 
-        const val = getSubmittedValueForPhase(ev, phaseNumber, isConsensus);
-        if (val === undefined || val === null || val === "") continue;
-        if (!criterionName || !altName || !compAltName) continue;
+        const value = getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus);
+
+        if (value === undefined || value === null || value === "") continue;
+        if (!criterionName || !alternativeName || !comparedAlternativeName) continue;
 
         if (!expertEvaluations[expertEmail][criterionName]) {
           expertEvaluations[expertEmail][criterionName] = [];
         }
 
-        let altEval = expertEvaluations[expertEmail][criterionName].find((entry) => entry.id === altName);
-        if (!altEval) {
-          altEval = { id: altName };
-          expertEvaluations[expertEmail][criterionName].push(altEval);
+        let alternativeEvaluation = expertEvaluations[expertEmail][criterionName].find(
+          (entry) => entry.id === alternativeName
+        );
+
+        if (!alternativeEvaluation) {
+          alternativeEvaluation = { id: alternativeName };
+          expertEvaluations[expertEmail][criterionName].push(alternativeEvaluation);
         }
 
-        altEval[compAltName] = val;
+        alternativeEvaluation[comparedAlternativeName] = value;
 
-        // diagonal (si la quieres fija)
-        if (altEval[altName] === undefined) altEval[altName] = 0.5;
+        if (alternativeEvaluation[alternativeName] === undefined) {
+          alternativeEvaluation[alternativeName] = 0.5;
+        }
       }
     }
 
-    const ce = phaseDoc?.collectiveEvaluations;
+    const collectiveEvaluations = phaseDoc?.collectiveEvaluations;
+
     consensusData[phaseNumber] = {
-      collectiveEvaluations: ce && Object.keys(ce).length ? ce : null,
+      collectiveEvaluations:
+        collectiveEvaluations && Object.keys(collectiveEvaluations).length
+          ? collectiveEvaluations
+          : null,
       expertEvaluations,
     };
   }
@@ -210,6 +266,12 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
   return consensusData;
 };
 
+/**
+ * Crea la sección de evaluaciones estándar por experto y fase.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Object>}
+ */
 export const createExpertsRatingsSection = async (issueId) => {
   const consensusData = {};
 
@@ -227,65 +289,64 @@ export const createExpertsRatingsSection = async (issueId) => {
     ? consensusPhasesRaw
     : [{ phase: 1, collectiveEvaluations: {}, details: {} }];
 
-  // Agrupar evaluaciones por experto
-  const evaluationsByExpert = new Map();
-  for (const ev of allEvaluations) {
-    const expertId = ev.expert?._id?.toString();
-    if (!expertId) continue;
-    if (!evaluationsByExpert.has(expertId)) evaluationsByExpert.set(expertId, []);
-    evaluationsByExpert.get(expertId).push(ev);
-  }
+  const evaluationsByExpert = groupEvaluationsByExpert(allEvaluations);
 
   for (const phaseDoc of consensusPhases) {
     const participants = getPhaseParticipantsSet(phaseDoc);
     const hasFilter = participants && participants.size > 0;
-
     const phaseNumber = phaseDoc.phase;
     const expertEvaluations = {};
 
-    for (const [, evals] of evaluationsByExpert.entries()) {
-      const expertEmail = evals?.[0]?.expert?.email;
+    for (const [, evaluations] of evaluationsByExpert.entries()) {
+      const expertEmail = evaluations?.[0]?.expert?.email;
       if (!expertEmail) continue;
+      if (hasFilter && !participants.has(expertEmail)) continue;
 
-      if (hasFilter && !participants.has(expertEmail)) continue; // ✅ expulsado/no participante en esa fase
-
-      const evalsInPhase = evals.filter((ev) =>
-        getSubmittedValueForPhase(ev, phaseNumber, isConsensus) !== undefined
+      const evaluationsInPhase = evaluations.filter(
+        (evaluation) => getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !== undefined
       );
-      if (evalsInPhase.length === 0) continue;
+
+      if (evaluationsInPhase.length === 0) continue;
 
       const rows = {};
-      let anyValue = false;
+      let hasAnyValue = false;
 
-      for (const alt of alternatives) {
-        const col = {};
+      for (const alternative of alternatives) {
+        const criteriaValues = {};
 
         for (const criterion of criteria) {
-          const ev = evalsInPhase.find(
-            (x) =>
-              x.criterion?.toString() === criterion._id.toString() &&
-              x.alternative?.toString() === alt._id.toString()
+          const evaluation = evaluationsInPhase.find(
+            (item) =>
+              item.criterion?.toString() === criterion._id.toString() &&
+              item.alternative?.toString() === alternative._id.toString()
           );
-          if (!ev) continue;
 
-          const value = getSubmittedValueForPhase(ev, phaseNumber, isConsensus);
+          if (!evaluation) continue;
+
+          const value = getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus);
           if (value === undefined) continue;
 
-          col[criterion.name] = value;
-          anyValue = true;
+          criteriaValues[criterion.name] = value;
+          hasAnyValue = true;
         }
 
-        if (Object.keys(col).length) rows[alt.name] = col;
+        if (Object.keys(criteriaValues).length) {
+          rows[alternative.name] = criteriaValues;
+        }
       }
 
-      if (!anyValue) continue;
+      if (!hasAnyValue) continue;
 
       expertEvaluations[expertEmail] = rows;
     }
 
-    const ce = phaseDoc?.collectiveEvaluations;
+    const collectiveEvaluations = phaseDoc?.collectiveEvaluations;
+
     consensusData[phaseNumber] = {
-      collectiveEvaluations: ce && Object.keys(ce).length ? ce : null,
+      collectiveEvaluations:
+        collectiveEvaluations && Object.keys(collectiveEvaluations).length
+          ? collectiveEvaluations
+          : null,
       expertEvaluations,
     };
   }
@@ -293,14 +354,16 @@ export const createExpertsRatingsSection = async (issueId) => {
   return consensusData;
 };
 
-
-
+/**
+ * Crea la sección de gráficos analíticos de un issue finalizado.
+ *
+ * @param {string|Object} issueId Id del issue.
+ * @param {boolean} isConsensus Indica si el issue usa consenso.
+ * @returns {Promise<Object|null>}
+ */
 export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
-  const consensusDocs = await Consensus.find({ issue: issueId })
-    .sort({ phase: 1 })
-    .lean();
+  const consensusDocs = await Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean();
 
-  // scatterPlot: solo si hay plotsGraphic
   const scatterPlot = consensusDocs
     .filter((doc) => doc?.details?.plotsGraphic?.expert_points)
     .map((doc) => ({
@@ -315,7 +378,6 @@ export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
     result.scatterPlot = scatterPlot;
   }
 
-  // consensus line: solo si es consenso y hay > 1 fase
   if (isConsensus && consensusDocs.length > 1) {
     result.consensusLevelLineChart = {
       labels: consensusDocs.map((doc) => `${doc.phase}`),
@@ -323,12 +385,5 @@ export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
     };
   }
 
-  // Si no hay nada, devolver null
   return Object.keys(result).length > 0 ? result : null;
 };
-
-
-
-
-
-

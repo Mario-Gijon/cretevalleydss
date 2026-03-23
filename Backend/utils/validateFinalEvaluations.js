@@ -1,3 +1,67 @@
+const getCellValue = (cell) => {
+  if (cell && typeof cell === "object" && "value" in cell) {
+    return cell.value;
+  }
+
+  return cell;
+};
+
+const getCellDomain = (cell) => {
+  if (cell && typeof cell === "object" && "domain" in cell) {
+    return cell.domain;
+  }
+
+  return null;
+};
+
+const isEmptyValue = (value) => value === "" || value === null || value === undefined;
+
+const hasMoreThanTwoDecimals = (value) => {
+  const numericValue = Number(value);
+  return numericValue !== Math.round(numericValue * 100) / 100;
+};
+
+const validateCellByDomain = ({ value, domain, locationLabel }) => {
+  if (domain?.type === "numeric") {
+    const min = domain.range?.min ?? 0;
+    const max = domain.range?.max ?? 1;
+    const numericValue = parseFloat(value);
+
+    if (isNaN(numericValue) || numericValue < min || numericValue > max) {
+      return {
+        valid: false,
+        message: `Invalid value for ${locationLabel}. Must be between ${min} and ${max}.`,
+      };
+    }
+
+    if (hasMoreThanTwoDecimals(numericValue)) {
+      return {
+        valid: false,
+        message: `Value for ${locationLabel} must have at most two decimals.`,
+      };
+    }
+  }
+
+  if (domain?.type === "linguistic") {
+    const validLabels = domain.labels?.map((label) => label.label) || [];
+
+    if (!validLabels.includes(value)) {
+      return {
+        valid: false,
+        message: `Invalid label for ${locationLabel}. Must be one of: ${validLabels.join(", ")}.`,
+      };
+    }
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Valida una matriz final pairwise antes del envío definitivo.
+ *
+ * @param {Object} evaluations Evaluaciones pairwise.
+ * @returns {{ valid: boolean, error?: Object, message?: string }}
+ */
 export const validateFinalPairwiseEvaluations = (evaluations) => {
   let firstInvalidCell = null;
 
@@ -11,65 +75,36 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
         const cell = row[altCol];
         const value = getCellValue(cell);
         const domain = getCellDomain(cell);
+        const locationLabel = `[${row.id}, ${altCol}]`;
 
-        // 🔹 Vacío o nulo
-        if (value === "" || value === null || value === undefined) {
+        if (isEmptyValue(value)) {
           firstInvalidCell = {
             row: row.id,
             col: altCol,
             criterion: criterionName,
-            message: `Cell [${row.id}, ${altCol}] must be evaluated.`,
+            message: `Cell ${locationLabel} must be evaluated.`,
           };
           break;
         }
 
-        if (domain?.type === "numeric") {
-          const min = domain.range?.min ?? 0;
-          const max = domain.range?.max ?? 1;
-          const num = parseFloat(value);
+        const cellValidation = validateCellByDomain({ value, domain, locationLabel });
 
-          if (isNaN(num) || num < min || num > max) {
-            firstInvalidCell = {
-              row: row.id,
-              col: altCol,
-              criterion: criterionName,
-              message: `Invalid value for [${row.id}, ${altCol}]. Must be between ${min} and ${max}.`,
-            };
-            break;
-          }
-
-          const roundedValue = Math.round(num * 100) / 100;
-          if (num !== roundedValue) {
-            firstInvalidCell = {
-              row: row.id,
-              col: altCol,
-              criterion: criterionName,
-              message: `Value for [${row.id}, ${altCol}] must have at most two decimals.`,
-            };
-            break;
-          }
-        } else if (domain?.type === "linguistic") {
-          const validLabels = domain.labels?.map((l) => l.label) || [];
-          if (!validLabels.includes(value)) {
-            firstInvalidCell = {
-              row: row.id,
-              col: altCol,
-              criterion: criterionName,
-              message: `Invalid label for [${row.id}, ${altCol}]. Must be one of: ${validLabels.join(", ")}.`,
-            };
-            break;
-          }
+        if (!cellValidation.valid) {
+          firstInvalidCell = {
+            row: row.id,
+            col: altCol,
+            criterion: criterionName,
+            message: cellValidation.message,
+          };
+          break;
         }
 
-        // 🔹 Validar inverso
-        const inverseRow = criterionMatrix.find((r) => r.id === altCol);
+        const inverseRow = criterionMatrix.find((matrixRow) => matrixRow.id === altCol);
         const inverseCell = inverseRow?.[row.id];
         const inverseValue = getCellValue(inverseCell);
 
         if (
-          inverseValue === "" ||
-          inverseValue === null ||
-          inverseValue === undefined ||
+          isEmptyValue(inverseValue) ||
           (domain?.type === "numeric" &&
             (isNaN(inverseValue) || inverseValue < 0 || inverseValue > 1))
         ) {
@@ -77,13 +112,15 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
             row: row.id,
             col: altCol,
             criterion: criterionName,
-            message: `Cell for [${row.id}, ${altCol}] has no valid inverse evaluation.`,
+            message: `Cell for ${locationLabel} has no valid inverse evaluation.`,
           };
           break;
         }
       }
+
       if (firstInvalidCell) break;
     }
+
     if (firstInvalidCell) break;
   }
 
@@ -92,71 +129,42 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
     : { valid: true, message: "" };
 };
 
-// Normalizador de celdas (para soportar { value, domain } o valores planos antiguos)
-const getCellValue = (cell) => {
-  if (cell && typeof cell === "object" && "value" in cell) return cell.value;
-  return cell;
-};
-
-const getCellDomain = (cell) => {
-  if (cell && typeof cell === "object" && "domain" in cell) return cell.domain;
-  return null;
-};
-
+/**
+ * Valida una matriz final alternativa x criterio antes del envío definitivo.
+ *
+ * @param {Object} evaluations Evaluaciones estándar.
+ * @returns {{ valid: boolean, error?: Object, message?: string }}
+ */
 export const validateFinalEvaluations = (evaluations) => {
   let firstInvalidCell = null;
 
-  for (const altName in evaluations) {
-    const criteriaValues = evaluations[altName];
+  for (const alternativeName in evaluations) {
+    const criteriaValues = evaluations[alternativeName];
 
-    for (const critName in criteriaValues) {
-      const cell = criteriaValues[critName];
+    for (const criterionName in criteriaValues) {
+      const cell = criteriaValues[criterionName];
       const value = getCellValue(cell);
       const domain = getCellDomain(cell);
+      const locationLabel = `[${alternativeName}, ${criterionName}]`;
 
-      // 🔹 Vacío o nulo
-      if (value === "" || value === null || value === undefined) {
+      if (isEmptyValue(value)) {
         firstInvalidCell = {
-          alternative: altName,
-          criterion: critName,
-          message: `Cell [${altName}, ${critName}] must be evaluated.`,
+          alternative: alternativeName,
+          criterion: criterionName,
+          message: `Cell ${locationLabel} must be evaluated.`,
         };
         break;
       }
 
-      if (domain?.type === "numeric") {
-        const min = domain.range?.min ?? 0;
-        const max = domain.range?.max ?? 1;
+      const cellValidation = validateCellByDomain({ value, domain, locationLabel });
 
-        const num = parseFloat(value);
-        if (isNaN(num) || num < min || num > max) {
-          firstInvalidCell = {
-            alternative: altName,
-            criterion: critName,
-            message: `Invalid value for [${altName}, ${critName}]. Must be between ${min} and ${max}.`,
-          };
-          break;
-        }
-
-        const roundedValue = Math.round(num * 100) / 100;
-        if (num !== roundedValue) {
-          firstInvalidCell = {
-            alternative: altName,
-            criterion: critName,
-            message: `Value for [${altName}, ${critName}] must have at most two decimals.`,
-          };
-          break;
-        }
-      } else if (domain?.type === "linguistic") {
-        const validLabels = domain.labels?.map((l) => l.label) || [];
-        if (!validLabels.includes(value)) {
-          firstInvalidCell = {
-            alternative: altName,
-            criterion: critName,
-            message: `Invalid label for [${altName}, ${critName}]. Must be one of: ${validLabels.join(", ")}.`,
-          };
-          break;
-        }
+      if (!cellValidation.valid) {
+        firstInvalidCell = {
+          alternative: alternativeName,
+          criterion: criterionName,
+          message: cellValidation.message,
+        };
+        break;
       }
     }
 

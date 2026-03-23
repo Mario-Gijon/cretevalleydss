@@ -1,0 +1,13 @@
+Backend/utils/buildCriteriaTree.js
+Backend/utils/cleanupExpertDraftsOnExit.js
+Backend/utils/finishedIssueInfoUtils.js
+Backend/utils/generateEvaluationMatrix.js
+Backend/utils/getUserFinishedIssueIds.js
+Backend/utils/issueOrdering.js
+Backend/utils/normalizeParams.js
+Backend/utils/normalizeValue.js
+Backend/utils/ScenarioUtils.js
+Backend/utils/sendEmails.js
+Backend/utils/tokenManager.js
+Backend/utils/validateFinalEvaluations.js
+Backend/utils/validateFinalWeights.js

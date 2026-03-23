@@ -1,110 +1,150 @@
 import { Evaluation } from "../models/Evaluations.js";
 import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
 
-/** Mapear nombre de modelo -> endpoint */
+/**
+ * Obtiene la clave de endpoint asociada a un modelo.
+ *
+ * @param {string} [modelName] Nombre del modelo.
+ * @returns {string|null}
+ */
 export const getModelEndpointKey = (modelName = "") => {
-  const n = String(modelName).trim().toUpperCase();
+  const normalizedName = String(modelName).trim().toUpperCase();
 
-  if (n === "TOPSIS") return "topsis";
-  if (n === "FUZZY TOPSIS") return "fuzzy_topsis";
-  if (n === "BORDA") return "borda";
-  if (n === "ARAS") return "aras";
+  if (normalizedName === "TOPSIS") return "topsis";
+  if (normalizedName === "FUZZY TOPSIS") return "fuzzy_topsis";
+  if (normalizedName === "BORDA") return "borda";
+  if (normalizedName === "ARAS") return "aras";
 
-  // Pairwise / consenso
-  if (n === "HERRERA-VIEDMA CRP" || n === "HERRERA VIEDMA CRP" || n === "CRP") return "herrera_viedma_crp";
+  if (
+    normalizedName === "HERRERA-VIEDMA CRP" ||
+    normalizedName === "HERRERA VIEDMA CRP" ||
+    normalizedName === "CRP"
+  ) {
+    return "herrera_viedma_crp";
+  }
 
-  // si añadís más, aquí.
   return null;
 };
 
-/** Detectar domainType del issue (NO mezclar) desde snapshots usados en Evaluations */
+/**
+ * Detecta el tipo de dominio usado en un issue a partir de los snapshots utilizados.
+ *
+ * @param {Object} params Datos de entrada.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<string|Object>} params.expertIds Ids de expertos.
+ * @returns {Promise<{ domainType: string, snapshotIdsUsed: Array<*> }>}
+ */
 export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
   const snapshotIds = await Evaluation.distinct("expressionDomain", {
     issue: issueId,
     expert: { $in: expertIds },
   });
 
-  const snaps = await IssueExpressionDomain.find(
+  const snapshots = await IssueExpressionDomain.find(
     { _id: { $in: snapshotIds }, issue: issueId },
     "type"
   ).lean();
 
-  const types = new Set(snaps.map((s) => s.type).filter(Boolean));
+  const types = new Set(snapshots.map((snapshot) => snapshot.type).filter(Boolean));
 
   if (types.size === 0) {
-    const err = new Error("Cannot detect issue domain type (no snapshots found in evaluations).");
-    err.status = 400;
-    throw err;
+    const error = new Error("Cannot detect issue domain type (no snapshots found in evaluations).");
+    error.status = 400;
+    throw error;
   }
 
   if (types.size > 1) {
-    const err = new Error("This issue mixes numeric and linguistic domains. Simulation is disabled for now.");
-    err.status = 400;
-    throw err;
+    const error = new Error(
+      "This issue mixes numeric and linguistic domains. Simulation is disabled for now."
+    );
+    error.status = 400;
+    throw error;
   }
 
-  return { domainType: Array.from(types)[0], snapshotIdsUsed: snapshotIds };
+  return {
+    domainType: Array.from(types)[0],
+    snapshotIdsUsed: snapshotIds,
+  };
 };
 
-/** Validar pesos según el tipo del parámetro weights del modelo */
+/**
+ * Valida los pesos usados por un modelo destino.
+ *
+ * @param {Object} params Datos de entrada.
+ * @param {Object} params.targetModel Modelo destino.
+ * @param {Object} params.paramsUsed Parámetros usados.
+ * @param {number} params.criteriaLen Número de criterios hoja.
+ * @returns {void}
+ */
 export const validateWeightsForTargetModel = ({ targetModel, paramsUsed, criteriaLen }) => {
-  const weightsParam = (targetModel?.parameters || []).find((p) => p?.name === "weights");
-  if (!weightsParam) return; // modelo no necesita weights explícitos
+  const weightsParam = (targetModel?.parameters || []).find((parameter) => parameter?.name === "weights");
+  if (!weightsParam) return;
 
-  const w = paramsUsed?.weights;
+  const weights = paramsUsed?.weights;
 
-  if (w == null) {
-    const err = new Error("Target model requires 'weights' but none were provided.");
-    err.status = 400;
-    throw err;
+  if (weights == null) {
+    const error = new Error("Target model requires 'weights' but none were provided.");
+    error.status = 400;
+    throw error;
   }
 
-  // Aceptamos tanto array como (en fuzzy) array de arrays/objects
-  if (!Array.isArray(w)) {
-    const err = new Error("'weights' must be an array.");
-    err.status = 400;
-    throw err;
+  if (!Array.isArray(weights)) {
+    const error = new Error("'weights' must be an array.");
+    error.status = 400;
+    throw error;
   }
 
-  // matchCriteria -> longitud == #criteria
-  if (w.length !== criteriaLen) {
-    const err = new Error(`'weights' length must match number of leaf criteria (${criteriaLen}).`);
-    err.status = 400;
-    throw err;
+  if (weights.length !== criteriaLen) {
+    const error = new Error(`'weights' length must match number of leaf criteria (${criteriaLen}).`);
+    error.status = 400;
+    throw error;
   }
 
   if (weightsParam.type === "array") {
-    // crisp
-    const ok = w.every((x) => typeof x === "number" && Number.isFinite(x));
-    if (!ok) {
-      const err = new Error("Target model expects crisp numeric weights (array of numbers).");
-      err.status = 400;
-      throw err;
+    const isValid = weights.every((value) => typeof value === "number" && Number.isFinite(value));
+
+    if (!isValid) {
+      const error = new Error("Target model expects crisp numeric weights (array of numbers).");
+      error.status = 400;
+      throw error;
     }
+
     return;
   }
 
   if (weightsParam.type === "fuzzyArray") {
-    // fuzzy: cada elemento puede ser [l,m,u] o {l,m,u} o {a,b,c} etc (lo dejamos flexible)
-    const ok = w.every((x) => {
-      if (Array.isArray(x)) return x.length === 3 && x.every((n) => typeof n === "number" && Number.isFinite(n));
-      if (x && typeof x === "object") return true; // flexible (tu API lo normaliza)
+    const isValid = weights.every((value) => {
+      if (Array.isArray(value)) {
+        return value.length === 3 && value.every((n) => typeof n === "number" && Number.isFinite(n));
+      }
+
+      if (value && typeof value === "object") {
+        return true;
+      }
+
       return false;
     });
 
-    if (!ok) {
-      const err = new Error("Target model expects fuzzy weights (each weight must be [l,m,u] or an object).");
-      err.status = 400;
-      throw err;
+    if (!isValid) {
+      const error = new Error(
+        "Target model expects fuzzy weights (each weight must be [l,m,u] or an object)."
+      );
+      error.status = 400;
+      throw error;
     }
   }
 };
 
-/** Construir matrices AxC (no pairwise), devolviendo también snapshots usados */
+/**
+ * Construye matrices alternativas x criterios.
+ *
+ * @param {Object} params Datos de entrada.
+ * @returns {Promise<{ matrices: Object, expertsOrder: Array<string>, snapshotIdsUsed: Array<string> }>}
+ */
 export const buildAxCMatrices = async ({ issueId, alternatives, criteria, participations }) => {
-  const expertIds = participations.map((p) => p.expert._id);
+  const expertIds = participations.map((participation) => participation.expert._id);
 
-  const evalDocs = await Evaluation.find({
+  const evaluationDocs = await Evaluation.find({
     issue: issueId,
     expert: { $in: expertIds },
     comparedAlternative: null,
@@ -112,58 +152,74 @@ export const buildAxCMatrices = async ({ issueId, alternatives, criteria, partic
     .populate("expressionDomain")
     .lean();
 
-  const map = new Map();
+  const evaluationsMap = new Map();
   const snapshotIdsUsed = new Set();
 
-  for (const e of evalDocs) {
-    const k = `${String(e.expert)}_${String(e.alternative)}_${String(e.criterion)}`;
-    map.set(k, e);
-    if (e.expressionDomain?._id) snapshotIdsUsed.add(String(e.expressionDomain._id));
+  for (const evaluation of evaluationDocs) {
+    const key = `${String(evaluation.expert)}_${String(evaluation.alternative)}_${String(evaluation.criterion)}`;
+    evaluationsMap.set(key, evaluation);
+
+    if (evaluation.expressionDomain?._id) {
+      snapshotIdsUsed.add(String(evaluation.expressionDomain._id));
+    }
   }
 
-  const expertsOrder = participations.map((p) => p.expert.email);
-
+  const expertsOrder = participations.map((participation) => participation.expert.email);
   const matrices = {};
-  for (const p of participations) {
-    const email = p.expert.email;
-    const m = [];
 
-    for (const alt of alternatives) {
+  for (const participation of participations) {
+    const expertEmail = participation.expert.email;
+    const matrix = [];
+
+    for (const alternative of alternatives) {
       const row = [];
-      for (const crit of criteria) {
-        const k = `${String(p.expert._id)}_${String(alt._id)}_${String(crit._id)}`;
-        const e = map.get(k);
 
-        if (!e) {
-          const err = new Error(`Missing evaluation for expert ${email}, alt ${alt.name}, crit ${crit.name}`);
-          err.status = 400;
-          throw err;
+      for (const criterion of criteria) {
+        const key = `${String(participation.expert._id)}_${String(alternative._id)}_${String(criterion._id)}`;
+        const evaluation = evaluationsMap.get(key);
+
+        if (!evaluation) {
+          const error = new Error(
+            `Missing evaluation for expert ${expertEmail}, alt ${alternative.name}, crit ${criterion.name}`
+          );
+          error.status = 400;
+          throw error;
         }
 
-        let val = e.value ?? null;
+        let value = evaluation.value ?? null;
+        const domain = evaluation.expressionDomain;
 
-        const dom = e.expressionDomain;
-        if (dom?.type === "linguistic") {
-          const def = (dom.linguisticLabels || []).find((lbl) => lbl.label === val);
-          val = def ? def.values : null;
+        if (domain?.type === "linguistic") {
+          const labelDefinition = (domain.linguisticLabels || []).find((label) => label.label === value);
+          value = labelDefinition ? labelDefinition.values : null;
         }
 
-        row.push(val);
+        row.push(value);
       }
-      m.push(row);
+
+      matrix.push(row);
     }
 
-    matrices[email] = m;
+    matrices[expertEmail] = matrix;
   }
 
-  return { matrices, expertsOrder, snapshotIdsUsed: Array.from(snapshotIdsUsed) };
+  return {
+    matrices,
+    expertsOrder,
+    snapshotIdsUsed: Array.from(snapshotIdsUsed),
+  };
 };
 
-/** Construir matrices AxA (pairwise) -> expert -> criterionName -> matrix */
+/**
+ * Construye matrices pairwise agrupadas por experto y criterio.
+ *
+ * @param {Object} params Datos de entrada.
+ * @returns {Promise<{ matrices: Object, expertsOrder: Array<string>, snapshotIdsUsed: Array<string> }>}
+ */
 export const buildPairwiseMatrices = async ({ issueId, alternatives, criteria, participations }) => {
-  const expertIds = participations.map((p) => p.expert._id);
+  const expertIds = participations.map((participation) => participation.expert._id);
 
-  const evalDocs = await Evaluation.find({
+  const evaluationDocs = await Evaluation.find({
     issue: issueId,
     expert: { $in: expertIds },
     comparedAlternative: { $ne: null },
@@ -171,67 +227,89 @@ export const buildPairwiseMatrices = async ({ issueId, alternatives, criteria, p
     .populate("expressionDomain")
     .lean();
 
-  const map = new Map();
+  const evaluationsMap = new Map();
   const snapshotIdsUsed = new Set();
 
-  for (const e of evalDocs) {
-    const k = `${String(e.expert)}_${String(e.criterion)}_${String(e.alternative)}_${String(e.comparedAlternative)}`;
-    map.set(k, e);
-    if (e.expressionDomain?._id) snapshotIdsUsed.add(String(e.expressionDomain._id));
+  for (const evaluation of evaluationDocs) {
+    const key = `${String(evaluation.expert)}_${String(evaluation.criterion)}_${String(
+      evaluation.alternative
+    )}_${String(evaluation.comparedAlternative)}`;
+
+    evaluationsMap.set(key, evaluation);
+
+    if (evaluation.expressionDomain?._id) {
+      snapshotIdsUsed.add(String(evaluation.expressionDomain._id));
+    }
   }
 
-  const expertsOrder = participations.map((p) => p.expert.email);
-
-  const altIndex = new Map(alternatives.map((a, i) => [String(a._id), i]));
+  const expertsOrder = participations.map((participation) => participation.expert.email);
+  const alternativeIndexMap = new Map(
+    alternatives.map((alternative, index) => [String(alternative._id), index])
+  );
 
   const matrices = {};
-  for (const p of participations) {
-    const email = p.expert.email;
-    matrices[email] = {};
 
-    for (const crit of criteria) {
-      const n = alternatives.length;
-      const mat = Array.from({ length: n }, (_, i) =>
-        Array.from({ length: n }, (_, j) => (i === j ? 0.5 : null))
+  for (const participation of participations) {
+    const expertEmail = participation.expert.email;
+    matrices[expertEmail] = {};
+
+    for (const criterion of criteria) {
+      const size = alternatives.length;
+      const matrix = Array.from({ length: size }, (_, rowIndex) =>
+        Array.from({ length: size }, (_, colIndex) => (rowIndex === colIndex ? 0.5 : null))
       );
 
-      for (const alt of alternatives) {
-        for (const cmp of alternatives) {
-          if (String(alt._id) === String(cmp._id)) continue;
+      for (const alternative of alternatives) {
+        for (const comparedAlternative of alternatives) {
+          if (String(alternative._id) === String(comparedAlternative._id)) continue;
 
-          const k = `${String(p.expert._id)}_${String(crit._id)}_${String(alt._id)}_${String(cmp._id)}`;
-          const e = map.get(k);
-          if (!e) continue;
+          const key = `${String(participation.expert._id)}_${String(criterion._id)}_${String(
+            alternative._id
+          )}_${String(comparedAlternative._id)}`;
 
-          const i = altIndex.get(String(alt._id));
-          const j = altIndex.get(String(cmp._id));
-          if (i == null || j == null) continue;
+          const evaluation = evaluationsMap.get(key);
+          if (!evaluation) continue;
 
-          // pairwise en tu sistema es numeric, pero lo dejamos general
-          mat[i][j] = e.value ?? null;
+          const rowIndex = alternativeIndexMap.get(String(alternative._id));
+          const colIndex = alternativeIndexMap.get(String(comparedAlternative._id));
+
+          if (rowIndex == null || colIndex == null) continue;
+
+          matrix[rowIndex][colIndex] = evaluation.value ?? null;
         }
       }
 
-      // sanity: no null fuera diagonal
-      for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
+      for (let i = 0; i < size; i += 1) {
+        for (let j = 0; j < size; j += 1) {
           if (i === j) continue;
-          if (mat[i][j] == null) {
-            const err = new Error(`Incomplete pairwise matrix for expert ${email}, criterion ${crit.name}`);
-            err.status = 400;
-            throw err;
+
+          if (matrix[i][j] == null) {
+            const error = new Error(
+              `Incomplete pairwise matrix for expert ${expertEmail}, criterion ${criterion.name}`
+            );
+            error.status = 400;
+            throw error;
           }
         }
       }
 
-      matrices[email][crit.name] = mat;
+      matrices[expertEmail][criterion.name] = matrix;
     }
   }
 
-  return { matrices, expertsOrder, snapshotIdsUsed: Array.from(snapshotIdsUsed) };
+  return {
+    matrices,
+    expertsOrder,
+    snapshotIdsUsed: Array.from(snapshotIdsUsed),
+  };
 };
 
-/** Normalizar resultados a un shape común tipo Consensus */
+/**
+ * Normaliza resultados de simulación a una estructura común.
+ *
+ * @param {Object} params Datos de entrada.
+ * @returns {{ details: Object, collectiveEvaluations: Object }}
+ */
 export const normalizeScenarioResults = ({
   targetModelName,
   apiResults,
@@ -239,11 +317,10 @@ export const normalizeScenarioResults = ({
   criteria,
   expertsOrder,
 }) => {
-  const modelName = String(targetModelName || "").trim().toUpperCase();
-  const altNames = alternatives.map((a) => a.name);
+  const normalizedModelName = String(targetModelName || "").trim().toUpperCase();
+  const alternativeNames = alternatives.map((alternative) => alternative.name);
 
-  // ======= CRP (pairwise) =======
-  if (modelName === "HERRERA VIEDMA CRP") {
+  if (normalizedModelName === "HERRERA VIEDMA CRP") {
     const {
       alternatives_rankings = [],
       cm = null,
@@ -252,39 +329,41 @@ export const normalizeScenarioResults = ({
       collective_scores = [],
     } = apiResults || {};
 
-    const rankedWithScores = alternatives_rankings.map((idx) => ({
-      name: altNames[idx],
-      score: collective_scores?.[idx] ?? null,
+    const rankedWithScores = alternatives_rankings.map((index) => ({
+      name: alternativeNames[index],
+      score: collective_scores?.[index] ?? null,
     }));
 
     const collectiveScoresByName = Object.fromEntries(
-      altNames.map((n, i) => [n, collective_scores?.[i] ?? null])
+      alternativeNames.map((name, index) => [name, collective_scores?.[index] ?? null])
     );
 
-    // collectiveEvaluations para UI (como tú guardas en pairwise)
     const transformedCollectiveEvaluations = {};
-    for (const crit of criteria) {
-      const mat = collective_evaluations?.[crit.name];
-      if (!mat) continue;
 
-      const transformed = mat.map((row, rIdx) => {
-        const obj = { id: altNames[rIdx] };
-        row.forEach((v, cIdx) => {
-          obj[altNames[cIdx]] = v;
+    for (const criterion of criteria) {
+      const matrix = collective_evaluations?.[criterion.name];
+      if (!matrix) continue;
+
+      transformedCollectiveEvaluations[criterion.name] = matrix.map((row, rowIndex) => {
+        const rowObject = { id: alternativeNames[rowIndex] };
+
+        row.forEach((value, colIndex) => {
+          rowObject[alternativeNames[colIndex]] = value;
         });
-        return obj;
-      });
 
-      transformedCollectiveEvaluations[crit.name] = transformed;
+        return rowObject;
+      });
     }
 
-    // plots_graphic: map expert_points[] -> email
     let plotsGraphicWithEmails = null;
+
     if (plots_graphic?.expert_points && Array.isArray(plots_graphic.expert_points)) {
       const expertPointsMap = {};
-      expertsOrder.forEach((email, i) => {
-        expertPointsMap[email] = plots_graphic.expert_points[i] ?? null;
+
+      expertsOrder.forEach((email, index) => {
+        expertPointsMap[email] = plots_graphic.expert_points[index] ?? null;
       });
+
       plotsGraphicWithEmails = {
         expert_points: expertPointsMap,
         collective_point: plots_graphic.collective_point ?? null,
@@ -295,7 +374,7 @@ export const normalizeScenarioResults = ({
       cm,
       rankedAlternatives: rankedWithScores,
       collective_scores: collectiveScoresByName,
-      collective_ranking: rankedWithScores.map((r) => r.name),
+      collective_ranking: rankedWithScores.map((item) => item.name),
       ...(plotsGraphicWithEmails ? { plotsGraphic: plotsGraphicWithEmails } : {}),
     };
 
@@ -305,7 +384,6 @@ export const normalizeScenarioResults = ({
     };
   }
 
-  // ======= TOPSIS / ARAS / BORDA / FUZZY TOPSIS =======
   const {
     collective_ranking = [],
     collective_scores = [],
@@ -314,35 +392,38 @@ export const normalizeScenarioResults = ({
     cm = null,
   } = apiResults || {};
 
-  const rankedWithScores = collective_ranking.map((idx) => ({
-    name: altNames[idx],
-    score: collective_scores?.[idx] ?? null,
+  const rankedWithScores = collective_ranking.map((index) => ({
+    name: alternativeNames[index],
+    score: collective_scores?.[index] ?? null,
   }));
 
   const collectiveScoresByName = Object.fromEntries(
-    altNames.map((n, i) => [n, collective_scores?.[i] ?? null])
+    alternativeNames.map((name, index) => [name, collective_scores?.[index] ?? null])
   );
 
-  // collectiveEvaluations forma AxC (como tu resolveIssue)
   const collectiveEvaluations = {};
+
   if (Array.isArray(collective_matrix)) {
-    collective_matrix.forEach((row, altIdx) => {
-      const altName = altNames[altIdx];
-      collectiveEvaluations[altName] = {};
-      row.forEach((val, critIdx) => {
-        const critName = criteria[critIdx]?.name ?? `C${critIdx + 1}`;
-        collectiveEvaluations[altName][critName] = { value: val };
+    collective_matrix.forEach((row, alternativeIndex) => {
+      const alternativeName = alternativeNames[alternativeIndex];
+      collectiveEvaluations[alternativeName] = {};
+
+      row.forEach((value, criterionIndex) => {
+        const criterionName = criteria[criterionIndex]?.name ?? `C${criterionIndex + 1}`;
+        collectiveEvaluations[alternativeName][criterionName] = { value };
       });
     });
   }
 
-  // plots_graphic opcional
   let plotsGraphicWithEmails = null;
+
   if (plots_graphic?.expert_points && Array.isArray(plots_graphic.expert_points)) {
     const expertPointsMap = {};
-    expertsOrder.forEach((email, i) => {
-      expertPointsMap[email] = plots_graphic.expert_points[i] ?? null;
+
+    expertsOrder.forEach((email, index) => {
+      expertPointsMap[email] = plots_graphic.expert_points[index] ?? null;
     });
+
     plotsGraphicWithEmails = {
       expert_points: expertPointsMap,
       collective_point: plots_graphic.collective_point ?? null,
@@ -353,57 +434,77 @@ export const normalizeScenarioResults = ({
     cm,
     rankedAlternatives: rankedWithScores,
     collective_scores: collectiveScoresByName,
-    collective_ranking: rankedWithScores.map((r) => r.name),
+    collective_ranking: rankedWithScores.map((item) => item.name),
     ...(plotsGraphicWithEmails ? { plotsGraphic: plotsGraphicWithEmails } : {}),
   };
 
   return { details, collectiveEvaluations };
 };
 
-const toNum = (x) => (Number.isFinite(Number(x)) ? Number(x) : null);
+const toNum = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
 
-const pickMid = (w) => {
-  if (Array.isArray(w) && w.length === 3) return toNum(w[1]);
-  if (w && typeof w === "object") return toNum(w.m ?? w.mid ?? w.value);
-  return toNum(w);
+const pickMid = (weight) => {
+  if (Array.isArray(weight) && weight.length === 3) return toNum(weight[1]);
+  if (weight && typeof weight === "object") return toNum(weight.m ?? weight.mid ?? weight.value);
+  return toNum(weight);
 };
 
-const toTriple = (w) => {
-  if (Array.isArray(w) && w.length === 3) return w.map(toNum);
-  if (w && typeof w === "object") return [toNum(w.l), toNum(w.m), toNum(w.u)];
-  const n = toNum(w);
-  return [n, n, n];
+const toTriple = (weight) => {
+  if (Array.isArray(weight) && weight.length === 3) return weight.map(toNum);
+  if (weight && typeof weight === "object") return [toNum(weight.l), toNum(weight.m), toNum(weight.u)];
+
+  const numericValue = toNum(weight);
+  return [numericValue, numericValue, numericValue];
 };
 
-const normalizeCrisp = (arr) => {
-  const s = arr.reduce((a,b)=>a+b,0);
-  if (!s) return arr;
-  return arr.map((x)=>x/s);
+const normalizeCrisp = (values) => {
+  const sum = values.reduce((accumulator, value) => accumulator + value, 0);
+  if (!sum) return values;
+  return values.map((value) => value / sum);
 };
 
 const normalizeFuzzyByMid = (triples) => {
-  const mids = triples.map((t)=>t?.[1]).filter(Number.isFinite);
-  const s = mids.reduce((a,b)=>a+b,0);
-  if (!s) return triples;
-  const k = 1 / s;
-  return triples.map(([l,m,u]) => [l*k, m*k, u*k]);
+  const mids = triples.map((triple) => triple?.[1]).filter(Number.isFinite);
+  const sum = mids.reduce((accumulator, value) => accumulator + value, 0);
+  if (!sum) return triples;
+
+  const factor = 1 / sum;
+  return triples.map(([l, m, u]) => [l * factor, m * factor, u * factor]);
 };
 
+/**
+ * Adapta pesos base al tipo de pesos del modelo destino.
+ *
+ * @param {Object} params Datos de entrada.
+ * @returns {*}
+ */
 export const coerceWeightsForModel = ({ baseWeights, weightsParam, leafCount }) => {
-  const L = Number(leafCount) || (Array.isArray(baseWeights) ? baseWeights.length : 1);
+  const totalLeaves =
+    Number(leafCount) || (Array.isArray(baseWeights) ? baseWeights.length : 1);
 
   if (weightsParam.type === "array") {
-    const crisp = Array.from({ length: L }, (_, i) => pickMid(baseWeights?.[i]));
-    if (crisp.some((x) => !Number.isFinite(x))) throw new Error("Invalid base weights");
-    return normalizeCrisp(crisp);
+    const crispWeights = Array.from({ length: totalLeaves }, (_, index) =>
+      pickMid(baseWeights?.[index])
+    );
+
+    if (crispWeights.some((value) => !Number.isFinite(value))) {
+      throw new Error("Invalid base weights");
+    }
+
+    return normalizeCrisp(crispWeights);
   }
 
   if (weightsParam.type === "fuzzyArray") {
-    const triples = Array.from({ length: L }, (_, i) => toTriple(baseWeights?.[i]));
-    if (triples.some((t) => t.some((x) => !Number.isFinite(x)))) throw new Error("Invalid base fuzzy weights");
-    return normalizeFuzzyByMid(triples);
+    const fuzzyWeights = Array.from({ length: totalLeaves }, (_, index) =>
+      toTriple(baseWeights?.[index])
+    );
+
+    if (fuzzyWeights.some((triple) => triple.some((value) => !Number.isFinite(value)))) {
+      throw new Error("Invalid base fuzzy weights");
+    }
+
+    return normalizeFuzzyByMid(fuzzyWeights);
   }
 
-  // fallback: deja tal cual
   return baseWeights;
 };

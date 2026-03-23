@@ -1,4 +1,3 @@
-// controllers/admin.controller.js
 import mongoose from "mongoose";
 
 // Models
@@ -15,6 +14,7 @@ import { ExpressionDomain } from "../models/ExpressionDomain.js";
 import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
 import { CriteriaWeightEvaluation } from "../models/CriteriaWeightEvaluation.js";
 import { IssueScenario } from "../models/IssueScenarios.js";
+
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
@@ -32,8 +32,264 @@ import {
   resolvePairwiseIssue as resolvePairwiseIssueOwner,
 } from "./issue.controller.js";
 
+/**
+ * Convierte un valor o documento en id string.
+ *
+ * @param {*} value Valor a convertir.
+ * @returns {string}
+ */
+const asId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value._id) return String(value._id);
+  return String(value);
+};
+
+/**
+ * Comprueba si un valor está relleno.
+ *
+ * @param {*} value Valor a comprobar.
+ * @returns {boolean}
+ */
+const isFilledValue = (value) => !(value === null || value === undefined || value === "");
+
+/**
+ * Comprueba si un valor es un ObjectId válido.
+ *
+ * @param {*} value Valor a validar.
+ * @returns {boolean}
+ */
+const isValidObjectId = (value) => Boolean(value) && mongoose.Types.ObjectId.isValid(value);
+
+/**
+ * Cierra una sesión de mongoose si existe.
+ *
+ * @param {import("mongoose").ClientSession} session Sesión de mongoose.
+ * @returns {Promise<void>}
+ */
+const endSessionSafely = async (session) => {
+  if (session) {
+    await session.endSession();
+  }
+};
+
+/**
+ * Aborta la transacción si sigue activa.
+ *
+ * @param {import("mongoose").ClientSession} session Sesión de mongoose.
+ * @returns {Promise<void>}
+ */
+const abortTransactionSafely = async (session) => {
+  if (session?.inTransaction()) {
+    await session.abortTransaction();
+  }
+};
+
+/**
+ * Devuelve metadatos legibles de la etapa actual del issue.
+ *
+ * @param {string} stage Etapa actual.
+ * @returns {{ key: string, label: string }}
+ */
+const getIssueStageMeta = (stage) => {
+  const stageMap = {
+    criteriaWeighting: { key: "criteriaWeighting", label: "Criteria weighting" },
+    weightsFinished: { key: "weightsFinished", label: "Weights finished" },
+    alternativeEvaluation: { key: "alternativeEvaluation", label: "Alternative evaluation" },
+    finished: { key: "finished", label: "Finished" },
+  };
+
+  return stageMap[stage] || { key: stage, label: stage || "Unknown" };
+};
+
+/**
+ * Devuelve el estado de acciones disponibles para el creador de un issue.
+ *
+ * @param {Object} params Datos necesarios.
+ * @param {Object} params.issue Issue actual.
+ * @param {number} [params.acceptedExperts=0] Número de expertos aceptados.
+ * @param {number} [params.pendingExperts=0] Número de expertos pendientes.
+ * @param {number} [params.weightsDoneAccepted=0] Expertos aceptados con pesos completados.
+ * @param {number} [params.evaluationsDoneAccepted=0] Expertos aceptados con evaluaciones completadas.
+ * @returns {Object}
+ */
+const getCreatorActionFlags = ({
+  issue,
+  acceptedExperts = 0,
+  pendingExperts = 0,
+  weightsDoneAccepted = 0,
+  evaluationsDoneAccepted = 0,
+}) => {
+  const stage = issue?.currentStage;
+  const hasPendingExperts = pendingExperts > 0;
+
+  const allWeightsDone =
+    acceptedExperts > 0 && weightsDoneAccepted === acceptedExperts;
+
+  const allEvaluationsDone =
+    acceptedExperts > 0 && evaluationsDoneAccepted === acceptedExperts;
+
+  return {
+    canEditExperts: Boolean(issue?.active),
+    canRemoveIssue: Boolean(issue?.active),
+    canComputeWeights:
+      stage === "weightsFinished" &&
+      !hasPendingExperts &&
+      allWeightsDone,
+    canResolveIssue:
+      stage === "alternativeEvaluation" &&
+      !hasPendingExperts &&
+      allEvaluationsDone,
+  };
+};
+
+/**
+ * Ordena dos elementos por nombre y, en empate, por id.
+ *
+ * @param {Object} a Primer elemento.
+ * @param {Object} b Segundo elemento.
+ * @returns {number}
+ */
+const sortByNameStable = (a, b) => {
+  const byName = String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+
+  if (byName !== 0) return byName;
+
+  return asId(a).localeCompare(asId(b));
+};
+
+/**
+ * Construye el árbol jerárquico de criterios para el panel admin.
+ *
+ * @param {Array<Object>} criteriaDocs Lista de criterios.
+ * @returns {Array<Object>}
+ */
+const buildCriteriaTreeAdmin = (criteriaDocs = []) => {
+  const nodes = criteriaDocs.map((criterion) => ({
+    id: asId(criterion._id),
+    name: criterion.name,
+    type: criterion.type,
+    isLeaf: Boolean(criterion.isLeaf),
+    parentId: criterion.parentCriterion ? asId(criterion.parentCriterion) : null,
+    children: [],
+  }));
+
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const roots = [];
+
+  for (const node of nodes) {
+    if (node.parentId && nodesById.has(node.parentId)) {
+      nodesById.get(node.parentId).children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortRecursively = (items) => {
+    items.sort(sortByNameStable);
+
+    items.forEach((item) => {
+      if (Array.isArray(item.children) && item.children.length > 0) {
+        sortRecursively(item.children);
+      }
+    });
+  };
+
+  sortRecursively(roots);
+
+  return roots;
+};
+
+/**
+ * Cuenta el número esperado de celdas de evaluación por experto.
+ *
+ * @param {Object} params Datos de cálculo.
+ * @param {number} params.alternativesCount Número de alternativas.
+ * @param {number} params.leafCriteriaCount Número de criterios hoja.
+ * @param {boolean} params.isPairwise Indica si el issue es pairwise.
+ * @returns {number}
+ */
+const countExpectedEvaluationCellsPerExpert = ({
+  alternativesCount,
+  leafCriteriaCount,
+  isPairwise,
+}) => {
+  if (!alternativesCount || !leafCriteriaCount) {
+    return 0;
+  }
+
+  if (isPairwise) {
+    return alternativesCount * leafCriteriaCount * Math.max(alternativesCount - 1, 0);
+  }
+
+  return alternativesCount * leafCriteriaCount;
+};
+
+/**
+ * Formatea un snapshot de dominio de expresión para el frontend.
+ *
+ * @param {Object|null} domain Dominio a formatear.
+ * @returns {Object|null}
+ */
+const formatIssueSnapshotDomain = (domain) => {
+  if (!domain) return null;
+
+  return {
+    id: asId(domain._id),
+    name: domain.name,
+    type: domain.type,
+    ...(domain.type === "numeric" && {
+      range: {
+        min: domain.numericRange?.min ?? null,
+        max: domain.numericRange?.max ?? null,
+      },
+    }),
+    ...(domain.type === "linguistic" && {
+      labels: Array.isArray(domain.linguisticLabels) ? domain.linguisticLabels : [],
+    }),
+  };
+};
+
+/**
+ * Ordena un objeto siguiendo un orden de claves dado.
+ *
+ * @param {Object} [obj={}] Objeto a ordenar.
+ * @param {Array<string>} [orderedKeys=[]] Orden deseado.
+ * @returns {Object}
+ */
+const orderObjectByKeys = (obj = {}, orderedKeys = []) => {
+  const orderedObject = {};
+  const usedKeys = new Set();
+
+  for (const key of orderedKeys) {
+    orderedObject[key] = Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : null;
+    usedKeys.add(key);
+  }
+
+  for (const [key, value] of Object.entries(obj || {})) {
+    if (!usedKeys.has(key)) {
+      orderedObject[key] = value;
+    }
+  }
+
+  return orderedObject;
+};
+
+/**
+ * Ejecuta una acción de creador de issue simulando el uid del admin real.
+ *
+ * @param {Object} params Parámetros de ejecución.
+ * @param {string} params.issueId Id del issue.
+ * @param {import("express").Request} params.req Request de Express.
+ * @param {import("express").Response} params.res Response de Express.
+ * @param {(issue: Object) => Promise<any>} params.action Acción a ejecutar.
+ * @returns {Promise<any>}
+ */
 const runAsIssueCreator = async ({ issueId, req, res, action }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
+  if (!issueId || !isValidObjectId(issueId)) {
     return res.status(400).json({
       success: false,
       msg: "Valid issue id is required",
@@ -41,6 +297,7 @@ const runAsIssueCreator = async ({ issueId, req, res, action }) => {
   }
 
   const issue = await Issue.findById(issueId).populate("model");
+
   if (!issue) {
     return res.status(404).json({
       success: false,
@@ -58,9 +315,13 @@ const runAsIssueCreator = async ({ issueId, req, res, action }) => {
     req.uid = realAdminUid;
   }
 };
+
 /**
- * GET /api/admin/getAllExperts
- * Devuelve todos los usuarios no-admin con estadísticas útiles para el CRUD.
+ * Obtiene todos los usuarios visibles desde el panel de administración.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const getAllUsersAdmin = async (req, res) => {
   try {
@@ -95,7 +356,7 @@ export const getAllUsersAdmin = async (req, res) => {
       });
     }
 
-    const userIds = users.map((u) => u._id);
+    const userIds = users.map((user) => user._id);
 
     const [participations, domainsAgg, ownedIssuesAgg] = await Promise.all([
       Participation.find({ expert: { $in: userIds } })
@@ -169,28 +430,32 @@ export const getAllUsersAdmin = async (req, res) => {
       });
     }
 
-    for (const p of participations) {
-      if (!p.issue) continue;
+    for (const participation of participations) {
+      if (!participation.issue) continue;
 
-      const key = String(p.expert);
-      const slot = participationStatsMap.get(key);
-      if (!slot) continue;
+      const key = String(participation.expert);
+      const stats = participationStatsMap.get(key);
 
-      if (p.issue.active) slot.activeIssues += 1;
-      else slot.finishedIssues += 1;
+      if (!stats) continue;
+
+      if (participation.issue.active) {
+        stats.activeIssues += 1;
+      } else {
+        stats.finishedIssues += 1;
+      }
     }
 
-    const formattedUsers = users.map((u) => {
-      const userId = String(u._id);
+    const formattedUsers = users.map((user) => {
+      const userId = String(user._id);
 
       return {
         id: userId,
-        name: u.name,
-        university: u.university,
-        email: u.email,
-        role: u.role || "user",
-        accountConfirm: Boolean(u.accountConfirm),
-        accountCreation: u.accountCreation || null,
+        name: user.name,
+        university: user.university,
+        email: user.email,
+        role: user.role || "user",
+        accountConfirm: Boolean(user.accountConfirm),
+        accountCreation: user.accountCreation || null,
         stats: {
           activeIssues: participationStatsMap.get(userId)?.activeIssues || 0,
           finishedIssues: participationStatsMap.get(userId)?.finishedIssues || 0,
@@ -219,8 +484,11 @@ export const getAllUsersAdmin = async (req, res) => {
 };
 
 /**
- * POST /api/admin/createExpert
- * Crea un experto (realmente un usuario no-admin).
+ * Crea un nuevo usuario desde el panel de administración.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const createUserAdmin = async (req, res) => {
   try {
@@ -336,9 +604,11 @@ export const createUserAdmin = async (req, res) => {
 };
 
 /**
- * POST /api/admin/updateExpert
- * Actualiza un experto.
- * Espera { id, name?, university?, email?, password?, accountConfirm? }
+ * Actualiza un usuario desde el panel de administración.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const updateUserAdmin = async (req, res) => {
   try {
@@ -370,23 +640,27 @@ export const updateUserAdmin = async (req, res) => {
 
     if (name !== undefined) {
       const cleanName = String(name).trim();
+
       if (!cleanName) {
         return res.status(400).json({
           success: false,
           msg: "Name can not be empty",
         });
       }
+
       user.name = cleanName;
     }
 
     if (university !== undefined) {
       const cleanUniversity = String(university).trim();
+
       if (!cleanUniversity) {
         return res.status(400).json({
           success: false,
           msg: "University can not be empty",
         });
       }
+
       user.university = cleanUniversity;
     }
 
@@ -428,7 +702,6 @@ export const updateUserAdmin = async (req, res) => {
       user.role = cleanRole;
     }
 
-    // Si es admin, siempre confirmado
     if (user.role === "admin") {
       user.accountConfirm = true;
     } else if (typeof accountConfirm === "boolean") {
@@ -473,18 +746,11 @@ export const updateUserAdmin = async (req, res) => {
 };
 
 /**
- * POST /api/admin/deleteExpert
- * Borra un experto en cascada.
- * Comportamiento:
- * - Si participa en issues activos: se le expulsa como si el creador lo hubiese eliminado.
- * - Si al expulsarlo un issue activo se queda sin expertos, ese issue activo se elimina.
- * - Si participa en issues finalizados: se oculta para ese usuario como si él lo hubiera eliminado.
- * - Borra dominios propios del usuario.
- * - Finalmente borra la cuenta.
+ * Elimina un usuario no creador de issues y limpia sus datos asociados.
  *
- * Importante:
- * - NO permite borrar usuarios que sean admins.
- * - NO permite borrar usuarios que sean creadores de issues.
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const deleteUserAdmin = async (req, res) => {
   const { id } = req.body || {};
@@ -504,7 +770,6 @@ export const deleteUserAdmin = async (req, res) => {
 
     if (!expert) {
       await session.abortTransaction();
-      session.endSession();
       return res.status(404).json({
         success: false,
         msg: "Expert not found",
@@ -513,21 +778,18 @@ export const deleteUserAdmin = async (req, res) => {
 
     if (String(req.uid) === String(id)) {
       await session.abortTransaction();
-      session.endSession();
       return res.status(400).json({
         success: false,
         msg: "You cannot delete your own account from this admin panel",
       });
     }
 
-    // No permitir borrar usuarios que sean creadores de issues.
     const ownedIssuesCount = await Issue.countDocuments({
       admin: expert._id,
     }).session(session);
 
     if (ownedIssuesCount > 0) {
       await session.abortTransaction();
-      session.endSession();
       return res.status(400).json({
         success: false,
         msg: "This user is creator/admin of one or more issues. Resolve those issues first before deleting the expert.",
@@ -538,7 +800,7 @@ export const deleteUserAdmin = async (req, res) => {
       expert: expert._id,
     }).session(session);
 
-    const issueIds = [...new Set(participations.map((p) => String(p.issue)))];
+    const issueIds = [...new Set(participations.map((participation) => String(participation.issue)))];
 
     const issues = issueIds.length
       ? await Issue.find({ _id: { $in: issueIds } }).session(session)
@@ -554,21 +816,18 @@ export const deleteUserAdmin = async (req, res) => {
 
     for (const issue of issues) {
       const participation = participations.find(
-        (p) => String(p.issue) === String(issue._id)
+        (item) => String(item.issue) === String(issue._id)
       );
 
       if (!participation) continue;
 
-      // =====================================================
-      // ACTIVE ISSUE -> expulsar como si el creador lo quitase
-      // =====================================================
       if (issue.active) {
         await cleanupExpertDraftsOnExit({
           issueId: issue._id,
           expertId: expert._id,
         });
 
-        const deleteEvalsResult = await Evaluation.deleteMany({
+        const deleteEvaluationsResult = await Evaluation.deleteMany({
           issue: issue._id,
           expert: expert._id,
         }).session(session);
@@ -587,15 +846,13 @@ export const deleteUserAdmin = async (req, res) => {
           _id: participation._id,
         }).session(session);
 
-        activeEvaluationsDeleted += deleteEvalsResult.deletedCount || 0;
+        activeEvaluationsDeleted += deleteEvaluationsResult.deletedCount || 0;
         activeWeightDocsDeleted += deleteWeightDocsResult.deletedCount || 0;
 
-        // Mirar si quedan participaciones en el issue
         const remainingParticipations = await Participation.find({
           issue: issue._id,
         }).session(session);
 
-        // Opción B: si el issue activo se queda sin expertos, se elimina completo
         if (remainingParticipations.length === 0) {
           await Evaluation.deleteMany({ issue: issue._id }).session(session);
           await Alternative.deleteMany({ issue: issue._id }).session(session);
@@ -619,6 +876,7 @@ export const deleteUserAdmin = async (req, res) => {
           const currentPhase = latestConsensus ? latestConsensus.phase + 1 : 1;
 
           let stageForLog = null;
+
           if (
             issue.currentStage === "criteriaWeighting" ||
             issue.currentStage === "weightsFinished"
@@ -657,23 +915,18 @@ export const deleteUserAdmin = async (req, res) => {
             { upsert: true, new: true, session }
           );
 
-          // Si estaba en criteriaWeighting y tras expulsarlo ya están todos los pesos completos,
-          // avanzar a weightsFinished para no dejar el issue bloqueado.
           if (issue.currentStage === "criteriaWeighting") {
-            const totalParticipants = remainingParticipations.filter(
-              (p) => ["accepted", "pending"].includes(p.invitationStatus)
+            const totalParticipants = remainingParticipations.filter((item) =>
+              ["accepted", "pending"].includes(item.invitationStatus)
             ).length;
 
             const totalWeightsDone = remainingParticipations.filter(
-              (p) =>
-                ["accepted", "pending"].includes(p.invitationStatus) &&
-                p.weightsCompleted === true
+              (item) =>
+                ["accepted", "pending"].includes(item.invitationStatus) &&
+                item.weightsCompleted === true
             ).length;
 
-            if (
-              totalParticipants > 0 &&
-              totalParticipants === totalWeightsDone
-            ) {
+            if (totalParticipants > 0 && totalParticipants === totalWeightsDone) {
               issue.currentStage = "weightsFinished";
               await issue.save({ session });
             }
@@ -681,12 +934,7 @@ export const deleteUserAdmin = async (req, res) => {
 
           activeIssuesUpdated += 1;
         }
-      }
-
-      // =====================================================
-      // FINISHED ISSUE -> ocultarlo para ese experto
-      // =====================================================
-      else {
+      } else {
         const latestConsensus = await Consensus.findOne({
           issue: issue._id,
         })
@@ -696,6 +944,7 @@ export const deleteUserAdmin = async (req, res) => {
         const currentPhase = latestConsensus ? latestConsensus.phase + 1 : null;
 
         let stageForLog = null;
+
         if (
           issue.currentStage === "criteriaWeighting" ||
           issue.currentStage === "weightsFinished"
@@ -741,8 +990,6 @@ export const deleteUserAdmin = async (req, res) => {
 
         finishedIssuesHidden += 1;
 
-        // Igual que removeFinishedIssue:
-        // solo borrar físicamente cuando todos los participantes lo tengan oculto.
         const participants = await Participation.find({
           issue: issue._id,
         }).session(session);
@@ -752,8 +999,8 @@ export const deleteUserAdmin = async (req, res) => {
           hidden: true,
         }).session(session);
 
-        const allUsersHaveHidden = participants.every((p) =>
-          exits.some((e) => String(e.user) === String(p.expert))
+        const allUsersHaveHidden = participants.every((participantItem) =>
+          exits.some((exit) => String(exit.user) === String(participantItem.expert))
         );
 
         if (allUsersHaveHidden) {
@@ -773,7 +1020,6 @@ export const deleteUserAdmin = async (req, res) => {
       }
     }
 
-    // Borrar dominios propios creados por este usuario.
     const deleteDomainsResult = await ExpressionDomain.deleteMany({
       user: expert._id,
       isGlobal: false,
@@ -781,18 +1027,15 @@ export const deleteUserAdmin = async (req, res) => {
 
     domainsDeleted = deleteDomainsResult.deletedCount || 0;
 
-    // Limpiar notificaciones generales que aún queden para el usuario.
     await Notification.deleteMany({
       expert: expert._id,
     }).session(session);
 
-    // Finalmente borrar usuario.
     await User.deleteOne({
       _id: expert._id,
     }).session(session);
 
     await session.commitTransaction();
-    session.endSession();
 
     return res.status(200).json({
       success: true,
@@ -808,8 +1051,7 @@ export const deleteUserAdmin = async (req, res) => {
       },
     });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
+    await abortTransactionSafely(session);
     console.error("deleteExpertAdmin error:", err);
 
     return res.status(500).json({
@@ -817,157 +1059,18 @@ export const deleteUserAdmin = async (req, res) => {
       msg: "Error deleting expert",
       error: err.message,
     });
+  } finally {
+    await endSessionSafely(session);
   }
 };
 
-/* =========================================================
- * Admin helpers for Issues
- * ========================================================= */
-
-const asId = (v) => {
-  if (!v) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "object" && v._id) return String(v._id);
-  return String(v);
-};
-
-const isFilledValue = (v) => !(v === null || v === undefined || v === "");
-
-const sortByNameStable = (a, b) => {
-  const an = String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
-    sensitivity: "base",
-    numeric: true,
-  });
-  if (an !== 0) return an;
-  return asId(a).localeCompare(asId(b));
-};
-
-const buildCriteriaTreeAdmin = (criteriaDocs = []) => {
-  const nodes = criteriaDocs.map((c) => ({
-    id: asId(c._id),
-    name: c.name,
-    type: c.type,
-    isLeaf: Boolean(c.isLeaf),
-    parentId: c.parentCriterion ? asId(c.parentCriterion) : null,
-    children: [],
-  }));
-
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const roots = [];
-
-  for (const node of nodes) {
-    if (node.parentId && byId.has(node.parentId)) {
-      byId.get(node.parentId).children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  const sortRec = (arr) => {
-    arr.sort(sortByNameStable);
-    arr.forEach((n) => {
-      if (Array.isArray(n.children) && n.children.length > 0) sortRec(n.children);
-    });
-  };
-
-  sortRec(roots);
-  return roots;
-};
-
-const countExpectedEvaluationCellsPerExpert = ({
-  alternativesCount,
-  leafCriteriaCount,
-  isPairwise,
-}) => {
-  if (!alternativesCount || !leafCriteriaCount) return 0;
-
-  if (isPairwise) {
-    return alternativesCount * leafCriteriaCount * Math.max(alternativesCount - 1, 0);
-  }
-
-  return alternativesCount * leafCriteriaCount;
-};
-
-const formatIssueSnapshotDomain = (domain) => {
-  if (!domain) return null;
-
-  return {
-    id: asId(domain._id),
-    name: domain.name,
-    type: domain.type,
-    ...(domain.type === "numeric" && {
-      range: {
-        min: domain.numericRange?.min ?? null,
-        max: domain.numericRange?.max ?? null,
-      },
-    }),
-    ...(domain.type === "linguistic" && {
-      labels: Array.isArray(domain.linguisticLabels) ? domain.linguisticLabels : [],
-    }),
-  };
-};
-
-const orderObjectByKeys = (obj = {}, orderedKeys = []) => {
-  const out = {};
-  const used = new Set();
-
-  for (const key of orderedKeys) {
-    out[key] = Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : null;
-    used.add(key);
-  }
-
-  for (const [key, value] of Object.entries(obj || {})) {
-    if (!used.has(key)) out[key] = value;
-  }
-
-  return out;
-};
-
-const getIssueStageMeta = (stage) => {
-  const map = {
-    criteriaWeighting: { key: "criteriaWeighting", label: "Criteria weighting" },
-    weightsFinished: { key: "weightsFinished", label: "Weights finished" },
-    alternativeEvaluation: { key: "alternativeEvaluation", label: "Alternative evaluation" },
-    finished: { key: "finished", label: "Finished" },
-  };
-
-  return map[stage] || { key: stage, label: stage || "Unknown" };
-};
-
-const getCreatorActionFlags = ({
-  issue,
-  acceptedExperts = 0,
-  pendingExperts = 0,
-  weightsDoneAccepted = 0,
-  evaluationsDoneAccepted = 0,
-}) => {
-  const stage = issue?.currentStage;
-  const hasPending = pendingExperts > 0;
-
-  const allWeightsDone =
-    acceptedExperts > 0 && weightsDoneAccepted === acceptedExperts;
-
-  const allEvaluationsDone =
-    acceptedExperts > 0 && evaluationsDoneAccepted === acceptedExperts;
-
-  return {
-    canEditExperts: Boolean(issue?.active),
-    canRemoveIssue: Boolean(issue?.active),
-    canComputeWeights:
-      stage === "weightsFinished" &&
-      !hasPending &&
-      allWeightsDone,
-    canResolveIssue:
-      stage === "alternativeEvaluation" &&
-      !hasPending &&
-      allEvaluationsDone,
-  };
-};
-
-/* =========================================================
- * GET /api/admin/getAllIssues
- * Listado resumido de issues para panel admin
- * ========================================================= */
+/**
+ * Obtiene el listado resumido de issues para el panel de administración.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getAllIssuesAdmin = async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
@@ -996,11 +1099,11 @@ export const getAllIssuesAdmin = async (req, res) => {
     if (isConsensus === "true") filter.isConsensus = true;
     if (isConsensus === "false") filter.isConsensus = false;
 
-    if (adminId && mongoose.Types.ObjectId.isValid(adminId)) {
+    if (adminId && isValidObjectId(adminId)) {
       filter.admin = adminId;
     }
 
-    if (modelId && mongoose.Types.ObjectId.isValid(modelId)) {
+    if (modelId && isValidObjectId(modelId)) {
       filter.model = modelId;
     }
 
@@ -1017,7 +1120,7 @@ export const getAllIssuesAdmin = async (req, res) => {
       });
     }
 
-    const issueIds = issues.map((i) => i._id);
+    const issueIds = issues.map((issue) => issue._id);
 
     const [
       alternativesAgg,
@@ -1025,7 +1128,7 @@ export const getAllIssuesAdmin = async (req, res) => {
       participationsAgg,
       consensusAgg,
       scenariosAgg,
-      evalsAgg,
+      evaluationsAgg,
     ] = await Promise.all([
       Alternative.aggregate([
         { $match: { issue: { $in: issueIds } } },
@@ -1137,20 +1240,32 @@ export const getAllIssuesAdmin = async (req, res) => {
       ]),
     ]);
 
-    const alternativesMap = new Map(alternativesAgg.map((r) => [asId(r._id), r.total || 0]));
-    const leafCriteriaMap = new Map(leafCriteriaAgg.map((r) => [asId(r._id), r.total || 0]));
-    const participationsMap = new Map(participationsAgg.map((r) => [asId(r._id), r]));
-    const consensusMap = new Map(consensusAgg.map((r) => [asId(r._id), r]));
-    const scenariosMap = new Map(scenariosAgg.map((r) => [asId(r._id), r.total || 0]));
-    const evalsMap = new Map(evalsAgg.map((r) => [asId(r._id), r]));
+    const alternativesMap = new Map(
+      alternativesAgg.map((row) => [asId(row._id), row.total || 0])
+    );
+    const leafCriteriaMap = new Map(
+      leafCriteriaAgg.map((row) => [asId(row._id), row.total || 0])
+    );
+    const participationsMap = new Map(
+      participationsAgg.map((row) => [asId(row._id), row])
+    );
+    const consensusMap = new Map(
+      consensusAgg.map((row) => [asId(row._id), row])
+    );
+    const scenariosMap = new Map(
+      scenariosAgg.map((row) => [asId(row._id), row.total || 0])
+    );
+    const evaluationsMap = new Map(
+      evaluationsAgg.map((row) => [asId(row._id), row])
+    );
 
     const formattedIssues = issues.map((issue) => {
-      const id = asId(issue._id);
+      const issueId = asId(issue._id);
 
-      const totalAlternatives = alternativesMap.get(id) || 0;
-      const totalLeafCriteria = leafCriteriaMap.get(id) || 0;
+      const totalAlternatives = alternativesMap.get(issueId) || 0;
+      const totalLeafCriteria = leafCriteriaMap.get(issueId) || 0;
 
-      const p = participationsMap.get(id) || {
+      const participationStats = participationsMap.get(issueId) || {
         totalExperts: 0,
         acceptedExperts: 0,
         pendingExperts: 0,
@@ -1159,13 +1274,13 @@ export const getAllIssuesAdmin = async (req, res) => {
         evaluationsDoneAccepted: 0,
       };
 
-      const c = consensusMap.get(id) || {
+      const consensusStats = consensusMap.get(issueId) || {
         totalRounds: 0,
         latestPhase: 0,
         latestTimestamp: null,
       };
 
-      const e = evalsMap.get(id) || {
+      const evaluationStats = evaluationsMap.get(issueId) || {
         filledCells: 0,
         lastEvaluationAt: null,
       };
@@ -1177,7 +1292,7 @@ export const getAllIssuesAdmin = async (req, res) => {
       });
 
       return {
-        id,
+        id: issueId,
         name: issue.name,
         description: issue.description,
         active: Boolean(issue.active),
@@ -1191,45 +1306,45 @@ export const getAllIssuesAdmin = async (req, res) => {
         closureDate: issue.closureDate || null,
         admin: issue.admin
           ? {
-            id: asId(issue.admin._id),
-            name: issue.admin.name,
-            email: issue.admin.email,
-            role: issue.admin.role || "user",
-            accountConfirm: Boolean(issue.admin.accountConfirm),
-          }
+              id: asId(issue.admin._id),
+              name: issue.admin.name,
+              email: issue.admin.email,
+              role: issue.admin.role || "user",
+              accountConfirm: Boolean(issue.admin.accountConfirm),
+            }
           : null,
         model: issue.model
           ? {
-            id: asId(issue.model._id),
-            name: issue.model.name,
-            isPairwise: Boolean(issue.model.isPairwise),
-            isConsensus: Boolean(issue.model.isConsensus),
-            isMultiCriteria: Boolean(issue.model.isMultiCriteria),
-          }
+              id: asId(issue.model._id),
+              name: issue.model.name,
+              isPairwise: Boolean(issue.model.isPairwise),
+              isConsensus: Boolean(issue.model.isConsensus),
+              isMultiCriteria: Boolean(issue.model.isMultiCriteria),
+            }
           : null,
         metrics: {
           totalAlternatives,
           totalLeafCriteria,
-          totalExperts: p.totalExperts || 0,
-          acceptedExperts: p.acceptedExperts || 0,
-          pendingExperts: p.pendingExperts || 0,
-          declinedExperts: p.declinedExperts || 0,
-          weightsDoneAccepted: p.weightsDoneAccepted || 0,
-          evaluationsDoneAccepted: p.evaluationsDoneAccepted || 0,
-          consensusRounds: c.totalRounds || 0,
-          latestConsensusPhase: c.latestPhase || 0,
-          latestConsensusAt: c.latestTimestamp || null,
-          scenarios: scenariosMap.get(id) || 0,
+          totalExperts: participationStats.totalExperts || 0,
+          acceptedExperts: participationStats.acceptedExperts || 0,
+          pendingExperts: participationStats.pendingExperts || 0,
+          declinedExperts: participationStats.declinedExperts || 0,
+          weightsDoneAccepted: participationStats.weightsDoneAccepted || 0,
+          evaluationsDoneAccepted: participationStats.evaluationsDoneAccepted || 0,
+          consensusRounds: consensusStats.totalRounds || 0,
+          latestConsensusPhase: consensusStats.latestPhase || 0,
+          latestConsensusAt: consensusStats.latestTimestamp || null,
+          scenarios: scenariosMap.get(issueId) || 0,
           expectedEvaluationCellsPerExpert: expectedPerExpert,
-          totalFilledEvaluationCells: e.filledCells || 0,
-          lastEvaluationAt: e.lastEvaluationAt || null,
+          totalFilledEvaluationCells: evaluationStats.filledCells || 0,
+          lastEvaluationAt: evaluationStats.lastEvaluationAt || null,
         },
         creatorActionsState: getCreatorActionFlags({
           issue,
-          acceptedExperts: p.acceptedExperts || 0,
-          pendingExperts: p.pendingExperts || 0,
-          weightsDoneAccepted: p.weightsDoneAccepted || 0,
-          evaluationsDoneAccepted: p.evaluationsDoneAccepted || 0,
+          acceptedExperts: participationStats.acceptedExperts || 0,
+          pendingExperts: participationStats.pendingExperts || 0,
+          weightsDoneAccepted: participationStats.weightsDoneAccepted || 0,
+          evaluationsDoneAccepted: participationStats.evaluationsDoneAccepted || 0,
         }),
       };
     });
@@ -1247,15 +1362,18 @@ export const getAllIssuesAdmin = async (req, res) => {
   }
 };
 
-/* =========================================================
- * GET /api/admin/getIssue/:id
- * Detalle completo y seguro de un issue para admin
- * ========================================================= */
+/**
+ * Obtiene el detalle completo de un issue para administración.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getIssueAdminById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
         msg: "Valid issue id is required",
@@ -1294,7 +1412,7 @@ export const getIssueAdminById = async (req, res) => {
       consensusDocs,
       scenarios,
       snapshots,
-      evalAggByExpert,
+      evaluationAggByExpert,
       weightDocs,
     ] = await Promise.all([
       getOrderedAlternativesDb({
@@ -1316,9 +1434,7 @@ export const getIssueAdminById = async (req, res) => {
       ExitUserIssue.find({ issue: id, hidden: true })
         .populate("user", "name email role university accountConfirm")
         .lean(),
-      Consensus.find({ issue: id })
-        .sort({ phase: 1 })
-        .lean(),
+      Consensus.find({ issue: id }).sort({ phase: 1 }).lean(),
       IssueScenario.find({ issue: id })
         .sort({ createdAt: -1 })
         .select("_id name targetModel targetModelName domainType isPairwise status createdAt createdBy")
@@ -1369,14 +1485,14 @@ export const getIssueAdminById = async (req, res) => {
     const finalWeightsById = {};
     const finalWeightsByName = {};
 
-    orderedLeafCriteria.forEach((crit, idx) => {
-      const value = finalWeightsArray[idx] ?? null;
-      finalWeightsById[asId(crit._id)] = value;
-      finalWeightsByName[crit.name] = value;
+    orderedLeafCriteria.forEach((criterion, index) => {
+      const value = finalWeightsArray[index] ?? null;
+      finalWeightsById[asId(criterion._id)] = value;
+      finalWeightsByName[criterion.name] = value;
     });
 
-    const evalAggMap = new Map(
-      evalAggByExpert.map((row) => [
+    const evaluationAggMap = new Map(
+      evaluationAggByExpert.map((row) => [
         asId(row._id),
         {
           totalDocs: row.totalDocs || 0,
@@ -1386,35 +1502,37 @@ export const getIssueAdminById = async (req, res) => {
       ])
     );
 
-    const weightDocMap = new Map(weightDocs.map((w) => [asId(w.expert), w]));
+    const weightDocMap = new Map(
+      weightDocs.map((weightDoc) => [asId(weightDoc.expert), weightDoc])
+    );
 
     const exitMap = new Map(
-      exits.map((e) => [
-        asId(e.user?._id || e.user),
+      exits.map((exit) => [
+        asId(exit.user?._id || exit.user),
         {
-          hidden: Boolean(e.hidden),
-          timestamp: e.timestamp || null,
-          phase: e.phase ?? null,
-          stage: e.stage ?? null,
-          reason: e.reason ?? null,
-          history: Array.isArray(e.history) ? e.history : [],
-          user: e.user
+          hidden: Boolean(exit.hidden),
+          timestamp: exit.timestamp || null,
+          phase: exit.phase ?? null,
+          stage: exit.stage ?? null,
+          reason: exit.reason ?? null,
+          history: Array.isArray(exit.history) ? exit.history : [],
+          user: exit.user
             ? {
-              id: asId(e.user._id),
-              name: e.user.name,
-              email: e.user.email,
-              role: e.user.role || "user",
-              university: e.user.university || "",
-              accountConfirm: Boolean(e.user.accountConfirm),
-            }
+                id: asId(exit.user._id),
+                name: exit.user.name,
+                email: exit.user.email,
+                role: exit.user.role || "user",
+                university: exit.user.university || "",
+                accountConfirm: Boolean(exit.user.accountConfirm),
+              }
             : null,
         },
       ])
     );
 
-    const participantsDetailed = participations.map((p) => {
-      const expertId = asId(p.expert?._id || p.expert);
-      const evalStats = evalAggMap.get(expertId) || {
+    const participantsDetailed = participations.map((participation) => {
+      const expertId = asId(participation.expert?._id || participation.expert);
+      const evaluationStats = evaluationAggMap.get(expertId) || {
         totalDocs: 0,
         filledDocs: 0,
         lastEvaluationAt: null,
@@ -1423,39 +1541,39 @@ export const getIssueAdminById = async (req, res) => {
       const exitInfo = exitMap.get(expertId) || null;
 
       return {
-        expert: p.expert
+        expert: participation.expert
           ? {
-            id: asId(p.expert._id),
-            name: p.expert.name,
-            email: p.expert.email,
-            role: p.expert.role || "user",
-            university: p.expert.university || "",
-            accountConfirm: Boolean(p.expert.accountConfirm),
-          }
+              id: asId(participation.expert._id),
+              name: participation.expert.name,
+              email: participation.expert.email,
+              role: participation.expert.role || "user",
+              university: participation.expert.university || "",
+              accountConfirm: Boolean(participation.expert.accountConfirm),
+            }
           : {
-            id: expertId,
-            name: "Deleted user",
-            email: "Deleted user",
-            role: "user",
-            university: "",
-            accountConfirm: false,
-          },
+              id: expertId,
+              name: "Deleted user",
+              email: "Deleted user",
+              role: "user",
+              university: "",
+              accountConfirm: false,
+            },
         currentParticipant: true,
-        invitationStatus: p.invitationStatus,
-        weightsCompleted: Boolean(p.weightsCompleted),
-        evaluationCompleted: Boolean(p.evaluationCompleted),
-        joinedAt: p.joinedAt || null,
-        entryPhase: p.entryPhase ?? null,
-        entryStage: p.entryStage ?? null,
+        invitationStatus: participation.invitationStatus,
+        weightsCompleted: Boolean(participation.weightsCompleted),
+        evaluationCompleted: Boolean(participation.evaluationCompleted),
+        joinedAt: participation.joinedAt || null,
+        entryPhase: participation.entryPhase ?? null,
+        entryStage: participation.entryStage ?? null,
         progress: {
           expectedEvaluationCells: expectedPerExpert,
-          totalEvaluationDocs: evalStats.totalDocs,
-          filledEvaluationDocs: evalStats.filledDocs,
+          totalEvaluationDocs: evaluationStats.totalDocs,
+          filledEvaluationDocs: evaluationStats.filledDocs,
           evaluationProgressPct:
             expectedPerExpert > 0
-              ? Number(((evalStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
+              ? Number(((evaluationStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
               : 0,
-          lastEvaluationAt: evalStats.lastEvaluationAt,
+          lastEvaluationAt: evaluationStats.lastEvaluationAt,
           hasWeightDoc: Boolean(weightDoc),
           weightDocCompleted: Boolean(weightDoc?.completed),
           weightDocPhase: weightDoc?.consensusPhase ?? null,
@@ -1466,43 +1584,49 @@ export const getIssueAdminById = async (req, res) => {
     });
 
     const currentParticipantIds = new Set(
-      participations.map((p) => asId(p.expert?._id || p.expert))
+      participations.map((participation) => asId(participation.expert?._id || participation.expert))
     );
 
     const exitedUsersDetailed = exits
-      .filter((e) => !currentParticipantIds.has(asId(e.user?._id || e.user)))
-      .map((e) => ({
-        expert: e.user
+      .filter((exit) => !currentParticipantIds.has(asId(exit.user?._id || exit.user)))
+      .map((exit) => ({
+        expert: exit.user
           ? {
-            id: asId(e.user._id),
-            name: e.user.name,
-            email: e.user.email,
-            role: e.user.role || "user",
-            university: e.user.university || "",
-            accountConfirm: Boolean(e.user.accountConfirm),
-          }
+              id: asId(exit.user._id),
+              name: exit.user.name,
+              email: exit.user.email,
+              role: exit.user.role || "user",
+              university: exit.user.university || "",
+              accountConfirm: Boolean(exit.user.accountConfirm),
+            }
           : {
-            id: asId(e.user),
-            name: "Deleted user",
-            email: "Deleted user",
-            role: "user",
-            university: "",
-            accountConfirm: false,
-          },
+              id: asId(exit.user),
+              name: "Deleted user",
+              email: "Deleted user",
+              role: "user",
+              university: "",
+              accountConfirm: false,
+            },
         currentParticipant: false,
         exitInfo: {
-          hidden: Boolean(e.hidden),
-          timestamp: e.timestamp || null,
-          phase: e.phase ?? null,
-          stage: e.stage ?? null,
-          reason: e.reason ?? null,
-          history: Array.isArray(e.history) ? e.history : [],
+          hidden: Boolean(exit.hidden),
+          timestamp: exit.timestamp || null,
+          phase: exit.phase ?? null,
+          stage: exit.stage ?? null,
+          reason: exit.reason ?? null,
+          history: Array.isArray(exit.history) ? exit.history : [],
         },
       }));
 
-    const acceptedExperts = participations.filter((p) => p.invitationStatus === "accepted");
-    const pendingExperts = participations.filter((p) => p.invitationStatus === "pending");
-    const declinedExperts = participations.filter((p) => p.invitationStatus === "declined");
+    const acceptedExperts = participations.filter(
+      (participation) => participation.invitationStatus === "accepted"
+    );
+    const pendingExperts = participations.filter(
+      (participation) => participation.invitationStatus === "pending"
+    );
+    const declinedExperts = participations.filter(
+      (participation) => participation.invitationStatus === "declined"
+    );
 
     const latestConsensus = consensusDocs.length
       ? consensusDocs[consensusDocs.length - 1]
@@ -1510,12 +1634,12 @@ export const getIssueAdminById = async (req, res) => {
 
     const snapshotsSummary = {
       total: snapshots.length,
-      numeric: snapshots.filter((d) => d.type === "numeric").length,
-      linguistic: snapshots.filter((d) => d.type === "linguistic").length,
+      numeric: snapshots.filter((domain) => domain.type === "numeric").length,
+      linguistic: snapshots.filter((domain) => domain.type === "linguistic").length,
     };
 
-    const totalFilledEvaluationCells = Array.from(evalAggMap.values()).reduce(
-      (acc, row) => acc + (row.filledDocs || 0),
+    const totalFilledEvaluationCells = Array.from(evaluationAggMap.values()).reduce(
+      (accumulator, row) => accumulator + (row.filledDocs || 0),
       0
     );
 
@@ -1536,33 +1660,33 @@ export const getIssueAdminById = async (req, res) => {
         closureDate: issue.closureDate || null,
         admin: issue.admin
           ? {
-            id: asId(issue.admin._id),
-            name: issue.admin.name,
-            email: issue.admin.email,
-            role: issue.admin.role || "user",
-            accountConfirm: Boolean(issue.admin.accountConfirm),
-          }
+              id: asId(issue.admin._id),
+              name: issue.admin.name,
+              email: issue.admin.email,
+              role: issue.admin.role || "user",
+              accountConfirm: Boolean(issue.admin.accountConfirm),
+            }
           : null,
         model: issue.model
           ? {
-            id: asId(issue.model._id),
-            name: issue.model.name,
-            isPairwise: Boolean(issue.model.isPairwise),
-            isConsensus: Boolean(issue.model.isConsensus),
-            isMultiCriteria: Boolean(issue.model.isMultiCriteria),
-            supportedDomains: issue.model.supportedDomains || {},
-            parameters: issue.model.parameters || [],
-          }
+              id: asId(issue.model._id),
+              name: issue.model.name,
+              isPairwise: Boolean(issue.model.isPairwise),
+              isConsensus: Boolean(issue.model.isConsensus),
+              isMultiCriteria: Boolean(issue.model.isMultiCriteria),
+              supportedDomains: issue.model.supportedDomains || {},
+              parameters: issue.model.parameters || [],
+            }
           : null,
-        alternatives: orderedAlternatives.map((a) => ({
-          id: asId(a._id),
-          name: a.name,
+        alternatives: orderedAlternatives.map((alternative) => ({
+          id: asId(alternative._id),
+          name: alternative.name,
         })),
         criteria: criteriaTree,
-        leafCriteria: orderedLeafCriteria.map((c) => ({
-          id: asId(c._id),
-          name: c.name,
-          type: c.type,
+        leafCriteria: orderedLeafCriteria.map((criterion) => ({
+          id: asId(criterion._id),
+          name: criterion.name,
+          type: criterion.type,
         })),
         finalWeights: finalWeightsByName,
         finalWeightsById,
@@ -1574,21 +1698,21 @@ export const getIssueAdminById = async (req, res) => {
           latestLevel: latestConsensus?.level ?? null,
           latestAt: latestConsensus?.timestamp || null,
         },
-        scenarios: scenarios.map((s) => ({
-          id: asId(s._id),
-          name: s.name || "",
-          targetModelId: asId(s.targetModel),
-          targetModelName: s.targetModelName || "",
-          domainType: s.domainType || null,
-          isPairwise: Boolean(s.isPairwise),
-          status: s.status || "done",
-          createdAt: s.createdAt || null,
-          createdBy: s.createdBy
+        scenarios: scenarios.map((scenario) => ({
+          id: asId(scenario._id),
+          name: scenario.name || "",
+          targetModelId: asId(scenario.targetModel),
+          targetModelName: scenario.targetModelName || "",
+          domainType: scenario.domainType || null,
+          isPairwise: Boolean(scenario.isPairwise),
+          status: scenario.status || "done",
+          createdAt: scenario.createdAt || null,
+          createdBy: scenario.createdBy
             ? {
-              id: asId(s.createdBy._id),
-              name: s.createdBy.name,
-              email: s.createdBy.email,
-            }
+                id: asId(scenario.createdBy._id),
+                name: scenario.createdBy.name,
+                email: scenario.createdBy.email,
+              }
             : null,
         })),
         metrics: {
@@ -1599,8 +1723,8 @@ export const getIssueAdminById = async (req, res) => {
           acceptedExperts: acceptedExperts.length,
           pendingExperts: pendingExperts.length,
           declinedExperts: declinedExperts.length,
-          weightsDoneAccepted: acceptedExperts.filter((p) => p.weightsCompleted).length,
-          evaluationsDoneAccepted: acceptedExperts.filter((p) => p.evaluationCompleted).length,
+          weightsDoneAccepted: acceptedExperts.filter((item) => item.weightsCompleted).length,
+          evaluationsDoneAccepted: acceptedExperts.filter((item) => item.evaluationCompleted).length,
           expectedEvaluationCellsPerExpert: expectedPerExpert,
           totalFilledEvaluationCells,
         },
@@ -1608,8 +1732,8 @@ export const getIssueAdminById = async (req, res) => {
           issue,
           acceptedExperts: acceptedExperts.length,
           pendingExperts: pendingExperts.length,
-          weightsDoneAccepted: acceptedExperts.filter((p) => p.weightsCompleted).length,
-          evaluationsDoneAccepted: acceptedExperts.filter((p) => p.evaluationCompleted).length,
+          weightsDoneAccepted: acceptedExperts.filter((item) => item.weightsCompleted).length,
+          evaluationsDoneAccepted: acceptedExperts.filter((item) => item.evaluationCompleted).length,
         }),
         participants: participantsDetailed.sort((a, b) =>
           String(a.expert?.email || a.expert?.name || "").localeCompare(
@@ -1636,15 +1760,18 @@ export const getIssueAdminById = async (req, res) => {
   }
 };
 
-/* =========================================================
- * GET /api/admin/getIssueExpertsProgress/:id
- * Vista enfocada al progreso y trazabilidad por experto
- * ========================================================= */
+/**
+ * Obtiene una vista resumida del progreso de expertos en un issue.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getIssueExpertsProgressAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
         msg: "Valid issue id is required",
@@ -1664,51 +1791,52 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
 
     const orderedIssue = await ensureIssueOrdersDb({ issueId: id });
 
-    const [alternatives, leafCriteria, participations, exits, evalAgg, weightDocs] = await Promise.all([
-      getOrderedAlternativesDb({
-        issueId: id,
-        issueDoc: orderedIssue || issue,
-        select: "_id name",
-        lean: true,
-      }),
-      getOrderedLeafCriteriaDb({
-        issueId: id,
-        issueDoc: orderedIssue || issue,
-        select: "_id name",
-        lean: true,
-      }),
-      Participation.find({ issue: id })
-        .populate("expert", "name email role university accountConfirm")
-        .lean(),
-      ExitUserIssue.find({ issue: id, hidden: true })
-        .populate("user", "name email role university accountConfirm")
-        .lean(),
-      Evaluation.aggregate([
-        { $match: { issue: new mongoose.Types.ObjectId(id) } },
-        {
-          $group: {
-            _id: "$expert",
-            totalDocs: { $sum: 1 },
-            filledDocs: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ne: ["$value", null] },
-                      { $ne: ["$value", ""] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
+    const [alternatives, leafCriteria, participations, exits, evaluationAgg, weightDocs] =
+      await Promise.all([
+        getOrderedAlternativesDb({
+          issueId: id,
+          issueDoc: orderedIssue || issue,
+          select: "_id name",
+          lean: true,
+        }),
+        getOrderedLeafCriteriaDb({
+          issueId: id,
+          issueDoc: orderedIssue || issue,
+          select: "_id name",
+          lean: true,
+        }),
+        Participation.find({ issue: id })
+          .populate("expert", "name email role university accountConfirm")
+          .lean(),
+        ExitUserIssue.find({ issue: id, hidden: true })
+          .populate("user", "name email role university accountConfirm")
+          .lean(),
+        Evaluation.aggregate([
+          { $match: { issue: new mongoose.Types.ObjectId(id) } },
+          {
+            $group: {
+              _id: "$expert",
+              totalDocs: { $sum: 1 },
+              filledDocs: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ["$value", null] },
+                        { $ne: ["$value", ""] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
               },
+              lastEvaluationAt: { $max: "$timestamp" },
             },
-            lastEvaluationAt: { $max: "$timestamp" },
           },
-        },
-      ]),
-      CriteriaWeightEvaluation.find({ issue: id }).lean(),
-    ]);
+        ]),
+        CriteriaWeightEvaluation.find({ issue: id }).lean(),
+      ]);
 
     const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
       alternativesCount: alternatives.length,
@@ -1716,8 +1844,8 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       isPairwise: Boolean(issue.model?.isPairwise),
     });
 
-    const evalMap = new Map(
-      evalAgg.map((row) => [
+    const evaluationMap = new Map(
+      evaluationAgg.map((row) => [
         asId(row._id),
         {
           totalDocs: row.totalDocs || 0,
@@ -1727,16 +1855,19 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       ])
     );
 
-    const weightMap = new Map(weightDocs.map((w) => [asId(w.expert), w]));
+    const weightMap = new Map(
+      weightDocs.map((weightDoc) => [asId(weightDoc.expert), weightDoc])
+    );
+
     const currentParticipantIds = new Set(
-      participations.map((p) => asId(p.expert?._id || p.expert))
+      participations.map((participation) => asId(participation.expert?._id || participation.expert))
     );
 
     const rows = [];
 
-    for (const p of participations) {
-      const expertId = asId(p.expert?._id || p.expert);
-      const evalStats = evalMap.get(expertId) || {
+    for (const participation of participations) {
+      const expertId = asId(participation.expert?._id || participation.expert);
+      const evaluationStats = evaluationMap.get(expertId) || {
         totalDocs: 0,
         filledDocs: 0,
         lastEvaluationAt: null,
@@ -1744,39 +1875,39 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       const weightDoc = weightMap.get(expertId) || null;
 
       rows.push({
-        expert: p.expert
+        expert: participation.expert
           ? {
-            id: asId(p.expert._id),
-            name: p.expert.name,
-            email: p.expert.email,
-            role: p.expert.role || "user",
-            university: p.expert.university || "",
-            accountConfirm: Boolean(p.expert.accountConfirm),
-          }
+              id: asId(participation.expert._id),
+              name: participation.expert.name,
+              email: participation.expert.email,
+              role: participation.expert.role || "user",
+              university: participation.expert.university || "",
+              accountConfirm: Boolean(participation.expert.accountConfirm),
+            }
           : {
-            id: expertId,
-            name: "Deleted user",
-            email: "Deleted user",
-            role: "user",
-            university: "",
-            accountConfirm: false,
-          },
+              id: expertId,
+              name: "Deleted user",
+              email: "Deleted user",
+              role: "user",
+              university: "",
+              accountConfirm: false,
+            },
         currentParticipant: true,
-        invitationStatus: p.invitationStatus,
-        weightsCompleted: Boolean(p.weightsCompleted),
-        evaluationCompleted: Boolean(p.evaluationCompleted),
-        joinedAt: p.joinedAt || null,
-        entryPhase: p.entryPhase ?? null,
-        entryStage: p.entryStage ?? null,
+        invitationStatus: participation.invitationStatus,
+        weightsCompleted: Boolean(participation.weightsCompleted),
+        evaluationCompleted: Boolean(participation.evaluationCompleted),
+        joinedAt: participation.joinedAt || null,
+        entryPhase: participation.entryPhase ?? null,
+        entryStage: participation.entryStage ?? null,
         progress: {
           expectedEvaluationCells: expectedPerExpert,
-          totalEvaluationDocs: evalStats.totalDocs,
-          filledEvaluationDocs: evalStats.filledDocs,
+          totalEvaluationDocs: evaluationStats.totalDocs,
+          filledEvaluationDocs: evaluationStats.filledDocs,
           evaluationProgressPct:
             expectedPerExpert > 0
-              ? Number(((evalStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
+              ? Number(((evaluationStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
               : 0,
-          lastEvaluationAt: evalStats.lastEvaluationAt || null,
+          lastEvaluationAt: evaluationStats.lastEvaluationAt || null,
           hasWeightDoc: Boolean(weightDoc),
           weightDocCompleted: Boolean(weightDoc?.completed),
           weightDocPhase: weightDoc?.consensusPhase ?? null,
@@ -1785,11 +1916,12 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       });
     }
 
-    for (const e of exits) {
-      const expertId = asId(e.user?._id || e.user);
+    for (const exit of exits) {
+      const expertId = asId(exit.user?._id || exit.user);
+
       if (currentParticipantIds.has(expertId)) continue;
 
-      const evalStats = evalMap.get(expertId) || {
+      const evaluationStats = evaluationMap.get(expertId) || {
         totalDocs: 0,
         filledDocs: 0,
         lastEvaluationAt: null,
@@ -1797,23 +1929,23 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       const weightDoc = weightMap.get(expertId) || null;
 
       rows.push({
-        expert: e.user
+        expert: exit.user
           ? {
-            id: asId(e.user._id),
-            name: e.user.name,
-            email: e.user.email,
-            role: e.user.role || "user",
-            university: e.user.university || "",
-            accountConfirm: Boolean(e.user.accountConfirm),
-          }
+              id: asId(exit.user._id),
+              name: exit.user.name,
+              email: exit.user.email,
+              role: exit.user.role || "user",
+              university: exit.user.university || "",
+              accountConfirm: Boolean(exit.user.accountConfirm),
+            }
           : {
-            id: expertId,
-            name: "Deleted user",
-            email: "Deleted user",
-            role: "user",
-            university: "",
-            accountConfirm: false,
-          },
+              id: expertId,
+              name: "Deleted user",
+              email: "Deleted user",
+              role: "user",
+              university: "",
+              accountConfirm: false,
+            },
         currentParticipant: false,
         invitationStatus: "exited",
         weightsCompleted: Boolean(weightDoc?.completed),
@@ -1822,21 +1954,21 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
         entryPhase: null,
         entryStage: null,
         exitInfo: {
-          hidden: Boolean(e.hidden),
-          timestamp: e.timestamp || null,
-          phase: e.phase ?? null,
-          stage: e.stage ?? null,
-          reason: e.reason ?? null,
+          hidden: Boolean(exit.hidden),
+          timestamp: exit.timestamp || null,
+          phase: exit.phase ?? null,
+          stage: exit.stage ?? null,
+          reason: exit.reason ?? null,
         },
         progress: {
           expectedEvaluationCells: expectedPerExpert,
-          totalEvaluationDocs: evalStats.totalDocs,
-          filledEvaluationDocs: evalStats.filledDocs,
+          totalEvaluationDocs: evaluationStats.totalDocs,
+          filledEvaluationDocs: evaluationStats.filledDocs,
           evaluationProgressPct:
             expectedPerExpert > 0
-              ? Number(((evalStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
+              ? Number(((evaluationStats.filledDocs / expectedPerExpert) * 100).toFixed(2))
               : 0,
-          lastEvaluationAt: evalStats.lastEvaluationAt || null,
+          lastEvaluationAt: evaluationStats.lastEvaluationAt || null,
           hasWeightDoc: Boolean(weightDoc),
           weightDocCompleted: Boolean(weightDoc?.completed),
           weightDocPhase: weightDoc?.consensusPhase ?? null,
@@ -1849,6 +1981,7 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
       if (a.currentParticipant !== b.currentParticipant) {
         return a.currentParticipant ? -1 : 1;
       }
+
       return String(a.expert?.email || a.expert?.name || "").localeCompare(
         String(b.expert?.email || b.expert?.name || ""),
         undefined,
@@ -1877,22 +2010,25 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
   }
 };
 
-/* =========================================================
- * GET /api/admin/getIssueExpertEvaluations/:issueId/:expertId
- * Ver evaluaciones guardadas/enviadas de un experto (solo lectura)
- * ========================================================= */
+/**
+ * Obtiene las evaluaciones de un experto en modo solo lectura.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getIssueExpertEvaluationsAdmin = async (req, res) => {
   try {
     const { issueId, expertId } = req.params;
 
-    if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
+    if (!issueId || !isValidObjectId(issueId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid issue id is required",
       });
     }
 
-    if (!expertId || !mongoose.Types.ObjectId.isValid(expertId)) {
+    if (!expertId || !isValidObjectId(expertId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid expert id is required",
@@ -1934,7 +2070,7 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
       ]);
 
     if (Boolean(issue.model?.isPairwise)) {
-      const evalDocs = await Evaluation.find({
+      const evaluationDocs = await Evaluation.find({
         issue: issueId,
         expert: expertId,
         comparedAlternative: { $ne: null },
@@ -1945,32 +2081,36 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
         .populate("expressionDomain")
         .lean();
 
-      if (!participation && !expert && evalDocs.length === 0) {
+      if (!participation && !expert && evaluationDocs.length === 0) {
         return res.status(404).json({
           success: false,
           msg: "Expert data for this issue not found",
         });
       }
 
-      const formatted = {};
+      const formattedEvaluations = {};
 
-      for (const crit of orderedLeafCriteria) {
-        formatted[crit.name] = orderedAlternatives.map((alt) => ({
-          id: alt.name,
+      for (const criterion of orderedLeafCriteria) {
+        formattedEvaluations[criterion.name] = orderedAlternatives.map((alternative) => ({
+          id: alternative.name,
         }));
       }
 
       const rowMap = new Map();
-      for (const crit of orderedLeafCriteria) {
-        for (const alt of orderedAlternatives) {
-          rowMap.set(`${crit.name}__${alt.name}`, formatted[crit.name].find((r) => r.id === alt.name));
+
+      for (const criterion of orderedLeafCriteria) {
+        for (const alternative of orderedAlternatives) {
+          rowMap.set(
+            `${criterion.name}__${alternative.name}`,
+            formattedEvaluations[criterion.name].find((row) => row.id === alternative.name)
+          );
         }
       }
 
       let lastEvaluationAt = null;
       let filledCells = 0;
 
-      for (const doc of evalDocs) {
+      for (const doc of evaluationDocs) {
         const criterionName = doc.criterion?.name;
         const alternativeName = doc.alternative?.name;
         const comparedAlternativeName = doc.comparedAlternative?.name;
@@ -1987,8 +2127,14 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
           consensusPhase: doc.consensusPhase ?? null,
         };
 
-        if (isFilledValue(doc.value)) filledCells += 1;
-        if (doc.timestamp && (!lastEvaluationAt || new Date(doc.timestamp) > new Date(lastEvaluationAt))) {
+        if (isFilledValue(doc.value)) {
+          filledCells += 1;
+        }
+
+        if (
+          doc.timestamp &&
+          (!lastEvaluationAt || new Date(doc.timestamp) > new Date(lastEvaluationAt))
+        ) {
           lastEvaluationAt = doc.timestamp;
         }
       }
@@ -2005,30 +2151,30 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
         },
         expert: expert
           ? {
-            id: asId(expert._id),
-            name: expert.name,
-            email: expert.email,
-            role: expert.role || "user",
-            university: expert.university || "",
-            accountConfirm: Boolean(expert.accountConfirm),
-          }
+              id: asId(expert._id),
+              name: expert.name,
+              email: expert.email,
+              role: expert.role || "user",
+              university: expert.university || "",
+              accountConfirm: Boolean(expert.accountConfirm),
+            }
           : {
-            id: expertId,
-            name: "Deleted user",
-            email: "Deleted user",
-            role: "user",
-            university: "",
-            accountConfirm: false,
-          },
+              id: expertId,
+              name: "Deleted user",
+              email: "Deleted user",
+              role: "user",
+              university: "",
+              accountConfirm: false,
+            },
         participation: participation
           ? {
-            invitationStatus: participation.invitationStatus,
-            weightsCompleted: Boolean(participation.weightsCompleted),
-            evaluationCompleted: Boolean(participation.evaluationCompleted),
-            joinedAt: participation.joinedAt || null,
-            entryPhase: participation.entryPhase ?? null,
-            entryStage: participation.entryStage ?? null,
-          }
+              invitationStatus: participation.invitationStatus,
+              weightsCompleted: Boolean(participation.weightsCompleted),
+              evaluationCompleted: Boolean(participation.evaluationCompleted),
+              joinedAt: participation.joinedAt || null,
+              entryPhase: participation.entryPhase ?? null,
+              entryStage: participation.entryStage ?? null,
+            }
           : null,
         stats: {
           expectedCells: countExpectedEvaluationCellsPerExpert({
@@ -2039,12 +2185,12 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
           filledCells,
           lastEvaluationAt,
         },
-        evaluations: formatted,
+        evaluations: formattedEvaluations,
         collectiveEvaluations: latestConsensus?.collectiveEvaluations || null,
       });
     }
 
-    const evalDocs = await Evaluation.find({
+    const evaluationDocs = await Evaluation.find({
       issue: issueId,
       expert: expertId,
       comparedAlternative: null,
@@ -2054,7 +2200,7 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
       .populate("expressionDomain")
       .lean();
 
-    if (!participation && !expert && evalDocs.length === 0) {
+    if (!participation && !expert && evaluationDocs.length === 0) {
       return res.status(404).json({
         success: false,
         msg: "Expert data for this issue not found",
@@ -2062,29 +2208,36 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
     }
 
     const evaluations = {};
-    const evalMap = new Map();
+    const evaluationMap = new Map();
 
     let lastEvaluationAt = null;
     let filledCells = 0;
 
-    for (const doc of evalDocs) {
-      const altId = asId(doc.alternative?._id || doc.alternative);
-      const critId = asId(doc.criterion?._id || doc.criterion);
-      evalMap.set(`${altId}__${critId}`, doc);
+    for (const doc of evaluationDocs) {
+      const alternativeId = asId(doc.alternative?._id || doc.alternative);
+      const criterionId = asId(doc.criterion?._id || doc.criterion);
 
-      if (isFilledValue(doc.value)) filledCells += 1;
-      if (doc.timestamp && (!lastEvaluationAt || new Date(doc.timestamp) > new Date(lastEvaluationAt))) {
+      evaluationMap.set(`${alternativeId}__${criterionId}`, doc);
+
+      if (isFilledValue(doc.value)) {
+        filledCells += 1;
+      }
+
+      if (
+        doc.timestamp &&
+        (!lastEvaluationAt || new Date(doc.timestamp) > new Date(lastEvaluationAt))
+      ) {
         lastEvaluationAt = doc.timestamp;
       }
     }
 
-    for (const alt of orderedAlternatives) {
-      evaluations[alt.name] = {};
+    for (const alternative of orderedAlternatives) {
+      evaluations[alternative.name] = {};
 
-      for (const crit of orderedLeafCriteria) {
-        const doc = evalMap.get(`${asId(alt._id)}__${asId(crit._id)}`);
+      for (const criterion of orderedLeafCriteria) {
+        const doc = evaluationMap.get(`${asId(alternative._id)}__${asId(criterion._id)}`);
 
-        evaluations[alt.name][crit.name] = {
+        evaluations[alternative.name][criterion.name] = {
           value: doc?.value ?? "",
           domain: formatIssueSnapshotDomain(doc?.expressionDomain || null),
           timestamp: doc?.timestamp || null,
@@ -2105,30 +2258,30 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
       },
       expert: expert
         ? {
-          id: asId(expert._id),
-          name: expert.name,
-          email: expert.email,
-          role: expert.role || "user",
-          university: expert.university || "",
-          accountConfirm: Boolean(expert.accountConfirm),
-        }
+            id: asId(expert._id),
+            name: expert.name,
+            email: expert.email,
+            role: expert.role || "user",
+            university: expert.university || "",
+            accountConfirm: Boolean(expert.accountConfirm),
+          }
         : {
-          id: expertId,
-          name: "Deleted user",
-          email: "Deleted user",
-          role: "user",
-          university: "",
-          accountConfirm: false,
-        },
+            id: expertId,
+            name: "Deleted user",
+            email: "Deleted user",
+            role: "user",
+            university: "",
+            accountConfirm: false,
+          },
       participation: participation
         ? {
-          invitationStatus: participation.invitationStatus,
-          weightsCompleted: Boolean(participation.weightsCompleted),
-          evaluationCompleted: Boolean(participation.evaluationCompleted),
-          joinedAt: participation.joinedAt || null,
-          entryPhase: participation.entryPhase ?? null,
-          entryStage: participation.entryStage ?? null,
-        }
+            invitationStatus: participation.invitationStatus,
+            weightsCompleted: Boolean(participation.weightsCompleted),
+            evaluationCompleted: Boolean(participation.evaluationCompleted),
+            joinedAt: participation.joinedAt || null,
+            entryPhase: participation.entryPhase ?? null,
+            entryStage: participation.entryStage ?? null,
+          }
         : null,
       stats: {
         expectedCells: countExpectedEvaluationCellsPerExpert({
@@ -2151,22 +2304,25 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
   }
 };
 
-/* =========================================================
- * GET /api/admin/getIssueExpertWeights/:issueId/:expertId
- * Ver pesos / docs de pesos de un experto en modo solo lectura
- * ========================================================= */
+/**
+ * Obtiene los pesos de un experto en modo solo lectura.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getIssueExpertWeightsAdmin = async (req, res) => {
   try {
     const { issueId, expertId } = req.params;
 
-    if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
+    if (!issueId || !isValidObjectId(issueId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid issue id is required",
       });
     }
 
-    if (!expertId || !mongoose.Types.ObjectId.isValid(expertId)) {
+    if (!expertId || !isValidObjectId(expertId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid expert id is required",
@@ -2207,14 +2363,14 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
       });
     }
 
-    const leafNames = orderedLeafCriteria.map((c) => c.name);
+    const leafNames = orderedLeafCriteria.map((criterion) => criterion.name);
 
     const resolvedWeights =
       Array.isArray(issue.modelParameters?.weights) && issue.modelParameters.weights.length
-        ? leafNames.reduce((acc, name, idx) => {
-          acc[name] = issue.modelParameters.weights[idx] ?? null;
-          return acc;
-        }, {})
+        ? leafNames.reduce((accumulator, name, index) => {
+            accumulator[name] = issue.modelParameters.weights[index] ?? null;
+            return accumulator;
+          }, {})
         : null;
 
     const manualWeights = weightDoc
@@ -2236,7 +2392,10 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
       kind = "manualConsensus";
     } else if (["bwm", "consensusBwm", "simulatedConsensusBwm"].includes(issue.weightingMode)) {
       kind = "bwm";
-    } else if (Array.isArray(issue.modelParameters?.weights) && issue.modelParameters.weights.length) {
+    } else if (
+      Array.isArray(issue.modelParameters?.weights) &&
+      issue.modelParameters.weights.length
+    ) {
       kind = "directWeights";
     }
 
@@ -2250,38 +2409,38 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
         active: Boolean(issue.active),
         model: issue.model
           ? {
-            id: asId(issue.model._id),
-            name: issue.model.name,
-            isPairwise: Boolean(issue.model.isPairwise),
-          }
+              id: asId(issue.model._id),
+              name: issue.model.name,
+              isPairwise: Boolean(issue.model.isPairwise),
+            }
           : null,
       },
       expert: expert
         ? {
-          id: asId(expert._id),
-          name: expert.name,
-          email: expert.email,
-          role: expert.role || "user",
-          university: expert.university || "",
-          accountConfirm: Boolean(expert.accountConfirm),
-        }
+            id: asId(expert._id),
+            name: expert.name,
+            email: expert.email,
+            role: expert.role || "user",
+            university: expert.university || "",
+            accountConfirm: Boolean(expert.accountConfirm),
+          }
         : {
-          id: expertId,
-          name: "Deleted user",
-          email: "Deleted user",
-          role: "user",
-          university: "",
-          accountConfirm: false,
-        },
+            id: expertId,
+            name: "Deleted user",
+            email: "Deleted user",
+            role: "user",
+            university: "",
+            accountConfirm: false,
+          },
       participation: participation
         ? {
-          invitationStatus: participation.invitationStatus,
-          weightsCompleted: Boolean(participation.weightsCompleted),
-          evaluationCompleted: Boolean(participation.evaluationCompleted),
-          joinedAt: participation.joinedAt || null,
-          entryPhase: participation.entryPhase ?? null,
-          entryStage: participation.entryStage ?? null,
-        }
+            invitationStatus: participation.invitationStatus,
+            weightsCompleted: Boolean(participation.weightsCompleted),
+            evaluationCompleted: Boolean(participation.evaluationCompleted),
+            joinedAt: participation.joinedAt || null,
+            entryPhase: participation.entryPhase ?? null,
+            entryStage: participation.entryStage ?? null,
+          }
         : null,
       weights: {
         kind,
@@ -2295,10 +2454,10 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
         bwmData: kind === "bwm" ? bwmData : null,
         weightDoc: weightDoc
           ? {
-            completed: Boolean(weightDoc.completed),
-            consensusPhase: weightDoc.consensusPhase ?? null,
-            updatedAt: weightDoc.updatedAt || null,
-          }
+              completed: Boolean(weightDoc.completed),
+              consensusPhase: weightDoc.consensusPhase ?? null,
+              updatedAt: weightDoc.updatedAt || null,
+            }
           : null,
       },
     });
@@ -2311,22 +2470,25 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
   }
 };
 
-/* =========================================================
- * POST /api/admin/reassignIssueAdmin
- * Cambiar creador/responsable del issue
- * ========================================================= */
+/**
+ * Reasigna el creador o responsable principal de un issue.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const reassignIssueAdminAdmin = async (req, res) => {
   try {
     const { issueId, newAdminId } = req.body || {};
 
-    if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
+    if (!issueId || !isValidObjectId(issueId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid issueId is required",
       });
     }
 
-    if (!newAdminId || !mongoose.Types.ObjectId.isValid(newAdminId)) {
+    if (!newAdminId || !isValidObjectId(newAdminId)) {
       return res.status(400).json({
         success: false,
         msg: "Valid newAdminId is required",
@@ -2363,11 +2525,11 @@ export const reassignIssueAdminAdmin = async (req, res) => {
 
     const oldAdmin = issue.admin
       ? {
-        id: asId(issue.admin._id),
-        name: issue.admin.name,
-        email: issue.admin.email,
-        role: issue.admin.role || "user",
-      }
+          id: asId(issue.admin._id),
+          name: issue.admin.name,
+          email: issue.admin.email,
+          role: issue.admin.role || "user",
+        }
       : null;
 
     if (String(issue.admin?._id || issue.admin) === String(newAdmin._id)) {
@@ -2411,6 +2573,13 @@ export const reassignIssueAdminAdmin = async (req, res) => {
   }
 };
 
+/**
+ * Permite al admin editar expertos de un issue usando la lógica del creador.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<any>}
+ */
 export const editIssueExpertsAdmin = async (req, res) => {
   try {
     const issueId = req.body?.issueId || req.body?.id;
@@ -2439,6 +2608,13 @@ export const editIssueExpertsAdmin = async (req, res) => {
   }
 };
 
+/**
+ * Permite al admin computar pesos de un issue usando la lógica del creador.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<any>}
+ */
 export const computeIssueWeightsAdmin = async (req, res) => {
   try {
     const issueId = req.body?.issueId || req.body?.id;
@@ -2469,6 +2645,13 @@ export const computeIssueWeightsAdmin = async (req, res) => {
   }
 };
 
+/**
+ * Permite al admin resolver un issue usando la lógica del creador.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<any>}
+ */
 export const resolveIssueAdmin = async (req, res) => {
   try {
     const issueId = req.body?.issueId || req.body?.id;
@@ -2499,6 +2682,13 @@ export const resolveIssueAdmin = async (req, res) => {
   }
 };
 
+/**
+ * Permite al admin eliminar un issue usando la lógica del creador.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<any>}
+ */
 export const removeIssueAdmin = async (req, res) => {
   try {
     const issueId = req.body?.issueId || req.body?.id;
