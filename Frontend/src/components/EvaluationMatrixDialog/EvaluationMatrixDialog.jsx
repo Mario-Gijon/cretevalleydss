@@ -24,7 +24,7 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { extractLeafCriteria, validateEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
+import { getEvaluations, saveEvaluations, submitEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { Matrix } from "../Matrix/Matrix";
@@ -63,7 +63,7 @@ export const EvaluationMatrixDialog = ({
 
   const [evaluations, setEvaluations] = useState({});
   const [openCloseDialog, setOpenCloseDialog] = useState(false);
-  const [openSendEvaluationsDialog, setOpenSendEvaluationsDialog] = useState(false);
+  const [openSubmitEvaluationsDialog, setOpenSubmitEvaluationsDialog] = useState(false);
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [collectiveEvaluations, setCollectiveEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -81,12 +81,12 @@ export const EvaluationMatrixDialog = ({
     const fetchEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await getEvaluations(selectedIssue.id);
+        const res = await getEvaluations(selectedIssue.id);
 
-        if (response.success && response.evaluations) {
-          setCollectiveEvaluations(response.collectiveEvaluations);
+        if (res.success && res.evaluations) {
+          setCollectiveEvaluations(res.collectiveEvaluations);
 
-          const merged = mergeEvaluations(response.evaluations);
+          const merged = mergeEvaluations(res.evaluations);
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
@@ -156,7 +156,7 @@ export const EvaluationMatrixDialog = ({
     }
   };
 
-  const handleOpenSendEvaluationsDialog = async () => {
+  const handleOpenSubmitEvaluationsDialog = async () => {
     const validation = validateEvaluations(evaluations, {
       leafCriteria: leafCriteriaNames,
       allowEmpty: false,
@@ -166,7 +166,7 @@ export const EvaluationMatrixDialog = ({
       const { alternative, criterion, message } = validation.error;
       showSnackbarAlert(`Alternative: ${alternative}, Criterion: ${criterion}, ${message}`, "error");
     } else {
-      setOpenSendEvaluationsDialog(true);
+      setOpenSubmitEvaluationsDialog(true);
     }
   };
 
@@ -185,7 +185,7 @@ export const EvaluationMatrixDialog = ({
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
+    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -198,20 +198,20 @@ export const EvaluationMatrixDialog = ({
     setLoading(false);
   };
 
-  const handleSendEvaluations = async () => {
-    setOpenSendEvaluationsDialog(false);
+  const handleSubmitEvaluations = async () => {
+    setOpenSubmitEvaluationsDialog(false);
     setLoading(true);
 
-    const response = await sendEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
+    const res = await submitEvaluations(selectedIssue, evaluations);
 
-    if (response.success) {
-      showSnackbarAlert(response.msg, "success");
+    if (res.success) {
+      showSnackbarAlert(res.msg, "success");
       await fetchActiveIssues();
       await fetchFinishedIssues();
       setOpenIssueDialog(false);
       setIsRatingAlternatives(false);
     } else {
-      showSnackbarAlert(response.msg, "error");
+      showSnackbarAlert(res.msg, "error");
     }
 
     setLoading(false);
@@ -288,7 +288,7 @@ export const EvaluationMatrixDialog = ({
 
           <Box sx={{ flex: 1 }} />
 
-          <Button variant="outlined" color="success" onClick={handleOpenSendEvaluationsDialog} startIcon={<PublishOutlinedIcon />}>
+          <Button variant="outlined" color="success" onClick={handleOpenSubmitEvaluationsDialog} startIcon={<PublishOutlinedIcon />}>
             Submit
           </Button>
         </DialogActions>
@@ -313,7 +313,7 @@ export const EvaluationMatrixDialog = ({
       </GlassDialog>
 
       {/* SUBMIT CONFIRM */}
-      <GlassDialog open={openSendEvaluationsDialog} onClose={() => setOpenSendEvaluationsDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog open={openSubmitEvaluationsDialog} onClose={() => setOpenSubmitEvaluationsDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 950 }}>Submit evaluations?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
@@ -321,10 +321,10 @@ export const EvaluationMatrixDialog = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="success" onClick={handleSendEvaluations} startIcon={<CheckCircleOutlineIcon />}>
+          <Button variant="outlined" color="success" onClick={handleSubmitEvaluations} startIcon={<CheckCircleOutlineIcon />}>
             Submit
           </Button>
-          <Button variant="outlined" color="warning" onClick={() => setOpenSendEvaluationsDialog(false)} startIcon={<CloseIcon />}>
+          <Button variant="outlined" color="warning" onClick={() => setOpenSubmitEvaluationsDialog(false)} startIcon={<CloseIcon />}>
             Cancel
           </Button>
         </DialogActions>

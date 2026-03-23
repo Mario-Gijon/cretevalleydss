@@ -66,6 +66,11 @@ import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { CriterionItem } from "../CriteriaList/CriteriaList";
 import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
+import {
+  ISSUE_EVALUATION_STRUCTURES,
+  resolveIssueEvaluationStructure,
+  hasSingleLeafCriterion,
+} from "../../utils/issues/evaluationStructure";
 
 import { Scatter } from "react-chartjs-2";
 import { Chart } from "chart.js/auto";
@@ -81,7 +86,15 @@ import {
 } from "chart.js";
 import ModelParamsView from "../ModelParamsView/ModelParamsView";
 
-ChartJS.register(ScatterController, LinearScale, PointElement, CTooltip, Legend, Title, zoomPlugin);
+ChartJS.register(
+  ScatterController,
+  LinearScale,
+  PointElement,
+  CTooltip,
+  Legend,
+  Title,
+  zoomPlugin
+);
 
 const auroraBg = (theme, intensity = 0.16) => ({
   backgroundImage: `radial-gradient(1200px 520px at 12% 0%, ${alpha(
@@ -133,7 +146,14 @@ const Pill = ({ tone = "success", children }) => {
         boxShadow: `0 10px 26px ${alpha(theme.palette.common.black, 0.10)}`,
       }}
     >
-      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: alpha(c, 0.85) }} />
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          bgcolor: alpha(c, 0.85),
+        }}
+      />
       <span>{children}</span>
     </Box>
   );
@@ -156,7 +176,10 @@ const SectionCard = ({ title, icon, right, children, sx }) => {
           position: "absolute",
           inset: 0,
           pointerEvents: "none",
-          background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 15%)`,
+          background: `linear-gradient(180deg, ${alpha(
+            theme.palette.common.white,
+            0.10
+          )}, transparent 15%)`,
           opacity: 0.22,
         },
         ...(sx || {}),
@@ -170,7 +193,12 @@ const SectionCard = ({ title, icon, right, children, sx }) => {
           justifyContent="space-between"
           sx={{ mb: 1.25, position: "relative", zIndex: 1 }}
         >
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ minWidth: 0 }}
+          >
             {icon ? (
               <Avatar
                 sx={{
@@ -186,13 +214,18 @@ const SectionCard = ({ title, icon, right, children, sx }) => {
             ) : null}
 
             {title ? (
-              <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1, whiteSpace: "nowrap" }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 980, lineHeight: 1, whiteSpace: "nowrap" }}
+              >
                 {title}
               </Typography>
             ) : null}
           </Stack>
 
-          {right ? <Box sx={{ position: "relative", zIndex: 1 }}>{right}</Box> : null}
+          {right ? (
+            <Box sx={{ position: "relative", zIndex: 1 }}>{right}</Box>
+          ) : null}
         </Stack>
       )}
 
@@ -203,10 +236,20 @@ const SectionCard = ({ title, icon, right, children, sx }) => {
 
 const Row = ({ label, value }) => (
   <Stack direction="row" spacing={1}>
-    <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
+    <Typography
+      variant="body2"
+      sx={{ fontWeight: 950, color: "text.secondary" }}
+    >
       {label}:
     </Typography>
-    <Typography variant="body2" sx={{ fontWeight: 850, color: "text.primary", wordBreak: "break-word" }}>
+    <Typography
+      variant="body2"
+      sx={{
+        fontWeight: 850,
+        color: "text.primary",
+        wordBreak: "break-word",
+      }}
+    >
       {value ?? "—"}
     </Typography>
   </Stack>
@@ -228,8 +271,16 @@ const SummaryAccordionRow = ({ label, open, onToggle, right, children }) => {
           "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.04) },
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-          <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{ width: "100%" }}
+        >
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 950, color: "text.secondary" }}
+          >
             {label}
           </Typography>
 
@@ -237,7 +288,9 @@ const SummaryAccordionRow = ({ label, open, onToggle, right, children }) => {
 
           {right ? <Box sx={{ mr: 0.5 }}>{right}</Box> : null}
 
-          <Box sx={{ opacity: 0.85 }}>{open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}</Box>
+          <Box sx={{ opacity: 0.85 }}>
+            {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+          </Box>
         </Stack>
       </ListItemButton>
 
@@ -258,7 +311,9 @@ const safeJsonStringify = (v) => {
     if (typeof v === "string") {
       const trimmed = v.trim();
       if (!trimmed) return "";
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) return JSON.stringify(JSON.parse(trimmed), null, 2);
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      }
       return v;
     }
     return JSON.stringify(v, null, 2);
@@ -295,14 +350,16 @@ const WEIGHTS_KEY = "weights";
 
 const stripWeights = (obj) => {
   if (!obj || typeof obj !== "object") return {};
-  const { ...rest } = obj;
+  const {  ...rest } = obj;
   return rest;
 };
 
 const stripWeightsDeep = (v) => stripWeights(v);
 
 const filterOutWeightsParam = (p) => Boolean(p) && p?.name !== WEIGHTS_KEY;
-const filterOutWeightsParams = (params) => (Array.isArray(params) ? params.filter(filterOutWeightsParam) : []);
+const filterOutWeightsParams = (params) =>
+  Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
+
 const omitWeightsFromModel = (m) => {
   if (!m || typeof m !== "object") return m;
   return {
@@ -320,7 +377,6 @@ const buildPseudoParametersFromValues = (values) => {
     .map((name) => {
       const val = v[name];
 
-      // detect fuzzy triples array: [[l,m,u], ...]
       const isFuzzyArray =
         Array.isArray(val) &&
         val.length > 0 &&
@@ -328,7 +384,10 @@ const buildPseudoParametersFromValues = (values) => {
           (t) =>
             Array.isArray(t) &&
             t.length === 3 &&
-            t.every((x) => x === null || x === undefined || Number.isFinite(Number(x)))
+            t.every(
+              (x) =>
+                x === null || x === undefined || Number.isFinite(Number(x))
+            )
         );
 
       const type = Number.isFinite(Number(val))
@@ -337,7 +396,7 @@ const buildPseudoParametersFromValues = (values) => {
           ? "fuzzyArray"
           : Array.isArray(val)
             ? "array"
-            : "json"; // caerá al render genérico del viewer
+            : "json";
 
       return { name, type, default: val };
     });
@@ -372,18 +431,31 @@ const getLeafCriteriaNamesFallback = (summaryCriteria) => {
   }
 };
 
+const getEvaluationCompatibilityFlag = (model) => {
+  return model?.compatibility?.evaluationStructure ?? model?.compatibility?.pairwise;
+};
+
 const isModelCompatible = (m) => {
-  const p = m?.compatibility?.pairwise;
-  const d = m?.compatibility?.domain;
-  if (p === false) return false;
-  if (d === false) return false;
+  const evalCompat = getEvaluationCompatibilityFlag(m);
+  const domainCompat = m?.compatibility?.domain;
+
+  if (evalCompat === false) return false;
+  if (domainCompat === false) return false;
+
   return true;
 };
 
 const getCompatReason = (m, domainType) => {
   const reasons = [];
-  if (m?.compatibility?.pairwise === false) reasons.push("Pairwise mismatch");
-  if (m?.compatibility?.domain === false) reasons.push(domainType ? `No ${domainType} support` : "Domain not supported");
+  const evalCompat = getEvaluationCompatibilityFlag(m);
+
+  if (evalCompat === false) reasons.push("Evaluation structure mismatch");
+  if (m?.compatibility?.domain === false) {
+    reasons.push(
+      domainType ? `No ${domainType} support` : "Domain not supported"
+    );
+  }
+
   return reasons.join(" · ");
 };
 
@@ -394,15 +466,23 @@ const buildParamsResolved = ({ model, leafCount }) => {
   for (const p of filterOutWeightsParams(model?.parameters || [])) {
     if (p.type === "number") out[p.name] = p.default ?? "";
     if (p.type === "array") {
-      const len = p?.restrictions?.length === "matchCriteria" ? leafCount : p?.restrictions?.length ?? 2;
+      const len =
+        p?.restrictions?.length === "matchCriteria"
+          ? leafCount
+          : p?.restrictions?.length ?? 2;
       const base = Array.isArray(p.default) ? p.default : [];
       out[p.name] = ensureArrayLen(base, Number(len) || 2, "");
     }
     if (p.type === "fuzzyArray") {
-      const len = p?.restrictions?.length === "matchCriteria" ? leafCount : p?.restrictions?.length ?? 1;
+      const len =
+        p?.restrictions?.length === "matchCriteria"
+          ? leafCount
+          : p?.restrictions?.length ?? 1;
       const L = Number(len) || 1;
       const base = Array.isArray(p.default) ? p.default : [];
-      const filled = ensureArrayLen(base, L, ["", "", ""]).map((t) => (Array.isArray(t) && t.length === 3 ? t : ["", "", ""]));
+      const filled = ensureArrayLen(base, L, ["", "", ""]).map((t) =>
+        Array.isArray(t) && t.length === 3 ? t : ["", "", ""]
+      );
       out[p.name] = filled;
     }
   }
@@ -437,7 +517,8 @@ const cleanParamsForSend = ({ model, values, leafCount }) => {
       const len =
         r.length === "matchCriteria"
           ? leafCount
-          : (typeof r.length === "number" ? r.length : null) ?? (Array.isArray(def) ? def.length : 2);
+          : (typeof r.length === "number" ? r.length : null) ??
+            (Array.isArray(def) ? def.length : 2);
 
       const arr = ensureArrayLen(values?.[name] ?? def ?? [], Number(len) || 2, "");
       const parsed = arr.map((x) => (x === "" || x == null ? null : Number(x)));
@@ -451,17 +532,23 @@ const cleanParamsForSend = ({ model, values, leafCount }) => {
       const len =
         r.length === "matchCriteria"
           ? leafCount
-          : (typeof r.length === "number" ? r.length : null) ?? (Array.isArray(def) ? def.length : 1);
+          : (typeof r.length === "number" ? r.length : null) ??
+            (Array.isArray(def) ? def.length : 1);
 
-      const triples = ensureArrayLen(values?.[name] ?? def ?? [], Number(len) || 1, ["", "", ""]);
+      const triples = ensureArrayLen(
+        values?.[name] ?? def ?? [],
+        Number(len) || 1,
+        ["", "", ""]
+      );
 
       const parsed = triples.map((t) => {
         const tt = Array.isArray(t) ? t : ["", "", ""];
-        const nums = tt.map((x) => (x === "" || x == null ? null : Number(x)));
-        return nums;
+        return tt.map((x) => (x === "" || x == null ? null : Number(x)));
       });
 
-      if (parsed.some((t) => t.some((x) => x == null || !Number.isFinite(x)))) continue;
+      if (parsed.some((t) => t.some((x) => x == null || !Number.isFinite(x)))) {
+        continue;
+      }
 
       out[name] = parsed.map(([l, m, u]) => [
         clamp(l, r.min ?? null, r.max ?? null),
@@ -484,12 +571,25 @@ const validateParams = ({ model, values, leafCount }) => {
     if (type === "number") {
       if (val === "" || val == null) continue;
       const n = Number(val);
-      if (!Number.isFinite(n)) return { ok: false, msg: `Parameter '${name}' must be a number.` };
-      if (Array.isArray(r.allowed) && r.allowed.length && !r.allowed.includes(n)) {
-        return { ok: false, msg: `Parameter '${name}' must be one of: ${r.allowed.join(", ")}.` };
+      if (!Number.isFinite(n)) {
+        return { ok: false, msg: `Parameter '${name}' must be a number.` };
       }
-      if (r.min != null && n < r.min) return { ok: false, msg: `Parameter '${name}' must be ≥ ${r.min}.` };
-      if (r.max != null && n > r.max) return { ok: false, msg: `Parameter '${name}' must be ≤ ${r.max}.` };
+      if (
+        Array.isArray(r.allowed) &&
+        r.allowed.length &&
+        !r.allowed.includes(n)
+      ) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be one of: ${r.allowed.join(", ")}.`,
+        };
+      }
+      if (r.min != null && n < r.min) {
+        return { ok: false, msg: `Parameter '${name}' must be ≥ ${r.min}.` };
+      }
+      if (r.max != null && n > r.max) {
+        return { ok: false, msg: `Parameter '${name}' must be ≤ ${r.max}.` };
+      }
       continue;
     }
 
@@ -497,7 +597,8 @@ const validateParams = ({ model, values, leafCount }) => {
       const len =
         r.length === "matchCriteria"
           ? leafCount
-          : (typeof r.length === "number" ? r.length : null) ?? (Array.isArray(p.default) ? p.default.length : 2);
+          : (typeof r.length === "number" ? r.length : null) ??
+            (Array.isArray(p.default) ? p.default.length : 2);
 
       const arr = ensureArrayLen(
         Array.isArray(val) ? val : Array.isArray(p.default) ? p.default : [],
@@ -506,18 +607,31 @@ const validateParams = ({ model, values, leafCount }) => {
       );
 
       if (arr.some((x) => x === "" || x == null || !Number.isFinite(Number(x)))) {
-        return { ok: false, msg: `Parameter '${name}' must be a complete array of ${len} numbers.` };
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be a complete array of ${len} numbers.`,
+        };
       }
 
       const nums = arr.map((x) => Number(x));
       if (r.sum != null) {
         const s = nums.reduce((a, b) => a + b, 0);
         const eps = 1e-6;
-        if (Math.abs(s - r.sum) > eps) return { ok: false, msg: `Parameter '${name}' sum must be ${r.sum}.` };
+        if (Math.abs(s - r.sum) > eps) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' sum must be ${r.sum}.`,
+          };
+        }
       }
 
       if (Number(len) === 2 && !r.sum && r.length !== "matchCriteria") {
-        if (nums[0] >= nums[1]) return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
+        if (nums[0] >= nums[1]) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must satisfy left < right.`,
+          };
+        }
       }
       continue;
     }
@@ -526,7 +640,8 @@ const validateParams = ({ model, values, leafCount }) => {
       const len =
         r.length === "matchCriteria"
           ? leafCount
-          : (typeof r.length === "number" ? r.length : null) ?? (Array.isArray(p.default) ? p.default.length : 1);
+          : (typeof r.length === "number" ? r.length : null) ??
+            (Array.isArray(p.default) ? p.default.length : 1);
 
       const triples = ensureArrayLen(
         Array.isArray(val) ? val : Array.isArray(p.default) ? p.default : [],
@@ -536,14 +651,30 @@ const validateParams = ({ model, values, leafCount }) => {
 
       for (let i = 0; i < triples.length; i++) {
         const t = triples[i];
-        if (!Array.isArray(t) || t.length !== 3) return { ok: false, msg: `Parameter '${name}' must be an array of triples.` };
+        if (!Array.isArray(t) || t.length !== 3) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must be an array of triples.`,
+          };
+        }
         const nums = t.map((x) => Number(x));
-        if (nums.some((x) => !Number.isFinite(x))) return { ok: false, msg: `Parameter '${name}' has invalid fuzzy values.` };
+        if (nums.some((x) => !Number.isFinite(x))) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' has invalid fuzzy values.`,
+          };
+        }
         const [l, m, u] = nums;
-        if (l > m || m > u) return { ok: false, msg: `Parameter '${name}' requires l ≤ m ≤ u.` };
+        if (l > m || m > u) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' requires l ≤ m ≤ u.`,
+          };
+        }
       }
     }
   }
+
   return { ok: true };
 };
 
@@ -553,7 +684,10 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
 
   if (!model) {
     return (
-      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.secondary", fontWeight: 850 }}
+      >
         Select a model to configure its parameters.
       </Typography>
     );
@@ -562,7 +696,10 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
   const params = filterOutWeightsParams(model.parameters);
   if (!Array.isArray(params) || params.length === 0) {
     return (
-      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.secondary", fontWeight: 850 }}
+      >
         This model has no parameters.
       </Typography>
     );
@@ -578,7 +715,10 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
       setValues((prev) => ({ ...prev, [name]: "" }));
       return;
     }
-    setValues((prev) => ({ ...prev, [name]: clamp(n, r.min ?? null, r.max ?? null) }));
+    setValues((prev) => ({
+      ...prev,
+      [name]: clamp(n, r.min ?? null, r.max ?? null),
+    }));
   };
 
   const onChangeArrayItem = (name, i, raw, r = {}) => {
@@ -624,11 +764,28 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
       {params.map((param) => {
         const { name, type, restrictions = {}, default: def } = param;
 
-        if (type === "number" && Array.isArray(restrictions.allowed) && restrictions.allowed.length) {
+        if (
+          type === "number" &&
+          Array.isArray(restrictions.allowed) &&
+          restrictions.allowed.length
+        ) {
           const current = values?.[name] ?? def ?? "";
           return (
-            <Stack key={param._id || name} direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}>
+            <Stack
+              key={param._id || name}
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 950,
+                  color: "text.secondary",
+                  minWidth: 130,
+                }}
+              >
                 {name}
               </Typography>
 
@@ -637,7 +794,9 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                 size="small"
                 color="info"
                 value={current}
-                onChange={(e) => onChangeNumber(name, e.target.value, restrictions)}
+                onChange={(e) =>
+                  onChangeNumber(name, e.target.value, restrictions)
+                }
                 sx={{ minWidth: 160 }}
               >
                 {restrictions.allowed.map((v) => (
@@ -647,7 +806,10 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                 ))}
               </TextField>
 
-              <Tooltip title={`Allowed: ${restrictions.allowed.join(", ")}`} arrow>
+              <Tooltip
+                title={`Allowed: ${restrictions.allowed.join(", ")}`}
+                arrow
+              >
                 <InfoOutlinedIcon sx={{ fontSize: 18, opacity: 0.8 }} />
               </Tooltip>
             </Stack>
@@ -657,8 +819,21 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
         if (type === "number") {
           const current = values?.[name] ?? def ?? "";
           return (
-            <Stack key={param._id || name} direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}>
+            <Stack
+              key={param._id || name}
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 950,
+                  color: "text.secondary",
+                  minWidth: 130,
+                }}
+              >
                 {name}
               </Typography>
 
@@ -667,7 +842,9 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                 size="small"
                 color="info"
                 value={current}
-                onChange={(e) => onChangeNumber(name, e.target.value, restrictions)}
+                onChange={(e) =>
+                  onChangeNumber(name, e.target.value, restrictions)
+                }
                 inputProps={{
                   min: restrictions.min ?? undefined,
                   max: restrictions.max ?? undefined,
@@ -676,7 +853,10 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                 sx={{ width: 160 }}
               />
 
-              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 850 }}
+              >
                 {restrictions.min != null || restrictions.max != null
                   ? `range: ${restrictions.min ?? "—"} .. ${restrictions.max ?? "—"}`
                   : ""}
@@ -696,7 +876,11 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                   : 2;
 
           const currentValues = ensureArrayLen(
-            Array.isArray(values?.[name]) ? values[name] : Array.isArray(def) ? def : [],
+            Array.isArray(values?.[name])
+              ? values[name]
+              : Array.isArray(def)
+                ? def
+                : [],
             Number(length) || 2,
             ""
           );
@@ -712,19 +896,44 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
 
           return (
             <Box key={param._id || name}>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }} flexWrap="wrap">
-                <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ mb: 0.75 }}
+                flexWrap="wrap"
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 950,
+                    color: "text.secondary",
+                    minWidth: 130,
+                  }}
+                >
                   {name}
                 </Typography>
 
                 {restrictions.sum != null ? (
-                  <Pill tone={sum != null && Math.abs(sum - restrictions.sum) < 1e-6 ? "success" : "warning"}>
-                    {sum == null ? `sum: ${restrictions.sum}` : `sum: ${sum.toFixed(4)} / ${restrictions.sum}`}
+                  <Pill
+                    tone={
+                      sum != null &&
+                      Math.abs(sum - restrictions.sum) < 1e-6
+                        ? "success"
+                        : "warning"
+                    }
+                  >
+                    {sum == null
+                      ? `sum: ${restrictions.sum}`
+                      : `sum: ${sum.toFixed(4)} / ${restrictions.sum}`}
                   </Pill>
                 ) : null}
 
                 {isInterval ? (
-                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 850 }}
+                  >
                     interval [{restrictions.min}..{restrictions.max}]
                   </Typography>
                 ) : null}
@@ -733,8 +942,16 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
               {restrictions.length === "matchCriteria" && leafNames?.length ? (
                 <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ pl: 0.25 }}>
                   {leafNames.map((cName, i) => (
-                    <Stack key={`${name}-${cName}-${i}`} spacing={0.5} alignItems="flex-start" sx={{ minWidth: 180 }}>
-                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                    <Stack
+                      key={`${name}-${cName}-${i}`}
+                      spacing={0.5}
+                      alignItems="flex-start"
+                      sx={{ minWidth: 180 }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary", fontWeight: 900 }}
+                      >
                         {cName}
                       </Typography>
                       <TextField
@@ -742,7 +959,9 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                         size="small"
                         color="info"
                         value={currentValues[i] ?? ""}
-                        onChange={(e) => onChangeArrayItem(name, i, e.target.value, restrictions)}
+                        onChange={(e) =>
+                          onChangeArrayItem(name, i, e.target.value, restrictions)
+                        }
                         inputProps={{
                           min: restrictions.min ?? undefined,
                           max: restrictions.max ?? undefined,
@@ -754,7 +973,13 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                   ))}
                 </Stack>
               ) : (
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ pl: 0.25 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  flexWrap="wrap"
+                  sx={{ pl: 0.25 }}
+                >
                   <Typography variant="h6" sx={{ m: 0, opacity: 0.85 }}>
                     [
                   </Typography>
@@ -765,7 +990,9 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                       size="small"
                       color="info"
                       value={val ?? ""}
-                      onChange={(e) => onChangeArrayItem(name, i, e.target.value, restrictions)}
+                      onChange={(e) =>
+                        onChangeArrayItem(name, i, e.target.value, restrictions)
+                      }
                       inputProps={{
                         min: restrictions.min ?? undefined,
                         max: restrictions.max ?? undefined,
@@ -802,7 +1029,15 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
 
           return (
             <Box key={param._id || name}>
-              <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.75, minWidth: 130 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 950,
+                  color: "text.secondary",
+                  mb: 0.75,
+                  minWidth: 130,
+                }}
+              >
                 {name}
               </Typography>
 
@@ -818,8 +1053,13 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                       minWidth: 260,
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-                      {restrictions.length === "matchCriteria" ? leafNames?.[i] ?? `C${i + 1}` : `#${i + 1}`}
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 900 }}
+                    >
+                      {restrictions.length === "matchCriteria"
+                        ? leafNames?.[i] ?? `C${i + 1}`
+                        : `#${i + 1}`}
                     </Typography>
 
                     <Stack direction="row" spacing={1} sx={{ mt: 0.8 }}>
@@ -831,7 +1071,9 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
                           color="info"
                           label={label}
                           value={Array.isArray(triple) ? triple[j] ?? "" : ""}
-                          onChange={(e) => onChangeFuzzy(name, i, j, e.target.value, restrictions)}
+                          onChange={(e) =>
+                            onChangeFuzzy(name, i, j, e.target.value, restrictions)
+                          }
                           inputProps={{
                             min: restrictions.min ?? undefined,
                             max: restrictions.max ?? undefined,
@@ -855,36 +1097,48 @@ const ScenarioParametersForm = ({ model, values, setValues, leafNames }) => {
 };
 
 const deepClone = (v) =>
-  typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v));
+  typeof structuredClone === "function"
+    ? structuredClone(v)
+    : JSON.parse(JSON.stringify(v));
 
 const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
   const details = scenario?.outputs?.details || {};
   const ce = scenario?.outputs?.collectiveEvaluations || null;
+  const scenarioEvaluationStructure = resolveIssueEvaluationStructure(scenario);
 
-  // summary (lo tuyo)
   out.summary = {
     ...(out.summary || {}),
     model: scenario?.targetModelName || out?.summary?.model,
     modelName: scenario?.targetModelName || out?.summary?.modelName,
     targetModelName: scenario?.targetModelName,
+    evaluationStructure:
+      scenarioEvaluationStructure || out?.summary?.evaluationStructure,
+    isPairwise:
+      scenarioEvaluationStructure ===
+      ISSUE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||
       out?.summary?.modelParameters,
   };
 
-  // ✅ CLAVE: pisa modelParams.base para que tu UI deje de “ganar” con los params del base
   out.modelParams = { ...(out.modelParams || {}) };
   out.modelParams.base = {
     ...(out.modelParams.base || {}),
     modelName: scenario?.targetModelName || out.modelParams.base?.modelName,
-    paramsSaved: scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
-    paramsResolved: scenario?.config?.normalizedModelParameters || out.modelParams.base?.paramsResolved,
+    evaluationStructure:
+      scenarioEvaluationStructure || out.modelParams.base?.evaluationStructure,
+    paramsSaved:
+      scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
+    paramsResolved:
+      scenario?.config?.normalizedModelParameters ||
+      out.modelParams.base?.paramsResolved,
   };
 
-  // ranking / plots / collective (lo tuyo)
-  const ranking = Array.isArray(details?.rankedAlternatives) ? details.rankedAlternatives : [];
+  const ranking = Array.isArray(details?.rankedAlternatives)
+    ? details.rankedAlternatives
+    : [];
   out.alternativesRankings = [{ ranking }];
 
   const pg = details?.plotsGraphic;
@@ -894,12 +1148,101 @@ const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
 
   if (ce && out?.expertsRatings && typeof out.expertsRatings === "object") {
     for (const k of Object.keys(out.expertsRatings)) {
-      if (out.expertsRatings[k]) out.expertsRatings[k].collectiveEvaluations = ce;
+      if (out.expertsRatings[k]) {
+        out.expertsRatings[k].collectiveEvaluations = ce;
+      }
     }
   }
 
   return out;
 };
+
+const FINISHED_ISSUE_RATINGS_UI = {
+  [ISSUE_EVALUATION_STRUCTURES.DIRECT]: {
+    getExpertList: ({ viewIssue, currentPhaseIndex }) =>
+      Object.keys(
+        viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {}
+      ),
+
+    getCriterionList: () => [],
+
+    getEvaluations: ({ viewIssue, currentPhaseIndex, selectedExpert }) =>
+      viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[
+        selectedExpert
+      ] || {},
+
+    getCollectiveEvaluations: ({ viewIssue, currentPhaseIndex, showCollective }) =>
+      showCollective
+        ? viewIssue?.expertsRatings?.[currentPhaseIndex + 1]
+            ?.collectiveEvaluations || {}
+        : {},
+
+    showCriterionSelector: () => false,
+
+    render: ({ viewIssue, evaluations, collectiveEvaluations }) => (
+      <Matrix
+        alternatives={viewIssue?.summary?.alternatives || []}
+        criteria={extractLeafCriteria(viewIssue?.summary?.criteria || []).map(
+          (c) => c.name
+        )}
+        evaluations={evaluations}
+        collectiveEvaluations={collectiveEvaluations}
+        permitEdit={false}
+      />
+    ),
+  },
+
+  [ISSUE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: {
+    getExpertList: ({ viewIssue, currentPhaseIndex }) =>
+      Object.keys(
+        viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {}
+      ),
+
+    getCriterionList: ({ viewIssue, currentPhaseIndex, selectedExpert }) =>
+      Object.keys(
+        viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[
+          selectedExpert
+        ] || {}
+      ),
+
+    getEvaluations: ({
+      viewIssue,
+      currentPhaseIndex,
+      selectedExpert,
+      selectedCriterion,
+    }) =>
+      viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[
+        selectedExpert
+      ]?.[selectedCriterion] || [],
+
+    getCollectiveEvaluations: ({
+      viewIssue,
+      currentPhaseIndex,
+      selectedCriterion,
+      showCollective,
+    }) =>
+      showCollective
+        ? viewIssue?.expertsRatings?.[currentPhaseIndex + 1]
+            ?.collectiveEvaluations?.[selectedCriterion] || []
+        : [],
+
+    showCriterionSelector: ({ hasSingleCriterion, criterionList }) =>
+      !hasSingleCriterion && criterionList.length > 0,
+
+    render: ({ viewIssue, evaluations, collectiveEvaluations }) => (
+      <PairwiseMatrix
+        alternatives={viewIssue?.summary?.alternatives || []}
+        evaluations={evaluations}
+        collectiveEvaluations={collectiveEvaluations}
+        permitEdit={false}
+      />
+    ),
+  },
+};
+
+const getFinishedIssueRatingsUi = (evaluationStructure) =>
+  FINISHED_ISSUE_RATINGS_UI[evaluationStructure] ||
+  FINISHED_ISSUE_RATINGS_UI[ISSUE_EVALUATION_STRUCTURES.DIRECT];
 
 export const FinishedIssueDialog = ({
   selectedIssue,
@@ -951,7 +1294,14 @@ export const FinishedIssueDialog = ({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [paramsJson, setParamsJson] = useState("{}");
 
-  const [toast, setToast] = useState({ open: false, severity: "success", msg: "" });
+  const [toast, setToast] = useState({
+    open: false,
+    severity: "success",
+    msg: "",
+  });
+
+  const [selectedExpert, setSelectedExpert] = useState("");
+  const [selectedCriterion, setSelectedCriterion] = useState("");
 
   const unwrap = (r) => (r && typeof r === "object" && "data" in r ? r.data : r);
 
@@ -980,7 +1330,11 @@ export const FinishedIssueDialog = ({
       setRunsLoading(true);
 
       try {
-        const [baseResp, runsResp] = await Promise.all([getFinishedIssueInfo(issueId), getIssueScenarios(issueId)]);
+        const [baseResp, runsResp] = await Promise.all([
+          getFinishedIssueInfo(issueId),
+          getIssueScenarios(issueId),
+        ]);
+
         if (cancelled || openTokenRef.current !== token) return;
 
         const baseData = unwrap(baseResp);
@@ -1027,6 +1381,7 @@ export const FinishedIssueDialog = ({
     };
 
     run();
+
     return () => {
       cancelled = true;
     };
@@ -1044,7 +1399,11 @@ export const FinishedIssueDialog = ({
       const scenario = resp?.scenario || null;
 
       if (!scenario?.outputs?.details) {
-        setToast({ open: true, severity: "warning", msg: "Scenario results not available yet." });
+        setToast({
+          open: true,
+          severity: "warning",
+          msg: "Scenario results not available yet.",
+        });
         return null;
       }
 
@@ -1052,7 +1411,11 @@ export const FinishedIssueDialog = ({
       setRunCache((prev) => ({ ...prev, [runKey]: info }));
       return info;
     } catch {
-      setToast({ open: true, severity: "error", msg: "Could not load scenario." });
+      setToast({
+        open: true,
+        severity: "error",
+        msg: "Could not load scenario.",
+      });
       return null;
     } finally {
       setRunsLoading(false);
@@ -1085,62 +1448,144 @@ export const FinishedIssueDialog = ({
     if (info) setCurrentPhaseIndex(getLastPhaseIndex(info));
   }, [selectedRunKey, issue, runCache, openFinishedIssueDialog]);
 
-  const viewIssue = selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+  const viewIssue =
+    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+
+  const baseModelParamsBlock = issue?.modelParams || null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const availableModelsRaw = baseModelParamsBlock?.availableModels || [];
+  const availableModels = useMemo(
+    () => availableModelsRaw.map(omitWeightsFromModel),
+    [availableModelsRaw]
+  );
+  const domainType = baseModelParamsBlock?.domainType || null;
+
+  const leafNames = useMemo(() => {
+    const fromBackend = baseModelParamsBlock?.leafCriteria
+      ?.map((c) => c?.name)
+      .filter(Boolean);
+    if (fromBackend?.length) return fromBackend;
+    return getLeafCriteriaNamesFallback(issue?.summary?.criteria || []);
+  }, [baseModelParamsBlock, issue?.summary?.criteria]);
+
+  const evaluationStructure = useMemo(
+    () => resolveIssueEvaluationStructure(viewIssue || issue),
+    [viewIssue, issue]
+  );
+
+  const ratingsUi = useMemo(
+    () => getFinishedIssueRatingsUi(evaluationStructure),
+    [evaluationStructure]
+  );
+
+  const hasSingleCriterion = useMemo(
+    () => hasSingleLeafCriterion(viewIssue || issue),
+    [viewIssue, issue]
+  );
 
   const roundsCount = getRoundsCount(viewIssue || {});
   const showRounds = Boolean(viewIssue?.summary?.consensusInfo && roundsCount > 1);
 
-  const [selectedExpert, setSelectedExpert] = useState("");
-  const isPairwise = Boolean(viewIssue?.summary?.isPairwise);
-  const [selectedCriterion, setSelectedCriterion] = useState("");
-
   useEffect(() => {
-    const evals = viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {};
-    const newExpert = Object.keys(evals)[0] || "";
+    const expertList = ratingsUi.getExpertList({
+      viewIssue,
+      currentPhaseIndex,
+    });
+
+    const newExpert = expertList[0] || "";
     setSelectedExpert(newExpert);
 
-    if (isPairwise) {
-      const newCriterion = Object.keys(evals?.[newExpert] || {})[0] || "";
-      setSelectedCriterion(newCriterion);
-    } else {
-      setSelectedCriterion("");
-    }
-  }, [viewIssue, currentPhaseIndex, isPairwise]);
+    const criterionList = ratingsUi.getCriterionList({
+      viewIssue,
+      currentPhaseIndex,
+      selectedExpert: newExpert,
+    });
+
+    setSelectedCriterion(criterionList[0] || "");
+  }, [viewIssue, currentPhaseIndex, ratingsUi]);
 
   const expertList = useMemo(
-    () => Object.keys(viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {}),
-    [viewIssue, currentPhaseIndex]
+    () =>
+      ratingsUi.getExpertList({
+        viewIssue,
+        currentPhaseIndex,
+      }),
+    [viewIssue, currentPhaseIndex, ratingsUi]
   );
 
-  const criterionList = useMemo(() => {
-    if (!isPairwise) return [];
-    return Object.keys(viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {});
-  }, [viewIssue, currentPhaseIndex, selectedExpert, isPairwise]);
+  const criterionList = useMemo(
+    () =>
+      ratingsUi.getCriterionList({
+        viewIssue,
+        currentPhaseIndex,
+        selectedExpert,
+      }),
+    [viewIssue, currentPhaseIndex, selectedExpert, ratingsUi]
+  );
 
-  const evaluations = useMemo(() => {
-    if (!viewIssue) return isPairwise ? [] : {};
-    if (isPairwise) {
-      return (
-        viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert]?.[selectedCriterion] || []
-      );
-    }
-    return viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[selectedExpert] || {};
-  }, [viewIssue, currentPhaseIndex, selectedExpert, selectedCriterion, isPairwise]);
+  const showCriterionSelector = useMemo(
+    () =>
+      ratingsUi.showCriterionSelector({
+        hasSingleCriterion,
+        criterionList,
+        viewIssue,
+        currentPhaseIndex,
+        selectedExpert,
+      }),
+    [
+      hasSingleCriterion,
+      criterionList,
+      viewIssue,
+      currentPhaseIndex,
+      selectedExpert,
+      ratingsUi,
+    ]
+  );
 
-  const collectiveEvaluations = useMemo(() => {
-    if (!viewIssue) return isPairwise ? [] : {};
-    if (!showCollective) return isPairwise ? [] : {};
-    if (isPairwise) {
-      return viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations?.[selectedCriterion] || [];
-    }
-    return viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations || {};
-  }, [viewIssue, currentPhaseIndex, selectedCriterion, showCollective, isPairwise]);
+  const evaluations = useMemo(
+    () =>
+      ratingsUi.getEvaluations({
+        viewIssue,
+        currentPhaseIndex,
+        selectedExpert,
+        selectedCriterion,
+      }),
+    [
+      viewIssue,
+      currentPhaseIndex,
+      selectedExpert,
+      selectedCriterion,
+      ratingsUi,
+    ]
+  );
+
+  const collectiveEvaluations = useMemo(
+    () =>
+      ratingsUi.getCollectiveEvaluations({
+        viewIssue,
+        currentPhaseIndex,
+        selectedExpert,
+        selectedCriterion,
+        showCollective,
+      }),
+    [
+      viewIssue,
+      currentPhaseIndex,
+      selectedExpert,
+      selectedCriterion,
+      showCollective,
+      ratingsUi,
+    ]
+  );
 
   const ranking = viewIssue?.alternativesRankings?.[currentPhaseIndex]?.ranking ?? [];
   const lastIndex = ranking.length - 1;
 
   const formatScore = (num) =>
-    new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(num);
 
   const handleChangePhase = (index) => {
     setCurrentPhaseIndex(index);
@@ -1153,19 +1598,8 @@ export const FinishedIssueDialog = ({
   const totalExperts = participated.length + notAccepted.length;
 
   const getRunId = (r) => r?._id || r?.id || r?.scenarioId || r?.runId;
-  const getRunLabel = (r) => r?.name || r?.scenarioName || r?.targetModelName || r?.modelName || "Model run";
-
-  const baseModelParamsBlock = issue?.modelParams || null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const availableModelsRaw = baseModelParamsBlock?.availableModels || [];
-  const availableModels = useMemo(() => availableModelsRaw.map(omitWeightsFromModel), [availableModelsRaw]);
-  const domainType = baseModelParamsBlock?.domainType || null;
-
-  const leafNames = useMemo(() => {
-    const fromBackend = baseModelParamsBlock?.leafCriteria?.map((c) => c?.name).filter(Boolean);
-    if (fromBackend?.length) return fromBackend;
-    return getLeafCriteriaNamesFallback(issue?.summary?.criteria || []);
-  }, [baseModelParamsBlock, issue?.summary?.criteria]);
+  const getRunLabel = (r) =>
+    r?.name || r?.scenarioName || r?.targetModelName || r?.modelName || "Model run";
 
   const useSchemaAdd = Boolean(Array.isArray(availableModels) && availableModels.length);
 
@@ -1209,7 +1643,10 @@ export const FinishedIssueDialog = ({
     if (!useSchemaAdd) return;
     if (!selectedModelFromSchema) return;
 
-    const defaults = buildParamsResolved({ model: selectedModelFromSchema, leafCount: leafNames.length });
+    const defaults = buildParamsResolved({
+      model: selectedModelFromSchema,
+      leafCount: leafNames.length,
+    });
     setScenarioParamValues(defaults);
   }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames]);
 
@@ -1217,7 +1654,11 @@ export const FinishedIssueDialog = ({
     if (!selectedIssue?.id) return;
 
     if (!selectedModelName) {
-      setToast({ open: true, severity: "warning", msg: "Please select a model." });
+      setToast({
+        open: true,
+        severity: "warning",
+        msg: "Please select a model.",
+      });
       return;
     }
 
@@ -1233,7 +1674,11 @@ export const FinishedIssueDialog = ({
       });
 
       if (!v.ok) {
-        setToast({ open: true, severity: "error", msg: v.msg || "Invalid parameters." });
+        setToast({
+          open: true,
+          severity: "error",
+          msg: v.msg || "Invalid parameters.",
+        });
         return;
       }
 
@@ -1249,7 +1694,11 @@ export const FinishedIssueDialog = ({
       try {
         parsedParams = paramsJson?.trim() ? JSON.parse(paramsJson) : {};
       } catch {
-        setToast({ open: true, severity: "error", msg: "Parameters JSON is not valid." });
+        setToast({
+          open: true,
+          severity: "error",
+          msg: "Parameters JSON is not valid.",
+        });
         return;
       }
       modelParameters = stripWeights(parsedParams);
@@ -1283,10 +1732,17 @@ export const FinishedIssueDialog = ({
         setCurrentPhaseIndex(info ? getLastPhaseIndex(info) : 0);
       }
 
-      setToast({ open: true, severity: "success", msg: "Model run added." });
+      setToast({
+        open: true,
+        severity: "success",
+        msg: "Model run added.",
+      });
       closeAddDialog();
     } catch (e) {
-      const msg = e?.response?.data?.msg || e?.response?.data?.message || "Unexpected error adding model.";
+      const msg =
+        e?.response?.data?.msg ||
+        e?.response?.data?.message ||
+        "Unexpected error adding model.";
       setToast({ open: true, severity: "error", msg });
     } finally {
       setAddLoading(false);
@@ -1300,11 +1756,19 @@ export const FinishedIssueDialog = ({
       setRunsLoading(true);
       const resp = unwrap(await removeIssueScenario(selectedRunKey));
       if (!resp?.success) {
-        setToast({ open: true, severity: "error", msg: resp?.message || resp?.msg || "Could not remove model." });
+        setToast({
+          open: true,
+          severity: "error",
+          msg: resp?.message || resp?.msg || "Could not remove model.",
+        });
         return;
       }
 
-      setToast({ open: true, severity: "success", msg: "Model removed." });
+      setToast({
+        open: true,
+        severity: "success",
+        msg: "Model removed.",
+      });
       const removedKey = selectedRunKey;
 
       setSelectedRunKey("base");
@@ -1316,7 +1780,11 @@ export const FinishedIssueDialog = ({
 
       await refreshRuns(selectedIssue.id);
     } catch {
-      setToast({ open: true, severity: "error", msg: "Unexpected error removing model." });
+      setToast({
+        open: true,
+        severity: "error",
+        msg: "Unexpected error removing model.",
+      });
     } finally {
       setRunsLoading(false);
     }
@@ -1349,16 +1817,19 @@ export const FinishedIssueDialog = ({
     availableModels.find((m) => (m?.name || m?.modelName) === baseModelName) || null;
 
   const baseResolved = stripWeightsDeep(
-    issue?.modelParams?.base?.paramsResolved || issue?.modelParams?.base?.paramsSaved || {}
+    issue?.modelParams?.base?.paramsResolved ||
+      issue?.modelParams?.base?.paramsSaved ||
+      {}
   );
 
   const baseSchemaParams = filterOutWeightsParams(
     baseModelSchemaFromCatalog?.parameters || issue?.modelParams?.base?.parameters || []
   );
 
-  const baseParamsForViewer = baseSchemaParams?.length ? baseSchemaParams : buildPseudoParametersFromValues(baseResolved);
+  const baseParamsForViewer = baseSchemaParams?.length
+    ? baseSchemaParams
+    : buildPseudoParametersFromValues(baseResolved);
 
-  // -------- Selected run (simulation) --------
   const selectedRunModelName =
     viewIssue?.modelParams?.base?.modelName ||
     viewIssue?.summary?.targetModelName ||
@@ -1367,14 +1838,18 @@ export const FinishedIssueDialog = ({
     "—";
 
   const selectedResolved = stripWeightsDeep(
-    viewIssue?.modelParams?.base?.paramsResolved || viewIssue?.modelParams?.base?.paramsSaved || {}
+    viewIssue?.modelParams?.base?.paramsResolved ||
+      viewIssue?.modelParams?.base?.paramsSaved ||
+      {}
   );
 
   const selectedModelSchemaFromCatalog =
     availableModels.find((m) => (m?.name || m?.modelName) === selectedRunModelName) || null;
 
   const selectedSchemaParams = filterOutWeightsParams(
-    selectedModelSchemaFromCatalog?.parameters || viewIssue?.modelParams?.base?.parameters || []
+    selectedModelSchemaFromCatalog?.parameters ||
+      viewIssue?.modelParams?.base?.parameters ||
+      []
   );
 
   const selectedParamsForViewer = selectedSchemaParams?.length
@@ -1415,7 +1890,12 @@ export const FinishedIssueDialog = ({
           backdropFilter: "blur(12px)",
         }}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          spacing={2}
+        >
           <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0 }}>
             <Avatar
               sx={{
@@ -1444,7 +1924,11 @@ export const FinishedIssueDialog = ({
                 {selectedIssue?.name || "Finished issue"}
               </Typography>
 
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: "center", flexWrap: "wrap" }}
+              >
                 <Pill tone={selectedRunKey === "base" ? "success" : "secondary"}>
                   {selectedRunKey === "base" ? "Base" : "Simulation"}
                 </Pill>
@@ -1529,7 +2013,9 @@ export const FinishedIssueDialog = ({
             sx={{
               display: "grid",
               gap: 2,
-              gridTemplateColumns: isMdUp ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
+              gridTemplateColumns: isMdUp
+                ? "minmax(0, 1fr) minmax(0, 1fr)"
+                : "1fr",
               gridTemplateAreas: isMdUp
                 ? `
                     "summary ranking"
@@ -1560,7 +2046,10 @@ export const FinishedIssueDialog = ({
                     open={openDescriptionList}
                     onToggle={() => setOpenDescriptionList((v) => !v)}
                   >
-                    <Typography variant="body2" sx={{ fontWeight: 850, color: "text.primary" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 850, color: "text.primary" }}
+                    >
                       {viewIssue?.summary?.description || "—"}
                     </Typography>
                   </SummaryAccordionRow>
@@ -1593,7 +2082,8 @@ export const FinishedIssueDialog = ({
                     </SummaryAccordionRow>
                   ) : null}
 
-                  {Array.isArray(viewIssue?.summary?.criteria) && viewIssue.summary.criteria.length > 1 ? (
+                  {Array.isArray(viewIssue?.summary?.criteria) &&
+                  viewIssue.summary.criteria.length > 1 ? (
                     <SummaryAccordionRow
                       label="Criteria"
                       open={openCriteriaList}
@@ -1601,12 +2091,19 @@ export const FinishedIssueDialog = ({
                     >
                       <List disablePadding sx={{ py: 0.25 }}>
                         {viewIssue.summary.criteria.map((criterion, index) => (
-                          <CriterionItem key={index} criterion={criterion} isChild={false} />
+                          <CriterionItem
+                            key={index}
+                            criterion={criterion}
+                            isChild={false}
+                          />
                         ))}
                       </List>
                     </SummaryAccordionRow>
                   ) : (
-                    <Row label="Criterion" value={viewIssue?.summary?.criteria?.[0]?.name} />
+                    <Row
+                      label="Criterion"
+                      value={viewIssue?.summary?.criteria?.[0]?.name}
+                    />
                   )}
 
                   <SummaryAccordionRow
@@ -1641,12 +2138,19 @@ export const FinishedIssueDialog = ({
                       {notAccepted.length ? (
                         <>
                           <Divider sx={{ opacity: 0.14 }} />
-                          <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 950, color: "text.secondary" }}
+                          >
                             Not accepted
                           </Typography>
                           <Stack spacing={0.5}>
                             {notAccepted.map((e, idx) => (
-                              <Typography key={idx} variant="body2" sx={{ fontWeight: 850 }}>
+                              <Typography
+                                key={idx}
+                                variant="body2"
+                                sx={{ fontWeight: 850 }}
+                              >
                                 {e}
                               </Typography>
                             ))}
@@ -1657,7 +2161,9 @@ export const FinishedIssueDialog = ({
                   </SummaryAccordionRow>
 
                   <Row label="Creation date" value={viewIssue?.summary?.creationDate} />
-                  {viewIssue?.summary?.closureDate ? <Row label="Closure date" value={viewIssue.summary.closureDate} /> : null}
+                  {viewIssue?.summary?.closureDate ? (
+                    <Row label="Closure date" value={viewIssue.summary.closureDate} />
+                  ) : null}
                 </Stack>
               </SectionCard>
             </Box>
@@ -1665,16 +2171,33 @@ export const FinishedIssueDialog = ({
             <Box sx={{ gridArea: "ranking", minWidth: 0 }}>
               <SectionCard title="Results ranking" icon={<AssignmentTurnedInIcon fontSize="small" />}>
                 {!viewIssue?.alternativesRankings ? (
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.secondary", fontWeight: 850 }}
+                  >
                     Ranking not available.
                   </Typography>
                 ) : (
                   <List sx={{ width: "100%" }} disablePadding>
                     {ranking.map((item, index) => (
                       <ListItem key={item.name} sx={{ px: 0, py: 0.9 }}>
-                        <Stack direction="row" alignItems="center" justifyContent="space-between" width="100%" spacing={2}>
-                          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 980, opacity: 0.9 }}>
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          width="100%"
+                          spacing={2}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            sx={{ minWidth: 0 }}
+                          >
+                            <Typography
+                              variant="subtitle1"
+                              sx={{ fontWeight: 980, opacity: 0.9 }}
+                            >
                               {index + 1}.
                             </Typography>
                             <Typography
@@ -1695,7 +2218,13 @@ export const FinishedIssueDialog = ({
                           <Chip
                             label={formatScore(item.score)}
                             variant="outlined"
-                            color={index === 0 ? "success" : index === lastIndex ? "error" : "secondary"}
+                            color={
+                              index === 0
+                                ? "success"
+                                : index === lastIndex
+                                  ? "error"
+                                  : "secondary"
+                            }
                             sx={{
                               fontWeight: 950,
                               borderColor: "rgba(255,255,255,0.18)",
@@ -1713,7 +2242,10 @@ export const FinishedIssueDialog = ({
             <Box sx={{ gridArea: "analysis", minWidth: 0 }}>
               <SectionCard title="Results analysis" icon={<AnalyticsIcon fontSize="small" />}>
                 {!viewIssue?.consensusSection ? (
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.secondary", fontWeight: 850 }}
+                  >
                     Section is not available yet
                   </Typography>
                 ) : (
@@ -1761,12 +2293,15 @@ export const FinishedIssueDialog = ({
                       label="Base"
                       clickable
                       onClick={() => handleSelectRun("base")}
-                      color={"secondary"}
+                      color="secondary"
                       variant={selectedRunKey === "base" ? "filled" : "outlined"}
                       sx={{
                         fontWeight: 950,
                         borderColor: "rgba(255,255,255,0.18)",
-                        bgcolor: selectedRunKey === "base" ? alpha(theme.palette.secondary.main, 0.8) : "transparent",
+                        bgcolor:
+                          selectedRunKey === "base"
+                            ? alpha(theme.palette.secondary.main, 0.8)
+                            : "transparent",
                       }}
                     />
 
@@ -1775,6 +2310,7 @@ export const FinishedIssueDialog = ({
                       if (!id) return null;
                       const label = getRunLabel(r);
                       const selected = selectedRunKey === id;
+
                       return (
                         <Chip
                           key={id}
@@ -1782,14 +2318,19 @@ export const FinishedIssueDialog = ({
                           label={label}
                           clickable
                           onClick={() => handleSelectRun(id)}
-                          color={"secondary"}
+                          color="secondary"
                           variant={selected ? "filled" : "outlined"}
                           sx={{
                             fontWeight: 950,
                             borderColor: "rgba(255,255,255,0.18)",
-                            bgcolor: selected ? alpha(theme.palette.secondary.main, 0.8) : "transparent",
+                            bgcolor: selected
+                              ? alpha(theme.palette.secondary.main, 0.8)
+                              : "transparent",
                             maxWidth: 320,
-                            "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+                            "& .MuiChip-label": {
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            },
                           }}
                         />
                       );
@@ -1797,13 +2338,19 @@ export const FinishedIssueDialog = ({
                   </Stack>
 
                   {runsLoading ? (
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", fontWeight: 850 }}
+                    >
                       Loading models…
                     </Typography>
                   ) : null}
 
                   {selectedRunKey !== "base" && !viewIssue ? (
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", fontWeight: 850 }}
+                    >
                       This model run is not available yet.
                     </Typography>
                   ) : null}
@@ -1816,14 +2363,21 @@ export const FinishedIssueDialog = ({
                     onToggle={() => setOpenParamsViewer((v) => !v)}
                     right={
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Pill tone="secondary">Method: {selectedRunKey === "base" ? baseModelName : selectedRunModelName}</Pill>
-                        <Pill tone="info">{domainType ? `Domain: ${domainType}` : "domain: —"}</Pill>
-                        {selectedRunKey === "base" ? <Pill tone="success">base</Pill> : <Pill tone="secondary">simulation</Pill>}
+                        <Pill tone="secondary">
+                          Method: {selectedRunKey === "base" ? baseModelName : selectedRunModelName}
+                        </Pill>
+                        <Pill tone="info">
+                          {domainType ? `Domain: ${domainType}` : "domain: —"}
+                        </Pill>
+                        {selectedRunKey === "base" ? (
+                          <Pill tone="success">base</Pill>
+                        ) : (
+                          <Pill tone="secondary">simulation</Pill>
+                        )}
                       </Stack>
                     }
                   >
                     <Stack spacing={1.25}>
-                      {/* ✅ SIEMPRE: Run seleccionado (si no es base) con MISMA UI */}
                       {selectedRunKey === "base" ? (
                         viewIssue ? (
                           <ModelParamsView
@@ -1842,18 +2396,23 @@ export const FinishedIssueDialog = ({
                               border: "1px solid rgba(255,255,255,0.10)",
                             }}
                           >
-                            <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 850, color: "text.secondary" }}
+                            >
                               This simulation is not available yet.
                             </Typography>
                           </Box>
                         )
-                      ) : <ModelParamsView
-                        title={selectedRunLabel || "Simulation"}
-                        modelName={selectedRunModelName}
-                        parameters={selectedParamsForViewer}
-                        values={selectedResolved}
-                        leafNames={leafNames}
-                      />}
+                      ) : (
+                        <ModelParamsView
+                          title={selectedRunLabel || "Simulation"}
+                          modelName={selectedRunModelName}
+                          parameters={selectedParamsForViewer}
+                          values={selectedResolved}
+                          leafNames={leafNames}
+                        />
+                      )}
                     </Stack>
                   </SummaryAccordionRow>
                 </Stack>
@@ -1889,7 +2448,8 @@ export const FinishedIssueDialog = ({
                         />
                       ) : null}
 
-                      {activeStep === 1 && viewIssue?.analyticalGraphs?.consensusLevelLineChart ? (
+                      {activeStep === 1 &&
+                      viewIssue?.analyticalGraphs?.consensusLevelLineChart ? (
                         <AnalyticalConsensusLineChart
                           data={viewIssue.analyticalGraphs.consensusLevelLineChart}
                           consensusLevelChartRef={consensusLevelChartRef}
@@ -1897,7 +2457,8 @@ export const FinishedIssueDialog = ({
                       ) : null}
                     </Box>
 
-                    {viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data?.length > 1 ? (
+                    {viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data
+                      ?.length > 1 ? (
                       <MobileStepper
                         variant="dots"
                         steps={2}
@@ -1907,17 +2468,41 @@ export const FinishedIssueDialog = ({
                           width: "auto",
                           bgcolor: "transparent",
                           pb: 0,
-                          "& .MuiMobileStepper-dot": { bgcolor: alpha(theme.palette.common.white, 0.26) },
-                          "& .MuiMobileStepper-dotActive": { bgcolor: theme.palette.secondary.main },
+                          "& .MuiMobileStepper-dot": {
+                            bgcolor: alpha(theme.palette.common.white, 0.26),
+                          },
+                          "& .MuiMobileStepper-dotActive": {
+                            bgcolor: theme.palette.secondary.main,
+                          },
                         }}
                         nextButton={
-                          <Button size="small" onClick={handleNext} disabled={activeStep === 1} color="secondary" sx={{ mx: 1 }}>
-                            {theme.direction === "rtl" ? <KeyboardArrowLeft /> : <KeyboardArrowRight />}
+                          <Button
+                            size="small"
+                            onClick={handleNext}
+                            disabled={activeStep === 1}
+                            color="secondary"
+                            sx={{ mx: 1 }}
+                          >
+                            {theme.direction === "rtl" ? (
+                              <KeyboardArrowLeft />
+                            ) : (
+                              <KeyboardArrowRight />
+                            )}
                           </Button>
                         }
                         backButton={
-                          <Button size="small" onClick={handleBack} disabled={activeStep === 0} color="secondary" sx={{ mx: 1 }}>
-                            {theme.direction === "rtl" ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
+                          <Button
+                            size="small"
+                            onClick={handleBack}
+                            disabled={activeStep === 0}
+                            color="secondary"
+                            sx={{ mx: 1 }}
+                          >
+                            {theme.direction === "rtl" ? (
+                              <KeyboardArrowRight />
+                            ) : (
+                              <KeyboardArrowLeft />
+                            )}
                           </Button>
                         }
                       />
@@ -1946,12 +2531,13 @@ export const FinishedIssueDialog = ({
                           const v = e.target.value;
                           setSelectedExpert(v);
 
-                          if (isPairwise) {
-                            const newCriteria = Object.keys(
-                              viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations?.[v] || {}
-                            );
-                            setSelectedCriterion(newCriteria[0] || "");
-                          }
+                          const newCriteria = ratingsUi.getCriterionList({
+                            viewIssue,
+                            currentPhaseIndex,
+                            selectedExpert: v,
+                          });
+
+                          setSelectedCriterion(newCriteria[0] || "");
                         }}
                       >
                         {expertList.map((expert) => (
@@ -1962,7 +2548,7 @@ export const FinishedIssueDialog = ({
                       </Select>
                     </FormControl>
 
-                    {isPairwise ? (
+                    {showCriterionSelector ? (
                       <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
                         <InputLabel color="info">Criterion</InputLabel>
                         <Select
@@ -1982,7 +2568,8 @@ export const FinishedIssueDialog = ({
 
                     <Box sx={{ flex: 1 }} />
 
-                    {viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations ? (
+                    {viewIssue?.expertsRatings?.[currentPhaseIndex + 1]
+                      ?.collectiveEvaluations ? (
                       <ToggleButton
                         selected={showCollective}
                         onChange={() => setShowCollective((v) => !v)}
@@ -2004,22 +2591,14 @@ export const FinishedIssueDialog = ({
 
                   <Divider sx={{ opacity: 0.14 }} />
 
-                  {isPairwise ? (
-                    <PairwiseMatrix
-                      alternatives={viewIssue?.summary?.alternatives || []}
-                      evaluations={evaluations}
-                      collectiveEvaluations={collectiveEvaluations}
-                      permitEdit={false}
-                    />
-                  ) : (
-                    <Matrix
-                      alternatives={viewIssue?.summary?.alternatives || []}
-                      criteria={extractLeafCriteria(viewIssue?.summary?.criteria || []).map((c) => c.name)}
-                      evaluations={evaluations}
-                      collectiveEvaluations={collectiveEvaluations}
-                      permitEdit={false}
-                    />
-                  )}
+                  {ratingsUi.render({
+                    viewIssue,
+                    evaluations,
+                    collectiveEvaluations,
+                    selectedExpert,
+                    selectedCriterion,
+                    leafNames,
+                  })}
                 </Stack>
               </SectionCard>
             </Box>
@@ -2094,49 +2673,54 @@ export const FinishedIssueDialog = ({
               >
                 {useSchemaAdd
                   ? availableModels.map((m) => {
-                    const disabled = !isModelCompatible(m);
-                    const reason = getCompatReason(m, domainType);
-                    const label = m?.name || "—";
+                      const disabled = !isModelCompatible(m);
+                      const reason = getCompatReason(m, domainType);
+                      const label = m?.name || "—";
 
-                    return (
-                      <MenuItem key={label} value={label} disabled={disabled}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%", minWidth: 0 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 900,
-                              minWidth: 0,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
+                      return (
+                        <MenuItem key={label} value={label} disabled={disabled}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            sx={{ width: "100%", minWidth: 0 }}
                           >
-                            {label}
-                          </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 900,
+                                minWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {label}
+                            </Typography>
 
-                          <Box sx={{ flex: 1 }} />
+                            <Box sx={{ flex: 1 }} />
 
-                          {disabled ? (
-                            <Tooltip title={reason || "Incompatible"} arrow>
-                              <Box>
-                                <Pill tone="error">incompatible</Pill>
-                              </Box>
-                            </Tooltip>
-                          ) : (
-                            <Pill tone="success">ok</Pill>
-                          )}
-                        </Stack>
-                      </MenuItem>
-                    );
-                  })
+                            {disabled ? (
+                              <Tooltip title={reason || "Incompatible"} arrow>
+                                <Box>
+                                  <Pill tone="error">incompatible</Pill>
+                                </Box>
+                              </Tooltip>
+                            ) : (
+                              <Pill tone="success">ok</Pill>
+                            )}
+                          </Stack>
+                        </MenuItem>
+                      );
+                    })
                   : (modelsCatalog || []).map((m) => {
-                    const name = m.name || m.model || m.id;
-                    return (
-                      <MenuItem key={name} value={name}>
-                        {m.label || name}
-                      </MenuItem>
-                    );
-                  })}
+                      const name = m.name || m.model || m.id;
+                      return (
+                        <MenuItem key={name} value={name}>
+                          {m.label || name}
+                        </MenuItem>
+                      );
+                    })}
               </Select>
             </FormControl>
 
@@ -2149,7 +2733,8 @@ export const FinishedIssueDialog = ({
                   leafNames={leafNames}
                 />
 
-                {selectedModelFromSchema && filterOutWeightsParams(selectedModelFromSchema.parameters)?.length ? (
+                {selectedModelFromSchema &&
+                filterOutWeightsParams(selectedModelFromSchema.parameters)?.length ? (
                   <Box
                     sx={{
                       mt: 1,
@@ -2159,7 +2744,10 @@ export const FinishedIssueDialog = ({
                       bgcolor: alpha(theme.palette.background.paper, 0.06),
                     }}
                   >
-                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 900 }}
+                    >
                       Tip: empty fields will use defaults (if any). Arrays must be complete.
                     </Typography>
                   </Box>
@@ -2179,7 +2767,10 @@ export const FinishedIssueDialog = ({
                 />
 
                 {modelsLoading ? (
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.secondary", fontWeight: 850 }}
+                  >
                     Loading models…
                   </Typography>
                 ) : null}
@@ -2191,7 +2782,12 @@ export const FinishedIssueDialog = ({
           <Button onClick={closeAddDialog} variant="outlined" color="warning">
             Cancel
           </Button>
-          <Button onClick={handleAddModelRun} variant="outlined" color="secondary" disabled={addLoading}>
+          <Button
+            onClick={handleAddModelRun}
+            variant="outlined"
+            color="secondary"
+            disabled={addLoading}
+          >
             Add
           </Button>
         </DialogActions>
@@ -2203,7 +2799,11 @@ export const FinishedIssueDialog = ({
         onClose={() => setToast((t) => ({ ...t, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity={toast.severity} onClose={() => setToast((t) => ({ ...t, open: false }))} sx={{ borderRadius: 3 }}>
+        <Alert
+          severity={toast.severity}
+          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          sx={{ borderRadius: 3 }}
+        >
           {toast.msg}
         </Alert>
       </Snackbar>
@@ -2216,8 +2816,13 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
   const current = data?.[phase];
   if (!current) return null;
 
-  const expertPoints = Object.entries(current.expert_points || {}).map(([email, [x, y]]) => ({ x, y, email }));
-  const collectivePoint = { x: current.collective_point?.[0], y: current.collective_point?.[1] };
+  const expertPoints = Object.entries(current.expert_points || {}).map(
+    ([email, [x, y]]) => ({ x, y, email })
+  );
+  const collectivePoint = {
+    x: current.collective_point?.[0],
+    y: current.collective_point?.[1],
+  };
 
   const chartData = {
     datasets: [
@@ -2252,7 +2857,9 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
         callbacks: {
           label: (ctx) => {
             const { datasetIndex, raw } = ctx;
-            if (datasetIndex === 0) return `${raw.email} (${raw.x.toFixed(2)}, ${raw.y.toFixed(2)})`;
+            if (datasetIndex === 0) {
+              return `${raw.email} (${raw.x.toFixed(2)}, ${raw.y.toFixed(2)})`;
+            }
             return `Collective (${raw.x.toFixed(2)}, ${raw.y.toFixed(2)})`;
           },
         },
@@ -2282,7 +2889,10 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
   return <Scatter ref={scatterPlotRef} data={chartData} options={chartOptions} />;
 };
 
-export const AnalyticalConsensusLineChart = ({ data, consensusLevelChartRef }) => {
+export const AnalyticalConsensusLineChart = ({
+  data,
+  consensusLevelChartRef,
+}) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -2321,14 +2931,22 @@ export const AnalyticalConsensusLineChart = ({ data, consensusLevelChartRef }) =
       },
       scales: {
         x: {
-          title: { display: true, text: "Round", color: alpha("#fff", 0.85) },
+          title: {
+            display: true,
+            text: "Round",
+            color: alpha("#fff", 0.85),
+          },
           ticks: { color: alpha("#fff", 0.85) },
           grid: { color: alpha("#fff", 0.14) },
         },
         y: {
           min: 0,
           max: 1,
-          title: { display: true, text: "Consensus level (%)", color: alpha("#fff", 0.85) },
+          title: {
+            display: true,
+            text: "Consensus level (%)",
+            color: alpha("#fff", 0.85),
+          },
           ticks: {
             color: alpha("#fff", 0.85),
             stepSize: 0.2,
@@ -2339,11 +2957,18 @@ export const AnalyticalConsensusLineChart = ({ data, consensusLevelChartRef }) =
       },
     };
 
-    const newChart = new Chart(canvasRef.current, { type: "line", data: chartData, options: chartOptions });
+    const newChart = new Chart(canvasRef.current, {
+      type: "line",
+      data: chartData,
+      options: chartOptions,
+    });
+
     chartInstanceRef.current = newChart;
 
     if (consensusLevelChartRef) {
-      consensusLevelChartRef.current = { resetZoom: () => newChart.resetZoom?.() };
+      consensusLevelChartRef.current = {
+        resetZoom: () => newChart.resetZoom?.(),
+      };
     }
 
     return () => newChart.destroy();

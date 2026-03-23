@@ -44,6 +44,7 @@ export const PairwiseMatrix = ({
               <Chip
                 label={collectiveValue}
                 variant="outlined"
+                color="info"
                 size="small"
                 sx={{
                   ml: 1.5,

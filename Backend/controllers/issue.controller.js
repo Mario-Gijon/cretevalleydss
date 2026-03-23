@@ -9,7 +9,7 @@ import { ExitUserIssue } from "../models/ExitUserIssue.js";
 import { ExpressionDomain } from "../models/ExpressionDomain.js";
 import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
 import { Issue } from "../models/Issues.js";
-import { IssueModel } from "../models/Models.js";
+import { IssueModel } from "../models/IssueModels.js";
 import { IssueScenario } from "../models/IssueScenarios.js";
 import { Notification } from "../models/Notificacions.js";
 import { Participation } from "../models/Participations.js";
@@ -42,6 +42,7 @@ import {
   validateFinalEvaluations,
   validateFinalPairwiseEvaluations,
 } from "../utils/validateFinalEvaluations.js";
+
 import { validateFinalWeights } from "../utils/validateFinalWeights.js";
 
 // Modules
@@ -60,6 +61,41 @@ import {
   incrementCounter,
 } from "../modules/issues/issue.active.js";
 
+import {
+  getAcceptedParticipation,
+  getDefaultIssueSnapshot,
+  getNextConsensusPhase,
+  getOrderedLeafCriteriaForIssue,
+} from "../modules/issues/issue.queries.js";
+
+import {
+  mapIssueStageToExitStage,
+  registerUserExit,
+} from "../modules/issues/issue.lifecycle.js";
+
+import {
+  formatExpressionDomainForClient,
+  formatPairwiseEvaluationsByCriterion,
+} from "../modules/issues/issue.mappers.js";
+
+import {
+  buildDefaultsResolved,
+  buildScenarioDirectMatrices,
+  buildScenarioPairwiseMatrices,
+  mergeParamsResolved,
+  resolveScenarioWeightsArray,
+} from "../modules/issues/issue.scenarios.js";
+
+import {
+  buildBwmEvaluationPayload,
+  buildOrderedManualWeights,
+  computeNormalizedCollectiveManualWeights,
+  getRawManualWeightsPayload,
+  markParticipationWeightsCompleted,
+  normalizeSingleWeight,
+  syncIssueStageAfterWeightsCompletion,
+} from "../modules/issues/issue.weights.js";
+
 // External libraries
 import axios from "axios";
 import dayjs from "dayjs";
@@ -67,6 +103,41 @@ import mongoose from "mongoose";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.APIKEY_RESEND);
+
+const getIssueStructureHandler = (evaluationStructure, handlers) => {
+  switch (evaluationStructure) {
+    case EVALUATION_STRUCTURES.DIRECT:
+      return handlers.direct;
+
+    case EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES:
+      return handlers.pairwise;
+
+    default:
+      return null;
+  }
+};
+
+const resolveIssueEvaluationStructureById = async (id) => {
+  const issue = await Issue.findById(id).lean();
+
+  if (!issue) {
+    return {
+      success: false,
+      status: 404,
+      msg: "Issue not found",
+      issue: null,
+      evaluationStructure: null,
+    };
+  }
+
+  return {
+    success: true,
+    status: 200,
+    msg: null,
+    issue,
+    evaluationStructure: resolveEvaluationStructure(issue),
+  };
+};
 
 /**
  * Crea un error HTTP enriquecido con status y metadata opcional.
@@ -140,38 +211,28 @@ const getUniqueTrimmedStrings = (values) =>
     )
   );
 
+const EVALUATION_STRUCTURES = {
+  DIRECT: "direct",
+  PAIRWISE_ALTERNATIVES: "pairwiseAlternatives",
+};
+
 /**
- * Normaliza pesos cuando hay un único criterio hoja.
+ * Resuelve la estructura de evaluación de un documento, manteniendo compatibilidad
+ * con el campo antiguo isPairwise.
  *
- * @param {unknown} weightsMaybe Posible peso o estructura de pesos.
- * @returns {unknown[]}
+ * @param {Record<string, any> | null | undefined} doc Documento a inspeccionar.
+ * @returns {string}
  */
-const normalizeSingleWeight = (weightsMaybe) => {
-  if (weightsMaybe == null) return [1];
-
-  if (typeof weightsMaybe === "number") return [weightsMaybe];
-
-  if (typeof weightsMaybe === "object" && !Array.isArray(weightsMaybe)) {
-    return [weightsMaybe];
+const resolveEvaluationStructure = (doc) => {
+  if (doc?.evaluationStructure) {
+    return doc.evaluationStructure;
   }
 
-  if (Array.isArray(weightsMaybe)) {
-    const isTriangleArray =
-      weightsMaybe.length === 3 &&
-      weightsMaybe.every((item) => typeof item === "number" && Number.isFinite(item));
-
-    if (isTriangleArray) return [weightsMaybe];
-
-    const first = weightsMaybe[0];
-
-    if (Array.isArray(first)) return [first];
-    if (first && typeof first === "object") return [first];
-    if (typeof first === "number") return [first];
-
-    return [1];
+  if (doc?.isPairwise === true) {
+    return EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
   }
 
-  return [1];
+  return EVALUATION_STRUCTURES.DIRECT;
 };
 
 /**
@@ -497,6 +558,8 @@ export const createIssue = async (req, res) => {
         throw createHttpError(400, "Model does not exist", "selectedModel");
       }
 
+      const modelEvaluationStructure = resolveEvaluationStructure(model);
+
       const admin = await User.findById(req.uid).session(session);
       if (!admin) {
         throw createHttpError(400, "Admin not found");
@@ -520,6 +583,7 @@ export const createIssue = async (req, res) => {
       const issue = new Issue({
         admin: req.uid,
         model: model._id,
+        evaluationStructure: modelEvaluationStructure,
         isConsensus: withConsensus,
         name: cleanIssueName,
         description: issueDescription,
@@ -528,7 +592,7 @@ export const createIssue = async (req, res) => {
         closureDate: closureDate ? dayjs(closureDate).format("DD-MM-YYYY") : null,
         weightingMode,
         currentStage: "criteriaWeighting",
-        ...(model.isConsensus && { consensusMaxPhases, consensusThreshold }),
+        ...(Boolean(model.isConsensus) && { consensusMaxPhases, consensusThreshold }),
         modelParameters: paramValues,
       });
 
@@ -738,10 +802,12 @@ export const createIssue = async (req, res) => {
         session,
       });
 
-      const isPairwise = Boolean(model.isPairwise);
       const alternativeByName = new Map(
         createdAlternatives.map((alternative) => [alternative.name, alternative])
       );
+
+      const usesPairwiseAlternatives =
+        modelEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
 
       for (const email of Object.keys(domainAssignments.experts)) {
         const expertUser = expertByEmail.get(email);
@@ -767,7 +833,7 @@ export const createIssue = async (req, res) => {
               );
             }
 
-            if (isPairwise) {
+            if (usesPairwiseAlternatives) {
               for (const comparedAlternative of createdAlternatives) {
                 if (String(comparedAlternative._id) === String(alternativeDoc._id)) {
                   continue;
@@ -975,6 +1041,8 @@ export const getAllActiveIssues = async (req, res) => {
     const formattedIssues = issues.map((issue) => {
       const issueId = asId(issue._id);
       const issueParticipations = participationMap[issueId] || [];
+      const evaluationStructure =
+        issue.evaluationStructure || resolveEvaluationStructure(issue.model);
 
       const isValidUserId =
         Boolean(userId) &&
@@ -1225,7 +1293,10 @@ export const getAllActiveIssues = async (req, res) => {
         creator: issue.admin?.email,
         description: issue.description,
         model: issue.model,
-        isPairwise: Boolean(issue.model?.isPairwise),
+        evaluationStructure,
+        isPairwise:
+          evaluationStructure ===
+          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
         isConsensus: Boolean(issue.isConsensus),
         currentStage: stage,
         weightingMode: issue.weightingMode,
@@ -1888,183 +1959,6 @@ export const removeNotificationById = async (req, res) => {
   }
 };
 
-/**
- * Obtiene la siguiente fase de consenso para un issue.
- *
- * @param {mongoose.Types.ObjectId | string} issueId Id del issue.
- * @returns {Promise<number>}
- */
-const getNextConsensusPhase = async (issueId) => {
-  const latestConsensus = await Consensus.findOne({ issue: issueId })
-    .sort({ phase: -1 })
-    .lean();
-
-  return latestConsensus ? latestConsensus.phase + 1 : 1;
-};
-
-/**
- * Obtiene el snapshot por defecto de un issue, priorizando dominios numéricos.
- *
- * @param {mongoose.Types.ObjectId | string} issueId Id del issue.
- * @returns {Promise<Record<string, any> | null>}
- */
-const getDefaultIssueSnapshot = async (issueId) => {
-  const numericSnapshot = await IssueExpressionDomain.findOne({
-    issue: issueId,
-    type: "numeric",
-  })
-    .sort({ createdAt: 1 })
-    .lean();
-
-  if (numericSnapshot) {
-    return numericSnapshot;
-  }
-
-  return IssueExpressionDomain.findOne({ issue: issueId })
-    .sort({ createdAt: 1 })
-    .lean();
-};
-
-/**
- * Devuelve el stage compatible con ExitUserIssue a partir del currentStage del issue.
- *
- * @param {string | null | undefined} stage Stage actual del issue.
- * @returns {string | null}
- */
-const mapIssueStageToExitStage = (stage) => {
-  if (stage === "criteriaWeighting" || stage === "weightsFinished") {
-    return "criteriaWeighting";
-  }
-
-  if (stage === "alternativeEvaluation") {
-    return "alternativeEvaluation";
-  }
-
-  return null;
-};
-
-/**
- * Registra una salida de usuario en ExitUserIssue.
- *
- * @param {object} params Parámetros de entrada.
- * @param {mongoose.Types.ObjectId | string} params.issueId Id del issue.
- * @param {mongoose.Types.ObjectId | string} params.userId Id del usuario.
- * @param {number | null} params.phase Fase asociada.
- * @param {string | null} params.stage Stage compatible.
- * @param {string} params.reason Motivo de la salida.
- * @returns {Promise<void>}
- */
-const registerUserExit = async ({
-  issueId,
-  userId,
-  phase,
-  stage,
-  reason,
-}) => {
-  const now = new Date();
-
-  const historyEntry = {
-    timestamp: now,
-    phase,
-    stage,
-    action: "exited",
-    reason,
-  };
-
-  await ExitUserIssue.findOneAndUpdate(
-    { issue: issueId, user: userId },
-    {
-      $setOnInsert: {
-        issue: issueId,
-        user: userId,
-      },
-      $set: {
-        hidden: true,
-        timestamp: now,
-        phase,
-        stage,
-        reason,
-      },
-      $push: {
-        history: historyEntry,
-      },
-    },
-    { upsert: true, new: true }
-  );
-};
-
-/**
- * Construye la estructura de evaluaciones pairwise agrupadas por criterio.
- *
- * @param {Array<Record<string, any>>} evaluations Evaluaciones pobladas.
- * @returns {Record<string, Array<Record<string, any>>>}
- */
-const formatPairwiseEvaluationsByCriterion = (evaluations) => {
-  const evaluationsByCriterion = {};
-
-  for (const evaluation of evaluations) {
-    const {
-      criterion,
-      alternative,
-      comparedAlternative,
-      value,
-      expressionDomain,
-    } = evaluation;
-
-    if (!value || !criterion || !alternative) {
-      continue;
-    }
-
-    const criterionName = criterion.name;
-    const alternativeName = alternative.name;
-    const comparedAlternativeName = comparedAlternative?.name || null;
-
-    if (!evaluationsByCriterion[criterionName]) {
-      evaluationsByCriterion[criterionName] = {};
-    }
-
-    if (!evaluationsByCriterion[criterionName][alternativeName]) {
-      evaluationsByCriterion[criterionName][alternativeName] = {};
-    }
-
-    const evalData = {
-      value,
-      domain: expressionDomain
-        ? {
-            id: expressionDomain._id,
-            name: expressionDomain.name,
-            type: expressionDomain.type,
-            ...(expressionDomain.type === "numeric" && {
-              range: expressionDomain.numericRange,
-            }),
-            ...(expressionDomain.type === "linguistic" && {
-              labels: expressionDomain.linguisticLabels,
-            }),
-          }
-        : null,
-    };
-
-    if (comparedAlternativeName) {
-      evaluationsByCriterion[criterionName][alternativeName][comparedAlternativeName] =
-        evalData;
-    } else {
-      evaluationsByCriterion[criterionName][alternativeName][""] = evalData;
-    }
-  }
-
-  const formatted = {};
-
-  for (const criterionName of Object.keys(evaluationsByCriterion)) {
-    formatted[criterionName] = Object.entries(
-      evaluationsByCriterion[criterionName]
-    ).map(([alternativeName, comparisons]) => ({
-      id: alternativeName,
-      ...comparisons,
-    }));
-  }
-
-  return formatted;
-};
 
 /**
  * Construye las matrices pairwise por experto y criterio para resolver un issue.
@@ -2148,12 +2042,23 @@ export const savePairwiseEvaluations = async (req, res) => {
       return res ? res.status(404).json(response) : response;
     }
 
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
+      const response = {
+        success: false,
+        msg: "This issue does not use pairwise alternative evaluation",
+      };
+      return res ? res.status(400).json(response) : response;
+    }
+
     const defaultSnapshot = await getDefaultIssueSnapshot(issue._id);
     if (!defaultSnapshot) {
-      return res.status(400).json({
+      const response = {
         success: false,
         msg: "This issue has no IssueExpressionDomain snapshots.",
-      });
+      };
+      return res ? res.status(400).json(response) : response;
     }
 
     const participation = await Participation.findOne({
@@ -2215,7 +2120,8 @@ export const savePairwiseEvaluations = async (req, res) => {
         )) {
           if (comparedAlternativeName === alternativeName) continue;
 
-          const comparedAlternativeId = alternativeMap.get(comparedAlternativeName);
+          const comparedAlternativeId =
+            alternativeMap.get(comparedAlternativeName);
           if (!comparedAlternativeId) continue;
 
           const value =
@@ -2309,6 +2215,15 @@ export const getPairwiseEvaluations = async (req, res) => {
       });
     }
 
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue does not use pairwise alternative evaluation",
+      });
+    }
+
     const [evaluations, latestConsensus] = await Promise.all([
       Evaluation.find({
         issue: issue._id,
@@ -2345,7 +2260,7 @@ export const getPairwiseEvaluations = async (req, res) => {
  * @param {import("express").Response} res Response de Express.
  * @returns {Promise<void>}
  */
-export const sendPairwiseEvaluations = async (req, res) => {
+export const submitPairwiseEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
@@ -2391,7 +2306,7 @@ export const sendPairwiseEvaluations = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      msg: "Evaluations sent successfully",
+      msg: "Evaluations submitted successfully",
     });
   } catch (error) {
     console.error(error);
@@ -2420,6 +2335,15 @@ export const resolvePairwiseIssue = async (req, res) => {
       return res.status(404).json({
         success: false,
         msg: "Issue not found",
+      });
+    }
+
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue must be resolved with the direct resolver",
       });
     }
 
@@ -2787,7 +2711,8 @@ export const editExperts = async (req, res) => {
     }
 
     const leafCriteria = criteria.filter((criterion) => criterion.isLeaf);
-    const isPairwise = Boolean(issue.model?.isPairwise);
+    const evaluationStructure =
+      issue.evaluationStructure || resolveEvaluationStructure(issue.model);
 
     for (const emailRaw of expertsToAdd || []) {
       const email = String(emailRaw || "").trim();
@@ -2856,7 +2781,10 @@ export const editExperts = async (req, res) => {
 
         for (const alternative of alternatives) {
           for (const criterion of leafCriteria) {
-            if (isPairwise) {
+            if (
+              evaluationStructure ===
+              EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+            ) {
               for (const comparedAlternative of alternatives) {
                 if (String(comparedAlternative._id) === String(alternative._id)) {
                   continue;
@@ -3017,24 +2945,6 @@ export const leaveIssue = async (req, res) => {
 };
 
 /**
- * Formatea un dominio de expresión para enviarlo al frontend.
- *
- * @param {Record<string, any> | null | undefined} domain Dominio poblado.
- * @returns {Record<string, any> | null}
- */
-const formatExpressionDomainForClient = (domain) => {
-  if (!domain) return null;
-
-  return {
-    id: domain._id,
-    name: domain.name,
-    type: domain.type,
-    ...(domain.type === "numeric" && { range: domain.numericRange }),
-    ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
-  };
-};
-
-/**
  * Construye la matriz de evaluaciones directas por experto.
  *
  * @param {object} params Parámetros de entrada.
@@ -3113,7 +3023,7 @@ const buildDirectMatrices = async ({
  * @param {import("express").Response} [res] Response de Express.
  * @returns {Promise<object | void>}
  */
-export const saveEvaluations = async (req, res) => {
+export const saveDirectEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
@@ -3123,6 +3033,16 @@ export const saveEvaluations = async (req, res) => {
     if (!issue) {
       const response = { success: false, msg: "Issue not found" };
       return res ? res.status(404).json(response) : response;
+    }
+
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.DIRECT) {
+      const response = {
+        success: false,
+        msg: "This issue uses pairwise alternative evaluation",
+      };
+      return res ? res.status(400).json(response) : response;
     }
 
     const participation = await Participation.findOne({
@@ -3243,7 +3163,7 @@ export const saveEvaluations = async (req, res) => {
  * @param {import("express").Response} res Response de Express.
  * @returns {Promise<void>}
  */
-export const getEvaluations = async (req, res) => {
+export const getDirectEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
@@ -3254,6 +3174,15 @@ export const getEvaluations = async (req, res) => {
       return res.status(404).json({
         success: false,
         msg: "Issue not found",
+      });
+    }
+
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.DIRECT) {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue uses pairwise alternative evaluation",
       });
     }
 
@@ -3318,7 +3247,7 @@ export const getEvaluations = async (req, res) => {
  * @param {import("express").Response} res Response de Express.
  * @returns {Promise<void>}
  */
-export const sendEvaluations = async (req, res) => {
+export const submitDirectEvaluations = async (req, res) => {
   const userId = req.uid;
 
   try {
@@ -3334,7 +3263,7 @@ export const sendEvaluations = async (req, res) => {
       });
     }
 
-    const saveResult = await saveEvaluations(req);
+    const saveResult = await saveDirectEvaluations(req);
     if (!saveResult.success) {
       return res.status(500).json({
         success: false,
@@ -3365,7 +3294,7 @@ export const sendEvaluations = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      msg: "Evaluations sent successfully",
+      msg: "Evaluations submitted successfully"
     });
   } catch (error) {
     console.error(error);
@@ -3377,13 +3306,13 @@ export const sendEvaluations = async (req, res) => {
 };
 
 /**
- * Resuelve un issue no pairwise y gestiona el flujo de consenso si aplica.
+ * Resuelve un issue con evaluación directa y gestiona el flujo de consenso si aplica.
  *
  * @param {import("express").Request} req Request de Express.
  * @param {import("express").Response} res Response de Express.
  * @returns {Promise<void>}
  */
-export const resolveIssue = async (req, res) => {
+export const resolveDirectIssue = async (req, res) => {
   const userId = req.uid;
 
   try {
@@ -3397,11 +3326,20 @@ export const resolveIssue = async (req, res) => {
       });
     }
 
+    const evaluationStructure = resolveEvaluationStructure(issue);
+
     const model = await IssueModel.findById(issue.model);
     if (!model) {
       return res.status(404).json({
         success: false,
         msg: "Issue model not found",
+      });
+    }
+
+    if (evaluationStructure !== EVALUATION_STRUCTURES.DIRECT) {
+      return res.status(400).json({
+        success: false,
+        msg: "This issue must be resolved with the pairwise resolver",
       });
     }
 
@@ -3640,104 +3578,6 @@ export const resolveIssue = async (req, res) => {
 };
 
 /**
- * Ajusta la longitud de un array rellenando o truncando según corresponda.
- *
- * @param {unknown[]} arr Array de entrada.
- * @param {number} len Longitud deseada.
- * @param {unknown} [filler=null] Valor de relleno.
- * @returns {unknown[]}
- */
-const ensureLen = (arr, len, filler = null) => {
-  const normalized = Array.isArray(arr) ? [...arr] : [];
-
-  if (normalized.length < len) {
-    return [...normalized, ...Array(len - normalized.length).fill(filler)];
-  }
-
-  if (normalized.length > len) {
-    return normalized.slice(0, len);
-  }
-
-  return normalized;
-};
-
-/**
- * Resuelve los parámetros por defecto de un modelo según el número de criterios hoja.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.modelDoc Documento del modelo.
- * @param {number} params.leafCount Número de criterios hoja.
- * @returns {Record<string, any>}
- */
-const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
-  const resolved = {};
-
-  for (const parameter of modelDoc?.parameters || []) {
-    const { name, type, default: defaultValue } = parameter;
-
-    if (type === "number") {
-      resolved[name] = defaultValue ?? null;
-      continue;
-    }
-
-    if (type === "array") {
-      const length =
-        parameter?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : (typeof parameter?.restrictions?.length === "number"
-              ? parameter.restrictions.length
-              : null) ??
-            (Array.isArray(defaultValue) ? defaultValue.length : 2);
-
-      const base = Array.isArray(defaultValue) ? defaultValue : [];
-      resolved[name] = ensureLen(base, length, null);
-      continue;
-    }
-
-    if (type === "fuzzyArray") {
-      const length =
-        parameter?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : (typeof parameter?.restrictions?.length === "number"
-              ? parameter.restrictions.length
-              : null) ??
-            (Array.isArray(defaultValue) ? defaultValue.length : 1);
-
-      const base = Array.isArray(defaultValue) ? defaultValue : [];
-      resolved[name] = ensureLen(base, length, [null, null, null]).map(
-        (triangle) =>
-          Array.isArray(triangle) && triangle.length === 3
-            ? triangle
-            : [null, null, null]
-      );
-      continue;
-    }
-
-    resolved[name] = defaultValue ?? null;
-  }
-
-  return resolved;
-};
-
-/**
- * Fusiona parámetros guardados con sus valores resueltos por defecto.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.defaultsResolved Defaults resueltos.
- * @param {Record<string, any>} params.savedParams Parámetros guardados.
- * @returns {Record<string, any>}
- */
-const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
-  const merged = { ...(defaultsResolved || {}) };
-
-  for (const [key, value] of Object.entries(savedParams || {})) {
-    merged[key] = value;
-  }
-
-  return merged;
-};
-
-/**
  * Obtiene toda la información de un issue finalizado para la pantalla de detalle.
  *
  * @param {import("express").Request} req Request de Express.
@@ -3756,11 +3596,16 @@ export const getFinishedIssueInfo = async (req, res) => {
       });
     }
 
+    const issueEvaluationStructure =
+      issue.evaluationStructure || resolveEvaluationStructure(issue.model);
+
     const summary = await createSummarySection(issue._id);
     const alternativesRankings = await createAlternativesRankingsSection(issue._id);
-    const expertsRatings = issue.model.isPairwise
-      ? await createExpertsPairwiseRatingsSection(issue._id)
-      : await createExpertsRatingsSection(issue._id);
+    const expertsRatings =
+      issueEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+        ? await createExpertsPairwiseRatingsSection(issue._id)
+        : await createExpertsRatingsSection(issue._id);
+
     const analyticalGraphs = await createAnalyticalGraphsSection(
       issue._id,
       issue.isConsensus
@@ -3804,11 +3649,9 @@ export const getFinishedIssueInfo = async (req, res) => {
 
     const allModels = await IssueModel.find()
       .select(
-        "name isConsensus isPairwise isMultiCriteria smallDescription extendDescription moreInfoUrl parameters supportedDomains"
+        "name isConsensus evaluationStructure isMultiCriteria smallDescription extendDescription moreInfoUrl parameters supportedDomains"
       )
       .lean();
-
-    const isPairwiseIssue = Boolean(issue.model?.isPairwise);
 
     const availableModels = allModels.map((modelDoc) => {
       const defaultsResolved = buildDefaultsResolved({
@@ -3816,24 +3659,30 @@ export const getFinishedIssueInfo = async (req, res) => {
         leafCount,
       });
 
-      const compatibility = {
-        pairwise: Boolean(modelDoc.isPairwise) === isPairwiseIssue,
-        domain: domainType
-          ? Boolean(modelDoc.supportedDomains?.[domainType]?.enabled)
-          : true,
-      };
+      const modelEvaluationStructure = resolveEvaluationStructure(modelDoc);
+      const sameEvaluationStructure =
+        modelEvaluationStructure === issueEvaluationStructure;
 
       return {
         id: String(modelDoc._id),
         name: modelDoc.name,
         isConsensus: Boolean(modelDoc.isConsensus),
-        isPairwise: Boolean(modelDoc.isPairwise),
+        evaluationStructure: modelEvaluationStructure,
+        isPairwise:
+          modelEvaluationStructure ===
+          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
         isMultiCriteria: Boolean(modelDoc.isMultiCriteria),
         smallDescription: modelDoc.smallDescription,
         moreInfoUrl: modelDoc.moreInfoUrl,
         parameters: modelDoc.parameters || [],
         defaultsResolved,
-        compatibility,
+        compatibility: {
+          evaluationStructure: sameEvaluationStructure,
+          pairwise: sameEvaluationStructure,
+          domain: domainType
+            ? Boolean(modelDoc.supportedDomains?.[domainType]?.enabled)
+            : true,
+        },
       };
     });
 
@@ -3853,31 +3702,38 @@ export const getFinishedIssueInfo = async (req, res) => {
       IssueScenario.find({ issue: issue._id })
         .sort({ createdAt: -1 })
         .select(
-          "_id name targetModel targetModelName domainType isPairwise status createdAt createdBy"
+          "_id name targetModel targetModelName domainType evaluationStructure status createdAt createdBy"
         )
         .populate("createdBy", "email name")
         .lean(),
       Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
     ]);
 
-    const scenarios = (scenarioDocs || []).map((scenario) => ({
-      id: String(scenario._id),
-      name: scenario.name || "",
-      targetModelId: scenario.targetModel
-        ? String(scenario.targetModel)
-        : null,
-      targetModelName: scenario.targetModelName || "",
-      domainType: scenario.domainType ?? null,
-      isPairwise: Boolean(scenario.isPairwise),
-      status: scenario.status || "done",
-      createdAt: scenario.createdAt || null,
-      createdBy: scenario.createdBy
-        ? {
+    const scenarios = (scenarioDocs || []).map((scenario) => {
+      const scenarioEvaluationStructure = resolveEvaluationStructure(scenario);
+
+      return {
+        id: String(scenario._id),
+        name: scenario.name || "",
+        targetModelId: scenario.targetModel
+          ? String(scenario.targetModel)
+          : null,
+        targetModelName: scenario.targetModelName || "",
+        domainType: scenario.domainType ?? null,
+        evaluationStructure: scenarioEvaluationStructure,
+        isPairwise:
+          scenarioEvaluationStructure ===
+          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+        status: scenario.status || "done",
+        createdAt: scenario.createdAt || null,
+        createdBy: scenario.createdBy
+          ? {
             email: scenario.createdBy.email,
             name: scenario.createdBy.name,
           }
-        : null,
-    }));
+          : null,
+      };
+    });
 
     const baseScenario = {
       id: null,
@@ -3885,7 +3741,10 @@ export const getFinishedIssueInfo = async (req, res) => {
       targetModelId: String(baseModel?._id),
       targetModelName: baseModel?.name || "",
       domainType,
-      isPairwise: Boolean(isPairwiseIssue),
+      evaluationStructure: issueEvaluationStructure,
+      isPairwise:
+        issueEvaluationStructure ===
+        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
       status: "done",
       createdAt: latestConsensus?.timestamp || null,
       createdBy: null,
@@ -3904,6 +3763,7 @@ export const getFinishedIssueInfo = async (req, res) => {
         base: {
           modelId: String(baseModel?._id),
           modelName: baseModel?.name,
+          evaluationStructure: issueEvaluationStructure,
           parameters: baseModel?.parameters || [],
           paramsSaved: baseParamsSaved,
           paramsResolved: baseParamsResolved,
@@ -3924,309 +3784,6 @@ export const getFinishedIssueInfo = async (req, res) => {
       msg: "Error fetching full issue info",
     });
   }
-};
-
-/**
- * Obtiene la participación aceptada del usuario en un issue.
- *
- * @param {mongoose.Types.ObjectId | string} issueId Id del issue.
- * @param {mongoose.Types.ObjectId | string} userId Id del usuario.
- * @returns {Promise<Record<string, any> | null>}
- */
-const getAcceptedParticipation = async (issueId, userId) =>
-  Participation.findOne({
-    issue: issueId,
-    expert: userId,
-    invitationStatus: "accepted",
-  });
-
-/**
- * Convierte un mapa de valores a enteros o null.
- *
- * @param {Record<string, any>} obj Objeto de entrada.
- * @returns {Record<string, number | null>}
- */
-const toNullableIntMap = (obj) =>
-  Object.fromEntries(
-    Object.entries(obj || {}).map(([key, value]) => [
-      key,
-      value === "" || value == null ? null : parseInt(value, 10),
-    ])
-  );
-
-/**
- * Obtiene los criterios hoja ordenados canónicamente para un issue.
- *
- * @param {Record<string, any>} issue Documento del issue.
- * @returns {Promise<Array<Record<string, any>>>}
- */
-const getOrderedLeafCriteriaForIssue = async (issue) => {
-  await ensureIssueOrdersDb({ issueId: issue._id });
-
-  return getOrderedLeafCriteriaDb({
-    issueId: issue._id,
-    issueDoc: issue,
-    select: "_id name",
-    lean: true,
-  });
-};
-
-/**
- * Obtiene estadísticas de pesos completados para un issue.
- *
- * @param {mongoose.Types.ObjectId | string} issueId Id del issue.
- * @returns {Promise<{ totalParticipants: number, totalWeightsDone: number }>}
- */
-const getWeightCompletionStats = async (issueId) => {
-  const [totalParticipants, totalWeightsDone] = await Promise.all([
-    Participation.countDocuments({
-      issue: issueId,
-      invitationStatus: { $in: ["accepted", "pending"] },
-    }),
-    Participation.countDocuments({
-      issue: issueId,
-      invitationStatus: { $in: ["accepted", "pending"] },
-      weightsCompleted: true,
-    }),
-  ]);
-
-  return { totalParticipants, totalWeightsDone };
-};
-
-/**
- * Construye el objeto manualWeights ordenado canónicamente desde la entrada.
- *
- * @param {Record<string, any>} raw Pesos recibidos.
- * @param {Array<Record<string, any>>} leafDocs Criterios hoja ordenados.
- * @returns {Record<string, number | null>}
- */
-const buildOrderedManualWeights = (raw, leafDocs) =>
-  Object.fromEntries(
-    leafDocs.map((criterion) => {
-      const value = raw?.[criterion.name];
-
-      if (value === "" || value === null || value === undefined) {
-        return [criterion.name, null];
-      }
-
-      const num = Number(value);
-      return [criterion.name, Number.isFinite(num) ? num : null];
-    })
-  );
-
-/**
- * Obtiene el payload raw de pesos manuales desde las variantes aceptadas.
- *
- * @param {Record<string, any>} body Cuerpo de la petición.
- * @returns {Record<string, any>}
- */
-const getRawManualWeightsPayload = (body) =>
-  body?.manualWeights ||
-  body?.weights?.manualWeights ||
-  body?.weights ||
-  body?.weigths?.manualWeights ||
-  body?.weigths ||
-  {};
-
-/**
- * Resuelve weights como array a partir de paramsUsed y criterios ordenados.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.paramsUsed Parámetros usados.
- * @param {Array<Record<string, any>>} params.criteria Criterios ordenados.
- * @returns {any[] | null}
- */
-const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
-  const weights = paramsUsed?.weights;
-
-  if (Array.isArray(weights)) {
-    return weights;
-  }
-
-  if (weights && typeof weights === "object") {
-    return criteria.map((criterion) =>
-      weights[criterion.name] != null ? weights[criterion.name] : null
-    );
-  }
-
-  return null;
-};
-
-/**
- * Construye matrices directas para escenarios preservando la lógica actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {mongoose.Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas con expert populado.
- * @returns {Promise<{ matricesUsed: Record<string, Array<Array<any>>>, snapshotIdsUsed: string[] }>}
- */
-const buildScenarioDirectMatrices = async ({
-  issueId,
-  alternatives,
-  criteria,
-  participations,
-}) => {
-  const expertIds = participations.map((participation) => participation.expert?._id).filter(Boolean);
-
-  const evaluationDocs = await Evaluation.find({
-    issue: issueId,
-    expert: { $in: expertIds },
-    comparedAlternative: null,
-  })
-    .select("expert alternative criterion value expressionDomain")
-    .populate("expressionDomain", "type linguisticLabels numericRange name")
-    .lean();
-
-  const evaluationMap = new Map();
-  const snapshotSet = new Set();
-
-  for (const evaluation of evaluationDocs) {
-    const key = `${asId(evaluation.expert)}_${asId(evaluation.alternative)}_${asId(
-      evaluation.criterion
-    )}`;
-    evaluationMap.set(key, evaluation);
-
-    if (evaluation.expressionDomain?._id) {
-      snapshotSet.add(asId(evaluation.expressionDomain._id));
-    }
-  }
-
-  const matricesUsed = {};
-
-  for (const participation of participations) {
-    const expertEmail = participation.expert.email;
-    const expertId = asId(participation.expert._id);
-
-    const matrixForExpert = [];
-
-    for (const alternative of alternatives) {
-      const row = [];
-
-      for (const criterion of criteria) {
-        const key = `${expertId}_${asId(alternative._id)}_${asId(criterion._id)}`;
-        const evaluation = evaluationMap.get(key);
-
-        let value = evaluation?.value ?? null;
-
-        if (
-          value != null &&
-          evaluation?.expressionDomain?.type === "numeric" &&
-          typeof value === "string"
-        ) {
-          const numericValue = Number(value);
-          value = Number.isFinite(numericValue) ? numericValue : value;
-        }
-
-        if (value != null && evaluation?.expressionDomain?.type === "linguistic") {
-          const labelDefinition = evaluation.expressionDomain.linguisticLabels?.find(
-            (label) => label.label === value
-          );
-          value = labelDefinition ? labelDefinition.values : null;
-        }
-
-        row.push(value);
-      }
-
-      matrixForExpert.push(row);
-    }
-
-    matricesUsed[expertEmail] = matrixForExpert;
-  }
-
-  return {
-    matricesUsed,
-    snapshotIdsUsed: Array.from(snapshotSet),
-  };
-};
-
-/**
- * Construye matrices pairwise para escenarios preservando la lógica actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {mongoose.Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas con expert populado.
- * @returns {Promise<{ matricesUsed: Record<string, Record<string, Array<Array<any>>>>, snapshotIdsUsed: string[] }>}
- */
-const buildScenarioPairwiseMatrices = async ({
-  issueId,
-  alternatives,
-  criteria,
-  participations,
-}) => {
-  const expertIds = participations.map((participation) => participation.expert?._id).filter(Boolean);
-
-  const evaluationDocs = await Evaluation.find({
-    issue: issueId,
-    expert: { $in: expertIds },
-    comparedAlternative: { $ne: null },
-  })
-    .select("expert alternative comparedAlternative criterion value expressionDomain")
-    .populate("expressionDomain", "type")
-    .lean();
-
-  const snapshotSet = new Set();
-  for (const evaluation of evaluationDocs) {
-    if (evaluation.expressionDomain?._id) {
-      snapshotSet.add(asId(evaluation.expressionDomain._id));
-    }
-  }
-
-  const alternativeIndexMap = new Map(
-    alternatives.map((alternative, index) => [asId(alternative._id), index])
-  );
-  const criterionNameById = new Map(
-    criteria.map((criterion) => [asId(criterion._id), criterion.name])
-  );
-
-  const matricesUsed = {};
-
-  for (const participation of participations) {
-    matricesUsed[participation.expert.email] = {};
-
-    for (const criterion of criteria) {
-      const size = alternatives.length;
-      matricesUsed[participation.expert.email][criterion.name] = Array.from(
-        { length: size },
-        (_, rowIndex) =>
-          Array.from({ length: size }, (_, colIndex) =>
-            rowIndex === colIndex ? 0.5 : null
-          )
-      );
-    }
-  }
-
-  for (const evaluation of evaluationDocs) {
-    const participation = participations.find(
-      (item) => asId(item.expert._id) === asId(evaluation.expert)
-    );
-    if (!participation) continue;
-
-    const criterionName = criterionNameById.get(asId(evaluation.criterion));
-    if (!criterionName) continue;
-
-    const rowIndex = alternativeIndexMap.get(asId(evaluation.alternative));
-    const colIndex = alternativeIndexMap.get(asId(evaluation.comparedAlternative));
-
-    if (rowIndex == null || colIndex == null) continue;
-
-    let value = evaluation.value ?? null;
-    if (value != null && typeof value === "string") {
-      const numericValue = Number(value);
-      value = Number.isFinite(numericValue) ? numericValue : value;
-    }
-
-    matricesUsed[participation.expert.email][criterionName][rowIndex][colIndex] =
-      value;
-  }
-
-  return {
-    matricesUsed,
-    snapshotIdsUsed: Array.from(snapshotSet),
-  };
 };
 
 /**
@@ -4265,16 +3822,12 @@ export const saveBwmWeights = async (req, res) => {
       return res ? res.status(400).json(response) : response;
     }
 
-    const payload = {
-      issue: issue._id,
-      expert: userId,
-      bestCriterion: bwmData.bestCriterion,
-      worstCriterion: bwmData.worstCriterion,
-      bestToOthers: toNullableIntMap(bwmData.bestToOthers),
-      othersToWorst: toNullableIntMap(bwmData.othersToWorst),
-      completed: send,
-      consensusPhase: 1,
-    };
+    const payload = buildBwmEvaluationPayload({
+      issueId: issue._id,
+      userId,
+      bwmData,
+      send,
+    });
 
     const existingEvaluation = await CriteriaWeightEvaluation.findOne({
       issue: issue._id,
@@ -4434,23 +3987,13 @@ export const sendBwmWeights = async (req, res) => {
       { $set: { completed: true } }
     );
 
-    await Participation.updateOne(
-      { issue: issue._id, expert: userId },
-      { $set: { weightsCompleted: true } }
-    );
+    await markParticipationWeightsCompleted({
+      ParticipationModel: Participation,
+      issueId: issue._id,
+      userId,
+    });
 
-    const { totalParticipants, totalWeightsDone } = await getWeightCompletionStats(
-      issue._id
-    );
-
-    if (
-      totalParticipants > 0 &&
-      totalWeightsDone === totalParticipants &&
-      issue.currentStage !== "weightsFinished"
-    ) {
-      issue.currentStage = "weightsFinished";
-      await issue.save();
-    }
+    await syncIssueStageAfterWeightsCompletion(issue);
 
     return res.status(200).json({
       success: true,
@@ -4791,23 +4334,13 @@ export const sendManualWeights = async (req, res) => {
       { upsert: true }
     );
 
-    await Participation.updateOne(
-      { issue: issue._id, expert: userId },
-      { $set: { weightsCompleted: true } }
-    );
+    await markParticipationWeightsCompleted({
+      ParticipationModel: Participation,
+      issueId: issue._id,
+      userId,
+    });
 
-    const { totalParticipants, totalWeightsDone } = await getWeightCompletionStats(
-      issue._id
-    );
-
-    if (
-      totalParticipants > 0 &&
-      totalWeightsDone === totalParticipants &&
-      issue.currentStage !== "weightsFinished"
-    ) {
-      issue.currentStage = "weightsFinished";
-      await issue.save();
-    }
+    await syncIssueStageAfterWeightsCompletion(issue);
 
     return res.status(200).json({
       success: true,
@@ -4896,37 +4429,13 @@ export const computeManualWeights = async (req, res) => {
       });
     }
 
-    const collectiveWeights = [];
-
-    for (const criterionName of criterionNames) {
-      const values = [];
-
-      for (const evaluation of evaluations) {
-        const value = evaluation.manualWeights?.[criterionName];
-        if (value !== undefined && value !== null && value !== "") {
-          values.push(Number(value));
-        }
-      }
-
-      collectiveWeights.push(
-        values.length
-          ? values.reduce((acc, value) => acc + value, 0) / values.length
-          : 0
-      );
-    }
-
-    const total = collectiveWeights.reduce((acc, value) => acc + value, 0);
+    const normalizedWeights = computeNormalizedCollectiveManualWeights({
+      evaluations,
+      criterionNames,
+    });
 
     issue.modelParameters = { ...(issue.modelParameters || {}) };
-
-    if (total <= 0) {
-      const uniformWeight = 1 / collectiveWeights.length;
-      issue.modelParameters.weights = collectiveWeights.map(() => uniformWeight);
-    } else {
-      issue.modelParameters.weights = collectiveWeights.map(
-        (weight) => weight / total
-      );
-    }
+    issue.modelParameters.weights = normalizedWeights;
 
     issue.currentStage = "alternativeEvaluation";
     await issue.save();
@@ -5043,11 +4552,15 @@ export const createIssueScenario = async (req, res) => {
       });
     }
 
-    const isPairwiseIssue = Boolean(issue.model?.isPairwise);
-    if (Boolean(targetModel.isPairwise) !== isPairwiseIssue) {
+    const issueEvaluationStructure =
+      issue.evaluationStructure || resolveEvaluationStructure(issue.model);
+
+    const targetEvaluationStructure = resolveEvaluationStructure(targetModel);
+
+    if (targetEvaluationStructure !== issueEvaluationStructure) {
       return res.status(400).json({
         success: false,
-        msg: "Incompatible models: pairwise (AxA) does not match this issue input type.",
+        msg: "Incompatible models: evaluation structure does not match this issue input type.",
       });
     }
 
@@ -5076,7 +4589,9 @@ export const createIssueScenario = async (req, res) => {
       criterion.type === "benefit" ? "max" : "min"
     );
 
-    const expertIds = participations.map((participation) => participation.expert?._id).filter(Boolean);
+    const expertIds = participations
+      .map((participation) => participation.expert?._id)
+      .filter(Boolean);
 
     let domainType = null;
     try {
@@ -5130,7 +4645,7 @@ export const createIssueScenario = async (req, res) => {
     let snapshotIdsUsed = [];
     const expertsOrder = participations.map((participation) => participation.expert.email);
 
-    if (!isPairwiseIssue) {
+    if (issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT) {
       const directResult = await buildScenarioDirectMatrices({
         issueId: issue._id,
         alternatives,
@@ -5378,12 +4893,15 @@ export const createIssueScenario = async (req, res) => {
       targetModel: targetModel._id,
       targetModelName: targetModel.name,
       domainType,
-      isPairwise: isPairwiseIssue,
+      evaluationStructure: targetEvaluationStructure,
       status: "done",
       config: {
         modelParameters: paramsUsed,
         normalizedModelParameters: normalizedParams,
-        criterionTypes: isPairwiseIssue ? [] : criterionTypes,
+        criterionTypes:
+          issueEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+            ? []
+            : criterionTypes,
       },
       inputs: {
         consensusPhaseUsed: 1,
@@ -5454,11 +4972,25 @@ export const getIssueScenarios = async (req, res) => {
       });
     }
 
-    const scenarios = await IssueScenario.find({ issue: issueId })
+    const scenarioDocs = await IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
-      .select("_id name targetModelName domainType isPairwise status createdAt createdBy")
+      .select(
+        "_id name targetModelName domainType evaluationStructure status createdAt createdBy"
+      )
       .populate("createdBy", "email name")
       .lean();
+
+    const scenarios = scenarioDocs.map((scenario) => {
+      const evaluationStructure = resolveEvaluationStructure(scenario);
+
+      return {
+        ...scenario,
+        evaluationStructure,
+        isPairwise:
+          evaluationStructure ===
+          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+      };
+    });
 
     return res.json({
       success: true,
@@ -5491,16 +5023,26 @@ export const getScenarioById = async (req, res) => {
       });
     }
 
-    const scenario = await IssueScenario.findById(scenarioId)
+    const scenarioDoc = await IssueScenario.findById(scenarioId)
       .populate("createdBy", "email name")
       .lean();
 
-    if (!scenario) {
+    if (!scenarioDoc) {
       return res.status(404).json({
         success: false,
         msg: "Scenario not found",
       });
     }
+
+    const evaluationStructure = resolveEvaluationStructure(scenarioDoc);
+
+    const scenario = {
+      ...scenarioDoc,
+      evaluationStructure,
+      isPairwise:
+        evaluationStructure ===
+        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+    };
 
     return res.json({
       success: true,
@@ -5572,6 +5114,144 @@ export const removeScenario = async (req, res) => {
     return res.status(500).json({
       success: false,
       msg: "Error deleting scenario",
+    });
+  }
+};
+
+export const saveEvaluations = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    const resolved = await resolveIssueEvaluationStructureById(id);
+    if (!resolved.success) {
+      return res.status(resolved.status).json({
+        success: false,
+        msg: resolved.msg,
+      });
+    }
+
+    const handler = getIssueStructureHandler(resolved.evaluationStructure, {
+      direct: saveDirectEvaluations,
+      pairwise: savePairwiseEvaluations,
+    });
+
+    if (!handler) {
+      return res.status(400).json({
+        success: false,
+        msg: `Unsupported evaluation structure '${resolved.evaluationStructure}'`,
+      });
+    }
+
+    return handler(req, res);
+  } catch (error) {
+    console.error("saveEvaluations dispatcher error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while saving evaluations",
+    });
+  }
+};
+
+export const getEvaluations = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    const resolved = await resolveIssueEvaluationStructureById(id);
+    if (!resolved.success) {
+      return res.status(resolved.status).json({
+        success: false,
+        msg: resolved.msg,
+      });
+    }
+
+    const handler = getIssueStructureHandler(resolved.evaluationStructure, {
+      direct: getDirectEvaluations,
+      pairwise: getPairwiseEvaluations,
+    });
+
+    if (!handler) {
+      return res.status(400).json({
+        success: false,
+        msg: `Unsupported evaluation structure '${resolved.evaluationStructure}'`,
+      });
+    }
+
+    return handler(req, res);
+  } catch (error) {
+    console.error("getEvaluations dispatcher error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while fetching evaluations",
+    });
+  }
+};
+
+export const submitEvaluations = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    const resolved = await resolveIssueEvaluationStructureById(id);
+    if (!resolved.success) {
+      return res.status(resolved.status).json({
+        success: false,
+        msg: resolved.msg,
+      });
+    }
+
+    const handler = getIssueStructureHandler(resolved.evaluationStructure, {
+      direct: submitDirectEvaluations,
+      pairwise: submitPairwiseEvaluations,
+    });
+
+    if (!handler) {
+      return res.status(400).json({
+        success: false,
+        msg: `Unsupported evaluation structure '${resolved.evaluationStructure}'`,
+      });
+    }
+
+    return handler(req, res);
+  } catch (error) {
+    console.error("submitEvaluations dispatcher error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while submitting evaluations",
+    });
+  }
+};
+
+export const resolveIssue = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    console.log(id)
+
+    const resolved = await resolveIssueEvaluationStructureById(id);
+    if (!resolved.success) {
+      return res.status(resolved.status).json({
+        success: false,
+        msg: resolved.msg,
+      });
+    }
+
+    const handler = getIssueStructureHandler(resolved.evaluationStructure, {
+      direct: resolveDirectIssue,
+      pairwise: resolvePairwiseIssue,
+    });
+
+    if (!handler) {
+      return res.status(400).json({
+        success: false,
+        msg: `Unsupported evaluation structure '${resolved.evaluationStructure}'`,
+      });
+    }
+
+    return handler(req, res);
+  } catch (error) {
+    console.error("resolveIssue dispatcher error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "An error occurred while resolving the issue",
     });
   }
 };

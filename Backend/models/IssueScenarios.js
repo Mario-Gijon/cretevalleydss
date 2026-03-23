@@ -11,7 +11,11 @@ const issueScenarioSchema = new Schema(
     targetModelName: { type: String, required: true },
 
     domainType: { type: String, enum: ["numeric", "linguistic"], required: true },
-    isPairwise: { type: Boolean, required: true },
+    evaluationStructure: {
+      type: String,
+      enum: ["direct", "pairwiseAlternatives"],
+      required: true,
+    },
 
     status: { type: String, enum: ["running", "done", "error"], default: "done" },
     error: { type: String, default: null },

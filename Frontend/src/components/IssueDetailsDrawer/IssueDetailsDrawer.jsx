@@ -39,6 +39,7 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import { Pill, TinyStat, stageLabel, getNextActionMeta } from "../ActiveIssuesHeader/ActiveIssuesHeader";
 import { ExpertParticipationChart } from "../ExpertParticipationChart/ExpertParticipationChart";
 import { IssueTimeline } from "../IssueTimeline/IssueTimeline";
+import { countLeafCriteria } from "../../utils/issues/criteriaTree";
 
 /* -----------------------------
  * helpers locales
@@ -281,7 +282,8 @@ const IssueDetailsDrawer = ({
   const declinedExperts = (selectedIssue?.notAcceptedExperts || []).length;
 
   const alternatives = Array.isArray(selectedIssue?.alternatives) ? selectedIssue.alternatives : [];
-  const criteriaCount = Array.isArray(selectedIssue?.criteria) ? selectedIssue.criteria.length : 0;
+
+  const criteriaCount = useMemo( () => countLeafCriteria(selectedIssue?.criteria || []), [selectedIssue?.criteria]);
 
   const deadlineLabel = selectedIssue?.ui?.deadline?.hasDeadline
     ? selectedIssue?.ui?.deadline?.deadline
@@ -300,6 +302,7 @@ const IssueDetailsDrawer = ({
 
   const finalWeights = selectedIssue?.finalWeights || selectedIssue?.ui?.finalWeights || {};
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const modelParamsObj = selectedIssue?.modelParameters || selectedIssue?.ui?.modelParameters || {};
   const modelParamsList = useMemo(() => {
     const entries = Object.entries(modelParamsObj || {});
@@ -454,7 +457,7 @@ const IssueDetailsDrawer = ({
                     {/* {drawerAction?.desc || "—"} */}
                   </Typography>
                 </Box>
-                
+
                 {/* Actions */}
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Stack width="100%">
@@ -676,7 +679,7 @@ const IssueDetailsDrawer = ({
                   </AccordionDetails>
                 </Accordion>
 
-                
+
 
                 {/* Participation */}
                 <Box sx={{ ...panelSx(theme, { bg: 0.10 }), p: 1.75 }}>

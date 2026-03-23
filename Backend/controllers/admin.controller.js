@@ -28,7 +28,7 @@ import {
   removeIssue as removeIssueOwner,
   computeWeights as computeWeightsOwner,
   computeManualWeights as computeManualWeightsOwner,
-  resolveIssue as resolveIssueOwner,
+  resolveDirectIssue as resolveIssueOwner,
   resolvePairwiseIssue as resolvePairwiseIssueOwner,
 } from "./issue.controller.js";
 

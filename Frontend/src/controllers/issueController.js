@@ -1,4 +1,4 @@
-// src/controllers/issues.controller.js (o donde lo tengas)
+// src/controllers/issues.controller.js
 import { authFetch } from "../utils/authFetch";
 
 const API = import.meta.env.VITE_API_BACK;
@@ -9,6 +9,15 @@ const safeJson = async (res) => {
   } catch {
     return null;
   }
+};
+
+const getIssueId = (issueOrId) => {
+  if (!issueOrId) return null;
+
+  if (typeof issueOrId === "string") return issueOrId;
+  if (typeof issueOrId === "object") return issueOrId.id || issueOrId._id || null;
+
+  return null;
 };
 
 export const getModelsInfo = async () => {
@@ -92,8 +101,10 @@ export const getAllFinishedIssues = async () => {
   }
 };
 
-export const removeIssue = async (id) => {
+export const removeIssue = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/removeIssue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -134,8 +145,10 @@ export const updateExpressionDomain = async (id, updatedDomain) => {
   }
 };
 
-export const changeInvitationStatus = async (id, action) => {
+export const changeInvitationStatus = async (issueOrId, action) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/changeInvitationStatus`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -148,14 +161,16 @@ export const changeInvitationStatus = async (id, action) => {
   }
 };
 
-export const saveEvaluations = async (id, isPairwise, evaluations) => {
+export const saveEvaluations = async (issueOrId, evaluations) => {
   try {
-    const url = isPairwise ? "savePairwiseEvaluations" : "saveEvaluations";
-    const res = await authFetch(`${API}/issues/${url}`, {
+    const id = getIssueId(issueOrId);
+
+    const res = await authFetch(`${API}/issues/evaluations/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, evaluations }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error saving evaluations:", err);
@@ -163,14 +178,16 @@ export const saveEvaluations = async (id, isPairwise, evaluations) => {
   }
 };
 
-export const getEvaluations = async (id, isPairwise) => {
+export const getEvaluations = async (issueOrId) => {
   try {
-    const url = isPairwise ? "getPairwiseEvaluations" : "getEvaluations";
-    const res = await authFetch(`${API}/issues/${url}`, {
+    const id = getIssueId(issueOrId);
+
+    const res = await authFetch(`${API}/issues/evaluations/get`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching evaluations:", err);
@@ -178,29 +195,35 @@ export const getEvaluations = async (id, isPairwise) => {
   }
 };
 
-export const sendEvaluations = async (id, isPairwise, evaluations) => {
+export const submitEvaluations = async (issueOrId, evaluations) => {
   try {
-    const url = isPairwise ? "sendPairwiseEvaluations" : "sendEvaluations";
-    const res = await authFetch(`${API}/issues/${url}`, {
+    const id = getIssueId(issueOrId);
+
+    const res = await authFetch(`${API}/issues/evaluations/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, evaluations }),
     });
+
     return await safeJson(res);
   } catch (err) {
-    console.error("Error sending evaluations:", err);
+    console.error("Error submitting evaluations:", err);
     return false;
   }
 };
 
-export const resolveIssue = async (id, isPairwise) => {
+export const resolveIssue = async (issueOrId, forceFinalize = false) => {
   try {
-    const url = isPairwise ? "resolvePairwiseIssue" : "resolveIssue";
-    const res = await authFetch(`${API}/issues/${url}`, {
+    const id = getIssueId(issueOrId);
+
+    console.log(id)
+
+    const res = await authFetch(`${API}/issues/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, forceFinalize }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error resolving issue:", err);
@@ -208,8 +231,10 @@ export const resolveIssue = async (id, isPairwise) => {
   }
 };
 
-export const getFinishedIssueInfo = async (id) => {
+export const getFinishedIssueInfo = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/getFinishedIssueInfo`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -222,8 +247,10 @@ export const getFinishedIssueInfo = async (id) => {
   }
 };
 
-export const removeFinishedIssue = async (id) => {
+export const removeFinishedIssue = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/removeFinishedIssue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -236,8 +263,10 @@ export const removeFinishedIssue = async (id) => {
   }
 };
 
-export const editExperts = async (id, expertsToAdd, expertsToRemove, domainAssignments = null) => {
+export const editExperts = async (issueOrId, expertsToAdd, expertsToRemove, domainAssignments = null) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/editExperts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -250,8 +279,10 @@ export const editExperts = async (id, expertsToAdd, expertsToRemove, domainAssig
   }
 };
 
-export const leaveIssue = async (id) => {
+export const leaveIssue = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/leaveIssue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -264,8 +295,10 @@ export const leaveIssue = async (id) => {
   }
 };
 
-export const saveBwmWeights = async (id, bwmData) => {
+export const saveBwmWeights = async (issueOrId, bwmData) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/saveBwmWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -278,8 +311,10 @@ export const saveBwmWeights = async (id, bwmData) => {
   }
 };
 
-export const getBwmWeights = async (id) => {
+export const getBwmWeights = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/getBwmWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -292,8 +327,10 @@ export const getBwmWeights = async (id) => {
   }
 };
 
-export const sendBwmWeights = async (id, bwmData) => {
+export const sendBwmWeights = async (issueOrId, bwmData) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/sendBwmWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -306,8 +343,10 @@ export const sendBwmWeights = async (id, bwmData) => {
   }
 };
 
-export const saveManualWeights = async (id, manualWeights) => {
+export const saveManualWeights = async (issueOrId, manualWeights) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/saveManualWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -320,8 +359,10 @@ export const saveManualWeights = async (id, manualWeights) => {
   }
 };
 
-export const sendManualWeights = async (id, manualWeights) => {
+export const sendManualWeights = async (issueOrId, manualWeights) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/sendManualWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -333,8 +374,11 @@ export const sendManualWeights = async (id, manualWeights) => {
     return false;
   }
 };
-export const getManualWeights = async (id) => {
+
+export const getManualWeights = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/getManualWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -347,8 +391,10 @@ export const getManualWeights = async (id) => {
   }
 };
 
-export const computeWeights = async (id) => {
+export const computeWeights = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/computeWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -361,8 +407,10 @@ export const computeWeights = async (id) => {
   }
 };
 
-export const computeManualWeights = async (id) => {
+export const computeManualWeights = async (issueOrId) => {
   try {
+    const id = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/computeManualWeights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -375,8 +423,10 @@ export const computeManualWeights = async (id) => {
   }
 };
 
-export const getIssueScenarios = async (issueId) => {
+export const getIssueScenarios = async (issueOrId) => {
   try {
+    const issueId = getIssueId(issueOrId);
+
     const res = await authFetch(`${API}/issues/getIssueScenarios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -403,12 +453,24 @@ export const getIssueScenarioById = async (scenarioId) => {
   }
 };
 
-export const createIssueScenario = async ({ issueId, scenarioName, targetModelName, paramOverrides }) => {
+export const createIssueScenario = async ({
+  issueId,
+  scenarioName,
+  targetModelName,
+  paramOverrides,
+}) => {
   try {
+    const normalizedIssueId = getIssueId(issueId);
+
     const res = await authFetch(`${API}/issues/createIssueScenario`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueId, scenarioName, targetModelName, paramOverrides }),
+      body: JSON.stringify({
+        issueId: normalizedIssueId,
+        scenarioName,
+        targetModelName,
+        paramOverrides,
+      }),
     });
     return await safeJson(res);
   } catch (err) {

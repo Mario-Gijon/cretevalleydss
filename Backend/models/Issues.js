@@ -34,6 +34,11 @@ const issueSchema = new Schema({
   },
   alternativeOrder: [{ type: Schema.Types.ObjectId, ref: "Alternative" }],
   leafCriteriaOrder: [{ type: Schema.Types.ObjectId, ref: "Criterion" }],
+  evaluationStructure: {
+    type: String,
+    enum: ["direct", "pairwiseAlternatives"],
+    required: true,
+  },
 });
 
 issueSchema.pre("remove", async function (next) {

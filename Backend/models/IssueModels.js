@@ -53,12 +53,16 @@ parameterSchema.path("default").validate(function (value) {
 const issueModelSchema = new Schema({
   name: { type: String, required: true },
   isConsensus: { type: Boolean, required: true },
-  isPairwise: { type: Boolean, required: true },
   isMultiCriteria: { type: Boolean, required: true },
   smallDescription: { type: String, required: true },
   extendDescription: { type: String, required: true },
   moreInfoUrl: { type: String, required: true },
   parameters: [parameterSchema],
+  evaluationStructure: {
+    type: String,
+    enum: ["direct", "pairwiseAlternatives"],
+    required: true,
+  },
   supportedDomains: {
     numeric: {
       enabled: { type: Boolean, default: false },

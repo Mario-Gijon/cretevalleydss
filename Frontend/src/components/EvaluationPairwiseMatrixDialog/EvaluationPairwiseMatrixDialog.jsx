@@ -31,7 +31,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";
 import { extractLeafCriteria, validatePairwiseEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import { getEvaluations, saveEvaluations, sendEvaluations } from "../../controllers/issueController";
+import { getEvaluations, saveEvaluations, submitEvaluations } from "../../controllers/issueController";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
@@ -97,7 +97,7 @@ export const EvaluationPairwiseMatrixDialog = ({
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const [evaluations, setEvaluations] = useState({});
   const [openCloseDialog, setOpenCloseDialog] = useState(false);
-  const [openSendEvaluationsDialog, setOpenSendEvaluationsDialog] = useState(false);
+  const [openSubmitEvaluationsDialog, setOpenSubmitEvaluationsDialog] = useState(false);
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [collectiveEvaluations, setCollectiveEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -123,10 +123,10 @@ export const EvaluationPairwiseMatrixDialog = ({
     const fetchEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await getEvaluations(selectedIssue.id, selectedIssue.isPairwise);
-        if (response.success && response.evaluations) {
-          setCollectiveEvaluations(response.collectiveEvaluations);
-          const merged = mergeEvaluations(response.evaluations);
+        const res = await getEvaluations(selectedIssue.id);
+        if (res.success && res.evaluations) {
+          setCollectiveEvaluations(res.collectiveEvaluations);
+          const merged = mergeEvaluations(res.evaluations);
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
@@ -233,7 +233,7 @@ export const EvaluationPairwiseMatrixDialog = ({
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
+    const evaluationSaved = await saveEvaluations(selectedIssue.id, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);
@@ -246,7 +246,7 @@ export const EvaluationPairwiseMatrixDialog = ({
     setLoading(false);
   };
 
-  const handleOpenSendEvaluationsDialog = async () => {
+  const handleOpenSubmitEvaluationsDialog = async () => {
     const leafNames = extractLeafCriteria(selectedIssue.criteria || []).map((c) => c.name);
 
     const validation = validatePairwiseEvaluations(evaluations, {
@@ -261,25 +261,25 @@ export const EvaluationPairwiseMatrixDialog = ({
       const idx = leafCriteria.findIndex((c) => c.name === criterion);
       if (idx !== -1) setCurrentCriterionIndex(idx);
     } else {
-      setOpenSendEvaluationsDialog(true);
+      setOpenSubmitEvaluationsDialog(true);
     }
   };
 
-  const handleSendEvaluations = async () => {
-    setOpenSendEvaluationsDialog(false);
+  const handleSubmitEvaluations = async () => {
+    setOpenSubmitEvaluationsDialog(false);
     setLoading(true);
 
-    const response = await sendEvaluations(selectedIssue.id, selectedIssue.isPairwise, evaluations);
+    const res = await submitEvaluations(selectedIssue, evaluations);
 
-    if (response.success) {
-      showSnackbarAlert(response.msg, "success");
+    if (res.success) {
+      showSnackbarAlert(res.msg, "success");
       await fetchActiveIssues();
       await fetchFinishedIssues();
       setOpenIssueDialog(false);
       setIsRatingAlternatives(false);
     } else {
-      showSnackbarAlert(response.msg, "error");
-      const idx = leafCriteria.findIndex((c) => c.name === response.criterion);
+      showSnackbarAlert(res.msg, "error");
+      const idx = leafCriteria.findIndex((c) => c.name === res.criterion);
       if (idx !== -1) setCurrentCriterionIndex(idx);
     }
     setLoading(false);
@@ -481,7 +481,7 @@ export const EvaluationPairwiseMatrixDialog = ({
           <Button
             variant="outlined"
             color="success"
-            onClick={handleOpenSendEvaluationsDialog}
+            onClick={handleOpenSubmitEvaluationsDialog}
             startIcon={<PublishOutlinedIcon />}
           >
             Submit
@@ -508,7 +508,7 @@ export const EvaluationPairwiseMatrixDialog = ({
       </GlassDialog>
 
       {/* SEND CONFIRM */}
-      <GlassDialog open={openSendEvaluationsDialog} onClose={() => setOpenSendEvaluationsDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog open={openSubmitEvaluationsDialog} onClose={() => setOpenSubmitEvaluationsDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 950 }}>Submit evaluations?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
@@ -516,10 +516,10 @@ export const EvaluationPairwiseMatrixDialog = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="success" onClick={handleSendEvaluations} startIcon={<CheckCircleOutlineIcon />}>
+          <Button variant="outlined" color="success" onClick={handleSubmitEvaluations} startIcon={<CheckCircleOutlineIcon />}>
             Submit
           </Button>
-          <Button variant="outlined" color="warning" onClick={() => setOpenSendEvaluationsDialog(false)} startIcon={<CloseIcon />}>
+          <Button variant="outlined" color="warning" onClick={() => setOpenSubmitEvaluationsDialog(false)} startIcon={<CloseIcon />}>
             Cancel
           </Button>
         </DialogActions>

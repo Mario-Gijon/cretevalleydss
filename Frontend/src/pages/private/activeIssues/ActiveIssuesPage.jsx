@@ -45,9 +45,6 @@ import {
   resolveIssue,
 } from "../../../controllers/issueController";
 
-import { EvaluationPairwiseMatrixDialog } from "../../../components/EvaluationPairwiseMatrixDialog/EvaluationPairwiseMatrixDialog";
-import { EvaluationMatrixDialog } from "../../../components/EvaluationMatrixDialog/EvaluationMatrixDialog";
-
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 
 import AddExpertsDomainsDialog from "../../../components/AddExpertsDomainsDialog/AddExpertsDomainsDialog";
@@ -65,6 +62,10 @@ import ActiveIssuesHeader, {
 import TaskCenter from "../../../components/TaskCenter/TaskCenter";
 import IssuesGrid from "../../../components/IssuesGrid/IssuesGrid";
 import IssueDetailsDrawer from "../../../components/IssueDetailsDrawer/IssueDetailsDrawer";
+import {
+  resolveIssueEvaluationStructure,
+} from "../../../utils/issues/evaluationStructure";
+import { EVALUATION_UI_REGISTRY } from "../../../utils/issues/evaluationUIRegistry";
 
 const crystalBorder = () => {
   return { border: "1px solid rgba(117, 198, 209, 0.24)" };
@@ -430,10 +431,26 @@ const ActiveIssuesPage = () => {
   const filtersMeta = issuesCtx.filtersMeta ?? serverFiltersMeta;
 
   const [selectedIssueId, setSelectedIssueId] = useState(null);
+
   const selectedIssue = useMemo(
     () => activeIssues?.find((i) => i.id === selectedIssueId) || null,
     [activeIssues, selectedIssueId]
   );
+
+  const selectedIssueEvaluationStructure = useMemo(
+    () => resolveIssueEvaluationStructure(selectedIssue),
+    [selectedIssue]
+  );
+
+  const selectedIssueEvaluationUi = useMemo(
+    () =>
+      selectedIssue
+        ? EVALUATION_UI_REGISTRY[selectedIssueEvaluationStructure] ?? null
+        : null,
+    [selectedIssue, selectedIssueEvaluationStructure]
+  );
+
+  const EvaluationDialogComponent = selectedIssueEvaluationUi?.dialog ?? null;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -762,7 +779,7 @@ const ActiveIssuesPage = () => {
     if (!selectedIssue) return;
     setBusy((b) => ({ ...b, resolve: true }));
 
-    const res = await resolveIssue(selectedIssue.id, selectedIssue.isPairwise);
+    const res = await resolveIssue(selectedIssue.id);
 
     if (res?.success) {
       showSnackbarAlert(res.msg, res.finished ? "success" : "info");
@@ -1084,21 +1101,14 @@ const ActiveIssuesPage = () => {
         setIsRatingWeights={setIsRatingWeights}
       />
 
-      {selectedIssue?.isPairwise ? (
-        <EvaluationPairwiseMatrixDialog
+      {selectedIssue && EvaluationDialogComponent ? (
+        <EvaluationDialogComponent
           setOpenIssueDialog={setDrawerOpen}
           isRatingAlternatives={isRatingAlternatives}
           setIsRatingAlternatives={setIsRatingAlternatives}
           selectedIssue={selectedIssue}
         />
-      ) : (
-        <EvaluationMatrixDialog
-          setOpenIssueDialog={setDrawerOpen}
-          isRatingAlternatives={isRatingAlternatives}
-          setIsRatingAlternatives={setIsRatingAlternatives}
-          selectedIssue={selectedIssue}
-        />
-      )}
+      ) : null}
 
       {selectedIssue?.weightingMode === "consensus" ? (
         <RateConsensusWeightsDialog
