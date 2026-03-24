@@ -181,7 +181,7 @@ const FinishedIssuesHeader = ({
               </Avatar>
 
               <Stack spacing={0} sx={{ minWidth: 0 }}>
-                <Typography  sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+                <Typography sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
                   Finished issues
                 </Typography>
               </Stack>
@@ -368,6 +368,7 @@ const FinishedIssuesPage = () => {
     return byIssue || byModel || byAdmin || byAlts || byCriteria;
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filteredBase = useMemo(() => (finishedIssues || []).filter(matchQuery), [finishedIssues, query, searchBy]);
 
   const filtered = useMemo(() => {
@@ -378,7 +379,10 @@ const FinishedIssuesPage = () => {
     } else if (sortBy === "nameDesc") {
       arr.sort((a, b) => (b?.name || "").localeCompare(a?.name || ""));
     } else if (sortBy === "createdRecent") {
-      arr.sort((a, b) => parseDateDDMMYYYY(b?.creationDate) - parseDateDDMMYYYY(a?.creationDate));
+      arr.sort(
+        (a, b) =>
+          new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+      );
     } else {
       // closedRecent (default)
       arr.sort((a, b) => parseDateDDMMYYYY(b?.closureDate) - parseDateDDMMYYYY(a?.closureDate));
@@ -415,7 +419,7 @@ const FinishedIssuesPage = () => {
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
 
-      <Box sx={{ maxWidth: 2600, p:1 }}>
+      <Box sx={{ maxWidth: 2600, p: 1 }}>
         {isLgUp ? (
           <Box
             sx={{

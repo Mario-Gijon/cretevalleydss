@@ -731,6 +731,7 @@ export const buildActiveIssueView = ({
         consensusCurrentPhase,
       }),
       creationDate: issue.creationDate || null,
+      createdAt: issue.createdAt ?? null,
       closureDate: issue.closureDate || null,
       isAdmin: isAdminUser,
       isExpert: isExpertAccepted,

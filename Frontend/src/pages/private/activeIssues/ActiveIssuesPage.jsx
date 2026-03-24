@@ -636,7 +636,10 @@ const ActiveIssuesPage = () => {
     } else if (sortBy === "deadlineSoon") {
       arr.sort((a, b) => deadlineDays(a) - deadlineDays(b));
     } else if (sortBy === "recent") {
-      arr.sort((a, b) => parseDateDDMMYYYY(b?.creationDate) - parseDateDDMMYYYY(a?.creationDate));
+      arr.sort(
+        (a, b) =>
+          new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+      );
     } else {
       arr.sort((a, b) => {
         const p = smartPriority(a) - smartPriority(b);

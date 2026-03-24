@@ -514,6 +514,7 @@ export const getAllFinishedIssues = async (req, res) => {
       name: issue.name,
       description: issue.description,
       creationDate: issue.creationDate,
+      createdAt: issue.createdAt ?? null,
       closureDate: issue.closureDate ?? null,
       isAdmin: sameId(issue.admin?._id, userId),
     }));
