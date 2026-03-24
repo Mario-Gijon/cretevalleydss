@@ -1,5 +1,5 @@
 import { User } from "../models/Users.js";
-import { generateToken } from "../utils/tokenManager.js";
+import { generateToken } from "../services/token.service.js";
 
 /**
  * Genera un nuevo access token a partir del refresh token validado.

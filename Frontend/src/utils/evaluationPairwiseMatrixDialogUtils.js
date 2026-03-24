@@ -14,46 +14,103 @@ export const extractLeafCriteria = (criteria, parentPath = []) => {
   return leafCriteria;
 };
 
+const getPairwiseCellNumericValue = (cell) => {
+  if (cell === "" || cell == null) {
+    return null;
+  }
+
+  if (typeof cell === "object" && !Array.isArray(cell) && "value" in cell) {
+    const parsed = Number(cell.value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  const parsed = Number(cell);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getPairwiseCellRange = (cell) => {
+  const min = Number(cell?.domain?.range?.min);
+  const max = Number(cell?.domain?.range?.max);
+
+  if (Number.isFinite(min) && Number.isFinite(max) && min < max) {
+    return { min, max };
+  }
+
+  return { min: 0, max: 1 };
+};
+
+const round2 = (value) => Math.round(value * 100) / 100;
+
+const normalizeToUnit = (value, min, max) => {
+  if (max === min) return 0;
+  return (value - min) / (max - min);
+};
+
+const denormalizeFromUnit = (normalizedValue, min, max) => {
+  return min + normalizedValue * (max - min);
+};
+
+const getExpectedInverseValue = ({
+  value,
+  sourceRange,
+  targetRange,
+}) => {
+  const normalized = normalizeToUnit(value, sourceRange.min, sourceRange.max);
+  const inverseNormalized = 1 - normalized;
+  return round2(
+    denormalizeFromUnit(
+      inverseNormalized,
+      targetRange.min,
+      targetRange.max
+    )
+  );
+};
+
 // Validación de matrices por pares (A vs A bajo un criterio)
-export const validatePairwiseEvaluations = (evaluations, { leafCriteria = [], allowEmpty = false } = {}) => {
+export const validatePairwiseEvaluations = (
+  evaluations,
+  { leafCriteria = [], allowEmpty = false } = {}
+) => {
   let firstInvalidCell = null;
 
   for (const criterionId in evaluations) {
-    // 🔹 Si no es criterio hoja, lo saltamos
     if (leafCriteria.length > 0 && !leafCriteria.includes(criterionId)) continue;
 
-    const criterionMatrix = evaluations[criterionId];
+    const criterionMatrix = Array.isArray(evaluations[criterionId])
+      ? evaluations[criterionId]
+      : [];
 
     for (const row of criterionMatrix) {
       for (const altCol in row) {
         if (altCol === "id") continue;
-        const value = row[altCol];
+        if (row.id === altCol) continue;
 
-        if (!allowEmpty) {
-          if (value === "" || value === null) {
-            firstInvalidCell = {
-              row: row.id,
-              col: altCol,
-              criterion: criterionId,
-              message: `Cell [${row.id}, ${altCol}] must be evaluated.`,
-            };
-            break;
-          }
+        const rawValue = row[altCol];
+        const value = getPairwiseCellNumericValue(rawValue);
+        const range = getPairwiseCellRange(rawValue);
+
+        if (!allowEmpty && value === null) {
+          firstInvalidCell = {
+            row: row.id,
+            col: altCol,
+            criterion: criterionId,
+            message: `Cell [${row.id}, ${altCol}] must be evaluated.`,
+          };
+          break;
         }
 
-        if (value !== "" && value !== null) {
-          if (isNaN(value) || value < 0 || value > 1) {
+        if (value !== null) {
+          if (value < range.min || value > range.max) {
             firstInvalidCell = {
               row: row.id,
               col: altCol,
               criterion: criterionId,
-              message: `Invalid value for [${row.id}, ${altCol}]. Must be between 0 and 1.`,
+              message: `Invalid value for [${row.id}, ${altCol}]. Must be between ${range.min} and ${range.max}.`,
             };
             break;
           }
 
-          const roundedValue = Math.round(value * 100) / 100;
-          if (value !== roundedValue) {
+          if (Math.abs(value - round2(value)) > 1e-9) {
             firstInvalidCell = {
               row: row.id,
               col: altCol,
@@ -62,13 +119,13 @@ export const validatePairwiseEvaluations = (evaluations, { leafCriteria = [], al
             };
             break;
           }
-        }
 
-        // Inverso debe estar (solo si no es vacío)
-        if (value !== "" && value !== null) {
-          const inverseRow = criterionMatrix.find(r => r.id === altCol);
-          const inverseCell = inverseRow?.[row.id];
-          if (inverseCell === "" || inverseCell === null || isNaN(inverseCell)) {
+          const inverseRow = criterionMatrix.find((r) => r.id === altCol);
+          const inverseRawValue = inverseRow?.[row.id];
+          const inverseValue = getPairwiseCellNumericValue(inverseRawValue);
+          const inverseRange = getPairwiseCellRange(inverseRawValue);
+
+          if (!allowEmpty && inverseValue === null) {
             firstInvalidCell = {
               row: row.id,
               col: altCol,
@@ -77,10 +134,30 @@ export const validatePairwiseEvaluations = (evaluations, { leafCriteria = [], al
             };
             break;
           }
+
+          if (inverseValue !== null) {
+            const expectedInverse = getExpectedInverseValue({
+              value,
+              sourceRange: range,
+              targetRange: inverseRange,
+            });
+
+            if (Math.abs(inverseValue - expectedInverse) > 0.01) {
+              firstInvalidCell = {
+                row: row.id,
+                col: altCol,
+                criterion: criterionId,
+                message: `Cell [${altCol}, ${row.id}] must be the inverse of [${row.id}, ${altCol}] according to its domain range.`,
+              };
+              break;
+            }
+          }
         }
       }
+
       if (firstInvalidCell) break;
     }
+
     if (firstInvalidCell) break;
   }
 
@@ -88,8 +165,6 @@ export const validatePairwiseEvaluations = (evaluations, { leafCriteria = [], al
     ? { valid: false, error: firstInvalidCell }
     : { valid: true, message: "" };
 };
-
-
 // Validación de evaluaciones AxC
 export const validateEvaluations = (evaluations, { leafCriteria = [], allowEmpty = false } = {}) => {
   let firstInvalidCell = null;

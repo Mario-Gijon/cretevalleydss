@@ -25,12 +25,28 @@ Backend
 │   ├── ExitUserIssue.js
 │   ├── ExpressionDomain.js
 │   ├── IssueExpressionDomains.js
+│   ├── IssueModels.js
 │   ├── IssueScenarios.js
 │   ├── Issues.js
-│   ├── Models.js
 │   ├── Notificacions.js
 │   ├── Participations.js
 │   └── Users.js
+├── modules
+│   └── issues
+│       ├── issue.active.js
+│       ├── issue.creation.js
+│       ├── issue.dispatch.js
+│       ├── issue.evaluations.js
+│       ├── issue.evaluationStructure.js
+│       ├── issue.experts.js
+│       ├── issue.expressionDomains.js
+│       ├── issue.finished.js
+│       ├── issue.lifecycle.js
+│       ├── issue.mappers.js
+│       ├── issue.queries.js
+│       ├── issue.resolution.js
+│       ├── issue.scenarios.js
+│       └── issue.weights.js
 ├── node_modules
 │   ├── abbrev
 │   │   ├── lib
@@ -8077,10 +8093,17 @@ Backend
 │   ├── admin.route.js
 │   ├── auth.route.js
 │   └── issue.route.js
+├── seeds
+│   └── seedIssueModels.js
 ├── tsconfig.json
 └── utils
     ├── buildCriteriaTree.js
     ├── cleanupExpertDraftsOnExit.js
+    ├── common
+    │   ├── errors.js
+    │   ├── ids.js
+    │   ├── mongoose.js
+    │   └── strings.js
     ├── finishedIssueInfoUtils.js
     ├── generateEvaluationMatrix.js
     ├── getUserFinishedIssueIds.js
@@ -8093,4 +8116,4 @@ Backend
     ├── validateFinalEvaluations.js
     └── validateFinalWeights.js
 
-987 directories, 7107 files
+991 directories, 7126 files

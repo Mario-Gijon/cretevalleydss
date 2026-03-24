@@ -1,6 +1,6 @@
-import { Issue } from "../models/Issues.js";
-import { Alternative } from "../models/Alternatives.js";
-import { Criterion } from "../models/Criteria.js";
+import { Issue } from "../../models/Issues.js";
+import { Alternative } from "../../models/Alternatives.js";
+import { Criterion } from "../../models/Criteria.js";
 
 const COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 

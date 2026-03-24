@@ -3,11 +3,11 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 import { User } from "../models/Users.js";
-import { generateToken, generateRefreshToken } from "../utils/tokenManager.js";
+import { generateToken, generateRefreshToken } from "../services/token.service.js";
 import {
   sendEmailChangeConfirmation,
   sendVerificationEmail,
-} from "../utils/sendEmails.js";
+} from "../services/email.service.js";
 
 const FRONTEND_REDIRECT_URL = `${process.env.ORIGIN_FRONT}/`;
 const STATUS_COOKIE_OPTIONS = {

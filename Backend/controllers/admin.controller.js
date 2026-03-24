@@ -19,10 +19,10 @@ import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../utils/issueOrdering.js";
+} from "../modules/issues/issue.ordering.js";
 
 // Utils
-import { cleanupExpertDraftsOnExit } from "../utils/cleanupExpertDraftsOnExit.js";
+import { cleanupExpertDraftsOnExit } from "../modules/issues/issue.lifecycle.js";
 import {
   editExperts as editExpertsOwner,
   removeIssue as removeIssueOwner,

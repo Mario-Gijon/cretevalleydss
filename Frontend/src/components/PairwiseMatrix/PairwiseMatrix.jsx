@@ -1,11 +1,36 @@
 import { DataGrid } from "@mui/x-data-grid";
 import { Chip, Stack, useTheme } from "@mui/material";
 
+const getCellNumericValue = (cell) => {
+  if (cell && typeof cell === "object" && "value" in cell) {
+    const parsed = Number(cell.value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  const parsed = Number(cell);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const preserveCellShape = (previousCell, nextValue) => {
+  if (
+    previousCell &&
+    typeof previousCell === "object" &&
+    !Array.isArray(previousCell)
+  ) {
+    return {
+      ...previousCell,
+      value: nextValue,
+    };
+  }
+
+  return nextValue;
+};
+
 export const PairwiseMatrix = ({
   alternatives,
   evaluations,
   setEvaluations,
-  collectiveEvaluations,
+  collectiveEvaluations = [],
   permitEdit = true,
 }) => {
   const theme = useTheme();
@@ -18,7 +43,6 @@ export const PairwiseMatrix = ({
     a.id.localeCompare(b.id)
   );
 
-  // Configuración de las columnas
   const columns = [
     { field: "id", headerName: "Alternatives", minWidth: 90, flex: 1 },
     ...sortedAlternatives.map((alt) => ({
@@ -27,11 +51,25 @@ export const PairwiseMatrix = ({
       editable: permitEdit,
       flex: 1,
       minWidth: 90,
+      valueGetter: (...args) => {
+        const maybeParams = args[0];
+        const maybeRow = args[1];
+
+        if (maybeRow && typeof maybeRow === "object") {
+          return getCellNumericValue(maybeRow?.[alt]);
+        }
+
+        if (maybeParams && typeof maybeParams === "object" && "row" in maybeParams) {
+          return getCellNumericValue(maybeParams?.row?.[alt]);
+        }
+
+        return getCellNumericValue(maybeParams);
+      },
       renderCell: (params) => {
         const rowId = params.row.id;
         const altCol = params.field;
-        const userValue = parseFloat(params.value);
-        const collectiveValue = parseFloat(
+        const userValue = getCellNumericValue(params.row?.[altCol]);
+        const collectiveValue = Number(
           collectiveEvaluations.find((r) => r.id === rowId)?.[altCol]
         );
 
@@ -39,8 +77,8 @@ export const PairwiseMatrix = ({
 
         return (
           <Stack direction="row" justifyContent="space-between" alignItems="center">
-            {isNaN(userValue) ? "" : userValue}
-            {!isNaN(collectiveValue) && !isDiagonal && (
+            {userValue == null ? "" : userValue}
+            {!Number.isNaN(collectiveValue) && !isDiagonal && (
               <Chip
                 label={collectiveValue}
                 variant="outlined"
@@ -63,58 +101,79 @@ export const PairwiseMatrix = ({
   const handleProcessRowUpdate = (newRow, oldRow) => {
     if (!permitEdit) return oldRow;
 
-    const changedField = Object.keys(newRow).find(
-      (key) => key !== "id" && newRow[key] !== oldRow[key]
-    );
+    const changedField = sortedAlternatives.find((field) => {
+      const newValue = getCellNumericValue(newRow[field]);
+      const oldValue = getCellNumericValue(oldRow[field]);
+      return newValue !== oldValue;
+    });
 
-    if (!changedField) return newRow;
-
-    const updatedRow = { ...newRow };
+    if (!changedField) return oldRow;
 
     if (newRow.id === changedField) {
-      updatedRow[changedField] = 0.5;
-      setEvaluations(
-        evaluations.map((row) => (row.id === updatedRow.id ? updatedRow : row))
-      );
-      return updatedRow;
+      return oldRow;
     }
 
-    let value = parseFloat(updatedRow[changedField]);
+    let value = getCellNumericValue(newRow[changedField]);
+    let updatedRows = [];
 
-    if (isNaN(value) || value < 0 || value > 1) {
-      updatedRow[changedField] = null;
-      setEvaluations(
-        evaluations.map((row) => {
-          if (row.id === updatedRow.id) {
-            return updatedRow;
-          }
-          if (row.id === changedField) {
-            return { ...row, [updatedRow.id]: null };
-          }
-          return row;
-        })
-      );
-    } else {
-      const newValue = Math.round(value * 100) / 100;
-      const inverseValue = Math.round((1 - newValue) * 100) / 100;
+    if (value == null || value < 0 || value > 1) {
+      updatedRows = evaluations.map((row) => {
+        if (!row || typeof row !== "object" || !row.id) return row;
 
-      setEvaluations(
-        evaluations.map((row) => {
-          if (!row || typeof row !== "object" || !row.id) return row;
-          if (row.id === updatedRow.id) {
-            return { ...updatedRow, [changedField]: newValue };
-          }
-          if (row.id === changedField) {
-            return { ...row, [updatedRow.id]: inverseValue };
-          }
-          return row;
-        })
-      );
+        if (row.id === newRow.id) {
+          return {
+            ...row,
+            [changedField]: preserveCellShape(row[changedField], null),
+          };
+        }
 
-      updatedRow[changedField] = newValue;
+        if (row.id === changedField) {
+          return {
+            ...row,
+            [newRow.id]: preserveCellShape(row[newRow.id], null),
+          };
+        }
+
+        return row;
+      });
+
+      setEvaluations(updatedRows);
+
+      return {
+        ...oldRow,
+        [changedField]: null,
+      };
     }
 
-    return updatedRow;
+    const normalizedValue = Math.round(value * 100) / 100;
+    const inverseValue = Math.round((1 - normalizedValue) * 100) / 100;
+
+    updatedRows = evaluations.map((row) => {
+      if (!row || typeof row !== "object" || !row.id) return row;
+
+      if (row.id === newRow.id) {
+        return {
+          ...row,
+          [changedField]: preserveCellShape(row[changedField], normalizedValue),
+        };
+      }
+
+      if (row.id === changedField) {
+        return {
+          ...row,
+          [newRow.id]: preserveCellShape(row[newRow.id], inverseValue),
+        };
+      }
+
+      return row;
+    });
+
+    setEvaluations(updatedRows);
+
+    return {
+      ...newRow,
+      [changedField]: normalizedValue,
+    };
   };
 
   return (
@@ -131,6 +190,8 @@ export const PairwiseMatrix = ({
       disableRowSelectionOnClick
       disableColumnSelector
       density="compact"
+      isCellEditable={(params) => permitEdit && params.row.id !== params.field}
+      getRowId={(row) => row.id}
       getCellClassName={(params) => {
         if (params.field === "id") return "first-column";
         if (params.row.id === params.field) return "diagonal-cell";

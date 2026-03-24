@@ -1,10 +1,10 @@
-import { Issue } from "../models/Issues.js";
-import { Alternative } from "../models/Alternatives.js";
-import { Criterion } from "../models/Criteria.js";
-import { Participation } from "../models/Participations.js";
-import { Evaluation } from "../models/Evaluations.js";
-import { Consensus } from "../models/Consensus.js";
-import { buildCriterionTree } from "./buildCriteriaTree.js";
+import { Issue } from "../../models/Issues.js";
+import { Alternative } from "../../models/Alternatives.js";
+import { Criterion } from "../../models/Criteria.js";
+import { Participation } from "../../models/Participations.js";
+import { Evaluation } from "../../models/Evaluations.js";
+import { Consensus } from "../../models/Consensus.js";
+import { buildIssueCriteriaTree } from "../../modules/issues/issue.active.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
   const matrices = phaseDoc?.details?.matrices;
@@ -55,6 +55,15 @@ const buildWeightMap = (leafCriteria, weights) => {
   return weightMap;
 };
 
+const mapCriteriaTreeToSummaryShape = (node) => ({
+  _id: node.id,
+  name: node.name,
+  type: node.type,
+  isLeaf: Boolean(node.isLeaf),
+  parentCriterion: node.parentId || null,
+  children: (node.children || []).map(mapCriteriaTreeToSummaryShape),
+});
+
 const attachWeightsToTree = (node, weightMap) => {
   if (node.isLeaf) {
     return {
@@ -95,17 +104,20 @@ const groupEvaluationsByExpert = (evaluations) => {
 export const createSummarySection = async (issueId) => {
   const issue = await Issue.findById(issueId).populate("admin").populate("model");
 
-  const [alternatives, criteria, participations, consensusPhases, leafCriteria] =
+  const [alternatives, criteria, participations, consensusPhases] =
     await Promise.all([
       Alternative.find({ issue: issueId }),
       Criterion.find({ issue: issueId }),
       Participation.find({ issue: issueId }).populate("expert"),
       Consensus.find({ issue: issueId }).sort({ phase: 1 }),
-      Criterion.find({ issue: issueId, isLeaf: true }).sort({ name: 1 }),
     ]);
 
   const participated = participations
-    .filter((participation) => participation.invitationStatus === "accepted" && participation.evaluationCompleted)
+    .filter(
+      (participation) =>
+        participation.invitationStatus === "accepted" &&
+        participation.evaluationCompleted
+    )
     .map((participation) => participation.expert.email)
     .sort();
 
@@ -115,17 +127,27 @@ export const createSummarySection = async (issueId) => {
     .sort();
 
   const lastConsensus = consensusPhases[consensusPhases.length - 1];
+
+  const { criteriaTree, orderedLeafNodes } = buildIssueCriteriaTree(
+    criteria,
+    issue
+  );
+
   const weights = issue.modelParameters?.weights || [];
-  const weightMap = buildWeightMap(leafCriteria, weights);
+
+  const weightMap = orderedLeafNodes.reduce((acc, node, index) => {
+    acc[node.name] = weights[index] ?? null;
+    return acc;
+  }, {});
 
   return {
     name: issue.name,
     admin: issue.admin.email,
     description: issue.description,
     model: issue.model.name,
-    criteria: buildCriterionTree(criteria, issue._id).map((node) =>
-      attachWeightsToTree(node, weightMap)
-    ),
+    criteria: criteriaTree
+      .map(mapCriteriaTreeToSummaryShape)
+      .map((node) => attachWeightsToTree(node, weightMap)),
     alternatives: alternatives.map((alternative) => alternative.name).sort(),
     creationDate: issue.creationDate ?? null,
     closureDate: issue.closureDate ?? null,
