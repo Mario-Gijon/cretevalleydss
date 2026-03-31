@@ -11,10 +11,6 @@ import { User } from "../models/Users.js";
 
 // Utils
 import { getUserFinishedIssueIds } from "../modules/issues/issue.queries.js";
-import {
-  ensureIssueOrdersDb,
-  getOrderedLeafCriteriaDb,
-} from "../modules/issues/issue.ordering.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
 import {
   validateFinalEvaluations,
@@ -59,7 +55,8 @@ import {
 import {
   buildBwmEvaluationPayload,
   buildOrderedManualWeights,
-  computeNormalizedCollectiveManualWeights,
+  computeBwmCollectiveWeightsFlow,
+  computeManualCollectiveWeightsFlow,
   getRawManualWeightsPayload,
   markParticipationWeightsCompleted,
   syncIssueStageAfterWeightsCompletion,
@@ -1458,131 +1455,28 @@ export const sendBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const computeWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
     const { id } = req.body;
 
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    if (issue.admin.toString() !== userId) {
-      return res.status(403).json({
-        success: false,
-        msg: "Unauthorized: only admin can compute weights",
-      });
-    }
-
-    await ensureIssueOrdersDb({ issueId: issue._id });
-
-    const pendingWeights = await Participation.find({
-      issue: issue._id,
-      invitationStatus: { $in: ["accepted", "pending"] },
-      weightsCompleted: false,
+    const result = await computeBwmCollectiveWeightsFlow({
+      issueId: id,
+      userId: req.uid,
+      apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+      httpClient: axios,
     });
 
-    if (pendingWeights.length > 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "Not all experts have completed their criteria weight evaluations",
-      });
-    }
-
-    const criteria = await getOrderedLeafCriteriaDb({
-      issueId: issue._id,
-      issueDoc: issue,
-      select: "_id name",
-      lean: true,
-    });
-
-    const criterionNames = criteria.map((criterion) => criterion.name);
-
-    const weightEvaluations = await CriteriaWeightEvaluation.find({
-      issue: issue._id,
-    }).populate("expert", "email");
-
-    if (weightEvaluations.length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "No BWM evaluations found for this issue",
-      });
-    }
-
-    const expertsData = {};
-
-    for (const evaluation of weightEvaluations) {
-      const {
-        bestCriterion,
-        worstCriterion,
-        bestToOthers,
-        othersToWorst,
-      } = evaluation;
-
-      if (!bestCriterion || !worstCriterion) continue;
-
-      const mic = criterionNames.map(
-        (criterionName) => Number(bestToOthers?.[criterionName]) || 1
-      );
-      const lic = criterionNames.map(
-        (criterionName) => Number(othersToWorst?.[criterionName]) || 1
-      );
-
-      const expertEmail =
-        evaluation.expert?.email || `expert_${evaluation.expert?._id}`;
-
-      expertsData[expertEmail] = { mic, lic };
-    }
-
-    if (Object.keys(expertsData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "Incomplete BWM data from experts",
-      });
-    }
-
-    const apimodelsUrl =
-      process.env.ORIGIN_APIMODELS || "http://localhost:7000";
-
-    const response = await axios.post(`${apimodelsUrl}/bwm`, {
-      experts_data: expertsData,
-      eps_penalty: 1,
-    });
-
-    const { success, msg, results } = response.data;
-    if (!success) {
-      return res.status(400).json({
-        success: false,
-        msg,
-      });
-    }
-
-    const weights = results?.weights || [];
-
-    issue.modelParameters = {
-      ...(issue.modelParameters || {}),
-      weights: weights.slice(0, criterionNames.length),
-    };
-    issue.currentStage = "alternativeEvaluation";
-    await issue.save();
-
-    return res.status(200).json({
-      success: true,
-      finished: true,
-      msg: `Criteria weights for '${issue.name}' successfully computed.`,
-      weights: issue.modelParameters.weights,
-      criteriaOrder: criterionNames,
-    });
+    return res.status(200).json(result);
   } catch (error) {
-    console.error("Error in computeWeights:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while computing weights",
-    });
+    console.error("computeWeights error:", error);
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(
+          error,
+          "An error occurred while computing weights"
+        )
+      );
   }
 };
 
@@ -1805,96 +1699,26 @@ export const sendManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const computeManualWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
     const { id } = req.body;
 
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    if (issue.admin.toString() !== userId) {
-      return res.status(403).json({
-        success: false,
-        msg: "Unauthorized: only admin can compute weights",
-      });
-    }
-
-    if (issue.weightingMode !== "consensus") {
-      return res.status(400).json({
-        success: false,
-        msg: "This issue is not using manual consensus weighting mode",
-      });
-    }
-
-    await ensureIssueOrdersDb({ issueId: issue._id });
-
-    const participations = await Participation.find({
-      issue: issue._id,
-      invitationStatus: "accepted",
+    const result = await computeManualCollectiveWeightsFlow({
+      issueId: id,
+      userId: req.uid,
     });
 
-    const weightsPending = participations.filter(
-      (participation) => !participation.weightsCompleted
-    );
-
-    if (weightsPending.length > 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "Not all experts have completed their criteria weight evaluations",
-      });
-    }
-
-    const criteria = await getOrderedLeafCriteriaDb({
-      issueId: issue._id,
-      issueDoc: issue,
-      select: "_id name",
-      lean: true,
-    });
-
-    const criterionNames = criteria.map((criterion) => criterion.name);
-
-    const evaluations = await CriteriaWeightEvaluation.find({
-      issue: issue._id,
-      completed: true,
-    });
-
-    if (evaluations.length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "No manual weight evaluations found for this issue",
-      });
-    }
-
-    const normalizedWeights = computeNormalizedCollectiveManualWeights({
-      evaluations,
-      criterionNames,
-    });
-
-    issue.modelParameters = { ...(issue.modelParameters || {}) };
-    issue.modelParameters.weights = normalizedWeights;
-
-    issue.currentStage = "alternativeEvaluation";
-    await issue.save();
-
-    return res.status(200).json({
-      success: true,
-      finished: true,
-      msg: "Criteria weights computed",
-      weights: issue.modelParameters.weights,
-      criteriaOrder: criterionNames,
-    });
+    return res.status(200).json(result);
   } catch (error) {
-    console.error("Error computing manual weights:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "Error computing manual weights",
-    });
+    console.error("computeManualWeights error:", error);
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(
+          error,
+          "An error occurred while computing weights"
+        )
+      );
   }
 };
 

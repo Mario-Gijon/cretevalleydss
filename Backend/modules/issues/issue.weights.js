@@ -1,5 +1,22 @@
+// Models
+import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
+import { Issue } from "../../models/Issues.js";
+import { Participation } from "../../models/Participations.js";
+
 // Modules
 import { getWeightCompletionStats } from "./issue.queries.js";
+import {
+  ensureIssueOrdersDb,
+  getOrderedLeafCriteriaDb,
+} from "./issue.ordering.js";
+
+// Utils
+import {
+  createBadRequestError,
+  createForbiddenError,
+  createNotFoundError,
+} from "../../utils/common/errors.js";
+import { sameId } from "../../utils/common/ids.js";
 
 /**
  * Normaliza pesos cuando hay un único criterio hoja.
@@ -205,4 +222,236 @@ export const computeNormalizedCollectiveManualWeights = ({
   }
 
   return collectiveWeights.map((weight) => weight / total);
+};
+
+/**
+ * Obtiene el contexto base para computar pesos colectivos.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @param {boolean} [params.requireConsensusMode=false] Indica si debe validarse el modo consensus.
+ * @returns {Promise<Record<string, any>>}
+ */
+const getCollectiveWeightsContextOrThrow = async ({
+  issueId,
+  userId,
+  requireConsensusMode = false,
+}) => {
+  const issue = await Issue.findById(issueId);
+
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
+
+  if (!sameId(issue.admin, userId)) {
+    throw createForbiddenError("Unauthorized: only admin can compute weights");
+  }
+
+  if (requireConsensusMode && issue.weightingMode !== "consensus") {
+    throw createBadRequestError(
+      "This issue is not using manual consensus weighting mode"
+    );
+  }
+
+  await ensureIssueOrdersDb({ issueId: issue._id });
+
+  return issue;
+};
+
+/**
+ * Calcula pesos BWM colectivos y actualiza el issue.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
+ * @param {import("axios").AxiosStatic} params.httpClient Cliente HTTP.
+ * @returns {Promise<{
+ *   success: true,
+ *   finished: true,
+ *   msg: string,
+ *   weights: unknown[],
+ *   criteriaOrder: string[],
+ * }>}
+ */
+export const computeBwmCollectiveWeightsFlow = async ({
+  issueId,
+  userId,
+  apiModelsBaseUrl,
+  httpClient,
+}) => {
+  const issue = await getCollectiveWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const pendingWeights = await Participation.find({
+    issue: issue._id,
+    invitationStatus: { $in: ["accepted", "pending"] },
+    weightsCompleted: false,
+  });
+
+  if (pendingWeights.length > 0) {
+    throw createBadRequestError(
+      "Not all experts have completed their criteria weight evaluations"
+    );
+  }
+
+  const criteria = await getOrderedLeafCriteriaDb({
+    issueId: issue._id,
+    issueDoc: issue,
+    select: "_id name",
+    lean: true,
+  });
+
+  const criterionNames = criteria.map((criterion) => criterion.name);
+
+  const weightEvaluations = await CriteriaWeightEvaluation.find({
+    issue: issue._id,
+  }).populate("expert", "email");
+
+  if (weightEvaluations.length === 0) {
+    throw createBadRequestError("No BWM evaluations found for this issue");
+  }
+
+  const expertsData = {};
+
+  for (const evaluation of weightEvaluations) {
+    const {
+      bestCriterion,
+      worstCriterion,
+      bestToOthers,
+      othersToWorst,
+    } = evaluation;
+
+    if (!bestCriterion || !worstCriterion) continue;
+
+    const mic = criterionNames.map(
+      (criterionName) => Number(bestToOthers?.[criterionName]) || 1
+    );
+
+    const lic = criterionNames.map(
+      (criterionName) => Number(othersToWorst?.[criterionName]) || 1
+    );
+
+    const expertEmail =
+      evaluation.expert?.email || `expert_${evaluation.expert?._id}`;
+
+    expertsData[expertEmail] = { mic, lic };
+  }
+
+  if (Object.keys(expertsData).length === 0) {
+    throw createBadRequestError("Incomplete BWM data from experts");
+  }
+
+  const response = await httpClient.post(`${apiModelsBaseUrl}/bwm`, {
+    experts_data: expertsData,
+    eps_penalty: 1,
+  });
+
+  const { success, msg, results } = response.data || {};
+
+  if (!success) {
+    throw createBadRequestError(msg || "Model execution failed");
+  }
+
+  const weights = results?.weights || [];
+
+  issue.modelParameters = {
+    ...(issue.modelParameters || {}),
+    weights: weights.slice(0, criterionNames.length),
+  };
+
+  issue.currentStage = "alternativeEvaluation";
+  await issue.save();
+
+  return {
+    success: true,
+    finished: true,
+    msg: `Criteria weights for '${issue.name}' successfully computed.`,
+    weights: issue.modelParameters.weights,
+    criteriaOrder: criterionNames,
+  };
+};
+
+/**
+ * Calcula pesos manuales colectivos y actualiza el issue.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @returns {Promise<{
+ *   success: true,
+ *   finished: true,
+ *   msg: string,
+ *   weights: number[],
+ *   criteriaOrder: string[],
+ * }>}
+ */
+export const computeManualCollectiveWeightsFlow = async ({
+  issueId,
+  userId,
+}) => {
+  const issue = await getCollectiveWeightsContextOrThrow({
+    issueId,
+    userId,
+    requireConsensusMode: true,
+  });
+
+  const participations = await Participation.find({
+    issue: issue._id,
+    invitationStatus: "accepted",
+  });
+
+  const weightsPending = participations.filter(
+    (participation) => !participation.weightsCompleted
+  );
+
+  if (weightsPending.length > 0) {
+    throw createBadRequestError(
+      "Not all experts have completed their criteria weight evaluations"
+    );
+  }
+
+  const criteria = await getOrderedLeafCriteriaDb({
+    issueId: issue._id,
+    issueDoc: issue,
+    select: "_id name",
+    lean: true,
+  });
+
+  const criterionNames = criteria.map((criterion) => criterion.name);
+
+  const evaluations = await CriteriaWeightEvaluation.find({
+    issue: issue._id,
+    completed: true,
+  });
+
+  if (evaluations.length === 0) {
+    throw createBadRequestError(
+      "No manual weight evaluations found for this issue"
+    );
+  }
+
+  const normalizedWeights = computeNormalizedCollectiveManualWeights({
+    evaluations,
+    criterionNames,
+  });
+
+  issue.modelParameters = {
+    ...(issue.modelParameters || {}),
+    weights: normalizedWeights,
+  };
+
+  issue.currentStage = "alternativeEvaluation";
+  await issue.save();
+
+  return {
+    success: true,
+    finished: true,
+    msg: "Criteria weights computed",
+    weights: issue.modelParameters.weights,
+    criteriaOrder: criterionNames,
+  };
 };
