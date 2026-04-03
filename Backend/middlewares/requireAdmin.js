@@ -1,7 +1,10 @@
 /**
  * Verifica que el usuario autenticado tenga rol de administrador.
  *
- * @type {import("express").RequestHandler}
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @param {Function} next Siguiente middleware.
+ * @returns {void}
  */
 export const requireAdmin = (req, res, next) => {
   const currentRole = req.role ?? "user";

@@ -8,8 +8,8 @@ const PASSWORD_HAS_LETTER_REGEX = /[a-zA-Z]/;
 /**
  * Construye un mapa plano de errores de validación a partir de express-validator.
  *
- * @param {import("express-validator").Result<import("express-validator").ValidationError>} errors
- * @returns {Record<string, string>}
+ * @param {Object} errors Resultado de validación de express-validator.
+ * @returns {Object.<string, string>}
  */
 const formatValidationErrors = (errors) => {
   return errors.array().reduce((acc, error) => {
@@ -21,7 +21,10 @@ const formatValidationErrors = (errors) => {
 /**
  * Procesa los errores de validación de express-validator.
  *
- * @type {import("express").RequestHandler}
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @param {Function} next Siguiente middleware.
+ * @returns {void}
  */
 export const validationResultExpress = (req, res, next) => {
   const errors = validationResult(req);
@@ -41,7 +44,7 @@ export const validationResultExpress = (req, res, next) => {
  * @param {string} field Nombre del campo.
  * @param {string} message Mensaje de error.
  * @param {RegExp} regex Expresión regular permitida.
- * @returns {import("express-validator").ValidationChain}
+ * @returns {*}
  */
 const createTextRule = (field, message, regex) =>
   body(field, message).trim().isLength({ min: 2, max: 25 }).matches(regex).escape();
@@ -51,7 +54,7 @@ const createTextRule = (field, message, regex) =>
  *
  * @param {string} field Nombre del campo.
  * @param {string} [message="Invalid email"] Mensaje de error.
- * @returns {import("express-validator").ValidationChain}
+ * @returns {*}
  */
 const createEmailRule = (field, message = "Invalid email") =>
   body(field, message).trim().isEmail();
@@ -61,7 +64,7 @@ const createEmailRule = (field, message = "Invalid email") =>
  *
  * @param {string} field Nombre del campo.
  * @param {string} message Mensaje de error.
- * @returns {import("express-validator").ValidationChain}
+ * @returns {*}
  */
 const createPasswordRule = (field, message) =>
   body(field, message)

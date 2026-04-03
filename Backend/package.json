@@ -3,7 +3,9 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@redocly/cli": "^2.24.1",
+    "@types/bun": "latest",
+    "jsdoc": "^4.0.5"
   },
   "peerDependencies": {
     "typescript": "^5.7.2"
@@ -27,10 +29,19 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.4",
     "nodemon": "^3.1.9",
-    "resend": "^4.0.1"
+    "resend": "^4.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "scripts": {
     "dev": "NODE_ENV=development nodemon server.js",
-    "start": "NODE_ENV=production node server.js"
+    "start": "NODE_ENV=production node server.js",
+    "docs:openapi": "node scripts/generate-openapi.mjs",
+    "docs:openapi:lint": "redocly lint openapi/openapi.json",
+    "docs:openapi:bundle": "redocly bundle openapi/openapi.json -o openapi/bundled-openapi.json",
+    "docs:redoc": "bun run docs:openapi && bun run docs:openapi:bundle && redocly build-docs openapi/bundled-openapi.json -o docs-generated/api-reference.html",
+    "docs:jsdoc": "node ./node_modules/jsdoc/jsdoc.js ./controllers ./modules ./models ./middlewares ./services ./utils ./database ./app.js ./server.js -r -d ./docs-generated/jsdoc -R ./docs/jsdoc-home.md -c jsdoc.json",
+    "docs:build": "bun run docs:jsdoc && bun run docs:redoc",
+    "docs:clean": "rm -rf docs-generated openapi/openapi.json openapi/bundled-openapi.json"
   }
 }

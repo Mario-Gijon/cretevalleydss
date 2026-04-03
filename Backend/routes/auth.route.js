@@ -35,6 +35,7 @@ const router = Router();
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Registra un nuevo usuario
  *     description: |
  *       Crea una cuenta pendiente de confirmación y envía el correo de verificación.
@@ -127,6 +128,7 @@ router.post("/signup", singupValidationRules, signupUser);
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Inicia sesión
  *     description: |
  *       Valida las credenciales del usuario, devuelve un access token
@@ -224,6 +226,7 @@ router.post("/login", loginValidationRules, loginUser);
  *   post:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Cierra la sesión actual
  *     description: Elimina la cookie de refresh token del usuario actual.
  *     responses:
@@ -914,6 +917,7 @@ router.patch(
  *   get:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Renueva el access token
  *     description: |
  *       Usa la cookie `refreshToken` para emitir un nuevo access token.
@@ -983,6 +987,7 @@ router.get("/refresh", requireRefreshToken, refreshToken);
  *   get:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Confirma una cuenta de usuario
  *     description: |
  *       Valida el token de confirmación y redirige al frontend principal.
@@ -1006,6 +1011,7 @@ router.get("/account/confirm/:token", accountConfirm);
  *   get:
  *     tags:
  *       - Auth
+ *     security: []
  *     summary: Confirma un cambio de email
  *     description: |
  *       Valida el token de cambio de email y redirige al frontend principal.

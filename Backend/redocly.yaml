@@ -1,0 +1,16 @@
+apis:
+  crete-valley-backend@v1:
+    root: ./openapi/openapi.json
+
+extends:
+  - recommended
+
+rules:
+  info-license: off
+  info-license-strict: off
+  info-contact: off
+  operation-operationId: off
+  operation-operationId-unique: off
+  operation-operationId-url-safe: off
+  no-server-example.com: off
+  no-ambiguous-paths: off

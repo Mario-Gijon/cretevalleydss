@@ -4,8 +4,8 @@ import { generateToken } from "../services/token.service.js";
 /**
  * Genera un nuevo access token a partir del refresh token validado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const refreshToken = async (req, res) => {

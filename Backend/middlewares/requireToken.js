@@ -19,7 +19,10 @@ const getBearerTokenFromHeader = (authorizationHeader) => {
 /**
  * Verifica el access token enviado en la cabecera Authorization.
  *
- * @type {import("express").RequestHandler}
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @param {Function} next Siguiente middleware.
+ * @returns {void}
  */
 export const requireToken = (req, res, next) => {
   try {
