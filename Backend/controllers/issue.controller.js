@@ -1,26 +1,16 @@
 // Models
 import { Alternative } from "../models/Alternatives.js";
 import { Consensus } from "../models/Consensus.js";
-import { CriteriaWeightEvaluation } from "../models/CriteriaWeightEvaluation.js";
-import { Criterion } from "../models/Criteria.js";
 import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
-import { Notification } from "../models/Notificacions.js";
 import { Participation } from "../models/Participations.js";
 import { User } from "../models/Users.js";
 
 // Utils
 import { getUserFinishedIssueIds } from "../modules/issues/issue.queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
-import {
-  validateFinalEvaluations,
-  validateFinalPairwiseEvaluations,
-  validateFinalWeights
-} from "../modules/issues/issue.validation.js"
-
 
 import {
-  createNotFoundError,
   getErrorResponsePayload,
   getErrorStatusCode,
 } from "../utils/common/errors.js";
@@ -42,8 +32,6 @@ import {
   sortActiveTasksByType,
 } from "../modules/issues/issue.active.js";
 import {
-  getAcceptedParticipation,
-  getOrderedLeafCriteriaForIssue,
   getVisibleActiveIssueIdsForUser,
 } from "../modules/issues/issue.queries.js";
 import {
@@ -53,19 +41,22 @@ import {
   removeIssueScenarioFlow,
 } from "../modules/issues/issue.scenarios.js";
 import {
-  buildBwmEvaluationPayload,
-  buildOrderedManualWeights,
   computeBwmCollectiveWeightsFlow,
   computeManualCollectiveWeightsFlow,
-  getRawManualWeightsPayload,
-  markParticipationWeightsCompleted,
-  syncIssueStageAfterWeightsCompletion,
+  getBwmWeightsPayload,
+  getManualWeightsPayload,
+  saveBwmWeightsDraftFlow,
+  saveManualWeightsDraftFlow,
+  submitBwmWeightsFlow,
+  submitManualWeightsFlow,
 } from "../modules/issues/issue.weights.js";
 import {
   getDirectEvaluationPayload,
   getPairwiseEvaluationPayload,
   saveDirectEvaluationDrafts,
   savePairwiseEvaluationDrafts,
+  submitDirectEvaluationFlow,
+  submitPairwiseEvaluationFlow,
 } from "../modules/issues/issue.evaluations.js";
 import {
   resolveDirectIssueFlow,
@@ -82,6 +73,12 @@ import {
   removeUserExpressionDomain,
   updateUserExpressionDomain,
 } from "../modules/issues/issue.expressionDomains.js";
+import {
+  changeInvitationStatusFlow,
+  getNotificationsPayload,
+  markAllNotificationsAsReadFlow,
+  removeNotificationForUserFlow,
+} from "../modules/issues/issue.notifications.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/issue.finished.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import { createIssueFlow } from "../modules/issues/issue.creation.js";
@@ -90,6 +87,7 @@ import { createIssueFlow } from "../modules/issues/issue.creation.js";
 import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
+import { Criterion } from "../models/Criteria.js";
 
 /**
  * Obtiene la información de modelos disponibles.
@@ -537,59 +535,15 @@ export const getAllFinishedIssues = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getNotifications = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const [notifications, participations] = await Promise.all([
-      Notification.find({ expert: userId })
-        .sort({ createdAt: -1 })
-        .populate("expert", "email")
-        .populate("issue", "name"),
-      Participation.find({ expert: userId }),
-    ]);
-
-    const formattedNotifications = notifications.map((notification) => {
-      const participation = participations.find((item) =>
-        sameId(item.issue, notification.issue?._id)
-      );
-
-      let responseStatus = false;
-
-      if (participation) {
-        if (participation.invitationStatus === "accepted") {
-          responseStatus = "Invitation accepted";
-        } else if (participation.invitationStatus === "declined") {
-          responseStatus = "Invitation declined";
-        }
-      }
-
-      return {
-        _id: notification._id,
-        header:
-          notification.type === "invitation"
-            ? "Invitation"
-            : notification.issue?.name,
-        message: notification.message,
-        userEmail: notification.expert
-          ? notification.expert.email
-          : "Usuario eliminado",
-        issueName: notification.issue
-          ? notification.issue.name
-          : "Problema eliminado",
-        issueId: notification.issue ? toIdString(notification.issue._id) : null,
-        requiresAction: notification.requiresAction,
-        read: notification.read ?? false,
-        createdAt: notification.createdAt,
-        responseStatus,
-      };
+    const result = await getNotificationsPayload({
+      userId: req.uid,
     });
 
-    return res.status(200).json({
-      success: true,
-      notifications: formattedNotifications,
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       success: false,
       msg: "An error occurred while getting notifications",
@@ -605,20 +559,15 @@ export const getNotifications = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const markAllNotificationsAsRead = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    await Notification.updateMany(
-      { expert: userId, read: false },
-      { read: true }
-    );
-
-    return res.status(200).json({
-      success: true,
-      msg: "Notifications marked as read",
+    const result = await markAllNotificationsAsReadFlow({
+      userId: req.uid,
     });
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       success: false,
       msg: "An error occurred while updating notifications",
@@ -634,49 +583,22 @@ export const markAllNotificationsAsRead = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const changeInvitationStatus = async (req, res) => {
-  const userId = req.uid;
-  const { id, action } = req.body;
-
   const session = await mongoose.startSession();
 
   try {
+    const { id, action } = req.body;
+    let result = null;
+
     await session.withTransaction(async () => {
-      const issue = await Issue.findById(id).session(session);
-      if (!issue) {
-        throw createNotFoundError("Issue not found");
-      }
-
-      const participation = await Participation.findOne({
-        issue: issue._id,
-        expert: userId,
-      }).session(session);
-
-      if (!participation) {
-        throw createNotFoundError(
-          "No participation found for the user in this issue"
-        );
-      }
-
-      participation.invitationStatus = action;
-
-      if (action === "accepted") {
-        participation.evaluationCompleted = false;
-      }
-
-      await participation.save({ session });
+      result = await changeInvitationStatusFlow({
+        issueId: id,
+        userId: req.uid,
+        action,
+        session,
+      });
     });
 
-    const issue = await Issue.findById(id).select("name").lean();
-
-    const message =
-      action === "accepted"
-        ? `Invitation to issue ${issue?.name} accepted`
-        : `Invitation to issue ${issue?.name} declined`;
-
-    return res.status(200).json({
-      success: true,
-      msg: message,
-    });
+    return res.status(200).json(result);
   } catch (error) {
     await abortTransactionSafely(session);
     console.error(error);
@@ -702,34 +624,24 @@ export const changeInvitationStatus = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const removeNotificationById = async (req, res) => {
-  const userId = req.uid;
-  const { notificationId } = req.body;
-
   try {
-    const notification = await Notification.findOne({
-      _id: notificationId,
-      expert: userId,
+    const result = await removeNotificationForUserFlow({
+      notificationId: req.body?.notificationId,
+      userId: req.uid,
     });
 
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        msg: "Notification not found",
-      });
-    }
-
-    await Notification.deleteOne({ _id: notificationId });
-
-    return res.status(200).json({
-      success: true,
-      msg: "Message removed",
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while removing notification",
-    });
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(
+          error,
+          "An error occurred while removing notification"
+        )
+      );
   }
 };
 
@@ -812,58 +724,35 @@ export const getPairwiseEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitPairwiseEvaluations = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id, evaluations } = req.body;
-
-    const validation = validateFinalPairwiseEvaluations(evaluations);
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        criterion: validation.error.criterion,
-        msg: validation.error.message,
-      });
-    }
-
-    await savePairwiseEvaluationDrafts({
-      issueId: id,
-      userId,
-      evaluations,
+    const result = await submitPairwiseEvaluationFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      evaluations: req.body?.evaluations,
     });
 
-    const participation = await Participation.findOneAndUpdate(
-      {
-        issue: id,
-        expert: userId,
-        invitationStatus: "accepted",
-      },
-      { $set: { evaluationCompleted: true } },
-      { new: true }
-    );
-
-    if (!participation) {
-      return res.status(404).json({
-        success: false,
-        msg: "Participation not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      msg: "Evaluations submitted successfully",
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
 
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while sending evaluations"
-        )
-      );
+    const payload = getErrorResponsePayload(
+      error,
+      "An error occurred while sending evaluations"
+    );
+
+    if (error?.criterion) {
+      payload.criterion = error.criterion;
+    }
+
+    if (error?.row) {
+      payload.row = error.row;
+    }
+
+    if (error?.col) {
+      payload.col = error.col;
+    }
+
+    return res.status(getErrorStatusCode(error)).json(payload);
   }
 };
 
@@ -1104,59 +993,31 @@ export const getDirectEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitDirectEvaluations = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id, evaluations } = req.body;
-
-    const validation = validateFinalEvaluations(evaluations);
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        alternative: validation.error.alternative,
-        criterion: validation.error.criterion,
-        msg: validation.error.message,
-      });
-    }
-
-    await saveDirectEvaluationDrafts({
-      issueId: id,
-      userId,
-      evaluations,
+    const result = await submitDirectEvaluationFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      evaluations: req.body?.evaluations,
     });
 
-    const participation = await Participation.findOneAndUpdate(
-      {
-        issue: id,
-        expert: userId,
-        invitationStatus: "accepted",
-      },
-      { $set: { evaluationCompleted: true } },
-      { new: true }
-    );
-
-    if (!participation) {
-      return res.status(404).json({
-        success: false,
-        msg: "Participation not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      msg: "Evaluations submitted successfully",
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error(error);
 
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while sending evaluations"
-        )
-      );
+    const payload = getErrorResponsePayload(
+      error,
+      "An error occurred while sending evaluations"
+    );
+
+    if (error?.alternative) {
+      payload.alternative = error.alternative;
+    }
+
+    if (error?.criterion) {
+      payload.criterion = error.criterion;
+    }
+
+    return res.status(getErrorStatusCode(error)).json(payload);
   }
 };
 
@@ -1226,77 +1087,29 @@ export const getFinishedIssueInfo = async (req, res) => {
 };
 
 /**
- * Guarda pesos BWM del experto actual.
+ * Guarda borradores de pesos BWM del experto actual.
  *
  * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} [res] Response de Express.
- * @returns {Promise<object | void>}
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
  */
 export const saveBwmWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id, bwmData, send = false } = req.body;
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      const response = { success: false, msg: "Issue not found" };
-      return res ? res.status(404).json(response) : response;
-    }
-
-    const participation = await getAcceptedParticipation(issue._id, userId);
-    if (!participation) {
-      const response = {
-        success: false,
-        msg: "You are no longer a participant in this issue",
-      };
-      return res ? res.status(403).json(response) : response;
-    }
-
-    if (!bwmData.bestCriterion || !bwmData.worstCriterion) {
-      const response = {
-        success: false,
-        msg: "Missing best or worst criterion",
-      };
-      return res ? res.status(400).json(response) : response;
-    }
-
-    const payload = buildBwmEvaluationPayload({
-      issueId: issue._id,
-      userId,
-      bwmData,
-      send,
+    const result = await saveBwmWeightsDraftFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      bwmData: req.body?.bwmData,
     });
 
-    const existingEvaluation = await CriteriaWeightEvaluation.findOne({
-      issue: issue._id,
-      expert: userId,
-    });
-
-    if (existingEvaluation) {
-      await CriteriaWeightEvaluation.updateOne(
-        { _id: existingEvaluation._id },
-        { $set: payload }
-      );
-    } else {
-      await CriteriaWeightEvaluation.create(payload);
-    }
-
-    const successResponse = {
-      success: true,
-      msg: send ? "Weights submitted successfully" : "Weights saved successfully",
-    };
-
-    return res ? res.status(200).json(successResponse) : successResponse;
+    return res.status(200).json(result);
   } catch (error) {
-    console.error(error);
+    console.error("saveBwmWeights error:", error);
 
-    const errorResponse = {
-      success: false,
-      msg: "An error occurred while saving weights",
-    };
-
-    return res ? res.status(500).json(errorResponse) : errorResponse;
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(error, "An error occurred while saving weights")
+      );
   }
 };
 
@@ -1308,64 +1121,21 @@ export const saveBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getBwmWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id } = req.body;
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    const participation = await getAcceptedParticipation(issue._id, userId);
-    if (!participation) {
-      return res.status(403).json({
-        success: false,
-        msg: "You are no longer a participant in this issue",
-      });
-    }
-
-    const leafDocs = await getOrderedLeafCriteriaForIssue(issue);
-    const leafNames = leafDocs.map((criterion) => criterion.name);
-
-    const existingEvaluation = await CriteriaWeightEvaluation.findOne({
-      issue: issue._id,
-      expert: userId,
-    }).lean();
-
-    const bestToOthers = {};
-    const othersToWorst = {};
-
-    for (const name of leafNames) {
-      const value1 = existingEvaluation?.bestToOthers?.[name];
-      const value2 = existingEvaluation?.othersToWorst?.[name];
-
-      bestToOthers[name] = value1 === null || value1 === undefined ? "" : value1;
-      othersToWorst[name] = value2 === null || value2 === undefined ? "" : value2;
-    }
-
-    const bwmData = {
-      bestCriterion: existingEvaluation?.bestCriterion || "",
-      worstCriterion: existingEvaluation?.worstCriterion || "",
-      bestToOthers,
-      othersToWorst,
-      completed: existingEvaluation?.completed || false,
-    };
-
-    return res.status(200).json({
-      success: true,
-      bwmData,
+    const result = await getBwmWeightsPayload({
+      issueId: req.body?.id,
+      userId: req.uid,
     });
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error("getBwmWeights error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while fetching weights",
-    });
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(error, "An error occurred while fetching weights")
+      );
   }
 };
 
@@ -1377,73 +1147,27 @@ export const getBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendBwmWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id, bwmData } = req.body;
+    const result = await submitBwmWeightsFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      bwmData: req.body?.bwmData,
+    });
 
-    const validation = validateFinalWeights(bwmData);
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        msg: validation.msg,
-        field: validation.field,
-      });
-    }
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("sendBwmWeights error:", error);
 
-    if (bwmData.bestCriterion) {
-      bwmData.bestToOthers = {
-        ...bwmData.bestToOthers,
-        [bwmData.bestCriterion]: 1,
-      };
-    }
-
-    if (bwmData.worstCriterion) {
-      bwmData.othersToWorst = {
-        ...bwmData.othersToWorst,
-        [bwmData.worstCriterion]: 1,
-      };
-    }
-
-    const saveResult = await saveBwmWeights(req);
-    if (!saveResult.success) {
-      return res.status(500).json({
-        success: false,
-        msg: saveResult.msg || "Error saving weights",
-      });
-    }
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    await CriteriaWeightEvaluation.updateOne(
-      { issue: issue._id, expert: userId },
-      { $set: { completed: true } }
+    const payload = getErrorResponsePayload(
+      error,
+      "An error occurred while sending weights"
     );
 
-    await markParticipationWeightsCompleted({
-      ParticipationModel: Participation,
-      issueId: issue._id,
-      userId,
-    });
+    if (error?.field) {
+      payload.field = error.field;
+    }
 
-    await syncIssueStageAfterWeightsCompletion(issue);
-
-    return res.status(200).json({
-      success: true,
-      msg: "Weights submitted successfully",
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while sending weights",
-    });
+    return res.status(getErrorStatusCode(error)).json(payload);
   }
 };
 
@@ -1488,55 +1212,22 @@ export const computeWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveManualWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id } = req.body;
-    const raw = getRawManualWeightsPayload(req.body);
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    const participation = await getAcceptedParticipation(issue._id, userId);
-    if (!participation) {
-      return res.status(403).json({
-        success: false,
-        msg: "You are no longer a participant",
-      });
-    }
-
-    const leafDocs = await getOrderedLeafCriteriaForIssue(issue);
-    const manualWeights = buildOrderedManualWeights(raw, leafDocs);
-
-    await CriteriaWeightEvaluation.updateOne(
-      { issue: issue._id, expert: userId },
-      {
-        $set: {
-          issue: issue._id,
-          expert: userId,
-          manualWeights,
-          completed: false,
-          consensusPhase: 1,
-        },
-      },
-      { upsert: true }
-    );
-
-    return res.status(200).json({
-      success: true,
-      msg: "Manual weights saved successfully",
+    const result = await saveManualWeightsDraftFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      body: req.body,
     });
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error("saveManualWeights error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while saving",
-    });
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(error, "An error occurred while saving")
+      );
   }
 };
 
@@ -1548,51 +1239,21 @@ export const saveManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getManualWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id } = req.body;
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    const participation = await getAcceptedParticipation(issue._id, userId);
-    if (!participation) {
-      return res.status(403).json({
-        success: false,
-        msg: "You are no longer a participant",
-      });
-    }
-
-    const leafDocs = await getOrderedLeafCriteriaForIssue(issue);
-    const leafNames = leafDocs.map((criterion) => criterion.name);
-
-    const evaluation = await CriteriaWeightEvaluation.findOne({
-      issue: issue._id,
-      expert: userId,
-    }).lean();
-
-    const manualWeights = {};
-    for (const name of leafNames) {
-      const value = evaluation?.manualWeights?.[name];
-      manualWeights[name] = value === null || value === undefined ? "" : value;
-    }
-
-    return res.status(200).json({
-      success: true,
-      manualWeights,
+    const result = await getManualWeightsPayload({
+      issueId: req.body?.id,
+      userId: req.uid,
     });
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error("getManualWeights error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "Error fetching manual weights",
-    });
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(error, "Error fetching manual weights")
+      );
   }
 };
 
@@ -1604,93 +1265,24 @@ export const getManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendManualWeights = async (req, res) => {
-  const userId = req.uid;
-
   try {
-    const { id } = req.body;
-    const raw = getRawManualWeightsPayload(req.body);
-
-    const issue = await Issue.findById(id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        msg: "Issue not found",
-      });
-    }
-
-    const criteria = await getOrderedLeafCriteriaForIssue(issue);
-    const criterionNames = criteria.map((criterion) => criterion.name);
-    const manualWeights = buildOrderedManualWeights(raw, criteria);
-
-    const missing = criterionNames.filter(
-      (criterionName) => manualWeights[criterionName] == null
-    );
-    if (missing.length > 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "All criteria must have a weight",
-      });
-    }
-
-    const invalid = criterionNames.find((criterionName) => {
-      const value = manualWeights[criterionName];
-      return value < 0 || value > 1;
+    const result = await submitManualWeightsFlow({
+      issueId: req.body?.id,
+      userId: req.uid,
+      body: req.body,
     });
 
-    if (invalid) {
-      return res.status(400).json({
-        success: false,
-        msg: `Weight for '${invalid}' must be between 0 and 1`,
-      });
-    }
-
-    const sum = criterionNames.reduce(
-      (acc, criterionName) => acc + Number(manualWeights[criterionName]),
-      0
-    );
-
-    if (Math.abs(sum - 1) > 0.001) {
-      return res.status(400).json({
-        success: false,
-        msg: `Manual weights must sum to 1. Current sum: ${sum}`,
-      });
-    }
-
-    await CriteriaWeightEvaluation.updateOne(
-      { issue: issue._id, expert: userId },
-      {
-        $set: {
-          issue: issue._id,
-          expert: userId,
-          manualWeights,
-          completed: true,
-          consensusPhase: 1,
-        },
-      },
-      { upsert: true }
-    );
-
-    await markParticipationWeightsCompleted({
-      ParticipationModel: Participation,
-      issueId: issue._id,
-      userId,
-    });
-
-    await syncIssueStageAfterWeightsCompletion(issue);
-
-    return res.status(200).json({
-      success: true,
-      msg: "Manual weights submitted successfully",
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error("sendManualWeights error:", error);
-    return res.status(500).json({
-      success: false,
-      msg: "Error submitting manual weights",
-    });
+
+    return res
+      .status(getErrorStatusCode(error))
+      .json(
+        getErrorResponsePayload(error, "Error submitting manual weights")
+      );
   }
 };
-
 /**
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
@@ -1952,6 +1544,7 @@ export const submitEvaluations = async (req, res) => {
  * @param {import("express").Response} res Response de Express.
  * @returns {Promise<void>}
  */
+
 export const resolveIssue = async (req, res) => {
   try {
     const { id } = req.body;

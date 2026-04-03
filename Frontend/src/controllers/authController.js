@@ -1,7 +1,22 @@
-// src/controllers/auth.controller.js (o donde lo tengas)
-import { authFetch, setAccessToken, clearAccessToken, refreshAccessToken } from "../utils/authFetch";
+import {
+  authFetch,
+  setAccessToken,
+  clearAccessToken,
+  refreshAccessToken,
+} from "../utils/authFetch";
 
-// Estado de autenticación vacío
+/**
+ * Estado vacío del usuario autenticado.
+ *
+ * @type {{
+ *   university: string,
+ *   name: string,
+ *   email: string,
+ *   accountCreation: string,
+ *   role: string,
+ *   isAdmin: boolean,
+ * }}
+ */
 export const EmptyAuthState = {
   university: "",
   name: "",
@@ -11,9 +26,14 @@ export const EmptyAuthState = {
   isAdmin: false,
 };
 
-// Helpers
 const API = import.meta.env.VITE_API_BACK;
 
+/**
+ * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
+ *
+ * @param {Response} res Respuesta de fetch.
+ * @returns {Promise<any|null>}
+ */
 const safeJson = async (res) => {
   try {
     return await res.json();
@@ -22,91 +42,115 @@ const safeJson = async (res) => {
   }
 };
 
-// ✅ Opcional pero recomendado: usar al arrancar la app para recuperar sesión tras refresh de página
+/**
+ * Recupera la sesión del usuario al arrancar la aplicación usando
+ * la cookie de refresh token.
+ *
+ * @returns {Promise<boolean>}
+ */
 export const bootstrapSession = async () => {
-  const token = await refreshAccessToken(); // usa cookie refreshToken
+  const token = await refreshAccessToken();
   return !!token;
 };
 
-// Función para obtener datos protegidos
+/**
+ * Obtiene el perfil del usuario autenticado.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const fetchProtectedData = async () => {
   try {
-    const res = await authFetch(`${API}/auth/protected`, { method: "GET" });
+    const res = await authFetch(`${API}/auth/me`, { method: "GET" });
     const data = await safeJson(res);
     return data?.success ? data : false;
   } catch (err) {
-    console.error("Error fetching protected data:", err);
+    console.error("Error fetching authenticated user:", err);
     return false;
   }
 };
 
-// Función para registrarse
+/**
+ * Registra un nuevo usuario.
+ *
+ * @param {Record<string, any>} formValues Datos del formulario de registro.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const signup = async (formValues) => {
-  const options = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(formValues),
-  };
-
   try {
-    const response = await fetch(`${API}/auth/signup`, options);
-    return await response.json();
+    const response = await fetch(`${API}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formValues),
+    });
+
+    return await safeJson(response);
   } catch (err) {
-    console.error("Error fetching form:", err);
+    console.error("Error during signup:", err);
     return false;
   }
 };
 
-// Función para iniciar sesión
+/**
+ * Inicia sesión y guarda el access token en memoria.
+ *
+ * @param {{ email: string, password: string }} formValues Credenciales.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const login = async (formValues) => {
-  const options = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(formValues),
-    credentials: "include", // ✅ para que te guarde la cookie refreshToken
-  };
-
   try {
-    const response = await fetch(`${API}/auth/login`, options);
-    const data = await response.json();
+    const response = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formValues),
+      credentials: "include",
+    });
 
-    // ✅ si tu backend devuelve access token en login, lo guardas
+    const data = await safeJson(response);
+
     if (data?.success && data?.token) {
       setAccessToken(data.token);
     } else if (data?.success) {
-      // ✅ si NO devuelve token, lo sacas 1 vez vía refresh
       await refreshAccessToken();
     }
 
     return data;
   } catch (err) {
-    console.error("Error fetching form:", err);
+    console.error("Error during login:", err);
     return false;
   }
 };
 
-// Función para realizar el logout
+/**
+ * Cierra la sesión actual y limpia el access token en memoria.
+ *
+ * @returns {Promise<true|string|false>}
+ */
 export const logout = async () => {
   try {
     const response = await fetch(`${API}/auth/logout`, {
-      method: "GET",
+      method: "POST",
       credentials: "include",
     });
 
-    const data = await response.json();
-    clearAccessToken(); // ✅ limpias access token en memoria
+    const data = await safeJson(response);
 
-    return data?.success ? true : data?.msg;
+    clearAccessToken();
+
+    return data?.success ? true : data?.msg || false;
   } catch (err) {
-    console.error("Error logging out:", err);
+    console.error("Error during logout:", err);
     return false;
   }
 };
 
-// Función para eliminar la cuenta
+/**
+ * Elimina la cuenta del usuario autenticado.
+ *
+ * @returns {Promise<true|string|false>}
+ */
 export const deleteAccount = async () => {
   try {
-    const response = await authFetch(`${API}/auth/deleteAccount`, {
+    const response = await authFetch(`${API}/auth/me`, {
       method: "DELETE",
     });
 
@@ -118,10 +162,16 @@ export const deleteAccount = async () => {
   }
 };
 
-// Función para actualizar la contraseña
+/**
+ * Actualiza la contraseña del usuario autenticado.
+ *
+ * @param {string} newPassword Nueva contraseña.
+ * @param {string} repeatNewPassword Repetición de la nueva contraseña.
+ * @returns {Promise<Record<string, any>|string|null>}
+ */
 export const updatePassword = async (newPassword, repeatNewPassword) => {
   try {
-    const response = await authFetch(`${API}/auth/updatePassword`, {
+    const response = await authFetch(`${API}/auth/me/password`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newPassword, repeatNewPassword }),
@@ -134,58 +184,81 @@ export const updatePassword = async (newPassword, repeatNewPassword) => {
   }
 };
 
-// Función para modificar la universidad
+/**
+ * Actualiza la universidad del usuario autenticado.
+ *
+ * @param {string} newUniversity Nueva universidad.
+ * @returns {Promise<Record<string, any>|null>}
+ */
 export const modifyUniversity = async (newUniversity) => {
   try {
-    const response = await authFetch(`${API}/auth/modifyUniversity`, {
-      method: "PUT",
+    const response = await authFetch(`${API}/auth/me/university`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newUniversity }),
     });
 
     return await safeJson(response);
   } catch (err) {
-    console.error("Error verifying university:", err);
+    console.error("Error updating university:", err);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
-// Función para modificar el nombre
+/**
+ * Actualiza el nombre del usuario autenticado.
+ *
+ * @param {string} newName Nuevo nombre.
+ * @returns {Promise<Record<string, any>|null>}
+ */
 export const modifyName = async (newName) => {
   try {
-    const response = await authFetch(`${API}/auth/modifyName`, {
-      method: "PUT",
+    const response = await authFetch(`${API}/auth/me/name`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newName }),
     });
 
     return await safeJson(response);
   } catch (err) {
-    console.error("Error verifying name:", err);
+    console.error("Error updating name:", err);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
-// Función para modificar el email
+/**
+ * Solicita el cambio de email del usuario autenticado.
+ *
+ * @param {string} newEmail Nuevo email.
+ * @returns {Promise<Record<string, any>|null>}
+ */
 export const modifyEmail = async (newEmail) => {
   try {
-    const response = await authFetch(`${API}/auth/modifyEmail`, {
-      method: "PUT",
+    const response = await authFetch(`${API}/auth/me/email`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newEmail }),
     });
 
     return await safeJson(response);
   } catch (err) {
-    console.error("Error verifying email:", err);
+    console.error("Error updating email:", err);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
 
-// 🔔 Notificaciones (rutas protegidas -> authFetch)
+/**
+ * Obtiene las notificaciones del usuario actual.
+ *
+ * Este bloque no cambia en este paso.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getNotifications = async () => {
   try {
-    const response = await authFetch(`${API}/issues/getNotifications`, { method: "GET" });
+    const response = await authFetch(`${API}/issues/notifications`, {
+      method: "GET",
+    });
     return await safeJson(response);
   } catch (err) {
     console.error("Error fetching notifications:", err);
@@ -193,9 +266,16 @@ export const getNotifications = async () => {
   }
 };
 
+/**
+ * Marca como leídas todas las notificaciones del usuario actual.
+ *
+ * Este bloque no cambia en este paso.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const markAllNotificationsAsRead = async () => {
   try {
-    const response = await authFetch(`${API}/issues/markAllNotificationsAsRead`, {
+    const response = await authFetch(`${API}/issues/notifications/read-all`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -206,13 +286,22 @@ export const markAllNotificationsAsRead = async () => {
   }
 };
 
+/**
+ * Elimina una notificación del usuario actual.
+ *
+ * Este bloque no cambia en este paso.
+ *
+ * @param {string} notificationId Id de la notificación.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const removeNotification = async (notificationId) => {
   try {
-    const response = await authFetch(`${API}/issues/removeNotificationById`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notificationId }),
-    });
+    const response = await authFetch(
+      `${API}/issues/notifications/${notificationId}`,
+      {
+        method: "DELETE",
+      }
+    );
     return await safeJson(response);
   } catch (err) {
     console.error("Error removing notification:", err);

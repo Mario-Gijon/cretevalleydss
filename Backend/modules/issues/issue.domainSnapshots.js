@@ -1,16 +1,24 @@
-import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
+import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 
 /**
  * Crea snapshots de dominios de expresión para un issue y devuelve un mapa
  * entre el id del dominio original y el id del snapshot creado.
  *
+ * Este helper congela en la colección `IssueExpressionDomain` la definición
+ * de los dominios usados por un issue para evitar depender de cambios futuros
+ * en los dominios reutilizables originales.
+ *
  * @param {Object} params Datos de entrada.
- * @param {import("mongoose").Types.ObjectId|string} params.issueId Id del issue.
- * @param {Array<Object>} params.domainDocs Dominios origen.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {Array<Object>} params.domainDocs Dominios origen a copiar.
  * @param {import("mongoose").ClientSession} [params.session] Sesión de mongoose.
  * @returns {Promise<Map<string, import("mongoose").Types.ObjectId>>}
  */
-export const createIssueDomainSnapshots = async ({ issueId, domainDocs, session }) => {
+export const createIssueDomainSnapshots = async ({
+  issueId,
+  domainDocs,
+  session,
+}) => {
   if (!Array.isArray(domainDocs) || domainDocs.length === 0) {
     return new Map();
   }
@@ -18,7 +26,10 @@ export const createIssueDomainSnapshots = async ({ issueId, domainDocs, session 
   const uniqueDomainsById = new Map();
 
   for (const domain of domainDocs) {
-    if (!domain?._id) continue;
+    if (!domain?._id) {
+      continue;
+    }
+
     uniqueDomainsById.set(String(domain._id), domain);
   }
 

@@ -1,20 +1,33 @@
-import { nanoid } from "nanoid";
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-import { User } from "../models/Users.js";
-import { generateToken, generateRefreshToken } from "../services/token.service.js";
+import {
+  confirmAccountFlow,
+  createSignupAccountFlow,
+  deleteAuthenticatedUserAccountFlow,
+} from "../modules/auth/auth.account.js";
+import {
+  confirmAuthenticatedUserEmailChangeFlow,
+  requestAuthenticatedUserEmailChangeFlow,
+} from "../modules/auth/auth.emailChange.js";
+import {
+  getAuthenticatedUserProfilePayload,
+  updateAuthenticatedUserNameFlow,
+  updateAuthenticatedUserPasswordFlow,
+  updateAuthenticatedUserUniversityFlow,
+} from "../modules/auth/auth.profile.js";
+import { loginUserFlow } from "../modules/auth/auth.session.js";
+import { generateRefreshToken } from "../services/token.service.js";
 import {
   sendEmailChangeConfirmation,
   sendVerificationEmail,
 } from "../services/email.service.js";
+import {
+  abortTransactionSafely,
+  endSessionSafely,
+} from "../utils/common/mongoose.js";
+import { getErrorStatusCode } from "../utils/common/errors.js";
 
-const FRONTEND_REDIRECT_URL = `${process.env.ORIGIN_FRONT}/`;
-const STATUS_COOKIE_OPTIONS = {
-  secure: false,
-  sameSite: "strict",
-  maxAge: 30000,
-};
+const STATUS_COOKIE_OPTIONS = { secure: false, sameSite: "strict", maxAge: 30000, };
 
 /**
  * Añade una cookie temporal de estado para redirecciones del frontend.
@@ -35,31 +48,7 @@ const setStatusCookie = (res, name, value) => {
  * @returns {import("express").Response}
  */
 const redirectToFrontend = (res) => {
-  return res.redirect(FRONTEND_REDIRECT_URL);
-};
-
-/**
- * Cierra la sesión de mongoose.
- *
- * @param {import("mongoose").ClientSession} session Sesión activa.
- * @returns {Promise<void>}
- */
-const endSessionSafely = async (session) => {
-  if (session) {
-    await session.endSession();
-  }
-};
-
-/**
- * Aborta la transacción si sigue activa.
- *
- * @param {import("mongoose").ClientSession} session Sesión activa.
- * @returns {Promise<void>}
- */
-const abortTransactionSafely = async (session) => {
-  if (session?.inTransaction()) {
-    await session.abortTransaction();
-  }
+  return res.redirect(`${process.env.ORIGIN_FRONT}/`);
 };
 
 /**
@@ -70,112 +59,38 @@ const abortTransactionSafely = async (session) => {
  * @returns {Promise<void>}
  */
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
   try {
-    const user = await User.findOne({ email });
+    const result = await loginUserFlow({
+      email: req.body?.email,
+      password: req.body?.password,
+    });
 
-    if (!user) {
-      return res.json({
-        errors: { email: "User does not exist" },
-        success: false,
-      });
-    }
+    generateRefreshToken(result.userId, res);
 
-    if (!user.accountConfirm) {
-      return res.json({
-        errors: { email: "Email not verified" },
-        success: false,
-      });
-    }
-
-    const isValidPassword = await user.comparePassword(password);
-
-    if (!isValidPassword) {
-      return res.json({
-        errors: { password: "Incorrect password" },
-        success: false,
-      });
-    }
-
-    const role = user.role ?? "user";
-    const { token, expiresIn } = generateToken(user._id, role);
-
-    generateRefreshToken(user._id, res);
+    const { userId, ...payload } = result;
 
     return res.json({
-      msg: "Login successful",
-      token,
-      expiresIn,
-      role,
-      isAdmin: role === "admin",
+      ...payload,
       success: true,
     });
   } catch (err) {
-    console.error("Error during login:", err);
+    console.error("loginUser error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400) {
+      return res.json({
+        errors: {
+          [err.field || "general"]: err.message,
+        },
+        success: false,
+      });
+    }
+
     return res.json({
       errors: { general: "Internal server error" },
       success: false,
     });
-  }
-};
-
-/**
- * Registra un nuevo usuario y envía el correo de verificación.
- *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<void>}
- */
-export const signupUser = async (req, res) => {
-  const { name, university, email, password } = req.body;
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    const existingUser = await User.findOne({ email }).session(session);
-
-    if (existingUser) {
-      await session.abortTransaction();
-      return res.json({
-        errors: { email: "Email already registered" },
-        success: false,
-      });
-    }
-
-    const user = new User({
-      name,
-      university,
-      email,
-      password,
-      tokenConfirm: nanoid(),
-    });
-
-    await user.save({ session });
-
-    await sendVerificationEmail({
-      name: user.name,
-      email: user.email,
-      token: user.tokenConfirm,
-    });
-
-    await session.commitTransaction();
-
-    return res.json({
-      msg: "Signup successful",
-      success: true,
-    });
-  } catch (err) {
-    await abortTransactionSafely(session);
-    console.error("Error during signup:", err);
-
-    return res.json({
-      errors: { general: err.message },
-      success: false,
-    });
-  } finally {
-    await endSessionSafely(session);
   }
 };
 
@@ -192,47 +107,6 @@ export const logout = (req, res) => {
 };
 
 /**
- * Elimina la cuenta del usuario autenticado.
- *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<void>}
- */
-export const deleteAccount = async (req, res) => {
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    const user = await User.findById(req.uid).session(session);
-
-    if (!user) {
-      await session.abortTransaction();
-      return res.json({ msg: "User not found", success: false });
-    }
-
-    await User.findByIdAndDelete(user._id).session(session);
-
-    await session.commitTransaction();
-
-    return res.json({
-      msg: "Account deleted successfully",
-      success: true,
-    });
-  } catch (err) {
-    await abortTransactionSafely(session);
-    console.error("Error deleting account:", err);
-
-    return res.json({
-      msg: "Internal Server Error",
-      success: false,
-    });
-  } finally {
-    await endSessionSafely(session);
-  }
-};
-
-/**
  * Actualiza la contraseña del usuario autenticado.
  *
  * @param {import("express").Request} req Request de Express.
@@ -245,33 +119,31 @@ export const updatePassword = async (req, res) => {
   try {
     session.startTransaction();
 
-    const user = await User.findById(req.uid).session(session);
+    const payload = await updateAuthenticatedUserPasswordFlow({
+      userId: req.uid,
+      newPassword: req.body?.newPassword,
+      repeatNewPassword: req.body?.repeatNewPassword,
+      session,
+    });
 
-    if (!user) {
-      await session.abortTransaction();
-      return res.json({ msg: "User not found", success: false });
-    }
-
-    const { newPassword, repeatNewPassword } = req.body;
-
-    if (newPassword !== repeatNewPassword) {
-      await session.abortTransaction();
-      return res.json({ msg: "Passwords do not match", success: false });
-    }
-
-    user.password = newPassword;
-    user.markModified("password");
-
-    await user.save({ session });
     await session.commitTransaction();
 
     return res.json({
-      msg: "Password updated successfully",
       success: true,
+      ...payload,
     });
   } catch (err) {
     await abortTransactionSafely(session);
-    console.error("Error updating password:", err);
+    console.error("updatePassword error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404) {
+      return res.json({
+        msg: err.message,
+        success: false,
+      });
+    }
 
     return res.json({
       msg: "Internal Server Error",
@@ -290,34 +162,35 @@ export const updatePassword = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const modifyUniversity = async (req, res) => {
-  const { newUniversity } = req.body;
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    const user = await User.findById(req.uid).session(session);
+    const payload = await updateAuthenticatedUserUniversityFlow({
+      userId: req.uid,
+      newUniversity: req.body?.newUniversity,
+      session,
+    });
 
-    if (!user) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        msg: "User not found",
-      });
-    }
-
-    user.university = newUniversity;
-
-    await user.save({ session });
     await session.commitTransaction();
 
     return res.status(200).json({
       success: true,
-      msg: "University updated successfully",
+      ...payload,
     });
   } catch (err) {
     await abortTransactionSafely(session);
-    console.error(err);
+    console.error("modifyUniversity error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404) {
+      return res.status(statusCode).json({
+        success: false,
+        msg: err.message,
+      });
+    }
 
     return res.status(500).json({
       success: false,
@@ -336,176 +209,40 @@ export const modifyUniversity = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const modifyName = async (req, res) => {
-  const { newName } = req.body;
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    const user = await User.findById(req.uid).session(session);
-
-    if (!user) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        msg: "User not found",
-      });
-    }
-
-    user.name = newName;
-
-    await user.save({ session });
-    await session.commitTransaction();
-
-    return res.status(200).json({
-      success: true,
-      msg: "Name updated successfully",
-    });
-  } catch (err) {
-    await abortTransactionSafely(session);
-    console.error(err);
-
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
-  } finally {
-    await endSessionSafely(session);
-  }
-};
-
-/**
- * Inicia el proceso de cambio de email enviando un correo de confirmación.
- *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<void>}
- */
-export const modifyEmail = async (req, res) => {
-  const { newEmail } = req.body;
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    const user = await User.findById(req.uid).session(session);
-
-    if (!user) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        msg: "User not found",
-      });
-    }
-
-    const emailToken = jwt.sign({ newEmail }, process.env.JWT_SECRET);
-
-    user.emailTokenConfirm = emailToken;
-    await user.save({ session });
-
-    await sendEmailChangeConfirmation({
-      newEmail,
-      token: emailToken,
+    const payload = await updateAuthenticatedUserNameFlow({
+      userId: req.uid,
+      newName: req.body?.newName,
+      session,
     });
 
     await session.commitTransaction();
 
     return res.status(200).json({
       success: true,
-      msg: "Please, check new email for confirmation",
+      ...payload,
     });
   } catch (err) {
     await abortTransactionSafely(session);
-    console.error(err);
+    console.error("modifyName error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404) {
+      return res.status(statusCode).json({
+        success: false,
+        msg: err.message,
+      });
+    }
 
     return res.status(500).json({
       success: false,
       msg: "Server error",
     });
-  } finally {
-    await endSessionSafely(session);
-  }
-};
-
-/**
- * Confirma una cuenta a partir del token de verificación.
- *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<import("express").Response>}
- */
-export const accountConfirm = async (req, res) => {
-  const { token } = req.params;
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    const user = await User.findOne({ tokenConfirm: token }).session(session);
-
-    if (!user) {
-      await session.abortTransaction();
-      setStatusCookie(res, "accountStatus", "verification_failed");
-      return redirectToFrontend(res);
-    }
-
-    user.accountConfirm = true;
-    user.tokenConfirm = null;
-
-    await user.save({ session });
-    await session.commitTransaction();
-
-    setStatusCookie(res, "accountStatus", "verified");
-    return redirectToFrontend(res);
-  } catch (err) {
-    await abortTransactionSafely(session);
-    console.error(err);
-
-    setStatusCookie(res, "accountStatus", "error");
-    return redirectToFrontend(res);
-  } finally {
-    await endSessionSafely(session);
-  }
-};
-
-/**
- * Confirma el cambio de email a partir del token recibido.
- *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<import("express").Response>}
- */
-export const confirmEmailChange = async (req, res) => {
-  const { token } = req.params;
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    const user = await User.findOne({ emailTokenConfirm: token }).session(session);
-
-    if (!user) {
-      await session.abortTransaction();
-      setStatusCookie(res, "emailChangeStatus", "verification_failed");
-      return redirectToFrontend(res);
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    user.email = decoded.newEmail;
-    user.emailTokenConfirm = null;
-
-    await user.save({ session });
-    await session.commitTransaction();
-
-    setStatusCookie(res, "emailChangeStatus", "verified");
-    return redirectToFrontend(res);
-  } catch (err) {
-    await abortTransactionSafely(session);
-    console.error(err);
-
-    setStatusCookie(res, "emailChangeStatus", "error");
-    return redirectToFrontend(res);
   } finally {
     await endSessionSafely(session);
   }
@@ -520,32 +257,259 @@ export const confirmEmailChange = async (req, res) => {
  */
 export const infoUser = async (req, res) => {
   try {
-    const user = await User.findById(req.uid).lean();
-
-    if (!user) {
-      return res.json({
-        msg: "User not found",
-        success: false,
-      });
-    }
-
-    const role = user.role ?? "user";
+    const payload = await getAuthenticatedUserProfilePayload({
+      userId: req.uid,
+    });
 
     return res.json({
-      university: user.university,
-      name: user.name,
-      email: user.email,
-      accountCreation: user.accountCreation,
-      role,
-      isAdmin: role === "admin",
+      ...payload,
       success: true,
     });
   } catch (err) {
-    console.error(err);
+    console.error("infoUser error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 404) {
+      return res.json({
+        msg: err.message,
+        success: false,
+      });
+    }
 
     return res.json({
       msg: "Error fetching user data",
       success: false,
     });
+  }
+};
+
+/**
+ * Inicia el proceso de cambio de email enviando un correo de confirmación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
+export const modifyEmail = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const result = await requestAuthenticatedUserEmailChangeFlow({
+      userId: req.uid,
+      newEmail: req.body?.newEmail,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    await sendEmailChangeConfirmation(result.emailChangeConfirmation);
+
+    return res.status(200).json({
+      success: true,
+      msg: result.msg,
+    });
+  } catch (err) {
+    await abortTransactionSafely(session);
+    console.error("modifyEmail error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404 || statusCode === 409) {
+      return res.status(statusCode).json({
+        success: false,
+        msg: err.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      msg: "Server error",
+    });
+  } finally {
+    await endSessionSafely(session);
+  }
+};
+
+/**
+ * Confirma el cambio de email a partir del token recibido.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<import("express").Response>}
+ */
+export const confirmEmailChange = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    await confirmAuthenticatedUserEmailChangeFlow({
+      token: req.params?.token,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    setStatusCookie(res, "emailChangeStatus", "verified");
+    return redirectToFrontend(res);
+  } catch (err) {
+    await abortTransactionSafely(session);
+    console.error("confirmEmailChange error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404 || statusCode === 409) {
+      setStatusCookie(res, "emailChangeStatus", "verification_failed");
+      return redirectToFrontend(res);
+    }
+
+    setStatusCookie(res, "emailChangeStatus", "error");
+    return redirectToFrontend(res);
+  } finally {
+    await endSessionSafely(session);
+  }
+};
+
+/**
+ * Registra un nuevo usuario y envía el correo de verificación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
+export const signupUser = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const result = await createSignupAccountFlow({
+      payload: req.body,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    await sendVerificationEmail(result.verificationEmail);
+
+    return res.json({
+      msg: result.msg,
+      success: true,
+    });
+  } catch (err) {
+    await abortTransactionSafely(session);
+    console.error("signupUser error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400) {
+      return res.json({
+        errors: { general: err.message },
+        success: false,
+      });
+    }
+
+    if (statusCode === 409) {
+      return res.json({
+        errors: { email: err.message },
+        success: false,
+      });
+    }
+
+    return res.json({
+      errors: { general: "Internal server error" },
+      success: false,
+    });
+  } finally {
+    await endSessionSafely(session);
+  }
+};
+
+/**
+ * Confirma una cuenta a partir del token de verificación.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<import("express").Response>}
+ */
+export const accountConfirm = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    await confirmAccountFlow({
+      token: req.params?.token,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    setStatusCookie(res, "accountStatus", "verified");
+    return redirectToFrontend(res);
+  } catch (err) {
+    await abortTransactionSafely(session);
+    console.error("accountConfirm error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 400 || statusCode === 404) {
+      setStatusCookie(res, "accountStatus", "verification_failed");
+      return redirectToFrontend(res);
+    }
+
+    setStatusCookie(res, "accountStatus", "error");
+    return redirectToFrontend(res);
+  } finally {
+    await endSessionSafely(session);
+  }
+};
+
+/**
+ * Elimina la cuenta del usuario autenticado.
+ *
+ * @param {import("express").Request} req Request de Express.
+ * @param {import("express").Response} res Response de Express.
+ * @returns {Promise<void>}
+ */
+export const deleteAccount = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const payload = await deleteAuthenticatedUserAccountFlow({
+      userId: req.uid,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    return res.json({
+      ...payload,
+      success: true,
+    });
+  } catch (err) {
+    await abortTransactionSafely(session);
+    console.error("deleteAccount error:", err);
+
+    const statusCode = getErrorStatusCode(err);
+
+    if (statusCode === 404) {
+      return res.json({
+        msg: err.message,
+        success: false,
+      });
+    }
+
+    return res.json({
+      msg: "Internal Server Error",
+      success: false,
+    });
+  } finally {
+    await endSessionSafely(session);
   }
 };

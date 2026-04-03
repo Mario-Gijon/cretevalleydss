@@ -1,56 +1,92 @@
 import { body, validationResult } from "express-validator";
 
-const NAME_REGEX = /^[a-zA-ZÀ-ÿ ]{2,15}$/;
+const NAME_REGEX = /^[a-zA-ZÀ-ÿ ]{2,25}$/;
 const TEXT_REGEX = /^[a-zA-ZÀ-ÿ ]{2,25}$/;
+const PASSWORD_HAS_NUMBER_REGEX = /[0-9]/;
+const PASSWORD_HAS_LETTER_REGEX = /[a-zA-Z]/;
+
+/**
+ * Construye un mapa plano de errores de validación a partir de express-validator.
+ *
+ * @param {import("express-validator").Result<import("express-validator").ValidationError>} errors
+ * @returns {Record<string, string>}
+ */
+const formatValidationErrors = (errors) => {
+  return errors.array().reduce((acc, error) => {
+    acc[error.path] = error.msg;
+    return acc;
+  }, {});
+};
 
 /**
  * Procesa los errores de validación de express-validator.
  *
  * @type {import("express").RequestHandler}
  */
-const validationResultExpress = (req, res, next) => {
+export const validationResultExpress = (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    const formattedErrors = errors.array().reduce((acc, error) => {
-      acc[error.path] = error.msg;
-      return acc;
-    }, {});
-
+    const formattedErrors = formatValidationErrors(errors);
     console.log(formattedErrors);
     return res.json({ errors: formattedErrors });
   }
 
-  next();
+  return next();
 };
+
+/**
+ * Crea una regla de validación para campos de texto simples.
+ *
+ * @param {string} field Nombre del campo.
+ * @param {string} message Mensaje de error.
+ * @param {RegExp} regex Expresión regular permitida.
+ * @returns {import("express-validator").ValidationChain}
+ */
+const createTextRule = (field, message, regex) =>
+  body(field, message).trim().isLength({ min: 2, max: 25 }).matches(regex).escape();
+
+/**
+ * Crea una regla de validación para emails.
+ *
+ * @param {string} field Nombre del campo.
+ * @param {string} [message="Invalid email"] Mensaje de error.
+ * @returns {import("express-validator").ValidationChain}
+ */
+const createEmailRule = (field, message = "Invalid email") =>
+  body(field, message).trim().isEmail();
+
+/**
+ * Crea una regla de validación para contraseñas.
+ *
+ * @param {string} field Nombre del campo.
+ * @param {string} message Mensaje de error.
+ * @returns {import("express-validator").ValidationChain}
+ */
+const createPasswordRule = (field, message) =>
+  body(field, message)
+    .trim()
+    .isLength({ min: 6 })
+    .matches(PASSWORD_HAS_NUMBER_REGEX)
+    .matches(PASSWORD_HAS_LETTER_REGEX);
 
 /**
  * Reglas de validación para el registro de usuario.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
-export const singupValidationRules = [
-  body("name", "Only letters and spaces, min 2, max 25")
-    .trim()
-    .isLength({ min: 2, max: 25 })
-    .matches(NAME_REGEX)
-    .escape(),
+export const signupValidationRules = [
+  createTextRule("name", "Only letters and spaces, min 2, max 25", NAME_REGEX),
 
-  body("university", "Only letters and spaces, min 2, max 25")
-    .trim()
-    .isLength({ min: 2, max: 25 })
-    .matches(TEXT_REGEX)
-    .escape(),
+  createTextRule(
+    "university",
+    "Only letters and spaces, min 2, max 25",
+    TEXT_REGEX
+  ),
 
-  body("email", "Invalid email")
-    .trim()
-    .isEmail(),
+  createEmailRule("email"),
 
-  body("password", "1 number, 1 letter, min 6")
-    .trim()
-    .isLength({ min: 6 })
-    .matches(/[0-9]/)
-    .matches(/[a-zA-Z]/),
+  createPasswordRule("password", "1 number, 1 letter, min 6"),
 
   body("repeatPassword", "Passwords do not match").custom(
     (value, { req }) => value === req.body.password
@@ -60,22 +96,23 @@ export const singupValidationRules = [
 ];
 
 /**
+ * Alias temporal para mantener compatibilidad con imports existentes
+ * escritos con el nombre antiguo.
+ */
+export const singupValidationRules = signupValidationRules;
+
+/**
  * Reglas de validación para el inicio de sesión.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
 export const loginValidationRules = [
-  body("email", "Invalid email")
-    .trim()
-    .isEmail(),
+  createEmailRule("email"),
 
-  body(
+  createPasswordRule(
     "password",
     "Must contain at least one number, one letter, and be at least 6 characters long"
-  )
-    .isLength({ min: 6 })
-    .matches(/[0-9]/)
-    .matches(/[a-zA-Z]/),
+  ),
 
   validationResultExpress,
 ];
@@ -83,17 +120,13 @@ export const loginValidationRules = [
 /**
  * Reglas de validación para el cambio de contraseña.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
 export const updatePasswordValidationRules = [
-  body(
+  createPasswordRule(
     "newPassword",
     "Password must be at least 6 characters, with at least 1 number and 1 letter"
-  )
-    .trim()
-    .isLength({ min: 6 })
-    .matches(/[0-9]/)
-    .matches(/[a-zA-Z]/),
+  ),
 
   body("repeatNewPassword", "Passwords do not match").custom(
     (value, { req }) => value === req.body.newPassword
@@ -105,14 +138,14 @@ export const updatePasswordValidationRules = [
 /**
  * Reglas de validación para el cambio de universidad.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
 export const newUniversityValidationRules = [
-  body("newUniversity", "Only letters and spaces, min 2, max 25")
-    .trim()
-    .isLength({ min: 2, max: 25 })
-    .matches(TEXT_REGEX)
-    .escape(),
+  createTextRule(
+    "newUniversity",
+    "Only letters and spaces, min 2, max 25",
+    TEXT_REGEX
+  ),
 
   validationResultExpress,
 ];
@@ -120,14 +153,10 @@ export const newUniversityValidationRules = [
 /**
  * Reglas de validación para el cambio de nombre.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
 export const newNameValidationRules = [
-  body("newName", "Only letters and spaces, min 2, max 25")
-    .trim()
-    .isLength({ min: 2, max: 25 })
-    .matches(TEXT_REGEX)
-    .escape(),
+  createTextRule("newName", "Only letters and spaces, min 2, max 25", TEXT_REGEX),
 
   validationResultExpress,
 ];
@@ -135,12 +164,10 @@ export const newNameValidationRules = [
 /**
  * Reglas de validación para el cambio de email.
  *
- * @type {Array<import("express").RequestHandler>}
+ * @type {Array}
  */
 export const newEmailValidationRules = [
-  body("newEmail", "Invalid email")
-    .trim()
-    .isEmail(),
+  createEmailRule("newEmail"),
 
   validationResultExpress,
 ];

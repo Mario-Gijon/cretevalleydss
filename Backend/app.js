@@ -1,69 +1,84 @@
-import express from "express"
-import cors from "cors"
-import dotenv from "dotenv"
-import "./database/db.js"  
-import authRouter from "./routes/auth.route.js"
-import issueRouter from "./routes/issue.route.js"
-import adminRouter from "./routes/admin.route.js"
-import cookieParser from 'cookie-parser' 
-import path from 'path';
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import path from "path";
 
-// Configura las variables de entorno.
-dotenv.config({ path: `.env.${process.env.NODE_ENV}`});
+import authRouter from "./routes/auth.route.js";
+import issueRouter from "./routes/issue.route.js";
+import adminRouter from "./routes/admin.route.js";
 
-// Crea una instancia de la aplicación express.
-const app = express()
+const app = express();
 
-// Define el puerto en el que el servidor escuchará las solicitudes.
-const PORT = process.env.PORT || 6000
+/**
+ * Construye la lista de orígenes permitidos para CORS.
+ *
+ * Filtra valores vacíos o no definidos para evitar ruido en la whitelist.
+ *
+ * @returns {string[]}
+ */
+const getAllowedOrigins = () => {
+  return [
+    process.env.ORIGIN_FRONT,
+    process.env.ORIGIN_BACK,
+    process.env.ORIGIN_APIMODELS,
+    process.env.ORIGIN_CRETEVALLEY,
+    process.env.ORIGIN_SULEIMAN,
+  ].filter(Boolean);
+};
 
-// Define una lista blanca de orígenes permitidos para CORS.
-const whiteList = [
-  process.env.ORIGIN_FRONT,
-  process.env.ORIGIN_BACK,
-  process.env.ORIGIN_APIMODELS,
-  process.env.ORIGIN_CRETEVALLEY,
-  process.env.ORIGIN_SULEIMAN,
-]
+const allowedOrigins = getAllowedOrigins();
 
-// Configura el middleware CORS con opciones personalizadas.
-app.use(cors({
-  origin: function (origin, callback) {
-    // Si el origen de la solicitud está en la lista blanca, permite la solicitud.
-    if (!origin || whiteList.includes(origin)) {
-      return callback(null, true)
-    } else {
-      // Si el origen no está permitido, devuelve un mensaje de error.
-      return callback("Not allowed by CORS: " + origin + " unauthorized")
-    }
-  },
-  credentials: true,  // Permite que las cookies y cabeceras de autenticación se envíen con la solicitud.
-}));
+/**
+ * Valida si un origen está permitido por CORS.
+ *
+ * Permite solicitudes sin origen explícito para herramientas locales,
+ * peticiones server-to-server o utilidades como Postman.
+ *
+ * @param {string | undefined} origin Origen de la request.
+ * @param {(error: Error | null, allow?: boolean) => void} callback Callback de CORS.
+ * @returns {void}
+ */
+const validateCorsOrigin = (origin, callback) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
 
-// Middleware para analizar el cuerpo de las solicitudes entrantes con formato JSON.
+  return callback(new Error(`Not allowed by CORS: ${origin}`));
+};
+
+app.use(
+  cors({
+    origin: validateCorsOrigin,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
-
-// Middleware para analizar las cookies de las solicitudes entrantes.
 app.use(cookieParser());
 
-// Ruta de autenticación
-app.use("/api/auth", authRouter)
-
-// Ruta de problemas
-app.use("/api/issues", issueRouter)
-
-// Ruta del admin
+app.use("/api/auth", authRouter);
+app.use("/api/issues", issueRouter);
 app.use("/api/admin", adminRouter);
 
-// Servir Frontend
-const distPath = path.join(process.cwd(), 'dist');
-
-app.use(express.static(distPath));
-// Todas las rutas no capturadas por la API devuelven el index.html (manejado por React Router)
-app.get('*', (_, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+/**
+ * Devuelve 404 JSON para rutas de API no registradas.
+ */
+app.use("/api", (_req, res) => {
+  return res.status(404).json({
+    success: false,
+    msg: "API route not found",
+  });
 });
 
-// Inicia el servidor y lo pone a escuchar en el puerto configurado
-app.listen(PORT, () => { console.log(`Server running on port ${PORT}`) })
+const distPath = path.join(process.cwd(), "dist");
 
+app.use(express.static(distPath));
+
+/**
+ * Todas las rutas no API se delegan al frontend SPA.
+ */
+app.get("*", (_req, res) => {
+  return res.sendFile(path.join(distPath, "index.html"));
+});
+
+export default app;

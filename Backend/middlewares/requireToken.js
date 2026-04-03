@@ -1,5 +1,21 @@
 import jwt from "jsonwebtoken";
 
+const BEARER_PREFIX = "Bearer ";
+
+/**
+ * Extrae el token Bearer de la cabecera Authorization.
+ *
+ * @param {string | undefined} authorizationHeader Cabecera Authorization.
+ * @returns {string | null}
+ */
+const getBearerTokenFromHeader = (authorizationHeader) => {
+  if (!authorizationHeader || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+    return null;
+  }
+
+  return authorizationHeader.slice(BEARER_PREFIX.length).trim() || null;
+};
+
 /**
  * Verifica el access token enviado en la cabecera Authorization.
  *
@@ -7,9 +23,9 @@ import jwt from "jsonwebtoken";
  */
 export const requireToken = (req, res, next) => {
   try {
-    const authHeader = req.headers?.authorization;
+    const token = getBearerTokenFromHeader(req.headers?.authorization);
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         msg: "Token does not exist",
         success: false,
@@ -17,15 +33,14 @@ export const requireToken = (req, res, next) => {
       });
     }
 
-    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.uid = decoded.uid;
     req.role = decoded.role ?? "user";
 
-    next();
-  } catch (err) {
-    if (err?.name === "TokenExpiredError") {
+    return next();
+  } catch (error) {
+    if (error?.name === "TokenExpiredError") {
       return res.status(401).json({
         msg: "Token expired",
         success: false,

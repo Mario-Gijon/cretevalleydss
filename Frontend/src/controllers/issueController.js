@@ -1,8 +1,13 @@
-// src/controllers/issues.controller.js
 import { authFetch } from "../utils/authFetch";
 
 const API = import.meta.env.VITE_API_BACK;
 
+/**
+ * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
+ *
+ * @param {Response} res Respuesta de fetch.
+ * @returns {Promise<any|null>}
+ */
 const safeJson = async (res) => {
   try {
     return await res.json();
@@ -11,18 +16,45 @@ const safeJson = async (res) => {
   }
 };
 
+/**
+ * Normaliza el id de un issue recibido como string o como objeto.
+ *
+ * @param {string|Record<string, any>|null|undefined} issueOrId Issue o id.
+ * @returns {string|null}
+ */
 const getIssueId = (issueOrId) => {
   if (!issueOrId) return null;
 
   if (typeof issueOrId === "string") return issueOrId;
-  if (typeof issueOrId === "object") return issueOrId.id || issueOrId._id || null;
+
+  if (typeof issueOrId === "object") {
+    return issueOrId.id || issueOrId._id || null;
+  }
 
   return null;
 };
 
+/**
+ * Construye una petición JSON.
+ *
+ * @param {"POST"|"PATCH"|"PUT"} method Método HTTP.
+ * @param {Record<string, any>} body Body de la petición.
+ * @returns {RequestInit}
+ */
+const jsonRequest = (method, body) => ({
+  method,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+/**
+ * Obtiene el catálogo de modelos disponibles.
+ *
+ * @returns {Promise<any[]|false>}
+ */
 export const getModelsInfo = async () => {
   try {
-    const res = await authFetch(`${API}/issues/getModelsInfo`, { method: "GET" });
+    const res = await authFetch(`${API}/issues/models`, { method: "GET" });
     const jsonData = await safeJson(res);
     return jsonData?.success ? jsonData.data : false;
   } catch (err) {
@@ -31,20 +63,14 @@ export const getModelsInfo = async () => {
   }
 };
 
-export const getExpressionsDomain = async () => {
-  try {
-    const res = await authFetch(`${API}/issues/getExpressionsDomain`, { method: "GET" });
-    const jsonData = await safeJson(res);
-    return jsonData?.success ? jsonData.data : [];
-  } catch (err) {
-    console.error("Error fetching expressions domain:", err);
-    return false;
-  }
-};
-
+/**
+ * Obtiene los usuarios disponibles para crear o editar issues.
+ *
+ * @returns {Promise<any[]|false>}
+ */
 export const getAllUsers = async () => {
   try {
-    const res = await authFetch(`${API}/issues/getAllUsers`, { method: "GET" });
+    const res = await authFetch(`${API}/issues/users`, { method: "GET" });
     const jsonData = await safeJson(res);
     return jsonData?.success ? jsonData.data : false;
   } catch (err) {
@@ -53,13 +79,37 @@ export const getAllUsers = async () => {
   }
 };
 
+/**
+ * Obtiene los dominios de expresión visibles para el usuario actual.
+ *
+ * @returns {Promise<any[]|false>}
+ */
+export const getExpressionsDomain = async () => {
+  try {
+    const res = await authFetch(`${API}/issues/expression-domains`, {
+      method: "GET",
+    });
+    const jsonData = await safeJson(res);
+    return jsonData?.success ? jsonData.data : [];
+  } catch (err) {
+    console.error("Error fetching expressions domain:", err);
+    return false;
+  }
+};
+
+/**
+ * Crea un nuevo dominio de expresión.
+ *
+ * @param {Record<string, any>} domain Datos del dominio.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const createExpressionDomain = async (domain) => {
   try {
-    const res = await authFetch(`${API}/issues/createExpressionDomain`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(domain),
-    });
+    const res = await authFetch(
+      `${API}/issues/expression-domains`,
+      jsonRequest("POST", domain)
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error creating domain:", err);
@@ -67,63 +117,18 @@ export const createExpressionDomain = async (domain) => {
   }
 };
 
-export const createIssue = async (issueInfo) => {
-  try {
-    const res = await authFetch(`${API}/issues/createIssue`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueInfo }),
-    });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error creating issue:", err);
-    return false;
-  }
-};
-
-export const getAllActiveIssues = async () => {
-  try {
-    const res = await authFetch(`${API}/issues/getAllActiveIssues`, { method: "GET" });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching active issues:", err);
-    return false;
-  }
-};
-
-export const getAllFinishedIssues = async () => {
-  try {
-    const res = await authFetch(`${API}/issues/getAllFinishedIssues`, { method: "GET" });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching finished issues:", err);
-    return false;
-  }
-};
-
-export const removeIssue = async (issueOrId) => {
-  try {
-    const id = getIssueId(issueOrId);
-
-    const res = await authFetch(`${API}/issues/removeIssue`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error removing issue:", err);
-    return false;
-  }
-};
-
+/**
+ * Elimina un dominio de expresión.
+ *
+ * @param {string} id Id del dominio.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const removeExpressionDomain = async (id) => {
   try {
-    const res = await authFetch(`${API}/issues/removeExpressionDomain`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/expression-domains/${id}`, {
+      method: "DELETE",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error deleting domain:", err);
@@ -131,13 +136,20 @@ export const removeExpressionDomain = async (id) => {
   }
 };
 
+/**
+ * Actualiza un dominio de expresión.
+ *
+ * @param {string} id Id del dominio.
+ * @param {Record<string, any>} updatedDomain Datos actualizados.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const updateExpressionDomain = async (id, updatedDomain) => {
   try {
-    const res = await authFetch(`${API}/issues/updateExpressionDomain`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, updatedDomain }),
-    });
+    const res = await authFetch(
+      `${API}/issues/expression-domains/${id}`,
+      jsonRequest("PATCH", { updatedDomain })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error updating domain:", err);
@@ -145,15 +157,93 @@ export const updateExpressionDomain = async (id, updatedDomain) => {
   }
 };
 
+/**
+ * Crea un nuevo issue.
+ *
+ * @param {Record<string, any>} issueInfo Datos del issue.
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const createIssue = async (issueInfo) => {
+  try {
+    const res = await authFetch(
+      `${API}/issues`,
+      jsonRequest("POST", { issueInfo })
+    );
+
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Error creating issue:", err);
+    return false;
+  }
+};
+
+/**
+ * Obtiene los issues activos visibles para el usuario actual.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const getAllActiveIssues = async () => {
+  try {
+    const res = await authFetch(`${API}/issues/active`, { method: "GET" });
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Error fetching active issues:", err);
+    return false;
+  }
+};
+
+/**
+ * Obtiene los issues finalizados visibles para el usuario actual.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const getAllFinishedIssues = async () => {
+  try {
+    const res = await authFetch(`${API}/issues/finished`, { method: "GET" });
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Error fetching finished issues:", err);
+    return false;
+  }
+};
+
+/**
+ * Elimina un issue activo.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const removeIssue = async (issueOrId) => {
+  try {
+    const id = getIssueId(issueOrId);
+
+    const res = await authFetch(`${API}/issues/${id}`, {
+      method: "DELETE",
+    });
+
+    return await safeJson(res);
+  } catch (err) {
+    console.error("Error removing issue:", err);
+    return false;
+  }
+};
+
+/**
+ * Acepta o rechaza una invitación a un issue.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {"accepted"|"declined"} action Acción sobre la invitación.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const changeInvitationStatus = async (issueOrId, action) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/changeInvitationStatus`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/invitation-response`,
+      jsonRequest("POST", { action })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error changing invitation status:", err);
@@ -161,15 +251,21 @@ export const changeInvitationStatus = async (issueOrId, action) => {
   }
 };
 
+/**
+ * Guarda borradores de evaluaciones.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} evaluations Evaluaciones.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const saveEvaluations = async (issueOrId, evaluations) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/evaluations/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, evaluations }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/evaluations/draft`,
+      jsonRequest("POST", { evaluations })
+    );
 
     return await safeJson(res);
   } catch (err) {
@@ -178,14 +274,18 @@ export const saveEvaluations = async (issueOrId, evaluations) => {
   }
 };
 
+/**
+ * Obtiene las evaluaciones del usuario actual para un issue.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getEvaluations = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/evaluations/get`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/${id}/evaluations`, {
+      method: "GET",
     });
 
     return await safeJson(res);
@@ -195,15 +295,21 @@ export const getEvaluations = async (issueOrId) => {
   }
 };
 
+/**
+ * Envía las evaluaciones del usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} evaluations Evaluaciones.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const submitEvaluations = async (issueOrId, evaluations) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/evaluations/submit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, evaluations }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/evaluations/submit`,
+      jsonRequest("POST", { evaluations })
+    );
 
     return await safeJson(res);
   } catch (err) {
@@ -212,17 +318,21 @@ export const submitEvaluations = async (issueOrId, evaluations) => {
   }
 };
 
+/**
+ * Resuelve un issue.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {boolean} [forceFinalize=false] Fuerza la finalización si aplica.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const resolveIssue = async (issueOrId, forceFinalize = false) => {
   try {
     const id = getIssueId(issueOrId);
 
-    console.log(id)
-
-    const res = await authFetch(`${API}/issues/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, forceFinalize }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/resolve`,
+      jsonRequest("POST", { forceFinalize })
+    );
 
     return await safeJson(res);
   } catch (err) {
@@ -231,15 +341,20 @@ export const resolveIssue = async (issueOrId, forceFinalize = false) => {
   }
 };
 
+/**
+ * Obtiene el detalle de un issue finalizado.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getFinishedIssueInfo = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/getFinishedIssueInfo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/finished/${id}`, {
+      method: "GET",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching finished issue info:", err);
@@ -247,15 +362,20 @@ export const getFinishedIssueInfo = async (issueOrId) => {
   }
 };
 
+/**
+ * Oculta o elimina un issue finalizado para el usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const removeFinishedIssue = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/removeFinishedIssue`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/finished/${id}`, {
+      method: "DELETE",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error removing finished issue:", err);
@@ -263,15 +383,33 @@ export const removeFinishedIssue = async (issueOrId) => {
   }
 };
 
-export const editExperts = async (issueOrId, expertsToAdd, expertsToRemove, domainAssignments = null) => {
+/**
+ * Edita los expertos de un issue.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {string[]} expertsToAdd Correos a añadir.
+ * @param {string[]} expertsToRemove Correos a eliminar.
+ * @param {Record<string, any>|null} [domainAssignments=null] Asignaciones de dominios.
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const editExperts = async (
+  issueOrId,
+  expertsToAdd,
+  expertsToRemove,
+  domainAssignments = null
+) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/editExperts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, expertsToAdd, expertsToRemove, domainAssignments }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/experts`,
+      jsonRequest("PATCH", {
+        expertsToAdd,
+        expertsToRemove,
+        domainAssignments,
+      })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error editing experts:", err);
@@ -279,15 +417,20 @@ export const editExperts = async (issueOrId, expertsToAdd, expertsToRemove, doma
   }
 };
 
+/**
+ * Permite al usuario actual abandonar un issue activo.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const leaveIssue = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/leaveIssue`, {
+    const res = await authFetch(`${API}/issues/${id}/leave`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error leaving issue:", err);
@@ -295,15 +438,22 @@ export const leaveIssue = async (issueOrId) => {
   }
 };
 
+/**
+ * Guarda un borrador de pesos BWM.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} bwmData Datos BWM.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const saveBwmWeights = async (issueOrId, bwmData) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/saveBwmWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, bwmData }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/weights/bwm/draft`,
+      jsonRequest("POST", { bwmData })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error saving BWM weights:", err);
@@ -311,15 +461,20 @@ export const saveBwmWeights = async (issueOrId, bwmData) => {
   }
 };
 
+/**
+ * Obtiene los pesos BWM guardados del usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getBwmWeights = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/getBwmWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/${id}/weights/bwm`, {
+      method: "GET",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching BWM weights:", err);
@@ -327,15 +482,22 @@ export const getBwmWeights = async (issueOrId) => {
   }
 };
 
+/**
+ * Envía los pesos BWM del usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} bwmData Datos BWM.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const sendBwmWeights = async (issueOrId, bwmData) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/sendBwmWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, bwmData }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/weights/bwm/submit`,
+      jsonRequest("POST", { bwmData })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error sending BWM weights:", err);
@@ -343,15 +505,22 @@ export const sendBwmWeights = async (issueOrId, bwmData) => {
   }
 };
 
+/**
+ * Guarda un borrador de pesos manuales.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} manualWeights Pesos manuales.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const saveManualWeights = async (issueOrId, manualWeights) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/saveManualWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, manualWeights }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/weights/manual/draft`,
+      jsonRequest("POST", { manualWeights })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error saving manual weights:", err);
@@ -359,15 +528,22 @@ export const saveManualWeights = async (issueOrId, manualWeights) => {
   }
 };
 
+/**
+ * Envía los pesos manuales del usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @param {Record<string, any>} manualWeights Pesos manuales.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const sendManualWeights = async (issueOrId, manualWeights) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/sendManualWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, manualWeights }),
-    });
+    const res = await authFetch(
+      `${API}/issues/${id}/weights/manual/submit`,
+      jsonRequest("POST", { manualWeights })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error sending manual weights:", err);
@@ -375,15 +551,20 @@ export const sendManualWeights = async (issueOrId, manualWeights) => {
   }
 };
 
+/**
+ * Obtiene los pesos manuales guardados del usuario actual.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getManualWeights = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/getManualWeights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/issues/${id}/weights/manual`, {
+      method: "GET",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching manual weights:", err);
@@ -391,15 +572,20 @@ export const getManualWeights = async (issueOrId) => {
   }
 };
 
+/**
+ * Calcula los pesos BWM colectivos.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const computeWeights = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/computeWeights`, {
+    const res = await authFetch(`${API}/issues/${id}/weights/bwm/compute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error computing weights:", err);
@@ -407,15 +593,20 @@ export const computeWeights = async (issueOrId) => {
   }
 };
 
+/**
+ * Calcula los pesos manuales colectivos.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const computeManualWeights = async (issueOrId) => {
   try {
     const id = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/computeManualWeights`, {
+    const res = await authFetch(`${API}/issues/${id}/weights/manual/compute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error computing manual weights:", err);
@@ -423,15 +614,20 @@ export const computeManualWeights = async (issueOrId) => {
   }
 };
 
+/**
+ * Lista los escenarios de un issue.
+ *
+ * @param {string|Record<string, any>} issueOrId Issue o id.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueScenarios = async (issueOrId) => {
   try {
     const issueId = getIssueId(issueOrId);
 
-    const res = await authFetch(`${API}/issues/getIssueScenarios`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueId }),
+    const res = await authFetch(`${API}/issues/${issueId}/scenarios`, {
+      method: "GET",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching scenarios:", err);
@@ -439,13 +635,18 @@ export const getIssueScenarios = async (issueOrId) => {
   }
 };
 
+/**
+ * Obtiene un escenario por su id.
+ *
+ * @param {string} scenarioId Id del escenario.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueScenarioById = async (scenarioId) => {
   try {
-    const res = await authFetch(`${API}/issues/getIssueScenarioById`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId }),
+    const res = await authFetch(`${API}/issues/scenarios/${scenarioId}`, {
+      method: "GET",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error fetching scenario by id:", err);
@@ -453,25 +654,38 @@ export const getIssueScenarioById = async (scenarioId) => {
   }
 };
 
+/**
+ * Crea un escenario de simulación para un issue.
+ *
+ * @param {{
+ *   issueId: string|Record<string, any>,
+ *   scenarioName?: string,
+ *   targetModelName?: string,
+ *   targetModelId?: string,
+ *   paramOverrides?: Record<string, any>,
+ * }} params Parámetros de entrada.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const createIssueScenario = async ({
   issueId,
   scenarioName,
   targetModelName,
+  targetModelId,
   paramOverrides,
 }) => {
   try {
     const normalizedIssueId = getIssueId(issueId);
 
-    const res = await authFetch(`${API}/issues/createIssueScenario`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        issueId: normalizedIssueId,
+    const res = await authFetch(
+      `${API}/issues/${normalizedIssueId}/scenarios`,
+      jsonRequest("POST", {
         scenarioName,
         targetModelName,
+        targetModelId,
         paramOverrides,
-      }),
-    });
+      })
+    );
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error creating scenario:", err);
@@ -479,13 +693,18 @@ export const createIssueScenario = async ({
   }
 };
 
+/**
+ * Elimina un escenario por su id.
+ *
+ * @param {string} scenarioId Id del escenario.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const removeIssueScenario = async (scenarioId) => {
   try {
-    const res = await authFetch(`${API}/issues/removeIssueScenario`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenarioId }),
+    const res = await authFetch(`${API}/issues/scenarios/${scenarioId}`, {
+      method: "DELETE",
     });
+
     return await safeJson(res);
   } catch (err) {
     console.error("Error removing scenario:", err);

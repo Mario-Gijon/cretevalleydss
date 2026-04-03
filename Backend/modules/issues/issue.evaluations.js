@@ -5,6 +5,7 @@ import { Criterion } from "../../models/Criteria.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
+import { Participation } from "../../models/Participations.js";
 
 // Modules
 import {
@@ -30,6 +31,10 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
+import {
+  validateFinalEvaluations,
+  validateFinalPairwiseEvaluations,
+} from "./issue.validation.js";
 
 /**
  * Construye un mapa nombre -> id a partir de una colección de documentos.
@@ -408,6 +413,155 @@ export const savePairwiseEvaluationDrafts = async ({
   }
 
   return { updatedCount: bulkOperations.length };
+};
+
+/**
+ * Construye un error de validación para evaluaciones directas.
+ *
+ * @param {{ valid: boolean, error?: Record<string, any> }} validation Resultado de validación.
+ * @returns {Error}
+ */
+const buildDirectEvaluationValidationError = (validation) => {
+  const error = createBadRequestError(
+    validation?.error?.message || "Invalid direct evaluations"
+  );
+
+  if (validation?.error?.alternative) {
+    error.alternative = validation.error.alternative;
+  }
+
+  if (validation?.error?.criterion) {
+    error.criterion = validation.error.criterion;
+  }
+
+  return error;
+};
+
+/**
+ * Construye un error de validación para evaluaciones pairwise.
+ *
+ * @param {{ valid: boolean, error?: Record<string, any> }} validation Resultado de validación.
+ * @returns {Error}
+ */
+const buildPairwiseEvaluationValidationError = (validation) => {
+  const error = createBadRequestError(
+    validation?.error?.message || "Invalid pairwise evaluations"
+  );
+
+  if (validation?.error?.criterion) {
+    error.criterion = validation.error.criterion;
+  }
+
+  if (validation?.error?.row) {
+    error.row = validation.error.row;
+  }
+
+  if (validation?.error?.col) {
+    error.col = validation.error.col;
+  }
+
+  return error;
+};
+
+/**
+ * Marca la participación del experto como evaluación completada.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.userId Id del experto.
+ * @returns {Promise<void>}
+ */
+const markParticipationEvaluationCompletedOrThrow = async ({
+  issueId,
+  userId,
+}) => {
+  const participation = await Participation.findOneAndUpdate(
+    {
+      issue: issueId,
+      expert: userId,
+      invitationStatus: "accepted",
+    },
+    { $set: { evaluationCompleted: true } },
+    { new: true }
+  );
+
+  if (!participation) {
+    throw createNotFoundError("Participation not found");
+  }
+};
+
+/**
+ * Valida y envía las evaluaciones directas del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.userId Id del usuario actual.
+ * @param {Record<string, any>} params.evaluations Evaluaciones directas recibidas.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const submitDirectEvaluationFlow = async ({
+  issueId,
+  userId,
+  evaluations,
+}) => {
+  const validation = validateFinalEvaluations(evaluations);
+
+  if (!validation.valid) {
+    throw buildDirectEvaluationValidationError(validation);
+  }
+
+  await saveDirectEvaluationDrafts({
+    issueId,
+    userId,
+    evaluations,
+  });
+
+  await markParticipationEvaluationCompletedOrThrow({
+    issueId,
+    userId,
+  });
+
+  return {
+    success: true,
+    msg: "Evaluations submitted successfully",
+  };
+};
+
+/**
+ * Valida y envía las evaluaciones pairwise del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.userId Id del usuario actual.
+ * @param {Record<string, any>} params.evaluations Evaluaciones pairwise recibidas.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const submitPairwiseEvaluationFlow = async ({
+  issueId,
+  userId,
+  evaluations,
+}) => {
+  const validation = validateFinalPairwiseEvaluations(evaluations);
+
+  if (!validation.valid) {
+    throw buildPairwiseEvaluationValidationError(validation);
+  }
+
+  await savePairwiseEvaluationDrafts({
+    issueId,
+    userId,
+    evaluations,
+  });
+
+  await markParticipationEvaluationCompletedOrThrow({
+    issueId,
+    userId,
+  });
+
+  return {
+    success: true,
+    msg: "Evaluations submitted successfully",
+  };
 };
 
 /**

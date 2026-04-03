@@ -2,6 +2,12 @@ import { authFetch } from "../utils/authFetch";
 
 const API = import.meta.env.VITE_API_BACK;
 
+/**
+ * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
+ *
+ * @param {Response} res Respuesta de fetch.
+ * @returns {Promise<any|null>}
+ */
 const safeJson = async (res) => {
   try {
     return await res.json();
@@ -10,6 +16,12 @@ const safeJson = async (res) => {
   }
 };
 
+/**
+ * Construye una query string a partir de un objeto plano.
+ *
+ * @param {Record<string, any>} paramsObj Parámetros de entrada.
+ * @returns {string}
+ */
 const buildQuery = (paramsObj = {}) => {
   const params = new URLSearchParams();
 
@@ -27,6 +39,11 @@ const buildQuery = (paramsObj = {}) => {
  * Admin auth
  * ========================================================= */
 
+/**
+ * Comprueba si el usuario actual tiene acceso de administrador.
+ *
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const checkAdminAccess = async () => {
   try {
     const res = await authFetch(`${API}/auth/admin/check`, { method: "GET" });
@@ -41,6 +58,12 @@ export const checkAdminAccess = async () => {
  * Users / Experts admin
  * ========================================================= */
 
+/**
+ * Obtiene el listado de expertos del panel admin.
+ *
+ * @param {{ q?: string, includeAdmins?: boolean }} [options={}] Opciones de filtro.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
   try {
     const query = buildQuery({
@@ -48,7 +71,7 @@ export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
       includeAdmins: includeAdmins ? "true" : undefined,
     });
 
-    const res = await authFetch(`${API}/admin/getAllExperts${query}`, {
+    const res = await authFetch(`${API}/admin/experts${query}`, {
       method: "GET",
     });
 
@@ -59,9 +82,15 @@ export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
   }
 };
 
+/**
+ * Crea un experto desde el panel admin.
+ *
+ * @param {Record<string, any>} userData Datos del experto.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const createUser = async (userData) => {
   try {
-    const res = await authFetch(`${API}/admin/createExpert`, {
+    const res = await authFetch(`${API}/admin/experts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -74,6 +103,20 @@ export const createUser = async (userData) => {
   }
 };
 
+/**
+ * Actualiza un experto desde el panel admin.
+ *
+ * @param {{
+ *   id: string,
+ *   name?: string,
+ *   university?: string,
+ *   email?: string,
+ *   password?: string,
+ *   accountConfirm?: boolean,
+ *   role?: string,
+ * }} payload Datos a actualizar.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const updateUser = async ({
   id,
   name,
@@ -84,11 +127,10 @@ export const updateUser = async ({
   role,
 }) => {
   try {
-    const res = await authFetch(`${API}/admin/updateExpert`, {
-      method: "POST",
+    const res = await authFetch(`${API}/admin/experts/${id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id,
         name,
         university,
         email,
@@ -105,12 +147,16 @@ export const updateUser = async ({
   }
 };
 
+/**
+ * Elimina un experto desde el panel admin.
+ *
+ * @param {string} id Id del usuario.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const deleteUser = async (id) => {
   try {
-    const res = await authFetch(`${API}/admin/deleteExpert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    const res = await authFetch(`${API}/admin/experts/${id}`, {
+      method: "DELETE",
     });
 
     return await safeJson(res);
@@ -124,6 +170,19 @@ export const deleteUser = async (id) => {
  * Issues admin
  * ========================================================= */
 
+/**
+ * Obtiene el listado de issues del panel admin.
+ *
+ * @param {{
+ *   q?: string,
+ *   active?: string,
+ *   currentStage?: string,
+ *   isConsensus?: string,
+ *   adminId?: string,
+ *   modelId?: string,
+ * }} [options={}] Filtros de búsqueda.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getAllIssues = async ({
   q = "",
   active = "all",
@@ -142,7 +201,7 @@ export const getAllIssues = async ({
       modelId,
     });
 
-    const res = await authFetch(`${API}/admin/getAllIssues${query}`, {
+    const res = await authFetch(`${API}/admin/issues${query}`, {
       method: "GET",
     });
 
@@ -153,11 +212,17 @@ export const getAllIssues = async ({
   }
 };
 
+/**
+ * Obtiene el detalle de un issue desde el panel admin.
+ *
+ * @param {string} id Id del issue.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueByIdAdmin = async (id) => {
   try {
     if (!id) return false;
 
-    const res = await authFetch(`${API}/admin/getIssue/${id}`, {
+    const res = await authFetch(`${API}/admin/issues/${id}`, {
       method: "GET",
     });
 
@@ -168,13 +233,22 @@ export const getIssueByIdAdmin = async (id) => {
   }
 };
 
+/**
+ * Obtiene el progreso de expertos de un issue.
+ *
+ * @param {string} issueId Id del issue.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueExpertsProgress = async (issueId) => {
   try {
     if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/getIssueExpertsProgress/${issueId}`, {
-      method: "GET",
-    });
+    const res = await authFetch(
+      `${API}/admin/issues/${issueId}/experts/progress`,
+      {
+        method: "GET",
+      }
+    );
 
     return await safeJson(res);
   } catch (err) {
@@ -183,12 +257,19 @@ export const getIssueExpertsProgress = async (issueId) => {
   }
 };
 
+/**
+ * Obtiene las evaluaciones de un experto en un issue.
+ *
+ * @param {string} issueId Id del issue.
+ * @param {string} expertId Id del experto.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueExpertEvaluations = async (issueId, expertId) => {
   try {
     if (!issueId || !expertId) return false;
 
     const res = await authFetch(
-      `${API}/admin/getIssueExpertEvaluations/${issueId}/${expertId}`,
+      `${API}/admin/issues/${issueId}/experts/${expertId}/evaluations`,
       {
         method: "GET",
       }
@@ -201,12 +282,19 @@ export const getIssueExpertEvaluations = async (issueId, expertId) => {
   }
 };
 
+/**
+ * Obtiene los pesos de un experto en un issue.
+ *
+ * @param {string} issueId Id del issue.
+ * @param {string} expertId Id del experto.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const getIssueExpertWeights = async (issueId, expertId) => {
   try {
     if (!issueId || !expertId) return false;
 
     const res = await authFetch(
-      `${API}/admin/getIssueExpertWeights/${issueId}/${expertId}`,
+      `${API}/admin/issues/${issueId}/experts/${expertId}/weights`,
       {
         method: "GET",
       }
@@ -219,13 +307,18 @@ export const getIssueExpertWeights = async (issueId, expertId) => {
   }
 };
 
+/**
+ * Reasigna el administrador responsable de un issue.
+ *
+ * @param {{ issueId: string, newAdminId: string }} params Parámetros de entrada.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const reassignIssueAdmin = async ({ issueId, newAdminId }) => {
   try {
-    const res = await authFetch(`${API}/admin/reassignIssueAdmin`, {
-      method: "POST",
+    const res = await authFetch(`${API}/admin/issues/${issueId}/admin`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        issueId,
         newAdminId,
       }),
     });
@@ -241,6 +334,17 @@ export const reassignIssueAdmin = async ({ issueId, newAdminId }) => {
  * Admin acting as creator on issues
  * ========================================================= */
 
+/**
+ * Edita los expertos de un issue desde el panel admin.
+ *
+ * @param {{
+ *   issueId: string,
+ *   expertsToAdd?: string[],
+ *   expertsToRemove?: string[],
+ *   domainAssignments?: Record<string, any>|null,
+ * }} params Parámetros de entrada.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const editIssueExpertsAdminAction = async ({
   issueId,
   expertsToAdd = [],
@@ -248,11 +352,10 @@ export const editIssueExpertsAdminAction = async ({
   domainAssignments = null,
 }) => {
   try {
-    const res = await authFetch(`${API}/admin/issues/edit-experts`, {
-      method: "POST",
+    const res = await authFetch(`${API}/admin/issues/${issueId}/experts`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        issueId,
         expertsToAdd,
         expertsToRemove,
         domainAssignments,
@@ -266,14 +369,19 @@ export const editIssueExpertsAdminAction = async ({
   }
 };
 
+/**
+ * Computa los pesos de un issue desde el panel admin.
+ *
+ * @param {string} issueId Id del issue.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const computeIssueWeightsAdminAction = async (issueId) => {
   try {
     if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/compute-weights`, {
+    const res = await authFetch(`${API}/admin/issues/${issueId}/weights/compute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueId }),
     });
 
     return await safeJson(res);
@@ -283,15 +391,24 @@ export const computeIssueWeightsAdminAction = async (issueId) => {
   }
 };
 
-export const resolveIssueAdminAction = async (issueId, forceFinalize = false) => {
+/**
+ * Resuelve un issue desde el panel admin.
+ *
+ * @param {string} issueId Id del issue.
+ * @param {boolean} [forceFinalize=false] Fuerza finalización si aplica.
+ * @returns {Promise<Record<string, any>|false>}
+ */
+export const resolveIssueAdminAction = async (
+  issueId,
+  forceFinalize = false
+) => {
   try {
     if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/resolve`, {
+    const res = await authFetch(`${API}/admin/issues/${issueId}/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        issueId,
         forceFinalize,
       }),
     });
@@ -303,14 +420,18 @@ export const resolveIssueAdminAction = async (issueId, forceFinalize = false) =>
   }
 };
 
+/**
+ * Elimina un issue desde el panel admin.
+ *
+ * @param {string} issueId Id del issue.
+ * @returns {Promise<Record<string, any>|false>}
+ */
 export const removeIssueAdminAction = async (issueId) => {
   try {
     if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/remove`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ issueId }),
+    const res = await authFetch(`${API}/admin/issues/${issueId}`, {
+      method: "DELETE",
     });
 
     return await safeJson(res);

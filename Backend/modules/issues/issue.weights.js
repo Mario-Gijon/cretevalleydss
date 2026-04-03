@@ -4,11 +4,15 @@ import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
 
 // Modules
-import { getWeightCompletionStats } from "./issue.queries.js";
+import {
+  getAcceptedParticipation,
+  getWeightCompletionStats,
+} from "./issue.queries.js";
 import {
   ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
 } from "./issue.ordering.js";
+import { validateFinalWeights } from "./issue.validation.js";
 
 // Utils
 import {
@@ -175,6 +179,283 @@ export const syncIssueStageAfterWeightsCompletion = async (issue) => {
     totalParticipants,
     totalWeightsDone,
     stageChanged,
+  };
+};
+
+const MANUAL_WEIGHTS_SUM_TOLERANCE = 0.001;
+
+/**
+ * Obtiene el contexto base de pesos manuales para un experto dentro de un issue.
+ *
+ * Valida:
+ * - existencia del issue
+ * - que el usuario siga siendo participante aceptado
+ * - orden canónico de criterios hoja
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @returns {Promise<{
+ *   issue: Record<string, any>,
+ *   participation: Record<string, any>,
+ *   leafDocs: Array<Record<string, any>>,
+ *   criterionNames: string[],
+ * }>}
+ */
+const getManualWeightsContextOrThrow = async ({ issueId, userId }) => {
+  if (!issueId) {
+    throw createBadRequestError("Issue id is required");
+  }
+
+  const issue = await Issue.findById(issueId);
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
+
+  const participation = await getAcceptedParticipation(issue._id, userId);
+  if (!participation) {
+    throw createForbiddenError("You are no longer a participant");
+  }
+
+  await ensureIssueOrdersDb({ issueId: issue._id });
+
+  const leafDocs = await getOrderedLeafCriteriaDb({
+    issueId: issue._id,
+    issueDoc: issue,
+    select: "_id name",
+    lean: true,
+  });
+
+  return {
+    issue,
+    participation,
+    leafDocs,
+    criterionNames: leafDocs.map((criterion) => criterion.name),
+  };
+};
+
+/**
+ * Convierte unos pesos manuales persistidos al formato esperado por el frontend.
+ *
+ * Mantiene todas las claves en el orden canónico de criterios y reemplaza
+ * null/undefined por string vacío para no romper los inputs del formulario.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {Record<string, any>} [params.manualWeights={}] Pesos persistidos.
+ * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
+ * @returns {Record<string, string | number>}
+ */
+const buildManualWeightsResponse = ({
+  manualWeights = {},
+  criterionNames,
+}) =>
+  criterionNames.reduce((accumulator, criterionName) => {
+    const value = manualWeights?.[criterionName];
+
+    accumulator[criterionName] =
+      value === null || value === undefined ? "" : value;
+
+    return accumulator;
+  }, {});
+
+/**
+ * Valida que los pesos manuales enviados estén completos y normalizados.
+ *
+ * Reglas preservadas:
+ * - todos los criterios deben tener valor
+ * - cada valor debe estar entre 0 y 1
+ * - la suma total debe ser 1 con una tolerancia mínima
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {Record<string, number | null>} params.manualWeights Pesos manuales ordenados.
+ * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
+ * @returns {void}
+ */
+const validateSubmittedManualWeightsOrThrow = ({
+  manualWeights,
+  criterionNames,
+}) => {
+  const missing = criterionNames.filter(
+    (criterionName) => manualWeights[criterionName] == null
+  );
+
+  if (missing.length > 0) {
+    throw createBadRequestError("All criteria must have a weight");
+  }
+
+  const invalid = criterionNames.find((criterionName) => {
+    const value = manualWeights[criterionName];
+
+    return (
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > 1
+    );
+  });
+
+  if (invalid) {
+    throw createBadRequestError(
+      `Weight for '${invalid}' must be between 0 and 1`
+    );
+  }
+
+  const sum = criterionNames.reduce(
+    (accumulator, criterionName) =>
+      accumulator + Number(manualWeights[criterionName]),
+    0
+  );
+
+  if (Math.abs(sum - 1) > MANUAL_WEIGHTS_SUM_TOLERANCE) {
+    throw createBadRequestError(
+      `Manual weights must sum to 1. Current sum: ${sum}`
+    );
+  }
+};
+
+/**
+ * Guarda una evaluación de pesos manuales para un experto.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, number | null>} params.manualWeights Pesos manuales ordenados.
+ * @param {boolean} params.completed Indica si la evaluación queda enviada.
+ * @returns {Promise<void>}
+ */
+const upsertManualWeightsEvaluation = async ({
+  issueId,
+  userId,
+  manualWeights,
+  completed,
+}) => {
+  await CriteriaWeightEvaluation.updateOne(
+    { issue: issueId, expert: userId },
+    {
+      $set: {
+        issue: issueId,
+        expert: userId,
+        manualWeights,
+        completed,
+        consensusPhase: 1,
+      },
+    },
+    { upsert: true }
+  );
+};
+
+/**
+ * Obtiene los pesos manuales guardados del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @returns {Promise<{
+ *   success: true,
+ *   manualWeights: Record<string, string | number>,
+ * }>}
+ */
+export const getManualWeightsPayload = async ({ issueId, userId }) => {
+  const { issue, criterionNames } = await getManualWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const evaluation = await CriteriaWeightEvaluation.findOne({
+    issue: issue._id,
+    expert: userId,
+  }).lean();
+
+  return {
+    success: true,
+    manualWeights: buildManualWeightsResponse({
+      manualWeights: evaluation?.manualWeights || {},
+      criterionNames,
+    }),
+  };
+};
+
+/**
+ * Guarda un borrador de pesos manuales para el experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, any>} params.body Cuerpo recibido en la request.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const saveManualWeightsDraftFlow = async ({
+  issueId,
+  userId,
+  body,
+}) => {
+  const { issue, leafDocs } = await getManualWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const raw = getRawManualWeightsPayload(body);
+  const manualWeights = buildOrderedManualWeights(raw, leafDocs);
+
+  await upsertManualWeightsEvaluation({
+    issueId: issue._id,
+    userId,
+    manualWeights,
+    completed: false,
+  });
+
+  return {
+    success: true,
+    msg: "Manual weights saved successfully",
+  };
+};
+
+/**
+ * Valida y envía los pesos manuales del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, any>} params.body Cuerpo recibido en la request.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const submitManualWeightsFlow = async ({
+  issueId,
+  userId,
+  body,
+}) => {
+  const { issue, leafDocs, criterionNames } =
+    await getManualWeightsContextOrThrow({
+      issueId,
+      userId,
+    });
+
+  const raw = getRawManualWeightsPayload(body);
+  const manualWeights = buildOrderedManualWeights(raw, leafDocs);
+
+  validateSubmittedManualWeightsOrThrow({
+    manualWeights,
+    criterionNames,
+  });
+
+  await upsertManualWeightsEvaluation({
+    issueId: issue._id,
+    userId,
+    manualWeights,
+    completed: true,
+  });
+
+  await markParticipationWeightsCompleted({
+    ParticipationModel: Participation,
+    issueId: issue._id,
+    userId,
+  });
+
+  await syncIssueStageAfterWeightsCompletion(issue);
+
+  return {
+    success: true,
+    msg: "Manual weights submitted successfully",
   };
 };
 
@@ -453,5 +734,297 @@ export const computeManualCollectiveWeightsFlow = async ({
     msg: "Criteria weights computed",
     weights: issue.modelParameters.weights,
     criteriaOrder: criterionNames,
+  };
+};
+
+/**
+ * Obtiene el contexto base de pesos BWM para un experto dentro de un issue.
+ *
+ * Valida:
+ * - existencia del issue
+ * - que el usuario siga siendo participante aceptado
+ * - orden canónico de criterios hoja
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @returns {Promise<{
+ *   issue: Record<string, any>,
+ *   participation: Record<string, any>,
+ *   leafDocs: Array<Record<string, any>>,
+ *   criterionNames: string[],
+ * }>}
+ */
+const getBwmWeightsContextOrThrow = async ({ issueId, userId }) => {
+  if (!issueId) {
+    throw createBadRequestError("Issue id is required");
+  }
+
+  const issue = await Issue.findById(issueId);
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
+
+  const participation = await getAcceptedParticipation(issue._id, userId);
+  if (!participation) {
+    throw createForbiddenError("You are no longer a participant in this issue");
+  }
+
+  await ensureIssueOrdersDb({ issueId: issue._id });
+
+  const leafDocs = await getOrderedLeafCriteriaDb({
+    issueId: issue._id,
+    issueDoc: issue,
+    select: "_id name",
+    lean: true,
+  });
+
+  return {
+    issue,
+    participation,
+    leafDocs,
+    criterionNames: leafDocs.map((criterion) => criterion.name),
+  };
+};
+
+/**
+ * Normaliza los datos BWM para preservar las autofijaciones de la diagonal.
+ *
+ * Mantiene la lógica actual:
+ * - bestCriterion frente a sí mismo vale 1
+ * - worstCriterion frente a sí mismo vale 1
+ *
+ * @param {Record<string, any>} [bwmData={}] Datos BWM recibidos.
+ * @returns {Record<string, any>}
+ */
+const normalizeBwmInput = (bwmData = {}) => {
+  const normalized = {
+    ...bwmData,
+    bestToOthers: {
+      ...(bwmData?.bestToOthers || {}),
+    },
+    othersToWorst: {
+      ...(bwmData?.othersToWorst || {}),
+    },
+  };
+
+  if (normalized.bestCriterion) {
+    normalized.bestToOthers[normalized.bestCriterion] = 1;
+  }
+
+  if (normalized.worstCriterion) {
+    normalized.othersToWorst[normalized.worstCriterion] = 1;
+  }
+
+  return normalized;
+};
+
+/**
+ * Construye la respuesta BWM esperada por el frontend.
+ *
+ * Garantiza que todos los criterios hoja estén presentes y reemplaza
+ * null/undefined por string vacío para no romper los inputs.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {Record<string, any> | null} params.evaluation Evaluación persistida.
+ * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
+ * @returns {{
+ *   bestCriterion: string,
+ *   worstCriterion: string,
+ *   bestToOthers: Record<string, string | number>,
+ *   othersToWorst: Record<string, string | number>,
+ *   completed: boolean,
+ * }}
+ */
+const buildBwmResponseData = ({ evaluation, criterionNames }) => {
+  const bestToOthers = {};
+  const othersToWorst = {};
+
+  for (const criterionName of criterionNames) {
+    const bestValue = evaluation?.bestToOthers?.[criterionName];
+    const worstValue = evaluation?.othersToWorst?.[criterionName];
+
+    bestToOthers[criterionName] =
+      bestValue === null || bestValue === undefined ? "" : bestValue;
+
+    othersToWorst[criterionName] =
+      worstValue === null || worstValue === undefined ? "" : worstValue;
+  }
+
+  return {
+    bestCriterion: evaluation?.bestCriterion || "",
+    worstCriterion: evaluation?.worstCriterion || "",
+    bestToOthers,
+    othersToWorst,
+    completed: evaluation?.completed || false,
+  };
+};
+
+/**
+ * Valida los datos BWM finales y lanza un error enriquecido si son inválidos.
+ *
+ * @param {Record<string, any>} bwmData Datos BWM normalizados.
+ * @returns {void}
+ */
+const validateSubmittedBwmDataOrThrow = (bwmData) => {
+  const validation = validateFinalWeights(bwmData);
+
+  if (!validation.valid) {
+    const error = createBadRequestError(validation.msg || "Invalid BWM weight data");
+
+    if (validation.field) {
+      error.field = validation.field;
+    }
+
+    throw error;
+  }
+};
+
+/**
+ * Guarda una evaluación BWM para un experto.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, any>} params.bwmData Datos BWM ya normalizados.
+ * @param {boolean} params.completed Indica si la evaluación queda enviada.
+ * @returns {Promise<void>}
+ */
+const upsertBwmWeightsEvaluation = async ({
+  issueId,
+  userId,
+  bwmData,
+  completed,
+}) => {
+  const payload = buildBwmEvaluationPayload({
+    issueId,
+    userId,
+    bwmData,
+    send: completed,
+  });
+
+  await CriteriaWeightEvaluation.updateOne(
+    { issue: issueId, expert: userId },
+    { $set: payload },
+    { upsert: true }
+  );
+};
+
+/**
+ * Obtiene los pesos BWM guardados del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @returns {Promise<{
+ *   success: true,
+ *   bwmData: {
+ *     bestCriterion: string,
+ *     worstCriterion: string,
+ *     bestToOthers: Record<string, string | number>,
+ *     othersToWorst: Record<string, string | number>,
+ *     completed: boolean,
+ *   },
+ * }>}
+ */
+export const getBwmWeightsPayload = async ({ issueId, userId }) => {
+  const { issue, criterionNames } = await getBwmWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const evaluation = await CriteriaWeightEvaluation.findOne({
+    issue: issue._id,
+    expert: userId,
+  }).lean();
+
+  return {
+    success: true,
+    bwmData: buildBwmResponseData({
+      evaluation,
+      criterionNames,
+    }),
+  };
+};
+
+/**
+ * Guarda un borrador de pesos BWM para el experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, any>} params.bwmData Datos BWM recibidos.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const saveBwmWeightsDraftFlow = async ({
+  issueId,
+  userId,
+  bwmData,
+}) => {
+  const { issue } = await getBwmWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const normalizedBwmData = normalizeBwmInput(bwmData);
+
+  if (!normalizedBwmData.bestCriterion || !normalizedBwmData.worstCriterion) {
+    throw createBadRequestError("Missing best or worst criterion");
+  }
+
+  await upsertBwmWeightsEvaluation({
+    issueId: issue._id,
+    userId,
+    bwmData: normalizedBwmData,
+    completed: false,
+  });
+
+  return {
+    success: true,
+    msg: "Weights saved successfully",
+  };
+};
+
+/**
+ * Valida y envía los pesos BWM del experto actual.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Record<string, any>} params.bwmData Datos BWM recibidos.
+ * @returns {Promise<{ success: true, msg: string }>}
+ */
+export const submitBwmWeightsFlow = async ({
+  issueId,
+  userId,
+  bwmData,
+}) => {
+  const { issue } = await getBwmWeightsContextOrThrow({
+    issueId,
+    userId,
+  });
+
+  const normalizedBwmData = normalizeBwmInput(bwmData);
+
+  validateSubmittedBwmDataOrThrow(normalizedBwmData);
+
+  await upsertBwmWeightsEvaluation({
+    issueId: issue._id,
+    userId,
+    bwmData: normalizedBwmData,
+    completed: true,
+  });
+
+  await markParticipationWeightsCompleted({
+    ParticipationModel: Participation,
+    issueId: issue._id,
+    userId,
+  });
+
+  await syncIssueStageAfterWeightsCompletion(issue);
+
+  return {
+    success: true,
+    msg: "Weights submitted successfully",
   };
 };

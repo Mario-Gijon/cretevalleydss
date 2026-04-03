@@ -42,6 +42,7 @@ import {
   getErrorResponsePayload,
   getErrorStatusCode,
 } from "../utils/common/errors.js";
+import { endSessionSafely } from "../utils/common/mongoose.js";
 
 /**
  * Convierte un valor o documento en id string.
@@ -63,18 +64,6 @@ const asId = (value) => {
  * @returns {boolean}
  */
 const isValidObjectId = (value) => Boolean(value) && mongoose.Types.ObjectId.isValid(value);
-
-/**
- * Cierra una sesión de mongoose si existe.
- *
- * @param {import("mongoose").ClientSession} session Sesión de mongoose.
- * @returns {Promise<void>}
- */
-const endSessionSafely = async (session) => {
-  if (session) {
-    await session.endSession();
-  }
-};
 
 /**
  * Obtiene el contexto necesario para ejecutar acciones de admin

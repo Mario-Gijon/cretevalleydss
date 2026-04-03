@@ -1,12 +1,52 @@
 import { Schema, model } from "mongoose";
 
+/**
+ * Registro de consenso agregado para un issue y una fase concreta.
+ *
+ * Almacena el nivel de consenso alcanzado, el instante de cómputo y
+ * los datos agregados resultantes de una fase del proceso.
+ *
+ * Relaciones:
+ * - `issue` -> issue al que pertenece el consenso.
+ *
+ * Campos principales:
+ * - `phase`: número de fase de consenso.
+ * - `level`: nivel global de consenso calculado.
+ * - `timestamp`: instante en el que se generó el consenso.
+ * - `details`: información adicional del cálculo de consenso.
+ * - `collectiveEvaluations`: evaluaciones agregadas resultantes.
+ *
+ * Notas de dominio:
+ * - `details` y `collectiveEvaluations` se mantienen flexibles porque
+ *   su estructura puede variar según el modelo y el algoritmo aplicado.
+ */
 const consensusSchema = new Schema({
-  issue: { type: Schema.Types.ObjectId, ref: "Issue", required: true },
-  phase: { type: Number, required: true, default: 1 },
-  level: { type: Schema.Types.Mixed, default: null },
-  timestamp: { type: Date, default: null },
-  details: { type: Object, default: {} },
-  collectiveEvaluations: { type: Schema.Types.Mixed, default: {} },
+  issue: {
+    type: Schema.Types.ObjectId,
+    ref: "Issue",
+    required: true,
+  },
+  phase: {
+    type: Number,
+    required: true,
+    default: 1,
+  },
+  level: {
+    type: Schema.Types.Mixed,
+    default: null,
+  },
+  timestamp: {
+    type: Date,
+    default: null,
+  },
+  details: {
+    type: Object,
+    default: {},
+  },
+  collectiveEvaluations: {
+    type: Schema.Types.Mixed,
+    default: {},
+  },
 });
 
 export const Consensus = model("Consensus", consensusSchema);

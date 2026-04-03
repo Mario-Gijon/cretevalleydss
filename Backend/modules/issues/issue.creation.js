@@ -1,6 +1,5 @@
 // Models
 import { Alternative } from "../../models/Alternatives.js";
-import { createIssueDomainSnapshots } from "../../models/createIssueDomainSnapshots.js";
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
 import { Criterion } from "../../models/Criteria.js";
 import { Evaluation } from "../../models/Evaluations.js";
@@ -33,6 +32,7 @@ import { toIdString } from "../../utils/common/ids.js";
 
 // External libraries
 import dayjs from "dayjs";
+import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
 
 /**
  * Crea un error HTTP enriquecido con status y metadata opcional.
