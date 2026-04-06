@@ -8,6 +8,12 @@ import swaggerJSDoc from "swagger-jsdoc";
 import authRouter from "./routes/auth.route.js";
 import issueRouter from "./routes/issue.route.js";
 import adminRouter from "./routes/admin.route.js";
+/**
+ * @callback CorsDecisionCallback
+ * @param {?Error} error Error de validación de origen.
+ * @param {boolean} [allow] Indica si el origen está permitido.
+ * @returns {void}
+ */
 
 const app = express();
 
@@ -37,7 +43,7 @@ const allowedOrigins = getAllowedOrigins();
  * peticiones server-to-server o utilidades como Postman.
  *
  * @param {string | undefined} origin Origen de la request.
- * @param {(error: Error | null, allow?: boolean) => void} callback Callback de CORS.
+ * @param {CorsDecisionCallback} callback Callback de CORS.
  * @returns {void}
  */
 const validateCorsOrigin = (origin, callback) => {

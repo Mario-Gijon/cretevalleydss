@@ -2,6 +2,36 @@ import { Issue } from "../../models/Issues.js";
 import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
 
+/**
+ * @callback IssueNameSelector
+ * @param {Object} doc Documento.
+ * @returns {string}
+ */
+
+/**
+ * @callback IssueIdSelector
+ * @param {Object} doc Documento.
+ * @returns {*}
+ */
+
+/**
+ * @typedef {Object} OrderDocsOptions
+ * @property {Function} [getId] Selector de id.
+ * @property {Function} [getName] Selector de nombre.
+ */
+
+/**
+ * @typedef {Object} BuildIssueOrdersParams
+ * @property {Array<Object>} [alternativesDocs]
+ * @property {Array<Object>} [leafCriteriaDocs]
+ */
+
+/**
+ * @typedef {Object} EnsureIssueOrdersParams
+ * @property {string|Object} [issueId]
+ * @property {Object|null} [session]
+ */
+
 const COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
 /**
@@ -36,8 +66,8 @@ export const compareNameId = (aName, aId, bName, bId) => {
  * Ordena documentos por nombre e id.
  *
  * @param {Array<Object>} docs Lista de documentos.
- * @param {(doc: Object) => string} [getName] Selector de nombre.
- * @param {(doc: Object) => *} [getId] Selector de id.
+ * @param {IssueNameSelector} [getName] Selector de nombre.
+ * @param {IssueIdSelector} [getId] Selector de id.
  * @returns {Array<Object>}
  */
 export const sortDocsByNameId = (
@@ -57,7 +87,7 @@ export const sortDocsByNameId = (
  *
  * @param {Array<Object>} docs Lista de documentos.
  * @param {Array<*>} orderIds Lista de ids ordenada.
- * @param {{ getId?: Function, getName?: Function }} [options]
+ * @param {OrderDocsOptions} [options]
  * @returns {Array<Object>}
  */
 export const orderDocsByIdList = (
@@ -94,8 +124,8 @@ export const orderDocsByIdList = (
 /**
  * Construye órdenes iniciales de alternativas y criterios hoja.
  *
- * @param {{ alternativesDocs?: Array<Object>, leafCriteriaDocs?: Array<Object> }} params
- * @returns {{ altOrder: Array<*>, leafOrder: Array<*> }}
+ * @param {BuildIssueOrdersParams} params
+ * @returns {Object}
  */
 export const buildIssueOrdersFromDocs = ({ alternativesDocs = [], leafCriteriaDocs = [] }) => {
   const altOrder = sortDocsByNameId(alternativesDocs).map((alternative) => alternative._id);
@@ -107,7 +137,7 @@ export const buildIssueOrdersFromDocs = ({ alternativesDocs = [], leafCriteriaDo
 /**
  * Genera y guarda los órdenes del issue si no existen.
  *
- * @param {{ issueId?: string|Object, session?: import("mongoose").ClientSession|null }} [params]
+ * @param {EnsureIssueOrdersParams} [params]
  * @returns {Promise<Object|null>}
  */
 export const ensureIssueOrdersDb = async ({ issueId, session } = {}) => {

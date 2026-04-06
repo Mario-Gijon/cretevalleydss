@@ -17,7 +17,7 @@ export const isValidObjectIdLike = (value) => {
  * Convierte un valor a ObjectId o devuelve null si no es válido.
  *
  * @param {any} value Valor a convertir.
- * @returns {import("mongoose").Types.ObjectId | null}
+ * @returns {Object|null}
  */
 export const toObjectIdOrNull = (value) => {
   const id = toIdString(value);
@@ -34,7 +34,7 @@ export const toObjectIdOrNull = (value) => {
  *
  * @param {any} value Valor a convertir.
  * @param {string} [fieldName="id"] Nombre del campo para el mensaje de error.
- * @returns {import("mongoose").Types.ObjectId}
+ * @returns {Object}
  */
 export const ensureObjectId = (value, fieldName = "id") => {
   const objectId = toObjectIdOrNull(value);

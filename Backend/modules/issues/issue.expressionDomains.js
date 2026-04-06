@@ -15,7 +15,7 @@ import { normalizeString } from "../../utils/common/strings.js";
  *
  * @template T
  * @param {T} query Query de mongoose.
- * @param {import("mongoose").ClientSession|null} [session=null] Sesión opcional.
+ * @param {Object|null} [session=null] Sesión opcional.
  * @returns {T}
  */
 const withOptionalSession = (query, session = null) =>
@@ -24,13 +24,8 @@ const withOptionalSession = (query, session = null) =>
 /**
  * Normaliza y valida los datos de un dominio de expresión a crear.
  *
- * @param {Record<string, any>} payload Cuerpo recibido.
- * @returns {{
- *   name: string,
- *   type: string,
- *   numericRange?: { min: number, max: number },
- *   linguisticLabels?: Array<{ label: string, values: number[] }>,
- * }}
+ * @param {Object} payload Cuerpo recibido.
+ * @returns {Object}
  */
 export const normalizeNewExpressionDomainPayload = (payload) => {
   let {
@@ -145,8 +140,8 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
  * @param {object} params Parámetros de entrada.
  * @param {string} params.domainId Id del dominio.
  * @param {string} params.userId Id del usuario actual.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión opcional.
- * @returns {Promise<Record<string, any>>}
+ * @param {Object|null} [params.session=null] Sesión opcional.
+ * @returns {Promise<Object>}
  */
 export const getEditableUserExpressionDomainOrThrow = async ({
   domainId,
@@ -180,10 +175,7 @@ export const getEditableUserExpressionDomainOrThrow = async ({
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   globals: Array<Record<string, any>>,
- *   userDomains: Array<Record<string, any>>,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getExpressionDomainsPayload = async ({ userId }) => {
   const normalizedUserId = toIdString(userId);
@@ -208,8 +200,8 @@ export const getExpressionDomainsPayload = async ({ userId }) => {
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.payload Cuerpo recibido.
- * @returns {Promise<Record<string, any>>}
+ * @param {Object} params.payload Cuerpo recibido.
+ * @returns {Promise<Object>}
  */
 export const createUserExpressionDomain = async ({ userId, payload }) => {
   const normalizedDomain = normalizeNewExpressionDomainPayload(payload);
@@ -238,7 +230,7 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
  * @param {object} params Parámetros de entrada.
  * @param {string} params.domainId Id del dominio.
  * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<{ domainName: string }>}
+ * @returns {Promise<Object>}
  */
 export const removeUserExpressionDomain = async ({ domainId, userId }) => {
   const domain = await getEditableUserExpressionDomainOrThrow({
@@ -259,9 +251,9 @@ export const removeUserExpressionDomain = async ({ domainId, userId }) => {
  * @param {object} params Parámetros de entrada.
  * @param {string} params.domainId Id del dominio.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.updatedDomain Campos a actualizar.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión opcional.
- * @returns {Promise<Record<string, any>>}
+ * @param {Object} params.updatedDomain Campos a actualizar.
+ * @param {Object|null} [params.session=null] Sesión opcional.
+ * @returns {Promise<Object>}
  */
 export const updateUserExpressionDomain = async ({
   domainId,

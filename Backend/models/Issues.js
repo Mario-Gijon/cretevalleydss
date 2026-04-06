@@ -135,7 +135,7 @@ const issueSchema = new Schema(
 /**
  * Elimina en cascada los documentos dependientes de un issue antes de borrarlo.
  *
- * @this {import("mongoose").Document & { _id: import("mongoose").Types.ObjectId }}
+ * @this {Object}
  * @param {Function} next Siguiente middleware de mongoose.
  * @returns {Promise<void>}
  */

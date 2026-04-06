@@ -65,7 +65,7 @@ const resolveModelEndpointKey = (modelName) => {
 /**
  * Construye el array de tipos de criterio compatible con los modelos directos.
  *
- * @param {Array<Record<string, any>>} criteria Criterios hoja ordenados.
+ * @param {Array<Object>} criteria Criterios hoja ordenados.
  * @returns {string[]}
  */
 const buildCriterionTypes = (criteria) =>
@@ -96,9 +96,9 @@ const countNullsDeep = (value) => {
 /**
  * Convierte los expert_points de plots_graphic a un mapa indexado por email.
  *
- * @param {Array<Record<string, any>>} participations Participaciones aceptadas.
- * @param {Record<string, any> | null | undefined} plotsGraphic Gráfico bruto del modelo.
- * @returns {Record<string, any> | null}
+ * @param {Array<Object>} participations Participaciones aceptadas.
+ * @param {Object | null | undefined} plotsGraphic Gráfico bruto del modelo.
+ * @returns {Object | null}
  */
 const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
   if (!plotsGraphic?.expert_points || !Array.isArray(plotsGraphic.expert_points)) {
@@ -126,13 +126,7 @@ const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
  * @param {string} params.userId Id del usuario actual.
  * @param {string} params.expectedStructure Estructura de evaluación esperada.
  * @param {string} params.invalidStructureMessage Mensaje de error si la estructura no coincide.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   model: Record<string, any>,
- *   participations: Array<Record<string, any>>,
- *   alternatives: Array<Record<string, any>>,
- *   criteria: Array<Record<string, any>>,
- * }>}
+ * @returns {Promise<Object>}
  */
 const getResolutionContext = async ({
   issueId,
@@ -213,19 +207,13 @@ const getResolutionContext = async ({
  * Construye la información persistible y de respuesta para una resolución directa.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.results Resultado devuelto por el modelo.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Record<string, Array<Array<any>>>} params.matrices Matrices por experto.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas.
- * @param {Record<string, any>} params.issue Issue actual.
- * @returns {{
- *   rankedAlternatives: string[],
- *   rankedWithScores: Array<{ name: string, score: any }>,
- *   collectiveEvaluations: Record<string, Record<string, { value: any }>>,
- *   consensusDetails: Record<string, any>,
- *   consensusLevel: number | null,
- * }}
+ * @param {Object} params.results Resultado devuelto por el modelo.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Object} params.matrices Matrices por experto.
+ * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @param {Object} params.issue Issue actual.
+ * @returns {Object}
  */
 const buildDirectResolutionArtifacts = ({
   results,
@@ -289,17 +277,12 @@ const buildDirectResolutionArtifacts = ({
  * Construye la información persistible y de respuesta para una resolución pairwise.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.results Resultado devuelto por el modelo.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Record<string, Record<string, Array<Array<any>>>>} params.matrices Matrices por experto y criterio.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas.
- * @returns {{
- *   rankedWithScores: Array<{ name: string, score: any }>,
- *   collectiveEvaluations: Record<string, Array<Record<string, any>>>,
- *   consensusDetails: Record<string, any>,
- *   consensusLevel: number | null,
- * }}
+ * @param {Object} params.results Resultado devuelto por el modelo.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Object} params.matrices Matrices por experto y criterio.
+ * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @returns {Object}
  */
 const buildPairwiseResolutionArtifacts = ({
   results,
@@ -368,8 +351,8 @@ const buildPairwiseResolutionArtifacts = ({
  * @param {string} params.userId Id del usuario actual.
  * @param {boolean} [params.forceFinalize=false] Fuerza la finalización.
  * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
- * @param {import("axios").AxiosStatic} params.httpClient Cliente HTTP.
- * @returns {Promise<Record<string, any>>}
+ * @param {Object} params.httpClient Cliente HTTP.
+ * @returns {Promise<Object>}
  */
 export const resolveDirectIssueFlow = async ({
   issueId,
@@ -518,8 +501,8 @@ export const resolveDirectIssueFlow = async ({
  * @param {string} params.userId Id del usuario actual.
  * @param {boolean} [params.forceFinalize=false] Fuerza la finalización.
  * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
- * @param {import("axios").AxiosStatic} params.httpClient Cliente HTTP.
- * @returns {Promise<Record<string, any>>}
+ * @param {Object} params.httpClient Cliente HTTP.
+ * @returns {Promise<Object>}
  */
 export const resolvePairwiseIssueFlow = async ({
   issueId,

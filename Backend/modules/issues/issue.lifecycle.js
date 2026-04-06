@@ -51,12 +51,12 @@ export const mapIssueStageToExitStage = (stage) => {
  * Registra una salida de usuario en ExitUserIssue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario.
  * @param {number | null} params.phase Fase asociada.
  * @param {string | null} params.stage Stage compatible.
  * @param {string} params.reason Motivo de la salida.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<void>}
  */
 export const registerUserExit = async ({
@@ -106,9 +106,9 @@ export const registerUserExit = async ({
  * Obtiene un issue o lanza error si no existe.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<Record<string, any>>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 const getIssueOrThrow = async ({ issueId, session = null }) => {
   const issue = await withOptionalSession(Issue.findById(issueId), session);
@@ -124,8 +124,8 @@ const getIssueOrThrow = async ({ issueId, session = null }) => {
  * Elimina en cascada todos los datos asociados a un issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<void>}
  */
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
@@ -155,10 +155,10 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
  * Elimina un issue activo si el usuario actual es su admin.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ issueName: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const deleteActiveIssueAsAdmin = async ({
   issueId,
@@ -191,8 +191,8 @@ export const deleteActiveIssueAsAdmin = async ({
  * Incluye al admin del issue y a los expertos con invitación aceptada.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object} params.issue Documento del issue.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<string[]>}
  */
 export const getFinishedIssueVisibleUserIds = async ({
@@ -220,10 +220,10 @@ export const getFinishedIssueVisibleUserIds = async ({
  * el issue si ya no queda ningún usuario con visibilidad sobre él.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ issueName: string, deletedPermanently: boolean }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const hideFinishedIssueForUserFlow = async ({
   issueId,
@@ -297,10 +297,10 @@ export const hideFinishedIssueForUserFlow = async ({
  * Permite a un experto abandonar un issue activo.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ issueName: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const leaveActiveIssueFlow = async ({
   issueId,
@@ -363,7 +363,7 @@ export const leaveActiveIssueFlow = async ({
  * @param {Object} params Datos de entrada.
  * @param {string|Object} params.issueId Id del issue.
  * @param {string|Object} params.expertId Id del experto.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<void>}
  */
 export const cleanupExpertDraftsOnExit = async ({

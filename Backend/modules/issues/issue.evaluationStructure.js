@@ -18,7 +18,7 @@ export const EVALUATION_STRUCTURES = {
  * Resuelve la estructura de evaluación de un documento, manteniendo compatibilidad
  * con el campo antiguo isPairwise.
  *
- * @param {Record<string, any> | null | undefined} doc Documento a inspeccionar.
+ * @param {Object|null|undefined} doc Documento a inspeccionar.
  * @returns {string}
  */
 export const resolveEvaluationStructure = (doc) => {
@@ -60,7 +60,7 @@ const getEntityIds = (items = []) => {
  * Construye un objeto con ids como claves y null como valor inicial.
  *
  * @param {Array<string>} [ids=[]] Lista de ids.
- * @returns {Record<string, null>}
+ * @returns {Object.<string, null>}
  */
 const buildNullObjectFromIds = (ids = []) => {
   return Object.fromEntries(ids.map((id) => [id, null]));
@@ -79,10 +79,7 @@ export const weightingModeRequiresOwnDocs = (weightingMode) => {
 /**
  * Determina si deben crearse documentos de CriteriaWeightEvaluation.
  *
- * @param {{
- *   leafCriteriaCount?: number,
- *   weightingMode?: string
- * }} params Parámetros de decisión.
+ * @param {Object} params Parámetros de decisión.
  * @returns {boolean}
  */
 export const shouldCreateCriteriaWeightEvaluations = ({
@@ -98,10 +95,7 @@ export const shouldCreateCriteriaWeightEvaluations = ({
 /**
  * Resuelve la etapa inicial del issue según criterios y modo de pesos.
  *
- * @param {{
- *   leafCriteriaCount?: number,
- *   weightingMode?: string
- * }} params Parámetros del issue.
+ * @param {Object} params Parámetros del issue.
  * @returns {string}
  */
 export const resolveInitialIssueStage = ({
@@ -120,8 +114,8 @@ export const resolveInitialIssueStage = ({
  * Construye los pares de comparación entre alternativas.
  *
  * @param {Array<any>} [alternatives=[]] Alternativas del issue.
- * @param {{ includeReciprocal?: boolean }} [options={}] Opciones de construcción.
- * @returns {Array<{ alternative: string, comparedAlternative: string }>}
+ * @param {Object} [options={}] Opciones de construcción.
+ * @returns {Array<Object>}
  */
 export const buildAlternativeComparisonPairs = (
   alternatives = [],
@@ -152,16 +146,8 @@ export const buildAlternativeComparisonPairs = (
 /**
  * Construye los documentos iniciales de Evaluation para un issue.
  *
- * @param {{
- *   issueId: any,
- *   experts?: Array<any>,
- *   leafCriteria?: Array<any>,
- *   alternatives?: Array<any>,
- *   isPairwise?: boolean,
- *   consensusPhase?: number,
- *   includeReciprocal?: boolean
- * }} params Datos necesarios para construir las evaluaciones.
- * @returns {Array<Record<string, any>>}
+ * @param {Object} params Datos necesarios para construir las evaluaciones.
+ * @returns {Array<Object>}
  */
 export const buildInitialEvaluationDocs = ({
   issueId,
@@ -229,15 +215,8 @@ export const buildInitialEvaluationDocs = ({
 /**
  * Construye los documentos iniciales de CriteriaWeightEvaluation para un issue.
  *
- * @param {{
- *   issueId: any,
- *   experts?: Array<any>,
- *   leafCriteria?: Array<any>,
- *   weightingMode?: string,
- *   consensusPhase?: number,
- *   completed?: boolean
- * }} params Datos necesarios para construir los pesos iniciales.
- * @returns {Array<Record<string, any>>}
+ * @param {Object} params Datos necesarios para construir los pesos iniciales.
+ * @returns {Array<Object>}
  */
 export const buildInitialCriteriaWeightEvaluationDocs = ({
   issueId,

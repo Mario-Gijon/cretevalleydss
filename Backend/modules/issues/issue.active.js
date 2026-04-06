@@ -8,6 +8,41 @@ import {
 } from "./issue.evaluationStructure.js";
 
 /**
+ * @typedef {Object} ActiveTasksByType
+ * @property {unknown[]} resolveIssue
+ * @property {unknown[]} computeWeights
+ * @property {unknown[]} evaluateWeights
+ * @property {unknown[]} evaluateAlternatives
+ * @property {unknown[]} waitingAdmin
+ */
+
+/**
+ * @typedef {Object} IssueCriteriaTreeResult
+ * @property {Array<Object>} criteriaTree
+ * @property {Array<Object>} orderedLeafNodes
+ */
+
+/**
+ * @typedef {Object} WorkflowStep
+ * @property {string} key
+ * @property {string} label
+ */
+
+/**
+ * @typedef {Object} DeadlineInfo
+ * @property {boolean} hasDeadline
+ * @property {number|null} daysLeft
+ * @property {boolean} overdue
+ * @property {string|null} iso
+ */
+
+/**
+ * @callback IssueIdSelector
+ * @param {Object} item
+ * @returns {*}
+ */
+
+/**
  * Metadata de stages para la UI de issues activos.
  */
 export const ACTIVE_STAGE_META = {
@@ -97,13 +132,7 @@ export const ACTIVE_TASK_ACTION_KEYS = [
 /**
  * Devuelve un objeto de tareas vacío para la UI de activos.
  *
- * @returns {{
- *   resolveIssue: unknown[],
- *   computeWeights: unknown[],
- *   evaluateWeights: unknown[],
- *   evaluateAlternatives: unknown[],
- *   waitingAdmin: unknown[],
- * }}
+ * @returns {ActiveTasksByType}
  */
 export const getEmptyTasksByType = () => ({
   resolveIssue: [],
@@ -117,12 +146,9 @@ export const getEmptyTasksByType = () => ({
  * Construye el árbol de criterios del issue y devuelve también
  * la lista de criterios hoja en el orden configurado en el issue.
  *
- * @param {Array<Record<string, any>>} issueCriteriaDocs Criterios del issue.
- * @param {Record<string, any>} issueDoc Documento del issue.
- * @returns {{
- *   criteriaTree: Array<Record<string, any>>,
- *   orderedLeafNodes: Array<Record<string, any>>,
- * }}
+ * @param {Array<Object>} issueCriteriaDocs Criterios del issue.
+ * @param {Object} issueDoc Documento del issue.
+ * @returns {IssueCriteriaTreeResult}
  */
 export const buildIssueCriteriaTree = (issueCriteriaDocs, issueDoc) => {
   const normalizedCriteria = issueCriteriaDocs.map((criterion) => ({
@@ -165,7 +191,7 @@ export const buildIssueCriteriaTree = (issueCriteriaDocs, issueDoc) => {
 /**
  * Incrementa un contador en un objeto acumulador.
  *
- * @param {Record<string, number>} counters Objeto acumulador.
+ * @param {Object.<string, number>} counters Objeto acumulador.
  * @param {string} key Clave a incrementar.
  * @returns {void}
  */
@@ -177,7 +203,7 @@ export const incrementCounter = (counters, key) => {
  * Elimina el campo weights de modelParameters para respuestas de issues activos.
  *
  * @param {unknown} modelParameters Parámetros del modelo.
- * @returns {Record<string, unknown>}
+ * @returns {Object}
  */
 export const cleanModelParameters = (modelParameters) => {
   const parsed =
@@ -195,7 +221,7 @@ export const cleanModelParameters = (modelParameters) => {
 /**
  * Detecta si el issue ya dispone de pesos directos.
  *
- * @param {Record<string, any>} issue Issue a inspeccionar.
+ * @param {Object} issue Issue a inspeccionar.
  * @returns {boolean}
  */
 export const detectHasDirectWeights = (issue) => {
@@ -216,7 +242,7 @@ export const detectHasDirectWeights = (issue) => {
 /**
  * Detecta si el issue tiene consenso de alternativas habilitado.
  *
- * @param {Record<string, any>} issue Issue a inspeccionar.
+ * @param {Object} issue Issue a inspeccionar.
  * @returns {boolean}
  */
 export const detectHasAlternativeConsensusEnabled = (issue) =>
@@ -228,7 +254,7 @@ export const detectHasAlternativeConsensusEnabled = (issue) =>
  * @param {object} params Parámetros de entrada.
  * @param {boolean} params.hasDirectWeights Indica si el issue tiene pesos directos.
  * @param {boolean} params.hasAlternativeConsensus Indica si el issue tiene consenso de alternativas.
- * @returns {Array<{ key: string, label: string }>}
+ * @returns {WorkflowStep[]}
  */
 export const buildWorkflowStepsStable = ({
   hasDirectWeights,
@@ -260,8 +286,8 @@ export const buildWorkflowStepsStable = ({
  * Calcula la metadata de deadline para un issue.
  *
  * @param {string | null | undefined} closureDate Fecha de cierre.
- * @param {import("dayjs").Dayjs} dayjsLib Instancia de dayjs.
- * @returns {{ hasDeadline: boolean, daysLeft: number | null, overdue: boolean, iso: string | null }}
+ * @param {Object} dayjsLib Instancia de dayjs.
+ * @returns {DeadlineInfo}
  */
 export const buildDeadlineInfo = (closureDate, dayjsLib) => {
   if (!closureDate) {
@@ -298,8 +324,8 @@ export const buildDeadlineInfo = (closureDate, dayjsLib) => {
 /**
  * Añade metadata de visualización al árbol de criterios.
  *
- * @param {Array<Record<string, any>>} criteriaTree Árbol de criterios.
- * @param {Record<string, unknown>} finalWeightsById Pesos finales por id.
+ * @param {Array<Object>} criteriaTree Árbol de criterios.
+ * @param {Object} finalWeightsById Pesos finales por id.
  * @returns {void}
  */
 export const decorateCriteriaTree = (criteriaTree, finalWeightsById) => {
@@ -332,9 +358,9 @@ const ACTIVE_ROLE_OPTIONS = [
 /**
  * Agrupa una colección por issue id.
  *
- * @param {Array<Record<string, any>>} items Elementos a agrupar.
- * @param {(item: Record<string, any>) => any} selector Selector del issue id.
- * @returns {Record<string, Array<Record<string, any>>>}
+ * @param {Array<Object>} items Elementos a agrupar.
+ * @param {IssueIdSelector} selector Selector del issue id.
+ * @returns {Object}
  */
 const groupByIssueId = (items, selector) => {
   const grouped = {};
@@ -356,7 +382,7 @@ const groupByIssueId = (items, selector) => {
 /**
  * Construye las opciones de stage para filtros de activos.
  *
- * @returns {Array<{ value: string, label: string }>}
+ * @returns {Array<Object>}
  */
 const buildStageOptions = () => [
   { value: "all", label: "All stages" },
@@ -369,7 +395,7 @@ const buildStageOptions = () => [
 /**
  * Construye las opciones de acción para filtros de activos.
  *
- * @returns {Array<{ value: string, label: string }>}
+ * @returns {Array<Object>}
  */
 const buildActionOptions = () => [
   { value: "all", label: "All actions" },
@@ -387,7 +413,7 @@ const buildActionOptions = () => [
  * Construye las opciones de orden para filtros de activos.
  *
  * @param {boolean} [includeSmart=false] Indica si se añade la opción Smart.
- * @returns {Array<{ value: string, label: string }>}
+ * @returns {Array<Object>}
  */
 const buildSortOptions = (includeSmart = false) => [
   ...(includeSmart ? [{ value: "smart", label: "Smart" }] : []),
@@ -400,16 +426,11 @@ const buildSortOptions = (includeSmart = false) => [
  * Construye mapas auxiliares para la respuesta de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Array<Record<string, any>>} params.participations Participaciones de los issues visibles.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas de los issues visibles.
- * @param {Array<Record<string, any>>} params.criteria Criterios de los issues visibles.
- * @param {Array<Record<string, any>>} params.consensusPhases Fases de consenso guardadas.
- * @returns {{
- *   participationMap: Record<string, Array<Record<string, any>>>,
- *   alternativesMap: Record<string, Array<Record<string, any>>>,
- *   criteriaMap: Record<string, Array<Record<string, any>>>,
- *   consensusPhaseCountMap: Record<string, number>,
- * }}
+ * @param {Array<Object>} params.participations Participaciones de los issues visibles.
+ * @param {Array<Object>} params.alternatives Alternativas de los issues visibles.
+ * @param {Array<Object>} params.criteria Criterios de los issues visibles.
+ * @param {Array<Object>} params.consensusPhases Fases de consenso guardadas.
+ * @returns {Object}
  */
 export const buildActiveIssueCollections = ({
   participations,
@@ -446,18 +467,15 @@ export const buildActiveIssueCollections = ({
  * Construye la vista de un issue activo y las tareas asociadas para el task center.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
+ * @param {Object} params.issue Documento del issue.
  * @param {string} params.userId Id del usuario actual.
  * @param {Set<string>} params.adminIssueIdSet Set de ids de issues donde el usuario es admin.
- * @param {Array<Record<string, any>>} params.issueParticipations Participaciones del issue.
- * @param {Array<Record<string, any>>} params.issueAlternativeDocs Alternativas del issue.
- * @param {Array<Record<string, any>>} params.issueCriteriaDocs Criterios del issue.
+ * @param {Array<Object>} params.issueParticipations Participaciones del issue.
+ * @param {Array<Object>} params.issueAlternativeDocs Alternativas del issue.
+ * @param {Array<Object>} params.issueCriteriaDocs Criterios del issue.
  * @param {number} params.savedPhasesCount Número de fases de consenso ya guardadas.
- * @param {import("dayjs").Dayjs} params.dayjsLib Instancia de dayjs.
- * @returns {{
- *   issueView: Record<string, any>,
- *   taskItems: Array<Record<string, any>>,
- * }}
+ * @param {Object} params.dayjsLib Instancia de dayjs.
+ * @returns {Object}
  */
 export const buildActiveIssueView = ({
   issue,
@@ -671,20 +689,20 @@ export const buildActiveIssueView = ({
   const participatedExperts =
     stage === "criteriaWeighting" || stage === "weightsFinished"
       ? acceptedExperts.filter(
-          (participation) => participation.weightsCompleted === true
-        )
+        (participation) => participation.weightsCompleted === true
+      )
       : acceptedExperts.filter(
-          (participation) => participation.evaluationCompleted === true
-        );
+        (participation) => participation.evaluationCompleted === true
+      );
 
   const acceptedButNotEvaluated =
     stage === "criteriaWeighting" || stage === "weightsFinished"
       ? acceptedExperts.filter(
-          (participation) => !participation.weightsCompleted
-        )
+        (participation) => !participation.weightsCompleted
+      )
       : acceptedExperts.filter(
-          (participation) => !participation.evaluationCompleted
-        );
+        (participation) => !participation.evaluationCompleted
+      );
 
   const evaluated = participatedExperts.some((participation) =>
     sameId(participation.expert?._id, userId)
@@ -766,11 +784,11 @@ export const buildActiveIssueView = ({
       modelParameters: responseModelParameters,
       myParticipation: myParticipation
         ? {
-            invitationStatus: myParticipation.invitationStatus,
-            weightsCompleted: Boolean(myParticipation.weightsCompleted),
-            evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
-            joinedAt: myParticipation.joinedAt || null,
-          }
+          invitationStatus: myParticipation.invitationStatus,
+          weightsCompleted: Boolean(myParticipation.weightsCompleted),
+          evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
+          joinedAt: myParticipation.joinedAt || null,
+        }
         : null,
       actions,
       nextAction,
@@ -802,7 +820,7 @@ export const buildActiveIssueView = ({
 /**
  * Ordena la colección de issues activos según prioridad de UI, deadline y nombre.
  *
- * @param {Array<Record<string, any>>} issues Issues formateados.
+ * @param {Array<Object>} issues Issues formateados.
  * @returns {void}
  */
 export const sortActiveIssues = (issues) => {
@@ -826,7 +844,7 @@ export const sortActiveIssues = (issues) => {
 /**
  * Ordena las tareas agrupadas por tipo para el task center.
  *
- * @param {Record<string, Array<Record<string, any>>>} tasksByType Tareas agrupadas.
+ * @param {Object.<string, Array<Object>>} tasksByType Tareas agrupadas.
  * @returns {void}
  */
 export const sortActiveTasksByType = (tasksByType) => {
@@ -848,8 +866,8 @@ export const sortActiveTasksByType = (tasksByType) => {
 /**
  * Construye el task center a partir de las tareas agrupadas.
  *
- * @param {Record<string, Array<Record<string, any>>>} tasksByType Tareas agrupadas.
- * @returns {{ total: number, sections: Array<Record<string, any>> }}
+ * @param {Object} tasksByType Tareas agrupadas.
+ * @returns {Object}
  */
 export const buildActiveTaskCenter = (tasksByType) => {
   const total = ACTIVE_TASK_ACTION_KEYS.reduce(
@@ -885,12 +903,12 @@ export const buildActiveTaskCenter = (tasksByType) => {
  * Construye la metadata de filtros para la respuesta de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, number>} [params.roleCounts={}] Conteos por rol.
- * @param {Record<string, number>} [params.stageCounts={}] Conteos por stage.
- * @param {Record<string, number>} [params.actionCounts={}] Conteos por acción.
+ * @param {Object.<string, number>} [params.roleCounts={}] Conteos por rol.
+ * @param {Object.<string, number>} [params.stageCounts={}] Conteos por stage.
+ * @param {Object.<string, number>} [params.actionCounts={}] Conteos por acción.
  * @param {boolean} [params.includeSmartSortOption=false] Indica si se añade la opción Smart.
  * @param {boolean} [params.includeSortDefault=false] Indica si defaults incluye sort.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 export const buildActiveFiltersMeta = ({
   roleCounts = {},
@@ -921,13 +939,9 @@ export const buildActiveFiltersMeta = ({
  * Construye la metadata agregada de la respuesta de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Array<Record<string, any>>} params.formattedIssues Issues ya formateados.
- * @param {Record<string, Array<Record<string, any>>>} params.tasksByType Tareas agrupadas.
- * @returns {{
- *   tasks: { total: number, byType: Record<string, Array<Record<string, any>>> },
- *   taskCenter: { total: number, sections: Array<Record<string, any>> },
- *   filtersMeta: Record<string, any>,
- * }}
+ * @param {Array<Object>} params.formattedIssues Issues ya formateados.
+ * @param {Object} params.tasksByType Tareas agrupadas.
+ * @returns {Object}
  */
 export const buildActiveIssuesResponseMeta = ({
   formattedIssues,
@@ -968,7 +982,7 @@ export const buildActiveIssuesResponseMeta = ({
  *
  * Mantiene el mismo contrato actual de la API cuando no hay issues visibles.
  *
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 export const buildEmptyActiveIssuesPayload = () => ({
   success: true,

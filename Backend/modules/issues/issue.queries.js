@@ -15,9 +15,27 @@ import {
 import { toIdString, uniqueIdStrings } from "../../utils/common/ids.js";
 
 /**
+ * @typedef {Object} WeightCompletionStats
+ * @property {number} totalParticipants
+ * @property {number} totalWeightsDone
+ */
+
+/**
+ * @typedef {Object} VisibleActiveIssueIds
+ * @property {string[]} issueIds
+ * @property {string[]} adminIssueIds
+ */
+
+/**
+ * @typedef {Object} FinishedIssueIdsOptions
+ * @property {boolean} [excludeHidden]
+ * @property {Object|null} [session]
+ */
+
+/**
  * Obtiene la siguiente fase de consenso para un issue.
  *
- * @param {import("mongoose").Types.ObjectId | string} issueId Id del issue.
+ * @param {string|Object} issueId Id del issue.
  * @returns {Promise<number>}
  */
 export const getNextConsensusPhase = async (issueId) => {
@@ -31,8 +49,8 @@ export const getNextConsensusPhase = async (issueId) => {
 /**
  * Obtiene el snapshot por defecto de un issue, priorizando dominios numéricos.
  *
- * @param {import("mongoose").Types.ObjectId | string} issueId Id del issue.
- * @returns {Promise<Record<string, any> | null>}
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<Object|null>}
  */
 export const getDefaultIssueSnapshot = async (issueId) => {
   const numericSnapshot = await IssueExpressionDomain.findOne({
@@ -54,9 +72,9 @@ export const getDefaultIssueSnapshot = async (issueId) => {
 /**
  * Obtiene la participación aceptada del usuario en un issue.
  *
- * @param {import("mongoose").Types.ObjectId | string} issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} userId Id del usuario.
- * @returns {Promise<Record<string, any> | null>}
+ * @param {string|Object} issueId Id del issue.
+ * @param {string|Object} userId Id del usuario.
+ * @returns {Promise<Object|null>}
  */
 export const getAcceptedParticipation = async (issueId, userId) =>
   Participation.findOne({
@@ -71,8 +89,8 @@ export const getAcceptedParticipation = async (issueId, userId) =>
  * Este helper se mantiene aquí porque se usa como query de conveniencia
  * desde la capa HTTP, pero la lógica de orden canónico vive en issue.ordering.js.
  *
- * @param {Record<string, any>} issue Documento del issue.
- * @returns {Promise<Array<Record<string, any>>>}
+ * @param {Object} issue Documento del issue.
+ * @returns {Promise<Array<Object>>}
  */
 export const getOrderedLeafCriteriaForIssue = async (issue) => {
   await ensureIssueOrdersDb({ issueId: issue._id });
@@ -87,8 +105,8 @@ export const getOrderedLeafCriteriaForIssue = async (issue) => {
 /**
  * Obtiene estadísticas de pesos completados para un issue.
  *
- * @param {import("mongoose").Types.ObjectId | string} issueId Id del issue.
- * @returns {Promise<{ totalParticipants: number, totalWeightsDone: number }>}
+ * @param {string|Object} issueId Id del issue.
+ * @returns {Promise<WeightCompletionStats>}
  */
 export const getWeightCompletionStats = async (issueId) => {
   const [totalParticipants, totalWeightsDone] = await Promise.all([
@@ -112,8 +130,8 @@ export const getWeightCompletionStats = async (issueId) => {
  * Incluye issues donde el usuario es admin y issues donde participa
  * como experto con invitación aceptada.
  *
- * @param {import("mongoose").Types.ObjectId | string} userId Id del usuario.
- * @returns {Promise<{ issueIds: string[], adminIssueIds: string[] }>}
+ * @param {string|Object} userId Id del usuario.
+ * @returns {Promise<VisibleActiveIssueIds>}
  */
 export const getVisibleActiveIssueIdsForUser = async (userId) => {
   const normalizedUserId = toIdString(userId);
@@ -159,8 +177,8 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
 /**
  * Obtiene los ids de issues finalizados visibles para un usuario.
  *
- * @param {import("mongoose").Types.ObjectId | string} userId Id del usuario.
- * @param {{ excludeHidden?: boolean, session?: import("mongoose").ClientSession | null }} [options]
+ * @param {string|Object} userId Id del usuario.
+ * @param {FinishedIssueIdsOptions} [options]
  * @returns {Promise<string[]>}
  */
 export const getUserFinishedIssueIds = async (

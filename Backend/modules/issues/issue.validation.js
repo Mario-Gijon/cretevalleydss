@@ -1,3 +1,17 @@
+/**
+ * @typedef {Object} ValidationCheckResult
+ * @property {boolean} valid Indica si la validación es correcta.
+ * @property {Object} [error] Error asociado, si existe.
+ * @property {string} [message] Mensaje descriptivo, si existe.
+ */
+
+/**
+ * @typedef {Object} ValidationMessageResult
+ * @property {boolean} valid Indica si la validación es correcta.
+ * @property {string} [msg] Mensaje descriptivo, si existe.
+ * @property {string} [field] Campo asociado al error, si existe.
+ */
+
 const getCellValue = (cell) => {
   if (cell && typeof cell === "object" && "value" in cell) {
     return cell.value;
@@ -60,7 +74,7 @@ const validateCellByDomain = ({ value, domain, locationLabel }) => {
  * Valida una matriz final pairwise antes del envío definitivo.
  *
  * @param {Object} evaluations Evaluaciones pairwise.
- * @returns {{ valid: boolean, error?: Object, message?: string }}
+ * @returns {ValidationCheckResult}
  */
 export const validateFinalPairwiseEvaluations = (evaluations) => {
   let firstInvalidCell = null;
@@ -133,7 +147,7 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
  * Valida una matriz final alternativa x criterio antes del envío definitivo.
  *
  * @param {Object} evaluations Evaluaciones estándar.
- * @returns {{ valid: boolean, error?: Object, message?: string }}
+ * @returns {ValidationCheckResult}
  */
 export const validateFinalEvaluations = (evaluations) => {
   let firstInvalidCell = null;
@@ -180,7 +194,7 @@ export const validateFinalEvaluations = (evaluations) => {
  * Valida los datos finales de pesos BWM.
  *
  * @param {Object} bwmData Datos enviados.
- * @returns {{ valid: boolean, msg?: string, field?: string }}
+ * @returns {ValidationMessageResult}
  */
 export const validateFinalWeights = (bwmData) => {
   if (!bwmData) {

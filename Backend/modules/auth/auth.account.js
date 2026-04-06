@@ -6,6 +6,18 @@ import {
   createConflictError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+/**
+ * @typedef {Object} SignupVerificationEmail
+ * @property {string} name Nombre del usuario registrado.
+ * @property {string} email Email del usuario registrado.
+ * @property {string} token Token de confirmación de cuenta.
+ */
+
+/**
+ * @typedef {Object} CreateSignupAccountResult
+ * @property {string} msg Mensaje de resultado.
+ * @property {SignupVerificationEmail} verificationEmail Datos necesarios para enviar el correo de verificación.
+ */
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
@@ -16,17 +28,10 @@ const withOptionalSession = (query, session = null) =>
  * Mantiene el flujo actual de alta con token de confirmación,
  * añadiendo validación y normalización básica de entrada.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.payload Cuerpo recibido.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   msg: string,
- *   verificationEmail: {
- *     name: string,
- *     email: string,
- *     token: string,
- *   }
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.payload Cuerpo recibido.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<CreateSignupAccountResult>}
  */
 export const createSignupAccountFlow = async ({
   payload,
@@ -98,10 +103,10 @@ export const createSignupAccountFlow = async ({
 /**
  * Confirma una cuenta de usuario a partir del token de verificación.
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.token Token recibido en la URL.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const confirmAccountFlow = async ({
   token,
@@ -135,10 +140,10 @@ export const confirmAccountFlow = async ({
 /**
  * Elimina la cuenta del usuario autenticado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const deleteAuthenticatedUserAccountFlow = async ({
   userId,

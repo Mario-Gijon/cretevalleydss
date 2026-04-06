@@ -13,7 +13,10 @@ import {
   createExpertsRatingsSection,
   createSummarySection,
 } from "../../modules/issues/issue.finishedSections.js";
-import { ensureIssueOrdersDb, getOrderedLeafCriteriaDb } from "../../modules/issues/issue.ordering.js";
+import {
+  ensureIssueOrdersDb,
+  getOrderedLeafCriteriaDb,
+} from "../../modules/issues/issue.ordering.js";
 import { detectIssueDomainTypeOrThrow } from "./issue.scenarios.js";
 import { createNotFoundError } from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
@@ -35,9 +38,9 @@ import {
  * la vista de detalle.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<import("mongoose").Types.ObjectId | string>} params.expertIds Ids de expertos aceptados.
- * @returns {Promise<string | null>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<string|Object>} params.expertIds Ids de expertos aceptados.
+ * @returns {Promise<string|null>}
  */
 const detectFinishedIssueDomainType = async ({ issueId, expertIds }) => {
   try {
@@ -56,11 +59,11 @@ const detectFinishedIssueDomainType = async ({ issueId, expertIds }) => {
  * Construye la lista de modelos compatibles para simulación desde un issue finalizado.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Array<Record<string, any>>} params.allModels Modelos disponibles.
+ * @param {Array<Object>} params.allModels Modelos disponibles.
  * @param {string} params.issueEvaluationStructure Estructura de evaluación del issue.
  * @param {number} params.leafCount Número de criterios hoja.
  * @param {string | null} params.domainType Tipo de dominio detectado.
- * @returns {Array<Record<string, any>>}
+ * @returns {Array<Object>}
  */
 const buildAvailableModelsPayload = ({
   allModels,
@@ -105,8 +108,8 @@ const buildAvailableModelsPayload = ({
  * Construye la lista de escenarios disponibles para el detalle del issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Array<Record<string, any>>} params.scenarioDocs Escenarios guardados.
- * @returns {Array<Record<string, any>>}
+ * @param {Array<Object>} params.scenarioDocs Escenarios guardados.
+ * @returns {Array<Object>}
  */
 const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
   (scenarioDocs || []).map((scenario) => {
@@ -140,7 +143,7 @@ const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @returns {Promise<Record<string, any>>}
+ * @returns {Promise<Object>}
  */
 export const getFinishedIssueInfoPayload = async ({ issueId }) => {
   const issue = await Issue.findById(issueId).populate("model").lean();

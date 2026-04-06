@@ -30,7 +30,7 @@ const createEmail = ({ subject, to, htmlContent }) => {
  * @param {string} params.name Nombre del destinatario.
  * @param {string} params.email Email del destinatario.
  * @param {string} params.token Token de confirmación.
- * @returns {Promise<{ success: boolean, error?: * }>}
+ * @returns {Promise<Object>}
  */
 export const sendVerificationEmail = async ({ name, email, token }) => {
   try {
@@ -68,7 +68,7 @@ export const sendVerificationEmail = async ({ name, email, token }) => {
  * @param {Object} params Datos del correo.
  * @param {string} params.newEmail Nuevo email.
  * @param {string} params.token Token de confirmación.
- * @returns {Promise<{ success: boolean, error?: * }>}
+ * @returns {Promise<Object>}
  */
 export const sendEmailChangeConfirmation = async ({ newEmail, token }) => {
   try {
@@ -110,7 +110,7 @@ export const sendEmailChangeConfirmation = async ({ newEmail, token }) => {
  * @param {string} params.issueName Nombre del issue.
  * @param {string} params.issueDescription Descripción del issue.
  * @param {string} params.adminEmail Email del administrador.
- * @returns {Promise<{ success: boolean, error?: * }>}
+ * @returns {Promise<Object>}
  */
 export const sendExpertInvitationEmail = async ({
   expertEmail,

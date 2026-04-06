@@ -1,6 +1,15 @@
 import { User } from "../../models/Users.js";
 import { generateToken } from "../../services/token.service.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
+/**
+ * @typedef {Object} LoginUserResult
+ * @property {string|Object} userId Id del usuario autenticado.
+ * @property {string} msg Mensaje de resultado.
+ * @property {string} token Access token generado.
+ * @property {number|string} expiresIn Tiempo de expiración del access token.
+ * @property {string} role Rol del usuario autenticado.
+ * @property {boolean} isAdmin Indica si el usuario es administrador.
+ */
 
 /**
  * Construye un error de login asociado a un campo concreto del formulario.
@@ -20,17 +29,10 @@ const createLoginFieldError = (field, message) => {
  *
  * La cookie de refresh token no se genera aquí porque pertenece a la capa HTTP.
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.email Email introducido.
  * @param {string} params.password Contraseña introducida.
- * @returns {Promise<{
- *   userId: import("mongoose").Types.ObjectId | string,
- *   msg: string,
- *   token: string,
- *   expiresIn: number | string,
- *   role: string,
- *   isAdmin: boolean,
- * }>}
+ * @returns {Promise<LoginUserResult>}
  */
 export const loginUserFlow = async ({ email, password }) => {
   const cleanEmail = String(email ?? "").trim().toLowerCase();

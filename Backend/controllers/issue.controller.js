@@ -92,8 +92,8 @@ import { Criterion } from "../models/Criteria.js";
 /**
  * Obtiene la información de modelos disponibles.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const modelsInfo = async (req, res) => {
@@ -116,8 +116,8 @@ export const modelsInfo = async (req, res) => {
 /**
  * Obtiene todos los usuarios visibles para la creación de issues.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getAllUsers = async (req, res) => {
@@ -142,8 +142,8 @@ export const getAllUsers = async (req, res) => {
 /**
  * Obtiene los dominios de expresión globales y del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getExpressionsDomain = async (req, res) => {
@@ -169,8 +169,8 @@ export const getExpressionsDomain = async (req, res) => {
 /**
  * Crea un nuevo dominio de expresión de usuario.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const createExpressionDomain = async (req, res) => {
@@ -213,8 +213,8 @@ export const createExpressionDomain = async (req, res) => {
  * Crea un nuevo issue con alternativas, criterios, participaciones,
  * snapshots de dominios y evaluaciones iniciales.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const createIssue = async (req, res) => {
@@ -263,8 +263,8 @@ export const createIssue = async (req, res) => {
 /**
  * Obtiene todos los issues activos visibles para el usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getAllActiveIssues = async (req, res) => {
@@ -361,8 +361,8 @@ export const getAllActiveIssues = async (req, res) => {
 /**
  * Elimina un issue activo y todos sus datos relacionados.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeIssue = async (req, res) => {
@@ -407,8 +407,8 @@ export const removeIssue = async (req, res) => {
 /**
  * Elimina un dominio de expresión del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeExpressionDomain = async (req, res) => {
@@ -436,8 +436,8 @@ export const removeExpressionDomain = async (req, res) => {
 /**
  * Actualiza un dominio de expresión del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const updateExpressionDomain = async (req, res) => {
@@ -483,8 +483,8 @@ export const updateExpressionDomain = async (req, res) => {
 /**
  * Obtiene todos los issues finalizados visibles para el usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getAllFinishedIssues = async (req, res) => {
@@ -530,8 +530,8 @@ export const getAllFinishedIssues = async (req, res) => {
 /**
  * Obtiene las notificaciones del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getNotifications = async (req, res) => {
@@ -554,8 +554,8 @@ export const getNotifications = async (req, res) => {
 /**
  * Marca como leídas todas las notificaciones no leídas del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const markAllNotificationsAsRead = async (req, res) => {
@@ -578,8 +578,8 @@ export const markAllNotificationsAsRead = async (req, res) => {
 /**
  * Cambia el estado de invitación del usuario actual para un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const changeInvitationStatus = async (req, res) => {
@@ -619,8 +619,8 @@ export const changeInvitationStatus = async (req, res) => {
 /**
  * Elimina una notificación concreta del usuario actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeNotificationById = async (req, res) => {
@@ -648,8 +648,8 @@ export const removeNotificationById = async (req, res) => {
 /**
  * Guarda borradores de evaluaciones pairwise del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const savePairwiseEvaluations = async (req, res) => {
@@ -683,8 +683,8 @@ export const savePairwiseEvaluations = async (req, res) => {
 /**
  * Obtiene las evaluaciones pairwise del experto actual para un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getPairwiseEvaluations = async (req, res) => {
@@ -719,8 +719,8 @@ export const getPairwiseEvaluations = async (req, res) => {
 /**
  * Valida y envía las evaluaciones pairwise del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const submitPairwiseEvaluations = async (req, res) => {
@@ -759,8 +759,8 @@ export const submitPairwiseEvaluations = async (req, res) => {
 /**
  * Resuelve un issue con evaluación pairwise y gestiona el flujo de consenso si aplica.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const resolvePairwiseIssue = async (req, res) => {
@@ -794,8 +794,8 @@ export const resolvePairwiseIssue = async (req, res) => {
  * Oculta un issue finalizado para el usuario actual y elimina sus datos
  * si todos los usuarios con visibilidad ya lo han ocultado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeFinishedIssue = async (req, res) => {
@@ -840,8 +840,8 @@ export const removeFinishedIssue = async (req, res) => {
 /**
  * Añade o expulsa expertos de un issue activo.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const editExperts = async (req, res) => {
@@ -876,8 +876,8 @@ export const editExperts = async (req, res) => {
 /**
  * Permite a un experto abandonar un issue activo.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const leaveIssue = async (req, res) => {
@@ -917,8 +917,8 @@ export const leaveIssue = async (req, res) => {
 /**
  * Guarda borradores de evaluaciones directas del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const saveDirectEvaluations = async (req, res) => {
@@ -952,8 +952,8 @@ export const saveDirectEvaluations = async (req, res) => {
 /**
  * Obtiene las evaluaciones directas del experto actual para un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getDirectEvaluations = async (req, res) => {
@@ -988,8 +988,8 @@ export const getDirectEvaluations = async (req, res) => {
 /**
  * Valida y envía las evaluaciones directas del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const submitDirectEvaluations = async (req, res) => {
@@ -1024,8 +1024,8 @@ export const submitDirectEvaluations = async (req, res) => {
 /**
  * Resuelve un issue con evaluación directa y gestiona el flujo de consenso si aplica.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const resolveDirectIssue = async (req, res) => {
@@ -1058,8 +1058,8 @@ export const resolveDirectIssue = async (req, res) => {
 /**
  * Obtiene toda la información de un issue finalizado para la pantalla de detalle.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getFinishedIssueInfo = async (req, res) => {
@@ -1089,8 +1089,8 @@ export const getFinishedIssueInfo = async (req, res) => {
 /**
  * Guarda borradores de pesos BWM del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const saveBwmWeights = async (req, res) => {
@@ -1116,8 +1116,8 @@ export const saveBwmWeights = async (req, res) => {
 /**
  * Obtiene los pesos BWM guardados del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getBwmWeights = async (req, res) => {
@@ -1142,8 +1142,8 @@ export const getBwmWeights = async (req, res) => {
 /**
  * Valida y envía los pesos BWM del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const sendBwmWeights = async (req, res) => {
@@ -1174,8 +1174,8 @@ export const sendBwmWeights = async (req, res) => {
 /**
  * Calcula pesos BWM colectivos y actualiza el issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const computeWeights = async (req, res) => {
@@ -1207,8 +1207,8 @@ export const computeWeights = async (req, res) => {
 /**
  * Guarda borradores de pesos manuales del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const saveManualWeights = async (req, res) => {
@@ -1234,8 +1234,8 @@ export const saveManualWeights = async (req, res) => {
 /**
  * Obtiene los pesos manuales guardados del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getManualWeights = async (req, res) => {
@@ -1260,8 +1260,8 @@ export const getManualWeights = async (req, res) => {
 /**
  * Valida y envía los pesos manuales del experto actual.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const sendManualWeights = async (req, res) => {
@@ -1286,8 +1286,8 @@ export const sendManualWeights = async (req, res) => {
 /**
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const computeManualWeights = async (req, res) => {
@@ -1317,8 +1317,8 @@ export const computeManualWeights = async (req, res) => {
 /**
  * Crea un escenario de simulación para un issue resuelto.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const createIssueScenario = async (req, res) => {
@@ -1357,8 +1357,8 @@ export const createIssueScenario = async (req, res) => {
 /**
  * Lista los escenarios creados para un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getIssueScenarios = async (req, res) => {
@@ -1383,8 +1383,8 @@ export const getIssueScenarios = async (req, res) => {
 /**
  * Obtiene un escenario por su id.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getScenarioById = async (req, res) => {
@@ -1409,8 +1409,8 @@ export const getScenarioById = async (req, res) => {
 /**
  * Elimina un escenario si el usuario actual es su creador o admin del issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeScenario = async (req, res) => {
@@ -1438,8 +1438,8 @@ export const removeScenario = async (req, res) => {
 /**
  * Guarda evaluaciones del experto actual según la estructura del issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const saveEvaluations = async (req, res) => {
@@ -1472,8 +1472,8 @@ export const saveEvaluations = async (req, res) => {
 /**
  * Obtiene evaluaciones del experto actual según la estructura del issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getEvaluations = async (req, res) => {
@@ -1506,8 +1506,8 @@ export const getEvaluations = async (req, res) => {
 /**
  * Envía evaluaciones del experto actual según la estructura del issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const submitEvaluations = async (req, res) => {
@@ -1540,8 +1540,8 @@ export const submitEvaluations = async (req, res) => {
 /**
  * Resuelve un issue según la estructura de evaluación configurada.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 

@@ -18,7 +18,7 @@ const isMongoConnectionActive = () => {
 /**
  * Establece la conexión principal con MongoDB.
  *
- * @returns {Promise<import("mongoose").Connection>}
+ * @returns {Promise<Object>}
  */
 export const connectDB = async () => {
   const mongoUri = process.env.URI_MONGODB;

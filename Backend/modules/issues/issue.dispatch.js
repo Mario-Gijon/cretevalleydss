@@ -17,8 +17,8 @@ import {
  * Devuelve el handler adecuado según la estructura de evaluación del issue.
  *
  * @param {string} evaluationStructure Estructura de evaluación resuelta.
- * @param {{ direct?: Function, pairwise?: Function }} handlers Handlers disponibles.
- * @returns {Function | null}
+ * @param {Object} handlers Handlers disponibles.
+ * @returns {Function|null}
  */
 export const getIssueStructureHandler = (evaluationStructure, handlers) => {
   switch (evaluationStructure) {
@@ -36,7 +36,7 @@ export const getIssueStructureHandler = (evaluationStructure, handlers) => {
 /**
  * Resuelve la estructura de evaluación de un issue por id.
  *
- * @param {import("mongoose").Types.ObjectId | string} issueId Id del issue.
+ * @param {string|Object} issueId Id del issue.
  * @returns {Promise<string>}
  */
 export const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
@@ -55,9 +55,9 @@ export const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
  * Resuelve el handler adecuado para un issue según su estructura de evaluación.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {{ direct?: Function, pairwise?: Function }} params.handlers Handlers candidatos.
- * @returns {Promise<{ handler: Function, evaluationStructure: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.handlers Handlers candidatos.
+ * @returns {Promise<Object>}
  */
 export const resolveIssueHandlerOrThrow = async ({ issueId, handlers }) => {
   const evaluationStructure =

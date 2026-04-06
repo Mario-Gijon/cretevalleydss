@@ -32,6 +32,29 @@ import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
 import axios from "axios";
 
 /**
+ * @typedef {Object} ScenarioMatricesResult
+ * @property {Object} matricesUsed Matrices construidas para el escenario.
+ * @property {string[]} snapshotIdsUsed Snapshots utilizados.
+ */
+
+/**
+ * @typedef {Object} ScenarioExecutionResult
+ * @property {string} modelKey Clave del endpoint del modelo.
+ * @property {Object} results Resultado bruto devuelto por el modelo.
+ */
+
+/**
+ * @typedef {Object} ScenarioOutputs
+ * @property {Object} details Detalle persistible del escenario.
+ * @property {Object|null} collectiveEvaluations Evaluaciones colectivas derivadas, si existen.
+ */
+
+/**
+ * @typedef {Object} IssueScenarioCreateResult
+ * @property {*} scenarioId Id del escenario creado.
+ */
+
+/**
  * Ajusta la longitud de un array rellenando o truncando según corresponda.
  *
  * @param {unknown[]} arr Array de entrada.
@@ -57,9 +80,9 @@ const ensureLen = (arr, len, filler = null) => {
  * Resuelve los parámetros por defecto de un modelo según el número de criterios hoja.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.modelDoc Documento del modelo.
+ * @param {Object} params.modelDoc Documento del modelo.
  * @param {number} params.leafCount Número de criterios hoja.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const resolved = {};
@@ -115,9 +138,9 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
  * Fusiona parámetros guardados con sus valores resueltos por defecto.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.defaultsResolved Defaults resueltos.
- * @param {Record<string, any>} params.savedParams Parámetros guardados.
- * @returns {Record<string, any>}
+ * @param {Object} params.defaultsResolved Defaults resueltos.
+ * @param {Object} params.savedParams Parámetros guardados.
+ * @returns {Object}
  */
 export const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
   const merged = { ...(defaultsResolved || {}) };
@@ -133,9 +156,9 @@ export const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
  * Resuelve weights como array a partir de paramsUsed y criterios ordenados.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.paramsUsed Parámetros usados.
- * @param {Array<Record<string, any>>} params.criteria Criterios ordenados.
- * @returns {any[] | null}
+ * @param {Object} params.paramsUsed Parámetros usados.
+ * @param {Array<Object>} params.criteria Criterios ordenados.
+ * @returns {Array<*> | null}
  */
 export const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
   const weights = paramsUsed?.weights;
@@ -159,7 +182,7 @@ export const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
  * @param {object} params Datos de entrada.
  * @param {string|Object} params.issueId Id del issue.
  * @param {Array<string|Object>} params.expertIds Ids de expertos.
- * @returns {Promise<{ domainType: string, snapshotIdsUsed: Array<*> }>}
+ * @returns {Promise<Object>}
  */
 export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
   const snapshotIds = await Evaluation.distinct("expressionDomain", {
@@ -198,8 +221,8 @@ export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
  * Valida los pesos usados por un modelo destino.
  *
  * @param {object} params Datos de entrada.
- * @param {Record<string, any>} params.targetModel Modelo destino.
- * @param {Record<string, any>} params.paramsUsed Parámetros usados.
+ * @param {Object} params.targetModel Modelo destino.
+ * @param {Object} params.paramsUsed Parámetros usados.
  * @param {number} params.criteriaLen Número de criterios hoja.
  * @returns {void}
  */
@@ -274,11 +297,11 @@ export const validateWeightsForTargetModel = ({
  * Construye matrices directas para escenarios preservando la lógica actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas con expert populado.
- * @returns {Promise<{ matricesUsed: Record<string, Array<Array<any>>>, snapshotIdsUsed: string[] }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
+ * @returns {Promise<ScenarioMatricesResult>}
  */
 export const buildScenarioDirectMatrices = async ({
   issueId,
@@ -374,11 +397,11 @@ export const buildScenarioDirectMatrices = async ({
  * Construye matrices pairwise para escenarios preservando la lógica actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas con expert populado.
- * @returns {Promise<{ matricesUsed: Record<string, Record<string, Array<Array<any>>>>, snapshotIdsUsed: string[] }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
+ * @returns {Promise<ScenarioMatricesResult>}
  */
 export const buildScenarioPairwiseMatrices = async ({
   issueId,
@@ -487,7 +510,7 @@ const createScenarioError = (status, message) => {
 /**
  * Construye el array de tipos de criterio compatible con modelos directos.
  *
- * @param {Array<Record<string, any>>} criteria Criterios hoja ordenados.
+ * @param {Array<Object>} criteria Criterios hoja ordenados.
  * @returns {string[]}
  */
 const buildCriterionTypes = (criteria) =>
@@ -498,7 +521,7 @@ const buildCriterionTypes = (criteria) =>
 /**
  * Cuenta valores pendientes en matrices directas.
  *
- * @param {Record<string, Array<Array<any>>>} matricesUsed Matrices por experto.
+ * @param {Object} matricesUsed Matrices por experto.
  * @returns {number}
  */
 const countPendingDirectValues = (matricesUsed) =>
@@ -514,7 +537,7 @@ const countPendingDirectValues = (matricesUsed) =>
 /**
  * Cuenta valores pendientes en matrices pairwise ignorando la diagonal.
  *
- * @param {Record<string, Record<string, Array<Array<any>>>>} matricesUsed Matrices por experto y criterio.
+ * @param {Object} matricesUsed Matrices por experto y criterio.
  * @returns {number}
  */
 const countPendingPairwiseValues = (matricesUsed) => {
@@ -541,9 +564,9 @@ const countPendingPairwiseValues = (matricesUsed) => {
 /**
  * Convierte plots_graphic.expert_points a un mapa indexado por email.
  *
- * @param {Array<Record<string, any>>} participations Participaciones aceptadas.
- * @param {Record<string, any> | null | undefined} plotsGraphic Gráfico bruto del modelo.
- * @returns {Record<string, any> | null}
+ * @param {Array<Object>} participations Participaciones aceptadas.
+ * @param {Object|null|undefined} plotsGraphic Gráfico bruto del modelo.
+ * @returns {Object|null}
  */
 const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
   if (!plotsGraphic?.expert_points || !Array.isArray(plotsGraphic.expert_points)) {
@@ -566,8 +589,8 @@ const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
 /**
  * Construye el payload de un escenario para listados o detalle.
  *
- * @param {Record<string, any>} scenarioDoc Documento del escenario.
- * @returns {Record<string, any>}
+ * @param {Object} scenarioDoc Documento del escenario.
+ * @returns {Object}
  */
 const buildScenarioPayload = (scenarioDoc) => {
   const evaluationStructure = resolveEvaluationStructure(scenarioDoc);
@@ -586,7 +609,7 @@ const buildScenarioPayload = (scenarioDoc) => {
  * @param {object} params Parámetros de entrada.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
  * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
- * @returns {Promise<Record<string, any>>}
+ * @returns {Promise<Object>}
  */
 const getTargetScenarioModelOrThrow = async ({
   targetModelId,
@@ -617,22 +640,8 @@ const getTargetScenarioModelOrThrow = async ({
  * @param {string} params.userId Id del usuario actual.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
  * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
- * @param {Record<string, any>} params.paramOverrides Overrides de parámetros.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   targetModel: Record<string, any>,
- *   participations: Array<Record<string, any>>,
- *   alternatives: Array<Record<string, any>>,
- *   criteria: Array<Record<string, any>>,
- *   issueEvaluationStructure: string,
- *   targetEvaluationStructure: string,
- *   criterionTypes: string[],
- *   domainType: string | null,
- *   paramsUsed: Record<string, any>,
- *   normalizedParams: Record<string, any>,
- *   expertsOrder: string[],
- *   consensusThresholdUsed: number,
- * }>}
+ * @param {Object} params.paramOverrides Overrides de parámetros.
+ * @returns {Promise<Object>}
  */
 const getCreateScenarioContext = async ({
   issueId,
@@ -793,15 +802,12 @@ const getCreateScenarioContext = async ({
  * Resuelve las matrices de entrada de una simulación y valida que estén completas.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {string|Object} params.issueId Id del issue.
  * @param {string} params.issueEvaluationStructure Estructura de evaluación del issue.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas.
- * @returns {Promise<{
- *   matricesUsed: Record<string, any>,
- *   snapshotIdsUsed: string[],
- * }>}
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @returns {Promise<ScenarioMatricesResult>}
  */
 const resolveScenarioMatricesOrThrow = async ({
   issueId,
@@ -852,14 +858,11 @@ const resolveScenarioMatricesOrThrow = async ({
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.targetModelName Nombre del modelo objetivo.
- * @param {Record<string, any>} params.matricesUsed Matrices de entrada.
- * @param {Record<string, any>} params.normalizedParams Parámetros normalizados.
+ * @param {Object} params.matricesUsed Matrices de entrada.
+ * @param {Object} params.normalizedParams Parámetros normalizados.
  * @param {string[]} params.criterionTypes Tipos de criterio.
  * @param {number} params.consensusThresholdUsed Umbral de consenso usado.
- * @returns {Promise<{
- *   modelKey: string,
- *   results: Record<string, any>,
- * }>}
+ * @returns {Promise<ScenarioExecutionResult>}
  */
 const executeScenarioModelOrThrow = async ({
   targetModelName,
@@ -940,15 +943,12 @@ const executeScenarioModelOrThrow = async ({
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.modelKey Clave del endpoint del modelo.
- * @param {Record<string, any>} params.results Resultado bruto.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.criteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.participations Participaciones aceptadas.
- * @param {Record<string, any>} params.matricesUsed Matrices usadas.
- * @returns {{
- *   details: Record<string, any>,
- *   collectiveEvaluations: Record<string, any> | null,
- * }}
+ * @param {Object} params.results Resultado bruto.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.criteria Criterios hoja ordenados.
+ * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @param {Object} params.matricesUsed Matrices usadas.
+ * @returns {ScenarioOutputs}
  */
 const buildScenarioOutputs = ({
   modelKey,
@@ -1079,8 +1079,8 @@ const buildScenarioOutputs = ({
  * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
  * @param {string} [params.scenarioName=""] Nombre opcional del escenario.
- * @param {Record<string, any>} [params.paramOverrides={}] Overrides de parámetros.
- * @returns {Promise<{ scenarioId: any }>}
+ * @param {Object} [params.paramOverrides={}] Overrides de parámetros.
+ * @returns {Promise<IssueScenarioCreateResult>}
  */
 export const createIssueScenarioFlow = async ({
   userId,
@@ -1174,7 +1174,7 @@ export const createIssueScenarioFlow = async ({
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @returns {Promise<{ scenarios: Array<Record<string, any>> }>}
+ * @returns {Promise<Object>}
  */
 export const getIssueScenariosPayload = async ({ issueId }) => {
   if (!issueId) {
@@ -1199,7 +1199,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.scenarioId Id del escenario.
- * @returns {Promise<{ scenario: Record<string, any> }>}
+ * @returns {Promise<Object>}
  */
 export const getScenarioByIdPayload = async ({ scenarioId }) => {
   if (!scenarioId) {

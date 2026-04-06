@@ -58,17 +58,7 @@ function isValidLengthTwoArrayDefault(value, restrictions = {}) {
 /**
  * Valida el valor por defecto de un parámetro según su definición.
  *
- * @this {{
- *   type: string,
- *   restrictions?: {
- *     min?: number | null,
- *     max?: number | null,
- *     step?: number | null,
- *     length?: unknown,
- *     sum?: number | null,
- *     allowed?: unknown[] | null
- *   }
- * }}
+ * @this {Object}
  * @param {unknown} value Valor por defecto a validar.
  * @returns {boolean}
  */

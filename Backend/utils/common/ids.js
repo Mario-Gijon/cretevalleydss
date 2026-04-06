@@ -65,8 +65,7 @@ export const uniqueIdStrings = (values = []) => {
  * Indexa una colección por id en un Map.
  *
  * @param {Array<any>} [items=[]] Elementos a indexar.
- * @param {string | ((item: any) => any) | null} [selector=null]
- * Selector del id. Si no se indica, usa el propio item.
+ * @returns {Object} Selector del id. Si no se indica, usa el propio item.
  * @returns {Map<string, any>}
  */
 export const indexById = (items = [], selector = null) => {
@@ -94,8 +93,7 @@ export const indexById = (items = [], selector = null) => {
  *
  * @param {Array<any>} [items=[]] Elementos a ordenar.
  * @param {Array<any>} [idOrder=[]] Orden de ids de referencia.
- * @param {string | ((item: any) => any) | null} [selector=null]
- * Selector del id. Si no se indica, usa el propio item.
+ * @param {string|Function|null} [selector=null] Selector del id. Si no se indica, usa el propio item.
  * @returns {Array<any>}
  */
 export const sortByIdOrder = (items = [], idOrder = [], selector = null) => {

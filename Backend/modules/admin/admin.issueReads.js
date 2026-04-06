@@ -53,13 +53,23 @@ const sortByNameStable = (a, b) => {
 };
 
 /**
+ * Obtiene el listado de usuarios visibles desde el panel de administración.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.adminUserId Id del admin autenticado.
+ * @param {string} [params.search=""] Texto de búsqueda.
+ * @param {boolean} [params.includeAdmins=false] Indica si deben incluirse admins.
+ * @returns {Promise<Object>}
+ */
+
+/**
  * Construye el árbol jerárquico de criterios para el detalle admin del issue.
  *
  * Cada nodo incluye su relación padre-hijos y el resultado se devuelve
  * ordenado de forma estable por nombre para facilitar su renderizado.
  *
- * @param {Array<Record<string, any>>} [criteriaDocs=[]] Criterios del issue.
- * @returns {Array<Record<string, any>>}
+ * @param {Array<Object>} [criteriaDocs=[]] Criterios del issue.
+ * @returns {Array<Object>}
  */
 const buildCriteriaTreeAdmin = (criteriaDocs = []) => {
   const nodes = criteriaDocs.map((criterion) => ({
@@ -136,7 +146,7 @@ const countExpectedEvaluationCellsPerExpert = ({
  * Devuelve la metadata legible de la etapa actual del issue.
  *
  * @param {string} stage Etapa actual del issue.
- * @returns {{ key: string, label: string }}
+ * @returns {IssueStageMeta}
  */
 const getIssueStageMeta = (stage) => {
   const stageMap = {
@@ -168,18 +178,13 @@ const getIssueStageMeta = (stage) => {
  * computar pesos, resolverse o eliminarse según su etapa y el progreso real
  * de los participantes aceptados.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.issue Documento del issue.
  * @param {number} [params.acceptedExperts=0] Número de expertos aceptados.
  * @param {number} [params.pendingExperts=0] Número de expertos pendientes.
  * @param {number} [params.weightsDoneAccepted=0] Expertos aceptados con pesos completados.
  * @param {number} [params.evaluationsDoneAccepted=0] Expertos aceptados con evaluaciones completadas.
- * @returns {{
- *   canEditExperts: boolean,
- *   canRemoveIssue: boolean,
- *   canComputeWeights: boolean,
- *   canResolveIssue: boolean,
- * }}
+ * @returns {CreatorActionFlags}
  */
 const getCreatorActionFlags = ({
   issue,
@@ -215,16 +220,9 @@ const getCreatorActionFlags = ({
  * Si el usuario ya no existe, devuelve una representación segura para que
  * el detalle admin no rompa el renderizado ni dependa de populate completo.
  *
- * @param {Record<string, any>|null|undefined} expert Usuario poblado.
+ * @param {Object|null|undefined} expert Usuario poblado.
  * @param {string} [fallbackId=""] Id alternativo cuando no hay documento poblado.
- * @returns {{
- *   id: string,
- *   name: string,
- *   email: string,
- *   role: string,
- *   university: string,
- *   accountConfirm: boolean,
- * }}
+ * @returns {ParticipantExpertPayload}
  */
 const buildParticipantExpertPayload = (expert, fallbackId = "") => {
   if (!expert) {
@@ -261,9 +259,9 @@ const buildParticipantExpertPayload = (expert, fallbackId = "") => {
  * - métricas de progreso
  * - participantes actuales y usuarios que ya salieron
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @returns {Promise<{ issue: Record<string, any> }>}
+ * @returns {Promise<Object>}
  */
 export const getIssueAdminDetailPayload = async ({ issueId }) => {
   if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
@@ -639,16 +637,16 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
  * La fila sirve tanto para participantes actuales como para usuarios que ya
  * salieron del issue, manteniendo una estructura homogénea para la UI.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>|null|undefined} params.expert Usuario poblado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object|null|undefined} params.expert Usuario poblado.
  * @param {string} params.expertId Id normalizado del experto.
  * @param {boolean} params.currentParticipant Indica si sigue participando.
- * @param {Record<string, any>|null} [params.participation=null] Participación actual.
- * @param {Record<string, any>|null} [params.exit=null] Documento de salida.
- * @param {{ totalDocs: number, filledDocs: number, lastEvaluationAt: Date | null }} params.evaluationStats Estadísticas de evaluación.
- * @param {Record<string, any>|null} [params.weightDoc=null] Documento de pesos del experto.
+ * @param {Object|null} [params.participation=null] Participación actual.
+ * @param {Object|null} [params.exit=null] Documento de salida.
+ * @param {EvaluationStatsSummary} params.evaluationStats Estadísticas de evaluación.
+ * @param {Object|null} [params.weightDoc=null] Documento de pesos del experto.
  * @param {number} params.expectedEvaluationCells Número esperado de celdas de evaluación.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 const buildExpertProgressRow = ({
   expert,
@@ -714,9 +712,9 @@ const buildExpertProgressRow = ({
  * - usuarios que ya salieron del issue
  * - resumen de documentos de evaluación y pesos por experto
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @returns {Promise<{ issue: Record<string, any>, experts: Array<Record<string, any>> }>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
@@ -915,9 +913,9 @@ const isFilledValue = (value) =>
  * Se usa para devolver matrices pairwise con columnas estables
  * y predecibles para el frontend.
  *
- * @param {Record<string, any>} [obj={}] Objeto a ordenar.
+ * @param {Object} [obj={}] Objeto a ordenar.
  * @param {string[]} [orderedKeys=[]] Orden deseado de claves.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 const orderObjectByKeys = (obj = {}, orderedKeys = []) => {
   const orderedObject = {};
@@ -942,8 +940,8 @@ const orderObjectByKeys = (obj = {}, orderedKeys = []) => {
 /**
  * Formatea un snapshot de dominio de expresión para consumo del frontend admin.
  *
- * @param {Record<string, any>|null} domain Snapshot del dominio.
- * @returns {Record<string, any>|null}
+ * @param {Object|null} domain Snapshot del dominio.
+ * @returns {Object|null}
  */
 const formatIssueSnapshotDomain = (domain) => {
   if (!domain) return null;
@@ -969,8 +967,8 @@ const formatIssueSnapshotDomain = (domain) => {
 /**
  * Construye el payload resumido de participación del experto para admin.
  *
- * @param {Record<string, any>|null} participation Documento de participación.
- * @returns {Record<string, any>|null}
+ * @param {Object|null} participation Documento de participación.
+ * @returns {Object|null}
  */
 const buildAdminExpertParticipationPayload = (participation) => {
   if (!participation) {
@@ -990,9 +988,9 @@ const buildAdminExpertParticipationPayload = (participation) => {
 /**
  * Construye el payload base de experto para vistas admin.
  *
- * @param {Record<string, any>|null} expert Usuario poblado.
+ * @param {Object|null} expert Usuario poblado.
  * @param {string} fallbackId Id alternativo cuando el usuario ya no existe.
- * @returns {Record<string, any>}
+ * @returns {ParticipantExpertPayload}
  */
 const buildAdminExpertIdentityPayload = (expert, fallbackId) =>
   buildParticipantExpertPayload(expert, fallbackId);
@@ -1008,21 +1006,10 @@ const buildAdminExpertIdentityPayload = (expert, fallbackId) =>
  * - evaluaciones formateadas para la UI
  * - evaluaciones colectivas de la última fase de consenso, si existen
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.expertId Id del experto.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   expert: Record<string, any>,
- *   participation: Record<string, any>|null,
- *   stats: {
- *     expectedCells: number,
- *     filledCells: number,
- *     lastEvaluationAt: Date | null,
- *   },
- *   evaluations: Record<string, any>,
- *   collectiveEvaluations: any,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertEvaluationsPayload = async ({
   issueId,
@@ -1287,29 +1274,7 @@ export const getIssueExpertEvaluationsPayload = async ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.expertId Id del experto.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   expert: Record<string, any>,
- *   participation: Record<string, any>|null,
- *   weights: {
- *     kind: string,
- *     leafCriteria: string[],
- *     singleLeafAutoWeights: Record<string, any>|null,
- *     resolvedWeights: Record<string, any>|null,
- *     manualWeights: Record<string, any>,
- *     bwm: {
- *       bestCriterion: string,
- *       worstCriterion: string,
- *       bestToOthers: Record<string, any>,
- *       othersToWorst: Record<string, any>,
- *     },
- *     docMeta: {
- *       completed: boolean,
- *       consensusPhase: number | null,
- *       updatedAt: Date | null,
- *     } | null,
- *   },
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertWeightsPayload = async ({
   issueId,
@@ -1462,7 +1427,7 @@ export const getIssueExpertWeightsPayload = async ({
  * @param {string} [params.isConsensus="all"] Filtro de consenso: all | true | false.
  * @param {string} [params.adminId=""] Id del admin responsable.
  * @param {string} [params.modelId=""] Id del modelo.
- * @returns {Record<string, any>}
+ * @returns {Promise<Object>}
  */
 const buildAdminIssuesFilter = ({
   search = "",

@@ -1,8 +1,8 @@
 /**
  * Formatea un dominio de expresión para enviarlo al frontend.
  *
- * @param {Record<string, any> | null | undefined} domain Dominio poblado.
- * @returns {Record<string, any> | null}
+ * @param {Object|null|undefined} domain Dominio poblado.
+ * @returns {Object|null}
  */
 export const formatExpressionDomainForClient = (domain) => {
   if (!domain) return null;
@@ -19,8 +19,8 @@ export const formatExpressionDomainForClient = (domain) => {
 /**
  * Construye la estructura de evaluaciones pairwise agrupadas por criterio.
  *
- * @param {Array<Record<string, any>>} evaluations Evaluaciones pobladas.
- * @returns {Record<string, Array<Record<string, any>>>}
+ * @param {Array<Object>} evaluations Evaluaciones pobladas.
+ * @returns {Object.<string, Array<Object>>}
  */
 export const formatPairwiseEvaluationsByCriterion = (evaluations) => {
   const evaluationsByCriterion = {};

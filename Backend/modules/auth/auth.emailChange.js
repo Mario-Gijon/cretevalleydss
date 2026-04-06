@@ -9,6 +9,17 @@ import {
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
+/**
+ * @typedef {Object} EmailChangeConfirmationPayload
+ * @property {string} newEmail Nuevo email pendiente de confirmar.
+ * @property {string} token Token de confirmación del cambio.
+ */
+
+/**
+ * @typedef {Object} RequestEmailChangeResult
+ * @property {string} msg Mensaje de resultado.
+ * @property {EmailChangeConfirmationPayload} emailChangeConfirmation Datos necesarios para confirmar el cambio de email.
+ */
 
 /**
  * Inicia el cambio de email del usuario autenticado.
@@ -22,17 +33,11 @@ const withOptionalSession = (query, session = null) =>
  * No envía el correo directamente. Devuelve los datos necesarios para que
  * la capa HTTP pueda hacerlo tras confirmar la transacción.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
  * @param {string} params.newEmail Nuevo email solicitado.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   msg: string,
- *   emailChangeConfirmation: {
- *     newEmail: string,
- *     token: string,
- *   }
- * }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<RequestEmailChangeResult>}
  */
 export const requestAuthenticatedUserEmailChangeFlow = async ({
   userId,
@@ -90,10 +95,10 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
  * - validación del payload decodificado
  * - comprobación de duplicados antes de persistir el nuevo email
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.token Token recibido en la URL.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const confirmAuthenticatedUserEmailChangeFlow = async ({
   token,

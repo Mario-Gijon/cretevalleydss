@@ -39,7 +39,7 @@ import {
 /**
  * Construye un mapa nombre -> id a partir de una colección de documentos.
  *
- * @param {Array<Record<string, any>>} docs Documentos con campos name y _id.
+ * @param {Array<Object>} docs Documentos con campos name y _id.
  * @returns {Map<string, string>}
  */
 const buildNameIdMap = (docs = []) =>
@@ -56,13 +56,7 @@ const buildNameIdMap = (docs = []) =>
  * @param {string} params.expectedStructure Estructura esperada del issue.
  * @param {string} params.invalidStructureMessage Mensaje de error si la estructura no coincide.
  * @param {boolean} [params.requireDefaultSnapshot=false] Indica si debe existir un snapshot por defecto.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   currentPhase: number,
- *   defaultSnapshot: Record<string, any> | null,
- *   alternativeMap: Map<string, string>,
- *   criterionMap: Map<string, string>,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getEvaluationSaveContext = async ({
   issueId,
@@ -153,10 +147,10 @@ export const ensureIssueSnapshotIdsExist = async ({
  * @param {string} params.userId Id del experto actual.
  * @param {string} params.issueId Id del issue.
  * @param {number} params.currentPhase Fase de consenso actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones directas recibidas.
+ * @param {Object} params.evaluations Evaluaciones directas recibidas.
  * @param {Map<string, string>} params.alternativeMap Mapa de alternativas por nombre.
  * @param {Map<string, string>} params.criterionMap Mapa de criterios por nombre.
- * @returns {{ bulkOperations: Array<Record<string, any>>, snapshotIds: string[] }}
+ * @returns {Object}
  */
 export const buildDirectEvaluationBulkOperations = ({
   userId,
@@ -224,11 +218,11 @@ export const buildDirectEvaluationBulkOperations = ({
  * @param {string} params.userId Id del experto actual.
  * @param {string} params.issueId Id del issue.
  * @param {number} params.currentPhase Fase de consenso actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones pairwise recibidas.
+ * @param {Object} params.evaluations Evaluaciones pairwise recibidas.
  * @param {Map<string, string>} params.alternativeMap Mapa de alternativas por nombre.
  * @param {Map<string, string>} params.criterionMap Mapa de criterios por nombre.
  * @param {string} params.defaultSnapshotId Snapshot por defecto del issue.
- * @returns {{ bulkOperations: Array<Record<string, any>>, snapshotIds: string[] }}
+ * @returns {Object}
  */
 export const buildPairwiseEvaluationBulkOperations = ({
   userId,
@@ -318,8 +312,8 @@ export const buildPairwiseEvaluationBulkOperations = ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones directas recibidas.
- * @returns {Promise<{ updatedCount: number }>}
+ * @param {Object} params.evaluations Evaluaciones directas recibidas.
+ * @returns {Promise<Object>}
  */
 export const saveDirectEvaluationDrafts = async ({
   issueId,
@@ -362,8 +356,8 @@ export const saveDirectEvaluationDrafts = async ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones pairwise recibidas.
- * @returns {Promise<{ updatedCount: number }>}
+ * @param {Object} params.evaluations Evaluaciones pairwise recibidas.
+ * @returns {Promise<Object>}
  */
 export const savePairwiseEvaluationDrafts = async ({
   issueId,
@@ -418,7 +412,7 @@ export const savePairwiseEvaluationDrafts = async ({
 /**
  * Construye un error de validación para evaluaciones directas.
  *
- * @param {{ valid: boolean, error?: Record<string, any> }} validation Resultado de validación.
+ * @param {Object} validation Resultado de validación.
  * @returns {Error}
  */
 const buildDirectEvaluationValidationError = (validation) => {
@@ -440,7 +434,7 @@ const buildDirectEvaluationValidationError = (validation) => {
 /**
  * Construye un error de validación para evaluaciones pairwise.
  *
- * @param {{ valid: boolean, error?: Record<string, any> }} validation Resultado de validación.
+ * @param {Object} validation Resultado de validación.
  * @returns {Error}
  */
 const buildPairwiseEvaluationValidationError = (validation) => {
@@ -496,8 +490,8 @@ const markParticipationEvaluationCompletedOrThrow = async ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones directas recibidas.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {Object} params.evaluations Evaluaciones directas recibidas.
+ * @returns {Promise<Object>}
  */
 export const submitDirectEvaluationFlow = async ({
   issueId,
@@ -533,8 +527,8 @@ export const submitDirectEvaluationFlow = async ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Record<string, any>} params.evaluations Evaluaciones pairwise recibidas.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {Object} params.evaluations Evaluaciones pairwise recibidas.
+ * @returns {Promise<Object>}
  */
 export const submitPairwiseEvaluationFlow = async ({
   issueId,
@@ -572,10 +566,7 @@ export const submitPairwiseEvaluationFlow = async ({
  * @param {string} params.userId Id del usuario actual.
  * @param {string} params.expectedStructure Estructura esperada del issue.
  * @param {string} params.invalidStructureMessage Mensaje si la estructura no coincide.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   latestConsensus: Record<string, any> | null,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getEvaluationReadContext = async ({
   issueId,
@@ -615,10 +606,7 @@ export const getEvaluationReadContext = async ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   evaluations: Record<string, Record<string, { value: any, domain: any }>>,
- *   collectiveEvaluations: any,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getDirectEvaluationPayload = async ({ issueId, userId }) => {
   const { issue, latestConsensus } = await getEvaluationReadContext({
@@ -682,10 +670,7 @@ export const getDirectEvaluationPayload = async ({ issueId, userId }) => {
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   evaluations: Record<string, any>,
- *   collectiveEvaluations: any,
- * }>}
+ * @returns {Promise<Object>}
  */
 export const getPairwiseEvaluationPayload = async ({ issueId, userId }) => {
   const { issue, latestConsensus } = await getEvaluationReadContext({

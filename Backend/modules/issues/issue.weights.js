@@ -23,6 +23,45 @@ import {
 import { sameId } from "../../utils/common/ids.js";
 
 /**
+ * @typedef {Object} WeightStageSyncResult
+ * @property {number} totalParticipants Participantes relevantes.
+ * @property {number} totalWeightsDone Participantes con pesos completados.
+ * @property {boolean} stageChanged Indica si cambió el stage del issue.
+ */
+
+/**
+ * @typedef {Object} WeightContextResult
+ * @property {Object} issue Documento del issue.
+ * @property {Object} participation Participación aceptada del usuario actual.
+ * @property {Array<Object>} leafDocs Criterios hoja ordenados.
+ * @property {string[]} criterionNames Nombres de criterios hoja en orden canónico.
+ */
+
+/**
+ * @typedef {Object} BwmResponseData
+ * @property {string} bestCriterion Mejor criterio.
+ * @property {string} worstCriterion Peor criterio.
+ * @property {Object} bestToOthers Comparaciones del mejor criterio frente al resto.
+ * @property {Object} othersToWorst Comparaciones del resto frente al peor criterio.
+ * @property {boolean} completed Indica si la evaluación está completada.
+ */
+
+/**
+ * @typedef {Object} BwmWeightsPayloadResult
+ * @property {boolean} success Resultado correcto.
+ * @property {BwmResponseData} bwmData Datos BWM formateados.
+ */
+
+/**
+ * @typedef {Object} CollectiveWeightsResult
+ * @property {boolean} success Resultado correcto.
+ * @property {boolean} finished Indica si la fase quedó finalizada.
+ * @property {string} msg Mensaje de resultado.
+ * @property {Array<*>} weights Pesos calculados.
+ * @property {string[]} criteriaOrder Orden de criterios aplicado.
+ */
+
+/**
  * Normaliza pesos cuando hay un único criterio hoja.
  *
  * @param {unknown} weightsMaybe Posible peso o estructura de pesos.
@@ -59,8 +98,8 @@ export const normalizeSingleWeight = (weightsMaybe) => {
 /**
  * Convierte un mapa de valores a enteros o null.
  *
- * @param {Record<string, any>} obj Objeto de entrada.
- * @returns {Record<string, number | null>}
+ * @param {Object} obj Objeto de entrada.
+ * @returns {Object}
  */
 export const toNullableIntMap = (obj) =>
   Object.fromEntries(
@@ -73,9 +112,9 @@ export const toNullableIntMap = (obj) =>
 /**
  * Construye el objeto manualWeights ordenado canónicamente desde la entrada.
  *
- * @param {Record<string, any>} raw Pesos recibidos.
- * @param {Array<Record<string, any>>} leafDocs Criterios hoja ordenados.
- * @returns {Record<string, number | null>}
+ * @param {Object} raw Pesos recibidos.
+ * @param {Array<Object>} leafDocs Criterios hoja ordenados.
+ * @returns {Object}
  */
 export const buildOrderedManualWeights = (raw, leafDocs) =>
   Object.fromEntries(
@@ -94,8 +133,8 @@ export const buildOrderedManualWeights = (raw, leafDocs) =>
 /**
  * Obtiene el payload raw de pesos manuales desde las variantes aceptadas.
  *
- * @param {Record<string, any>} body Cuerpo de la petición.
- * @returns {Record<string, any>}
+ * @param {Object} body Cuerpo de la petición.
+ * @returns {Object}
  */
 export const getRawManualWeightsPayload = (body) =>
   body?.manualWeights ||
@@ -109,11 +148,11 @@ export const getRawManualWeightsPayload = (body) =>
  * Construye el payload persistible de una evaluación BWM.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.bwmData Datos BWM recibidos.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.bwmData Datos BWM recibidos.
  * @param {boolean} [params.send=false] Indica si se marca como completado.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 export const buildBwmEvaluationPayload = ({
   issueId,
@@ -135,9 +174,9 @@ export const buildBwmEvaluationPayload = ({
  * Marca los pesos del experto como completados en Participation.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Model<any>} params.ParticipationModel Modelo Participation.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
+ * @param {Object} params.ParticipationModel Modelo Participation.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
  * @returns {Promise<void>}
  */
 export const markParticipationWeightsCompleted = async ({
@@ -155,8 +194,8 @@ export const markParticipationWeightsCompleted = async ({
  * Sincroniza el stage del issue a "weightsFinished" cuando todos los participantes
  * relevantes han terminado sus pesos.
  *
- * @param {Record<string, any>} issue Documento del issue.
- * @returns {Promise<{ totalParticipants: number, totalWeightsDone: number, stageChanged: boolean }>}
+ * @param {Object} issue Documento del issue.
+ * @returns {Promise<WeightStageSyncResult>}
  */
 export const syncIssueStageAfterWeightsCompletion = async (issue) => {
   const { totalParticipants, totalWeightsDone } = await getWeightCompletionStats(
@@ -193,14 +232,9 @@ const MANUAL_WEIGHTS_SUM_TOLERANCE = 0.001;
  * - orden canónico de criterios hoja
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   participation: Record<string, any>,
- *   leafDocs: Array<Record<string, any>>,
- *   criterionNames: string[],
- * }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<WeightContextResult>}
  */
 const getManualWeightsContextOrThrow = async ({ issueId, userId }) => {
   if (!issueId) {
@@ -241,9 +275,9 @@ const getManualWeightsContextOrThrow = async ({ issueId, userId }) => {
  * null/undefined por string vacío para no romper los inputs del formulario.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} [params.manualWeights={}] Pesos persistidos.
+ * @param {Object} [params.manualWeights={}] Pesos persistidos.
  * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
- * @returns {Record<string, string | number>}
+ * @returns {Object.<string, string|number>}
  */
 const buildManualWeightsResponse = ({
   manualWeights = {},
@@ -267,7 +301,7 @@ const buildManualWeightsResponse = ({
  * - la suma total debe ser 1 con una tolerancia mínima
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, number | null>} params.manualWeights Pesos manuales ordenados.
+ * @param {Object.<string, number|null>} params.manualWeights Pesos manuales ordenados.
  * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
  * @returns {void}
  */
@@ -317,9 +351,9 @@ const validateSubmittedManualWeightsOrThrow = ({
  * Guarda una evaluación de pesos manuales para un experto.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, number | null>} params.manualWeights Pesos manuales ordenados.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object.<string, number|null>} params.manualWeights Pesos manuales ordenados.
  * @param {boolean} params.completed Indica si la evaluación queda enviada.
  * @returns {Promise<void>}
  */
@@ -348,12 +382,9 @@ const upsertManualWeightsEvaluation = async ({
  * Obtiene los pesos manuales guardados del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @returns {Promise<{
- *   success: true,
- *   manualWeights: Record<string, string | number>,
- * }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @returns {Promise<Object>}
  */
 export const getManualWeightsPayload = async ({ issueId, userId }) => {
   const { issue, criterionNames } = await getManualWeightsContextOrThrow({
@@ -379,10 +410,10 @@ export const getManualWeightsPayload = async ({ issueId, userId }) => {
  * Guarda un borrador de pesos manuales para el experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.body Cuerpo recibido en la request.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.body Cuerpo recibido en la request.
+ * @returns {Promise<Object>}
  */
 export const saveManualWeightsDraftFlow = async ({
   issueId,
@@ -414,10 +445,10 @@ export const saveManualWeightsDraftFlow = async ({
  * Valida y envía los pesos manuales del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.body Cuerpo recibido en la request.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.body Cuerpo recibido en la request.
+ * @returns {Promise<Object>}
  */
 export const submitManualWeightsFlow = async ({
   issueId,
@@ -468,7 +499,7 @@ export const submitManualWeightsFlow = async ({
  * - si no, normaliza para que sumen 1
  *
  * @param {object} params Parámetros de entrada.
- * @param {Array<Record<string, any>>} params.evaluations Evaluaciones manuales completadas.
+ * @param {Array<Object>} params.evaluations Evaluaciones manuales completadas.
  * @param {string[]} params.criterionNames Orden canónico de criterios.
  * @returns {number[]}
  */
@@ -509,10 +540,10 @@ export const computeNormalizedCollectiveManualWeights = ({
  * Obtiene el contexto base para computar pesos colectivos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
  * @param {boolean} [params.requireConsensusMode=false] Indica si debe validarse el modo consensus.
- * @returns {Promise<Record<string, any>>}
+ * @returns {Promise<Object>}
  */
 const getCollectiveWeightsContextOrThrow = async ({
   issueId,
@@ -544,17 +575,11 @@ const getCollectiveWeightsContextOrThrow = async ({
  * Calcula pesos BWM colectivos y actualiza el issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
  * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
- * @param {import("axios").AxiosStatic} params.httpClient Cliente HTTP.
- * @returns {Promise<{
- *   success: true,
- *   finished: true,
- *   msg: string,
- *   weights: unknown[],
- *   criteriaOrder: string[],
- * }>}
+ * @param {Object} params.httpClient Cliente HTTP.
+ * @returns {Promise<CollectiveWeightsResult>}
  */
 export const computeBwmCollectiveWeightsFlow = async ({
   issueId,
@@ -660,15 +685,9 @@ export const computeBwmCollectiveWeightsFlow = async ({
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   success: true,
- *   finished: true,
- *   msg: string,
- *   weights: number[],
- *   criteriaOrder: string[],
- * }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<CollectiveWeightsResult>}
  */
 export const computeManualCollectiveWeightsFlow = async ({
   issueId,
@@ -746,14 +765,9 @@ export const computeManualCollectiveWeightsFlow = async ({
  * - orden canónico de criterios hoja
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   participation: Record<string, any>,
- *   leafDocs: Array<Record<string, any>>,
- *   criterionNames: string[],
- * }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<WeightContextResult>}
  */
 const getBwmWeightsContextOrThrow = async ({ issueId, userId }) => {
   if (!issueId) {
@@ -761,6 +775,7 @@ const getBwmWeightsContextOrThrow = async ({ issueId, userId }) => {
   }
 
   const issue = await Issue.findById(issueId);
+
   if (!issue) {
     throw createNotFoundError("Issue not found");
   }
@@ -794,8 +809,8 @@ const getBwmWeightsContextOrThrow = async ({ issueId, userId }) => {
  * - bestCriterion frente a sí mismo vale 1
  * - worstCriterion frente a sí mismo vale 1
  *
- * @param {Record<string, any>} [bwmData={}] Datos BWM recibidos.
- * @returns {Record<string, any>}
+ * @param {Object} [bwmData={}] Datos BWM recibidos.
+ * @returns {Object}
  */
 const normalizeBwmInput = (bwmData = {}) => {
   const normalized = {
@@ -826,15 +841,9 @@ const normalizeBwmInput = (bwmData = {}) => {
  * null/undefined por string vacío para no romper los inputs.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any> | null} params.evaluation Evaluación persistida.
+ * @param {Object|null} params.evaluation Evaluación persistida.
  * @param {string[]} params.criterionNames Nombres de criterios hoja en orden canónico.
- * @returns {{
- *   bestCriterion: string,
- *   worstCriterion: string,
- *   bestToOthers: Record<string, string | number>,
- *   othersToWorst: Record<string, string | number>,
- *   completed: boolean,
- * }}
+ * @returns {BwmResponseData}
  */
 const buildBwmResponseData = ({ evaluation, criterionNames }) => {
   const bestToOthers = {};
@@ -863,7 +872,7 @@ const buildBwmResponseData = ({ evaluation, criterionNames }) => {
 /**
  * Valida los datos BWM finales y lanza un error enriquecido si son inválidos.
  *
- * @param {Record<string, any>} bwmData Datos BWM normalizados.
+ * @param {Object} bwmData Datos BWM normalizados.
  * @returns {void}
  */
 const validateSubmittedBwmDataOrThrow = (bwmData) => {
@@ -884,9 +893,9 @@ const validateSubmittedBwmDataOrThrow = (bwmData) => {
  * Guarda una evaluación BWM para un experto.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.bwmData Datos BWM ya normalizados.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.bwmData Datos BWM ya normalizados.
  * @param {boolean} params.completed Indica si la evaluación queda enviada.
  * @returns {Promise<void>}
  */
@@ -914,18 +923,9 @@ const upsertBwmWeightsEvaluation = async ({
  * Obtiene los pesos BWM guardados del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @returns {Promise<{
- *   success: true,
- *   bwmData: {
- *     bestCriterion: string,
- *     worstCriterion: string,
- *     bestToOthers: Record<string, string | number>,
- *     othersToWorst: Record<string, string | number>,
- *     completed: boolean,
- *   },
- * }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @returns {Promise<BwmWeightsPayloadResult>}
  */
 export const getBwmWeightsPayload = async ({ issueId, userId }) => {
   const { issue, criterionNames } = await getBwmWeightsContextOrThrow({
@@ -951,10 +951,10 @@ export const getBwmWeightsPayload = async ({ issueId, userId }) => {
  * Guarda un borrador de pesos BWM para el experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.bwmData Datos BWM recibidos.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.bwmData Datos BWM recibidos.
+ * @returns {Promise<Object>}
  */
 export const saveBwmWeightsDraftFlow = async ({
   issueId,
@@ -989,10 +989,10 @@ export const saveBwmWeightsDraftFlow = async ({
  * Valida y envía los pesos BWM del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del experto.
- * @param {Record<string, any>} params.bwmData Datos BWM recibidos.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del experto.
+ * @param {Object} params.bwmData Datos BWM recibidos.
+ * @returns {Promise<Object>}
  */
 export const submitBwmWeightsFlow = async ({
   issueId,

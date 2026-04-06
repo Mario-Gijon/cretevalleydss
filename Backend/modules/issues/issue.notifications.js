@@ -8,12 +8,18 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
-import { sameId, toIdString } from "../../utils/common/ids.js";
+import { toIdString } from "../../utils/common/ids.js";
+
+/**
+ * @typedef {Object} NotificationsPayload
+ * @property {boolean} success Resultado correcto.
+ * @property {Array<Object>} notifications Lista de notificaciones formateadas.
+ */
 
 /**
  * Construye el texto de respuesta asociado a una invitación.
  *
- * @param {Record<string, any> | null} participation Documento de participación.
+ * @param {Object|null} participation Documento de participación.
  * @returns {false | string}
  */
 const getNotificationResponseStatus = (participation) => {
@@ -36,9 +42,9 @@ const getNotificationResponseStatus = (participation) => {
  * Da formato a una notificación para el frontend.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.notification Notificación cargada.
- * @param {Map<string, Record<string, any>>} params.participationByIssueId Participaciones del usuario indexadas por issue.
- * @returns {Record<string, any>}
+ * @param {Object} params.notification Notificación cargada.
+ * @param {Map<string, Object>} params.participationByIssueId Participaciones del usuario indexadas por issue.
+ * @returns {Object}
  */
 const buildNotificationItem = ({ notification, participationByIssueId }) => {
   const issueId = toIdString(notification.issue?._id);
@@ -69,8 +75,8 @@ const buildNotificationItem = ({ notification, participationByIssueId }) => {
  * Obtiene las notificaciones del usuario actual con el formato esperado por el frontend.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{ success: true, notifications: Array<Record<string, any>> }>}
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<NotificationsPayload>}
  */
 export const getNotificationsPayload = async ({ userId }) => {
   const [notifications, participations] = await Promise.all([
@@ -100,11 +106,11 @@ export const getNotificationsPayload = async ({ userId }) => {
 };
 
 /**
- * Marca como leídas todas las notificaciones no leídas del usuario actual.
+ * Marca todas las notificaciones del usuario actual como leídas.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<Object>}
  */
 export const markAllNotificationsAsReadFlow = async ({ userId }) => {
   await Notification.updateMany({ expert: userId, read: false }, { read: true });
@@ -125,11 +131,11 @@ export const markAllNotificationsAsReadFlow = async ({ userId }) => {
  * - si acepta, reinicia evaluationCompleted
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.userId Id del usuario actual.
  * @param {"accepted"|"declined"} params.action Nuevo estado de invitación.
- * @param {import("mongoose").ClientSession | null} [params.session=null] Sesión de Mongo opcional.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de Mongo opcional.
+ * @returns {Promise<Object>}
  */
 export const changeInvitationStatusFlow = async ({
   issueId,
@@ -182,12 +188,12 @@ export const changeInvitationStatusFlow = async ({
 };
 
 /**
- * Elimina una notificación concreta del usuario actual.
+ * Elimina una notificación del usuario actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.notificationId Id de la notificación.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario actual.
- * @returns {Promise<{ success: true, msg: string }>}
+ * @param {string|Object} params.notificationId Id de la notificación.
+ * @param {string|Object} params.userId Id del usuario actual.
+ * @returns {Promise<Object>}
  */
 export const removeNotificationForUserFlow = async ({
   notificationId,

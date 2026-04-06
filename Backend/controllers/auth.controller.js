@@ -32,7 +32,7 @@ const STATUS_COOKIE_OPTIONS = { secure: false, sameSite: "strict", maxAge: 30000
 /**
  * Añade una cookie temporal de estado para redirecciones del frontend.
  *
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} res Response de Express.
  * @param {string} name Nombre de la cookie.
  * @param {string} value Valor de la cookie.
  * @returns {void}
@@ -44,8 +44,8 @@ const setStatusCookie = (res, name, value) => {
 /**
  * Redirige al frontend principal.
  *
- * @param {import("express").Response} res Response de Express.
- * @returns {import("express").Response}
+ * @param {Object} res Response de Express.
+ * @returns {Object}
  */
 const redirectToFrontend = (res) => {
   return res.redirect(`${process.env.ORIGIN_FRONT}/`);
@@ -54,8 +54,8 @@ const redirectToFrontend = (res) => {
 /**
  * Inicia sesión y devuelve el token de acceso y refresh token.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const loginUser = async (req, res) => {
@@ -97,8 +97,8 @@ export const loginUser = async (req, res) => {
 /**
  * Cierra la sesión del usuario eliminando la cookie de refresh token.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {void}
  */
 export const logout = (req, res) => {
@@ -109,8 +109,8 @@ export const logout = (req, res) => {
 /**
  * Actualiza la contraseña del usuario autenticado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const updatePassword = async (req, res) => {
@@ -157,8 +157,8 @@ export const updatePassword = async (req, res) => {
 /**
  * Actualiza la universidad del usuario autenticado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const modifyUniversity = async (req, res) => {
@@ -204,8 +204,8 @@ export const modifyUniversity = async (req, res) => {
 /**
  * Actualiza el nombre del usuario autenticado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const modifyName = async (req, res) => {
@@ -251,8 +251,8 @@ export const modifyName = async (req, res) => {
 /**
  * Obtiene los datos del usuario autenticado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const infoUser = async (req, res) => {
@@ -287,8 +287,8 @@ export const infoUser = async (req, res) => {
 /**
  * Inicia el proceso de cambio de email enviando un correo de confirmación.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const modifyEmail = async (req, res) => {
@@ -336,9 +336,9 @@ export const modifyEmail = async (req, res) => {
 /**
  * Confirma el cambio de email a partir del token recibido.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<import("express").Response>}
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
  */
 export const confirmEmailChange = async (req, res) => {
   const session = await mongoose.startSession();
@@ -376,8 +376,8 @@ export const confirmEmailChange = async (req, res) => {
 /**
  * Registra un nuevo usuario y envía el correo de verificación.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const signupUser = async (req, res) => {
@@ -431,9 +431,9 @@ export const signupUser = async (req, res) => {
 /**
  * Confirma una cuenta a partir del token de verificación.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
- * @returns {Promise<import("express").Response>}
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
  */
 export const accountConfirm = async (req, res) => {
   const session = await mongoose.startSession();
@@ -471,8 +471,8 @@ export const accountConfirm = async (req, res) => {
 /**
  * Elimina la cuenta del usuario autenticado.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const deleteAccount = async (req, res) => {

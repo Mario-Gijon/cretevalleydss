@@ -4,6 +4,25 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+/**
+ * @typedef {Object} AuthenticatedUserProfilePayload
+ * @property {string} university Universidad del usuario.
+ * @property {string} name Nombre del usuario.
+ * @property {string} email Email del usuario.
+ * @property {Date|null} accountCreation Fecha de creación de la cuenta.
+ * @property {string} role Rol actual del usuario.
+ * @property {boolean} isAdmin Indica si el usuario es administrador.
+ */
+
+/**
+ * @typedef {Object} AuthenticatedUserProfilePayload
+ * @property {string} university
+ * @property {string} name
+ * @property {string} email
+ * @property {Date|null} accountCreation
+ * @property {string} role
+ * @property {boolean} isAdmin
+ */
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
@@ -11,15 +30,8 @@ const withOptionalSession = (query, session = null) =>
 /**
  * Construye el payload público del usuario autenticado.
  *
- * @param {Record<string, any>} user Documento de usuario.
- * @returns {{
- *   university: string,
- *   name: string,
- *   email: string,
- *   accountCreation: Date | null,
- *   role: string,
- *   isAdmin: boolean,
- * }}
+ * @param {Object} user Documento de usuario.
+ * @returns {AuthenticatedUserProfilePayload}
  */
 const buildAuthenticatedUserProfilePayload = (user) => {
   const role = user?.role ?? "user";
@@ -37,16 +49,9 @@ const buildAuthenticatedUserProfilePayload = (user) => {
 /**
  * Obtiene el perfil público del usuario autenticado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
- * @returns {Promise<{
- *   university: string,
- *   name: string,
- *   email: string,
- *   accountCreation: Date | null,
- *   role: string,
- *   isAdmin: boolean,
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
+ * @returns {Promise<AuthenticatedUserProfilePayload>}
  */
 export const getAuthenticatedUserProfilePayload = async ({ userId }) => {
   const user = await User.findById(userId).lean();
@@ -61,11 +66,11 @@ export const getAuthenticatedUserProfilePayload = async ({ userId }) => {
 /**
  * Actualiza el nombre del usuario autenticado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
  * @param {string} params.newName Nuevo nombre.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const updateAuthenticatedUserNameFlow = async ({
   userId,
@@ -96,11 +101,11 @@ export const updateAuthenticatedUserNameFlow = async ({
 /**
  * Actualiza la universidad del usuario autenticado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
  * @param {string} params.newUniversity Nueva universidad.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const updateAuthenticatedUserUniversityFlow = async ({
   userId,
@@ -131,12 +136,12 @@ export const updateAuthenticatedUserUniversityFlow = async ({
 /**
  * Actualiza la contraseña del usuario autenticado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.userId Id del usuario autenticado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.userId Id del usuario autenticado.
  * @param {string} params.newPassword Nueva contraseña.
  * @param {string} params.repeatNewPassword Repetición de la nueva contraseña.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ msg: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const updateAuthenticatedUserPasswordFlow = async ({
   userId,

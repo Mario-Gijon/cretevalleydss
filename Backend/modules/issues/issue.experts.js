@@ -39,7 +39,7 @@ import { sendExpertInvitationEmail } from "../../services/email.service.js";
  * @param {object} params Parámetros de entrada.
  * @param {string[]} [params.expertsToAdd=[]] Correos a añadir.
  * @param {string[]} [params.expertsToRemove=[]] Correos a expulsar.
- * @returns {{ finalExpertsToAdd: string[], finalExpertsToRemove: string[] }}
+ * @returns {Object}
  */
 const normalizeExpertEditionRequest = ({
   expertsToAdd = [],
@@ -75,17 +75,7 @@ const normalizeExpertEditionRequest = ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<{
- *   issue: Record<string, any>,
- *   admin: Record<string, any> | null,
- *   alternatives: Array<Record<string, any>>,
- *   leafCriteria: Array<Record<string, any>>,
- *   currentPhase: number,
- *   stageForLog: string | null,
- *   defaultSnapshot: Record<string, any>,
- *   evaluationStructure: string,
- *   weightsStageIsOpen: boolean,
- * }>}
+ * @returns {Promise<Object>}
  */
 const getEditExpertsContext = async ({ issueId, userId }) => {
   const issue = await Issue.findById(issueId).populate("model");
@@ -150,14 +140,14 @@ const getEditExpertsContext = async ({ issueId, userId }) => {
  * Construye los documentos iniciales de Evaluation para un experto recién añadido.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Record<string, any>} params.expertUser Usuario experto.
- * @param {Array<Record<string, any>>} params.leafCriteria Criterios hoja ordenados.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.expertUser Usuario experto.
+ * @param {Array<Object>} params.leafCriteria Criterios hoja ordenados.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {string} params.evaluationStructure Estructura de evaluación del issue.
- * @param {Record<string, any>} params.defaultSnapshot Snapshot por defecto del issue.
+ * @param {Object} params.defaultSnapshot Snapshot por defecto del issue.
  * @param {number} params.currentPhase Fase actual de consenso.
- * @returns {Array<Record<string, any>>}
+ * @returns {Array<Object>}
  */
 const buildInitialExpertEvaluationDocs = ({
   issueId,
@@ -197,16 +187,16 @@ const buildInitialExpertEvaluationDocs = ({
  * Añade expertos nuevos al issue activo.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Issue actual.
- * @param {Record<string, any> | null} params.admin Usuario admin.
+ * @param {Object} params.issue Issue actual.
+ * @param {Object|null} params.admin Usuario admin.
  * @param {string} params.userId Id del usuario actual.
  * @param {string[]} params.expertEmails Correos normalizados a añadir.
- * @param {Map<string, Record<string, any>>} params.userByEmail Usuarios indexados por email.
- * @param {Array<Record<string, any>>} params.alternatives Alternativas ordenadas.
- * @param {Array<Record<string, any>>} params.leafCriteria Criterios hoja ordenados.
+ * @param {Map<string, Object>} params.userByEmail Usuarios indexados por email.
+ * @param {Array<Object>} params.alternatives Alternativas ordenadas.
+ * @param {Array<Object>} params.leafCriteria Criterios hoja ordenados.
  * @param {number} params.currentPhase Fase actual.
  * @param {string | null} params.stageForLog Stage para logs de salida.
- * @param {Record<string, any>} params.defaultSnapshot Snapshot por defecto del issue.
+ * @param {Object} params.defaultSnapshot Snapshot por defecto del issue.
  * @param {string} params.evaluationStructure Estructura de evaluación del issue.
  * @param {boolean} params.weightsStageIsOpen Indica si la fase de pesos sigue abierta.
  * @returns {Promise<string[]>}
@@ -318,9 +308,9 @@ const addExpertsToActiveIssue = async ({
  * Expulsa expertos de un issue activo.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Issue actual.
+ * @param {Object} params.issue Issue actual.
  * @param {string[]} params.expertEmails Correos normalizados a expulsar.
- * @param {Map<string, Record<string, any>>} params.userByEmail Usuarios indexados por email.
+ * @param {Map<string, Object>} params.userByEmail Usuarios indexados por email.
  * @param {number} params.currentPhase Fase actual.
  * @param {string | null} params.stageForLog Stage para logs de salida.
  * @returns {Promise<void>}
@@ -370,7 +360,7 @@ const removeExpertsFromActiveIssue = async ({
  * @param {string} params.userId Id del usuario actual.
  * @param {string[]} [params.expertsToAdd=[]] Correos a añadir.
  * @param {string[]} [params.expertsToRemove=[]] Correos a expulsar.
- * @returns {Promise<{ issueName: string }>}
+ * @returns {Promise<Object>}
  */
 export const editIssueExpertsFlow = async ({
   issueId,

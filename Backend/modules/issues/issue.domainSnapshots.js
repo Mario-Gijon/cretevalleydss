@@ -9,10 +9,10 @@ import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
  * en los dominios reutilizables originales.
  *
  * @param {Object} params Datos de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {string|Object} params.issueId Id del issue.
  * @param {Array<Object>} params.domainDocs Dominios origen a copiar.
- * @param {import("mongoose").ClientSession} [params.session] Sesión de mongoose.
- * @returns {Promise<Map<string, import("mongoose").Types.ObjectId>>}
+ * @param {Object|null} [params.session] Sesión de mongoose.
+ * @returns {Promise<Map<string, Object>>}
  */
 export const createIssueDomainSnapshots = async ({
   issueId,
@@ -45,10 +45,13 @@ export const createIssueDomainSnapshots = async ({
       domain.type === "linguistic" ? domain.linguisticLabels || [] : [],
   }));
 
-  const createdSnapshots = await IssueExpressionDomain.insertMany(snapshotPayload, {
-    session,
-    ordered: true,
-  });
+  const createdSnapshots = await IssueExpressionDomain.insertMany(
+    snapshotPayload,
+    {
+      session,
+      ordered: true,
+    }
+  );
 
   const snapshotMap = new Map();
 

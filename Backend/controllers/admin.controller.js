@@ -66,13 +66,18 @@ const asId = (value) => {
 const isValidObjectId = (value) => Boolean(value) && mongoose.Types.ObjectId.isValid(value);
 
 /**
+ * @typedef {Object} AdminIssueExecutionContext
+ * @property {Object} issue Issue cargado con su modelo.
+ * @property {string} creatorUserId Id del creador del issue.
+ */
+/**
  * Obtiene el contexto necesario para ejecutar acciones de admin
  * sobre un issue reutilizando flows de dominio.
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{ issue: Record<string, any>, creatorUserId: string }>}
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<AdminIssueExecutionContext>}
  */
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
@@ -103,8 +108,8 @@ const getAdminIssueExecutionContextOrThrow = async ({
 /**
  * Obtiene todos los usuarios visibles desde el panel de administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getAllUsersAdmin = async (req, res) => {
@@ -131,8 +136,8 @@ export const getAllUsersAdmin = async (req, res) => {
 /**
  * Crea un nuevo usuario desde el panel de administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const createUserAdmin = async (req, res) => {
@@ -164,8 +169,8 @@ export const createUserAdmin = async (req, res) => {
 /**
  * Actualiza un usuario desde el panel de administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const updateUserAdmin = async (req, res) => {
@@ -197,8 +202,8 @@ export const updateUserAdmin = async (req, res) => {
 /**
  * Elimina un usuario desde el panel de administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const deleteUserAdmin = async (req, res) => {
@@ -243,8 +248,8 @@ export const deleteUserAdmin = async (req, res) => {
 /**
  * Obtiene el listado resumido de issues para el panel de administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getAllIssuesAdmin = async (req, res) => {
@@ -274,8 +279,8 @@ export const getAllIssuesAdmin = async (req, res) => {
 /**
  * Obtiene el detalle completo de un issue para administración.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getIssueAdminById = async (req, res) => {
@@ -302,8 +307,8 @@ export const getIssueAdminById = async (req, res) => {
 /**
  * Obtiene una vista resumida del progreso de expertos en un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getIssueExpertsProgressAdmin = async (req, res) => {
@@ -333,8 +338,8 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
 /**
  * Obtiene las evaluaciones de un experto en modo solo lectura.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getIssueExpertEvaluationsAdmin = async (req, res) => {
@@ -362,8 +367,8 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
 /**
  * Obtiene los pesos de un experto en modo solo lectura.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const getIssueExpertWeightsAdmin = async (req, res) => {
@@ -391,8 +396,8 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
 /**
  * Reasigna el creador o responsable principal de un issue.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const reassignIssueAdminAdmin = async (req, res) => {
@@ -420,8 +425,8 @@ export const reassignIssueAdminAdmin = async (req, res) => {
 /**
  * Permite al admin editar expertos de un issue reutilizando el flow de dominio.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const editIssueExpertsAdmin = async (req, res) => {
@@ -461,8 +466,8 @@ export const editIssueExpertsAdmin = async (req, res) => {
 /**
  * Permite al admin computar pesos de un issue reutilizando flows de dominio.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const computeIssueWeightsAdmin = async (req, res) => {
@@ -503,8 +508,8 @@ export const computeIssueWeightsAdmin = async (req, res) => {
 /**
  * Permite al admin resolver un issue reutilizando flows de dominio.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const resolveIssueAdmin = async (req, res) => {
@@ -553,8 +558,8 @@ export const resolveIssueAdmin = async (req, res) => {
 /**
  * Permite al admin eliminar un issue reutilizando el flow de lifecycle.
  *
- * @param {import("express").Request} req Request de Express.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
 export const removeIssueAdmin = async (req, res) => {

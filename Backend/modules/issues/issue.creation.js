@@ -54,22 +54,8 @@ const createIssueCreationError = (status, message, obj) => {
 /**
  * Normaliza y valida la entrada base para crear un issue.
  *
- * @param {Record<string, any>} rawIssueInfo Datos recibidos en req.body.issueInfo.
- * @returns {{
- *   issueName: string,
- *   issueDescription: string | null,
- *   selectedModelName: string,
- *   uniqueAlternativeNames: string[],
- *   withConsensus: boolean,
- *   criteria: Array<Record<string, any>>,
- *   uniqueExpertEmails: string[],
- *   normalizedAssignmentsByExpert: Record<string, any>,
- *   closureDate: any,
- *   consensusMaxPhases: any,
- *   consensusThreshold: any,
- *   paramValues: Record<string, any>,
- *   weightingMode: string,
- * }}
+ * @param {Object} rawIssueInfo Datos recibidos en req.body.issueInfo.
+ * @returns {Object}
  */
 const normalizeCreateIssueInput = (rawIssueInfo) => {
   const issueInfo = rawIssueInfo || {};
@@ -173,15 +159,8 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
  * @param {string} params.adminUserId Id del admin actual.
  * @param {string} params.selectedModelName Nombre del modelo elegido.
  * @param {string[]} params.uniqueExpertEmails Correos únicos de expertos.
- * @param {import("mongoose").ClientSession} params.session Sesión de mongoose.
- * @returns {Promise<{
- *   model: Record<string, any>,
- *   admin: Record<string, any>,
- *   adminEmail: string,
- *   expertUsers: Array<Record<string, any>>,
- *   expertByEmail: Map<string, Record<string, any>>,
- *   modelEvaluationStructure: string,
- * }>}
+ * @param {Object} params.session Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 const loadCreateIssueActorsAndModel = async ({
   adminUserId,
@@ -236,10 +215,10 @@ const loadCreateIssueActorsAndModel = async ({
  * Crea las alternativas del issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
+ * @param {string|Object} params.issueId Id del issue.
  * @param {string[]} params.uniqueAlternativeNames Nombres de alternativas.
- * @param {import("mongoose").ClientSession} params.session Sesión de mongoose.
- * @returns {Promise<Array<Record<string, any>>>}
+ * @param {Object} params.session Sesión de mongoose.
+ * @returns {Promise<Array<Object>>}
  */
 const createIssueAlternatives = async ({
   issueId,
@@ -263,11 +242,11 @@ const createIssueAlternatives = async ({
  * Crea recursivamente la jerarquía de criterios del issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.nodes Nodos de criterios.
- * @param {Array<Record<string, any>>} params.leafCriteria Acumulador de criterios hoja.
- * @param {import("mongoose").ClientSession} params.session Sesión de mongoose.
- * @param {import("mongoose").Types.ObjectId | string | null} [params.parentCriterionId=null] Id del criterio padre.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<Object>} params.nodes Nodos de criterios.
+ * @param {Array<Object>} params.leafCriteria Acumulador de criterios hoja.
+ * @param {Object} params.session Sesión de mongoose.
+ * @param {string|Object|null} [params.parentCriterionId=null] Id del criterio padre.
  * @returns {Promise<void>}
  */
 const createCriteriaRecursively = async ({
@@ -320,15 +299,12 @@ const createCriteriaRecursively = async ({
  *
  * @param {object} params Parámetros de entrada.
  * @param {string[]} params.uniqueExpertEmails Correos de expertos.
- * @param {Record<string, any>} params.normalizedAssignmentsByExpert Asignaciones por experto.
- * @param {Map<string, Record<string, any>>} params.expertByEmail Usuarios por email.
- * @param {Array<Record<string, any>>} params.createdAlternatives Alternativas creadas.
- * @param {Array<Record<string, any>>} params.leafCriteria Criterios hoja creados.
+ * @param {Object} params.normalizedAssignmentsByExpert Asignaciones por experto.
+ * @param {Map<string, Object>} params.expertByEmail Usuarios por email.
+ * @param {Array<Object>} params.createdAlternatives Alternativas creadas.
+ * @param {Array<Object>} params.leafCriteria Criterios hoja creados.
  * @param {string[]} params.uniqueAlternativeNames Nombres de alternativas.
- * @returns {{
- *   usedDomainIds: string[],
- *   sourceDomainByEvaluationKey: Map<string, string>,
- * }}
+ * @returns {Object}
  */
 const buildExpertAssignmentDomainMap = ({
   uniqueExpertEmails,
@@ -406,8 +382,8 @@ const buildExpertAssignmentDomainMap = ({
  * @param {object} params Parámetros de entrada.
  * @param {string[]} params.domainIdList Ids de dominios requeridos.
  * @param {string} params.userId Id del usuario actual.
- * @param {import("mongoose").ClientSession} params.session Sesión de mongoose.
- * @returns {Promise<Array<Record<string, any>>>}
+ * @param {Object} params.session Sesión de mongoose.
+ * @returns {Promise<Array<Object>>}
  */
 const loadAccessibleExpressionDomains = async ({
   domainIdList,
@@ -447,14 +423,14 @@ const loadAccessibleExpressionDomains = async ({
  * Construye los documentos iniciales de Evaluation con snapshots ya resueltos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {Array<Record<string, any>>} params.expertUsers Expertos participantes.
- * @param {Array<Record<string, any>>} params.createdAlternatives Alternativas creadas.
- * @param {Array<Record<string, any>>} params.leafCriteria Criterios hoja creados.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {Array<Object>} params.expertUsers Expertos participantes.
+ * @param {Array<Object>} params.createdAlternatives Alternativas creadas.
+ * @param {Array<Object>} params.leafCriteria Criterios hoja creados.
  * @param {string} params.modelEvaluationStructure Estructura de evaluación del modelo.
  * @param {Map<string, string>} params.sourceDomainByEvaluationKey Dominio fuente por triple experto/alternativa/criterio.
- * @param {Map<string, any>} params.snapshotMap Snapshot por dominio fuente.
- * @returns {Array<Record<string, any>>}
+ * @param {Map<string, Object>} params.snapshotMap Snapshot por dominio fuente.
+ * @returns {Array<Object>}
  */
 const buildIssueEvaluationDocsWithSnapshots = ({
   issueId,
@@ -510,18 +486,10 @@ const buildIssueEvaluationDocsWithSnapshots = ({
  * participaciones y evaluaciones iniciales.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issueInfo Payload issueInfo recibido.
+ * @param {Object} params.issueInfo Payload issueInfo recibido.
  * @param {string} params.adminUserId Id del usuario actual.
- * @param {import("mongoose").ClientSession} params.session Sesión de mongoose.
- * @returns {Promise<{
- *   issueName: string,
- *   emailsToSend: Array<{
- *     expertEmail: string,
- *     issueName: string,
- *     issueDescription: string | null,
- *     adminEmail: string,
- *   }>,
- * }>}
+ * @param {Object} params.session Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const createIssueFlow = async ({
   issueInfo,

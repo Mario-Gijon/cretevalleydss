@@ -29,15 +29,33 @@ const ACCOUNT_DELETED_BY_ADMIN_REASON = "Expert account deleted by admin";
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
+/**
+ * @typedef {Object} AdminManagedUserPayload
+ * @property {string} id Id del usuario.
+ * @property {string} name Nombre del usuario.
+ * @property {string} university Universidad del usuario.
+ * @property {string} email Email del usuario.
+ * @property {string} role Rol del usuario.
+ * @property {boolean} accountConfirm Indica si la cuenta está confirmada.
+ * @property {Date|null} accountCreation Fecha de creación de la cuenta.
+ */
+
+/**
+ * @typedef {Object} AdminUserIdentityPayload
+ * @property {string} id Id del usuario.
+ * @property {string} name Nombre del usuario.
+ * @property {string} email Email del usuario.
+ * @property {string} role Rol del usuario.
+ */
 
 /**
  * Obtiene la fase de salida que debe registrarse para un issue.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {number | null} params.fallbackIfMissing Valor por defecto si no hay consenso previo.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<number | null>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {number|null} params.fallbackIfMissing Valor por defecto si no hay consenso previo.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<number|null>}
  */
 const getExitPhaseForIssue = async ({
   issueId,
@@ -56,10 +74,10 @@ const getExitPhaseForIssue = async ({
  * Actualiza la etapa del issue activo si, tras eliminar un participante,
  * todos los participantes relevantes han completado sus pesos.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
- * @param {Array<Record<string, any>>} params.remainingParticipations Participaciones restantes.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.issue Documento del issue.
+ * @param {Array<Object>} params.remainingParticipations Participaciones restantes.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<boolean>}
  */
 const syncActiveIssueStageAfterUserRemoval = async ({
@@ -98,12 +116,12 @@ const syncActiveIssueStageAfterUserRemoval = async ({
 /**
  * Elimina a un usuario de un issue activo y ajusta el estado resultante del issue.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
- * @param {Record<string, any>} params.participation Participación del usuario en el issue.
- * @param {Record<string, any>} params.user Usuario a eliminar.
- * @param {Record<string, number>} params.summary Resumen acumulado de resultados.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.issue Documento del issue.
+ * @param {Object} params.participation Participación del usuario en el issue.
+ * @param {Object} params.user Usuario a eliminar.
+ * @param {Object.<string, number>} params.summary Resumen acumulado de resultados.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<void>}
  */
 const removeUserFromActiveIssue = async ({
@@ -187,11 +205,11 @@ const removeUserFromActiveIssue = async ({
  * Marca la salida de un usuario en un issue finalizado y elimina el issue
  * si todos los usuarios que aún podían verlo ya lo han ocultado.
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.issue Documento del issue.
- * @param {Record<string, any>} params.user Usuario a eliminar.
- * @param {Record<string, number>} params.summary Resumen acumulado de resultados.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.issue Documento del issue.
+ * @param {Object} params.user Usuario a eliminar.
+ * @param {Object.<string, number>} params.summary Resumen acumulado de resultados.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
  * @returns {Promise<void>}
  */
 const removeUserFromFinishedIssue = async ({
@@ -288,16 +306,8 @@ const normalizeAdminManagedRole = (role) =>
 /**
  * Construye el payload público de un usuario gestionado desde admin.
  *
- * @param {Record<string, any>} user Documento de usuario.
- * @returns {{
- *   id: string,
- *   name: string,
- *   university: string,
- *   email: string,
- *   role: string,
- *   accountConfirm: boolean,
- *   accountCreation: Date | null,
- * }}
+ * @param {Object} user Documento de usuario.
+ * @returns {AdminManagedUserPayload}
  */
 const buildAdminManagedUserPayload = (user) => ({
   id: String(user._id),
@@ -312,8 +322,8 @@ const buildAdminManagedUserPayload = (user) => ({
 /**
  * Construye el payload base de identidad de un usuario para respuestas admin.
  *
- * @param {Record<string, any>|null} user Documento de usuario.
- * @returns {{ id: string, name: string, email: string, role: string }|null}
+ * @param {Object|null} user Documento de usuario.
+ * @returns {AdminUserIdentityPayload|null}
  */
 const buildAdminUserIdentityPayload = (user) => {
   if (!user) {
@@ -337,21 +347,10 @@ const buildAdminUserIdentityPayload = (user) => {
  * - fuerza accountConfirm=true para admins
  * - evita duplicados por email
  *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.payload Cuerpo recibido.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   msg: string,
- *   user: {
- *     id: string,
- *     name: string,
- *     university: string,
- *     email: string,
- *     role: string,
- *     accountConfirm: boolean,
- *     accountCreation: Date | null,
- *   }
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.payload Cuerpo recibido.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const createUserAdminFlow = async ({
   payload,
@@ -428,30 +427,12 @@ export const createUserAdminFlow = async ({
 };
 
 /**
- * Actualiza un usuario desde el panel de administración.
+ * Actualiza un usuario existente desde el panel de administración.
  *
- * Mantiene el comportamiento actual:
- * - actualiza solo los campos presentes en el payload
- * - valida vacíos en nombre, universidad y email
- * - evita duplicados por email
- * - fuerza accountConfirm=true cuando el rol final es admin
- * - permite cambiar la contraseña si llega no vacía
- *
- * @param {object} params Parámetros de entrada.
- * @param {Record<string, any>} params.payload Cuerpo recibido.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   msg: string,
- *   user: {
- *     id: string,
- *     name: string,
- *     university: string,
- *     email: string,
- *     role: string,
- *     accountConfirm: boolean,
- *     accountCreation: Date | null,
- *   }
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {Object} params.payload Cuerpo recibido.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const updateUserAdminFlow = async ({
   payload,
@@ -555,20 +536,13 @@ export const updateUserAdminFlow = async ({
 };
 
 /**
- * Reasigna el responsable principal de un issue desde el panel de administración.
+ * Reasigna la administración de un issue a otro usuario administrador.
  *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.issueId Id del issue.
- * @param {import("mongoose").Types.ObjectId | string} params.newAdminId Id del nuevo admin.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   msg: string,
- *   issue: { id: string, name: string },
- *   admin: {
- *     oldAdmin: { id: string, name: string, email: string, role: string } | null,
- *     newAdmin: { id: string, name: string, email: string, role: string },
- *   }
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.issueId Id del issue.
+ * @param {string|Object} params.newAdminId Id del nuevo admin.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const reassignIssueAdminFlow = async ({
   issueId,
@@ -640,30 +614,13 @@ export const reassignIssueAdminFlow = async ({
 };
 
 /**
- * Elimina un usuario desde el panel de administración y limpia los datos asociados.
+ * Elimina un usuario desde el panel de administración y actualiza los issues afectados.
  *
- * Mantiene las reglas actuales:
- * - no permite que un admin se elimine a sí mismo desde el panel
- * - no permite eliminar usuarios que todavía sean admin de algún issue
- * - limpia participaciones, evaluaciones, pesos, notificaciones y dominios privados
- * - registra la salida del usuario en los issues afectados
- *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.targetUserId Id del usuario a eliminar.
- * @param {import("mongoose").Types.ObjectId | string} params.adminUserId Id del admin actual.
- * @param {import("mongoose").ClientSession|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<{
- *   deletedUser: { id: string, email: string },
- *   summary: {
- *     activeIssuesUpdated: number,
- *     activeIssuesDeleted: number,
- *     finishedIssuesHidden: number,
- *     finishedIssuesDeleted: number,
- *     activeEvaluationsDeleted: number,
- *     activeWeightDocsDeleted: number,
- *     domainsDeleted: number,
- *   }
- * }>}
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.targetUserId Id del usuario a eliminar.
+ * @param {string|Object} params.adminUserId Id del admin actual.
+ * @param {Object|null} [params.session=null] Sesión de mongoose.
+ * @returns {Promise<Object>}
  */
 export const deleteUserAdminFlow = async ({
   targetUserId,
@@ -782,13 +739,13 @@ export const deleteUserAdminFlow = async ({
 };
 
 /**
- * Construye el filtro de búsqueda para el listado admin de usuarios.
+ * Construye el filtro del listado de usuarios para el panel de administración.
  *
- * @param {object} params Parámetros de entrada.
+ * @param {Object} params Parámetros de entrada.
  * @param {string} params.adminUserId Id del admin autenticado.
  * @param {string} [params.search=""] Texto de búsqueda.
  * @param {boolean} [params.includeAdmins=false] Indica si deben incluirse admins.
- * @returns {Record<string, any>}
+ * @returns {Object}
  */
 const buildAdminUsersFilter = ({
   adminUserId,
@@ -815,19 +772,13 @@ const buildAdminUsersFilter = ({
 };
 
 /**
- * Obtiene el listado resumido de usuarios para el panel de administración.
+ * Obtiene el listado de usuarios visibles desde el panel de administración.
  *
- * La respuesta incluye:
- * - datos base del usuario
- * - número de issues activos y finalizados donde participa
- * - número de dominios privados propios
- * - número de issues que administra
- *
- * @param {object} params Parámetros de entrada.
- * @param {import("mongoose").Types.ObjectId | string} params.adminUserId Id del admin autenticado.
+ * @param {Object} params Parámetros de entrada.
+ * @param {string|Object} params.adminUserId Id del admin autenticado.
  * @param {string} [params.search=""] Texto de búsqueda.
  * @param {boolean} [params.includeAdmins=false] Indica si deben incluirse admins.
- * @returns {Promise<{ users: Array<Record<string, any>> }>}
+ * @returns {Promise<Object>}
  */
 export const getAdminUsersListPayload = async ({
   adminUserId,

@@ -2,12 +2,7 @@
  * Normaliza un string aplicando trim, colapso de espacios y lowercase opcional.
  *
  * @param {any} value Valor a normalizar.
- * @param {{
- *   trim?: boolean,
- *   collapseWhitespace?: boolean,
- *   lower?: boolean
- * }} [options={}] Opciones de normalización.
- * @returns {string}
+ * @param {Object} [options={}] Opciones de normalización.
  */
 export const normalizeString = (
   value,
@@ -30,11 +25,7 @@ export const normalizeString = (
  * Normaliza un string opcional y devuelve null si queda vacío.
  *
  * @param {any} value Valor a normalizar.
- * @param {{
- *   trim?: boolean,
- *   collapseWhitespace?: boolean,
- *   lower?: boolean
- * }} [options={}] Opciones de normalización.
+ * @param {Object} [options={}] Opciones de normalización.
  * @returns {string | null}
  */
 export const normalizeOptionalString = (value, options = {}) => {

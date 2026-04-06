@@ -23,7 +23,7 @@ export const generateToken = (uid, role = "user") => {
  * Genera un refresh token y lo guarda en cookie.
  *
  * @param {string|Object} uid Id del usuario.
- * @param {import("express").Response} res Response de Express.
+ * @param {Object} res Response de Express.
  * @returns {void}
  */
 export const generateRefreshToken = (uid, res) => {

@@ -3,13 +3,7 @@ export class AppError extends Error {
    * Crea un error de aplicación tipado con metadatos reutilizables.
    *
    * @param {string} message Mensaje principal del error.
-   * @param {{
-   *   statusCode?: number,
-   *   code?: string,
-   *   details?: any,
-   *   expose?: boolean,
-   *   cause?: any
-   * }} [options={}] Opciones adicionales del error.
+   * @param {Object} res Response de Express.
    */
   constructor(
     message,
@@ -46,7 +40,7 @@ export const isAppError = (error) => error instanceof AppError;
  *
  * @param {number} statusCode Código HTTP del error.
  * @param {string} code Código interno del error.
- * @returns {(message: string, details?: any) => AppError}
+ * @returns {Function}
  */
 const buildErrorFactory =
   (statusCode, code) =>
@@ -127,7 +121,7 @@ export const getErrorStatusCode = (error, fallback = 500) => {
  *
  * @param {unknown} error Error a transformar.
  * @param {string} [fallbackMessage="Unexpected server error."] Mensaje por defecto.
- * @returns {{ success: false, message: string, code?: string, details?: any }}
+ * @returns {Object}
  */
 export const getErrorResponsePayload = (
   error,
