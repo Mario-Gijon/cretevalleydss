@@ -1,5 +1,24 @@
+/**
+ * @module models/IssueExpressionDomain
+ */
+
 import { Schema, model } from "mongoose";
 import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayValidator.js";
+
+
+/**
+ * Documento persistido de snapshot de dominio de expresión por issue.
+ *
+ * @typedef {Object} IssueExpressionDomainDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} issue Issue asociado.
+ * @property {*} sourceDomain Dominio origen o null.
+ * @property {string} name Nombre congelado del dominio.
+ * @property {string} type Tipo de dominio congelado.
+ * @property {Object} numericRange Rango numérico congelado.
+ * @property {Array<Object>} linguisticLabels Etiquetas lingüísticas congeladas.
+ */
+
 
 /**
  * Snapshot de dominio de expresión asociado a un issue.
@@ -27,6 +46,13 @@ import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayVa
  *   del issue.
  * - Si el dominio origen cambia más adelante, el snapshot del issue
  *   permanece inalterado.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const issueExpressionDomainSchema = new Schema(
   {
@@ -90,6 +116,13 @@ issueExpressionDomainSchema.index(
   { unique: true }
 );
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class IssueExpressionDomain
+ * @classdesc Modelo Mongoose de snapshots de dominios de expresión congelados por issue.
+ */
 export const IssueExpressionDomain = model(
   "IssueExpressionDomain",
   issueExpressionDomainSchema

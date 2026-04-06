@@ -1,3 +1,7 @@
+/**
+ * @module models/Issue
+ */
+
 import { Schema, model } from "mongoose";
 
 import { Alternative } from "./Alternatives.js";
@@ -5,6 +9,31 @@ import { Consensus } from "./Consensus.js";
 import { Criterion } from "./Criteria.js";
 import { Evaluation } from "./Evaluations.js";
 import { Participation } from "./Participations.js";
+
+
+/**
+ * Documento persistido del issue o problema de decisión.
+ *
+ * @typedef {Object} IssueDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} admin Usuario administrador creador.
+ * @property {*} model Modelo de decisión asociado.
+ * @property {string} name Nombre del issue.
+ * @property {boolean} isConsensus Indica si usa consenso.
+ * @property {number|null} consensusMaxPhases Máximo de fases.
+ * @property {number|null} consensusThreshold Umbral de consenso.
+ * @property {string} description Descripción funcional.
+ * @property {boolean} active Indica si el issue sigue activo.
+ * @property {string|null} creationDate Fecha funcional de creación.
+ * @property {string|null} closureDate Fecha funcional de cierre.
+ * @property {*} modelParameters Parámetros efectivos del modelo.
+ * @property {string} currentStage Etapa actual del flujo.
+ * @property {string} weightingMode Estrategia de pesos.
+ * @property {Array<*>} alternativeOrder Orden persistido de alternativas.
+ * @property {Array<*>} leafCriteriaOrder Orden persistido de criterios hoja.
+ * @property {string} evaluationStructure Estructura de evaluación.
+ */
+
 
 /**
  * Modelo principal de problema de decisión.
@@ -38,6 +67,13 @@ import { Participation } from "./Participations.js";
  * Comportamiento:
  * - Antes de eliminar un issue mediante `remove`, se eliminan en cascada
  *   alternativas, criterios, evaluaciones, participaciones y consensos asociados.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const issueSchema = new Schema(
   {
@@ -157,4 +193,11 @@ async function removeIssueDependencies(next) {
 
 issueSchema.pre("remove", removeIssueDependencies);
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class Issue
+ * @classdesc Modelo Mongoose principal del problema de decisión o issue.
+ */
 export const Issue = model("Issue", issueSchema);

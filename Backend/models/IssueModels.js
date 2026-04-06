@@ -1,4 +1,26 @@
+/**
+ * @module models/IssueModel
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de definición de modelo de decisión.
+ *
+ * @typedef {Object} IssueModelDocument
+ * @property {*} _id Identificador del documento.
+ * @property {string} name Nombre del modelo.
+ * @property {boolean} isConsensus Indica si el modelo soporta consenso.
+ * @property {boolean} isMultiCriteria Indica si el modelo es multicriterio.
+ * @property {string} smallDescription Descripción breve.
+ * @property {string} extendDescription Descripción ampliada.
+ * @property {string} moreInfoUrl Enlace externo de referencia.
+ * @property {Array<Object>} parameters Parámetros configurables.
+ * @property {string} evaluationStructure Estructura de evaluación exigida.
+ * @property {Object} supportedDomains Dominios de expresión soportados.
+ */
+
 
 /**
  * Comprueba si un valor pertenece al conjunto permitido.
@@ -170,6 +192,13 @@ parameterSchema.path("default").validate(
  * - Este modelo actúa como catálogo de modelos disponibles.
  * - No almacena ejecuciones ni resultados de issues concretos.
  */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
+ */
 const issueModelSchema = new Schema({
   name: {
     type: String,
@@ -243,4 +272,11 @@ const issueModelSchema = new Schema({
   },
 });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class IssueModel
+ * @classdesc Modelo Mongoose que actúa como catálogo de modelos y algoritmos de decisión.
+ */
 export const IssueModel = model("IssueModel", issueModelSchema);

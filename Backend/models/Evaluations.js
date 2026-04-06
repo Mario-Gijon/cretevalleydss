@@ -1,4 +1,27 @@
+/**
+ * @module models/Evaluation
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de evaluación individual.
+ *
+ * @typedef {Object} EvaluationDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} issue Issue asociado.
+ * @property {*} expert Usuario experto que evalúa.
+ * @property {*} alternative Alternativa principal evaluada.
+ * @property {*} comparedAlternative Alternativa comparada o null.
+ * @property {*} criterion Criterio evaluado.
+ * @property {*} expressionDomain Snapshot del dominio de expresión usado.
+ * @property {*} value Valor actual de la evaluación.
+ * @property {Date|null} timestamp Instante de última actualización.
+ * @property {number} consensusPhase Fase de consenso asociada.
+ * @property {Array<Object>} history Historial de valores por fase.
+ */
+
 
 /**
  * Evaluación individual emitida por un experto para un issue.
@@ -26,6 +49,13 @@ import { Schema, model } from "mongoose";
  * - En evaluación pairwise, `alternative` y `comparedAlternative` representan
  *   la pareja comparada bajo un criterio concreto.
  * - `history` conserva trazabilidad de los valores emitidos.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const evaluationSchema = new Schema({
   issue: {
@@ -87,4 +117,11 @@ const evaluationSchema = new Schema({
   ],
 });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class Evaluation
+ * @classdesc Modelo Mongoose de evaluaciones individuales por alternativa y criterio.
+ */
 export const Evaluation = model("Evaluation", evaluationSchema);

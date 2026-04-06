@@ -1,6 +1,28 @@
+/**
+ * @module models/User
+ */
+
 import bcrypt from "bcryptjs";
 import moment from "moment";
 import { model, Schema } from "mongoose";
+
+
+/**
+ * Documento persistido de usuario de la aplicación.
+ *
+ * @typedef {Object} UserDocument
+ * @property {*} _id Identificador del documento.
+ * @property {string} name Nombre visible del usuario.
+ * @property {string} university Universidad asociada.
+ * @property {string} email Correo electrónico único.
+ * @property {string} password Contraseña hasheada.
+ * @property {string} role Rol del usuario.
+ * @property {string|null} tokenConfirm Token de confirmación de cuenta.
+ * @property {string|null} emailTokenConfirm Token temporal de cambio de email.
+ * @property {boolean} accountConfirm Indica si la cuenta está confirmada.
+ * @property {string} accountCreation Fecha funcional de creación de cuenta.
+ */
+
 
 /**
  * Modelo de usuario de la aplicación.
@@ -28,6 +50,13 @@ import { model, Schema } from "mongoose";
  * Restricciones:
  * - `email` es único.
  * - `role` solo admite `user` y `admin`.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const userSchema = new Schema({
   name: {
@@ -98,6 +127,7 @@ userSchema.pre("save", async function hashPasswordOnSave(next) {
 /**
  * Compara una contraseña candidata con la contraseña almacenada.
  *
+ * @function UserDocument#comparePassword
  * @param {string} candidatePassword Contraseña recibida en texto plano.
  * @returns {Promise<boolean>}
  */
@@ -110,4 +140,11 @@ userSchema.methods.comparePassword = async function comparePassword(candidatePas
   }
 };
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class User
+ * @classdesc Modelo Mongoose de usuarios de la aplicación.
+ */
 export const User = model("User", userSchema);

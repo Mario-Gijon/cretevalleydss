@@ -1,4 +1,22 @@
+/**
+ * @module models/Criterion
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de un criterio.
+ *
+ * @typedef {Object} CriterionDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} issue Issue al que pertenece.
+ * @property {*} parentCriterion Criterio padre o null.
+ * @property {string} name Nombre del criterio.
+ * @property {string} type Tipo funcional del criterio.
+ * @property {boolean} isLeaf Indica si el criterio es hoja.
+ */
+
 
 /**
  * Criterio perteneciente a un issue.
@@ -19,6 +37,13 @@ import { Schema, model } from "mongoose";
  * Notas de dominio:
  * - La jerarquía se construye mediante `parentCriterion`.
  * - Los criterios hoja suelen usarse como base para pesos y evaluaciones.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const criterionSchema = new Schema({
   issue: {
@@ -46,4 +71,11 @@ const criterionSchema = new Schema({
   },
 });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class Criterion
+ * @classdesc Modelo Mongoose de criterios jerárquicos asociados a un issue.
+ */
 export const Criterion = model("Criterion", criterionSchema);

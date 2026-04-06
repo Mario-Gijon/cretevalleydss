@@ -1,4 +1,25 @@
+/**
+ * @module models/ExitUserIssue
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de visibilidad o salida de usuario en un issue.
+ *
+ * @typedef {Object} ExitUserIssueDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} issue Issue asociado.
+ * @property {*} user Usuario al que pertenece el registro.
+ * @property {boolean} hidden Indica si el issue está oculto.
+ * @property {Date} timestamp Fecha principal del cambio.
+ * @property {number|null} phase Fase asociada.
+ * @property {string|null} stage Etapa asociada.
+ * @property {string|null} reason Motivo textual del cambio.
+ * @property {Array<Object>} history Historial de entradas y salidas.
+ */
+
 
 /**
  * Registro de salida o visibilidad de un usuario respecto a un issue.
@@ -26,6 +47,13 @@ import { Schema, model } from "mongoose";
  *
  * Auditoría:
  * - El schema usa `timestamps`.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const exitUserIssueSchema = new Schema(
   {
@@ -105,4 +133,11 @@ const exitUserIssueSchema = new Schema(
  */
 exitUserIssueSchema.index({ user: 1, issue: 1 }, { unique: true });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class ExitUserIssue
+ * @classdesc Modelo Mongoose de visibilidad, entrada y salida de usuarios respecto a un issue.
+ */
 export const ExitUserIssue = model("ExitUserIssue", exitUserIssueSchema);

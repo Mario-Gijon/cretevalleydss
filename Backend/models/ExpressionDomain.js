@@ -1,5 +1,26 @@
+/**
+ * @module models/ExpressionDomain
+ */
+
 import { Schema, model } from "mongoose";
 import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayValidator.js";
+
+
+/**
+ * Documento persistido de dominio de expresión reutilizable.
+ *
+ * @typedef {Object} ExpressionDomainDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} user Propietario del dominio o null.
+ * @property {string} name Nombre funcional del dominio.
+ * @property {boolean} isGlobal Indica si el dominio es global.
+ * @property {boolean} locked Indica si el dominio está bloqueado.
+ * @property {string} type Tipo de dominio.
+ * @property {Object} numericRange Rango numérico permitido.
+ * @property {Array<Object>} linguisticLabels Etiquetas lingüísticas y valores.
+ * @property {Date} createdAt Fecha de creación.
+ */
+
 
 /**
  * Modelo de dominio de expresión reutilizable.
@@ -30,6 +51,13 @@ import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayVa
  * - Este modelo representa la definición reutilizable del dominio.
  * - Cuando un issue se crea, su configuración efectiva puede congelarse
  *   en snapshots específicos mediante `IssueExpressionDomain`.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const expressionDomainSchema = new Schema({
   user: {
@@ -103,4 +131,11 @@ expressionDomainSchema.index(
   }
 );
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class ExpressionDomain
+ * @classdesc Modelo Mongoose de dominios de expresión reutilizables del sistema.
+ */
 export const ExpressionDomain = model("ExpressionDomain", expressionDomainSchema);

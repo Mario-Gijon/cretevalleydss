@@ -1,4 +1,26 @@
+/**
+ * @module models/CriteriaWeightEvaluation
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de evaluación de pesos de criterios.
+ *
+ * @typedef {Object} CriteriaWeightEvaluationDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} issue Issue asociado.
+ * @property {*} expert Usuario experto que emite la evaluación.
+ * @property {string} bestCriterion Mejor criterio seleccionado en BWM.
+ * @property {string} worstCriterion Peor criterio seleccionado en BWM.
+ * @property {*} bestToOthers Comparaciones del mejor criterio frente al resto.
+ * @property {*} othersToWorst Comparaciones del resto frente al peor criterio.
+ * @property {*} manualWeights Pesos manuales persistidos.
+ * @property {number} consensusPhase Fase de consenso asociada.
+ * @property {boolean} completed Indica si la evaluación está completada.
+ */
+
 
 /**
  * Evaluación de pesos de criterios emitida por un experto para un issue.
@@ -23,6 +45,13 @@ import { Schema, model } from "mongoose";
  * Notas de dominio:
  * - Se mantienen campos flexibles `Mixed` porque la estructura exacta
  *   puede variar según la forma de entrada y el número de criterios hoja.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const criteriaWeightEvaluationSchema = new Schema({
   issue: {
@@ -65,6 +94,13 @@ const criteriaWeightEvaluationSchema = new Schema({
   },
 });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class CriteriaWeightEvaluation
+ * @classdesc Modelo Mongoose de evaluaciones de pesos de criterios emitidas por expertos.
+ */
 export const CriteriaWeightEvaluation = model(
   "CriteriaWeightEvaluation",
   criteriaWeightEvaluationSchema

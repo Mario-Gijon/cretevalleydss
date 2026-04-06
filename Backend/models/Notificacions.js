@@ -1,4 +1,25 @@
+/**
+ * @module models/Notification
+ */
+
 import { Schema, model } from "mongoose";
+
+
+/**
+ * Documento persistido de notificación para un experto.
+ *
+ * @typedef {Object} NotificationDocument
+ * @property {*} _id Identificador del documento.
+ * @property {*} expert Usuario destinatario.
+ * @property {*} issue Issue relacionado o null.
+ * @property {string} type Tipo funcional de notificación.
+ * @property {string} message Mensaje visible.
+ * @property {boolean} requiresAction Indica si requiere acción.
+ * @property {boolean|null} actionTaken Indica si la acción ya fue realizada.
+ * @property {boolean} read Indica si fue leída.
+ * @property {Date} createdAt Fecha de creación.
+ */
+
 
 /**
  * Notificación dirigida a un usuario experto.
@@ -21,6 +42,13 @@ import { Schema, model } from "mongoose";
  * Notas de dominio:
  * - `issue` puede ser `null` para notificaciones no ligadas directamente
  *   a un issue concreto.
+ */
+
+/**
+ * Schema Mongoose que define la estructura persistida del documento.
+ *
+ * @constant
+ * @type {Object}
  */
 const notificationSchema = new Schema({
   expert: {
@@ -59,4 +87,11 @@ const notificationSchema = new Schema({
   },
 });
 
+
+/**
+ * Modelo Mongoose compilado desde el schema del módulo.
+ *
+ * @class Notification
+ * @classdesc Modelo Mongoose de notificaciones dirigidas a expertos.
+ */
 export const Notification = model("Notification", notificationSchema);
