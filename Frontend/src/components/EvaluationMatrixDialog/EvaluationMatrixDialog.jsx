@@ -24,7 +24,7 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { extractLeafCriteria, validateEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import { getEvaluations, saveEvaluations, submitEvaluations } from "../../controllers/issueController";
+import { getEvaluations, saveEvaluations, submitEvaluations } from "../../services/issue.service";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { Matrix } from "../Matrix/Matrix";
@@ -185,7 +185,7 @@ export const EvaluationMatrixDialog = ({
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const evaluationSaved = await saveEvaluations(selectedIssue.id, selectedIssue, evaluations);
+    const evaluationSaved = await saveEvaluations(selectedIssue.id, evaluations);
 
     if (evaluationSaved.success) {
       setOpenCloseDialog(false);

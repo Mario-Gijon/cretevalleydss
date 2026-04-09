@@ -30,7 +30,7 @@ import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
-import { removeFinishedIssue } from "../../../controllers/issueController";
+import { removeFinishedIssue } from "../../../services/issue.service";
 import { FinishedIssueDialog } from "../../../components/FinishedIssueDialog/FinishedIssueDialog";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 

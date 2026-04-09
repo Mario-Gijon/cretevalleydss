@@ -30,7 +30,7 @@ import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { getLeafCriteria } from "../../utils/createIssueUtils";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { saveBwmWeights, getBwmWeights, sendBwmWeights } from "../../controllers/issueController";
+import { saveBwmWeights, getBwmWeights, sendBwmWeights } from "../../services/issue.service";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 
 const auroraBg = (theme, intensity = 0.16) => ({

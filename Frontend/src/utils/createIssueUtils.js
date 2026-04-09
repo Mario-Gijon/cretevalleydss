@@ -1,4 +1,4 @@
-import { getAllUsers, getModelsInfo } from "../controllers/issueController";
+import { getAllUsers, getModelsInfo } from "../services/issue.service";
 import dayjs from "dayjs";
 
 export const steps = ['Model', 'Alternatives', 'Criteria', 'Experts', 'Expression domain', 'Summary'];
@@ -8,58 +8,6 @@ export const dataTypeOptions = [
   { label: "Numeric", options: [/* { label: "Integer", value: 2 },  */{ label: "Float", value: 3 }] },
   /* { label: "Interval", options: [{ label: "Integer", value: 4 }, { label: "Float", value: 5 }] } */
 ];
-
-// Mapeo de los valores numéricos a descripciones legibles
-/* const dataTypeLabels = {
-  1: "Linguistic", // Representa un tipo de dato lingüístico
-  2: "Numeric Integer",    // Representa un número entero
-  3: "Numeric Float",      // Representa un número con decimales
-  4: "Interval Integer",    // Intervalo con enteros
-  5: "Interval Float"       // Intervalo con números decimales
-}; */
-
-/* export const generateDomainExpressions = (data) => {
-  const { dataTypes, alternatives, criteria, addedExperts } = data;
-  const domainExpressions = {};
-
-  // Función recursiva para manejar criterios con múltiples niveles de hijos
-  const processCriterion = (criterion, expertIndex, altIndex, critPath) => {
-    const key = `${expertIndex}-${altIndex}-${critPath}`;
-    const dataType = dataTypes[key] ? dataTypeLabels[dataTypes[key]] : null;
-
-    const result = {
-      name: criterion.name,
-      data: criterion.children.length === 0 ? dataType : null, // Solo asignar si es un nodo hoja
-      children: criterion.children.length > 0 ? [] : false,
-    };
-
-    // Si tiene hijos, procesarlos recursivamente
-    if (criterion.children.length > 0) {
-      criterion.children.forEach((child, childIndex) => {
-        result.children.push(processCriterion(child, expertIndex, altIndex, `${critPath}-${childIndex}`));
-      });
-    }
-
-    return result;
-  };
-
-  // Recorremos todos los expertos y alternativas
-  addedExperts.forEach((expert, expertIndex) => {
-    domainExpressions[expert] = {};
-
-    alternatives.forEach((alternative, altIndex) => {
-      domainExpressions[expert][alternative] = {};
-
-      // Procesar cada criterio con la función recursiva
-      criteria.forEach((criterion, critIndex) => {
-        domainExpressions[expert][alternative][criterion.name] = processCriterion(criterion, expertIndex, altIndex, `${critIndex}`);
-      });
-    });
-  });
-
-  return domainExpressions;
-};
-*/
 
 export const generateDomainExpressions = ({ alternatives, criteria, addedExperts }) => {
   const domainExpressions = {};

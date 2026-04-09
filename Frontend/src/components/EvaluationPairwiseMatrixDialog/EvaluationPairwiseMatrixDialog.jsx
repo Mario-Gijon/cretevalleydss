@@ -31,7 +31,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";
 import { extractLeafCriteria, validatePairwiseEvaluations } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import { getEvaluations, saveEvaluations, submitEvaluations } from "../../controllers/issueController";
+import { getEvaluations, saveEvaluations, submitEvaluations } from "../../services/issue.service";
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../StyledComponents/GlassDialog";

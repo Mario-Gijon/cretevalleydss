@@ -1,0 +1,187 @@
+.
+├── bun.lockb
+├── .env.development
+├── .env.production
+├── eslint.config.js
+├── frontend-structure.txt
+├── .gitignore
+├── index.html
+├── package.json
+├── README.md
+├── src
+│   ├── App.jsx
+│   ├── assets
+│   │   ├── eu_dark.svg
+│   │   ├── eu_light.svg
+│   │   ├── logo.svg
+│   │   └── react.svg
+│   ├── components
+│   │   ├── Account
+│   │   │   └── Account.jsx
+│   │   ├── ActiveIssuesHeader
+│   │   │   └── ActiveIssuesHeader.jsx
+│   │   ├── AddExpertsDomainsDialog
+│   │   │   └── AddExpertsDomainsDialog.jsx
+│   │   ├── AlternativeItem
+│   │   │   └── AlternativeItem.jsx
+│   │   ├── CreateLinguisticExpressionDialog
+│   │   │   └── CreateLinguisticExpressionDialog.jsx
+│   │   ├── CriteriaItem
+│   │   │   └── CriteriaItem.jsx
+│   │   ├── CriteriaList
+│   │   │   └── CriteriaList.jsx
+│   │   ├── CriterionAccordion
+│   │   │   └── CriterionAccordion.jsx
+│   │   ├── DomainAssigments
+│   │   │   └── DomainAssigments.jsx
+│   │   ├── EvaluationMatrixDialog
+│   │   │   └── EvaluationMatrixDialog.jsx
+│   │   ├── EvaluationPairwiseMatrixDialog
+│   │   │   └── EvaluationPairwiseMatrixDialog.jsx
+│   │   ├── ExpertParticipationChart
+│   │   │   └── ExpertParticipationChart.jsx
+│   │   ├── FinishedIssueDialog
+│   │   │   └── FinishedIssueDialog.jsx
+│   │   ├── FuzzyPreviewChart
+│   │   │   └── FuzzyPreviewChart.jsx
+│   │   ├── GoUpButton
+│   │   │   └── GoUpButton.jsx
+│   │   ├── IssueDetailsDrawer
+│   │   │   └── IssueDetailsDrawer.jsx
+│   │   ├── IssueDialog
+│   │   │   ├── IsAdminIssueContentDialog.jsx
+│   │   │   ├── isNotAdminIssueContentDialog.jsx
+│   │   │   └── IssueDialog.jsx
+│   │   ├── IssuesGrid
+│   │   │   └── IssuesGrid.jsx
+│   │   ├── IssueTimeline
+│   │   │   └── IssueTimeline.jsx
+│   │   ├── LoadingProgress
+│   │   │   └── CircularLoading.jsx
+│   │   ├── Matrix
+│   │   │   └── Matrix.jsx
+│   │   ├── ModelParameters
+│   │   │   └── ModelParameters.jsx
+│   │   ├── ModelParamsView
+│   │   │   └── ModelParamsView.jsx
+│   │   ├── PairwiseMatrix
+│   │   │   └── PairwiseMatrix.jsx
+│   │   ├── RateBwmWeightsDialog
+│   │   │   └── RateBwmWeightsDialog.jsx
+│   │   ├── RateConsensusWeightsDialog
+│   │   │   └── RateConsensusWeightsDialog.jsx
+│   │   ├── ResponsiveNabvar
+│   │   │   ├── navbarUtils.js
+│   │   │   └── ResponsiveNavbar.jsx
+│   │   ├── Settings
+│   │   │   ├── Fields
+│   │   │   │   ├── ConfirmDeleteDialog.jsx
+│   │   │   │   ├── ConfirmPasswordDialog.jsx
+│   │   │   │   ├── DeleteAccountButton.jsx
+│   │   │   │   ├── EmailField.jsx
+│   │   │   │   ├── NameField.jsx
+│   │   │   │   ├── NotificationsSwitch.jsx
+│   │   │   │   ├── PasswordField.jsx
+│   │   │   │   └── UniversityField.jsx
+│   │   │   ├── SettingsHeader.jsx
+│   │   │   ├── Settings.jsx
+│   │   │   └── utils
+│   │   │       └── validationUtils.js
+│   │   ├── SnackbarAlert
+│   │   │   └── SnackbarAlert.jsx
+│   │   ├── StyledComponents
+│   │   │   ├── GlassAccordion.jsx
+│   │   │   ├── GlassCard.jsx
+│   │   │   ├── GlassDialog.jsx
+│   │   │   ├── GlassPaper.jsx
+│   │   │   ├── GradientTabs.jsx
+│   │   │   ├── MaterialUISwitch.jsx
+│   │   │   ├── StepperLibConnector.jsx
+│   │   │   └── StyledChip.jsx
+│   │   ├── TaskCenter
+│   │   │   └── TaskCenter.jsx
+│   │   └── ViewExpressionsDomainDialog
+│   │       └── ViewExpressionsDomainDialog.jsx
+│   ├── context
+│   │   ├── auth
+│   │   │   ├── auth.context.js
+│   │   │   └── auth.provider.jsx
+│   │   ├── issues
+│   │   │   ├── issues.context.js
+│   │   │   └── issues.provider.jsx
+│   │   └── snackbarAlert
+│   │       ├── snackbarAlert.context.js
+│   │       └── snackbarAlert.provider.jsx
+│   ├── hooks
+│   │   └── useFetch.js
+│   ├── main.jsx
+│   ├── pages
+│   │   ├── private
+│   │   │   ├── activeIssues
+│   │   │   │   ├── ActiveIssuesPage.jsx
+│   │   │   │   └── customStyles
+│   │   │   ├── admin
+│   │   │   │   ├── AdminPage.jsx
+│   │   │   │   ├── AdminRoute.jsx
+│   │   │   │   └── sections
+│   │   │   │       ├── ExpertsSection.jsx
+│   │   │   │       ├── IssuesSection.jsx
+│   │   │   │       ├── LogsSection.jsx
+│   │   │   │       ├── ModelsSection.jsx
+│   │   │   │       └── ReportsSection.jsx
+│   │   │   ├── createIssue
+│   │   │   │   ├── CreateIssuePage.jsx
+│   │   │   │   └── Steps
+│   │   │   │       ├── AlternativesStep
+│   │   │   │       │   └── AlternativesStep.jsx
+│   │   │   │       ├── CriteriaStep
+│   │   │   │       │   └── CriteriaStep.jsx
+│   │   │   │       ├── ExpertsStep
+│   │   │   │       │   └── ExpertsStep.jsx
+│   │   │   │       ├── ExpressionDomainStep
+│   │   │   │       │   └── ExpressionDomainStep.jsx
+│   │   │   │       ├── ModelStep
+│   │   │   │       │   └── ModelStep.jsx
+│   │   │   │       └── SummaryStep
+│   │   │   │           └── SummaryStep.jsx
+│   │   │   ├── dashboard
+│   │   │   │   └── Dashboard.jsx
+│   │   │   ├── finishedIssues
+│   │   │   │   └── FinishedIssuesPage.jsx
+│   │   │   └── issuesModels
+│   │   │       └── ModelsPage.jsx
+│   │   └── public
+│   │       └── authForm
+│   │           ├── AuthForm.jsx
+│   │           ├── login
+│   │           │   ├── LogInForm.jsx
+│   │           │   └── utils
+│   │           │       ├── formUtils.js
+│   │           │       └── validationUtils.js
+│   │           └── signup
+│   │               ├── SignUpForm.jsx
+│   │               └── utils
+│   │                   ├── formUtils.js
+│   │                   └── validationUtils.js
+│   ├── services
+│   │   ├── admin.service.js
+│   │   ├── auth.service.js
+│   │   ├── issue.service.js
+│   │   └── service.utils.js
+│   ├── styles
+│   │   └── dashboard.css
+│   ├── theme
+│   │   ├── appTheme.js
+│   │   └── globalStyles.js
+│   └── utils
+│       ├── authFetch.js
+│       ├── createIssueUtils.js
+│       ├── evaluationPairwiseMatrixDialogUtils.js
+│       ├── handleTwoDecimals.js
+│       └── issues
+│           ├── criteriaTree.js
+│           ├── evaluationStructure.js
+│           └── evaluationUIRegistry.js
+└── vite.config.js
+
+71 directories, 114 files

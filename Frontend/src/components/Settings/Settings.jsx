@@ -6,7 +6,7 @@ import Grid from '@mui/material/Grid2';
 // Importar contexto de autenticación
 import { useAuthContext } from '../../context/auth/auth.context';
 // Importar helpers de autenticación
-import { logout, deleteAccount, updatePassword, modifyUniversity, modifyName, modifyEmail } from '../../controllers/authController';
+import { logout, deleteAccount, updatePassword, modifyUniversity, modifyName, modifyEmail } from '../../services/auth.service';
 // Importar hook de esquema de color de MUI
 import { useColorScheme } from '@mui/material';
 // Importar funciones de validación

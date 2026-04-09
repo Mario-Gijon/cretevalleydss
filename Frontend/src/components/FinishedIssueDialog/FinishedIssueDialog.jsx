@@ -56,7 +56,7 @@ import {
   getIssueScenarioById,
   createIssueScenario,
   removeIssueScenario,
-} from "../../controllers/issueController";
+} from "../../services/issue.service";
 
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
 import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";

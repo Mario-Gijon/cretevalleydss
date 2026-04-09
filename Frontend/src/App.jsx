@@ -1,9 +1,9 @@
-import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Box, useColorScheme } from "@mui/material";
+
 import { CircularLoading } from "./components/LoadingProgress/CircularLoading";
 import { useAuthContext } from "./context/auth/auth.context";
-import { Box, useColorScheme } from '@mui/material';
-import AdminPage from './pages/private/admin/AdminPage';
 
 const AuthForm = lazy(() => import("./pages/public/authForm/AuthForm"));
 const LogInForm = lazy(() => import("./pages/public/authForm/login/LogInForm"));
@@ -13,98 +13,115 @@ const ActiveIssuesPage = lazy(() => import("./pages/private/activeIssues/ActiveI
 const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/FinishedIssuesPage"));
 const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));
 const AdminRoute = lazy(() => import("./pages/private/admin/AdminRoute"));
-/* const ModelsPage = lazy(() => import("../private/issuesModels/ModelsPage")); */
+const AdminPage = lazy(() => import("./pages/private/admin/AdminPage"));
 
-export const App = () => {
-  const { loading, isLoggedIn } = useAuthContext();
+const APP_LOADING_CONTAINER_SX = {
+  minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  width: "100%",
+  position: "relative",
+  overflow: "hidden",
+};
 
+function AppLoadingScreen() {
   const { mode } = useColorScheme();
 
-  /* console.log(import.meta.env.VITE_MODE) */
-
-  // Mostrar el CircularLoading mientras se obtienen los datos del usuario
-  if (loading) return (
-    <Box className="dashboard-background" sx={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "space-between",
-      alignItems: "center",
-      width: "100%",
-      position: "relative",
-      overflow: "hidden",
-    }}>
-      <CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />;
+  return (
+    <Box className="dashboard-background" sx={APP_LOADING_CONTAINER_SX}>
+      <CircularLoading
+        size="5rem"
+        color={mode === "dark" ? "secondary" : "primary"}
+      />
     </Box>
-  )
+  );
+}
+
+function PublicOnlyRoute({ isLoggedIn, children }) {
+  return isLoggedIn ? <Navigate to="/dashboard" replace /> : children;
+}
+
+function PrivateRoute({ isLoggedIn, children }) {
+  return isLoggedIn ? children : <Navigate to="/login" replace />;
+}
+
+export function App() {
+  const { loading, isLoggedIn } = useAuthContext();
+
+  if (loading) {
+    return <AppLoadingScreen />;
+  }
 
   return (
-    <Router>
-      <Suspense fallback={
-        <Box className="dashboard-background" sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          alignItems: "center",
-          width: "100%",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          <CircularLoading size="5rem" color={mode === "dark" ? "secondary" : "primary"} />;
-        </Box>
-      }>
+    <BrowserRouter>
+      <Suspense fallback={<AppLoadingScreen />}>
         <Routes>
-          {/* Rutas públicas para autenticación */}
           <Route path="/" element={<AuthForm />}>
             <Route
               path="login"
-              element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <LogInForm />}
+              element={
+                <PublicOnlyRoute isLoggedIn={isLoggedIn}>
+                  <LogInForm />
+                </PublicOnlyRoute>
+              }
             />
             <Route
               path="signup"
-              element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <SignUpForm />}
+              element={
+                <PublicOnlyRoute isLoggedIn={isLoggedIn}>
+                  <SignUpForm />
+                </PublicOnlyRoute>
+              }
             />
-            {/* Redirige cualquier ruta hija bajo active a la ruta principal active */}
             <Route path="login/*" element={<Navigate to="/login" replace />} />
             <Route path="signup/*" element={<Navigate to="/signup" replace />} />
             <Route path="register/*" element={<Navigate to="/signup" replace />} />
             <Route
-              path=""
-              element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" />}
+              index
+              element={
+                isLoggedIn ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
             />
           </Route>
 
-          {/* Rutas protegidas del dashboard */}
           <Route
             path="/dashboard"
-            element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />}
+            element={
+              <PrivateRoute isLoggedIn={isLoggedIn}>
+                <Dashboard />
+              </PrivateRoute>
+            }
           >
-            {/* Rutas específicas dentro de dashboard */}
+            <Route index element={<ActiveIssuesPage />} />
             <Route path="active" element={<ActiveIssuesPage />} />
             <Route path="finished" element={<FinishedIssuesPage />} />
             <Route path="create" element={<CreateIssuePage />} />
-            {/* <Route path="models" element={<ModelsPage />} /> */}
+            <Route
+              path="admin/*"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
 
-            {/* Redirige cualquier ruta hija bajo active a la ruta principal active */}
             <Route path="active/*" element={<Navigate to="/dashboard/active" replace />} />
             <Route path="finished/*" element={<Navigate to="/dashboard/finished" replace />} />
             <Route path="create/*" element={<Navigate to="/dashboard/create" replace />} />
-            <Route path="admin/*" element={<AdminRoute><AdminPage /></AdminRoute>} />
-            {/* <Route path="models/*" element={<Navigate to="/dashboard/models" replace />} /> */}
-
-            {/* Ruta por defecto cuando no hay una ruta especificada */}
-            <Route path="" element={<ActiveIssuesPage />} />
           </Route>
 
-
-          {/* Ruta comodín */}
           <Route
             path="*"
-            element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />}
+            element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />}
           />
         </Routes>
       </Suspense>
-    </Router>
+    </BrowserRouter>
   );
-};
+}

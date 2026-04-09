@@ -43,7 +43,7 @@ import {
   leaveIssue,
   removeIssue,
   resolveIssue,
-} from "../../../controllers/issueController";
+} from "../../../services/issue.service";
 
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 

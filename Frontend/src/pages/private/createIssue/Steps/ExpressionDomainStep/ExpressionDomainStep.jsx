@@ -11,7 +11,7 @@ import { ViewExpressionsDomainDialog } from "../../../../../components/ViewExpre
 import { DomainAssignments } from "../../../../../components/DomainAssigments/DomainAssigments";
 import { CircularLoading } from "../../../../../components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
-import { removeExpressionDomain } from "../../../../../controllers/issueController";
+import { removeExpressionDomain } from "../../../../../services/issue.service";
 
 const headerIconSx = (theme) => ({
   width: 44,

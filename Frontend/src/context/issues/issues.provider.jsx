@@ -1,90 +1,136 @@
-// Importa los hooks useState y useEffect de React
-import { useState, useEffect } from "react";
-// Importa la librería PropTypes para la validación de tipos
-import { IssuesDataContext } from "./issues.context.js";
-import { getAllActiveIssues, getAllFinishedIssues, getAllUsers, getExpressionsDomain, getModelsInfo } from "../../controllers/issueController.js";
+import { useEffect, useState } from "react";
 
+import { IssuesDataContext } from "./issues.context.js";
+import {
+  getAllActiveIssues,
+  getAllFinishedIssues,
+  getAllUsers,
+  getExpressionsDomain,
+  getModelsInfo,
+} from "../../services/issue.service.js";
+
+/**
+ * Expone los datos globales relacionados con issues, modelos, expertos y dominios.
+ *
+ * @param {object} props
+ * @param {*} props.children
+ * @returns {*}
+ */
 export const IssuesDataProvider = ({ children }) => {
   const [initialExperts, setInitialExperts] = useState([]);
   const [models, setModels] = useState([]);
   const [activeIssues, setActiveIssues] = useState([]);
   const [finishedIssues, setFinishedIssues] = useState([]);
   const [globalDomains, setGlobalDomains] = useState([]);
-  const [expressionDomains, setExpressionDomains] = useState([]); // solo del usuario
+  const [expressionDomains, setExpressionDomains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [issueCreated, setIssueCreated] = useState("");
 
-  // Función para obtener los problemas activos
   const fetchActiveIssues = async () => {
-    setLoading(true);  // Establece loading a true antes de obtener los problemas activos
-    const initActiveIssuesData = await getAllActiveIssues(); // Petición para obtener los problemas activos
-    setActiveIssues(initActiveIssuesData.issues); // Establecer los problemas activos
-    setLoading(false);  // Establecer loading a false cuando los datos se han cargado
-  };
-
-  const getAllIssues = async () => {
-    setLoading(true);  // Establece loading a true antes de obtener los problemas activos
-    const initActiveIssuesData = await getAllActiveIssues(); // Petición para obtener los problemas activos
-    setActiveIssues(initActiveIssuesData.issues); // Establecer los problemas activos
-    const initFinishedIssuesData = await getAllFinishedIssues(); // Petición para obtener los problemas activos
-    setFinishedIssues(initFinishedIssuesData.issues); // Establecer los problemas activos
-    setLoading(false);  // Establecer loading a false cuando los datos se han cargado
-  };
-
-  // Función para obtener los problemas activos
-  const fetchFinishedIssues = async () => {
-    setLoading(true);  // Establece loading a true antes de obtener los problemas activos
-    const initFinishedIssuesData = await getAllFinishedIssues(); // Petición para obtener los problemas activos
-    setFinishedIssues(initFinishedIssuesData.issues); // Establecer los problemas activos
-    setLoading(false);  // Establecer loading a false cuando los datos se han cargado
-  };
-
-  // Usar useEffect para cargar los problemas activos al inicio
-  useEffect(() => {
-    /* fetchActiveIssues();  // Se ejecuta al inicio para cargar los problemas activos
-    fetchFinishedIssues();  // Se ejecuta al inicio para cargar los problemas activos */
-    getAllIssues();  // Se ejecuta al inicio para cargar los problemas activos
-    const fetchData = async () => {
-      const initExpertsData = await getAllUsers();
-      const initModelsData = await getModelsInfo();
-      const { globals, userDomains } = await getExpressionsDomain();
-      setInitialExperts(initExpertsData);
-      setModels(initModelsData);
-      setGlobalDomains(globals || []);
-      setExpressionDomains(userDomains || []);
-    };
-    fetchData();  // Este efecto carga los expertos y modelos
-  }, []);  // Este solo se ejecuta una vez, al montar el componente
-
-  // Usar otro useEffect para recargar los problemas activos cuando se cree un nuevo problema
-  useEffect(() => {
-    if (issueCreated) {
-      fetchActiveIssues();  // Recargar los problemas activos cuando se cree un nuevo problema
+    try {
+      setLoading(true);
+      const data = await getAllActiveIssues();
+      setActiveIssues(data?.issues ?? []);
+    } catch (error) {
+      console.error("Failed to load active issues", error);
+      setActiveIssues([]);
+    } finally {
+      setLoading(false);
     }
-  }, [issueCreated]);  // Este efecto se ejecuta cuando issueCreated cambia
+  };
+
+  const fetchFinishedIssues = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllFinishedIssues();
+      setFinishedIssues(data?.issues ?? []);
+    } catch (error) {
+      console.error("Failed to load finished issues", error);
+      setFinishedIssues([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchIssues = async () => {
+    try {
+      setLoading(true);
+
+      const [activeData, finishedData] = await Promise.all([
+        getAllActiveIssues(),
+        getAllFinishedIssues(),
+      ]);
+
+      setActiveIssues(activeData?.issues ?? []);
+      setFinishedIssues(finishedData?.issues ?? []);
+    } catch (error) {
+      console.error("Failed to load issues", error);
+      setActiveIssues([]);
+      setFinishedIssues([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInitialData = async () => {
+    try {
+      const [expertsData, modelsData, domainsData] = await Promise.all([
+        getAllUsers(),
+        getModelsInfo(),
+        getExpressionsDomain(),
+      ]);
+
+      setInitialExperts(expertsData ?? []);
+      setModels(modelsData ?? []);
+      setGlobalDomains(domainsData?.globals ?? []);
+      setExpressionDomains(domainsData?.userDomains ?? []);
+    } catch (error) {
+      console.error("Failed to load issue context data", error);
+      setInitialExperts([]);
+      setModels([]);
+      setGlobalDomains([]);
+      setExpressionDomains([]);
+    }
+  };
+
+  useEffect(() => {
+    const initializeIssuesData = async () => {
+      await Promise.all([fetchIssues(), fetchInitialData()]);
+    };
+
+    initializeIssuesData();
+  }, []);
+
+  useEffect(() => {
+    if (!issueCreated) {
+      return;
+    }
+
+    fetchActiveIssues();
+  }, [issueCreated]);
+
+  const issuesContextValue = {
+    initialExperts,
+    models,
+    globalDomains,
+    expressionDomains,
+    setExpressionDomains,
+    loading,
+    setLoading,
+    issueCreated,
+    setIssueCreated,
+    activeIssues,
+    finishedIssues,
+    setActiveIssues,
+    setFinishedIssues,
+    fetchActiveIssues,
+    fetchFinishedIssues,
+    fetchIssues,
+  };
 
   return (
-    <IssuesDataContext.Provider
-      value={{
-        initialExperts,
-        models,
-        globalDomains,
-        expressionDomains,
-        setExpressionDomains,
-        loading,
-        setLoading,
-        setIssueCreated,
-        issueCreated,
-        activeIssues,
-        finishedIssues,
-        setActiveIssues,
-        setFinishedIssues,
-        fetchActiveIssues,
-        fetchFinishedIssues
-      }}
-    >
+    <IssuesDataContext.Provider value={issuesContextValue}>
       {children}
     </IssuesDataContext.Provider>
-
   );
 };

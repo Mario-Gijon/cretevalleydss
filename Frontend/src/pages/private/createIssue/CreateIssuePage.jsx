@@ -27,7 +27,7 @@ import { ExpertsStep } from "./Steps/ExpertsStep/ExpertsStep";
 import { ExpressionDomainStep } from "./Steps/ExpressionDomainStep/ExpressionDomainStep";
 import { SummaryStep } from "./Steps/SummaryStep/SummaryStep";
 
-import { createIssue } from "../../../controllers/issueController";
+import { createIssue } from "../../../services/issue.service";
 import { ColorlibConnector, ColorlibStepIcon } from "../../../components/StyledComponents/StepperLibConnector";
 import {
   buildInitialAssignments,

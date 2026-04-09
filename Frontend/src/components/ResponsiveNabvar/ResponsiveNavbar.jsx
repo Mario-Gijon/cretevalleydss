@@ -37,14 +37,14 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import { useLocation, useNavigate } from "react-router-dom";
 import LogoSVG from "../../assets/logo.svg?react";
 import { useAuthContext } from "../../context/auth/auth.context";
-import { logout, markAllNotificationsAsRead, removeNotification } from '../../controllers/authController';
+import { logout, markAllNotificationsAsRead, removeNotification } from '../../services/auth.service';
 import { Account } from "../Account/Account";
 import { Settings } from "../Settings/Settings";
 import { GradientTabs } from '../StyledComponents/GradientTabs';
 import { options, pages, samePageLinkNavigation } from './navbarUtils';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import { changeInvitationStatus } from '../../controllers/issueController';
+import { changeInvitationStatus } from '../../services/issue.service';
 import { useIssuesDataContext } from '../../context/issues/issues.context';
 import { useSnackbarAlertContext } from '../../context/snackbarAlert/snackbarAlert.context';
 

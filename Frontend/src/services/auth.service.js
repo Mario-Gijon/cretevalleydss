@@ -4,19 +4,8 @@ import {
   clearAccessToken,
   refreshAccessToken,
 } from "../utils/authFetch";
+import { API, safeJson } from "./service.utils.js";
 
-/**
- * Estado vacío del usuario autenticado.
- *
- * @type {{
- *   university: string,
- *   name: string,
- *   email: string,
- *   accountCreation: string,
- *   role: string,
- *   isAdmin: boolean,
- * }}
- */
 export const EmptyAuthState = {
   university: "",
   name: "",
@@ -24,22 +13,6 @@ export const EmptyAuthState = {
   accountCreation: "",
   role: "user",
   isAdmin: false,
-};
-
-const API = import.meta.env.VITE_API_BACK;
-
-/**
- * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
- *
- * @param {Response} res Respuesta de fetch.
- * @returns {Promise<any|null>}
- */
-const safeJson = async (res) => {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
 };
 
 /**
@@ -56,15 +29,16 @@ export const bootstrapSession = async () => {
 /**
  * Obtiene el perfil del usuario autenticado.
  *
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const fetchProtectedData = async () => {
   try {
-    const res = await authFetch(`${API}/auth/me`, { method: "GET" });
-    const data = await safeJson(res);
+    const response = await authFetch(`${API}/auth/me`, { method: "GET" });
+    const data = await safeJson(response);
+
     return data?.success ? data : false;
-  } catch (err) {
-    console.error("Error fetching authenticated user:", err);
+  } catch (error) {
+    console.error("Error fetching authenticated user:", error);
     return false;
   }
 };
@@ -72,8 +46,8 @@ export const fetchProtectedData = async () => {
 /**
  * Registra un nuevo usuario.
  *
- * @param {Record<string, any>} formValues Datos del formulario de registro.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} formValues
+ * @returns {Promise<object|false>}
  */
 export const signup = async (formValues) => {
   try {
@@ -84,8 +58,8 @@ export const signup = async (formValues) => {
     });
 
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error during signup:", err);
+  } catch (error) {
+    console.error("Error during signup:", error);
     return false;
   }
 };
@@ -93,8 +67,8 @@ export const signup = async (formValues) => {
 /**
  * Inicia sesión y guarda el access token en memoria.
  *
- * @param {{ email: string, password: string }} formValues Credenciales.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} formValues
+ * @returns {Promise<object|false>}
  */
 export const login = async (formValues) => {
   try {
@@ -114,8 +88,8 @@ export const login = async (formValues) => {
     }
 
     return data;
-  } catch (err) {
-    console.error("Error during login:", err);
+  } catch (error) {
+    console.error("Error during login:", error);
     return false;
   }
 };
@@ -137,8 +111,8 @@ export const logout = async () => {
     clearAccessToken();
 
     return data?.success ? true : data?.msg || false;
-  } catch (err) {
-    console.error("Error during logout:", err);
+  } catch (error) {
+    console.error("Error during logout:", error);
     return false;
   }
 };
@@ -155,9 +129,10 @@ export const deleteAccount = async () => {
     });
 
     const data = await safeJson(response);
+
     return data?.success ? true : data?.msg ?? false;
-  } catch (err) {
-    console.error("Error deleting account:", err);
+  } catch (error) {
+    console.error("Error deleting account:", error);
     return false;
   }
 };
@@ -165,9 +140,9 @@ export const deleteAccount = async () => {
 /**
  * Actualiza la contraseña del usuario autenticado.
  *
- * @param {string} newPassword Nueva contraseña.
- * @param {string} repeatNewPassword Repetición de la nueva contraseña.
- * @returns {Promise<Record<string, any>|string|null>}
+ * @param {string} newPassword
+ * @param {string} repeatNewPassword
+ * @returns {Promise<object|string|null>}
  */
 export const updatePassword = async (newPassword, repeatNewPassword) => {
   try {
@@ -178,8 +153,8 @@ export const updatePassword = async (newPassword, repeatNewPassword) => {
     });
 
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error updating password:", err);
+  } catch (error) {
+    console.error("Error updating password:", error);
     return "An unexpected error occurred.";
   }
 };
@@ -187,8 +162,8 @@ export const updatePassword = async (newPassword, repeatNewPassword) => {
 /**
  * Actualiza la universidad del usuario autenticado.
  *
- * @param {string} newUniversity Nueva universidad.
- * @returns {Promise<Record<string, any>|null>}
+ * @param {string} newUniversity
+ * @returns {Promise<object>}
  */
 export const modifyUniversity = async (newUniversity) => {
   try {
@@ -199,8 +174,8 @@ export const modifyUniversity = async (newUniversity) => {
     });
 
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error updating university:", err);
+  } catch (error) {
+    console.error("Error updating university:", error);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
@@ -208,8 +183,8 @@ export const modifyUniversity = async (newUniversity) => {
 /**
  * Actualiza el nombre del usuario autenticado.
  *
- * @param {string} newName Nuevo nombre.
- * @returns {Promise<Record<string, any>|null>}
+ * @param {string} newName
+ * @returns {Promise<object>}
  */
 export const modifyName = async (newName) => {
   try {
@@ -220,8 +195,8 @@ export const modifyName = async (newName) => {
     });
 
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error updating name:", err);
+  } catch (error) {
+    console.error("Error updating name:", error);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
@@ -229,8 +204,8 @@ export const modifyName = async (newName) => {
 /**
  * Solicita el cambio de email del usuario autenticado.
  *
- * @param {string} newEmail Nuevo email.
- * @returns {Promise<Record<string, any>|null>}
+ * @param {string} newEmail
+ * @returns {Promise<object>}
  */
 export const modifyEmail = async (newEmail) => {
   try {
@@ -241,8 +216,8 @@ export const modifyEmail = async (newEmail) => {
     });
 
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error updating email:", err);
+  } catch (error) {
+    console.error("Error updating email:", error);
     return { success: false, msg: "Unexpected error occurred" };
   }
 };
@@ -250,18 +225,17 @@ export const modifyEmail = async (newEmail) => {
 /**
  * Obtiene las notificaciones del usuario actual.
  *
- * Este bloque no cambia en este paso.
- *
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const getNotifications = async () => {
   try {
     const response = await authFetch(`${API}/issues/notifications`, {
       method: "GET",
     });
+
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error fetching notifications:", err);
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
     return false;
   }
 };
@@ -269,9 +243,7 @@ export const getNotifications = async () => {
 /**
  * Marca como leídas todas las notificaciones del usuario actual.
  *
- * Este bloque no cambia en este paso.
- *
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const markAllNotificationsAsRead = async () => {
   try {
@@ -279,9 +251,10 @@ export const markAllNotificationsAsRead = async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
+
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error marking notifications as read:", err);
+  } catch (error) {
+    console.error("Error marking notifications as read:", error);
     return false;
   }
 };
@@ -289,10 +262,8 @@ export const markAllNotificationsAsRead = async () => {
 /**
  * Elimina una notificación del usuario actual.
  *
- * Este bloque no cambia en este paso.
- *
- * @param {string} notificationId Id de la notificación.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {string} notificationId
+ * @returns {Promise<object|false>}
  */
 export const removeNotification = async (notificationId) => {
   try {
@@ -302,9 +273,10 @@ export const removeNotification = async (notificationId) => {
         method: "DELETE",
       }
     );
+
     return await safeJson(response);
-  } catch (err) {
-    console.error("Error removing notification:", err);
+  } catch (error) {
+    console.error("Error removing notification:", error);
     return false;
   }
 };

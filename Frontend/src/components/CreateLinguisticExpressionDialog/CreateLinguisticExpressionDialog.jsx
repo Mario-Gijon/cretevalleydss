@@ -3,7 +3,7 @@ import { buildFuzzyTriangles } from "../../utils/createIssueUtils";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { Button, DialogActions, DialogContent, DialogTitle, Divider, Stack, TextField, Typography } from "@mui/material";
 import { FuzzyPreviewChart } from "../FuzzyPreviewChart/FuzzyPreviewChart";
-import { createExpressionDomain, updateExpressionDomain } from "../../controllers/issueController";
+import { createExpressionDomain, updateExpressionDomain } from "../../services/issue.service";
 import { useIssuesDataContext } from "../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
 
