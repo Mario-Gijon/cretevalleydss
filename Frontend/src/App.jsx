@@ -5,10 +5,10 @@ import { Box, useColorScheme } from "@mui/material";
 import { CircularLoading } from "./components/LoadingProgress/CircularLoading";
 import { useAuthContext } from "./context/auth/auth.context";
 
-const AuthForm = lazy(() => import("./pages/public/authForm/AuthForm"));
-const LogInForm = lazy(() => import("./pages/public/authForm/login/LogInForm"));
-const SignUpForm = lazy(() => import("./pages/public/authForm/signup/SignUpForm"));
-const Dashboard = lazy(() => import("./pages/private/dashboard/Dashboard"));
+const AuthLayout = lazy(() => import("./features/auth/components/AuthLayout"));
+const LogInForm = lazy(() => import("./features/auth/components/LogInForm"));
+const SignUpForm = lazy(() => import("./features/auth/components/SignUpForm"));
+const PrivateLayout = lazy(() => import("./components/layout/PrivateLayout"));
 const ActiveIssuesPage = lazy(() => import("./pages/private/activeIssues/ActiveIssuesPage"));
 const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/FinishedIssuesPage"));
 const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));
@@ -58,7 +58,7 @@ export function App() {
     <BrowserRouter>
       <Suspense fallback={<AppLoadingScreen />}>
         <Routes>
-          <Route path="/" element={<AuthForm />}>
+          <Route path="/" element={<AuthLayout />}>
             <Route
               path="login"
               element={
@@ -94,7 +94,7 @@ export function App() {
             path="/dashboard"
             element={
               <PrivateRoute isLoggedIn={isLoggedIn}>
-                <Dashboard />
+                <PrivateLayout />
               </PrivateRoute>
             }
           >

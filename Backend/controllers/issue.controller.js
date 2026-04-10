@@ -925,6 +925,8 @@ export const saveDirectEvaluations = async (req, res) => {
   try {
     const { id, evaluations } = req.body;
 
+    console.log(evaluations)
+
     await saveDirectEvaluationDrafts({
       issueId: id,
       userId: req.uid,

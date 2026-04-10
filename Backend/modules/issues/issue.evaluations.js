@@ -320,6 +320,7 @@ export const saveDirectEvaluationDrafts = async ({
   userId,
   evaluations,
 }) => {
+  console.log(evaluations)
   const { issue, currentPhase, alternativeMap, criterionMap } =
     await getEvaluationSaveContext({
       issueId,

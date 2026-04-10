@@ -33,9 +33,8 @@ import { CircularLoading } from "../../../components/LoadingProgress/CircularLoa
 import { removeFinishedIssue } from "../../../services/issue.service";
 import { FinishedIssueDialog } from "../../../components/FinishedIssueDialog/FinishedIssueDialog";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
-
-// Reusamos helpers visuales de ActiveIssuesHeader para que sea 100% consistente
-import { Pill, auroraBg, glassSx } from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
+import { getActiveIssuesAuroraBg, getActiveIssuesPanelGlassSx } from "../../../features/activeIssues/styles/activeIssues.styles";
+import ActiveIssuesPill from "../../../features/activeIssues/components/shared/ActiveIssuesPill";
 
 /* -----------------------------
  * Helpers
@@ -151,8 +150,8 @@ const FinishedIssuesHeader = ({
         height: "auto", // ✅ auto SIEMPRE
         overflow: "hidden",
         position: "relative",
-        ...glassSx(theme, 0.16, "crystal"),
-        ...auroraBg(theme, 0.16),
+        ...getActiveIssuesPanelGlassSx(theme, 0.16, "crystal"),
+        ...getActiveIssuesAuroraBg(theme, 0.16),
         "&:after": {
           content: '""',
           position: "absolute",
@@ -188,7 +187,7 @@ const FinishedIssuesHeader = ({
             </Stack>
 
             <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-              <Pill tone="success">{overview.total} finished</Pill>
+              <ActiveIssuesPill tone="success">{overview.total} finished</ActiveIssuesPill>
             </Stack>
           </Stack>
 
@@ -541,7 +540,7 @@ const FinishedIssuesPage = () => {
 
                             {/* Status */}
                             <Box sx={{ mt: 0.2 }}>
-                              <Pill tone="success">Finished</Pill>
+                              <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
                             </Box>
 
                             <Divider sx={{ opacity: 0.14, my: 0.7, borderColor: alpha("#fff", 0.12) }} />
@@ -684,7 +683,7 @@ const FinishedIssuesPage = () => {
                           <Divider sx={{ opacity: 0.14, my: 0.7, borderColor: alpha("#fff", 0.12) }} />
 
                           <Box>
-                            <Pill tone="success">Finished</Pill>
+                            <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
                           </Box>
 
                           <Typography variant="caption" sx={{ fontWeight: 900, color: alpha(theme.palette.common.white, 0.78) }}>

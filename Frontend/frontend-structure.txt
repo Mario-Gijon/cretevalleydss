@@ -18,8 +18,6 @@
 │   ├── components
 │   │   ├── Account
 │   │   │   └── Account.jsx
-│   │   ├── ActiveIssuesHeader
-│   │   │   └── ActiveIssuesHeader.jsx
 │   │   ├── AddExpertsDomainsDialog
 │   │   │   └── AddExpertsDomainsDialog.jsx
 │   │   ├── AlternativeItem
@@ -46,16 +44,10 @@
 │   │   │   └── FuzzyPreviewChart.jsx
 │   │   ├── GoUpButton
 │   │   │   └── GoUpButton.jsx
-│   │   ├── IssueDetailsDrawer
-│   │   │   └── IssueDetailsDrawer.jsx
-│   │   ├── IssueDialog
-│   │   │   ├── IsAdminIssueContentDialog.jsx
-│   │   │   ├── isNotAdminIssueContentDialog.jsx
-│   │   │   └── IssueDialog.jsx
-│   │   ├── IssuesGrid
-│   │   │   └── IssuesGrid.jsx
 │   │   ├── IssueTimeline
 │   │   │   └── IssueTimeline.jsx
+│   │   ├── layout
+│   │   │   └── PrivateLayout.jsx
 │   │   ├── LoadingProgress
 │   │   │   └── CircularLoading.jsx
 │   │   ├── Matrix
@@ -98,8 +90,6 @@
 │   │   │   ├── MaterialUISwitch.jsx
 │   │   │   ├── StepperLibConnector.jsx
 │   │   │   └── StyledChip.jsx
-│   │   ├── TaskCenter
-│   │   │   └── TaskCenter.jsx
 │   │   └── ViewExpressionsDomainDialog
 │   │       └── ViewExpressionsDomainDialog.jsx
 │   ├── context
@@ -112,57 +102,101 @@
 │   │   └── snackbarAlert
 │   │       ├── snackbarAlert.context.js
 │   │       └── snackbarAlert.provider.jsx
+│   ├── features
+│   │   ├── activeIssues
+│   │   │   ├── components
+│   │   │   │   ├── dialogs
+│   │   │   │   │   ├── ActiveIssueConfirmDialog.jsx
+│   │   │   │   │   └── AddExpertsPickerDialog.jsx
+│   │   │   │   ├── layout
+│   │   │   │   │   ├── ActiveIssuesDesktopLayout.jsx
+│   │   │   │   │   └── ActiveIssuesMobileLayout.jsx
+│   │   │   │   ├── panels
+│   │   │   │   │   ├── ActiveIssuesHeader.jsx
+│   │   │   │   │   ├── IssuesGrid.jsx
+│   │   │   │   │   └── TaskCenter.jsx
+│   │   │   │   └── shared
+│   │   │   │       ├── ActiveIssuesOverlays.jsx
+│   │   │   │       ├── ActiveIssuesPill.jsx
+│   │   │   │       └── ActiveIssuesTinyStat.jsx
+│   │   │   ├── drawer
+│   │   │   │   ├── components
+│   │   │   │   │   ├── config
+│   │   │   │   │   │   └── IssueDetailsDrawer.tabs.js
+│   │   │   │   │   ├── shell
+│   │   │   │   │   │   ├── IssueDetailsDrawerEmptyState.jsx
+│   │   │   │   │   │   ├── IssueDetailsDrawerHeader.jsx
+│   │   │   │   │   │   ├── IssueDetailsDrawer.jsx
+│   │   │   │   │   │   └── IssueDetailsDrawer.parts.jsx
+│   │   │   │   │   └── tabs
+│   │   │   │   │       ├── IssueDetailsAlternativesTab.jsx
+│   │   │   │   │       ├── IssueDetailsCriteriaTab.jsx
+│   │   │   │   │       ├── IssueDetailsExpertsTab.jsx
+│   │   │   │   │       ├── IssueDetailsOverviewTab.jsx
+│   │   │   │   │       └── IssueDetailsTimelineTab.jsx
+│   │   │   │   └── utils
+│   │   │   │       └── issueDetailsDrawer.utils.js
+│   │   │   ├── hooks
+│   │   │   │   ├── useActiveIssueActions.js
+│   │   │   │   ├── useActiveIssueConfirm.js
+│   │   │   │   ├── useActiveIssueDrawer.js
+│   │   │   │   ├── useActiveIssueExperts.js
+│   │   │   │   ├── useActiveIssuesListing.js
+│   │   │   │   └── useActiveIssuesScreenSync.js
+│   │   │   ├── styles
+│   │   │   │   └── activeIssues.styles.js
+│   │   │   └── utils
+│   │   │       ├── activeIssues.filters.js
+│   │   │       └── activeIssues.meta.js
+│   │   └── auth
+│   │       ├── components
+│   │       │   ├── AuthLayout.jsx
+│   │       │   ├── LogInForm.jsx
+│   │       │   └── SignUpForm.jsx
+│   │       ├── constants
+│   │       │   ├── loginForm.constants.js
+│   │       │   └── signupForm.constants.js
+│   │       ├── styles
+│   │       │   └── auth.styles.js
+│   │       └── utils
+│   │           ├── authStatus.utils.js
+│   │           ├── loginForm.validation.js
+│   │           └── signupForm.validation.js
 │   ├── hooks
 │   │   └── useFetch.js
 │   ├── main.jsx
 │   ├── pages
-│   │   ├── private
-│   │   │   ├── activeIssues
-│   │   │   │   ├── ActiveIssuesPage.jsx
-│   │   │   │   └── customStyles
-│   │   │   ├── admin
-│   │   │   │   ├── AdminPage.jsx
-│   │   │   │   ├── AdminRoute.jsx
-│   │   │   │   └── sections
-│   │   │   │       ├── ExpertsSection.jsx
-│   │   │   │       ├── IssuesSection.jsx
-│   │   │   │       ├── LogsSection.jsx
-│   │   │   │       ├── ModelsSection.jsx
-│   │   │   │       └── ReportsSection.jsx
-│   │   │   ├── createIssue
-│   │   │   │   ├── CreateIssuePage.jsx
-│   │   │   │   └── Steps
-│   │   │   │       ├── AlternativesStep
-│   │   │   │       │   └── AlternativesStep.jsx
-│   │   │   │       ├── CriteriaStep
-│   │   │   │       │   └── CriteriaStep.jsx
-│   │   │   │       ├── ExpertsStep
-│   │   │   │       │   └── ExpertsStep.jsx
-│   │   │   │       ├── ExpressionDomainStep
-│   │   │   │       │   └── ExpressionDomainStep.jsx
-│   │   │   │       ├── ModelStep
-│   │   │   │       │   └── ModelStep.jsx
-│   │   │   │       └── SummaryStep
-│   │   │   │           └── SummaryStep.jsx
-│   │   │   ├── dashboard
-│   │   │   │   └── Dashboard.jsx
-│   │   │   ├── finishedIssues
-│   │   │   │   └── FinishedIssuesPage.jsx
-│   │   │   └── issuesModels
-│   │   │       └── ModelsPage.jsx
-│   │   └── public
-│   │       └── authForm
-│   │           ├── AuthForm.jsx
-│   │           ├── login
-│   │           │   ├── LogInForm.jsx
-│   │           │   └── utils
-│   │           │       ├── formUtils.js
-│   │           │       └── validationUtils.js
-│   │           └── signup
-│   │               ├── SignUpForm.jsx
-│   │               └── utils
-│   │                   ├── formUtils.js
-│   │                   └── validationUtils.js
+│   │   └── private
+│   │       ├── activeIssues
+│   │       │   └── ActiveIssuesPage.jsx
+│   │       ├── admin
+│   │       │   ├── AdminPage.jsx
+│   │       │   ├── AdminRoute.jsx
+│   │       │   └── sections
+│   │       │       ├── ExpertsSection.jsx
+│   │       │       ├── IssuesSection.jsx
+│   │       │       ├── LogsSection.jsx
+│   │       │       ├── ModelsSection.jsx
+│   │       │       └── ReportsSection.jsx
+│   │       ├── createIssue
+│   │       │   ├── CreateIssuePage.jsx
+│   │       │   └── Steps
+│   │       │       ├── AlternativesStep
+│   │       │       │   └── AlternativesStep.jsx
+│   │       │       ├── CriteriaStep
+│   │       │       │   └── CriteriaStep.jsx
+│   │       │       ├── ExpertsStep
+│   │       │       │   └── ExpertsStep.jsx
+│   │       │       ├── ExpressionDomainStep
+│   │       │       │   └── ExpressionDomainStep.jsx
+│   │       │       ├── ModelStep
+│   │       │       │   └── ModelStep.jsx
+│   │       │       └── SummaryStep
+│   │       │           └── SummaryStep.jsx
+│   │       ├── finishedIssues
+│   │       │   └── FinishedIssuesPage.jsx
+│   │       └── issuesModels
+│   │           └── ModelsPage.jsx
 │   ├── services
 │   │   ├── admin.service.js
 │   │   ├── auth.service.js
@@ -184,4 +218,4 @@
 │           └── evaluationUIRegistry.js
 └── vite.config.js
 
-71 directories, 114 files
+80 directories, 139 files
