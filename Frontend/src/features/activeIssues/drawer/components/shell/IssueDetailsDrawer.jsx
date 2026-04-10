@@ -1,16 +1,8 @@
 import { useMemo } from "react";
-import {
-  Stack,
-  Box,
-  Drawer,
-  Divider,
-  Tabs,
-  Tab,
-} from "@mui/material";
+import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import {
-  getNextActionMeta,
-} from "../../../utils/activeIssues.meta";
+
+import { getNextActionMeta } from "../../../utils/activeIssues.meta";
 import { countLeafCriteria } from "../../../../../utils/issues/criteriaTree";
 import {
   buildIssueDrawerModelParamsList,
@@ -30,6 +22,38 @@ import IssueDetailsDrawerHeader from "../shell/IssueDetailsDrawerHeader";
 import IssueDetailsDrawerEmptyState from "../shell/IssueDetailsDrawerEmptyState";
 import { buildDrawerTabs } from "../config/IssueDetailsDrawer.tabs.js";
 
+/**
+ * Drawer principal de detalles del issue activo.
+ *
+ * Orquesta el estado derivado del issue seleccionado y
+ * delega el render de cada sección en componentes del
+ * submódulo drawer para mantener el contenedor ligero.
+ *
+ * @param {Object} props Props del componente.
+ * @param {boolean} props.open Indica si el drawer está abierto.
+ * @param {Function} props.onClose Acción de cierre del drawer.
+ * @param {Function} props.onMinimize Acción para minimizar el drawer en móvil.
+ * @param {Object|null} props.selectedIssue Issue actualmente seleccionado.
+ * @param {boolean} props.isMobile Indica si la vista actual es móvil.
+ * @param {number} props.drawerTab Índice de la pestaña activa.
+ * @param {Function} props.setDrawerTab Setter de la pestaña activa.
+ * @param {Object} props.busy Estado de carga de las acciones del drawer.
+ * @param {Function} props.openConfirm Abre el diálogo de confirmación.
+ * @param {Function} props.handleLeaveIssue Acción para abandonar el issue.
+ * @param {Function} props.handleComputeWeights Acción para computar pesos.
+ * @param {Function} props.handleResolveIssue Acción para resolver el issue.
+ * @param {Function} props.handleRemoveIssue Acción para eliminar el issue.
+ * @param {boolean} props.isEditingExperts Indica si está activa la edición de expertos.
+ * @param {Function} props.toggleEditExperts Activa o cancela la edición de expertos.
+ * @param {Array} props.expertsToRemove Correos marcados para eliminar.
+ * @param {Function} props.markRemoveExpert Marca un experto para eliminar.
+ * @param {Array} props.expertsToAdd Correos pendientes de añadir.
+ * @param {Function} props.setOpenAddExpertsDialog Abre el diálogo de añadir expertos.
+ * @param {Function} props.saveExpertsChanges Guarda los cambios de expertos.
+ * @param {Function} props.setIsRatingAlternatives Abre la evaluación de alternativas.
+ * @param {Function} props.setIsRatingWeights Abre la evaluación de pesos.
+ * @returns {JSX.Element}
+ */
 const IssueDetailsDrawer = ({
   open,
   onClose,
@@ -54,7 +78,6 @@ const IssueDetailsDrawer = ({
   setIsRatingAlternatives,
   setIsRatingWeights,
 }) => {
-
   const theme = useTheme();
 
   const {
@@ -62,15 +85,14 @@ const IssueDetailsDrawer = ({
     pendingExperts,
     participatedExperts,
     notEvaluatedExperts,
-    declinedExperts
+    declinedExperts,
   } = useMemo(() => {
     return getIssueDrawerParticipation(selectedIssue);
   }, [selectedIssue]);
 
-  const drawerAction = useMemo(
-    () => (selectedIssue ? getNextActionMeta(selectedIssue) : null),
-    [selectedIssue]
-  );
+  const drawerAction = useMemo(() => {
+    return selectedIssue ? getNextActionMeta(selectedIssue) : null;
+  }, [selectedIssue]);
 
   const DrawerActionIcon = drawerAction?.icon || null;
 
@@ -86,7 +108,9 @@ const IssueDetailsDrawer = ({
     return getIssueDrawerDeadlineLabel(selectedIssue);
   }, [selectedIssue]);
 
-  const drawerTabs = useMemo(() => buildDrawerTabs(selectedIssue), [selectedIssue]);
+  const drawerTabs = useMemo(() => {
+    return buildDrawerTabs(selectedIssue);
+  }, [selectedIssue]);
 
   const finalWeights = useMemo(() => {
     return getIssueDrawerFinalWeights(selectedIssue);
@@ -176,11 +200,10 @@ const IssueDetailsDrawer = ({
 
           <Divider sx={{ opacity: 0.18 }} />
 
-          {/* Tabs */}
           <Box sx={{ px: 2, pt: 1 }}>
             <Tabs
               value={drawerTab}
-              onChange={(_, v) => setDrawerTab(v)}
+              onChange={(_, value) => setDrawerTab(value)}
               textColor="secondary"
               indicatorColor="secondary"
               variant="scrollable"
@@ -206,19 +229,15 @@ const IssueDetailsDrawer = ({
             </Tabs>
           </Box>
 
-          {/* Content */}
           <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pt: 2, pb: 2 }}>
-            {/* Overview */}
             <IssueDetailsDrawerTabPanel value={drawerTab} index={0}>
               <IssueDetailsOverviewTab {...overviewProps} />
             </IssueDetailsDrawerTabPanel>
 
-            {/* Alternatives */}
             <IssueDetailsDrawerTabPanel value={drawerTab} index={1}>
               <IssueDetailsAlternativesTab alternatives={alternatives} />
             </IssueDetailsDrawerTabPanel>
 
-            {/* Criteria */}
             <IssueDetailsDrawerTabPanel value={drawerTab} index={2}>
               <IssueDetailsCriteriaTab
                 selectedIssue={selectedIssue}
@@ -227,7 +246,6 @@ const IssueDetailsDrawer = ({
               />
             </IssueDetailsDrawerTabPanel>
 
-            {/* Timeline */}
             <IssueDetailsDrawerTabPanel value={drawerTab} index={3}>
               <IssueDetailsTimelineTab
                 selectedIssue={selectedIssue}
@@ -235,7 +253,6 @@ const IssueDetailsDrawer = ({
               />
             </IssueDetailsDrawerTabPanel>
 
-            {/* Experts */}
             {selectedIssue.isAdmin ? (
               <IssueDetailsDrawerTabPanel value={drawerTab} index={4}>
                 <IssueDetailsExpertsTab {...expertsTabProps} />
