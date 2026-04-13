@@ -23,12 +23,12 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 import { stageLabel } from "../../../utils/activeIssues.meta";
-import ActiveIssuesPill from "../../../components/shared/ActiveIssuesPill";
-import { ExpertParticipationChart } from "../../../../../components/ExpertParticipationChart/ExpertParticipationChart";
+import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 import {
   getIssueDetailsDrawerPanelSx,
   IssueDetailsDrawerKeyValueRow,
 } from "../shell/IssueDetailsDrawer.parts";
+import IssueParticipationChart from "../../shared/IssueParticipationChart";
 
 /**
  * Pestaña Overview del drawer de detalles del issue.
@@ -328,8 +328,8 @@ const IssueDetailsOverviewTab = ({
         </Stack>
 
         <Grid container spacing={2} alignItems="stretch">
-          <Grid item xs={12} md={7}>
-            <Box
+          <Grid item xs={12} md={5}>
+            <Stack
               sx={{
                 borderRadius: 3,
                 height: "100%",
@@ -337,18 +337,21 @@ const IssueDetailsOverviewTab = ({
                 border: "1px solid rgba(255,255,255,0.08)",
                 p: 1.25,
               }}
+              justifyContent={"center"}
+              alignItems={"center"}
             >
-              <ExpertParticipationChart
+              <IssueParticipationChart
                 total={totalExperts}
                 participated={participatedExperts}
                 notEvaluated={notEvaluatedExperts}
                 pending={pendingExperts}
                 declined={declinedExperts}
+                size={140}
               />
-            </Box>
+            </Stack>
           </Grid>
 
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={7}>
             <Box
               sx={{
                 borderRadius: 3,
@@ -395,12 +398,6 @@ const IssueDetailsOverviewTab = ({
                   </ListItem>
                 ))}
               </List>
-
-              <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-                  Total: {totalExperts}
-                </Typography>
-              </Box>
             </Box>
           </Grid>
         </Grid>

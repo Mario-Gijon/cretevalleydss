@@ -8,57 +8,55 @@ import {
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { alpha, useTheme } from "@mui/material/styles";
-
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import PersonRemoveAlt1Icon from "@mui/icons-material/PersonRemoveAlt1";
 
-import ActiveIssuesPill from "../../../components/shared/ActiveIssuesPill";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.parts";
+import { useIssueExpertsFlowContext } from "../context/issueExpertsFlow.context.js";
+import { getIssueExpertsPanelSx } from "../styles/issueExperts.styles.js";
+import IssueExpertsPill from "./IssueExpertsPill.jsx";
+import { buildIssueExpertsGroups } from "../utils/issueExperts.groups.js";
 
 /**
- * Pestaña Experts del drawer de detalles del issue.
+ * Sección principal del flujo de expertos del issue.
  *
- * Muestra los expertos agrupados por estado y permite
- * activar el modo edición para añadir o marcar expertos
- * para eliminar.
+ * Agrupa la visualización de expertos por estado y
+ * las acciones de edición gestionadas por el feature
+ * issueExperts.
  *
- * @param {Object} props Props del componente.
- * @returns {JSX.Element}
+ * @returns {JSX.Element|null}
  */
-const IssueDetailsExpertsTab = ({
-  selectedIssue,
-  isEditingExperts,
-  toggleEditExperts,
-  expertsToRemove,
-  markRemoveExpert,
-  expertsToAdd,
-  setOpenAddExpertsDialog,
-  saveExpertsChanges,
-  busy,
-}) => {
+const IssueExpertsSection = () => {
   const theme = useTheme();
 
-  const expertGroups = [
-    { title: "Participated", list: selectedIssue?.participatedExperts || [] },
-    {
-      title: "Accepted (not evaluated)",
-      list: selectedIssue?.acceptedButNotEvaluatedExperts || [],
-    },
-    { title: "Pending invitations", list: selectedIssue?.pendingExperts || [] },
-    { title: "Declined", list: selectedIssue?.notAcceptedExperts || [] },
-  ];
+  const {
+    selectedIssue,
+    isEditingExperts,
+    toggleEditExperts,
+    expertsToRemove,
+    markRemoveExpert,
+    expertsToAdd,
+    setOpenAddExpertsDialog,
+    saveExpertsChanges,
+  } = useIssueExpertsFlowContext();
+
+  if (!selectedIssue) {
+    return null;
+  }
+
+  const expertGroups = buildIssueExpertsGroups(selectedIssue);
 
   return (
     <Stack spacing={1.5}>
-      <Box sx={{ ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }), p: 1.75 }}>
+      <Box sx={{ ...getIssueExpertsPanelSx(theme, { bg: 0.10 }), p: 1.75 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
           <PeopleAltIcon fontSize="small" />
           <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
             Experts
           </Typography>
+
           <Box sx={{ flex: 1 }} />
 
           <LoadingButton
@@ -84,7 +82,6 @@ const IssueDetailsExpertsTab = ({
               <LoadingButton
                 variant="outlined"
                 color="warning"
-                loading={busy.editExperts}
                 onClick={saveExpertsChanges}
               >
                 Save
@@ -94,9 +91,9 @@ const IssueDetailsExpertsTab = ({
         </Stack>
 
         <Stack spacing={1.1} sx={{ mt: 1.5 }}>
-          {expertGroups.map((block) => (
+          {expertGroups.map((group) => (
             <Accordion
-              key={block.title}
+              key={group.key}
               disableGutters
               elevation={0}
               sx={{
@@ -113,20 +110,23 @@ const IssueDetailsExpertsTab = ({
                   sx={{ alignItems: "center", width: "100%" }}
                 >
                   <Typography sx={{ fontWeight: 950, flex: 1 }}>
-                    {block.title}
+                    {group.title}
                   </Typography>
-                  <ActiveIssuesPill tone="info">{block.list.length}</ActiveIssuesPill>
+
+                  <IssueExpertsPill tone="info">
+                    {group.list.length}
+                  </IssueExpertsPill>
                 </Stack>
               </AccordionSummary>
 
               <AccordionDetails sx={{ pt: 0 }}>
-                {block.list.length === 0 ? (
+                {group.list.length === 0 ? (
                   <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     —
                   </Typography>
                 ) : (
                   <Stack spacing={0.8}>
-                    {block.list.map((email) => (
+                    {group.list.map((email) => (
                       <Stack
                         key={email}
                         direction="row"
@@ -171,9 +171,24 @@ const IssueDetailsExpertsTab = ({
               border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-              Experts to add: {expertsToAdd.length}
-            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", flexWrap: "wrap" }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 900 }}
+              >
+                Experts to add: {expertsToAdd.length}
+              </Typography>
+
+              {expertsToAdd.map((email) => (
+                <IssueExpertsPill key={email} tone="info">
+                  {email}
+                </IssueExpertsPill>
+              ))}
+            </Stack>
           </Box>
         ) : null}
       </Box>
@@ -181,4 +196,4 @@ const IssueDetailsExpertsTab = ({
   );
 };
 
-export default IssueDetailsExpertsTab;
+export default IssueExpertsSection;

@@ -24,15 +24,13 @@ import CloseIcon from "@mui/icons-material/Close";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import UndoIcon from "@mui/icons-material/Undo";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
-import { normalizeActiveIssueValue } from "../../utils/activeIssues.filters";
-import { getActiveIssuesAuroraBg } from "../../styles/activeIssues.styles";
+
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { getIssueExpertsAuroraBg } from "../styles/issueExperts.styles.js";
+import { normalizeIssueExpertsSearchValue } from "../utils/issueExperts.search.js";
 
 /**
  * Diálogo para seleccionar expertos antes de asignarles dominios.
- *
- * Mantiene la misma apariencia y comportamiento visual que la versión
- * original embebida en ActiveIssuesPage, pero extraído a la feature.
  *
  * @param {Object} props Props del componente.
  * @param {boolean} props.open Indica si el diálogo está abierto.
@@ -59,16 +57,16 @@ const AddExpertsPickerDialog = ({
   }, [open]);
 
   const filteredExperts = useMemo(() => {
-    const query = normalizeActiveIssueValue(searchFilter);
+    const query = normalizeIssueExpertsSearchValue(searchFilter);
 
     if (!query) {
       return availableExperts;
     }
 
     return availableExperts.filter((expert) => {
-      const name = normalizeActiveIssueValue(expert?.name);
-      const email = normalizeActiveIssueValue(expert?.email);
-      const university = normalizeActiveIssueValue(expert?.university);
+      const name = normalizeIssueExpertsSearchValue(expert?.name);
+      const email = normalizeIssueExpertsSearchValue(expert?.email);
+      const university = normalizeIssueExpertsSearchValue(expert?.university);
 
       return (
         name.includes(query) ||
@@ -88,7 +86,9 @@ const AddExpertsPickerDialog = ({
     if (!email) return;
 
     setExpertsToAdd((prev) =>
-      prev.includes(email) ? prev.filter((value) => value !== email) : [...prev, email]
+      prev.includes(email)
+        ? prev.filter((value) => value !== email)
+        : [...prev, email]
     );
   };
 
@@ -104,13 +104,16 @@ const AddExpertsPickerDialog = ({
         sx={{
           position: "relative",
           overflow: "hidden",
-          ...getActiveIssuesAuroraBg(theme, 0.14),
+          ...getIssueExpertsAuroraBg(theme, 0.14),
           "&:after": {
             content: '""',
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
+            background: `linear-gradient(180deg, ${alpha(
+              theme.palette.common.white,
+              0.10
+            )}, transparent 55%)`,
             opacity: 0.18,
           },
         }}
@@ -139,7 +142,10 @@ const AddExpertsPickerDialog = ({
                 <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
                   Add experts
                 </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "text.secondary", fontWeight: 850 }}
+                >
                   Select one or more experts to add to this issue.
                 </Typography>
               </Stack>
@@ -189,7 +195,9 @@ const AddExpertsPickerDialog = ({
                   key={email}
                   label={email}
                   onDelete={() =>
-                    setExpertsToAdd((prev) => prev.filter((value) => value !== email))
+                    setExpertsToAdd((prev) =>
+                      prev.filter((value) => value !== email)
+                    )
                   }
                   variant="outlined"
                   sx={{
@@ -256,7 +264,10 @@ const AddExpertsPickerDialog = ({
                 {filteredExperts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4}>
-                      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "text.secondary", fontWeight: 850 }}
+                      >
                         No available experts found.
                       </Typography>
                     </TableCell>
@@ -277,7 +288,10 @@ const AddExpertsPickerDialog = ({
                       >
                         <TableCell
                           sx={{
-                            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.common.white,
+                              0.06
+                            )}`,
                           }}
                         >
                           <Typography variant="body2" sx={{ fontWeight: 900 }}>
@@ -287,7 +301,10 @@ const AddExpertsPickerDialog = ({
 
                         <TableCell
                           sx={{
-                            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.common.white,
+                              0.06
+                            )}`,
                           }}
                         >
                           <Typography variant="body2" sx={{ fontWeight: 850 }}>
@@ -297,7 +314,10 @@ const AddExpertsPickerDialog = ({
 
                         <TableCell
                           sx={{
-                            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.common.white,
+                              0.06
+                            )}`,
                           }}
                         >
                           <Typography variant="body2" sx={{ fontWeight: 850 }}>
@@ -308,17 +328,25 @@ const AddExpertsPickerDialog = ({
                         <TableCell
                           align="center"
                           sx={{
-                            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.common.white,
+                              0.06
+                            )}`,
                           }}
                         >
-                          <Tooltip title={selected ? "Unselect expert" : "Select expert"} arrow>
+                          <Tooltip
+                            title={selected ? "Unselect expert" : "Select expert"}
+                            arrow
+                          >
                             <IconButton
                               size="small"
                               onClick={() => toggleExpertSelection(expert.email)}
                               sx={{
                                 border: "1px solid rgba(255,255,255,0.10)",
                                 bgcolor: alpha(
-                                  selected ? theme.palette.warning.main : theme.palette.common.white,
+                                  selected
+                                    ? theme.palette.warning.main
+                                    : theme.palette.common.white,
                                   selected ? 0.12 : 0.03
                                 ),
                               }}

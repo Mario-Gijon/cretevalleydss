@@ -1,8 +1,8 @@
 import { Box, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ViewListIcon from "@mui/icons-material/ViewList";
-import ActiveIssuesPill from "../../../components/shared/ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.parts";
+import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 
 /**
  * Pestaña Alternatives del drawer de detalles del issue.

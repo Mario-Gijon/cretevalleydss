@@ -8,7 +8,7 @@ import { useAuthContext } from "./context/auth/auth.context";
 const AuthLayout = lazy(() => import("./features/auth/components/AuthLayout"));
 const LogInForm = lazy(() => import("./features/auth/components/LogInForm"));
 const SignUpForm = lazy(() => import("./features/auth/components/SignUpForm"));
-const PrivateLayout = lazy(() => import("./components/layout/PrivateLayout"));
+const PrivateLayout = lazy(() => import("./pages/private/PrivateLayout"));
 const ActiveIssuesPage = lazy(() => import("./pages/private/activeIssues/ActiveIssuesPage"));
 const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/FinishedIssuesPage"));
 const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));

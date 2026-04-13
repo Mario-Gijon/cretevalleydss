@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Stack, Typography, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
@@ -7,13 +7,13 @@ import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbar
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { useActiveIssueDrawer } from "../../../features/activeIssues/hooks/useActiveIssueDrawer";
 import { useActiveIssuesListing } from "../../../features/activeIssues/hooks/useActiveIssuesListing";
-import { useActiveIssueExperts } from "../../../features/activeIssues/hooks/useActiveIssueExperts";
 import { useActiveIssueActions } from "../../../features/activeIssues/hooks/useActiveIssueActions";
 import { useActiveIssuesScreenSync } from "../../../features/activeIssues/hooks/useActiveIssuesScreenSync";
 import { useActiveIssueConfirm } from "../../../features/activeIssues/hooks/useActiveIssueConfirm";
 import ActiveIssuesDesktopLayout from "../../../features/activeIssues/components/layout/ActiveIssuesDesktopLayout";
 import ActiveIssuesMobileLayout from "../../../features/activeIssues/components/layout/ActiveIssuesMobileLayout";
 import ActiveIssuesOverlays from "../../../features/activeIssues/components/shared/ActiveIssuesOverlays"
+import IssueExpertsFlowProvider from "../../../features/issueExperts/providers/IssueExpertsFlowProvider.jsx";
 
 /**
  * Página de issues activos.
@@ -112,40 +112,11 @@ const ActiveIssuesPage = () => {
   });
 
   const {
-    isEditingExperts,
-    expertsToRemove,
-    expertsToAdd,
-    openAddExpertsDialog,
-    openAssignDomainsDialog,
-    availableExperts,
-    setExpertsToAdd,
-    setOpenAddExpertsDialog,
-    setOpenAssignDomainsDialog,
-    resetExpertsEdition,
-    toggleEditExperts,
-    markRemoveExpert,
-    saveExpertsChanges,
-    handleConfirmDomains,
-  } = useActiveIssueExperts({
-    selectedIssue,
-    initialExperts,
-    showSnackbarAlert,
-    refresh,
-    setBusy,
-  });
-
-  const {
     confirm,
     openConfirm,
     closeConfirm,
     runConfirm,
   } = useActiveIssueConfirm();
-
-  useEffect(() => {
-    if (drawerOpen && !loading && !selectedIssue) {
-      resetExpertsEdition();
-    }
-  }, [drawerOpen, loading, selectedIssue, resetExpertsEdition]);
 
   if (loading) {
     return <CircularLoading color="secondary" size={50} height="30vh" />;
@@ -209,43 +180,38 @@ const ActiveIssuesPage = () => {
         />
       )}
 
-      <ActiveIssuesOverlays
-        busy={busy}
-        drawerOpen={drawerOpen}
-        closeDrawer={closeDrawer}
-        minimizeDrawerOnly={minimizeDrawerOnly}
+      <IssueExpertsFlowProvider
         selectedIssue={selectedIssue}
-        isMobile={isMobile}
-        drawerTab={drawerTab}
-        setDrawerTab={setDrawerTab}
-        openConfirm={openConfirm}
-        handleLeaveIssue={handleLeaveIssue}
-        handleComputeWeights={handleComputeWeights}
-        handleResolveIssue={handleResolveIssue}
-        handleRemoveIssue={handleRemoveIssue}
-        isEditingExperts={isEditingExperts}
-        toggleEditExperts={toggleEditExperts}
-        expertsToRemove={expertsToRemove}
-        markRemoveExpert={markRemoveExpert}
-        expertsToAdd={expertsToAdd}
-        setOpenAddExpertsDialog={setOpenAddExpertsDialog}
-        saveExpertsChanges={saveExpertsChanges}
-        setIsRatingAlternatives={setIsRatingAlternatives}
-        setIsRatingWeights={setIsRatingWeights}
-        EvaluationDialogComponent={EvaluationDialogComponent}
-        setDrawerOpen={setDrawerOpen}
-        isRatingAlternatives={isRatingAlternatives}
-        isRatingWeights={isRatingWeights}
-        confirm={confirm}
-        closeConfirm={closeConfirm}
-        runConfirm={runConfirm}
-        openAddExpertsDialog={openAddExpertsDialog}
-        availableExperts={availableExperts}
-        setExpertsToAdd={setExpertsToAdd}
-        openAssignDomainsDialog={openAssignDomainsDialog}
-        setOpenAssignDomainsDialog={setOpenAssignDomainsDialog}
-        handleConfirmDomains={handleConfirmDomains}
-      />
+        initialExperts={initialExperts}
+        showSnackbarAlert={showSnackbarAlert}
+        refresh={refresh}
+        setBusy={setBusy}
+      >
+        <ActiveIssuesOverlays
+          busy={busy}
+          drawerOpen={drawerOpen}
+          closeDrawer={closeDrawer}
+          minimizeDrawerOnly={minimizeDrawerOnly}
+          selectedIssue={selectedIssue}
+          isMobile={isMobile}
+          drawerTab={drawerTab}
+          setDrawerTab={setDrawerTab}
+          openConfirm={openConfirm}
+          handleLeaveIssue={handleLeaveIssue}
+          handleComputeWeights={handleComputeWeights}
+          handleResolveIssue={handleResolveIssue}
+          handleRemoveIssue={handleRemoveIssue}
+          setIsRatingAlternatives={setIsRatingAlternatives}
+          setIsRatingWeights={setIsRatingWeights}
+          EvaluationDialogComponent={EvaluationDialogComponent}
+          setDrawerOpen={setDrawerOpen}
+          isRatingAlternatives={isRatingAlternatives}
+          isRatingWeights={isRatingWeights}
+          confirm={confirm}
+          closeConfirm={closeConfirm}
+          runConfirm={runConfirm}
+        />
+      </IssueExpertsFlowProvider>
     </>
   );
 };

@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-
-import { getNextActionMeta } from "../../../utils/activeIssues.meta";
-import { countLeafCriteria } from "../../../../../utils/issues/criteriaTree";
+import { countLeafCriteria } from "../../../../../utils/issues/criteriaTree.js";
 import {
   buildIssueDrawerModelParamsList,
   getIssueDrawerAlternatives,
@@ -11,47 +9,22 @@ import {
   getIssueDrawerFinalWeights,
   getIssueDrawerParticipation,
   getIssueDrawerPermissions,
-} from "../../utils/issueDetailsDrawer.utils";
-import { IssueDetailsDrawerTabPanel } from "./IssueDetailsDrawer.parts";
-import IssueDetailsOverviewTab from "../tabs/IssueDetailsOverviewTab";
-import IssueDetailsExpertsTab from "../tabs/IssueDetailsExpertsTab";
-import IssueDetailsCriteriaTab from "../tabs/IssueDetailsCriteriaTab";
-import IssueDetailsAlternativesTab from "../tabs/IssueDetailsAlternativesTab";
-import IssueDetailsTimelineTab from "../tabs/IssueDetailsTimelineTab";
-import IssueDetailsDrawerHeader from "../shell/IssueDetailsDrawerHeader";
-import IssueDetailsDrawerEmptyState from "../shell/IssueDetailsDrawerEmptyState";
+} from "../utils/issueDetailsDrawer.utils.js";
+import { IssueDetailsDrawerTabPanel } from "./IssueDetailsDrawer.parts.jsx";
+import IssueDetailsOverviewTab from "../tabs/IssueDetailsOverviewTab.jsx";
+import IssueDetailsCriteriaTab from "../tabs/IssueDetailsCriteriaTab.jsx";
+import IssueDetailsAlternativesTab from "../tabs/IssueDetailsAlternativesTab.jsx";
+import IssueDetailsTimelineTab from "../tabs/IssueDetailsTimelineTab.jsx";
+import IssueDetailsDrawerHeader from "./IssueDetailsDrawerHeader.jsx";
+import IssueDetailsDrawerEmptyState from "./IssueDetailsDrawerEmptyState.jsx";
 import { buildDrawerTabs } from "../config/IssueDetailsDrawer.tabs.js";
+import { getNextActionMeta } from "../../../utils/activeIssues.meta.js";
+import IssueExpertsSection from "../../../../issueExperts/components/IssueExpertsSection.jsx";
 
 /**
  * Drawer principal de detalles del issue activo.
  *
- * Orquesta el estado derivado del issue seleccionado y
- * delega el render de cada sección en componentes del
- * submódulo drawer para mantener el contenedor ligero.
- *
  * @param {Object} props Props del componente.
- * @param {boolean} props.open Indica si el drawer está abierto.
- * @param {Function} props.onClose Acción de cierre del drawer.
- * @param {Function} props.onMinimize Acción para minimizar el drawer en móvil.
- * @param {Object|null} props.selectedIssue Issue actualmente seleccionado.
- * @param {boolean} props.isMobile Indica si la vista actual es móvil.
- * @param {number} props.drawerTab Índice de la pestaña activa.
- * @param {Function} props.setDrawerTab Setter de la pestaña activa.
- * @param {Object} props.busy Estado de carga de las acciones del drawer.
- * @param {Function} props.openConfirm Abre el diálogo de confirmación.
- * @param {Function} props.handleLeaveIssue Acción para abandonar el issue.
- * @param {Function} props.handleComputeWeights Acción para computar pesos.
- * @param {Function} props.handleResolveIssue Acción para resolver el issue.
- * @param {Function} props.handleRemoveIssue Acción para eliminar el issue.
- * @param {boolean} props.isEditingExperts Indica si está activa la edición de expertos.
- * @param {Function} props.toggleEditExperts Activa o cancela la edición de expertos.
- * @param {Array} props.expertsToRemove Correos marcados para eliminar.
- * @param {Function} props.markRemoveExpert Marca un experto para eliminar.
- * @param {Array} props.expertsToAdd Correos pendientes de añadir.
- * @param {Function} props.setOpenAddExpertsDialog Abre el diálogo de añadir expertos.
- * @param {Function} props.saveExpertsChanges Guarda los cambios de expertos.
- * @param {Function} props.setIsRatingAlternatives Abre la evaluación de alternativas.
- * @param {Function} props.setIsRatingWeights Abre la evaluación de pesos.
  * @returns {JSX.Element}
  */
 const IssueDetailsDrawer = ({
@@ -68,13 +41,6 @@ const IssueDetailsDrawer = ({
   handleComputeWeights,
   handleResolveIssue,
   handleRemoveIssue,
-  isEditingExperts,
-  toggleEditExperts,
-  expertsToRemove,
-  markRemoveExpert,
-  expertsToAdd,
-  setOpenAddExpertsDialog,
-  saveExpertsChanges,
   setIsRatingAlternatives,
   setIsRatingWeights,
 }) => {
@@ -154,18 +120,6 @@ const IssueDetailsDrawer = ({
     setIsRatingWeights,
     isMobile,
     onMinimize,
-  };
-
-  const expertsTabProps = {
-    selectedIssue,
-    isEditingExperts,
-    toggleEditExperts,
-    expertsToRemove,
-    markRemoveExpert,
-    expertsToAdd,
-    setOpenAddExpertsDialog,
-    saveExpertsChanges,
-    busy,
   };
 
   return (
@@ -255,7 +209,7 @@ const IssueDetailsDrawer = ({
 
             {selectedIssue.isAdmin ? (
               <IssueDetailsDrawerTabPanel value={drawerTab} index={4}>
-                <IssueDetailsExpertsTab {...expertsTabProps} />
+                <IssueExpertsSection />
               </IssueDetailsDrawerTabPanel>
             ) : null}
           </Box>

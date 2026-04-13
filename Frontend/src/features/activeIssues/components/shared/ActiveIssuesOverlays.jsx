@@ -1,12 +1,11 @@
 import { Backdrop } from "@mui/material";
 
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import AddExpertsDomainsDialog from "../../../../components/AddExpertsDomainsDialog/AddExpertsDomainsDialog";
 import { RateBwmWeightsDialog } from "../../../../components/RateBwmWeightsDialog/RateBwmWeightsDialog";
 import { RateConsensusWeightsDialog } from "../../../../components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
-import IssueDetailsDrawer from "../../drawer/components/shell/IssueDetailsDrawer";
+import IssueDetailsDrawer from "../drawer/shell/IssueDetailsDrawer";
 import ActiveIssueConfirmDialog from "../dialogs/ActiveIssueConfirmDialog";
-import AddExpertsPickerDialog from "../dialogs/AddExpertsPickerDialog";
+import IssueExpertsDialogs from "../../../issueExperts/components/IssueExpertsDialogs.jsx";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.
@@ -28,13 +27,6 @@ const ActiveIssuesOverlays = ({
   handleComputeWeights,
   handleResolveIssue,
   handleRemoveIssue,
-  isEditingExperts,
-  toggleEditExperts,
-  expertsToRemove,
-  markRemoveExpert,
-  expertsToAdd,
-  setOpenAddExpertsDialog,
-  saveExpertsChanges,
   setIsRatingAlternatives,
   setIsRatingWeights,
   EvaluationDialogComponent,
@@ -44,17 +36,17 @@ const ActiveIssuesOverlays = ({
   confirm,
   closeConfirm,
   runConfirm,
-  openAddExpertsDialog,
-  availableExperts,
-  setExpertsToAdd,
-  openAssignDomainsDialog,
-  setOpenAssignDomainsDialog,
-  handleConfirmDomains,
 }) => {
   return (
     <>
       <Backdrop
-        open={busy.resolve || busy.compute || busy.remove || busy.leave || busy.editExperts}
+        open={
+          busy.resolve ||
+          busy.compute ||
+          busy.remove ||
+          busy.leave ||
+          busy.editExperts
+        }
         sx={{ zIndex: 999999 }}
       >
         <CircularLoading color="secondary" size={50} height="50vh" />
@@ -74,13 +66,6 @@ const ActiveIssuesOverlays = ({
         handleComputeWeights={handleComputeWeights}
         handleResolveIssue={handleResolveIssue}
         handleRemoveIssue={handleRemoveIssue}
-        isEditingExperts={isEditingExperts}
-        toggleEditExperts={toggleEditExperts}
-        expertsToRemove={expertsToRemove}
-        markRemoveExpert={markRemoveExpert}
-        expertsToAdd={expertsToAdd}
-        setOpenAddExpertsDialog={setOpenAddExpertsDialog}
-        saveExpertsChanges={saveExpertsChanges}
         setIsRatingAlternatives={setIsRatingAlternatives}
         setIsRatingWeights={setIsRatingWeights}
       />
@@ -119,21 +104,7 @@ const ActiveIssuesOverlays = ({
         onConfirm={runConfirm}
       />
 
-      <AddExpertsPickerDialog
-        open={openAddExpertsDialog}
-        onClose={() => setOpenAddExpertsDialog(false)}
-        availableExperts={availableExperts}
-        expertsToAdd={expertsToAdd}
-        setExpertsToAdd={setExpertsToAdd}
-      />
-
-      <AddExpertsDomainsDialog
-        open={openAssignDomainsDialog}
-        onClose={() => setOpenAssignDomainsDialog(false)}
-        issue={selectedIssue}
-        expertsToAdd={expertsToAdd}
-        onConfirmDomains={handleConfirmDomains}
-      />
+      <IssueExpertsDialogs />
     </>
   );
 };

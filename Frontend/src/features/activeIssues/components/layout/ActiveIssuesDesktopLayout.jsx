@@ -1,9 +1,9 @@
 import { Box, Paper, Stack } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ActiveIssuesHeader from "../panels/ActiveIssuesHeader";
-import TaskCenter from "../panels/TaskCenter"
 import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../../styles/activeIssues.styles";
-import IssuesGrid from "../panels/IssuesGrid";
+import TaskCenter from "../panels/TaskCenter/TaskCenter";
+import IssuesGrid from "../panels/IssueGrid/IssuesGrid";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *

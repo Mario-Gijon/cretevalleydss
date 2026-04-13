@@ -2,8 +2,8 @@ import { Outlet } from "react-router-dom";
 import { Box, Container, Divider, Stack, SvgIcon, Typography } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 
-import { GoUpButton } from "../GoUpButton/GoUpButton";
-import { ResponsiveNavbar } from "../ResponsiveNabvar/ResponsiveNavbar";
+import { GoUpButton } from "../../components/GoUpButton/GoUpButton";
+import { ResponsiveNavbar } from "../../components/ResponsiveNabvar/ResponsiveNavbar";
 import { IssuesDataProvider } from "../../context/issues/issues.provider";
 
 import UELogoDarkSVG from "../../assets/eu_dark.svg?react";

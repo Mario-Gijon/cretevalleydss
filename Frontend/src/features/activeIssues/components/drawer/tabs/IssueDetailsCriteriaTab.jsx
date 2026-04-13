@@ -1,13 +1,12 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CategoryIcon from "@mui/icons-material/Category";
-
-import { formatIssueDrawerWeight } from "../../utils/issueDetailsDrawer.utils";
 import {
   getIssueDetailsDrawerPanelSx,
   IssueDetailsDrawerCriterionTree,
 } from "../shell/IssueDetailsDrawer.parts";
-import ActiveIssuesPill from "../../../components/shared/ActiveIssuesPill";
+import { formatIssueDrawerWeight } from "../utils/issueDetailsDrawer.utils";
+import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 
 /**
  * Pestaña Criteria del drawer de detalles del issue.

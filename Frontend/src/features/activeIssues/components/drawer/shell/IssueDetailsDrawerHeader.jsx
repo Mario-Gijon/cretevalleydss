@@ -8,8 +8,8 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
 import { stageLabel } from "../../../utils/activeIssues.meta";
-import ActiveIssuesPill from "../../../components/shared/ActiveIssuesPill";
-import ActiveIssuesTinyStat from "../../../components/shared/ActiveIssuesTinyStat";
+import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
+import ActiveIssuesTinyStat from "../../shared/ActiveIssuesTinyStat";
 import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.parts";
 
 /**

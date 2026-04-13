@@ -18,27 +18,48 @@ import TuneIcon from "@mui/icons-material/Tune";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { useIssuesDataContext } from "../../context/issues/issues.context";
-import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
   buildInitialAssignments,
   getLeafCriteria,
   validateDomainAssigments,
-} from "../../utils/createIssueUtils";
-import { DomainAssignments } from "../DomainAssigments/DomainAssigments";
-import { GlassDialog } from "../StyledComponents/GlassDialog";
+} from "../../../utils/createIssueUtils";
+import { DomainAssignments } from "../../../components/DomainAssigments/DomainAssigments";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { getIssueExpertsAuroraBg } from "../styles/issueExperts.styles.js";
 
-const auroraBg = (theme, intensity = 0.16) => ({
-  backgroundImage: `radial-gradient(1100px 480px at 12% 0%, ${alpha(theme.palette.info.main, intensity)}, transparent 62%),
-                    radial-gradient(900px 460px at 88% 16%, ${alpha(theme.palette.secondary.main, intensity)}, transparent 58%)`,
-});
+/**
+ * Normaliza el nombre de una alternativa a string.
+ *
+ * @param {*} value Alternativa original.
+ * @returns {string}
+ */
+const normalizeAlternativeName = (value) => {
+  if (typeof value === "string") return value;
 
-const normalizeAlternativeName = (a) => {
-  if (typeof a === "string") return a;
-  return a?.name || "";
+  return value?.name || "";
 };
 
-const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirmDomains }) => {
+/**
+ * Diálogo para asignar dominios de expresión
+ * a los nuevos expertos del issue.
+ *
+ * @param {Object} props Props del componente.
+ * @param {boolean} props.open Indica si el diálogo está abierto.
+ * @param {Function} props.onClose Cierra el diálogo.
+ * @param {Object|null} props.issue Issue actual.
+ * @param {Array} props.expertsToAdd Nuevos expertos seleccionados.
+ * @param {Function} props.onConfirmDomains Confirma las asignaciones.
+ * @returns {JSX.Element|null}
+ */
+const AddExpertsDomainsDialog = ({
+  open,
+  onClose,
+  issue,
+  expertsToAdd,
+  onConfirmDomains,
+}) => {
   const theme = useTheme();
   const { globalDomains, expressionDomains } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -71,7 +92,7 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
     ) {
       const leafCriteria = getLeafCriteria(normalizedCriteria);
 
-      const init = buildInitialAssignments(
+      const initialAssignments = buildInitialAssignments(
         expertsToAdd,
         normalizedAlternatives,
         leafCriteria,
@@ -81,12 +102,13 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
         expressionDomains
       );
 
-      setDomainAssignments(init);
+      setDomainAssignments(initialAssignments);
       setLoading(false);
-    } else {
-      setDomainAssignments({});
-      setLoading(false);
+      return;
     }
+
+    setDomainAssignments({});
+    setLoading(false);
   }, [
     open,
     expertsToAdd,
@@ -97,9 +119,17 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
     expressionDomains,
   ]);
 
+  /**
+   * Valida y confirma la asignación de dominios.
+   *
+   * @returns {void}
+   */
   const handleConfirm = () => {
     if (!validateDomainAssigments(domainAssignments)) {
-      showSnackbarAlert("You must assign expression domains to all new experts.", "error");
+      showSnackbarAlert(
+        "You must assign expression domains to all new experts.",
+        "error"
+      );
       return;
     }
 
@@ -118,13 +148,16 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
           pb: 1.25,
           position: "relative",
           overflow: "hidden",
-          ...auroraBg(theme, 0.18),
+          ...getIssueExpertsAuroraBg(theme, 0.18),
           "&:after": {
             content: '""',
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
+            background: `linear-gradient(180deg, ${alpha(
+              theme.palette.common.white,
+              0.10
+            )}, transparent 55%)`,
             opacity: 0.22,
           },
         }}
@@ -136,7 +169,12 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
           justifyContent="space-between"
           sx={{ position: "relative", zIndex: 1 }}
         >
-          <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            spacing={1.15}
+            alignItems="center"
+            sx={{ minWidth: 0 }}
+          >
             <Avatar
               sx={{
                 width: 44,
@@ -153,7 +191,10 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
               <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
                 Assign expression domains
               </Typography>
-              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 900 }}
+              >
                 {count ? `${count} new expert(s)` : "New experts"}
               </Typography>
             </Stack>
@@ -196,13 +237,19 @@ const AddExpertsDomainsDialog = ({ open, onClose, issue, expertsToAdd, onConfirm
             }}
           >
             <CircularProgress size={18} color="info" />
-            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", fontWeight: 850 }}
+            >
               Loading domain assignments...
             </Typography>
           </Box>
         ) : (
           <Stack spacing={1.5}>
-            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", fontWeight: 850 }}
+            >
               Assign a domain for each alternative and leaf criterion.
             </Typography>
 

@@ -8,11 +8,11 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import TaskCenter from "../panels/TaskCenter";
 import ActiveIssuesHeader from "../panels/ActiveIssuesHeader"
 import ActiveIssuesPill from "../shared/ActiveIssuesPill";
 import { getActiveIssuesTasksAccordionGlassSx } from "../../styles/activeIssues.styles";
-import IssuesGrid from "../panels/IssuesGrid";
+import TaskCenter from "../panels/TaskCenter/TaskCenter";
+import IssuesGrid from "../panels/IssueGrid/IssuesGrid";
 
 /**
  * Layout responsive para tablet y móvil en la pantalla
