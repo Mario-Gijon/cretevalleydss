@@ -1353,7 +1353,7 @@ export const FinishedIssueDialog = ({
   const refreshRuns = async (issueId) => {
     if (!issueId) return [];
     const data = unwrap(await getIssueScenarios(issueId));
-    const list = data?.scenarios || [];
+    const list = Array.isArray(data) ? data : data?.scenarios || [];
     const normalized = Array.isArray(list) ? list : [];
     setRuns(normalized);
     return normalized;
@@ -1387,7 +1387,7 @@ export const FinishedIssueDialog = ({
         setRuns([]);
 
         const rData = unwrap(runsResp);
-        const list = rData?.scenarios || [];
+        const list = Array.isArray(rData) ? rData : rData?.scenarios || [];
         setRuns(Array.isArray(list) ? list : []);
 
         const idx = getLastPhaseIndex(loadedIssue || {});
@@ -1437,7 +1437,7 @@ export const FinishedIssueDialog = ({
     try {
       setRunsLoading(true);
       const resp = unwrap(await getIssueScenarioById(runKey));
-      const scenario = resp?.scenario || null;
+      const scenario = resp?.scenario || resp || null;
 
       if (!scenario?.outputs?.details) {
         setToast({
@@ -1748,22 +1748,20 @@ export const FinishedIssueDialog = ({
     try {
       setAddLoading(true);
 
-      const resp = unwrap(
-        await createIssueScenario({
-          issueId: selectedIssue.id,
-          scenarioName: scenarioName?.trim() || undefined,
-          targetModelName: selectedModelName,
-          paramOverrides: modelParameters,
-        })
-      );
+      const response = await createIssueScenario({
+        issueId: selectedIssue.id,
+        scenarioName: scenarioName?.trim() || undefined,
+        targetModelName: selectedModelName,
+        paramOverrides: modelParameters,
+      });
 
-      if (!resp?.success) {
-        const msg = resp?.msg || resp?.message || "Could not add model.";
+      if (!response?.success) {
+        const msg = response?.message || "Could not add model.";
         setToast({ open: true, severity: "error", msg });
         return;
       }
 
-      const scenarioId = resp?.scenarioId;
+      const scenarioId = response?.data?.scenarioId || null;
 
       await refreshRuns(selectedIssue.id);
 
@@ -1781,7 +1779,6 @@ export const FinishedIssueDialog = ({
       closeAddDialog();
     } catch (e) {
       const msg =
-        e?.response?.data?.msg ||
         e?.response?.data?.message ||
         "Unexpected error adding model.";
       setToast({ open: true, severity: "error", msg });
@@ -1795,12 +1792,12 @@ export const FinishedIssueDialog = ({
 
     try {
       setRunsLoading(true);
-      const resp = unwrap(await removeIssueScenario(selectedRunKey));
-      if (!resp?.success) {
+      const response = await removeIssueScenario(selectedRunKey);
+      if (!response?.success) {
         setToast({
           open: true,
           severity: "error",
-          msg: resp?.message || resp?.msg || "Could not remove model.",
+          msg: response?.message || "Could not remove model.",
         });
         return;
       }

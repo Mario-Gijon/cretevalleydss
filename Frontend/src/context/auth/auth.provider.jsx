@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   const fetchNotifications = async () => {
     try {
       const response = await getNotifications();
-      setNotifications(response?.notifications ?? []);
+      setNotifications(response?.data?.notifications ?? []);
     } catch (error) {
       console.error("Failed to load notifications", error);
     }
@@ -36,22 +36,23 @@ export const AuthProvider = ({ children }) => {
       const emailChangeStatus = Cookies.get("emailChangeStatus");
 
       if (emailChangeStatus === "verified") {
-        logout();
+        await logout();
         setLoading(false);
         return;
       }
 
       try {
-        const data = await fetchProtectedData();
+        const response = await fetchProtectedData();
+        const user = response?.data?.user ?? null;
 
-        if (data?.success) {
+        if (response?.success && user) {
           setValue({
-            name: data.name,
-            university: data.university,
-            email: data.email,
-            accountCreation: data.accountCreation,
-            role: data.role ?? "user",
-            isAdmin: data.isAdmin ?? data.role === "admin",
+            name: user.name || "",
+            university: user.university || "",
+            email: user.email || "",
+            accountCreation: user.accountCreation || "",
+            role: user.role ?? "user",
+            isAdmin: user.isAdmin ?? user.role === "admin",
           });
 
           setIsLoggedIn(true);

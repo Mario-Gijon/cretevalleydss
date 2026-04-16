@@ -15,6 +15,7 @@
 │   │   ├── DOCUMENTATION_SETUP.md
 │   │   ├── jsdoc
 │   │   │   ├── AppError_AppError.html
+│   │   │   ├── AppError.html
 │   │   │   ├── fonts
 │   │   │   │   ├── OpenSans-BoldItalic-webfont.eot
 │   │   │   │   ├── OpenSans-BoldItalic-webfont.svg
@@ -456,4 +457,4 @@
         ├── by_language.csv
         └── totals.csv
 
-132 directories, 325 files
+132 directories, 326 files

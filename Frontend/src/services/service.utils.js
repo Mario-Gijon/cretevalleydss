@@ -3,8 +3,8 @@ const API = import.meta.env.VITE_API_BACK;
 /**
  * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
  *
- * @param {*} response
- * @returns {Promise<any|null>}
+ * @param {Response} response Respuesta de fetch.
+ * @returns {Promise<object|null>}
  */
 export const safeJson = async (response) => {
   try {
@@ -17,7 +17,7 @@ export const safeJson = async (response) => {
 /**
  * Construye una query string a partir de un objeto plano.
  *
- * @param {object} paramsObj
+ * @param {object} paramsObj Parámetros de entrada.
  * @returns {string}
  */
 export const buildQuery = (paramsObj = {}) => {
@@ -43,8 +43,8 @@ export const buildQuery = (paramsObj = {}) => {
 /**
  * Construye una petición JSON.
  *
- * @param {string} method
- * @param {object} [body={}]
+ * @param {string} method Método HTTP.
+ * @param {object} body Cuerpo JSON.
  * @returns {object}
  */
 export const jsonRequest = (method, body = {}) => ({
@@ -56,7 +56,7 @@ export const jsonRequest = (method, body = {}) => ({
 /**
  * Construye una respuesta de error de red normalizada.
  *
- * @param {string} [fallbackMessage="Network error. Please try again."]
+ * @param {string} fallbackMessage Mensaje principal.
  * @returns {object}
  */
 export const buildNetworkErrorResponse = (
@@ -65,7 +65,6 @@ export const buildNetworkErrorResponse = (
   success: false,
   message: fallbackMessage,
   data: null,
-  meta: null,
   error: {
     code: "NETWORK_ERROR",
     field: null,
@@ -75,112 +74,11 @@ export const buildNetworkErrorResponse = (
 });
 
 /**
- * Resuelve el mensaje principal de una respuesta API.
+ * Normaliza la respuesta de la API al contrato HTTP actual.
  *
- * @param {any} payload
- * @param {string|null} fallbackMessage
- * @returns {string|null}
- */
-const resolveMessage = (payload, fallbackMessage = null) =>
-  payload?.message ?? payload?.msg ?? fallbackMessage;
-
-/**
- * Resuelve el campo afectado, aceptando formatos antiguos y nuevos.
- *
- * @param {any} payload
- * @returns {string|null}
- */
-const resolveField = (payload) => {
-  if (payload?.error?.field) {
-    return payload.error.field;
-  }
-
-  if (payload?.field) {
-    return payload.field;
-  }
-
-  if (payload?.obj) {
-    return payload.obj;
-  }
-
-  if (typeof payload?.details === "string") {
-    return payload.details;
-  }
-
-  return null;
-};
-
-/**
- * Resuelve los detalles adicionales de error.
- *
- * @param {any} payload
- * @returns {any}
- */
-const resolveDetails = (payload) => {
-  if (payload?.error?.details != null) {
-    return payload.error.details;
-  }
-
-  if (payload?.details != null && typeof payload.details !== "string") {
-    return payload.details;
-  }
-
-  return null;
-};
-
-/**
- * Resuelve el código de error normalizado.
- *
- * @param {any} payload
- * @param {number} status
- * @param {boolean} success
- * @returns {string|null}
- */
-const resolveErrorCode = (payload, status, success) => {
-  if (success) {
-    return null;
-  }
-
-  if (payload?.error?.code) {
-    return payload.error.code;
-  }
-
-  if (payload?.code) {
-    return payload.code;
-  }
-
-  if (status >= 500) {
-    return "INTERNAL_ERROR";
-  }
-
-  if (status === 401) {
-    return "UNAUTHORIZED";
-  }
-
-  if (status === 403) {
-    return "FORBIDDEN";
-  }
-
-  if (status === 404) {
-    return "NOT_FOUND";
-  }
-
-  if (status === 409) {
-    return "CONFLICT";
-  }
-
-  return "REQUEST_ERROR";
-};
-
-/**
- * Normaliza la respuesta de la API manteniendo además cualquier propiedad original.
- *
- * Esto permite migrar gradualmente el frontend sin romper pantallas antiguas que
- * todavía lean claves legacy como "issues", "tasks" o "msg".
- *
- * @param {any} payload
- * @param {*} response
- * @param {string} [fallbackMessage="Request failed."]
+ * @param {object|null} payload Respuesta JSON parseada.
+ * @param {Response} response Respuesta original de fetch.
+ * @param {string} fallbackMessage Mensaje por defecto si falla.
  * @returns {object}
  */
 export const normalizeApiResponse = (
@@ -192,39 +90,52 @@ export const normalizeApiResponse = (
   const success =
     typeof payload?.success === "boolean" ? payload.success : Boolean(response?.ok);
 
-  const normalized = {
+  let code = payload?.error?.code ?? null;
+
+  if (!success && !code) {
+    if (status >= 500) {
+      code = "INTERNAL_ERROR";
+    } else if (status === 401) {
+      code = "UNAUTHORIZED";
+    } else if (status === 403) {
+      code = "FORBIDDEN";
+    } else if (status === 404) {
+      code = "NOT_FOUND";
+    } else if (status === 409) {
+      code = "CONFLICT";
+    } else {
+      code = "REQUEST_ERROR";
+    }
+  }
+
+  return {
     success,
-    message: resolveMessage(payload, success ? null : fallbackMessage),
-    data: payload?.data ?? null,
-    meta: payload?.meta ?? null,
+    message: payload?.message ?? (success ? null : fallbackMessage),
+    data:
+      payload &&
+      typeof payload === "object" &&
+      Object.prototype.hasOwnProperty.call(payload, "data")
+        ? payload.data
+        : null,
     error: success
       ? null
       : {
-          code: resolveErrorCode(payload, status, success),
-          field: resolveField(payload),
-          details: resolveDetails(payload),
+          code,
+          field: payload?.error?.field ?? null,
+          details: payload?.error?.details ?? null,
         },
     status,
   };
-
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-    return {
-      ...payload,
-      ...normalized,
-    };
-  }
-
-  return normalized;
 };
 
 /**
- * Ejecuta una petición JSON y devuelve siempre una respuesta normalizada.
+ * Ejecuta una petición JSON y devuelve una respuesta normalizada.
  *
- * @param {string} url
- * @param {object} [options={}]
- * @param {object} [config={}]
- * @param {Function} [config.fetcher=fetch] Función fetch a usar.
- * @param {string} [config.fallbackMessage="Request failed."] Mensaje por defecto.
+ * @param {string} url URL de destino.
+ * @param {object} options Opciones de fetch.
+ * @param {object} config Configuración adicional.
+ * @param {Function} config.fetcher Función fetch a usar.
+ * @param {string} config.fallbackMessage Mensaje por defecto.
  * @returns {Promise<object>}
  */
 export const requestJson = async (

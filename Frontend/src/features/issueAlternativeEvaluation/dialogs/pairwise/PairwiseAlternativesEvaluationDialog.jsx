@@ -198,10 +198,13 @@ const PairwiseAlternativesEvaluationDialog = ({
       try {
         const response = await getAlternativeEvaluationDraft(selectedIssue.id);
 
-        if (response.success && response.evaluations) {
-          setCollectiveEvaluations(response.collectiveEvaluations);
+        const evaluationsPayload = response?.data?.evaluations ?? null;
+        const collectivePayload = response?.data?.collectiveEvaluations ?? null;
 
-          const merged = mergeEvaluations(response.evaluations);
+        if (response.success && evaluationsPayload) {
+          setCollectiveEvaluations(collectivePayload);
+
+          const merged = mergeEvaluations(evaluationsPayload);
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
@@ -331,7 +334,8 @@ const PairwiseAlternativesEvaluationDialog = ({
       setIsRatingAlternatives(false);
       showSnackbarAlert("Evaluations saved successfully", "success");
     } else {
-      evaluationSaved.msg && showSnackbarAlert(evaluationSaved.msg, "error");
+      evaluationSaved?.message &&
+        showSnackbarAlert(evaluationSaved.message, "error");
     }
 
     setLoading(false);
@@ -376,16 +380,20 @@ const PairwiseAlternativesEvaluationDialog = ({
     );
 
     if (response.success) {
-      showSnackbarAlert(response.msg, "success");
+      showSnackbarAlert(response?.message || "Evaluations submitted successfully", "success");
       await fetchActiveIssues();
       await fetchFinishedIssues();
       setOpenIssueDialog(false);
       setIsRatingAlternatives(false);
     } else {
-      showSnackbarAlert(response.msg, "error");
+      showSnackbarAlert(response?.message || "Error submitting evaluations", "error");
 
+      const criterionFromError =
+        response?.data?.criterion ||
+        response?.error?.details?.criterion ||
+        response?.criterion;
       const index = leafCriteria.findIndex(
-        (criterion) => criterion.name === response.criterion
+        (criterion) => criterion.name === criterionFromError
       );
 
       if (index !== -1) {

@@ -72,8 +72,18 @@ const LogInForm = () => {
 
       const data = await login(formValues);
 
-      if (data?.errors) {
-        setErrors(data.errors);
+      if (!data?.success) {
+        const validationErrors = data?.error?.details;
+
+        if (
+          validationErrors &&
+          typeof validationErrors === "object" &&
+          !Array.isArray(validationErrors)
+        ) {
+          setErrors(validationErrors);
+        }
+
+        showSnackbarAlert(data?.message || "Invalid credentials", "error");
         return;
       }
 

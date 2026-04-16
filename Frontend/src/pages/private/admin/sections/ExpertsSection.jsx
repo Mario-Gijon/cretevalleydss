@@ -180,12 +180,12 @@ export default function ExpertsSection() {
       const res = await getAllUsers({ includeAdmins: true });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error fetching users", "error");
+        showSnackbarAlert(res?.message || "Error fetching users", "error");
         setExperts([]);
         return;
       }
 
-      setExperts(Array.isArray(res.users) ? res.users : []);
+      setExperts(Array.isArray(res?.data?.users) ? res.data.users : []);
     } catch (err) {
       console.error(err);
       showSnackbarAlert("Unexpected error fetching users", "error");
@@ -302,11 +302,11 @@ export default function ExpertsSection() {
       }
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error saving user", "error");
+        showSnackbarAlert(res?.message || "Error saving user", "error");
         return;
       }
 
-      showSnackbarAlert(res.msg || "User saved successfully", "success");
+      showSnackbarAlert(res?.message || "User saved successfully", "success");
       closeForm();
       await fetchExpertsData({ keepLoading: true });
     } catch (err) {
@@ -333,11 +333,11 @@ export default function ExpertsSection() {
       const res = await deleteUser(confirmDelete.expert.id);
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error deleting user", "error");
+        showSnackbarAlert(res?.message || "Error deleting user", "error");
         return;
       }
 
-      showSnackbarAlert(res.msg || "User deleted successfully", "success");
+      showSnackbarAlert(res?.message || "User deleted successfully", "success");
       setConfirmDelete({ open: false, expert: null });
       await fetchExpertsData({ keepLoading: true });
     } catch (err) {

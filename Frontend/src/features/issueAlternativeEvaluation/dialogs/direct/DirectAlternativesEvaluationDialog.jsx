@@ -72,12 +72,13 @@ const DirectAlternativesEvaluationDialog = ({
       try {
         const response = await getAlternativeEvaluationDraft(selectedIssue.id);
 
-        console.log(response)
+        const evaluationsPayload = response?.data?.evaluations ?? null;
+        const collectivePayload = response?.data?.collectiveEvaluations ?? null;
 
-        if (response.success && response.evaluations) {
-          setCollectiveEvaluations(response.collectiveEvaluations);
+        if (response.success && evaluationsPayload) {
+          setCollectiveEvaluations(collectivePayload);
 
-          const merged = mergeEvaluations(response.evaluations);
+          const merged = mergeEvaluations(evaluationsPayload);
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
@@ -205,7 +206,8 @@ const DirectAlternativesEvaluationDialog = ({
       setIsRatingAlternatives(false);
       showSnackbarAlert("Evaluations saved successfully", "success");
     } else {
-      evaluationSaved.msg && showSnackbarAlert(evaluationSaved.msg, "error");
+      evaluationSaved?.message &&
+        showSnackbarAlert(evaluationSaved.message, "error");
     }
 
     setLoading(false);
@@ -218,13 +220,13 @@ const DirectAlternativesEvaluationDialog = ({
     const response = await submitAlternativeEvaluations(selectedIssue, evaluations);
 
     if (response.success) {
-      showSnackbarAlert(response.msg, "success");
+      showSnackbarAlert(response?.message || "Evaluations submitted successfully", "success");
       await fetchActiveIssues();
       await fetchFinishedIssues();
       setOpenIssueDialog(false);
       setIsRatingAlternatives(false);
     } else {
-      showSnackbarAlert(response.msg, "error");
+      showSnackbarAlert(response?.message || "Error submitting evaluations", "error");
     }
 
     setLoading(false);

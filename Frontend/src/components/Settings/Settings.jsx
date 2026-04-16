@@ -135,11 +135,16 @@ export function Settings({ open, setOpen }) {
   const handleDelete = async () => {
     setLoadingDelete(true);
     await new Promise(r => setTimeout(r, 1000));
-    if (deleteAccount()) {
+    const response = await deleteAccount();
+
+    if (response?.success) {
       setLoadingDelete(false);
       setIsLoggedIn(false);
       setConfirmOpen(false);
+      return;
     }
+
+    showSnackbarAlert(response?.message || "Error deleting account", "error");
     setLoadingDelete(false);
   };
 
@@ -154,7 +159,9 @@ export function Settings({ open, setOpen }) {
 
     setLoadingUniversity(true);
 
-    const { success, msg } = await modifyUniversity(university);
+    const response = await modifyUniversity(university);
+    const success = Boolean(response?.success);
+    const message = response?.message || "Error updating university";
 
     if (success) {
       setLoadingUniversity(false);
@@ -165,11 +172,11 @@ export function Settings({ open, setOpen }) {
       }));
       setErrors((prevErrors) => ({ ...prevErrors, university: '' }));
       setFieldColors((prevColor) => ({ ...prevColor, university: 'success' }));
-      showSnackbarAlert(msg, 'success');
+      showSnackbarAlert(message, 'success');
     } else {
       setLoadingUniversity(false);
 
-      setErrors((prevErrors) => ({ ...prevErrors, university: msg }));
+      setErrors((prevErrors) => ({ ...prevErrors, university: message }));
       setFieldColors((prevColor) => ({ ...prevColor, university: 'error' }));
     }
   };
@@ -185,7 +192,9 @@ export function Settings({ open, setOpen }) {
 
     setLoadingName(true);
 
-    const { success, msg } = await modifyName(name);
+    const response = await modifyName(name);
+    const success = Boolean(response?.success);
+    const message = response?.message || "Error updating name";
 
     if (success) {
       setLoadingName(false);
@@ -196,12 +205,12 @@ export function Settings({ open, setOpen }) {
       }));
       setErrors((prevErrors) => ({ ...prevErrors, name: '' }));
       setFieldColors((prevColor) => ({ ...prevColor, name: 'success' }));
-      showSnackbarAlert(msg, 'success');
+      showSnackbarAlert(message, 'success');
       return
     }
 
     setLoadingName(false);
-    setErrors((prevErrors) => ({ ...prevErrors, name: msg }));
+    setErrors((prevErrors) => ({ ...prevErrors, name: message }));
     setFieldColors((prevColor) => ({ ...prevColor, name: 'error' }));
   }
 
@@ -218,8 +227,9 @@ export function Settings({ open, setOpen }) {
 
     setLoadingEmail(true);
 
-    const { success, msg } = await modifyEmail(email);
-    console.log(success, msg);
+    const response = await modifyEmail(email);
+    const success = Boolean(response?.success);
+    const message = response?.message || "Error updating email";
 
     if (success) {
       setLoadingEmail(false);
@@ -230,12 +240,12 @@ export function Settings({ open, setOpen }) {
       }));
       setErrors((prevErrors) => ({ ...prevErrors, email: '' }));
       setFieldColors((prevColor) => ({ ...prevColor, email: 'success' }));
-      showSnackbarAlert(msg, 'success');
+      showSnackbarAlert(message, 'success');
       return
     }
 
     setLoadingEmail(false);
-    setErrors((prevErrors) => ({ ...prevErrors, email: msg }));
+    setErrors((prevErrors) => ({ ...prevErrors, email: message }));
     setFieldColors((prevColor) => ({ ...prevColor, email: 'error' }));
 
   }
@@ -259,7 +269,9 @@ export function Settings({ open, setOpen }) {
 
       setLoadingPassword(true);
 
-      const { msg, success } = await updatePassword(password, repeatPassword);
+      const response = await updatePassword(password, repeatPassword);
+      const success = Boolean(response?.success);
+      const message = response?.message || "Error updating password";
       if (success) {
         setLoadingPassword(false);
         showSnackbarAlert('Password updated successfully!', 'success');
@@ -287,7 +299,7 @@ export function Settings({ open, setOpen }) {
         setCountdown(countdownValue);
       } else {
         setLoadingPassword(false);
-        showSnackbarAlert(msg, 'error');
+        showSnackbarAlert(message, 'error');
         setConfirmPasswordDialogOpen(false);
         setPassword('');
         setRepeatPassword('');

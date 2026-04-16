@@ -73,8 +73,18 @@ const SignUpForm = () => {
 
       const data = await signup(formValues);
 
-      if (data?.errors) {
-        setErrors(data.errors);
+      if (!data?.success) {
+        const validationErrors = data?.error?.details;
+
+        if (
+          validationErrors &&
+          typeof validationErrors === "object" &&
+          !Array.isArray(validationErrors)
+        ) {
+          setErrors(validationErrors);
+        }
+
+        showSnackbarAlert(data?.message || "Error signing up", "error");
         return;
       }
 

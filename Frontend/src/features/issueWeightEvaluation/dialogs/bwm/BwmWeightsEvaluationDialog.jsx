@@ -101,10 +101,11 @@ const BwmWeightsEvaluationDialog = ({
 
       try {
         const response = await getBwmWeightDraft(selectedIssue.id);
+        const bwmDataPayload = response?.data?.bwmData ?? null;
 
-        if (response.success && response.bwmData) {
-          setBwmData(response.bwmData);
-          setInitialData(JSON.stringify(response.bwmData));
+        if (response.success && bwmDataPayload) {
+          setBwmData(bwmDataPayload);
+          setInitialData(JSON.stringify(bwmDataPayload));
         } else {
           const empty = {
             bestCriterion: "",
@@ -174,7 +175,7 @@ const BwmWeightsEvaluationDialog = ({
       showSnackbarAlert("Weights saved successfully", "success");
       setIsRatingWeights(false);
     } else {
-      showSnackbarAlert(response.msg || "Error saving weights", "error");
+      showSnackbarAlert(response?.message || "Error saving weights", "error");
     }
   };
 
@@ -192,7 +193,7 @@ const BwmWeightsEvaluationDialog = ({
       await fetchActiveIssues();
       setIsRatingWeights(false);
     } else {
-      showSnackbarAlert(response.msg || "Error submitting weights", "error");
+      showSnackbarAlert(response?.message || "Error submitting weights", "error");
     }
   };
 

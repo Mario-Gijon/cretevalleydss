@@ -83,10 +83,10 @@ export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose 
     }
 
     if (result.success) {
-      showSnackbarAlert(result.msg, "success");
+      showSnackbarAlert(result?.message || "Domain saved successfully", "success");
       onClose();
     } else {
-      showSnackbarAlert(result?.msg || "Error saving domain", "error");
+      showSnackbarAlert(result?.message || "Error saving domain", "error");
     }
   };
 

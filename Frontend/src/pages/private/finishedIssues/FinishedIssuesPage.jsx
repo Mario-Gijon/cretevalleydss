@@ -306,7 +306,10 @@ const FinishedIssuesPage = () => {
 
   useEffect(() => {
     if (issueCreated?.success) {
-      showSnackbarAlert(issueCreated.msg, "success");
+      showSnackbarAlert(
+        issueCreated?.message || issueCreated?.msg || "Issue created successfully",
+        "success"
+      );
       setIssueCreated("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,7 +346,10 @@ const FinishedIssuesPage = () => {
       closeDetails();
     }
 
-    showSnackbarAlert(response?.msg || "Error removing issue", response?.success ? "success" : "error");
+    showSnackbarAlert(
+      response?.message || "Error removing issue",
+      response?.success ? "success" : "error"
+    );
     setRemoveLoading(false);
     setOpenRemoveConfirmDialog(false);
   };

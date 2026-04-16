@@ -6,8 +6,8 @@ import { SnackbarAlertContext } from "./snackbarAlert.context.js";
 /**
  * Proveedor de notificaciones globales mediante snackbar.
  *
- * @param {object} props
- * @param {*} props.children
+ * @param {object} props Propiedades del componente.
+ * @param {*} props.children Contenido hijo.
  * @returns {*}
  */
 export const SnackbarAlertProvider = ({ children }) => {
@@ -17,6 +17,13 @@ export const SnackbarAlertProvider = ({ children }) => {
     severity: "info",
   });
 
+  /**
+   * Muestra una notificación global.
+   *
+   * @param {string} message Mensaje a mostrar.
+   * @param {string} severity Nivel de severidad.
+   * @returns {void}
+   */
   const showSnackbarAlert = useCallback((message, severity = "info") => {
     setSnackbarState({
       open: true,
@@ -25,7 +32,14 @@ export const SnackbarAlertProvider = ({ children }) => {
     });
   }, []);
 
-  const handleClose = (_, reason) => {
+  /**
+   * Cierra la notificación actual.
+   *
+   * @param {*} _event Evento original.
+   * @param {string} reason Motivo del cierre.
+   * @returns {void}
+   */
+  const handleClose = (_event, reason) => {
     if (reason === "clickaway") {
       return;
     }

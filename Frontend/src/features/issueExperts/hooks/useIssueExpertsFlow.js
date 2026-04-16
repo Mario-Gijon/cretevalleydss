@@ -123,7 +123,7 @@ export const useIssueExpertsFlow = ({
     );
 
     showSnackbarAlert(
-      response?.message || response?.msg || "Experts updated",
+      response?.message || "Experts updated",
       response?.success ? "success" : "error"
     );
 

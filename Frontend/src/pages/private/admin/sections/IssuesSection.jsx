@@ -946,12 +946,12 @@ export default function IssuesSection() {
       const res = await getAllIssues();
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error fetching issues", "error");
+        showSnackbarAlert(res?.message || "Error fetching issues", "error");
         setIssues([]);
         return;
       }
 
-      setIssues(Array.isArray(res.issues) ? res.issues : []);
+      setIssues(Array.isArray(res?.data?.issues) ? res.data.issues : []);
     } catch (err) {
       console.error(err);
       showSnackbarAlert("Unexpected error fetching issues", "error");
@@ -988,19 +988,21 @@ export default function IssuesSection() {
       ]);
 
       if (!detailRes?.success) {
-        showSnackbarAlert(detailRes?.msg || "Error fetching issue detail", "error");
+        showSnackbarAlert(detailRes?.message || "Error fetching issue detail", "error");
         return;
       }
 
       if (!progressRes?.success) {
-        showSnackbarAlert(progressRes?.msg || "Error fetching issue progress", "error");
+        showSnackbarAlert(progressRes?.message || "Error fetching issue progress", "error");
         return;
       }
 
       setSelectedIssueRow(issueRow || null);
-      setIssueDetail(detailRes.issue || null);
+      setIssueDetail(detailRes?.data?.issue || null);
 
-      const progressRows = Array.isArray(progressRes.experts) ? progressRes.experts : [];
+      const progressRows = Array.isArray(progressRes?.data?.experts)
+        ? progressRes.data.experts
+        : [];
       setIssueExpertsProgress(progressRows);
 
       const initialExpertId = pickInitialExpertId(progressRows);
@@ -1053,17 +1055,17 @@ export default function IssuesSection() {
         ]);
 
         if (!evalRes?.success) {
-          showSnackbarAlert(evalRes?.msg || "Error fetching expert evaluations", "error");
+          showSnackbarAlert(evalRes?.message || "Error fetching expert evaluations", "error");
           setExpertEvaluations(null);
         } else {
-          setExpertEvaluations(evalRes);
+          setExpertEvaluations(evalRes?.data || null);
         }
 
         if (!weightsRes?.success) {
-          showSnackbarAlert(weightsRes?.msg || "Error fetching expert weights", "error");
+          showSnackbarAlert(weightsRes?.message || "Error fetching expert weights", "error");
           setExpertWeights(null);
         } else {
-          setExpertWeights(weightsRes);
+          setExpertWeights(weightsRes?.data || null);
         }
       } catch (err) {
         console.error(err);
@@ -1194,12 +1196,12 @@ export default function IssuesSection() {
       const res = await getAllUsers({ includeAdmins: true });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error fetching admins", "error");
+        showSnackbarAlert(res?.message || "Error fetching admins", "error");
         setAdmins([]);
         return;
       }
 
-      setAdmins(Array.isArray(res.users) ? res.users : []);
+      setAdmins(Array.isArray(res?.data?.users) ? res.data.users : []);
     } catch (err) {
       console.error(err);
       showSnackbarAlert("Unexpected error fetching admins", "error");
@@ -1224,11 +1226,11 @@ export default function IssuesSection() {
       });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error reassigning issue admin", "error");
+        showSnackbarAlert(res?.message || "Error reassigning issue admin", "error");
         return;
       }
 
-      showSnackbarAlert(res?.msg || "Issue admin reassigned successfully", "success");
+      showSnackbarAlert(res?.message || "Issue admin reassigned successfully", "success");
       setReassignOpen(false);
       await fetchIssuesData({ keepLoading: true });
       await loadIssueDetail(issueDetail.id, selectedIssueRow);
@@ -1263,11 +1265,11 @@ export default function IssuesSection() {
       const res = await confirmAction.run();
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Action failed", "error");
+        showSnackbarAlert(res?.message || "Action failed", "error");
         return;
       }
 
-      showSnackbarAlert(res?.msg || "Action completed successfully", "success");
+      showSnackbarAlert(res?.message || "Action completed successfully", "success");
       closeConfirmAction();
 
       if (key === "remove") {
@@ -1299,12 +1301,12 @@ export default function IssuesSection() {
       const res = await getAllUsers({ includeAdmins: false });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error fetching experts", "error");
+        showSnackbarAlert(res?.message || "Error fetching experts", "error");
         setAllExperts([]);
         return;
       }
 
-      setAllExperts(Array.isArray(res.users) ? res.users : []);
+      setAllExperts(Array.isArray(res?.data?.users) ? res.data.users : []);
     } catch (err) {
       console.error(err);
       showSnackbarAlert("Unexpected error fetching experts", "error");
@@ -1341,11 +1343,11 @@ export default function IssuesSection() {
       });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.msg || "Error updating experts", "error");
+        showSnackbarAlert(res?.message || "Error updating experts", "error");
         return;
       }
 
-      showSnackbarAlert(res?.msg || "Experts updated successfully", "success");
+      showSnackbarAlert(res?.message || "Experts updated successfully", "success");
 
       setAssignDomainsOpen(false);
       setAddExpertsOpen(false);

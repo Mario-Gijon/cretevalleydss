@@ -4,7 +4,7 @@ import { API, jsonRequest, requestJson } from "./service.utils.js";
 /**
  * Normaliza el id de un issue recibido como string o como objeto.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {string|null}
  */
 const getIssueId = (issueOrId) => {
@@ -72,7 +72,7 @@ export const getExpressionsDomain = async () =>
 /**
  * Crea un nuevo dominio de expresión.
  *
- * @param {object} domain
+ * @param {object} domain Datos del dominio.
  * @returns {Promise<object>}
  */
 export const createExpressionDomain = async (domain) =>
@@ -85,7 +85,7 @@ export const createExpressionDomain = async (domain) =>
 /**
  * Elimina un dominio de expresión.
  *
- * @param {string} id
+ * @param {string} id Id del dominio.
  * @returns {Promise<object>}
  */
 export const removeExpressionDomain = async (id) =>
@@ -98,8 +98,8 @@ export const removeExpressionDomain = async (id) =>
 /**
  * Actualiza un dominio de expresión.
  *
- * @param {string} id
- * @param {object} updatedDomain
+ * @param {string} id Id del dominio.
+ * @param {object} updatedDomain Datos actualizados.
  * @returns {Promise<object>}
  */
 export const updateExpressionDomain = async (id, updatedDomain) =>
@@ -112,7 +112,7 @@ export const updateExpressionDomain = async (id, updatedDomain) =>
 /**
  * Crea un nuevo issue.
  *
- * @param {object} issueInfo
+ * @param {object} issueInfo Datos del issue.
  * @returns {Promise<object>}
  */
 export const createIssue = async (issueInfo) =>
@@ -149,7 +149,7 @@ export const getAllFinishedIssues = async () =>
 /**
  * Elimina un issue activo.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const removeIssue = async (issueOrId) => {
@@ -165,8 +165,8 @@ export const removeIssue = async (issueOrId) => {
 /**
  * Acepta o rechaza una invitación a un issue.
  *
- * @param {*} issueOrId
- * @param {"accepted"|"declined"} action
+ * @param {*} issueOrId Id o issue completo.
+ * @param {"accepted"|"declined"} action Acción a aplicar.
  * @returns {Promise<object>}
  */
 export const changeInvitationStatus = async (issueOrId, action) => {
@@ -182,8 +182,8 @@ export const changeInvitationStatus = async (issueOrId, action) => {
 /**
  * Guarda borradores de evaluaciones.
  *
- * @param {*} issueOrId
- * @param {object} evaluations
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} evaluations Evaluaciones a guardar.
  * @returns {Promise<object>}
  */
 export const saveEvaluations = async (issueOrId, evaluations) => {
@@ -199,7 +199,7 @@ export const saveEvaluations = async (issueOrId, evaluations) => {
 /**
  * Obtiene las evaluaciones del usuario actual para un issue.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const getEvaluations = async (issueOrId) => {
@@ -215,8 +215,8 @@ export const getEvaluations = async (issueOrId) => {
 /**
  * Envía las evaluaciones del usuario actual.
  *
- * @param {*} issueOrId
- * @param {object} evaluations
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} evaluations Evaluaciones a enviar.
  * @returns {Promise<object>}
  */
 export const submitEvaluations = async (issueOrId, evaluations) => {
@@ -232,8 +232,8 @@ export const submitEvaluations = async (issueOrId, evaluations) => {
 /**
  * Resuelve un issue.
  *
- * @param {*} issueOrId
- * @param {boolean} forceFinalize
+ * @param {*} issueOrId Id o issue completo.
+ * @param {boolean} forceFinalize Fuerza finalización si aplica.
  * @returns {Promise<object>}
  */
 export const resolveIssue = async (issueOrId, forceFinalize = false) => {
@@ -249,7 +249,7 @@ export const resolveIssue = async (issueOrId, forceFinalize = false) => {
 /**
  * Obtiene el detalle de un issue finalizado.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const getFinishedIssueInfo = async (issueOrId) => {
@@ -265,7 +265,7 @@ export const getFinishedIssueInfo = async (issueOrId) => {
 /**
  * Oculta o elimina un issue finalizado para el usuario actual.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const removeFinishedIssue = async (issueOrId) => {
@@ -281,10 +281,10 @@ export const removeFinishedIssue = async (issueOrId) => {
 /**
  * Edita los expertos de un issue.
  *
- * @param {*} issueOrId
- * @param {string[]} expertsToAdd
- * @param {string[]} expertsToRemove
- * @param {object|null} domainAssignments
+ * @param {*} issueOrId Id o issue completo.
+ * @param {string[]} expertsToAdd Expertos a añadir.
+ * @param {string[]} expertsToRemove Expertos a eliminar.
+ * @param {object|null} domainAssignments Asignaciones de dominios.
  * @returns {Promise<object>}
  */
 export const editExperts = async (
@@ -309,7 +309,7 @@ export const editExperts = async (
 /**
  * Permite al usuario actual abandonar un issue activo.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const leaveIssue = async (issueOrId) => {
@@ -325,8 +325,8 @@ export const leaveIssue = async (issueOrId) => {
 /**
  * Guarda un borrador de pesos BWM.
  *
- * @param {*} issueOrId
- * @param {object} bwmData
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} bwmData Datos BWM.
  * @returns {Promise<object>}
  */
 export const saveBwmWeights = async (issueOrId, bwmData) => {
@@ -342,7 +342,7 @@ export const saveBwmWeights = async (issueOrId, bwmData) => {
 /**
  * Obtiene los pesos BWM guardados del usuario actual.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const getBwmWeights = async (issueOrId) => {
@@ -358,8 +358,8 @@ export const getBwmWeights = async (issueOrId) => {
 /**
  * Envía los pesos BWM del usuario actual.
  *
- * @param {*} issueOrId
- * @param {object} bwmData
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} bwmData Datos BWM.
  * @returns {Promise<object>}
  */
 export const sendBwmWeights = async (issueOrId, bwmData) => {
@@ -375,8 +375,8 @@ export const sendBwmWeights = async (issueOrId, bwmData) => {
 /**
  * Guarda un borrador de pesos manuales.
  *
- * @param {*} issueOrId
- * @param {object} manualWeights
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} manualWeights Pesos manuales.
  * @returns {Promise<object>}
  */
 export const saveManualWeights = async (issueOrId, manualWeights) => {
@@ -392,8 +392,8 @@ export const saveManualWeights = async (issueOrId, manualWeights) => {
 /**
  * Envía los pesos manuales del usuario actual.
  *
- * @param {*} issueOrId
- * @param {object} manualWeights
+ * @param {*} issueOrId Id o issue completo.
+ * @param {object} manualWeights Pesos manuales.
  * @returns {Promise<object>}
  */
 export const sendManualWeights = async (issueOrId, manualWeights) => {
@@ -409,7 +409,7 @@ export const sendManualWeights = async (issueOrId, manualWeights) => {
 /**
  * Obtiene los pesos manuales guardados del usuario actual.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const getManualWeights = async (issueOrId) => {
@@ -425,7 +425,7 @@ export const getManualWeights = async (issueOrId) => {
 /**
  * Calcula los pesos BWM colectivos.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const computeWeights = async (issueOrId) => {
@@ -441,7 +441,7 @@ export const computeWeights = async (issueOrId) => {
 /**
  * Calcula los pesos manuales colectivos.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const computeManualWeights = async (issueOrId) => {
@@ -457,7 +457,7 @@ export const computeManualWeights = async (issueOrId) => {
 /**
  * Lista los escenarios de un issue.
  *
- * @param {*} issueOrId
+ * @param {*} issueOrId Id o issue completo.
  * @returns {Promise<object>}
  */
 export const getIssueScenarios = async (issueOrId) => {
@@ -473,7 +473,7 @@ export const getIssueScenarios = async (issueOrId) => {
 /**
  * Obtiene un escenario por su id.
  *
- * @param {string} scenarioId
+ * @param {string} scenarioId Id del escenario.
  * @returns {Promise<object>}
  */
 export const getIssueScenarioById = async (scenarioId) =>
@@ -486,7 +486,7 @@ export const getIssueScenarioById = async (scenarioId) =>
 /**
  * Crea un escenario de simulación para un issue.
  *
- * @param {object} params
+ * @param {object} params Datos del escenario.
  * @returns {Promise<object>}
  */
 export const createIssueScenario = async ({
@@ -513,7 +513,7 @@ export const createIssueScenario = async ({
 /**
  * Elimina un escenario por su id.
  *
- * @param {string} scenarioId
+ * @param {string} scenarioId Id del escenario.
  * @returns {Promise<object>}
  */
 export const removeIssueScenario = async (scenarioId) =>

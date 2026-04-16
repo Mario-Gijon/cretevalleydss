@@ -4,7 +4,7 @@ import {
   clearAccessToken,
   refreshAccessToken,
 } from "../utils/authFetch";
-import { API, safeJson } from "./service.utils.js";
+import { API, safeJson, buildNetworkErrorResponse } from "./service.utils.js";
 
 export const EmptyAuthState = {
   university: "",
@@ -46,7 +46,7 @@ export const fetchProtectedData = async () => {
 /**
  * Registra un nuevo usuario.
  *
- * @param {object} formValues
+ * @param {object} formValues Datos del formulario.
  * @returns {Promise<object|false>}
  */
 export const signup = async (formValues) => {
@@ -67,7 +67,7 @@ export const signup = async (formValues) => {
 /**
  * Inicia sesión y guarda el access token en memoria.
  *
- * @param {object} formValues
+ * @param {object} formValues Datos del formulario.
  * @returns {Promise<object|false>}
  */
 export const login = async (formValues) => {
@@ -81,8 +81,8 @@ export const login = async (formValues) => {
 
     const data = await safeJson(response);
 
-    if (data?.success && data?.token) {
-      setAccessToken(data.token);
+    if (data?.success && data?.data?.token) {
+      setAccessToken(data.data.token);
     } else if (data?.success) {
       await refreshAccessToken();
     }
@@ -97,7 +97,7 @@ export const login = async (formValues) => {
 /**
  * Cierra la sesión actual y limpia el access token en memoria.
  *
- * @returns {Promise<true|string|false>}
+ * @returns {Promise<object|false>}
  */
 export const logout = async () => {
   try {
@@ -110,7 +110,7 @@ export const logout = async () => {
 
     clearAccessToken();
 
-    return data?.success ? true : data?.msg || false;
+    return data;
   } catch (error) {
     console.error("Error during logout:", error);
     return false;
@@ -120,7 +120,7 @@ export const logout = async () => {
 /**
  * Elimina la cuenta del usuario autenticado.
  *
- * @returns {Promise<true|string|false>}
+ * @returns {Promise<object|false>}
  */
 export const deleteAccount = async () => {
   try {
@@ -130,7 +130,11 @@ export const deleteAccount = async () => {
 
     const data = await safeJson(response);
 
-    return data?.success ? true : data?.msg ?? false;
+    if (data?.success) {
+      clearAccessToken();
+    }
+
+    return data;
   } catch (error) {
     console.error("Error deleting account:", error);
     return false;
@@ -140,9 +144,9 @@ export const deleteAccount = async () => {
 /**
  * Actualiza la contraseña del usuario autenticado.
  *
- * @param {string} newPassword
- * @param {string} repeatNewPassword
- * @returns {Promise<object|string|null>}
+ * @param {string} newPassword Nueva contraseña.
+ * @param {string} repeatNewPassword Confirmación de contraseña.
+ * @returns {Promise<object>}
  */
 export const updatePassword = async (newPassword, repeatNewPassword) => {
   try {
@@ -155,14 +159,14 @@ export const updatePassword = async (newPassword, repeatNewPassword) => {
     return await safeJson(response);
   } catch (error) {
     console.error("Error updating password:", error);
-    return "An unexpected error occurred.";
+    return buildNetworkErrorResponse("Error updating password.");
   }
 };
 
 /**
  * Actualiza la universidad del usuario autenticado.
  *
- * @param {string} newUniversity
+ * @param {string} newUniversity Nueva universidad.
  * @returns {Promise<object>}
  */
 export const modifyUniversity = async (newUniversity) => {
@@ -176,14 +180,14 @@ export const modifyUniversity = async (newUniversity) => {
     return await safeJson(response);
   } catch (error) {
     console.error("Error updating university:", error);
-    return { success: false, msg: "Unexpected error occurred" };
+    return buildNetworkErrorResponse("Error updating university.");
   }
 };
 
 /**
  * Actualiza el nombre del usuario autenticado.
  *
- * @param {string} newName
+ * @param {string} newName Nuevo nombre.
  * @returns {Promise<object>}
  */
 export const modifyName = async (newName) => {
@@ -197,14 +201,14 @@ export const modifyName = async (newName) => {
     return await safeJson(response);
   } catch (error) {
     console.error("Error updating name:", error);
-    return { success: false, msg: "Unexpected error occurred" };
+    return buildNetworkErrorResponse("Error updating name.");
   }
 };
 
 /**
  * Solicita el cambio de email del usuario autenticado.
  *
- * @param {string} newEmail
+ * @param {string} newEmail Nuevo email.
  * @returns {Promise<object>}
  */
 export const modifyEmail = async (newEmail) => {
@@ -218,7 +222,7 @@ export const modifyEmail = async (newEmail) => {
     return await safeJson(response);
   } catch (error) {
     console.error("Error updating email:", error);
-    return { success: false, msg: "Unexpected error occurred" };
+    return buildNetworkErrorResponse("Error updating email.");
   }
 };
 
@@ -262,7 +266,7 @@ export const markAllNotificationsAsRead = async () => {
 /**
  * Elimina una notificación del usuario actual.
  *
- * @param {string} notificationId
+ * @param {string} notificationId Id de la notificación.
  * @returns {Promise<object|false>}
  */
 export const removeNotification = async (notificationId) => {

@@ -116,7 +116,7 @@ export const useActiveIssueExperts = ({
     );
 
     showSnackbarAlert(
-      response?.msg || "Experts updated",
+      response?.message || response?.msg || "Experts updated",
       response?.success ? "success" : "error"
     );
 

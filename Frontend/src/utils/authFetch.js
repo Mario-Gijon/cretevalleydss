@@ -1,13 +1,53 @@
-// src/utils/authFetch.js
 let accessToken = null;
 let refreshInFlight = null;
 
-export const setAccessToken = (t) => { accessToken = t || null; };
-export const clearAccessToken = () => { accessToken = null; };
-export const getAccessToken = () => accessToken;
-
 const API = import.meta.env.VITE_API_BACK;
 
+/**
+ * Guarda el access token en memoria.
+ *
+ * @param {string|null|undefined} token Token de acceso.
+ * @returns {void}
+ */
+export const setAccessToken = (token) => {
+  accessToken = token || null;
+};
+
+/**
+ * Elimina el access token almacenado en memoria.
+ *
+ * @returns {void}
+ */
+export const clearAccessToken = () => {
+  accessToken = null;
+};
+
+/**
+ * Devuelve el access token actual.
+ *
+ * @returns {string|null}
+ */
+export const getAccessToken = () => accessToken;
+
+/**
+ * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
+ *
+ * @param {Response} response Respuesta de fetch.
+ * @returns {Promise<object|null>}
+ */
+const readJsonSafe = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Solicita un nuevo access token usando la cookie de refresh token.
+ *
+ * @returns {Promise<string|null>}
+ */
 export async function refreshAccessToken() {
   if (refreshInFlight) return refreshInFlight;
 
@@ -22,8 +62,9 @@ export async function refreshAccessToken() {
       return null;
     }
 
-    const data = await res.json();
-    const token = data?.success ? data.token : null;
+    const data = await readJsonSafe(res);
+    const token = data?.success ? data?.data?.token ?? null : null;
+
     setAccessToken(token);
     return token;
   })();
@@ -35,41 +76,70 @@ export async function refreshAccessToken() {
   }
 }
 
-const readJsonSafe = async (res) => {
-  try { return await res.json(); } catch { return null; }
-};
-
-export async function authFetch(url, options = {}, { retryOnAuthFail = true } = {}) {
+/**
+ * Ejecuta una petición autenticada y reintenta una vez si el token ha expirado.
+ *
+ * @param {string} url URL de la petición.
+ * @param {object} options Opciones de fetch.
+ * @param {object} config Configuración adicional.
+ * @param {boolean} config.retryOnAuthFail Indica si debe reintentar tras un 401.
+ * @returns {Promise<Response>}
+ */
+export async function authFetch(
+  url,
+  options = {},
+  { retryOnAuthFail = true } = {}
+) {
   const headers = new Headers(options.headers || {});
-  if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
+
+  if (!headers.has("Content-Type") && options.body) {
+    headers.set("Content-Type", "application/json");
+  }
 
   const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  // ✅ si tu API necesita cookies en CORS, deja include
-  const res = await fetch(url, { credentials: "include", ...options, headers });
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
-  if (res.status !== 401 || !retryOnAuthFail) return res;
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options,
+    headers,
+  });
 
-  // Miramos el motivo del 401 (sin consumir el body del response principal)
+  if (res.status !== 401 || !retryOnAuthFail) {
+    return res;
+  }
+
   const body = await readJsonSafe(res.clone());
-  const code = body?.code;
-  const msg = (body?.msg || "").toLowerCase();
+  const code = body?.error?.code;
+  const message = (body?.message || "").toLowerCase();
 
-  const isExpired = code === "TOKEN_EXPIRED" || msg.includes("expired");
-  const isNoToken = code === "NO_TOKEN" || msg.includes("does not exist");
+  const isExpired = code === "TOKEN_EXPIRED" || message.includes("expired");
+  const isNoToken = code === "NO_TOKEN" || message.includes("does not exist");
 
-  // ✅ refrescar solo si:
-  // - está expirado, o
-  // - no hay token en memoria (típico reload) y backend responde NO_TOKEN
-  if (!isExpired && !(isNoToken && !getAccessToken())) return res;
+  if (!isExpired && !(isNoToken && !getAccessToken())) {
+    return res;
+  }
 
   const newToken = await refreshAccessToken();
-  if (!newToken) return res;
+
+  if (!newToken) {
+    return res;
+  }
 
   const retryHeaders = new Headers(options.headers || {});
-  if (!retryHeaders.has("Content-Type") && options.body) retryHeaders.set("Content-Type", "application/json");
+
+  if (!retryHeaders.has("Content-Type") && options.body) {
+    retryHeaders.set("Content-Type", "application/json");
+  }
+
   retryHeaders.set("Authorization", `Bearer ${newToken}`);
 
-  return fetch(url, { credentials: "include", ...options, headers: retryHeaders });
+  return fetch(url, {
+    credentials: "include",
+    ...options,
+    headers: retryHeaders,
+  });
 }

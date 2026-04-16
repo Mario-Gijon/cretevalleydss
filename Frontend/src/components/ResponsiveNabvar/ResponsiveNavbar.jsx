@@ -127,10 +127,10 @@ export const ResponsiveNavbar = (props) => {
   const handleRemoveNotification = async () => {
     const notificationRemoved = await removeNotification(selectedNotificationId);
 
-    if (notificationRemoved.success) {
+    if (notificationRemoved?.success) {
       setNotifications(notifications.filter(n => n._id !== selectedNotificationId));
     } else {
-      showSnackbarAlert(notificationRemoved.msg, "error");
+      showSnackbarAlert(notificationRemoved?.message || "Error removing notification", "error");
     }
     setOpenDialog(false);
   };
@@ -172,12 +172,16 @@ export const ResponsiveNavbar = (props) => {
   const handleConfirmLogout = async () => {
     setLogoutLoading(true);
 
-    if (logout()) {
+    const logoutResponse = await logout();
+
+    if (logoutResponse?.success) {
       setOpenLogoutDialog(false);
       setIsLoggedIn(false);
       setLogoutLoading(false);
+      return;
     }
 
+    showSnackbarAlert(logoutResponse?.message || "Error during logout", "error");
     setOpenLogoutDialog(false);
     setLogoutLoading(false);
   };
@@ -216,12 +220,12 @@ export const ResponsiveNavbar = (props) => {
 
       if (action === "accepted") {
         fetchActiveIssues();
-        showSnackbarAlert(invitationChanged.msg, "success");
+        showSnackbarAlert(invitationChanged?.message || "Invitation accepted", "success");
       } else {
-        showSnackbarAlert(invitationChanged.msg, "warning");
+        showSnackbarAlert(invitationChanged?.message || "Invitation declined", "warning");
       }
     } else {
-      showSnackbarAlert(invitationChanged.msg, "error");
+      showSnackbarAlert(invitationChanged?.message || "Error updating invitation", "error");
     }
   };
 
@@ -235,8 +239,6 @@ export const ResponsiveNavbar = (props) => {
     }
     handleCloseNavMenu();
   };
-
-  console.log(auth)
 
   return (
     <>

@@ -118,10 +118,11 @@ const ManualWeightsEvaluationDialog = ({
 
       try {
         const response = await getManualWeightDraft(selectedIssue.id);
+        const manualWeights = response?.data?.manualWeights ?? null;
 
-        if (response.success && response.manualWeights) {
-          setManualWeights(response.manualWeights);
-          setInitialData(JSON.stringify(response.manualWeights));
+        if (response.success && manualWeights) {
+          setManualWeights(manualWeights);
+          setInitialData(JSON.stringify(manualWeights));
         } else {
           const empty = Object.fromEntries(
             leafCriteria.map((criterion) => [criterion.name, ""])
@@ -170,7 +171,7 @@ const ManualWeightsEvaluationDialog = ({
       showSnackbarAlert("Weights saved successfully", "success");
       setIsRatingWeights(false);
     } else {
-      showSnackbarAlert(response.msg || "Error saving weights", "error");
+      showSnackbarAlert(response?.message || "Error saving weights", "error");
     }
   };
 
@@ -188,7 +189,7 @@ const ManualWeightsEvaluationDialog = ({
       await fetchActiveIssues();
       setIsRatingWeights(false);
     } else {
-      showSnackbarAlert(response.msg || "Error submitting weights", "error");
+      showSnackbarAlert(response?.message || "Error submitting weights", "error");
     }
   };
 

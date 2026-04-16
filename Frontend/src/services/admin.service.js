@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_BACK;
  * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
  *
  * @param {Response} res Respuesta de fetch.
- * @returns {Promise<any|null>}
+ * @returns {Promise<object|null>}
  */
 const safeJson = async (res) => {
   try {
@@ -19,7 +19,7 @@ const safeJson = async (res) => {
 /**
  * Construye una query string a partir de un objeto plano.
  *
- * @param {Record<string, any>} paramsObj Parámetros de entrada.
+ * @param {object} paramsObj Parámetros de entrada.
  * @returns {string}
  */
 const buildQuery = (paramsObj = {}) => {
@@ -35,14 +35,10 @@ const buildQuery = (paramsObj = {}) => {
   return query ? `?${query}` : "";
 };
 
-/* =========================================================
- * Admin auth
- * ========================================================= */
-
 /**
  * Comprueba si el usuario actual tiene acceso de administrador.
  *
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const checkAdminAccess = async () => {
   try {
@@ -54,15 +50,13 @@ export const checkAdminAccess = async () => {
   }
 };
 
-/* =========================================================
- * Users / Experts admin
- * ========================================================= */
-
 /**
  * Obtiene el listado de expertos del panel admin.
  *
- * @param {{ q?: string, includeAdmins?: boolean }} [options={}] Opciones de filtro.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} options Opciones de filtro.
+ * @param {string} options.q Texto de búsqueda.
+ * @param {boolean} options.includeAdmins Indica si incluye administradores.
+ * @returns {Promise<object|false>}
  */
 export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
   try {
@@ -85,8 +79,8 @@ export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
 /**
  * Crea un experto desde el panel admin.
  *
- * @param {Record<string, any>} userData Datos del experto.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} userData Datos del experto.
+ * @returns {Promise<object|false>}
  */
 export const createUser = async (userData) => {
   try {
@@ -106,16 +100,15 @@ export const createUser = async (userData) => {
 /**
  * Actualiza un experto desde el panel admin.
  *
- * @param {{
- *   id: string,
- *   name?: string,
- *   university?: string,
- *   email?: string,
- *   password?: string,
- *   accountConfirm?: boolean,
- *   role?: string,
- * }} payload Datos a actualizar.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} payload Datos a actualizar.
+ * @param {string} payload.id Id del usuario.
+ * @param {string} payload.name Nombre.
+ * @param {string} payload.university Universidad.
+ * @param {string} payload.email Email.
+ * @param {string} payload.password Contraseña.
+ * @param {boolean} payload.accountConfirm Estado de confirmación.
+ * @param {string} payload.role Rol.
+ * @returns {Promise<object|false>}
  */
 export const updateUser = async ({
   id,
@@ -151,7 +144,7 @@ export const updateUser = async ({
  * Elimina un experto desde el panel admin.
  *
  * @param {string} id Id del usuario.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const deleteUser = async (id) => {
   try {
@@ -166,22 +159,17 @@ export const deleteUser = async (id) => {
   }
 };
 
-/* =========================================================
- * Issues admin
- * ========================================================= */
-
 /**
  * Obtiene el listado de issues del panel admin.
  *
- * @param {{
- *   q?: string,
- *   active?: string,
- *   currentStage?: string,
- *   isConsensus?: string,
- *   adminId?: string,
- *   modelId?: string,
- * }} [options={}] Filtros de búsqueda.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} options Filtros de búsqueda.
+ * @param {string} options.q Texto de búsqueda.
+ * @param {string} options.active Estado activo.
+ * @param {string} options.currentStage Etapa actual.
+ * @param {string} options.isConsensus Filtro de consenso.
+ * @param {string} options.adminId Id del administrador.
+ * @param {string} options.modelId Id del modelo.
+ * @returns {Promise<object|false>}
  */
 export const getAllIssues = async ({
   q = "",
@@ -216,7 +204,7 @@ export const getAllIssues = async ({
  * Obtiene el detalle de un issue desde el panel admin.
  *
  * @param {string} id Id del issue.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const getIssueByIdAdmin = async (id) => {
   try {
@@ -237,7 +225,7 @@ export const getIssueByIdAdmin = async (id) => {
  * Obtiene el progreso de expertos de un issue.
  *
  * @param {string} issueId Id del issue.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const getIssueExpertsProgress = async (issueId) => {
   try {
@@ -262,7 +250,7 @@ export const getIssueExpertsProgress = async (issueId) => {
  *
  * @param {string} issueId Id del issue.
  * @param {string} expertId Id del experto.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const getIssueExpertEvaluations = async (issueId, expertId) => {
   try {
@@ -287,7 +275,7 @@ export const getIssueExpertEvaluations = async (issueId, expertId) => {
  *
  * @param {string} issueId Id del issue.
  * @param {string} expertId Id del experto.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const getIssueExpertWeights = async (issueId, expertId) => {
   try {
@@ -310,8 +298,10 @@ export const getIssueExpertWeights = async (issueId, expertId) => {
 /**
  * Reasigna el administrador responsable de un issue.
  *
- * @param {{ issueId: string, newAdminId: string }} params Parámetros de entrada.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.newAdminId Id del nuevo administrador.
+ * @returns {Promise<object|false>}
  */
 export const reassignIssueAdmin = async ({ issueId, newAdminId }) => {
   try {
@@ -330,20 +320,15 @@ export const reassignIssueAdmin = async ({ issueId, newAdminId }) => {
   }
 };
 
-/* =========================================================
- * Admin acting as creator on issues
- * ========================================================= */
-
 /**
  * Edita los expertos de un issue desde el panel admin.
  *
- * @param {{
- *   issueId: string,
- *   expertsToAdd?: string[],
- *   expertsToRemove?: string[],
- *   domainAssignments?: Record<string, any>|null,
- * }} params Parámetros de entrada.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string[]} params.expertsToAdd Expertos a añadir.
+ * @param {string[]} params.expertsToRemove Expertos a eliminar.
+ * @param {object|null} params.domainAssignments Asignaciones de dominios.
+ * @returns {Promise<object|false>}
  */
 export const editIssueExpertsAdminAction = async ({
   issueId,
@@ -373,7 +358,7 @@ export const editIssueExpertsAdminAction = async ({
  * Computa los pesos de un issue desde el panel admin.
  *
  * @param {string} issueId Id del issue.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const computeIssueWeightsAdminAction = async (issueId) => {
   try {
@@ -395,8 +380,8 @@ export const computeIssueWeightsAdminAction = async (issueId) => {
  * Resuelve un issue desde el panel admin.
  *
  * @param {string} issueId Id del issue.
- * @param {boolean} [forceFinalize=false] Fuerza finalización si aplica.
- * @returns {Promise<Record<string, any>|false>}
+ * @param {boolean} forceFinalize Fuerza finalización si aplica.
+ * @returns {Promise<object|false>}
  */
 export const resolveIssueAdminAction = async (
   issueId,
@@ -424,7 +409,7 @@ export const resolveIssueAdminAction = async (
  * Elimina un issue desde el panel admin.
  *
  * @param {string} issueId Id del issue.
- * @returns {Promise<Record<string, any>|false>}
+ * @returns {Promise<object|false>}
  */
 export const removeIssueAdminAction = async (issueId) => {
   try {

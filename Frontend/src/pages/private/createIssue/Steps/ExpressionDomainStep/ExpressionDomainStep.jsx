@@ -54,9 +54,9 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
 
     if (result && result.success) {
       setExpressionDomains((prev) => prev.filter((d) => d._id !== id));
-      showSnackbarAlert(result.msg, "success");
+      showSnackbarAlert(result?.message || "Domain deleted", "success");
     } else {
-      showSnackbarAlert(result?.msg || "Error deleting domain", "error");
+      showSnackbarAlert(result?.message || "Error deleting domain", "error");
     }
   };
 

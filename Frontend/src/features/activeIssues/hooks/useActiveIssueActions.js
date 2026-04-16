@@ -50,11 +50,11 @@ export const useActiveIssueActions = ({
     const response = await removeIssue(selectedIssue.id);
 
     if (response?.success) {
-      showSnackbarAlert(response.msg, "success");
+      showSnackbarAlert(response?.message || "Issue removed successfully", "success");
       await refresh();
       closeDrawer();
     } else {
-      showSnackbarAlert(response?.msg || "Error removing issue", "error");
+      showSnackbarAlert(response?.message || "Error removing issue", "error");
     }
 
     setBusy((prev) => ({ ...prev, remove: false }));
@@ -72,11 +72,11 @@ export const useActiveIssueActions = ({
     const response = await leaveIssue(selectedIssue.id);
 
     if (response?.success) {
-      showSnackbarAlert(response.msg, "success");
+      showSnackbarAlert(response?.message || "Issue left successfully", "success");
       await refresh();
       closeDrawer();
     } else {
-      showSnackbarAlert(response?.msg || "Error leaving issue", "error");
+      showSnackbarAlert(response?.message || "Error leaving issue", "error");
     }
 
     setBusy((prev) => ({ ...prev, leave: false }));
@@ -92,13 +92,17 @@ export const useActiveIssueActions = ({
 
     setBusy((prev) => ({ ...prev, resolve: true }));
     const response = await resolveIssue(selectedIssue.id);
+    const finished = Boolean(response?.data?.finished ?? response?.finished);
 
     if (response?.success) {
-      showSnackbarAlert(response.msg, response.finished ? "success" : "info");
-      await refresh({ alsoFinished: Boolean(response.finished) });
+      showSnackbarAlert(
+        response?.message || "Issue resolved successfully",
+        finished ? "success" : "info"
+      );
+      await refresh({ alsoFinished: finished });
       closeDrawer();
     } else {
-      showSnackbarAlert(response?.msg || "Error resolving issue", "error");
+      showSnackbarAlert(response?.message || "Error resolving issue", "error");
       setLoading(false);
       closeDrawer();
     }
@@ -121,13 +125,17 @@ export const useActiveIssueActions = ({
       selectedIssue.weightingMode === "consensus"
         ? await computeManualWeights(selectedIssue.id)
         : await computeWeights(selectedIssue.id);
+    const finished = Boolean(response?.data?.finished ?? response?.finished);
 
     if (response?.success) {
-      showSnackbarAlert(response.msg, response.finished ? "success" : "info");
+      showSnackbarAlert(
+        response?.message || "Weights computed successfully",
+        finished ? "success" : "info"
+      );
       await refresh({ alsoFinished: true });
       closeDrawer();
     } else {
-      showSnackbarAlert(response?.msg || "Error computing weights", "error");
+      showSnackbarAlert(response?.message || "Error computing weights", "error");
       setLoading(false);
       closeDrawer();
     }
