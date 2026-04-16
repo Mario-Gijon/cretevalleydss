@@ -20,10 +20,11 @@ import {
 // Utils
 import {
   createBadRequestError,
+  createConflictError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
-import { sameId } from "../../utils/common/ids.js";
-import mongoose from "mongoose";
+import { sameId, toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
 const ACCOUNT_DELETED_BY_ADMIN_REASON = "Expert account deleted by admin";
 
@@ -282,19 +283,6 @@ const removeUserFromFinishedIssue = async ({
 };
 
 /**
- * Crea un error de conflicto para respuestas 409.
- *
- * @param {string} message Mensaje del error.
- * @returns {Error}
- */
-const createConflictError = (message) => {
-  const err = new Error(message);
-  err.statusCode = 409;
-  err.expose = true;
-  return err;
-};
-
-/**
  * Normaliza el rol gestionado desde el panel admin.
  *
  * @param {unknown} role Rol recibido.
@@ -310,7 +298,7 @@ const normalizeAdminManagedRole = (role) =>
  * @returns {AdminManagedUserPayload}
  */
 const buildAdminManagedUserPayload = (user) => ({
-  id: String(user._id),
+  id: toIdString(user._id),
   name: user.name,
   university: user.university || "",
   email: user.email,
@@ -331,7 +319,7 @@ const buildAdminUserIdentityPayload = (user) => {
   }
 
   return {
-    id: String(user._id),
+    id: toIdString(user._id),
     name: user.name,
     email: user.email,
     role: user.role || "user",
@@ -372,27 +360,39 @@ export const createUserAdminFlow = async ({
   role = normalizeAdminManagedRole(role);
 
   if (!name) {
-    throw createBadRequestError("Name is required");
+    throw createBadRequestError("Name is required", {
+      field: "name",
+    });
   }
 
   if (!university) {
-    throw createBadRequestError("University is required");
+    throw createBadRequestError("University is required", {
+      field: "university",
+    });
   }
 
   if (!email) {
-    throw createBadRequestError("Email is required");
+    throw createBadRequestError("Email is required", {
+      field: "email",
+    });
   }
 
   if (!password) {
-    throw createBadRequestError("Password is required");
+    throw createBadRequestError("Password is required", {
+      field: "password",
+    });
   }
 
   if (password.length < 6) {
-    throw createBadRequestError("Password must be at least 6 characters");
+    throw createBadRequestError("Password must be at least 6 characters", {
+      field: "password",
+    });
   }
 
   if (!["user", "admin"].includes(role)) {
-    throw createBadRequestError("Invalid role");
+    throw createBadRequestError("Invalid role", {
+      field: "role",
+    });
   }
 
   const existingUser = await withOptionalSession(
@@ -401,7 +401,9 @@ export const createUserAdminFlow = async ({
   );
 
   if (existingUser) {
-    throw createConflictError("Email already registered");
+    throw createConflictError("Email already registered", {
+      field: "email",
+    });
   }
 
   const finalAccountConfirm =
@@ -421,7 +423,7 @@ export const createUserAdminFlow = async ({
   await newUser.save({ session });
 
   return {
-    msg: `${role === "admin" ? "Admin" : "User"} ${newUser.email} created successfully`,
+    message: `${role === "admin" ? "Admin" : "User"} ${newUser.email} created successfully`,
     user: buildAdminManagedUserPayload(newUser),
   };
 };
@@ -448,21 +450,27 @@ export const updateUserAdminFlow = async ({
     role,
   } = payload || {};
 
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw createBadRequestError("Valid user id is required");
+  if (!id || !isValidObjectIdLike(id)) {
+    throw createBadRequestError("Valid user id is required", {
+      field: "id",
+    });
   }
 
   const user = await withOptionalSession(User.findById(id), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "id",
+    });
   }
 
   if (name !== undefined) {
     const cleanName = String(name).trim();
 
     if (!cleanName) {
-      throw createBadRequestError("Name can not be empty");
+      throw createBadRequestError("Name can not be empty", {
+        field: "name",
+      });
     }
 
     user.name = cleanName;
@@ -472,7 +480,9 @@ export const updateUserAdminFlow = async ({
     const cleanUniversity = String(university).trim();
 
     if (!cleanUniversity) {
-      throw createBadRequestError("University can not be empty");
+      throw createBadRequestError("University can not be empty", {
+        field: "university",
+      });
     }
 
     user.university = cleanUniversity;
@@ -482,7 +492,9 @@ export const updateUserAdminFlow = async ({
     const cleanEmail = String(email).trim().toLowerCase();
 
     if (!cleanEmail) {
-      throw createBadRequestError("Email can not be empty");
+      throw createBadRequestError("Email can not be empty", {
+        field: "email",
+      });
     }
 
     const emailInUse = await withOptionalSession(
@@ -494,7 +506,9 @@ export const updateUserAdminFlow = async ({
     );
 
     if (emailInUse) {
-      throw createConflictError("Email already registered");
+      throw createConflictError("Email already registered", {
+        field: "email",
+      });
     }
 
     user.email = cleanEmail;
@@ -504,7 +518,9 @@ export const updateUserAdminFlow = async ({
     const cleanRole = normalizeAdminManagedRole(role);
 
     if (!["user", "admin"].includes(cleanRole)) {
-      throw createBadRequestError("Invalid role");
+      throw createBadRequestError("Invalid role", {
+        field: "role",
+      });
     }
 
     user.role = cleanRole;
@@ -520,7 +536,9 @@ export const updateUserAdminFlow = async ({
     const cleanPassword = String(password).trim();
 
     if (cleanPassword.length < 6) {
-      throw createBadRequestError("Password must be at least 6 characters");
+      throw createBadRequestError("Password must be at least 6 characters", {
+        field: "password",
+      });
     }
 
     user.password = cleanPassword;
@@ -530,7 +548,7 @@ export const updateUserAdminFlow = async ({
   await user.save({ session });
 
   return {
-    msg: `User ${user.email} updated successfully`,
+    message: `User ${user.email} updated successfully`,
     user: buildAdminManagedUserPayload(user),
   };
 };
@@ -549,12 +567,16 @@ export const reassignIssueAdminFlow = async ({
   newAdminId,
   session = null,
 }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
-    throw createBadRequestError("Valid issueId is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issueId is required", {
+      field: "issueId",
+    });
   }
 
-  if (!newAdminId || !mongoose.Types.ObjectId.isValid(newAdminId)) {
-    throw createBadRequestError("Valid newAdminId is required");
+  if (!newAdminId || !isValidObjectIdLike(newAdminId)) {
+    throw createBadRequestError("Valid newAdminId is required", {
+      field: "newAdminId",
+    });
   }
 
   const [issue, newAdmin] = await Promise.all([
@@ -569,15 +591,21 @@ export const reassignIssueAdminFlow = async ({
   ]);
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   if (!newAdmin) {
-    throw createNotFoundError("Target user not found");
+    throw createNotFoundError("Target user not found", {
+      field: "newAdminId",
+    });
   }
 
   if (!newAdmin.accountConfirm) {
-    throw createBadRequestError("Target user account is not confirmed");
+    throw createBadRequestError("Target user account is not confirmed", {
+      field: "newAdminId",
+    });
   }
 
   const oldAdmin = buildAdminUserIdentityPayload(issue.admin);
@@ -585,9 +613,9 @@ export const reassignIssueAdminFlow = async ({
 
   if (sameId(issue.admin?._id || issue.admin, newAdmin._id)) {
     return {
-      msg: `Issue ${issue.name} is already assigned to ${newAdmin.email}`,
+      message: `Issue ${issue.name} is already assigned to ${newAdmin.email}`,
       issue: {
-        id: String(issue._id),
+        id: toIdString(issue._id),
         name: issue.name,
       },
       admin: {
@@ -601,9 +629,9 @@ export const reassignIssueAdminFlow = async ({
   await issue.save({ session });
 
   return {
-    msg: `Issue ${issue.name} reassigned to ${newAdmin.email} successfully`,
+    message: `Issue ${issue.name} reassigned to ${newAdmin.email} successfully`,
     issue: {
-      id: String(issue._id),
+      id: toIdString(issue._id),
       name: issue.name,
     },
     admin: {
@@ -612,7 +640,6 @@ export const reassignIssueAdminFlow = async ({
     },
   };
 };
-
 /**
  * Elimina un usuario desde el panel de administración y actualiza los issues afectados.
  *
@@ -627,19 +654,24 @@ export const deleteUserAdminFlow = async ({
   adminUserId,
   session = null,
 }) => {
-  if (!targetUserId) {
-    throw createBadRequestError("User id is required");
+  if (!targetUserId || !isValidObjectIdLike(targetUserId)) {
+    throw createBadRequestError("User id is required", {
+      field: "targetUserId",
+    });
   }
 
   const user = await withOptionalSession(User.findById(targetUserId), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "id",
+    });
   }
 
   if (sameId(adminUserId, user._id)) {
     throw createBadRequestError(
-      "You cannot delete your own account from this admin panel"
+      "You cannot delete your own account from this admin panel",
+      { field: "targetUserId" }
     );
   }
 
@@ -650,7 +682,8 @@ export const deleteUserAdminFlow = async ({
 
   if (ownedIssuesCount > 0) {
     throw createBadRequestError(
-      "This user is creator/admin of one or more issues. Resolve those issues first before deleting the user."
+      "This user is creator/admin of one or more issues. Resolve those issues first before deleting the user.",
+      { field: "targetUserId" }
     );
   }
 
@@ -731,7 +764,7 @@ export const deleteUserAdminFlow = async ({
 
   return {
     deletedUser: {
-      id: String(user._id),
+      id: toIdString(user._id),
       email: user.email,
     },
     summary,
@@ -897,7 +930,7 @@ export const getAdminUsersListPayload = async ({
 
   return {
     users: users.map((user) => {
-      const userId = String(user._id);
+      const userId = toIdString(user._id);
 
       return {
         id: userId,

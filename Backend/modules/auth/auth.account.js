@@ -6,6 +6,7 @@ import {
   createConflictError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+
 /**
  * @typedef {Object} SignupVerificationEmail
  * @property {string} name Nombre del usuario registrado.
@@ -15,7 +16,7 @@ import {
 
 /**
  * @typedef {Object} CreateSignupAccountResult
- * @property {string} msg Mensaje de resultado.
+ * @property {string} message Mensaje de resultado.
  * @property {SignupVerificationEmail} verificationEmail Datos necesarios para enviar el correo de verificación.
  */
 
@@ -50,23 +51,33 @@ export const createSignupAccountFlow = async ({
   password = String(password).trim();
 
   if (!name) {
-    throw createBadRequestError("Name is required");
+    throw createBadRequestError("Name is required", {
+      field: "name",
+    });
   }
 
   if (!university) {
-    throw createBadRequestError("University is required");
+    throw createBadRequestError("University is required", {
+      field: "university",
+    });
   }
 
   if (!email) {
-    throw createBadRequestError("Email is required");
+    throw createBadRequestError("Email is required", {
+      field: "email",
+    });
   }
 
   if (!password) {
-    throw createBadRequestError("Password is required");
+    throw createBadRequestError("Password is required", {
+      field: "password",
+    });
   }
 
   if (password.length < 6) {
-    throw createBadRequestError("Password must be at least 6 characters");
+    throw createBadRequestError("Password must be at least 6 characters", {
+      field: "password",
+    });
   }
 
   const existingUser = await withOptionalSession(
@@ -75,7 +86,9 @@ export const createSignupAccountFlow = async ({
   );
 
   if (existingUser) {
-    throw createConflictError("Email already registered");
+    throw createConflictError("Email already registered", {
+      field: "email",
+    });
   }
 
   const tokenConfirm = nanoid();
@@ -91,7 +104,7 @@ export const createSignupAccountFlow = async ({
   await user.save({ session });
 
   return {
-    msg: "Signup successful",
+    message: "Signup successful",
     verificationEmail: {
       name: user.name,
       email: user.email,
@@ -115,7 +128,9 @@ export const confirmAccountFlow = async ({
   const cleanToken = String(token ?? "").trim();
 
   if (!cleanToken) {
-    throw createBadRequestError("Token is required");
+    throw createBadRequestError("Token is required", {
+      field: "token",
+    });
   }
 
   const user = await withOptionalSession(
@@ -124,7 +139,9 @@ export const confirmAccountFlow = async ({
   );
 
   if (!user) {
-    throw createNotFoundError("Account confirmation not found");
+    throw createNotFoundError("Account confirmation not found", {
+      field: "token",
+    });
   }
 
   user.accountConfirm = true;
@@ -133,7 +150,7 @@ export const confirmAccountFlow = async ({
   await user.save({ session });
 
   return {
-    msg: "Account verified successfully",
+    message: "Account verified successfully",
   };
 };
 
@@ -152,12 +169,14 @@ export const deleteAuthenticatedUserAccountFlow = async ({
   const user = await withOptionalSession(User.findById(userId), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "userId",
+    });
   }
 
-  await User.findByIdAndDelete(user._id).session(session);
+  await withOptionalSession(User.findByIdAndDelete(user._id), session);
 
   return {
-    msg: "Account deleted successfully",
+    message: "Account deleted successfully",
   };
 };

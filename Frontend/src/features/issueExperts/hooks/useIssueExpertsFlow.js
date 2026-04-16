@@ -29,25 +29,37 @@ export const useIssueExpertsFlow = ({
   const [openAddExpertsDialog, setOpenAddExpertsDialog] = useState(false);
   const [openAssignDomainsDialog, setOpenAssignDomainsDialog] = useState(false);
 
+  const normalizedInitialExperts = useMemo(() => {
+    return Array.isArray(initialExperts) ? initialExperts : [];
+  }, [initialExperts]);
+
   const existingExpertEmails = useMemo(() => {
     if (!selectedIssue) {
       return [...expertsToAdd];
     }
 
     return [
-      ...(selectedIssue?.participatedExperts || []),
-      ...(selectedIssue?.acceptedButNotEvaluatedExperts || []),
-      ...(selectedIssue?.pendingExperts || []),
-      ...(selectedIssue?.notAcceptedExperts || []),
+      ...(Array.isArray(selectedIssue?.participatedExperts)
+        ? selectedIssue.participatedExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.acceptedButNotEvaluatedExperts)
+        ? selectedIssue.acceptedButNotEvaluatedExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.pendingExperts)
+        ? selectedIssue.pendingExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.notAcceptedExperts)
+        ? selectedIssue.notAcceptedExperts
+        : []),
       ...expertsToAdd,
     ];
   }, [selectedIssue, expertsToAdd]);
 
   const availableExperts = useMemo(() => {
-    return (initialExperts || []).filter(
+    return normalizedInitialExperts.filter(
       (expert) => !existingExpertEmails.includes(expert.email)
     );
-  }, [initialExperts, existingExpertEmails]);
+  }, [normalizedInitialExperts, existingExpertEmails]);
 
   /**
    * Restablece el estado completo del flujo de expertos.
@@ -111,7 +123,7 @@ export const useIssueExpertsFlow = ({
     );
 
     showSnackbarAlert(
-      response?.msg || "Experts updated",
+      response?.message || response?.msg || "Experts updated",
       response?.success ? "success" : "error"
     );
 
@@ -131,10 +143,18 @@ export const useIssueExpertsFlow = ({
     if (!selectedIssue) return;
 
     const currentExperts = [
-      ...(selectedIssue?.participatedExperts || []),
-      ...(selectedIssue?.acceptedButNotEvaluatedExperts || []),
-      ...(selectedIssue?.pendingExperts || []),
-      ...(selectedIssue?.notAcceptedExperts || []),
+      ...(Array.isArray(selectedIssue?.participatedExperts)
+        ? selectedIssue.participatedExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.acceptedButNotEvaluatedExperts)
+        ? selectedIssue.acceptedButNotEvaluatedExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.pendingExperts)
+        ? selectedIssue.pendingExperts
+        : []),
+      ...(Array.isArray(selectedIssue?.notAcceptedExperts)
+        ? selectedIssue.notAcceptedExperts
+        : []),
     ];
 
     const remainingExperts = currentExperts.filter(

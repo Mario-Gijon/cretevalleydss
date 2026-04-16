@@ -25,7 +25,7 @@ import {
   getLeafCriteria,
   validateDomainAssigments,
 } from "../../../utils/createIssueUtils";
-import { DomainAssignments } from "../../../components/DomainAssigments/DomainAssigments";
+import { DomainAssignments } from "../components/IssueExpertsDomainAssigments.jsx";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { getIssueExpertsAuroraBg } from "../styles/issueExperts.styles.js";
 

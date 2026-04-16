@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { countLeafCriteria } from "../../../../../utils/issues/criteriaTree.js";
+import { countLeafCriteria } from "../utils/issueDetailsDrawer.utils.js";
 import {
   buildIssueDrawerModelParamsList,
   getIssueDrawerAlternatives,

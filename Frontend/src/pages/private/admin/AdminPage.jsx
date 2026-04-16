@@ -14,7 +14,7 @@ import PsychologyIcon from "@mui/icons-material/Psychology";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
-import { auroraBg, glassSx as glassSxBase } from "../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
+import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../features/activeIssues/styles/activeIssues.styles";
 
 // Sections
 import ReportsSection from "./sections/ReportsSection";
@@ -32,7 +32,7 @@ const panelSx = (theme, strength = 0.14) => ({
   position: "relative",
   overflow: "hidden",
   ...glassSxBase(theme, strength, "crystal"),
-  ...auroraBg(theme, 0.12),
+  ...getActiveIssuesAuroraBg(theme, 0.12),
   "&:after": {
     content: '""',
     position: "absolute",

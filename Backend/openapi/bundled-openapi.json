@@ -72,71 +72,36 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Users fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       },
@@ -182,7 +147,7 @@
                   },
                   "role": {
                     "type": "string",
-                    "example": "expert"
+                    "example": "user"
                   }
                 }
               }
@@ -197,95 +162,47 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "User mario@example.com created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "409": {
-            "description": "Conflicto por email ya registrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Email already registered"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Conflicto por email ya registrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -344,7 +261,7 @@
                   },
                   "role": {
                     "type": "string",
-                    "example": "expert"
+                    "example": "user"
                   }
                 }
               }
@@ -359,95 +276,50 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "User mario@example.com updated successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
           },
           "409": {
-            "description": "Conflicto por email ya registrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Email already registered"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Conflicto por email ya registrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       },
@@ -482,21 +354,30 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg",
-                    "summary"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "User mario@example.com deleted successfully"
                     },
-                    "summary": {
+                    "data": {
                       "type": "object",
-                      "additionalProperties": true
+                      "properties": {
+                        "deletedUser": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "summary": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
                     }
                   }
                 }
@@ -504,81 +385,19 @@
             }
           },
           "400": {
-            "description": "Id de usuario inválido o ausente",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid user id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Id de usuario inválido o ausente"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token does not exist"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "NO_TOKEN"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -663,71 +482,36 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issues fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -763,95 +547,39 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issue detail fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       },
@@ -886,16 +614,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Issue Sustainability study removed"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
@@ -903,105 +640,19 @@
             }
           },
           "400": {
-            "description": "Id inválido o datos insuficientes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid issue id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Id inválido o datos insuficientes"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1037,95 +688,39 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issue experts progress fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1170,95 +765,39 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Expert evaluations fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue o experto no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Expert not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue o experto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1303,95 +842,39 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Expert weights fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue o experto no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Expert not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue o experto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1446,119 +929,51 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issue Sustainability study reassigned to admin@example.com successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issue": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "admin": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
                     }
-                  },
-                  "additionalProperties": true
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid issue id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue o usuario no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue o usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1597,23 +1012,13 @@
                     "type": "array",
                     "items": {
                       "type": "string"
-                    },
-                    "example": [
-                      "661b3d9f7c7f0f8a4a123456"
-                    ]
+                    }
                   },
                   "expertsToRemove": {
                     "type": "array",
                     "items": {
                       "type": "string"
-                    },
-                    "example": [
-                      "661b3d9f7c7f0f8a4a654321"
-                    ]
-                  },
-                  "domainAssignments": {
-                    "type": "object",
-                    "additionalProperties": true
+                    }
                   }
                 }
               }
@@ -1629,16 +1034,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
-                      "example": "Experts updated successfully."
+                      "example": "Experts updated successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
@@ -1646,105 +1060,19 @@
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid issue id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1779,111 +1107,59 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Criteria weights computed"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "weights": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        },
+                        "criteriaOrder": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid issue id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -1934,111 +1210,51 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issue resolved successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "rankedAlternatives": {
+                          "nullable": true,
+                          "example": null
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Valid issue id is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           },
           "404": {
-            "description": "Issue no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Issue not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Issue no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2050,7 +1266,7 @@
         ],
         "security": [],
         "summary": "Registra un nuevo usuario",
-        "description": "Crea una cuenta pendiente de confirmación y envía el correo de verificación.\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\n\nActualmente este endpoint devuelve HTTP 200 tanto en éxito como en\nerrores de validación middleware o errores funcionales del controller,\ndiferenciando el resultado mediante el contenido del body.\n",
+        "description": "Crea una cuenta pendiente de confirmación y envía un correo de verificación.\nAplica validaciones previas con express-validator.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2094,72 +1310,89 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Resultado del registro. Puede representar éxito, error de validación\nmiddleware o error funcional del controller.\n",
+          "201": {
+            "description": "Registro completado correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Signup successful"
-                        }
-                      }
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
                     },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "email": "Invalid email"
-                          }
-                        }
-                      }
+                    "message": {
+                      "type": "string",
+                      "example": "Signup successful"
                     },
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "errors"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "email": "Email already registered"
-                          }
-                        }
-                      }
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
-                  ]
+                  }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Error de validación o solicitud inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data",
+                    "error"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Validation failed."
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "example": "BAD_REQUEST"
+                        },
+                        "field": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "email"
+                        },
+                        "details": {
+                          "type": "object",
+                          "nullable": true,
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por email ya registrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2171,7 +1404,7 @@
         ],
         "security": [],
         "summary": "Inicia sesión",
-        "description": "Valida las credenciales del usuario, devuelve un access token\ny genera la cookie de refresh token.\n\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\nActualmente responde con HTTP 200 tanto en éxito como en errores de validación\no credenciales, diferenciando el resultado mediante el body.\n",
+        "description": "Valida las credenciales del usuario, devuelve un access token\ny genera la cookie de refresh token.\nAplica validaciones previas con express-validator.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2200,44 +1433,44 @@
         },
         "responses": {
           "200": {
-            "description": "Resultado del login. Puede representar éxito, error de validación\nmiddleware o error funcional del controller.\n",
+            "description": "Login realizado correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Login successful"
+                    },
+                    "data": {
                       "type": "object",
                       "required": [
-                        "success",
-                        "msg",
+                        "userId",
                         "token",
                         "expiresIn",
                         "role",
                         "isAdmin"
                       ],
                       "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Login successful"
+                        "userId": {
+                          "type": "string"
                         },
                         "token": {
-                          "type": "string",
-                          "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                          "type": "string"
                         },
                         "expiresIn": {
-                          "oneOf": [
-                            {
-                              "type": "integer"
-                            },
-                            {
-                              "type": "string"
-                            }
-                          ],
-                          "example": 3600
+                          "type": "integer",
+                          "example": 900
                         },
                         "role": {
                           "type": "string",
@@ -2248,50 +1481,17 @@
                           "example": false
                         }
                       }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "email": "Invalid email"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "errors"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "password": "Incorrect password"
-                          }
-                        }
-                      }
                     }
-                  ]
+                  }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Error de validación o credenciales inválidas"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2313,16 +1513,21 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Logged out successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
                   }
                 }
@@ -2338,7 +1543,7 @@
           "Auth"
         ],
         "summary": "Obtiene el perfil del usuario autenticado",
-        "description": "Devuelve los datos públicos del usuario autenticado.\nRequiere un access token válido en la cabecera Authorization.\n\nActualmente este endpoint responde con HTTP 200 tanto en éxito como en\nalgunos errores lógicos del controller, y con HTTP 401 si falla el middleware\nde autenticación.\n",
+        "description": "Devuelve los datos públicos del usuario autenticado.\nRequiere un access token válido en la cabecera Authorization.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2346,105 +1551,69 @@
         ],
         "responses": {
           "200": {
-            "description": "Perfil obtenido o error lógico del controller",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "university",
-                        "name",
-                        "email",
-                        "accountCreation",
-                        "role",
-                        "isAdmin"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "university": {
-                          "type": "string",
-                          "example": "Universidad de Granada"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "Mario"
-                        },
-                        "email": {
-                          "type": "string",
-                          "format": "email",
-                          "example": "mario@example.com"
-                        },
-                        "accountCreation": {
-                          "type": "string",
-                          "format": "date-time",
-                          "nullable": true
-                        },
-                        "role": {
-                          "type": "string",
-                          "example": "user"
-                        },
-                        "isAdmin": {
-                          "type": "boolean",
-                          "example": false
-                        }
-                      }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Error fetching user data"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Access token ausente, expirado o inválido",
+            "description": "Perfil obtenido correctamente",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "required": [
-                    "msg",
                     "success",
-                    "code"
+                    "message",
+                    "data"
                   ],
                   "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
                     "success": {
                       "type": "boolean",
-                      "example": false
+                      "example": true
                     },
-                    "code": {
+                    "message": {
                       "type": "string",
-                      "example": "TOKEN_INVALID"
+                      "example": "User data fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "university": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "accountCreation": {
+                              "type": "string",
+                              "format": "date-time",
+                              "nullable": true
+                            },
+                            "role": {
+                              "type": "string"
+                            },
+                            "isAdmin": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
               }
             }
+          },
+          "401": {
+            "description": "Access token ausente, expirado o inválido"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       },
@@ -2453,7 +1622,7 @@
           "Auth"
         ],
         "summary": "Elimina la cuenta del usuario autenticado",
-        "description": "Elimina la cuenta del usuario autenticado.\nRequiere un access token válido.\n\nActualmente este endpoint responde con HTTP 200 tanto en éxito como en\nalgunos errores lógicos del controller, y con HTTP 401 si falla el middleware\nde autenticación.\n",
+        "description": "Elimina la cuenta del usuario autenticado.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2461,23 +1630,28 @@
         ],
         "responses": {
           "200": {
-            "description": "Cuenta eliminada o error lógico del controller",
+            "description": "Cuenta eliminada correctamente",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Account deleted successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
                   }
                 }
@@ -2485,33 +1659,13 @@
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2522,7 +1676,7 @@
           "Auth"
         ],
         "summary": "Actualiza la contraseña del usuario autenticado",
-        "description": "Actualiza la contraseña del usuario autenticado.\nRequiere un access token válido.\n\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\nActualmente este endpoint puede responder:\n- 401 si falla el middleware de autenticación\n- 200 si la validación middleware falla\n- 200 si el controller termina en éxito o en ciertos errores lógicos\n",
+        "description": "Actualiza la contraseña del usuario autenticado.\nRequiere un access token válido.\nAplica validaciones previas con express-validator.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2556,95 +1710,45 @@
         },
         "responses": {
           "200": {
-            "description": "Contraseña actualizada, error de validación middleware o error lógico del controller.\n",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Password updated successfully"
-                        }
-                      }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "newPassword": "Password must be at least 6 characters, with at least 1 number and 1 letter"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Passwords do not match"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Access token ausente, expirado o inválido",
+            "description": "Contraseña actualizada correctamente",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "required": [
-                    "msg",
                     "success",
-                    "code"
+                    "message",
+                    "data"
                   ],
                   "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token does not exist"
-                    },
                     "success": {
                       "type": "boolean",
-                      "example": false
+                      "example": true
                     },
-                    "code": {
+                    "message": {
                       "type": "string",
-                      "example": "NO_TOKEN"
+                      "example": "Password updated successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
                   }
                 }
               }
             }
+          },
+          "400": {
+            "description": "Error de validación o solicitud inválida"
+          },
+          "401": {
+            "description": "Access token ausente, expirado o inválido"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2655,7 +1759,7 @@
           "Auth"
         ],
         "summary": "Actualiza la universidad del usuario autenticado",
-        "description": "Actualiza la universidad del usuario autenticado.\nRequiere un access token válido.\n\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\nPuede responder con 200 en éxito o error de validación middleware,\ny con 400, 404 o 500 en errores del controller.\n",
+        "description": "Actualiza la universidad del usuario autenticado.\nRequiere un access token válido.\nAplica validaciones previas con express-validator.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2682,150 +1786,45 @@
         },
         "responses": {
           "200": {
-            "description": "Universidad actualizada o error de validación middleware",
+            "description": "Universidad actualizada correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "University updated successfully"
-                        }
-                      }
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
                     },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "newUniversity": "Only letters and spaces, min 2, max 25"
-                          }
-                        }
-                      }
+                    "message": {
+                      "type": "string",
+                      "example": "University updated successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
-                  ]
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "University is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error de validación o solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "404": {
-            "description": "Usuario no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "User not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario no encontrado"
           },
           "500": {
-            "description": "Error interno del servidor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -2836,7 +1835,7 @@
           "Auth"
         ],
         "summary": "Actualiza el nombre del usuario autenticado",
-        "description": "Actualiza el nombre del usuario autenticado.\nRequiere un access token válido.\n\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\nPuede responder con 200 en éxito o error de validación middleware,\ny con 400, 404 o 500 en errores del controller.\n",
+        "description": "Actualiza el nombre del usuario autenticado.\nRequiere un access token válido.\nAplica validaciones previas con express-validator.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2863,150 +1862,45 @@
         },
         "responses": {
           "200": {
-            "description": "Nombre actualizado o error de validación middleware",
+            "description": "Nombre actualizado correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Name updated successfully"
-                        }
-                      }
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
                     },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "newName": "Only letters and spaces, min 2, max 25"
-                          }
-                        }
-                      }
+                    "message": {
+                      "type": "string",
+                      "example": "Name updated successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
-                  ]
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Name is required"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error de validación o solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "404": {
-            "description": "Usuario no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "User not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario no encontrado"
           },
           "500": {
-            "description": "Error interno del servidor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -3017,7 +1911,7 @@
           "Auth"
         ],
         "summary": "Solicita el cambio de email del usuario autenticado",
-        "description": "Genera un token de confirmación y envía un correo al nuevo email.\nEl cambio real no se aplica hasta confirmar el token.\n\nRequiere un access token válido.\nAntes de ejecutar el controller, se aplican validaciones con express-validator.\n",
+        "description": "Genera un token de confirmación y envía un correo al nuevo email.\nEl cambio real no se aplica hasta confirmar el token.\nRequiere un access token válido.\nAplica validaciones previas con express-validator.\n",
         "security": [
           {
             "bearerAuth": []
@@ -3045,174 +1939,48 @@
         },
         "responses": {
           "200": {
-            "description": "Solicitud procesada o error de validación middleware",
+            "description": "Solicitud de cambio de email procesada correctamente",
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "success",
-                        "msg"
-                      ],
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "msg": {
-                          "type": "string",
-                          "example": "Please, check new email for confirmation"
-                        }
-                      }
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
                     },
-                    {
-                      "type": "object",
-                      "required": [
-                        "errors"
-                      ],
-                      "properties": {
-                        "errors": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "example": {
-                            "newEmail": "Invalid email"
-                          }
-                        }
-                      }
+                    "message": {
+                      "type": "string",
+                      "example": "Please, check new email for confirmation"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
-                  ]
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Solicitud inválida",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "New email must be different from the current email"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error de validación o solicitud inválida"
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid token"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_INVALID"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "404": {
-            "description": "Usuario no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "User not found"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario no encontrado"
           },
           "409": {
-            "description": "Conflicto por email ya registrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Email already registered"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Conflicto por email ya registrado"
           },
           "500": {
-            "description": "Error interno del servidor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -3224,88 +1992,54 @@
         ],
         "security": [],
         "summary": "Renueva el access token",
-        "description": "Usa la cookie `refreshToken` para emitir un nuevo access token.\nEl middleware previo valida la cookie y añade `req.uid`.\n\nEste endpoint puede responder:\n- 200 con un nuevo token\n- 401 si la cookie no existe, es inválida o el usuario no existe\n- 200 con `success: false` si ocurre un error interno controlado en el middleware de refresh\n",
+        "description": "Usa la cookie `refreshToken` para emitir un nuevo access token.\nEl middleware previo valida la cookie y añade `req.uid`.\n",
         "responses": {
           "200": {
-            "description": "Token renovado correctamente o error interno controlado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "token",
-                        "expiresIn",
-                        "success"
-                      ],
-                      "properties": {
-                        "token": {
-                          "type": "string",
-                          "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                        },
-                        "expiresIn": {
-                          "oneOf": [
-                            {
-                              "type": "integer"
-                            },
-                            {
-                              "type": "string"
-                            }
-                          ],
-                          "example": 3600
-                        },
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        }
-                      }
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "msg",
-                        "success"
-                      ],
-                      "properties": {
-                        "msg": {
-                          "type": "string",
-                          "example": "Refresh token failed"
-                        },
-                        "success": {
-                          "type": "boolean",
-                          "example": false
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Refresh token ausente, inválido o usuario no encontrado",
+            "description": "Access token renovado correctamente",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "required": [
-                    "msg",
-                    "success"
+                    "success",
+                    "message",
+                    "data"
                   ],
                   "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Invalid refresh token"
-                    },
                     "success": {
                       "type": "boolean",
-                      "example": false
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Access token refreshed successfully."
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "token",
+                        "expiresIn"
+                      ],
+                      "properties": {
+                        "token": {
+                          "type": "string"
+                        },
+                        "expiresIn": {
+                          "type": "integer",
+                          "example": 900
+                        }
+                      }
                     }
                   }
                 }
               }
             }
+          },
+          "401": {
+            "description": "Refresh token ausente, inválido o usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -3383,16 +2117,21 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Admin access granted"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
                   }
                 }
@@ -3400,57 +2139,10 @@
             }
           },
           "401": {
-            "description": "Access token ausente, expirado o inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success",
-                    "code"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Token expired"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "code": {
-                      "type": "string",
-                      "example": "TOKEN_EXPIRED"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Access token ausente, expirado o inválido"
           },
           "403": {
-            "description": "Usuario autenticado sin permisos de administrador",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "msg",
-                    "success"
-                  ],
-                  "properties": {
-                    "msg": {
-                      "type": "string",
-                      "example": "Admin only"
-                    },
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Usuario autenticado sin permisos de administrador"
           }
         }
       }
@@ -3476,12 +2168,17 @@
                   "type": "object",
                   "required": [
                     "success",
+                    "message",
                     "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Models fetched successfully"
                     },
                     "data": {
                       "type": "array",
@@ -3499,28 +2196,7 @@
             "description": "Access token ausente, expirado o inválido"
           },
           "500": {
-            "description": "Error interno del servidor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -3546,12 +2222,17 @@
                   "type": "object",
                   "required": [
                     "success",
+                    "message",
                     "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Users fetched successfully"
                     },
                     "data": {
                       "type": "array",
@@ -3583,28 +2264,7 @@
             "description": "Access token ausente, expirado o inválido"
           },
           "500": {
-            "description": "Error interno del servidor",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error interno del servidor"
           }
         }
       }
@@ -3630,6 +2290,7 @@
                   "type": "object",
                   "required": [
                     "success",
+                    "message",
                     "data"
                   ],
                   "properties": {
@@ -3637,12 +2298,13 @@
                       "type": "boolean",
                       "example": true
                     },
+                    "message": {
+                      "type": "string",
+                      "example": "Expression domains fetched successfully"
+                    },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
+                      "type": "object",
+                      "additionalProperties": true
                     }
                   }
                 }
@@ -3653,28 +2315,7 @@
             "description": "Access token ausente, expirado o inválido"
           },
           "500": {
-            "description": "Error obteniendo dominios",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Error fetching domains"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error obteniendo dominios"
           }
         }
       },
@@ -3699,9 +2340,10 @@
                 "example": {
                   "name": "Numeric 0-10 custom",
                   "type": "numeric",
-                  "range": {
+                  "numericRange": {
                     "min": 0,
-                    "max": 10
+                    "max": 10,
+                    "step": 1
                   }
                 }
               }
@@ -3717,7 +2359,7 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg",
+                    "message",
                     "data"
                   ],
                   "properties": {
@@ -3725,7 +2367,7 @@
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Domain Numeric 0-10 custom created successfully"
                     },
@@ -3738,56 +2380,17 @@
               }
             }
           },
+          "400": {
+            "description": "Solicitud inválida"
+          },
           "401": {
             "description": "Access token ausente, expirado o inválido"
           },
           "409": {
-            "description": "Ya existe un dominio con el mismo nombre para el usuario",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "A domain with the same name already exists (for this user)."
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Ya existe un dominio con el mismo nombre para el usuario"
           },
           "500": {
-            "description": "Error creando dominio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "msg"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "msg": {
-                      "type": "string",
-                      "example": "Error creating domain"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Error creando dominio"
           }
         }
       }
@@ -3843,7 +2446,7 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg",
+                    "message",
                     "data"
                   ],
                   "properties": {
@@ -3851,7 +2454,7 @@
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Domain updated successfully"
                     },
@@ -3909,16 +2512,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Domain deleted"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
@@ -3980,16 +2592,26 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Issue Sustainability study created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
                     }
                   }
                 }
@@ -4017,7 +2639,7 @@
           "Issues"
         ],
         "summary": "Obtiene los issues activos visibles para el usuario actual",
-        "description": "Devuelve la vista principal de issues activos, incluyendo:\nlista de issues visibles, tareas, task center y metadatos de filtros.\nRequiere un access token válido.\n",
+        "description": "Devuelve la vista principal de issues activos, incluyendo lista de issues,\ntareas, task center y metadatos de filtros.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4032,34 +2654,46 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "issues"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "issues": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
+                    "message": {
+                      "type": "string",
+                      "example": "Active issues fetched successfully"
                     },
-                    "tasks": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
-                    },
-                    "taskCenter": {
+                    "data": {
                       "type": "object",
-                      "additionalProperties": true
-                    },
-                    "filtersMeta": {
-                      "type": "object",
-                      "additionalProperties": true
+                      "properties": {
+                        "issues": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "tasks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "taskCenter": {
+                          "type": "object",
+                          "nullable": true,
+                          "additionalProperties": true
+                        },
+                        "filtersMeta": {
+                          "type": "object",
+                          "nullable": true,
+                          "additionalProperties": true
+                        }
+                      }
                     }
                   }
                 }
@@ -4096,14 +2730,19 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "issues"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "issues": {
+                    "message": {
+                      "type": "string",
+                      "example": "Finished issues fetched successfully"
+                    },
+                    "data": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -4183,19 +2822,19 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg",
-                    "issueInfo"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Issue info sent"
                     },
-                    "issueInfo": {
+                    "data": {
                       "type": "object",
                       "additionalProperties": true
                     }
@@ -4246,16 +2885,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
-                      "example": "Issue removed from finished list"
+                      "example": "Issue Sustainability study removed"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
@@ -4306,16 +2954,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Issue Sustainability study removed"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }
@@ -4369,16 +3026,26 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "You have left the issue successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "issueName": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
                     }
                   }
                 }
@@ -4441,10 +3108,6 @@
                     "items": {
                       "type": "string"
                     }
-                  },
-                  "domainAssignments": {
-                    "type": "object",
-                    "additionalProperties": true
                   }
                 }
               }
@@ -4460,16 +3123,21 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Experts updated successfully."
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
                     }
                   }
                 }
@@ -4544,7 +3212,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Invitation status updated successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -4583,7 +3269,33 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Notifications fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -4616,7 +3328,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Notifications updated successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -4660,7 +3390,29 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Notification removed successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "notificationId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -4683,7 +3435,7 @@
           "Issues"
         ],
         "summary": "Obtiene las evaluaciones del usuario actual para un issue",
-        "description": "Devuelve las evaluaciones del usuario actual para el issue indicado.\nLa forma exacta de la respuesta depende de la estructura de evaluación\ndel issue (directa o pairwise).\nRequiere un access token válido.\n",
+        "description": "Devuelve las evaluaciones del usuario actual para el issue indicado.\nLa forma exacta de la respuesta depende de la estructura de evaluación\ndel issue, directa o pairwise.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4707,7 +3459,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Evaluations fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
                 }
               }
             }
@@ -4733,7 +3503,7 @@
           "Issues"
         ],
         "summary": "Guarda borradores de evaluaciones del usuario actual",
-        "description": "Guarda borradores de evaluaciones para el usuario actual.\nLa forma del payload depende de la estructura de evaluación\ndel issue (directa o pairwise).\nRequiere un access token válido.\n",
+        "description": "Guarda borradores de evaluaciones para el usuario actual.\nLa forma del payload depende de la estructura de evaluación\ndel issue, directa o pairwise.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4776,7 +3546,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Evaluations saved successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -4802,7 +3590,7 @@
           "Issues"
         ],
         "summary": "Envía las evaluaciones del usuario actual",
-        "description": "Valida y envía las evaluaciones del usuario actual.\nLa forma del payload depende de la estructura de evaluación\ndel issue (directa o pairwise).\nRequiere un access token válido.\n",
+        "description": "Valida y envía las evaluaciones del usuario actual.\nLa forma del payload depende de la estructura de evaluación\ndel issue, directa o pairwise.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4845,7 +3633,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Evaluations submitted successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -4911,7 +3717,33 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Issue resolved successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "rankedAlternatives": {
+                          "nullable": true,
+                          "example": null
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -4961,7 +3793,30 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Weights fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "bwmData": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5030,7 +3885,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Weights saved successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -5099,7 +3972,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Weights submitted successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -5149,7 +4040,41 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Criteria weights for 'Issue name' successfully computed."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "weights": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        },
+                        "criteriaOrder": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5175,7 +4100,7 @@
           "Issues"
         ],
         "summary": "Obtiene los pesos manuales guardados del usuario actual",
-        "description": "Devuelve los pesos manuales guardados del usuario autenticado\npara el issue indicado.\nRequiere un access token válido.\n",
+        "description": "Devuelve los pesos manuales guardados del usuario autenticado para el issue indicado.\nRequiere un access token válido.\n",
         "security": [
           {
             "bearerAuth": []
@@ -5199,7 +4124,30 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Manual weights fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "manualWeights": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5268,7 +4216,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Manual weights saved successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -5337,7 +4303,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Manual weights submitted successfully"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "example": null
+                    }
+                  }
                 }
               }
             }
@@ -5387,7 +4371,41 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Criteria weights computed"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "finished": {
+                          "type": "boolean"
+                        },
+                        "weights": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        },
+                        "criteriaOrder": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5439,14 +4457,19 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "scenarios"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "scenarios": {
+                    "message": {
+                      "type": "string",
+                      "example": "Scenarios fetched successfully"
+                    },
+                    "data": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -5529,7 +4552,29 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "success",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Scenario created successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scenarioId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5581,14 +4626,19 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "scenario"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "scenario": {
+                    "message": {
+                      "type": "string",
+                      "example": "Scenario fetched successfully"
+                    },
+                    "data": {
                       "type": "object",
                       "additionalProperties": true
                     }
@@ -5639,16 +4689,25 @@
                   "type": "object",
                   "required": [
                     "success",
-                    "msg"
+                    "message",
+                    "data"
                   ],
                   "properties": {
                     "success": {
                       "type": "boolean",
                       "example": true
                     },
-                    "msg": {
+                    "message": {
                       "type": "string",
                       "example": "Scenario deleted"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scenarioId": {
+                          "type": "string"
+                        }
+                      }
                     }
                   }
                 }

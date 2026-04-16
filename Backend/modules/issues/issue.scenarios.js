@@ -21,11 +21,13 @@ import {
 } from "../../modules/issues/issue.ordering.js";
 import { normalizeParams } from "../../services/modelApi/modelParamNormalizer.js";
 import {
+  AppError,
   createBadRequestError,
   createForbiddenError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
 
 // External libraries
@@ -495,19 +497,6 @@ export const buildScenarioPairwiseMatrices = async ({
 };
 
 /**
- * Crea un error enriquecido para los flujos de escenarios.
- *
- * @param {number} status Código HTTP.
- * @param {string} message Mensaje del error.
- * @returns {Error}
- */
-const createScenarioError = (status, message) => {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-};
-
-/**
  * Construye el array de tipos de criterio compatible con modelos directos.
  *
  * @param {Array<Object>} criteria Criterios hoja ordenados.
@@ -615,18 +604,29 @@ const getTargetScenarioModelOrThrow = async ({
   targetModelId,
   targetModelName,
 }) => {
-  let targetModel = null;
+  const cleanTargetModelId = String(targetModelId || "").trim();
+  const cleanTargetModelName = String(targetModelName || "").trim();
 
-  if (targetModelId) {
-    targetModel = await IssueModel.findById(targetModelId);
+  if (!cleanTargetModelId && !cleanTargetModelName) {
+    throw createBadRequestError("Target model is required", {
+      field: "targetModel",
+    });
   }
 
-  if (!targetModel && targetModelName) {
-    targetModel = await IssueModel.findOne({ name: targetModelName });
+  let targetModel = null;
+
+  if (cleanTargetModelId) {
+    targetModel = await IssueModel.findById(cleanTargetModelId);
+  }
+
+  if (!targetModel && cleanTargetModelName) {
+    targetModel = await IssueModel.findOne({ name: cleanTargetModelName });
   }
 
   if (!targetModel) {
-    throw createNotFoundError("Target model not found");
+    throw createNotFoundError("Target model not found", {
+      field: "targetModel",
+    });
   }
 
   return targetModel;
@@ -650,13 +650,17 @@ const getCreateScenarioContext = async ({
   targetModelName,
   paramOverrides,
 }) => {
-  if (!issueId) {
-    throw createBadRequestError("issueId is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
   const issue = await Issue.findById(issueId).populate("model");
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   if (!sameId(issue.admin, userId)) {
@@ -705,7 +709,10 @@ const getCreateScenarioContext = async ({
 
   if (targetEvaluationStructure !== issueEvaluationStructure) {
     throw createBadRequestError(
-      "Incompatible models: evaluation structure does not match this issue input type."
+      "Incompatible models: evaluation structure does not match this issue input type.",
+      {
+        field: "targetModel",
+      }
     );
   }
 
@@ -752,7 +759,10 @@ const getCreateScenarioContext = async ({
 
     if (!supportsDomain) {
       throw createBadRequestError(
-        `Target model does not support '${domainType}' domains. Pick a compatible model.`
+        `Target model does not support '${domainType}' domains. Pick a compatible model.`,
+        {
+          field: "targetModel",
+        }
       );
     }
   }
@@ -913,23 +923,24 @@ const executeScenarioModelOrThrow = async ({
       );
     }
   } catch (error) {
-    const axiosMsg =
-      error?.response?.data?.msg ||
+    const statusCode = error?.response?.status || 500;
+    const axiosMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       error?.message ||
       "Error creating scenario";
 
-    throw createScenarioError(
-      error?.response?.status || 500,
-      axiosMsg
-    );
+    throw new AppError(axiosMessage, {
+      statusCode,
+      code: statusCode >= 500 ? "INTERNAL_ERROR" : "BAD_REQUEST",
+      cause: error,
+    });
   }
 
-  const { success, msg, results } = response.data || {};
+  const { success, message, results } = response.data || {};
 
   if (!success) {
-    throw createBadRequestError(msg || "Model execution failed");
+    throw createBadRequestError(message || "Model execution failed");
   }
 
   return {
@@ -1177,8 +1188,10 @@ export const createIssueScenarioFlow = async ({
  * @returns {Promise<Object>}
  */
 export const getIssueScenariosPayload = async ({ issueId }) => {
-  if (!issueId) {
-    throw createBadRequestError("issueId is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
@@ -1202,8 +1215,10 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
  * @returns {Promise<Object>}
  */
 export const getScenarioByIdPayload = async ({ scenarioId }) => {
-  if (!scenarioId) {
-    throw createBadRequestError("scenarioId is required");
+  if (!scenarioId || !isValidObjectIdLike(scenarioId)) {
+    throw createBadRequestError("Valid scenario id is required", {
+      field: "scenarioId",
+    });
   }
 
   const scenarioDoc = await IssueScenario.findById(scenarioId)
@@ -1211,7 +1226,9 @@ export const getScenarioByIdPayload = async ({ scenarioId }) => {
     .lean();
 
   if (!scenarioDoc) {
-    throw createNotFoundError("Scenario not found");
+    throw createNotFoundError("Scenario not found", {
+      field: "scenarioId",
+    });
   }
 
   return {
@@ -1228,13 +1245,17 @@ export const getScenarioByIdPayload = async ({ scenarioId }) => {
  * @returns {Promise<void>}
  */
 export const removeIssueScenarioFlow = async ({ scenarioId, userId }) => {
-  if (!scenarioId) {
-    throw createBadRequestError("scenarioId is required");
+  if (!scenarioId || !isValidObjectIdLike(scenarioId)) {
+    throw createBadRequestError("Valid scenario id is required", {
+      field: "scenarioId",
+    });
   }
 
   const scenario = await IssueScenario.findById(scenarioId);
   if (!scenario) {
-    throw createNotFoundError("Scenario not found");
+    throw createNotFoundError("Scenario not found", {
+      field: "scenarioId",
+    });
   }
 
   const issue = await Issue.findById(scenario.issue).select("admin").lean();

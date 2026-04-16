@@ -8,7 +8,7 @@
 /**
  * @typedef {Object} ValidationMessageResult
  * @property {boolean} valid Indica si la validación es correcta.
- * @property {string} [msg] Mensaje descriptivo, si existe.
+ * @property {string} [message] Mensaje descriptivo, si existe.
  * @property {string} [field] Campo asociado al error, si existe.
  */
 
@@ -28,7 +28,8 @@ const getCellDomain = (cell) => {
   return null;
 };
 
-const isEmptyValue = (value) => value === "" || value === null || value === undefined;
+const isEmptyValue = (value) =>
+  value === "" || value === null || value === undefined;
 
 const hasMoreThanTwoDecimals = (value) => {
   const numericValue = Number(value);
@@ -101,7 +102,11 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
           break;
         }
 
-        const cellValidation = validateCellByDomain({ value, domain, locationLabel });
+        const cellValidation = validateCellByDomain({
+          value,
+          domain,
+          locationLabel,
+        });
 
         if (!cellValidation.valid) {
           firstInvalidCell = {
@@ -113,20 +118,37 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
           break;
         }
 
-        const inverseRow = criterionMatrix.find((matrixRow) => matrixRow.id === altCol);
+        const inverseRow = criterionMatrix.find(
+          (matrixRow) => matrixRow.id === altCol
+        );
         const inverseCell = inverseRow?.[row.id];
         const inverseValue = getCellValue(inverseCell);
 
-        if (
-          isEmptyValue(inverseValue) ||
-          (domain?.type === "numeric" &&
-            (isNaN(inverseValue) || inverseValue < 0 || inverseValue > 1))
-        ) {
+        const inverseDomain = getCellDomain(inverseCell);
+        const inverseLocationLabel = `[${altCol}, ${row.id}]`;
+
+        if (isEmptyValue(inverseValue)) {
           firstInvalidCell = {
             row: row.id,
             col: altCol,
             criterion: criterionName,
             message: `Cell for ${locationLabel} has no valid inverse evaluation.`,
+          };
+          break;
+        }
+
+        const inverseValidation = validateCellByDomain({
+          value: inverseValue,
+          domain: inverseDomain,
+          locationLabel: inverseLocationLabel,
+        });
+
+        if (!inverseValidation.valid) {
+          firstInvalidCell = {
+            row: row.id,
+            col: altCol,
+            criterion: criterionName,
+            message: inverseValidation.message,
           };
           break;
         }
@@ -170,7 +192,11 @@ export const validateFinalEvaluations = (evaluations) => {
         break;
       }
 
-      const cellValidation = validateCellByDomain({ value, domain, locationLabel });
+      const cellValidation = validateCellByDomain({
+        value,
+        domain,
+        locationLabel,
+      });
 
       if (!cellValidation.valid) {
         firstInvalidCell = {
@@ -198,18 +224,22 @@ export const validateFinalEvaluations = (evaluations) => {
  */
 export const validateFinalWeights = (bwmData) => {
   if (!bwmData) {
-    return { valid: false, msg: "Missing weight data" };
+    return { valid: false, message: "Missing weight data" };
   }
 
   const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } = bwmData;
 
   if (!bestCriterion || !worstCriterion) {
-    return { valid: false, msg: "You must select both best and worst criteria" };
+    return {
+      valid: false,
+      message: "You must select both best and worst criteria",
+    };
   }
 
   const criteria = Object.keys(bestToOthers || {});
+
   if (criteria.length === 0) {
-    return { valid: false, msg: "No criteria found for evaluation" };
+    return { valid: false, message: "No criteria found for evaluation" };
   }
 
   for (const criterion of criteria) {
@@ -221,7 +251,7 @@ export const validateFinalWeights = (bwmData) => {
       return {
         valid: false,
         field: criterion,
-        msg: `Invalid value in best-to-others for ${criterion}`,
+        message: `Invalid value in best-to-others for ${criterion}`,
       };
     }
   }
@@ -235,10 +265,10 @@ export const validateFinalWeights = (bwmData) => {
       return {
         valid: false,
         field: criterion,
-        msg: `Invalid value in others-to-worst for ${criterion}`,
+        message: `Invalid value in others-to-worst for ${criterion}`,
       };
     }
   }
 
-  return { valid: true };
+  return { valid: true, message: "" };
 };

@@ -8,6 +8,8 @@ import swaggerJSDoc from "swagger-jsdoc";
 import authRouter from "./routes/auth.route.js";
 import issueRouter from "./routes/issue.route.js";
 import adminRouter from "./routes/admin.route.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
+
 /**
  * @callback CorsDecisionCallback
  * @param {?Error} error Error de validación de origen.
@@ -126,7 +128,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api", (_req, res) => {
   return res.status(404).json({
     success: false,
-    msg: "API route not found",
+    message: "API route not found",
   });
 });
 
@@ -140,5 +142,11 @@ app.use(express.static(distPath));
 app.get("*", (_req, res) => {
   return res.sendFile(path.join(distPath, "index.html"));
 });
+
+/**
+ * Middleware global de errores.
+ * Debe ir al final para capturar errores lanzados en rutas y middlewares.
+ */
+app.use(errorHandler);
 
 export default app;

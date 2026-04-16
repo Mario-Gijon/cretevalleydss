@@ -316,17 +316,17 @@ const CreateIssuePage = () => {
 
     setLoading(true);
 
-    const createdIssue = await createIssue(allData);
+    const result = await createIssue(allData);
 
-    if (createdIssue.success) {
-      setIssueCreated(createdIssue);
+    if (result.success) {
+      setIssueCreated(result);
       setLoading(false);
       navigate("/dashboard");
       return;
     }
 
-    if (createdIssue.obj === "issueName") setIssueNameError(createdIssue.msg);
-    showSnackbarAlert(createdIssue.msg, "error");
+    if (result.error?.field === "issueName") setIssueNameError(result.message);
+    showSnackbarAlert(result.message, "error");
     setLoading(false);
   };
 

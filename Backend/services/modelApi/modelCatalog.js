@@ -1,24 +1,21 @@
+const MODEL_ENDPOINT_KEYS = {
+  TOPSIS: "topsis",
+  "FUZZY TOPSIS": "fuzzy_topsis",
+  BORDA: "borda",
+  ARAS: "aras",
+  "HERRERA-VIEDMA CRP": "herrera_viedma_crp",
+  "HERRERA VIEDMA CRP": "herrera_viedma_crp",
+  CRP: "herrera_viedma_crp",
+};
+
 /**
  * Obtiene la clave de endpoint asociada a un modelo.
  *
- * @param {string} [modelName] Nombre del modelo.
+ * @param {string} [modelName=""] Nombre del modelo.
  * @returns {string|null}
  */
 export const getModelEndpointKey = (modelName = "") => {
   const normalizedName = String(modelName).trim().toUpperCase();
 
-  if (normalizedName === "TOPSIS") return "topsis";
-  if (normalizedName === "FUZZY TOPSIS") return "fuzzy_topsis";
-  if (normalizedName === "BORDA") return "borda";
-  if (normalizedName === "ARAS") return "aras";
-
-  if (
-    normalizedName === "HERRERA-VIEDMA CRP" ||
-    normalizedName === "HERRERA VIEDMA CRP" ||
-    normalizedName === "CRP"
-  ) {
-    return "herrera_viedma_crp";
-  }
-
-  return null;
+  return MODEL_ENDPOINT_KEYS[normalizedName] ?? null;
 };

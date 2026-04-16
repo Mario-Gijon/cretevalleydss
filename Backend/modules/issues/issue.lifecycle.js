@@ -25,6 +25,7 @@ import {
   toIdString,
   uniqueIdStrings,
 } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
@@ -111,10 +112,18 @@ export const registerUserExit = async ({
  * @returns {Promise<Object>}
  */
 const getIssueOrThrow = async ({ issueId, session = null }) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
+
   const issue = await withOptionalSession(Issue.findById(issueId), session);
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   return issue;

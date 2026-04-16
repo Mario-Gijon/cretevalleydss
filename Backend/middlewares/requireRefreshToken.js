@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { createUnauthorizedError } from "../utils/common/errors.js";
 
 const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
@@ -25,7 +26,11 @@ export const requireRefreshToken = (req, res, next) => {
     const refreshTokenCookie = getRefreshTokenFromCookies(req);
 
     if (!refreshTokenCookie) {
-      return res.status(401).json({ msg: "Token does not exist", success: false });
+      return next(
+        createUnauthorizedError("Token does not exist.", {
+          code: "NO_REFRESH_TOKEN",
+        })
+      );
     }
 
     const { uid } = jwt.verify(refreshTokenCookie, process.env.JWT_REFRESH);
@@ -33,7 +38,11 @@ export const requireRefreshToken = (req, res, next) => {
 
     return next();
   } catch (error) {
-    console.error(error);
-    return res.status(401).json({ msg: "Invalid refresh token", success: false });
+    return next(
+      createUnauthorizedError("Invalid refresh token.", {
+        code: "REFRESH_TOKEN_INVALID",
+        cause: error,
+      })
+    );
   }
 };

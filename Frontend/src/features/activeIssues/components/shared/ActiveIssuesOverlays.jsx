@@ -1,11 +1,11 @@
 import { Backdrop } from "@mui/material";
 
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import { RateBwmWeightsDialog } from "../../../../components/RateBwmWeightsDialog/RateBwmWeightsDialog";
-import { RateConsensusWeightsDialog } from "../../../../components/RateConsensusWeightsDialog/RateConsensusWeightsDialog";
 import IssueDetailsDrawer from "../drawer/shell/IssueDetailsDrawer";
 import ActiveIssueConfirmDialog from "../dialogs/ActiveIssueConfirmDialog";
 import IssueExpertsDialogs from "../../../issueExperts/components/IssueExpertsDialogs.jsx";
+import IssueAlternativeEvaluationDialogs from "../../../issueAlternativeEvaluation/components/IssueAlternativeEvaluationDialogs.jsx";
+import IssueWeightEvaluationDialogs from "../../../issueWeightEvaluation/components/IssueWeightEvaluationDialogs.jsx";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.
@@ -29,7 +29,6 @@ const ActiveIssuesOverlays = ({
   handleRemoveIssue,
   setIsRatingAlternatives,
   setIsRatingWeights,
-  EvaluationDialogComponent,
   setDrawerOpen,
   isRatingAlternatives,
   isRatingWeights,
@@ -70,30 +69,19 @@ const ActiveIssuesOverlays = ({
         setIsRatingWeights={setIsRatingWeights}
       />
 
-      {selectedIssue && EvaluationDialogComponent ? (
-        <EvaluationDialogComponent
-          setOpenIssueDialog={setDrawerOpen}
-          isRatingAlternatives={isRatingAlternatives}
-          setIsRatingAlternatives={setIsRatingAlternatives}
-          selectedIssue={selectedIssue}
-        />
-      ) : null}
+      <IssueAlternativeEvaluationDialogs
+        selectedIssue={selectedIssue}
+        isRatingAlternatives={isRatingAlternatives}
+        setIsRatingAlternatives={setIsRatingAlternatives}
+        setOpenIssueDialog={setDrawerOpen}
+      />
 
-      {selectedIssue?.weightingMode === "consensus" ? (
-        <RateConsensusWeightsDialog
-          isRatingWeights={isRatingWeights}
-          setIsRatingWeights={setIsRatingWeights}
-          selectedIssue={selectedIssue}
-          handleCloseIssueDialog={closeDrawer}
-        />
-      ) : (
-        <RateBwmWeightsDialog
-          isRatingWeights={isRatingWeights}
-          setIsRatingWeights={setIsRatingWeights}
-          selectedIssue={selectedIssue}
-          handleCloseIssueDialog={closeDrawer}
-        />
-      )}
+      <IssueWeightEvaluationDialogs
+        selectedIssue={selectedIssue}
+        isRatingWeights={isRatingWeights}
+        setIsRatingWeights={setIsRatingWeights}
+        handleCloseIssueDialog={closeDrawer}
+      />
 
       <ActiveIssueConfirmDialog
         open={confirm.open}

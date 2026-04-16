@@ -1,9 +1,8 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import TimelineIcon from "@mui/icons-material/Timeline";
-
-import { IssueTimeline } from "../../../../../components/IssueTimeline/IssueTimeline";
 import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.parts";
+import { IssueTimeline } from "../../shared/IssueTimeline";
 
 /**
  * Pestaña Timeline del drawer de detalles del issue.

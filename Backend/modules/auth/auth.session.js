@@ -1,12 +1,13 @@
 import { User } from "../../models/Users.js";
 import { generateToken } from "../../services/token.service.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
+
 /**
  * @typedef {Object} LoginUserResult
  * @property {string|Object} userId Id del usuario autenticado.
- * @property {string} msg Mensaje de resultado.
+ * @property {string} message Mensaje de resultado.
  * @property {string} token Access token generado.
- * @property {number|string} expiresIn Tiempo de expiración del access token.
+ * @property {number} expiresIn Tiempo de expiración del access token en segundos.
  * @property {string} role Rol del usuario autenticado.
  * @property {boolean} isAdmin Indica si el usuario es administrador.
  */
@@ -18,11 +19,8 @@ import { createBadRequestError } from "../../utils/common/errors.js";
  * @param {string} message Mensaje de error.
  * @returns {Error}
  */
-const createLoginFieldError = (field, message) => {
-  const error = createBadRequestError(message);
-  error.field = field;
-  return error;
-};
+const createLoginFieldError = (field, message) =>
+  createBadRequestError(message, { field });
 
 /**
  * Inicia sesión validando credenciales y devolviendo el payload de autenticación.
@@ -67,7 +65,7 @@ export const loginUserFlow = async ({ email, password }) => {
 
   return {
     userId: user._id,
-    msg: "Login successful",
+    message: "Login successful",
     token,
     expiresIn,
     role,

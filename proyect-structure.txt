@@ -1,0 +1,459 @@
+.
+├── Backend
+│   ├── app.js
+│   ├── bun.lockb
+│   ├── controllers
+│   │   ├── admin.controller.js
+│   │   ├── auth.controller.js
+│   │   └── issue.controller.js
+│   ├── database
+│   │   └── db.js
+│   ├── docs
+│   │   ├── api-reference.html
+│   │   ├── architecture.md
+│   │   ├── data-model.md
+│   │   ├── DOCUMENTATION_SETUP.md
+│   │   ├── jsdoc
+│   │   │   ├── AppError_AppError.html
+│   │   │   ├── fonts
+│   │   │   │   ├── OpenSans-BoldItalic-webfont.eot
+│   │   │   │   ├── OpenSans-BoldItalic-webfont.svg
+│   │   │   │   ├── OpenSans-BoldItalic-webfont.woff
+│   │   │   │   ├── OpenSans-Bold-webfont.eot
+│   │   │   │   ├── OpenSans-Bold-webfont.svg
+│   │   │   │   ├── OpenSans-Bold-webfont.woff
+│   │   │   │   ├── OpenSans-Italic-webfont.eot
+│   │   │   │   ├── OpenSans-Italic-webfont.svg
+│   │   │   │   ├── OpenSans-Italic-webfont.woff
+│   │   │   │   ├── OpenSans-LightItalic-webfont.eot
+│   │   │   │   ├── OpenSans-LightItalic-webfont.svg
+│   │   │   │   ├── OpenSans-LightItalic-webfont.woff
+│   │   │   │   ├── OpenSans-Light-webfont.eot
+│   │   │   │   ├── OpenSans-Light-webfont.svg
+│   │   │   │   ├── OpenSans-Light-webfont.woff
+│   │   │   │   ├── OpenSans-Regular-webfont.eot
+│   │   │   │   ├── OpenSans-Regular-webfont.svg
+│   │   │   │   └── OpenSans-Regular-webfont.woff
+│   │   │   ├── global.html
+│   │   │   ├── index.html
+│   │   │   ├── module-models_Alternative-Alternative.html
+│   │   │   ├── module-models_Alternative.html
+│   │   │   ├── module-models_Consensus-Consensus.html
+│   │   │   ├── module-models_Consensus.html
+│   │   │   ├── module-models_CriteriaWeightEvaluation-CriteriaWeightEvaluation.html
+│   │   │   ├── module-models_CriteriaWeightEvaluation.html
+│   │   │   ├── module-models_Criterion-Criterion.html
+│   │   │   ├── module-models_Criterion.html
+│   │   │   ├── module-models_Evaluation-Evaluation.html
+│   │   │   ├── module-models_Evaluation.html
+│   │   │   ├── module-models_ExitUserIssue-ExitUserIssue.html
+│   │   │   ├── module-models_ExitUserIssue.html
+│   │   │   ├── module-models_ExpressionDomain-ExpressionDomain.html
+│   │   │   ├── module-models_ExpressionDomain.html
+│   │   │   ├── module-models_IssueExpressionDomain.html
+│   │   │   ├── module-models_IssueExpressionDomain-IssueExpressionDomain.html
+│   │   │   ├── module-models_Issue.html
+│   │   │   ├── module-models_Issue-Issue.html
+│   │   │   ├── module-models_IssueModel.html
+│   │   │   ├── module-models_IssueModel-IssueModel.html
+│   │   │   ├── module-models_IssueScenario.html
+│   │   │   ├── module-models_IssueScenario-IssueScenario.html
+│   │   │   ├── module-models_Notification.html
+│   │   │   ├── module-models_Notification-Notification.html
+│   │   │   ├── module-models_Participation.html
+│   │   │   ├── module-models_Participation-Participation.html
+│   │   │   ├── module-models_User.html
+│   │   │   ├── module-models_User-User.html
+│   │   │   ├── scripts
+│   │   │   │   ├── linenumber.js
+│   │   │   │   └── prettify
+│   │   │   │       ├── Apache-License-2.0.txt
+│   │   │   │       ├── lang-css.js
+│   │   │   │       └── prettify.js
+│   │   │   └── styles
+│   │   │       ├── jsdoc-default.css
+│   │   │       ├── prettify-jsdoc.css
+│   │   │       └── prettify-tomorrow.css
+│   │   ├── jsdoc-home.md
+│   │   ├── openapi.components.js
+│   │   └── README.md
+│   ├── .env
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── jobs
+│   │   └── autoCloseIssues.js
+│   ├── jsdoc.json
+│   ├── middlewares
+│   │   ├── asyncHandler.js
+│   │   ├── authValidations.js
+│   │   ├── errorHandler.js
+│   │   ├── refreshToken.js
+│   │   ├── requireAdmin.js
+│   │   ├── requireRefreshToken.js
+│   │   └── requireToken.js
+│   ├── models
+│   │   ├── Alternatives.js
+│   │   ├── Consensus.js
+│   │   ├── Criteria.js
+│   │   ├── CriteriaWeightEvaluation.js
+│   │   ├── Evaluations.js
+│   │   ├── ExitUserIssue.js
+│   │   ├── ExpressionDomain.js
+│   │   ├── IssueExpressionDomains.js
+│   │   ├── IssueModels.js
+│   │   ├── IssueScenarios.js
+│   │   ├── Issues.js
+│   │   ├── Notificacions.js
+│   │   ├── Participations.js
+│   │   ├── Users.js
+│   │   └── validators
+│   │       └── orderedNumericArrayValidator.js
+│   ├── modules
+│   │   ├── admin
+│   │   │   ├── admin.issueReads.js
+│   │   │   └── admin.users.js
+│   │   ├── auth
+│   │   │   ├── auth.account.js
+│   │   │   ├── auth.emailChange.js
+│   │   │   ├── auth.profile.js
+│   │   │   └── auth.session.js
+│   │   └── issues
+│   │       ├── issue.active.js
+│   │       ├── issue.creation.js
+│   │       ├── issue.dispatch.js
+│   │       ├── issue.domainSnapshots.js
+│   │       ├── issue.evaluations.js
+│   │       ├── issue.evaluationStructure.js
+│   │       ├── issue.experts.js
+│   │       ├── issue.expressionDomains.js
+│   │       ├── issue.finished.js
+│   │       ├── issue.finishedSections.js
+│   │       ├── issue.lifecycle.js
+│   │       ├── issue.mappers.js
+│   │       ├── issue.notifications.js
+│   │       ├── issue.ordering.js
+│   │       ├── issue.queries.js
+│   │       ├── issue.resolution.js
+│   │       ├── issue.scenarios.js
+│   │       ├── issue.validation.js
+│   │       └── issue.weights.js
+│   ├── openapi
+│   │   ├── bundled-openapi.json
+│   │   └── openapi.json
+│   ├── package.json
+│   ├── README.md
+│   ├── redocly.yaml
+│   ├── routes
+│   │   ├── admin.route.js
+│   │   ├── auth.route.js
+│   │   └── issue.route.js
+│   ├── scripts
+│   │   └── generate-openapi.mjs
+│   ├── seeds
+│   │   ├── seedExpressionDomains.js
+│   │   └── seedIssueModels.js
+│   ├── server.js
+│   ├── services
+│   │   ├── email.service.js
+│   │   ├── modelApi
+│   │   │   ├── modelCatalog.js
+│   │   │   └── modelParamNormalizer.js
+│   │   └── token.service.js
+│   ├── tsconfig.json
+│   └── utils
+│       └── common
+│           ├── errors.js
+│           ├── ids.js
+│           ├── mongoose.js
+│           ├── responses.js
+│           └── strings.js
+├── build_and_push.sh
+├── cloc-report.sh
+├── cretevalley-docker-compose.yml
+├── docker-compose.yml
+├── Dockerfile.apimodels
+├── Dockerfile.backend
+├── Dockerfile.frontend
+├── .dockerignore
+├── Frontend
+│   ├── bun.lockb
+│   ├── .env.development
+│   ├── .env.production
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── README.md
+│   ├── src
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── eu_dark.svg
+│   │   │   ├── eu_light.svg
+│   │   │   ├── logo.svg
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── Account
+│   │   │   │   └── Account.jsx
+│   │   │   ├── AlternativeItem
+│   │   │   │   └── AlternativeItem.jsx
+│   │   │   ├── CreateLinguisticExpressionDialog
+│   │   │   │   └── CreateLinguisticExpressionDialog.jsx
+│   │   │   ├── CriteriaItem
+│   │   │   │   └── CriteriaItem.jsx
+│   │   │   ├── CriteriaList
+│   │   │   │   └── CriteriaList.jsx
+│   │   │   ├── CriterionAccordion
+│   │   │   │   └── CriterionAccordion.jsx
+│   │   │   ├── FinishedIssueDialog
+│   │   │   │   └── FinishedIssueDialog.jsx
+│   │   │   ├── FuzzyPreviewChart
+│   │   │   │   └── FuzzyPreviewChart.jsx
+│   │   │   ├── GoUpButton
+│   │   │   │   └── GoUpButton.jsx
+│   │   │   ├── IssueTimeline
+│   │   │   ├── LoadingProgress
+│   │   │   │   └── CircularLoading.jsx
+│   │   │   ├── ModelParameters
+│   │   │   │   └── ModelParameters.jsx
+│   │   │   ├── ModelParamsView
+│   │   │   │   └── ModelParamsView.jsx
+│   │   │   ├── ResponsiveNabvar
+│   │   │   │   ├── navbarUtils.js
+│   │   │   │   └── ResponsiveNavbar.jsx
+│   │   │   ├── Settings
+│   │   │   │   ├── Fields
+│   │   │   │   │   ├── ConfirmDeleteDialog.jsx
+│   │   │   │   │   ├── ConfirmPasswordDialog.jsx
+│   │   │   │   │   ├── DeleteAccountButton.jsx
+│   │   │   │   │   ├── EmailField.jsx
+│   │   │   │   │   ├── NameField.jsx
+│   │   │   │   │   ├── NotificationsSwitch.jsx
+│   │   │   │   │   ├── PasswordField.jsx
+│   │   │   │   │   └── UniversityField.jsx
+│   │   │   │   ├── SettingsHeader.jsx
+│   │   │   │   ├── Settings.jsx
+│   │   │   │   └── utils
+│   │   │   │       └── validationUtils.js
+│   │   │   ├── SnackbarAlert
+│   │   │   │   └── SnackbarAlert.jsx
+│   │   │   ├── StyledComponents
+│   │   │   │   ├── GlassAccordion.jsx
+│   │   │   │   ├── GlassCard.jsx
+│   │   │   │   ├── GlassDialog.jsx
+│   │   │   │   ├── GlassPaper.jsx
+│   │   │   │   ├── GradientTabs.jsx
+│   │   │   │   ├── MaterialUISwitch.jsx
+│   │   │   │   ├── StepperLibConnector.jsx
+│   │   │   │   └── StyledChip.jsx
+│   │   │   └── ViewExpressionsDomainDialog
+│   │   │       └── ViewExpressionsDomainDialog.jsx
+│   │   ├── context
+│   │   │   ├── auth
+│   │   │   │   ├── auth.context.js
+│   │   │   │   └── auth.provider.jsx
+│   │   │   ├── issues
+│   │   │   │   ├── issues.context.js
+│   │   │   │   └── issues.provider.jsx
+│   │   │   └── snackbarAlert
+│   │   │       ├── snackbarAlert.context.js
+│   │   │       └── snackbarAlert.provider.jsx
+│   │   ├── features
+│   │   │   ├── activeIssues
+│   │   │   │   ├── components
+│   │   │   │   │   ├── dialogs
+│   │   │   │   │   │   └── ActiveIssueConfirmDialog.jsx
+│   │   │   │   │   ├── drawer
+│   │   │   │   │   │   ├── config
+│   │   │   │   │   │   │   └── IssueDetailsDrawer.tabs.js
+│   │   │   │   │   │   ├── shell
+│   │   │   │   │   │   │   ├── IssueDetailsDrawerEmptyState.jsx
+│   │   │   │   │   │   │   ├── IssueDetailsDrawerHeader.jsx
+│   │   │   │   │   │   │   ├── IssueDetailsDrawer.jsx
+│   │   │   │   │   │   │   └── IssueDetailsDrawer.parts.jsx
+│   │   │   │   │   │   ├── tabs
+│   │   │   │   │   │   │   ├── IssueDetailsAlternativesTab.jsx
+│   │   │   │   │   │   │   ├── IssueDetailsCriteriaTab.jsx
+│   │   │   │   │   │   │   ├── IssueDetailsOverviewTab.jsx
+│   │   │   │   │   │   │   └── IssueDetailsTimelineTab.jsx
+│   │   │   │   │   │   └── utils
+│   │   │   │   │   │       └── issueDetailsDrawer.utils.js
+│   │   │   │   │   ├── layout
+│   │   │   │   │   │   ├── ActiveIssuesDesktopLayout.jsx
+│   │   │   │   │   │   └── ActiveIssuesMobileLayout.jsx
+│   │   │   │   │   ├── panels
+│   │   │   │   │   │   ├── ActiveIssuesHeader.jsx
+│   │   │   │   │   │   ├── IssueGrid
+│   │   │   │   │   │   │   ├── IssueCard.jsx
+│   │   │   │   │   │   │   ├── IssueDeadlineBar.jsx
+│   │   │   │   │   │   │   ├── IssuesGrid.jsx
+│   │   │   │   │   │   │   ├── IssueStageStepper.jsx
+│   │   │   │   │   │   │   ├── styles
+│   │   │   │   │   │   │   │   └── issuesGrid.styles.js
+│   │   │   │   │   │   │   └── utils
+│   │   │   │   │   │   │       └── issuesGrid.utils.js
+│   │   │   │   │   │   └── TaskCenter
+│   │   │   │   │   │       ├── styles
+│   │   │   │   │   │       │   └── taskCenter.styles.js
+│   │   │   │   │   │       ├── TaskCenter.jsx
+│   │   │   │   │   │       ├── TaskCenterPanel.jsx
+│   │   │   │   │   │       ├── TaskCenterRail.jsx
+│   │   │   │   │   │       └── utils
+│   │   │   │   │   │           └── taskCenter.utils.js
+│   │   │   │   │   └── shared
+│   │   │   │   │       ├── ActiveIssuesOverlays.jsx
+│   │   │   │   │       ├── ActiveIssuesPill.jsx
+│   │   │   │   │       ├── ActiveIssuesTinyStat.jsx
+│   │   │   │   │       ├── IssueParticipationChart.jsx
+│   │   │   │   │       └── IssueTimeline.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── useActiveIssueActions.js
+│   │   │   │   │   ├── useActiveIssueConfirm.js
+│   │   │   │   │   ├── useActiveIssueDrawer.js
+│   │   │   │   │   ├── useActiveIssueExperts.js
+│   │   │   │   │   ├── useActiveIssuesListing.js
+│   │   │   │   │   └── useActiveIssuesScreenSync.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── activeIssues.styles.js
+│   │   │   │   └── utils
+│   │   │   │       ├── activeIssues.filters.js
+│   │   │   │       └── activeIssues.meta.js
+│   │   │   ├── auth
+│   │   │   │   ├── components
+│   │   │   │   │   ├── AuthLayout.jsx
+│   │   │   │   │   ├── LogInForm.jsx
+│   │   │   │   │   └── SignUpForm.jsx
+│   │   │   │   ├── constants
+│   │   │   │   │   ├── loginForm.constants.js
+│   │   │   │   │   └── signupForm.constants.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── auth.styles.js
+│   │   │   │   └── utils
+│   │   │   │       ├── authStatus.utils.js
+│   │   │   │       ├── loginForm.validation.js
+│   │   │   │       └── signupForm.validation.js
+│   │   │   ├── issueAlternativeEvaluation
+│   │   │   │   ├── components
+│   │   │   │   │   ├── direct
+│   │   │   │   │   │   └── DirectEvaluationMatrix.jsx
+│   │   │   │   │   ├── IssueAlternativeEvaluationDialogs.jsx
+│   │   │   │   │   ├── pairwise
+│   │   │   │   │   │   └── PairwiseAlternativeMatrix.jsx
+│   │   │   │   │   └── shared
+│   │   │   │   │       ├── AlternativeEvaluationDialogShell.jsx
+│   │   │   │   │       ├── AlternativeEvaluationSaveDialog.jsx
+│   │   │   │   │       └── AlternativeEvaluationSubmitDialog.jsx
+│   │   │   │   ├── dialogs
+│   │   │   │   │   ├── direct
+│   │   │   │   │   │   └── DirectAlternativesEvaluationDialog.jsx
+│   │   │   │   │   └── pairwise
+│   │   │   │   │       └── PairwiseAlternativesEvaluationDialog.jsx
+│   │   │   │   ├── registry
+│   │   │   │   │   └── alternativeEvaluation.registry.js
+│   │   │   │   ├── services
+│   │   │   │   │   └── alternativeEvaluation.service.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── alternativeEvaluationDialog.styles.js
+│   │   │   │   └── utils
+│   │   │   │       ├── directEvaluation.validation.js
+│   │   │   │       ├── evaluationStructure.js
+│   │   │   │       ├── leafCriteria.utils.js
+│   │   │   │       └── pairwiseEvaluation.validation.js
+│   │   │   ├── issueExperts
+│   │   │   │   ├── components
+│   │   │   │   │   ├── IssueExpertsDialogs.jsx
+│   │   │   │   │   ├── IssueExpertsDomainAssigments.jsx
+│   │   │   │   │   ├── IssueExpertsPill.jsx
+│   │   │   │   │   └── IssueExpertsSection.jsx
+│   │   │   │   ├── context
+│   │   │   │   │   └── issueExpertsFlow.context.js
+│   │   │   │   ├── dialogs
+│   │   │   │   │   ├── AddExpertsDomainsDialog.jsx
+│   │   │   │   │   └── AddExpertsPickerDialog.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useIssueExpertsFlow.js
+│   │   │   │   ├── providers
+│   │   │   │   │   └── IssueExpertsFlowProvider.jsx
+│   │   │   │   ├── services
+│   │   │   │   │   └── issueExperts.service.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── issueExperts.styles.js
+│   │   │   │   └── utils
+│   │   │   │       ├── issueExperts.groups.js
+│   │   │   │       └── issueExperts.search.js
+│   │   │   └── issueWeightEvaluation
+│   │   │       ├── components
+│   │   │       │   └── IssueWeightEvaluationDialogs.jsx
+│   │   │       ├── dialogs
+│   │   │       │   ├── bwm
+│   │   │       │   │   └── BwmWeightsEvaluationDialog.jsx
+│   │   │       │   └── manual
+│   │   │       │       └── ManualWeightsEvaluationDialog.jsx
+│   │   │       ├── registry
+│   │   │       │   └── weightEvaluation.registry.js
+│   │   │       ├── services
+│   │   │       │   └── weightEvaluation.service.js
+│   │   │       ├── styles
+│   │   │       │   └── weightEvaluationDialog.styles.js
+│   │   │       └── utils
+│   │   │           └── leafCriteria.utils.js
+│   │   ├── hooks
+│   │   │   └── useFetch.js
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   └── private
+│   │   │       ├── activeIssues
+│   │   │       │   └── ActiveIssuesPage.jsx
+│   │   │       ├── admin
+│   │   │       │   ├── AdminPage.jsx
+│   │   │       │   ├── AdminRoute.jsx
+│   │   │       │   └── sections
+│   │   │       │       ├── ExpertsSection.jsx
+│   │   │       │       ├── IssuesSection.jsx
+│   │   │       │       ├── LogsSection.jsx
+│   │   │       │       ├── ModelsSection.jsx
+│   │   │       │       └── ReportsSection.jsx
+│   │   │       ├── createIssue
+│   │   │       │   ├── CreateIssuePage.jsx
+│   │   │       │   └── Steps
+│   │   │       │       ├── AlternativesStep
+│   │   │       │       │   └── AlternativesStep.jsx
+│   │   │       │       ├── CriteriaStep
+│   │   │       │       │   └── CriteriaStep.jsx
+│   │   │       │       ├── ExpertsStep
+│   │   │       │       │   └── ExpertsStep.jsx
+│   │   │       │       ├── ExpressionDomainStep
+│   │   │       │       │   └── ExpressionDomainStep.jsx
+│   │   │       │       ├── ModelStep
+│   │   │       │       │   └── ModelStep.jsx
+│   │   │       │       └── SummaryStep
+│   │   │       │           └── SummaryStep.jsx
+│   │   │       ├── finishedIssues
+│   │   │       │   └── FinishedIssuesPage.jsx
+│   │   │       ├── issuesModels
+│   │   │       │   └── ModelsPage.jsx
+│   │   │       └── PrivateLayout.jsx
+│   │   ├── services
+│   │   │   ├── admin.service.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── issue.service.js
+│   │   │   └── service.utils.js
+│   │   ├── styles
+│   │   │   └── dashboard.css
+│   │   ├── theme
+│   │   │   ├── appTheme.js
+│   │   │   └── globalStyles.js
+│   │   └── utils
+│   │       ├── authFetch.js
+│   │       ├── createIssueUtils.js
+│   │       └── handleTwoDecimals.js
+│   └── vite.config.js
+├── .gitignore
+├── proyect-structure.txt
+├── README.md
+└── reports
+    └── cloc
+        ├── by_file.csv
+        ├── by_language.csv
+        └── totals.csv
+
+132 directories, 325 files

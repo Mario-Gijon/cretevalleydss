@@ -59,18 +59,10 @@ import {
 } from "../../services/issue.service";
 
 import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { PairwiseMatrix } from "../PairwiseMatrix/PairwiseMatrix";
-import { Matrix } from "../Matrix/Matrix";
 
 import { GlassPaper } from "../StyledComponents/GlassPaper";
 import { GlassDialog } from "../StyledComponents/GlassDialog";
 import { CriterionItem } from "../CriteriaList/CriteriaList";
-import { extractLeafCriteria } from "../../utils/evaluationPairwiseMatrixDialogUtils";
-import {
-  ISSUE_EVALUATION_STRUCTURES,
-  resolveIssueEvaluationStructure,
-  hasSingleLeafCriterion,
-} from "../../utils/issues/evaluationStructure";
 
 import { Scatter } from "react-chartjs-2";
 import { Chart } from "chart.js/auto";
@@ -85,6 +77,10 @@ import {
   Title,
 } from "chart.js";
 import ModelParamsView from "../ModelParamsView/ModelParamsView";
+import PairwiseAlternativeMatrix from "../../features/issueAlternativeEvaluation/components/pairwise/PairwiseAlternativeMatrix";
+import { extractLeafCriteria } from "../../features/issueAlternativeEvaluation/utils/leafCriteria.utils";
+import { ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES, resolveIssueAlternativeEvaluationStructure } from "../../features/issueAlternativeEvaluation/utils/evaluationStructure";
+import DirectEvaluationMatrix from "../../features/issueAlternativeEvaluation/components/direct/DirectEvaluationMatrix";
 
 ChartJS.register(
   ScatterController,
@@ -95,6 +91,51 @@ ChartJS.register(
   Title,
   zoomPlugin
 );
+
+const countLeafCriteria = (nodes) => {
+  if (!Array.isArray(nodes) || nodes.length === 0) return 0;
+
+  let count = 0;
+  const stack = [...nodes];
+
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node) continue;
+
+    const children = Array.isArray(node.children) ? node.children : [];
+    if (children.length === 0) {
+      count += 1;
+    } else {
+      stack.push(...children);
+    }
+  }
+
+  return count;
+};
+
+export const getLeafCriteriaCountFromIssue = (source) => {
+  if (Array.isArray(source?.modelParams?.leafCriteria)) {
+    return source.modelParams.leafCriteria.length;
+  }
+
+  if (Array.isArray(source?.modelParams?.base?.leafCriteria)) {
+    return source.modelParams.base.leafCriteria.length;
+  }
+
+  if (Array.isArray(source?.summary?.criteria)) {
+    return countLeafCriteria(source.summary.criteria);
+  }
+
+  if (Array.isArray(source?.criteria)) {
+    return countLeafCriteria(source.criteria);
+  }
+
+  return 0;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const hasSingleLeafCriterion = (source) =>
+  getLeafCriteriaCountFromIssue(source) === 1;
 
 const auroraBg = (theme, intensity = 0.16) => ({
   backgroundImage: `radial-gradient(1200px 520px at 12% 0%, ${alpha(
@@ -1105,7 +1146,7 @@ const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
   const details = scenario?.outputs?.details || {};
   const ce = scenario?.outputs?.collectiveEvaluations || null;
-  const scenarioEvaluationStructure = resolveIssueEvaluationStructure(scenario);
+  const scenarioEvaluationStructure = resolveIssueAlternativeEvaluationStructure(scenario);
 
   out.summary = {
     ...(out.summary || {}),
@@ -1116,7 +1157,7 @@ const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       scenarioEvaluationStructure || out?.summary?.evaluationStructure,
     isPairwise:
       scenarioEvaluationStructure ===
-      ISSUE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+      ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||
@@ -1158,7 +1199,7 @@ const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
 };
 
 const FINISHED_ISSUE_RATINGS_UI = {
-  [ISSUE_EVALUATION_STRUCTURES.DIRECT]: {
+  [ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES.DIRECT]: {
     getExpertList: ({ viewIssue, currentPhaseIndex }) =>
       Object.keys(
         viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {}
@@ -1180,7 +1221,7 @@ const FINISHED_ISSUE_RATINGS_UI = {
     showCriterionSelector: () => false,
 
     render: ({ viewIssue, evaluations, collectiveEvaluations }) => (
-      <Matrix
+      <DirectEvaluationMatrix
         alternatives={viewIssue?.summary?.alternatives || []}
         criteria={extractLeafCriteria(viewIssue?.summary?.criteria || []).map(
           (c) => c.name
@@ -1192,7 +1233,7 @@ const FINISHED_ISSUE_RATINGS_UI = {
     ),
   },
 
-  [ISSUE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: {
+  [ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: {
     getExpertList: ({ viewIssue, currentPhaseIndex }) =>
       Object.keys(
         viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.expertEvaluations || {}
@@ -1230,7 +1271,7 @@ const FINISHED_ISSUE_RATINGS_UI = {
       !hasSingleCriterion && criterionList.length > 0,
 
     render: ({ viewIssue, evaluations, collectiveEvaluations }) => (
-      <PairwiseMatrix
+      <PairwiseAlternativeMatrix
         alternatives={viewIssue?.summary?.alternatives || []}
         evaluations={evaluations}
         collectiveEvaluations={collectiveEvaluations}
@@ -1242,7 +1283,7 @@ const FINISHED_ISSUE_RATINGS_UI = {
 
 const getFinishedIssueRatingsUi = (evaluationStructure) =>
   FINISHED_ISSUE_RATINGS_UI[evaluationStructure] ||
-  FINISHED_ISSUE_RATINGS_UI[ISSUE_EVALUATION_STRUCTURES.DIRECT];
+  FINISHED_ISSUE_RATINGS_UI[ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES.DIRECT];
 
 export const FinishedIssueDialog = ({
   selectedIssue,
@@ -1469,7 +1510,7 @@ export const FinishedIssueDialog = ({
   }, [baseModelParamsBlock, issue?.summary?.criteria]);
 
   const evaluationStructure = useMemo(
-    () => resolveIssueEvaluationStructure(viewIssue || issue),
+    () => resolveIssueAlternativeEvaluationStructure(viewIssue || issue),
     [viewIssue, issue]
   );
 

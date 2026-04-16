@@ -26,40 +26,34 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { GlassDialog } from "../StyledComponents/GlassDialog";
-import { getLeafCriteria } from "../../utils/createIssueUtils";
-import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { saveBwmWeights, getBwmWeights, sendBwmWeights } from "../../services/issue.service";
-import { useIssuesDataContext } from "../../context/issues/issues.context";
+import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
+import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
+import { useIssuesDataContext } from "../../../../context/issues/issues.context";
+import {
+  getBwmWeightDraft,
+  saveBwmWeightDraft,
+  submitBwmWeights,
+} from "../../services/weightEvaluation.service.js";
+import { getLeafCriteria } from "../../utils/leafCriteria.utils.js";
+import {
+  auroraBg,
+  softIconBtnSx,
+  inputSx,
+  sectionSx,
+} from "../../styles/weightEvaluationDialog.styles.js";
 
-const auroraBg = (theme, intensity = 0.16) => ({
-  backgroundImage: `radial-gradient(1100px 520px at 12% 0%, ${alpha(theme.palette.info.main, intensity)}, transparent 62%),
-                    radial-gradient(900px 500px at 88% 14%, ${alpha(theme.palette.secondary.main, intensity)}, transparent 58%)`,
-});
-
-const softIconBtnSx = (theme) => ({
-  borderRadius: 3,
-  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-  bgcolor: alpha(theme.palette.common.white, 0.05),
-  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.08) },
-});
-
-const inputSx = (theme) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    bgcolor: alpha(theme.palette.common.white, 0.04),
-  },
-});
-
-const sectionSx = (theme) => ({
-  borderRadius: 4,
-  p: 2,
-  bgcolor: alpha(theme.palette.common.white, 0.035),
-  border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-});
-
-export const RateBwmWeightsDialog = ({
+/**
+ * Diálogo de evaluación BWM de pesos.
+ *
+ * @param {Object} props
+ * @param {Function} props.handleCloseIssueDialog
+ * @param {boolean} props.isRatingWeights
+ * @param {Function} props.setIsRatingWeights
+ * @param {Object} props.selectedIssue
+ * @returns {JSX.Element}
+ */
+const BwmWeightsEvaluationDialog = ({
   handleCloseIssueDialog,
   isRatingWeights,
   setIsRatingWeights,
@@ -71,7 +65,10 @@ export const RateBwmWeightsDialog = ({
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
-  const leafCriteria = useMemo(() => getLeafCriteria(selectedIssue?.criteria || []), [selectedIssue]);
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(selectedIssue?.criteria || []),
+    [selectedIssue]
+  );
 
   const [bwmData, setBwmData] = useState({
     bestCriterion: "",
@@ -87,7 +84,9 @@ export const RateBwmWeightsDialog = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isRatingWeights || !selectedIssue?.id) return;
+    if (!isRatingWeights || !selectedIssue?.id) {
+      return;
+    }
 
     const fetchWeights = async () => {
       setBwmData({
@@ -99,8 +98,9 @@ export const RateBwmWeightsDialog = ({
       });
 
       setLoading(true);
+
       try {
-        const response = await getBwmWeights(selectedIssue.name);
+        const response = await getBwmWeightDraft(selectedIssue.id);
 
         if (response.success && response.bwmData) {
           setBwmData(response.bwmData);
@@ -109,15 +109,19 @@ export const RateBwmWeightsDialog = ({
           const empty = {
             bestCriterion: "",
             worstCriterion: "",
-            bestToOthers: Object.fromEntries(leafCriteria.map((c) => [c.name, ""])),
-            othersToWorst: Object.fromEntries(leafCriteria.map((c) => [c.name, ""])),
+            bestToOthers: Object.fromEntries(
+              leafCriteria.map((criterion) => [criterion.name, ""])
+            ),
+            othersToWorst: Object.fromEntries(
+              leafCriteria.map((criterion) => [criterion.name, ""])
+            ),
             completed: false,
           };
           setBwmData(empty);
           setInitialData(JSON.stringify(empty));
         }
-      } catch (err) {
-        console.error("Error fetching weights:", err);
+      } catch (error) {
+        console.error("Error fetching weights:", error);
         showSnackbarAlert("Error fetching saved weights", "error");
       } finally {
         setLoading(false);
@@ -135,8 +139,7 @@ export const RateBwmWeightsDialog = ({
         completed: false,
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRatingWeights, selectedIssue]);
+  }, [isRatingWeights, selectedIssue, leafCriteria, showSnackbarAlert]);
 
   const handleClearAllWeights = () => {
     setBwmData({
@@ -150,8 +153,10 @@ export const RateBwmWeightsDialog = ({
 
   const handleConfirmClose = () => {
     const current = JSON.stringify(bwmData);
-    if (current !== initialData && !bwmData.completed) setOpenSaveDialog(true);
-    else {
+
+    if (current !== initialData && !bwmData.completed) {
+      setOpenSaveDialog(true);
+    } else {
       setIsRatingWeights(false);
       handleClearAllWeights();
     }
@@ -161,9 +166,10 @@ export const RateBwmWeightsDialog = ({
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const response = await saveBwmWeights(selectedIssue.id, bwmData);
+    const response = await saveBwmWeightDraft(selectedIssue.id, bwmData);
 
     setLoading(false);
+
     if (response.success) {
       showSnackbarAlert("Weights saved successfully", "success");
       setIsRatingWeights(false);
@@ -176,9 +182,10 @@ export const RateBwmWeightsDialog = ({
     setLoading(true);
     setOpenSendDialog(false);
 
-    const response = await sendBwmWeights(selectedIssue.id, bwmData);
+    const response = await submitBwmWeights(selectedIssue.id, bwmData);
 
     setLoading(false);
+
     if (response.success) {
       showSnackbarAlert("Weights submitted successfully", "success");
       handleCloseIssueDialog();
@@ -190,19 +197,28 @@ export const RateBwmWeightsDialog = ({
   };
 
   const isComplete = useMemo(() => {
-    if (!bwmData.bestCriterion || !bwmData.worstCriterion) return false;
-    const names = leafCriteria.map((c) => c.name);
+    if (!bwmData.bestCriterion || !bwmData.worstCriterion) {
+      return false;
+    }
+
+    const names = leafCriteria.map((criterion) => criterion.name);
 
     const bestValid = names.every((name) => {
-      if (name === bwmData.bestCriterion) return true;
-      const v = bwmData.bestToOthers[name];
-      return v && v >= 1 && v <= 9;
+      if (name === bwmData.bestCriterion) {
+        return true;
+      }
+
+      const value = bwmData.bestToOthers[name];
+      return value && value >= 1 && value <= 9;
     });
 
     const worstValid = names.every((name) => {
-      if (name === bwmData.worstCriterion) return true;
-      const v = bwmData.othersToWorst[name];
-      return v && v >= 1 && v <= 9;
+      if (name === bwmData.worstCriterion) {
+        return true;
+      }
+
+      const value = bwmData.othersToWorst[name];
+      return value && value >= 1 && value <= 9;
     });
 
     return bestValid && worstValid;
@@ -226,10 +242,24 @@ export const RateBwmWeightsDialog = ({
         maxWidth="md"
         PaperProps={{ elevation: 0 }}
       >
-        {/* HEADER */}
-        <Box sx={{ ...auroraBg(theme, 0.18), borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}` }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.6 }}>
-            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+        <Box
+          sx={{
+            ...auroraBg(theme, 0.18),
+            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 2, py: 1.6 }}
+          >
+            <Stack
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
+              sx={{ minWidth: 0 }}
+            >
               <Avatar
                 sx={{
                   width: 44,
@@ -246,7 +276,10 @@ export const RateBwmWeightsDialog = ({
                 <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
                   Criteria weights (BWM)
                 </Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 900 }}
+                >
                   {selectedIssue?.name}
                   {isReadOnly ? " • submitted" : ""}
                 </Typography>
@@ -271,29 +304,37 @@ export const RateBwmWeightsDialog = ({
           }}
         >
           <Stack spacing={2.2} sx={{ maxWidth: 1000, mx: "auto" }}>
-            {/* STEP 1 */}
             <Box sx={sectionSx(theme)}>
               <Stack spacing={1.25}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
                   Step 1 — Select best and worst
                 </Typography>
 
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  flexWrap="wrap"
+                >
                   <TextField
                     select
                     label="Best criterion"
                     size="small"
                     color="info"
                     value={bwmData.bestCriterion}
-                    onChange={(e) => setBwmData((prev) => ({ ...prev, bestCriterion: e.target.value }))}
+                    onChange={(event) =>
+                      setBwmData((prev) => ({
+                        ...prev,
+                        bestCriterion: event.target.value,
+                      }))
+                    }
                     sx={{ minWidth: 240, ...inputSx(theme) }}
                     disabled={isReadOnly}
                   >
                     {leafCriteria
-                      .filter((c) => c.name !== bwmData.worstCriterion)
-                      .map((c) => (
-                        <MenuItem key={c.name} value={c.name}>
-                          {c.name}
+                      .filter((criterion) => criterion.name !== bwmData.worstCriterion)
+                      .map((criterion) => (
+                        <MenuItem key={criterion.name} value={criterion.name}>
+                          {criterion.name}
                         </MenuItem>
                       ))}
                   </TextField>
@@ -304,15 +345,20 @@ export const RateBwmWeightsDialog = ({
                     size="small"
                     color="info"
                     value={bwmData.worstCriterion}
-                    onChange={(e) => setBwmData((prev) => ({ ...prev, worstCriterion: e.target.value }))}
+                    onChange={(event) =>
+                      setBwmData((prev) => ({
+                        ...prev,
+                        worstCriterion: event.target.value,
+                      }))
+                    }
                     sx={{ minWidth: 240, ...inputSx(theme) }}
                     disabled={isReadOnly}
                   >
                     {leafCriteria
-                      .filter((c) => c.name !== bwmData.bestCriterion)
-                      .map((c) => (
-                        <MenuItem key={c.name} value={c.name}>
-                          {c.name}
+                      .filter((criterion) => criterion.name !== bwmData.bestCriterion)
+                      .map((criterion) => (
+                        <MenuItem key={criterion.name} value={criterion.name}>
+                          {criterion.name}
                         </MenuItem>
                       ))}
                   </TextField>
@@ -320,7 +366,6 @@ export const RateBwmWeightsDialog = ({
               </Stack>
             </Box>
 
-            {/* STEP 2 */}
             {bwmData.bestCriterion && (
               <Box sx={sectionSx(theme)}>
                 <Stack spacing={1.25}>
@@ -329,11 +374,11 @@ export const RateBwmWeightsDialog = ({
                   </Typography>
 
                   <Stack spacing={0.25}>
-                    {leafCriteria.map((c, idx) => {
-                      const isBest = c.name === bwmData.bestCriterion;
+                    {leafCriteria.map((criterion, index) => {
+                      const isBest = criterion.name === bwmData.bestCriterion;
 
                       return (
-                        <Box key={c.name}>
+                        <Box key={criterion.name}>
                           <Stack
                             direction="row"
                             alignItems="center"
@@ -342,13 +387,19 @@ export const RateBwmWeightsDialog = ({
                               py: 1,
                               px: 0.5,
                               borderRadius: 2.5,
-                              bgcolor: isBest ? alpha(theme.palette.success.main, 0.10) : "transparent",
+                              bgcolor: isBest
+                                ? alpha(theme.palette.success.main, 0.10)
+                                : "transparent",
                             }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                              {c.name}
+                              {criterion.name}
                               {isBest ? (
-                                <Typography component="span" variant="caption" sx={{ color: "success.main", fontWeight: 950 }}>
+                                <Typography
+                                  component="span"
+                                  variant="caption"
+                                  sx={{ color: "success.main", fontWeight: 950 }}
+                                >
                                   {" "}
                                   • best
                                 </Typography>
@@ -359,12 +410,16 @@ export const RateBwmWeightsDialog = ({
                               type="number"
                               size="small"
                               color="info"
-                              value={isBest ? 1 : bwmData.bestToOthers[c.name] ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, "");
+                              value={isBest ? 1 : bwmData.bestToOthers[criterion.name] ?? ""}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/[^0-9]/g, "");
+
                                 setBwmData((prev) => ({
                                   ...prev,
-                                  bestToOthers: { ...prev.bestToOthers, [c.name]: val },
+                                  bestToOthers: {
+                                    ...prev.bestToOthers,
+                                    [criterion.name]: value,
+                                  },
                                 }));
                               }}
                               sx={{ width: 100, ...inputSx(theme) }}
@@ -373,8 +428,10 @@ export const RateBwmWeightsDialog = ({
                             />
                           </Stack>
 
-                          {idx < leafCriteria.length - 1 && (
-                            <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+                          {index < leafCriteria.length - 1 && (
+                            <Divider
+                              sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }}
+                            />
                           )}
                         </Box>
                       );
@@ -384,7 +441,6 @@ export const RateBwmWeightsDialog = ({
               </Box>
             )}
 
-            {/* STEP 3 */}
             {bwmData.worstCriterion && (
               <Box sx={sectionSx(theme)}>
                 <Stack spacing={1.25}>
@@ -393,11 +449,11 @@ export const RateBwmWeightsDialog = ({
                   </Typography>
 
                   <Stack spacing={0.25}>
-                    {leafCriteria.map((c, idx) => {
-                      const isWorst = c.name === bwmData.worstCriterion;
+                    {leafCriteria.map((criterion, index) => {
+                      const isWorst = criterion.name === bwmData.worstCriterion;
 
                       return (
-                        <Box key={c.name}>
+                        <Box key={criterion.name}>
                           <Stack
                             direction="row"
                             alignItems="center"
@@ -406,13 +462,19 @@ export const RateBwmWeightsDialog = ({
                               py: 1,
                               px: 0.5,
                               borderRadius: 2.5,
-                              bgcolor: isWorst ? alpha(theme.palette.error.main, 0.10) : "transparent",
+                              bgcolor: isWorst
+                                ? alpha(theme.palette.error.main, 0.10)
+                                : "transparent",
                             }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                              {c.name}
+                              {criterion.name}
                               {isWorst ? (
-                                <Typography component="span" variant="caption" sx={{ color: "error.main", fontWeight: 950 }}>
+                                <Typography
+                                  component="span"
+                                  variant="caption"
+                                  sx={{ color: "error.main", fontWeight: 950 }}
+                                >
                                   {" "}
                                   • worst
                                 </Typography>
@@ -423,12 +485,16 @@ export const RateBwmWeightsDialog = ({
                               type="number"
                               size="small"
                               color="info"
-                              value={isWorst ? 1 : bwmData.othersToWorst[c.name] ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, "");
+                              value={isWorst ? 1 : bwmData.othersToWorst[criterion.name] ?? ""}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/[^0-9]/g, "");
+
                                 setBwmData((prev) => ({
                                   ...prev,
-                                  othersToWorst: { ...prev.othersToWorst, [c.name]: val },
+                                  othersToWorst: {
+                                    ...prev.othersToWorst,
+                                    [criterion.name]: value,
+                                  },
                                 }));
                               }}
                               sx={{ width: 100, ...inputSx(theme) }}
@@ -437,8 +503,10 @@ export const RateBwmWeightsDialog = ({
                             />
                           </Stack>
 
-                          {idx < leafCriteria.length - 1 && (
-                            <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+                          {index < leafCriteria.length - 1 && (
+                            <Divider
+                              sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }}
+                            />
                           )}
                         </Box>
                       );
@@ -450,10 +518,21 @@ export const RateBwmWeightsDialog = ({
           </Stack>
         </DialogContent>
 
-        {/* FOOTER */}
         {!isReadOnly && (
-          <DialogActions sx={{ px: 2, py: 1.5, borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`, gap: 1 }}>
-            <Button variant="outlined" color="error" onClick={handleClearAllWeights} startIcon={<DeleteSweepOutlinedIcon />}>
+          <DialogActions
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+              gap: 1,
+            }}
+          >
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleClearAllWeights}
+              startIcon={<DeleteSweepOutlinedIcon />}
+            >
               Clear all
             </Button>
 
@@ -472,16 +551,26 @@ export const RateBwmWeightsDialog = ({
         )}
       </GlassDialog>
 
-      {/* SAVE DRAFT ON CLOSE */}
-      <GlassDialog open={openSaveDialog} onClose={() => setOpenSaveDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog
+        open={openSaveDialog}
+        onClose={() => setOpenSaveDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle sx={{ fontWeight: 950 }}>Save your progress?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
-            You have unsaved changes. You can save them as a draft or exit without saving.
+            You have unsaved changes. You can save them as a draft or exit without
+            saving.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="info" onClick={handleSaveWeights} startIcon={<SaveOutlinedIcon />}>
+          <Button
+            variant="outlined"
+            color="info"
+            onClick={handleSaveWeights}
+            startIcon={<SaveOutlinedIcon />}
+          >
             Save draft
           </Button>
           <Button
@@ -499,8 +588,12 @@ export const RateBwmWeightsDialog = ({
         </DialogActions>
       </GlassDialog>
 
-      {/* SUBMIT CONFIRM */}
-      <GlassDialog open={openSendDialog} onClose={() => setOpenSendDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog
+        open={openSendDialog}
+        onClose={() => setOpenSendDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle sx={{ fontWeight: 950 }}>Submit your weights?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
@@ -508,10 +601,20 @@ export const RateBwmWeightsDialog = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="success" onClick={handleSendWeights} startIcon={<CheckCircleOutlineIcon />}>
+          <Button
+            variant="outlined"
+            color="success"
+            onClick={handleSendWeights}
+            startIcon={<CheckCircleOutlineIcon />}
+          >
             Submit
           </Button>
-          <Button variant="outlined" color="warning" onClick={() => setOpenSendDialog(false)} startIcon={<CloseIcon />}>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={() => setOpenSendDialog(false)}
+            startIcon={<CloseIcon />}
+          >
             Cancel
           </Button>
         </DialogActions>
@@ -519,3 +622,5 @@ export const RateBwmWeightsDialog = ({
     </>
   );
 };
+
+export default BwmWeightsEvaluationDialog;

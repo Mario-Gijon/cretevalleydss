@@ -5,6 +5,7 @@ import { Participation } from "../../models/Participations.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Consensus } from "../../models/Consensus.js";
 import { buildIssueCriteriaTree } from "../../modules/issues/issue.active.js";
+import { createNotFoundError } from "../../utils/common/errors.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
   const matrices = phaseDoc?.details?.matrices;
@@ -45,16 +46,6 @@ const getSubmittedValueForPhase = (evaluation, phaseNumber, isConsensus) => {
   return hasValue(evaluation.value) ? evaluation.value : undefined;
 };
 
-const buildWeightMap = (leafCriteria, weights) => {
-  const weightMap = {};
-
-  leafCriteria.forEach((criterion, index) => {
-    weightMap[criterion.name] = weights[index] ?? null;
-  });
-
-  return weightMap;
-};
-
 const mapCriteriaTreeToSummaryShape = (node) => ({
   _id: node.id,
   name: node.name,
@@ -74,7 +65,8 @@ const attachWeightsToTree = (node, weightMap) => {
 
   return {
     ...node,
-    children: node.children?.map((child) => attachWeightsToTree(child, weightMap)) ?? [],
+    children:
+      node.children?.map((child) => attachWeightsToTree(child, weightMap)) ?? [],
   };
 };
 
@@ -103,6 +95,10 @@ const groupEvaluationsByExpert = (evaluations) => {
  */
 export const createSummarySection = async (issueId) => {
   const issue = await Issue.findById(issueId).populate("admin").populate("model");
+
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
 
   const [alternatives, criteria, participations, consensusPhases] =
     await Promise.all([
@@ -215,7 +211,9 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     ? consensusPhasesRaw
     : [{ phase: 1, collectiveEvaluations: {}, details: {} }];
 
-  const criterionMap = new Map(criteria.map((criterion) => [criterion._id.toString(), criterion.name]));
+  const criterionMap = new Map(
+    criteria.map((criterion) => [criterion._id.toString(), criterion.name])
+  );
   const alternativeMap = new Map(
     alternatives.map((alternative) => [alternative._id.toString(), alternative.name])
   );
@@ -234,7 +232,9 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
       if (hasFilter && !participants.has(expertEmail)) continue;
 
       const evaluationsInPhase = evaluations.filter(
-        (evaluation) => getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !== undefined
+        (evaluation) =>
+          getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !==
+          undefined
       );
 
       if (evaluationsInPhase.length === 0) continue;
@@ -248,7 +248,11 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
           ? alternativeMap.get(evaluation.comparedAlternative.toString())
           : null;
 
-        const value = getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus);
+        const value = getSubmittedValueForPhase(
+          evaluation,
+          phaseNumber,
+          isConsensus
+        );
 
         if (value === undefined || value === null || value === "") continue;
         if (!criterionName || !alternativeName || !comparedAlternativeName) continue;
@@ -325,7 +329,9 @@ export const createExpertsRatingsSection = async (issueId) => {
       if (hasFilter && !participants.has(expertEmail)) continue;
 
       const evaluationsInPhase = evaluations.filter(
-        (evaluation) => getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !== undefined
+        (evaluation) =>
+          getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus) !==
+          undefined
       );
 
       if (evaluationsInPhase.length === 0) continue;
@@ -345,7 +351,11 @@ export const createExpertsRatingsSection = async (issueId) => {
 
           if (!evaluation) continue;
 
-          const value = getSubmittedValueForPhase(evaluation, phaseNumber, isConsensus);
+          const value = getSubmittedValueForPhase(
+            evaluation,
+            phaseNumber,
+            isConsensus
+          );
           if (value === undefined) continue;
 
           criteriaValues[criterion.name] = value;
@@ -384,7 +394,9 @@ export const createExpertsRatingsSection = async (issueId) => {
  * @returns {Promise<Object|null>}
  */
 export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
-  const consensusDocs = await Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean();
+  const consensusDocs = await Consensus.find({ issue: issueId })
+    .sort({ phase: 1 })
+    .lean();
 
   const scatterPlot = consensusDocs
     .filter((doc) => doc?.details?.plotsGraphic?.expert_points)

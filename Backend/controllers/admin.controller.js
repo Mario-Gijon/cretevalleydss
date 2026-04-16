@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 // Models
 import { Issue } from "../models/Issues.js";
 
+// Modules
 import {
   EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
@@ -38,38 +39,22 @@ import {
 // Utils
 import {
   createBadRequestError,
+  createConflictError,
   createNotFoundError,
-  getErrorResponsePayload,
-  getErrorStatusCode,
 } from "../utils/common/errors.js";
-import { endSessionSafely } from "../utils/common/mongoose.js";
-
-/**
- * Convierte un valor o documento en id string.
- *
- * @param {*} value Valor a convertir.
- * @returns {string}
- */
-const asId = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object" && value._id) return String(value._id);
-  return String(value);
-};
-
-/**
- * Comprueba si un valor es un ObjectId válido.
- *
- * @param {*} value Valor a validar.
- * @returns {boolean}
- */
-const isValidObjectId = (value) => Boolean(value) && mongoose.Types.ObjectId.isValid(value);
+import { toIdString } from "../utils/common/ids.js";
+import {
+  endSessionSafely,
+  isValidObjectIdLike,
+} from "../utils/common/mongoose.js";
+import { sendSuccess } from "../utils/common/responses.js";
 
 /**
  * @typedef {Object} AdminIssueExecutionContext
  * @property {Object} issue Issue cargado con su modelo.
  * @property {string} creatorUserId Id del creador del issue.
  */
+
 /**
  * Obtiene el contexto necesario para ejecutar acciones de admin
  * sobre un issue reutilizando flows de dominio.
@@ -83,8 +68,10 @@ const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
   session = null,
 }) => {
-  if (!issueId || !isValidObjectId(issueId)) {
-    throw createBadRequestError("Valid issue id is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
   let query = Issue.findById(issueId).populate("model");
@@ -96,13 +83,33 @@ const getAdminIssueExecutionContextOrThrow = async ({
   const issue = await query;
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   return {
     issue,
-    creatorUserId: asId(issue.admin),
+    creatorUserId: toIdString(issue.admin),
   };
+};
+
+/**
+ * Convierte un error de clave duplicada de MongoDB en AppError de conflicto.
+ *
+ * @param {unknown} error Error original.
+ * @returns {never}
+ */
+const throwIfDuplicateEmailError = (error) => {
+  if (error?.code === 11000) {
+    throw createConflictError("Email already registered", {
+      field: "email",
+      details: error?.keyValue ?? null,
+      cause: error,
+    });
+  }
+
+  throw error;
 };
 
 /**
@@ -110,27 +117,16 @@ const getAdminIssueExecutionContextOrThrow = async ({
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getAllUsersAdmin = async (req, res) => {
-  try {
-    const payload = await getAdminUsersListPayload({
-      adminUserId: req.uid,
-      search: String(req.query.q || "").trim(),
-      includeAdmins: req.query.includeAdmins === "true",
-    });
+  const data = await getAdminUsersListPayload({
+    adminUserId: req.uid,
+    search: String(req.query.q || "").trim(),
+    includeAdmins: req.query.includeAdmins === "true",
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getAllUsersAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(getErrorResponsePayload(err, "Error fetching users"));
-  }
+  return sendSuccess(res, "Users fetched successfully", data);
 };
 
 /**
@@ -138,31 +134,24 @@ export const getAllUsersAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const createUserAdmin = async (req, res) => {
   try {
-    const payload = await createUserAdminFlow({
+    const result = await createUserAdminFlow({
       payload: req.body,
     });
 
-    return res.status(201).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("createUserAdmin error:", err);
-
-    if (err?.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        msg: "Email already registered",
-      });
-    }
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(getErrorResponsePayload(err, "Error creating user"));
+    return sendSuccess(
+      res,
+      result.message,
+      {
+        user: result.user,
+      },
+      201
+    );
+  } catch (error) {
+    throwIfDuplicateEmailError(error);
   }
 };
 
@@ -171,31 +160,23 @@ export const createUserAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const updateUserAdmin = async (req, res) => {
   try {
-    const payload = await updateUserAdminFlow({
+    const result = await updateUserAdminFlow({
       payload: req.body,
     });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("updateUserAdmin error:", err);
-
-    if (err?.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        msg: "Email already registered",
-      });
-    }
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(getErrorResponsePayload(err, "Error updating user"));
+    return sendSuccess(
+      res,
+      result.message,
+      {
+        user: result.user,
+      },
+    );
+  } catch (error) {
+    throwIfDuplicateEmailError(error);
   }
 };
 
@@ -204,15 +185,14 @@ export const updateUserAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const deleteUserAdmin = async (req, res) => {
   const { id } = req.body || {};
 
-  if (!id || !isValidObjectId(id)) {
-    return res.status(400).json({
-      success: false,
-      msg: "Valid user id is required",
+  if (!id || !isValidObjectIdLike(id)) {
+    throw createBadRequestError("Valid user id is required", {
+      field: "id",
     });
   }
 
@@ -229,17 +209,14 @@ export const deleteUserAdmin = async (req, res) => {
       });
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: `User ${result.deletedUser.email} deleted successfully`,
-      summary: result.summary,
-    });
-  } catch (err) {
-    console.error("deleteUserAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(getErrorResponsePayload(err, "Error deleting user"));
+    return sendSuccess(
+      res,
+      `User ${result.deletedUser.email} deleted successfully`,
+      {
+        deletedUser: result.deletedUser,
+        summary: result.summary,
+      },
+    );
   } finally {
     await endSessionSafely(session);
   }
@@ -250,30 +227,19 @@ export const deleteUserAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getAllIssuesAdmin = async (req, res) => {
-  try {
-    const payload = await getAdminIssuesListPayload({
-      search: String(req.query.q || "").trim(),
-      active: String(req.query.active || "all").trim().toLowerCase(),
-      currentStage: String(req.query.currentStage || "all").trim(),
-      isConsensus: String(req.query.isConsensus || "all").trim().toLowerCase(),
-      adminId: String(req.query.adminId || "").trim(),
-      modelId: String(req.query.modelId || "").trim(),
-    });
+  const data = await getAdminIssuesListPayload({
+    search: String(req.query.q || "").trim(),
+    active: String(req.query.active || "all").trim().toLowerCase(),
+    currentStage: String(req.query.currentStage || "all").trim(),
+    isConsensus: String(req.query.isConsensus || "all").trim().toLowerCase(),
+    adminId: String(req.query.adminId || "").trim(),
+    modelId: String(req.query.modelId || "").trim(),
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getAllIssuesAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(getErrorResponsePayload(err, "Error fetching issues"));
-  }
+  return sendSuccess(res, "Issues fetched successfully", data);
 };
 
 /**
@@ -281,27 +247,14 @@ export const getAllIssuesAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getIssueAdminById = async (req, res) => {
-  try {
-    const payload = await getIssueAdminDetailPayload({
-      issueId: req.params?.id,
-    });
+  const data = await getIssueAdminDetailPayload({
+    issueId: req.params?.id,
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getIssueAdminById error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error fetching issue detail")
-      );
-  }
+  return sendSuccess(res, "Issue detail fetched successfully", data);
 };
 
 /**
@@ -309,30 +262,18 @@ export const getIssueAdminById = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertsProgressAdmin = async (req, res) => {
-  try {
-    const payload = await getIssueExpertsProgressPayload({
-      issueId: req.params?.id,
-    });
+  const data = await getIssueExpertsProgressPayload({
+    issueId: req.params?.id,
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getIssueExpertsProgressAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(
-          err,
-          "Error fetching issue experts progress"
-        )
-      );
-  }
+  return sendSuccess(
+    res,
+    "Issue experts progress fetched successfully",
+    data,
+  );
 };
 
 /**
@@ -340,28 +281,19 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertEvaluationsAdmin = async (req, res) => {
-  try {
-    const payload = await getIssueExpertEvaluationsPayload({
-      issueId: req.params?.issueId,
-      expertId: req.params?.expertId,
-    });
+  const data = await getIssueExpertEvaluationsPayload({
+    issueId: req.params?.issueId,
+    expertId: req.params?.expertId,
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getIssueExpertEvaluationsAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error fetching expert evaluations")
-      );
-  }
+  return sendSuccess(
+    res,
+    "Expert evaluations fetched successfully",
+    data,
+  );
 };
 
 /**
@@ -369,28 +301,15 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const getIssueExpertWeightsAdmin = async (req, res) => {
-  try {
-    const payload = await getIssueExpertWeightsPayload({
-      issueId: req.params?.issueId,
-      expertId: req.params?.expertId,
-    });
+  const data = await getIssueExpertWeightsPayload({
+    issueId: req.params?.issueId,
+    expertId: req.params?.expertId,
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("getIssueExpertWeightsAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error fetching expert weights")
-      );
-  }
+  return sendSuccess(res, "Expert weights fetched successfully", data);
 };
 
 /**
@@ -398,28 +317,22 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const reassignIssueAdminAdmin = async (req, res) => {
-  try {
-    const payload = await reassignIssueAdminFlow({
-      issueId: req.body?.issueId,
-      newAdminId: req.body?.newAdminId,
-    });
+  const result = await reassignIssueAdminFlow({
+    issueId: req.body?.issueId,
+    newAdminId: req.body?.newAdminId,
+  });
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
-    console.error("reassignIssueAdminAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error reassigning issue admin")
-      );
-  }
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      issue: result.issue,
+      admin: result.admin,
+    },
+  );
 };
 
 /**
@@ -427,40 +340,33 @@ export const reassignIssueAdminAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const editIssueExpertsAdmin = async (req, res) => {
-  try {
-    const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.body?.issueId || req.body?.id;
 
-    const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
-      issueId,
-    });
+  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+    issueId,
+  });
 
-    await editIssueExpertsFlow({
-      issueId,
-      userId: creatorUserId,
-      expertsToAdd: Array.isArray(req.body?.expertsToAdd)
-        ? req.body.expertsToAdd
-        : [],
-      expertsToRemove: Array.isArray(req.body?.expertsToRemove)
-        ? req.body.expertsToRemove
-        : [],
-    });
+  const result = await editIssueExpertsFlow({
+    issueId,
+    userId: creatorUserId,
+    expertsToAdd: Array.isArray(req.body?.expertsToAdd)
+      ? req.body.expertsToAdd
+      : [],
+    expertsToRemove: Array.isArray(req.body?.expertsToRemove)
+      ? req.body.expertsToRemove
+      : [],
+  });
 
-    return res.status(200).json({
-      success: true,
-      msg: "Experts updated successfully.",
-    });
-  } catch (err) {
-    console.error("editIssueExpertsAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error editing issue experts")
-      );
-  }
+  return sendSuccess(
+    res,
+    "Experts updated successfully",
+    {
+      issueName: result.issueName,
+    },
+  );
 };
 
 /**
@@ -468,41 +374,38 @@ export const editIssueExpertsAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const computeIssueWeightsAdmin = async (req, res) => {
-  try {
-    const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.body?.issueId || req.body?.id;
 
-    const { issue, creatorUserId } =
-      await getAdminIssueExecutionContextOrThrow({
-        issueId,
-      });
+  const { issue, creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+    issueId,
+  });
 
-    const result =
-      issue.weightingMode === "consensus"
-        ? await computeManualCollectiveWeightsFlow({
-            issueId,
-            userId: creatorUserId,
-          })
-        : await computeBwmCollectiveWeightsFlow({
-            issueId,
-            userId: creatorUserId,
-            apiModelsBaseUrl:
-              process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-            httpClient: axios,
-          });
+  const result =
+    issue.weightingMode === "consensus"
+      ? await computeManualCollectiveWeightsFlow({
+          issueId,
+          userId: creatorUserId,
+        })
+      : await computeBwmCollectiveWeightsFlow({
+          issueId,
+          userId: creatorUserId,
+          apiModelsBaseUrl:
+            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+          httpClient: axios,
+        });
 
-    return res.status(200).json(result);
-  } catch (err) {
-    console.error("computeIssueWeightsAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error computing issue weights")
-      );
-  }
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      finished: result.finished,
+      weights: result.weights,
+      criteriaOrder: result.criteriaOrder,
+    },
+  );
 };
 
 /**
@@ -510,49 +413,45 @@ export const computeIssueWeightsAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const resolveIssueAdmin = async (req, res) => {
-  try {
-    const issueId = req.body?.issueId || req.body?.id;
-    const forceFinalize = Boolean(req.body?.forceFinalize);
+  const issueId = req.body?.issueId || req.body?.id;
+  const forceFinalize = Boolean(req.body?.forceFinalize);
 
-    const { issue, creatorUserId } =
-      await getAdminIssueExecutionContextOrThrow({
-        issueId,
-      });
+  const { issue, creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+    issueId,
+  });
 
-    const evaluationStructure = resolveEvaluationStructure(issue);
+  const evaluationStructure = resolveEvaluationStructure(issue);
 
-    const result =
-      evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-        ? await resolvePairwiseIssueFlow({
-            issueId,
-            userId: creatorUserId,
-            forceFinalize,
-            apiModelsBaseUrl:
-              process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-            httpClient: axios,
-          })
-        : await resolveDirectIssueFlow({
-            issueId,
-            userId: creatorUserId,
-            forceFinalize,
-            apiModelsBaseUrl:
-              process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-            httpClient: axios,
-          });
+  const result =
+    evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+      ? await resolvePairwiseIssueFlow({
+          issueId,
+          userId: creatorUserId,
+          forceFinalize,
+          apiModelsBaseUrl:
+            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+          httpClient: axios,
+        })
+      : await resolveDirectIssueFlow({
+          issueId,
+          userId: creatorUserId,
+          forceFinalize,
+          apiModelsBaseUrl:
+            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+          httpClient: axios,
+        });
 
-    return res.status(200).json(result);
-  } catch (err) {
-    console.error("resolveIssueAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error resolving issue")
-      );
-  }
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      finished: result.finished,
+      rankedAlternatives: result.rankedAlternatives || null,
+    },
+  );
 };
 
 /**
@@ -560,7 +459,7 @@ export const resolveIssueAdmin = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const removeIssueAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
@@ -584,18 +483,13 @@ export const removeIssueAdmin = async (req, res) => {
       removedIssueName = result.issueName;
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: `Issue ${removedIssueName} removed`,
-    });
-  } catch (err) {
-    console.error("removeIssueAdmin error:", err);
-
-    return res
-      .status(getErrorStatusCode(err))
-      .json(
-        getErrorResponsePayload(err, "Error removing issue")
-      );
+    return sendSuccess(
+      res,
+      `Issue ${removedIssueName} removed`,
+      {
+        issueName: removedIssueName,
+      },
+    );
   } finally {
     await endSessionSafely(session);
   }

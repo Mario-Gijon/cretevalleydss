@@ -8,10 +8,10 @@ import TuneIcon from "@mui/icons-material/Tune";
 import { useSnackbarAlertContext } from "../../../../../context/snackbarAlert/snackbarAlert.context";
 import { CreateLinguisticExpressionDialog } from "../../../../../components/CreateLinguisticExpressionDialog/CreateLinguisticExpressionDialog";
 import { ViewExpressionsDomainDialog } from "../../../../../components/ViewExpressionsDomainDialog/ViewExpressionsDomainDialog";
-import { DomainAssignments } from "../../../../../components/DomainAssigments/DomainAssigments";
 import { CircularLoading } from "../../../../../components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
 import { removeExpressionDomain } from "../../../../../services/issue.service";
+import { DomainAssignments } from "../../../../../features/issueExperts/components/IssueExpertsDomainAssigments";
 
 const headerIconSx = (theme) => ({
   width: 44,

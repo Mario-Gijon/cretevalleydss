@@ -40,7 +40,9 @@ export const ensureObjectId = (value, fieldName = "id") => {
   const objectId = toObjectIdOrNull(value);
 
   if (!objectId) {
-    throw createBadRequestError(`Invalid ${fieldName}.`);
+    throw createBadRequestError(`Invalid ${fieldName}.`, {
+      field: fieldName,
+    });
   }
 
   return objectId;

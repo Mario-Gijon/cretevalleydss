@@ -1,4 +1,5 @@
 import { body, validationResult } from "express-validator";
+import { createBadRequestError } from "../utils/common/errors.js";
 
 const NAME_REGEX = /^[a-zA-ZÀ-ÿ ]{2,25}$/;
 const TEXT_REGEX = /^[a-zA-ZÀ-ÿ ]{2,25}$/;
@@ -21,6 +22,9 @@ const formatValidationErrors = (errors) => {
 /**
  * Procesa los errores de validación de express-validator.
  *
+ * Si existen errores, delega su serialización al errorHandler global
+ * mediante un AppError tipado.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
  * @param {Function} next Siguiente middleware.
@@ -31,8 +35,14 @@ export const validationResultExpress = (req, res, next) => {
 
   if (!errors.isEmpty()) {
     const formattedErrors = formatValidationErrors(errors);
-    console.log(formattedErrors);
-    return res.json({ errors: formattedErrors });
+    const fields = Object.keys(formattedErrors);
+
+    return next(
+      createBadRequestError("Validation failed.", {
+        field: fields.length === 1 ? fields[0] : null,
+        details: formattedErrors,
+      })
+    );
   }
 
   return next();
@@ -47,7 +57,11 @@ export const validationResultExpress = (req, res, next) => {
  * @returns {*}
  */
 const createTextRule = (field, message, regex) =>
-  body(field, message).trim().isLength({ min: 2, max: 25 }).matches(regex).escape();
+  body(field, message)
+    .trim()
+    .isLength({ min: 2, max: 25 })
+    .matches(regex)
+    .escape();
 
 /**
  * Crea una regla de validación para emails.

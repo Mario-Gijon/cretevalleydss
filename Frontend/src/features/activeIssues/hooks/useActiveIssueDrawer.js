@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { resolveIssueEvaluationStructure } from "../../../utils/issues/evaluationStructure";
-import { EVALUATION_UI_REGISTRY } from "../../../utils/issues/evaluationUIRegistry";
-
 /**
  * Gestiona el estado del drawer de detalle del issue activo.
  *
- * Aísla la selección del issue, el estado de apertura del drawer,
- * la pestaña activa y la resolución del componente de evaluación
- * asociado a la estructura del issue.
+ * Aísla la selección del issue, el estado de apertura del drawer
+ * y la pestaña activa, dejando fuera del hook cualquier decisión
+ * de UI específica de otros features.
  *
  * @param {Object} params Parámetros del hook.
  * @param {Array} params.activeIssues Lista actual de issues activos.
@@ -29,18 +26,6 @@ export const useActiveIssueDrawer = ({
   const selectedIssue = useMemo(() => {
     return activeIssues?.find((issue) => issue.id === selectedIssueId) || null;
   }, [activeIssues, selectedIssueId]);
-
-  /**
-   * Componente de diálogo de evaluación asociado al issue seleccionado.
-   */
-  const EvaluationDialogComponent = useMemo(() => {
-    if (!selectedIssue) return null;
-
-    const evaluationStructure = resolveIssueEvaluationStructure(selectedIssue);
-    const evaluationUi = EVALUATION_UI_REGISTRY[evaluationStructure] ?? null;
-
-    return evaluationUi?.dialog ?? null;
-  }, [selectedIssue]);
 
   useEffect(() => {
     if (drawerOpen && selectedIssueId && !selectedIssue && !loading) {
@@ -100,7 +85,6 @@ export const useActiveIssueDrawer = ({
 
   return {
     selectedIssue,
-    EvaluationDialogComponent,
     drawerOpen,
     drawerTab,
     setDrawerTab,

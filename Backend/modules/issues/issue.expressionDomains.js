@@ -8,6 +8,7 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import { normalizeString } from "../../utils/common/strings.js";
 
 /**
@@ -46,42 +47,66 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   }
 
   if (!name) {
-    throw createBadRequestError("Name is required");
+    throw createBadRequestError("Name is required", {
+      field: "name",
+    });
   }
 
   if (!["numeric", "linguistic"].includes(type)) {
-    throw createBadRequestError("Invalid type");
+    throw createBadRequestError("Invalid type", {
+      field: "type",
+    });
   }
 
   if (type === "numeric") {
     if (!numericRange || numericRange.min == null || numericRange.max == null) {
       throw createBadRequestError(
-        "numericRange.min and numericRange.max are required for numeric domains"
+        "numericRange.min and numericRange.max are required for numeric domains",
+        {
+          field: "numericRange",
+        }
       );
     }
 
     const min = Number(numericRange.min);
     const max = Number(numericRange.max);
+    const step =
+      numericRange.step == null || numericRange.step === ""
+        ? null
+        : Number(numericRange.step);
 
     if (!Number.isFinite(min) || !Number.isFinite(max)) {
-      throw createBadRequestError("min/max must be numbers");
+      throw createBadRequestError("min/max must be numbers", {
+        field: "numericRange",
+      });
     }
 
     if (min >= max) {
-      throw createBadRequestError("min must be < max");
+      throw createBadRequestError("min must be < max", {
+        field: "numericRange",
+      });
+    }
+
+    if (step != null && (!Number.isFinite(step) || step <= 0)) {
+      throw createBadRequestError("step must be null or a positive number", {
+        field: "numericRange",
+      });
     }
 
     return {
       name,
       type,
-      numericRange: { min, max },
+      numericRange: { min, max, step },
       linguisticLabels: [],
     };
   }
 
   if (!Array.isArray(linguisticLabels) || linguisticLabels.length === 0) {
     throw createBadRequestError(
-      "linguisticLabels is required for linguistic domains"
+      "linguisticLabels is required for linguistic domains",
+      {
+        field: "linguisticLabels",
+      }
     );
   }
 
@@ -92,30 +117,42 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     const values = labelItem?.values;
 
     if (!label) {
-      throw createBadRequestError("Label is required");
+      throw createBadRequestError("Label is required", {
+        field: "linguisticLabels",
+      });
     }
 
     if (seenLabels.has(label)) {
-      throw createBadRequestError(`Duplicated label '${label}'`);
+      throw createBadRequestError(`Duplicated label '${label}'`, {
+        field: "linguisticLabels",
+      });
     }
     seenLabels.add(label);
 
     if (!Array.isArray(values) || values.length < 2) {
       throw createBadRequestError(
-        "values must be an array with at least 2 numbers"
+        "values must be an array with at least 2 numbers",
+        {
+          field: "linguisticLabels",
+        }
       );
     }
 
     const numericValues = values.map(Number);
 
     if (!numericValues.every(Number.isFinite)) {
-      throw createBadRequestError("values must be numbers");
+      throw createBadRequestError("values must be numbers", {
+        field: "linguisticLabels",
+      });
     }
 
     for (let index = 1; index < numericValues.length; index += 1) {
       if (numericValues[index] < numericValues[index - 1]) {
         throw createBadRequestError(
-          "values must be ordered (non-decreasing)"
+          "values must be ordered (non-decreasing)",
+          {
+            field: "linguisticLabels",
+          }
         );
       }
     }
@@ -148,13 +185,21 @@ export const getEditableUserExpressionDomainOrThrow = async ({
   userId,
   session = null,
 }) => {
+  if (!domainId || !isValidObjectIdLike(domainId)) {
+    throw createBadRequestError("Valid domain id is required", {
+      field: "domainId",
+    });
+  }
+
   const domain = await withOptionalSession(
     ExpressionDomain.findById(domainId),
     session
   );
 
   if (!domain) {
-    throw createNotFoundError("Domain not found");
+    throw createNotFoundError("Domain not found", {
+      field: "domainId",
+    });
   }
 
   if (domain.isGlobal || domain.user === null) {
@@ -261,8 +306,16 @@ export const updateUserExpressionDomain = async ({
   updatedDomain,
   session = null,
 }) => {
-  if (!domainId || !updatedDomain) {
-    throw createBadRequestError("Missing required fields");
+  if (!domainId || !isValidObjectIdLike(domainId)) {
+    throw createBadRequestError("Valid domain id is required", {
+      field: "domainId",
+    });
+  }
+
+  if (!updatedDomain || typeof updatedDomain !== "object") {
+    throw createBadRequestError("updatedDomain is required", {
+      field: "updatedDomain",
+    });
   }
 
   const domain = await getEditableUserExpressionDomainOrThrow({
@@ -271,19 +324,19 @@ export const updateUserExpressionDomain = async ({
     session,
   });
 
-  if (updatedDomain.name) {
+  if (updatedDomain.name !== undefined) {
     domain.name = normalizeString(updatedDomain.name);
   }
 
-  if (updatedDomain.type) {
+  if (updatedDomain.type !== undefined) {
     domain.type = normalizeString(updatedDomain.type);
   }
 
-  if (updatedDomain.numericRange) {
+  if (updatedDomain.numericRange !== undefined) {
     domain.numericRange = updatedDomain.numericRange;
   }
 
-  if (updatedDomain.linguisticLabels) {
+  if (updatedDomain.linguisticLabels !== undefined) {
     domain.linguisticLabels = updatedDomain.linguisticLabels;
   }
 

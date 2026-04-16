@@ -1,24 +1,22 @@
 // Models
 import { Alternative } from "../models/Alternatives.js";
 import { Consensus } from "../models/Consensus.js";
+import { Criterion } from "../models/Criteria.js";
 import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 import { Participation } from "../models/Participations.js";
 import { User } from "../models/Users.js";
 
 // Utils
-import { getUserFinishedIssueIds } from "../modules/issues/issue.queries.js";
+import {
+  getUserFinishedIssueIds,
+  getVisibleActiveIssueIdsForUser,
+} from "../modules/issues/issue.queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
-
-import {
-  getErrorResponsePayload,
-  getErrorStatusCode,
-} from "../utils/common/errors.js";
-import {
-  abortTransactionSafely,
-  endSessionSafely,
-} from "../utils/common/mongoose.js";
+import { createConflictError } from "../utils/common/errors.js";
 import { sameId, toIdString } from "../utils/common/ids.js";
+import { endSessionSafely } from "../utils/common/mongoose.js";
+import { sendSuccess } from "../utils/common/responses.js";
 import { resolveIssueHandlerOrThrow } from "../modules/issues/issue.dispatch.js";
 
 // Modules
@@ -31,9 +29,6 @@ import {
   sortActiveIssues,
   sortActiveTasksByType,
 } from "../modules/issues/issue.active.js";
-import {
-  getVisibleActiveIssueIdsForUser,
-} from "../modules/issues/issue.queries.js";
 import {
   createIssueScenarioFlow,
   getIssueScenariosPayload,
@@ -87,7 +82,6 @@ import { createIssueFlow } from "../modules/issues/issue.creation.js";
 import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
-import { Criterion } from "../models/Criteria.js";
 
 /**
  * Obtiene la información de modelos disponibles.
@@ -97,20 +91,9 @@ import { Criterion } from "../models/Criteria.js";
  * @returns {Promise<void>}
  */
 export const modelsInfo = async (req, res) => {
-  try {
-    const models = await IssueModel.find().select("-__v").lean();
+  const models = await IssueModel.find().select("-__v").lean();
 
-    return res.status(200).json({
-      success: true,
-      data: models,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
-  }
+  return sendSuccess(res, "Models fetched successfully", models);
 };
 
 /**
@@ -121,22 +104,11 @@ export const modelsInfo = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find({ accountConfirm: true })
-      .select("name university email")
-      .lean();
+  const users = await User.find({ accountConfirm: true })
+    .select("name university email")
+    .lean();
 
-    return res.status(200).json({
-      success: true,
-      data: users,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
-  }
+  return sendSuccess(res, "Users fetched successfully", users);
 };
 
 /**
@@ -147,23 +119,11 @@ export const getAllUsers = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getExpressionsDomain = async (req, res) => {
-  try {
-    const data = await getExpressionDomainsPayload({
-      userId: req.uid,
-    });
+  const data = await getExpressionDomainsPayload({
+    userId: req.uid,
+  });
 
-    return res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      msg: "Error fetching domains",
-    });
-  }
+  return sendSuccess(res, "Expression domains fetched successfully", data);
 };
 
 /**
@@ -180,32 +140,25 @@ export const createExpressionDomain = async (req, res) => {
       payload: req.body,
     });
 
-    return res.status(201).json({
-      success: true,
-      msg: `Domain ${newDomain.name} created successfully`,
-      data: newDomain,
-    });
+    return sendSuccess(
+      res,
+      `Domain ${newDomain.name} created successfully`,
+      newDomain,
+      201
+    );
   } catch (error) {
-    console.error(error);
-
-    if (error?.status) {
-      return res.status(error.status).json({
-        success: false,
-        msg: error.message,
-      });
-    }
-
     if (error?.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        msg: "A domain with the same name already exists (for this user).",
-      });
+      throw createConflictError(
+        "A domain with the same name already exists (for this user).",
+        {
+          field: "name",
+          details: error?.keyValue ?? null,
+          cause: error,
+        }
+      );
     }
 
-    return res.status(500).json({
-      success: false,
-      msg: "Error creating domain",
-    });
+    throw error;
   }
 };
 
@@ -222,7 +175,6 @@ export const createIssue = async (req, res) => {
 
   try {
     const issueInfo = req.body?.issueInfo || {};
-
     let result = null;
 
     await session.withTransaction(async () => {
@@ -245,16 +197,14 @@ export const createIssue = async (req, res) => {
       }
     }
 
-    return res.status(201).json({
-      success: true,
-      msg: `Issue ${result?.issueName || ""} created successfully`,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Server error creating issue"));
+    return sendSuccess(
+      res,
+      `Issue ${result?.issueName || ""} created successfully`,
+      {
+        issueName: result?.issueName || null,
+      },
+      201
+    );
   } finally {
     await endSessionSafely(session);
   }
@@ -270,92 +220,90 @@ export const createIssue = async (req, res) => {
 export const getAllActiveIssues = async (req, res) => {
   const userId = toIdString(req.uid);
 
-  try {
-    const { issueIds, adminIssueIds } = await getVisibleActiveIssueIdsForUser(
-      userId
-    );
+  const { issueIds, adminIssueIds } = await getVisibleActiveIssueIdsForUser(
+    userId
+  );
 
-    if (issueIds.length === 0) {
-      return res.json(buildEmptyActiveIssuesPayload());
-    }
+  if (issueIds.length === 0) {
+    const emptyPayload = buildEmptyActiveIssuesPayload();
 
-    const adminIssueIdSet = new Set(adminIssueIds);
-
-    const [issues, allParticipations, alternatives, criteria, consensusPhases] =
-      await Promise.all([
-        Issue.find({ _id: { $in: issueIds } })
-          .populate("model")
-          .populate("admin", "email name")
-          .lean(),
-        Participation.find({ issue: { $in: issueIds } })
-          .populate("expert", "email")
-          .lean(),
-        Alternative.find({ issue: { $in: issueIds } }).lean(),
-        Criterion.find({ issue: { $in: issueIds } }).lean(),
-        Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
-      ]);
-
-    const {
-      participationMap,
-      alternativesMap,
-      criteriaMap,
-      consensusPhaseCountMap,
-    } = buildActiveIssueCollections({
-      participations: allParticipations,
-      alternatives,
-      criteria,
-      consensusPhases,
-    });
-
-    const tasksByType = getEmptyTasksByType();
-
-    const formattedIssues = issues.map((issue) => {
-      const issueId = toIdString(issue._id);
-
-      const { issueView, taskItems } = buildActiveIssueView({
-        issue,
-        userId,
-        adminIssueIdSet,
-        issueParticipations: participationMap[issueId] || [],
-        issueAlternativeDocs: alternativesMap[issueId] || [],
-        issueCriteriaDocs: criteriaMap[issueId] || [],
-        savedPhasesCount: consensusPhaseCountMap[issueId] || 0,
-        dayjsLib: dayjs,
-      });
-
-      for (const taskItem of taskItems) {
-        if (!tasksByType[taskItem.actionKey]) {
-          tasksByType[taskItem.actionKey] = [];
-        }
-
-        tasksByType[taskItem.actionKey].push(taskItem);
-      }
-
-      return issueView;
-    });
-
-    sortActiveIssues(formattedIssues);
-    sortActiveTasksByType(tasksByType);
-
-    const { tasks, taskCenter, filtersMeta } = buildActiveIssuesResponseMeta({
-      formattedIssues,
-      tasksByType,
-    });
-
-    return res.json({
-      success: true,
-      issues: formattedIssues,
-      tasks,
-      taskCenter,
-      filtersMeta,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "Error fetching active issues",
+    return sendSuccess(res, "Active issues fetched successfully", {
+      issues: emptyPayload.issues || [],
+      tasks: emptyPayload.tasks || [],
+      taskCenter: emptyPayload.taskCenter || null,
+      filtersMeta: emptyPayload.filtersMeta || null,
     });
   }
+
+  const adminIssueIdSet = new Set(adminIssueIds);
+
+  const [issues, allParticipations, alternatives, criteria, consensusPhases] =
+    await Promise.all([
+      Issue.find({ _id: { $in: issueIds } })
+        .populate("model")
+        .populate("admin", "email name")
+        .lean(),
+      Participation.find({ issue: { $in: issueIds } })
+        .populate("expert", "email")
+        .lean(),
+      Alternative.find({ issue: { $in: issueIds } }).lean(),
+      Criterion.find({ issue: { $in: issueIds } }).lean(),
+      Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
+    ]);
+
+  const {
+    participationMap,
+    alternativesMap,
+    criteriaMap,
+    consensusPhaseCountMap,
+  } = buildActiveIssueCollections({
+    participations: allParticipations,
+    alternatives,
+    criteria,
+    consensusPhases,
+  });
+
+  const tasksByType = getEmptyTasksByType();
+
+  const formattedIssues = issues.map((issue) => {
+    const issueId = toIdString(issue._id);
+
+    const { issueView, taskItems } = buildActiveIssueView({
+      issue,
+      userId,
+      adminIssueIdSet,
+      issueParticipations: participationMap[issueId] || [],
+      issueAlternativeDocs: alternativesMap[issueId] || [],
+      issueCriteriaDocs: criteriaMap[issueId] || [],
+      savedPhasesCount: consensusPhaseCountMap[issueId] || 0,
+      dayjsLib: dayjs,
+    });
+
+    for (const taskItem of taskItems) {
+      if (!tasksByType[taskItem.actionKey]) {
+        tasksByType[taskItem.actionKey] = [];
+      }
+
+      tasksByType[taskItem.actionKey].push(taskItem);
+    }
+
+    return issueView;
+  });
+
+  sortActiveIssues(formattedIssues);
+  sortActiveTasksByType(tasksByType);
+
+  const { tasks, taskCenter, filtersMeta } = buildActiveIssuesResponseMeta({
+    formattedIssues,
+    tasksByType,
+  });
+
+  return sendSuccess(res, "Active issues fetched successfully", {
+    issues: formattedIssues,
+    tasks,
+    taskCenter,
+    filtersMeta,
+  });
 };
 
 /**
@@ -384,21 +332,9 @@ export const removeIssue = async (req, res) => {
       removedIssueName = result.issueName;
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: `Issue ${removedIssueName} removed`,
+    return sendSuccess(res, `Issue ${removedIssueName} removed`, {
+      issueName: removedIssueName,
     });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while deleting the issue"
-        )
-      );
   } finally {
     await endSessionSafely(session);
   }
@@ -414,23 +350,12 @@ export const removeIssue = async (req, res) => {
 export const removeExpressionDomain = async (req, res) => {
   const { id } = req.body;
 
-  try {
-    await removeUserExpressionDomain({
-      domainId: id,
-      userId: req.uid,
-    });
+  await removeUserExpressionDomain({
+    domainId: id,
+    userId: req.uid,
+  });
 
-    return res.status(200).json({
-      success: true,
-      msg: "Domain deleted",
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Error deleting domain"));
-  }
+  return sendSuccess(res, "Domain deleted", { id });
 };
 
 /**
@@ -458,23 +383,7 @@ export const updateExpressionDomain = async (req, res) => {
       });
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: "Domain updated successfully",
-      data: updated,
-    });
-  } catch (error) {
-    await abortTransactionSafely(session);
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while updating the domain"
-        )
-      );
+    return sendSuccess(res, "Domain updated successfully", updated);
   } finally {
     await endSessionSafely(session);
   }
@@ -488,43 +397,29 @@ export const updateExpressionDomain = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getAllFinishedIssues = async (req, res) => {
-  try {
-    const userId = toIdString(req.uid);
-    const issueIds = await getUserFinishedIssueIds(userId);
+  const userId = toIdString(req.uid);
+  const issueIds = await getUserFinishedIssueIds(userId);
 
-    if (issueIds.length === 0) {
-      return res.json({
-        success: true,
-        issues: [],
-      });
-    }
-
-    const issues = await Issue.find({ _id: { $in: issueIds } })
-      .populate("model", "name")
-      .populate("admin", "email")
-      .lean();
-
-    const formattedIssues = issues.map((issue) => ({
-      id: toIdString(issue._id),
-      name: issue.name,
-      description: issue.description,
-      creationDate: issue.creationDate,
-      createdAt: issue.createdAt ?? null,
-      closureDate: issue.closureDate ?? null,
-      isAdmin: sameId(issue.admin?._id, userId),
-    }));
-
-    return res.json({
-      success: true,
-      issues: formattedIssues,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      msg: "Error fetching finished issues",
-    });
+  if (issueIds.length === 0) {
+    return sendSuccess(res, "Finished issues fetched successfully", []);
   }
+
+  const issues = await Issue.find({ _id: { $in: issueIds } })
+    .populate("model", "name")
+    .populate("admin", "email")
+    .lean();
+
+  const formattedIssues = issues.map((issue) => ({
+    id: toIdString(issue._id),
+    name: issue.name,
+    description: issue.description,
+    creationDate: issue.creationDate,
+    createdAt: issue.createdAt ?? null,
+    closureDate: issue.closureDate ?? null,
+    isAdmin: sameId(issue.admin?._id, userId),
+  }));
+
+  return sendSuccess(res, "Finished issues fetched successfully", formattedIssues);
 };
 
 /**
@@ -535,20 +430,13 @@ export const getAllFinishedIssues = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getNotifications = async (req, res) => {
-  try {
-    const result = await getNotificationsPayload({
-      userId: req.uid,
-    });
+  const result = await getNotificationsPayload({
+    userId: req.uid,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while getting notifications",
-    });
-  }
+  return sendSuccess(res, "Notifications fetched successfully", {
+    notifications: result.notifications,
+  });
 };
 
 /**
@@ -559,20 +447,11 @@ export const getNotifications = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const markAllNotificationsAsRead = async (req, res) => {
-  try {
-    const result = await markAllNotificationsAsReadFlow({
-      userId: req.uid,
-    });
+  const result = await markAllNotificationsAsReadFlow({
+    userId: req.uid,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      msg: "An error occurred while updating notifications",
-    });
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -598,19 +477,7 @@ export const changeInvitationStatus = async (req, res) => {
       });
     });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    await abortTransactionSafely(session);
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while updating invitation status"
-        )
-      );
+    return sendSuccess(res, result.message);
   } finally {
     await endSessionSafely(session);
   }
@@ -624,25 +491,14 @@ export const changeInvitationStatus = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const removeNotificationById = async (req, res) => {
-  try {
-    const result = await removeNotificationForUserFlow({
-      notificationId: req.body?.notificationId,
-      userId: req.uid,
-    });
+  const notificationId = req.body?.notificationId;
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
+  const result = await removeNotificationForUserFlow({
+    notificationId,
+    userId: req.uid,
+  });
 
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while removing notification"
-        )
-      );
-  }
+  return sendSuccess(res, result.message, { notificationId });
 };
 
 /**
@@ -653,31 +509,15 @@ export const removeNotificationById = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const savePairwiseEvaluations = async (req, res) => {
-  try {
-    const { id, evaluations } = req.body;
+  const { id, evaluations } = req.body;
 
-    await savePairwiseEvaluationDrafts({
-      issueId: id,
-      userId: req.uid,
-      evaluations,
-    });
+  await savePairwiseEvaluationDrafts({
+    issueId: id,
+    userId: req.uid,
+    evaluations,
+  });
 
-    return res.status(200).json({
-      success: true,
-      msg: "Evaluations saved successfully",
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while saving evaluations"
-        )
-      );
-  }
+  return sendSuccess(res, "Evaluations saved successfully");
 };
 
 /**
@@ -688,32 +528,18 @@ export const savePairwiseEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getPairwiseEvaluations = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { evaluations, collectiveEvaluations } =
-      await getPairwiseEvaluationPayload({
-        issueId: id,
-        userId: req.uid,
-      });
-
-    return res.status(200).json({
-      success: true,
-      evaluations,
-      collectiveEvaluations,
+  const { evaluations, collectiveEvaluations } =
+    await getPairwiseEvaluationPayload({
+      issueId: id,
+      userId: req.uid,
     });
-  } catch (error) {
-    console.error(error);
 
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while fetching evaluations"
-        )
-      );
-  }
+  return sendSuccess(res, "Evaluations fetched successfully", {
+    evaluations,
+    collectiveEvaluations,
+  });
 };
 
 /**
@@ -724,36 +550,13 @@ export const getPairwiseEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitPairwiseEvaluations = async (req, res) => {
-  try {
-    const result = await submitPairwiseEvaluationFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      evaluations: req.body?.evaluations,
-    });
+  const result = await submitPairwiseEvaluationFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    evaluations: req.body?.evaluations,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    const payload = getErrorResponsePayload(
-      error,
-      "An error occurred while sending evaluations"
-    );
-
-    if (error?.criterion) {
-      payload.criterion = error.criterion;
-    }
-
-    if (error?.row) {
-      payload.row = error.row;
-    }
-
-    if (error?.col) {
-      payload.col = error.col;
-    }
-
-    return res.status(getErrorStatusCode(error)).json(payload);
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -764,30 +567,20 @@ export const submitPairwiseEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const resolvePairwiseIssue = async (req, res) => {
-  try {
-    const { id, forceFinalize = false } = req.body;
+  const { id, forceFinalize = false } = req.body;
 
-    const result = await resolvePairwiseIssueFlow({
-      issueId: id,
-      userId: req.uid,
-      forceFinalize: Boolean(forceFinalize),
-      apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-      httpClient: axios,
-    });
+  const result = await resolvePairwiseIssueFlow({
+    issueId: id,
+    userId: req.uid,
+    forceFinalize: Boolean(forceFinalize),
+    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while resolving the issue"
-        )
-      );
-  }
+  return sendSuccess(res, result.message, {
+    finished: result.finished,
+    rankedAlternatives: result.rankedAlternatives ?? null,
+  });
 };
 
 /**
@@ -817,21 +610,9 @@ export const removeFinishedIssue = async (req, res) => {
       removedIssueName = result.issueName;
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: `Issue ${removedIssueName} removed`,
+    return sendSuccess(res, `Issue ${removedIssueName} removed`, {
+      issueName: removedIssueName,
     });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while removing the issue"
-        )
-      );
   } finally {
     await endSessionSafely(session);
   }
@@ -847,30 +628,14 @@ export const removeFinishedIssue = async (req, res) => {
 export const editExperts = async (req, res) => {
   const { id, expertsToAdd = [], expertsToRemove = [] } = req.body;
 
-  try {
-    await editIssueExpertsFlow({
-      issueId: id,
-      userId: req.uid,
-      expertsToAdd,
-      expertsToRemove,
-    });
+  await editIssueExpertsFlow({
+    issueId: id,
+    userId: req.uid,
+    expertsToAdd,
+    expertsToRemove,
+  });
 
-    return res.status(200).json({
-      success: true,
-      msg: "Experts updated successfully.",
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while editing experts."
-        )
-      );
-  }
+  return sendSuccess(res, "Experts updated successfully.");
 };
 
 /**
@@ -887,33 +652,24 @@ export const leaveIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
+    let result = null;
+
     await session.withTransaction(async () => {
-      await leaveActiveIssueFlow({
+      result = await leaveActiveIssueFlow({
         issueId: id,
         userId,
         session,
       });
     });
 
-    return res.status(200).json({
-      success: true,
-      msg: "You have left the issue successfully",
+    return sendSuccess(res, "You have left the issue successfully", {
+      issueName: result?.issueName || null,
     });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while leaving issue"
-        )
-      );
   } finally {
     await endSessionSafely(session);
   }
 };
+
 /**
  * Guarda borradores de evaluaciones directas del experto actual.
  *
@@ -922,33 +678,15 @@ export const leaveIssue = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveDirectEvaluations = async (req, res) => {
-  try {
-    const { id, evaluations } = req.body;
+  const { id, evaluations } = req.body;
 
-    console.log(evaluations)
+  await saveDirectEvaluationDrafts({
+    issueId: id,
+    userId: req.uid,
+    evaluations,
+  });
 
-    await saveDirectEvaluationDrafts({
-      issueId: id,
-      userId: req.uid,
-      evaluations,
-    });
-
-    return res.status(200).json({
-      success: true,
-      msg: "Evaluations saved successfully",
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while saving evaluations"
-        )
-      );
-  }
+  return sendSuccess(res, "Evaluations saved successfully");
 };
 
 /**
@@ -959,32 +697,18 @@ export const saveDirectEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getDirectEvaluations = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { evaluations, collectiveEvaluations } =
-      await getDirectEvaluationPayload({
-        issueId: id,
-        userId: req.uid,
-      });
-
-    return res.status(200).json({
-      success: true,
-      evaluations,
-      collectiveEvaluations,
+  const { evaluations, collectiveEvaluations } =
+    await getDirectEvaluationPayload({
+      issueId: id,
+      userId: req.uid,
     });
-  } catch (error) {
-    console.error(error);
 
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while fetching evaluations"
-        )
-      );
-  }
+  return sendSuccess(res, "Evaluations fetched successfully", {
+    evaluations,
+    collectiveEvaluations,
+  });
 };
 
 /**
@@ -995,32 +719,13 @@ export const getDirectEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitDirectEvaluations = async (req, res) => {
-  try {
-    const result = await submitDirectEvaluationFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      evaluations: req.body?.evaluations,
-    });
+  const result = await submitDirectEvaluationFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    evaluations: req.body?.evaluations,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    const payload = getErrorResponsePayload(
-      error,
-      "An error occurred while sending evaluations"
-    );
-
-    if (error?.alternative) {
-      payload.alternative = error.alternative;
-    }
-
-    if (error?.criterion) {
-      payload.criterion = error.criterion;
-    }
-
-    return res.status(getErrorStatusCode(error)).json(payload);
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -1031,30 +736,20 @@ export const submitDirectEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const resolveDirectIssue = async (req, res) => {
-  try {
-    const { id, forceFinalize = false } = req.body;
+  const { id, forceFinalize = false } = req.body;
 
-    const result = await resolveDirectIssueFlow({
-      issueId: id,
-      userId: req.uid,
-      forceFinalize: Boolean(forceFinalize),
-      apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-      httpClient: axios,
-    });
+  const result = await resolveDirectIssueFlow({
+    issueId: id,
+    userId: req.uid,
+    forceFinalize: Boolean(forceFinalize),
+    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while resolving the issue"
-        )
-      );
-  }
+  return sendSuccess(res, result.message, {
+    finished: result.finished,
+    rankedAlternatives: result.rankedAlternatives ?? null,
+  });
 };
 
 /**
@@ -1065,27 +760,13 @@ export const resolveDirectIssue = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getFinishedIssueInfo = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const issueInfo = await getFinishedIssueInfoPayload({
-      issueId: id,
-    });
+  const issueInfo = await getFinishedIssueInfoPayload({
+    issueId: id,
+  });
 
-    return res.json({
-      success: true,
-      msg: "Issue info sent",
-      issueInfo,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "Error fetching full issue info")
-      );
-  }
+  return sendSuccess(res, "Issue info sent", issueInfo);
 };
 
 /**
@@ -1096,23 +777,13 @@ export const getFinishedIssueInfo = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveBwmWeights = async (req, res) => {
-  try {
-    const result = await saveBwmWeightsDraftFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      bwmData: req.body?.bwmData,
-    });
+  const result = await saveBwmWeightsDraftFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    bwmData: req.body?.bwmData,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("saveBwmWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "An error occurred while saving weights")
-      );
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -1123,22 +794,14 @@ export const saveBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getBwmWeights = async (req, res) => {
-  try {
-    const result = await getBwmWeightsPayload({
-      issueId: req.body?.id,
-      userId: req.uid,
-    });
+  const result = await getBwmWeightsPayload({
+    issueId: req.body?.id,
+    userId: req.uid,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("getBwmWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "An error occurred while fetching weights")
-      );
-  }
+  return sendSuccess(res, "Weights fetched successfully", {
+    bwmData: result.bwmData,
+  });
 };
 
 /**
@@ -1149,28 +812,13 @@ export const getBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendBwmWeights = async (req, res) => {
-  try {
-    const result = await submitBwmWeightsFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      bwmData: req.body?.bwmData,
-    });
+  const result = await submitBwmWeightsFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    bwmData: req.body?.bwmData,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("sendBwmWeights error:", error);
-
-    const payload = getErrorResponsePayload(
-      error,
-      "An error occurred while sending weights"
-    );
-
-    if (error?.field) {
-      payload.field = error.field;
-    }
-
-    return res.status(getErrorStatusCode(error)).json(payload);
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -1181,29 +829,20 @@ export const sendBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const computeWeights = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const result = await computeBwmCollectiveWeightsFlow({
-      issueId: id,
-      userId: req.uid,
-      apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-      httpClient: axios,
-    });
+  const result = await computeBwmCollectiveWeightsFlow({
+    issueId: id,
+    userId: req.uid,
+    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("computeWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while computing weights"
-        )
-      );
-  }
+  return sendSuccess(res, result.message, {
+    finished: result.finished,
+    weights: result.weights,
+    criteriaOrder: result.criteriaOrder,
+  });
 };
 
 /**
@@ -1214,23 +853,13 @@ export const computeWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveManualWeights = async (req, res) => {
-  try {
-    const result = await saveManualWeightsDraftFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      body: req.body,
-    });
+  const result = await saveManualWeightsDraftFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    body: req.body,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("saveManualWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "An error occurred while saving")
-      );
-  }
+  return sendSuccess(res, result.message);
 };
 
 /**
@@ -1241,22 +870,14 @@ export const saveManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getManualWeights = async (req, res) => {
-  try {
-    const result = await getManualWeightsPayload({
-      issueId: req.body?.id,
-      userId: req.uid,
-    });
+  const result = await getManualWeightsPayload({
+    issueId: req.body?.id,
+    userId: req.uid,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("getManualWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "Error fetching manual weights")
-      );
-  }
+  return sendSuccess(res, "Manual weights fetched successfully", {
+    manualWeights: result.manualWeights,
+  });
 };
 
 /**
@@ -1267,24 +888,15 @@ export const getManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendManualWeights = async (req, res) => {
-  try {
-    const result = await submitManualWeightsFlow({
-      issueId: req.body?.id,
-      userId: req.uid,
-      body: req.body,
-    });
+  const result = await submitManualWeightsFlow({
+    issueId: req.body?.id,
+    userId: req.uid,
+    body: req.body,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("sendManualWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(error, "Error submitting manual weights")
-      );
-  }
+  return sendSuccess(res, result.message);
 };
+
 /**
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
@@ -1293,27 +905,18 @@ export const sendManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const computeManualWeights = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const result = await computeManualCollectiveWeightsFlow({
-      issueId: id,
-      userId: req.uid,
-    });
+  const result = await computeManualCollectiveWeightsFlow({
+    issueId: id,
+    userId: req.uid,
+  });
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("computeManualWeights error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while computing weights"
-        )
-      );
-  }
+  return sendSuccess(res, result.message, {
+    finished: result.finished,
+    weights: result.weights,
+    criteriaOrder: result.criteriaOrder,
+  });
 };
 
 /**
@@ -1324,36 +927,31 @@ export const computeManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const createIssueScenario = async (req, res) => {
-  try {
-    const {
-      issueId,
-      targetModelName,
-      targetModelId,
-      scenarioName = "",
-      paramOverrides = {},
-    } = req.body || {};
+  const {
+    issueId,
+    targetModelName,
+    targetModelId,
+    scenarioName = "",
+    paramOverrides = {},
+  } = req.body || {};
 
-    const { scenarioId } = await createIssueScenarioFlow({
-      userId: req.uid,
-      issueId,
-      targetModelName,
-      targetModelId,
-      scenarioName,
-      paramOverrides,
-    });
+  const { scenarioId } = await createIssueScenarioFlow({
+    userId: req.uid,
+    issueId,
+    targetModelName,
+    targetModelId,
+    scenarioName,
+    paramOverrides,
+  });
 
-    return res.status(201).json({
-      success: true,
-      msg: "Scenario created successfully",
+  return sendSuccess(
+    res,
+    "Scenario created successfully",
+    {
       scenarioId,
-    });
-  } catch (error) {
-    console.error("createIssueScenario error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Error creating scenario"));
-  }
+    },
+    201
+  );
 };
 
 /**
@@ -1364,22 +962,11 @@ export const createIssueScenario = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getIssueScenarios = async (req, res) => {
-  try {
-    const { issueId } = req.body;
+  const { issueId } = req.body;
 
-    const { scenarios } = await getIssueScenariosPayload({ issueId });
+  const { scenarios } = await getIssueScenariosPayload({ issueId });
 
-    return res.json({
-      success: true,
-      scenarios,
-    });
-  } catch (error) {
-    console.error("getIssueScenarios error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Error listing scenarios"));
-  }
+  return sendSuccess(res, "Scenarios fetched successfully", scenarios);
 };
 
 /**
@@ -1390,22 +977,11 @@ export const getIssueScenarios = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getScenarioById = async (req, res) => {
-  try {
-    const { scenarioId } = req.body;
+  const { scenarioId } = req.body;
 
-    const { scenario } = await getScenarioByIdPayload({ scenarioId });
+  const { scenario } = await getScenarioByIdPayload({ scenarioId });
 
-    return res.json({
-      success: true,
-      scenario,
-    });
-  } catch (error) {
-    console.error("getScenarioById error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Error fetching scenario"));
-  }
+  return sendSuccess(res, "Scenario fetched successfully", scenario);
 };
 
 /**
@@ -1416,25 +992,14 @@ export const getScenarioById = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const removeScenario = async (req, res) => {
-  try {
-    const { scenarioId } = req.body;
+  const { scenarioId } = req.body;
 
-    await removeIssueScenarioFlow({
-      scenarioId,
-      userId: req.uid,
-    });
+  await removeIssueScenarioFlow({
+    scenarioId,
+    userId: req.uid,
+  });
 
-    return res.json({
-      success: true,
-      msg: "Scenario deleted",
-    });
-  } catch (error) {
-    console.error("removeScenario error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(getErrorResponsePayload(error, "Error deleting scenario"));
-  }
+  return sendSuccess(res, "Scenario deleted", { scenarioId });
 };
 
 /**
@@ -1445,30 +1010,17 @@ export const removeScenario = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveEvaluations = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { handler } = await resolveIssueHandlerOrThrow({
-      issueId: id,
-      handlers: {
-        direct: saveDirectEvaluations,
-        pairwise: savePairwiseEvaluations,
-      },
-    });
+  const { handler } = await resolveIssueHandlerOrThrow({
+    issueId: id,
+    handlers: {
+      direct: saveDirectEvaluations,
+      pairwise: savePairwiseEvaluations,
+    },
+  });
 
-    return handler(req, res);
-  } catch (error) {
-    console.error("saveEvaluations dispatcher error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while saving evaluations"
-        )
-      );
-  }
+  return handler(req, res);
 };
 
 /**
@@ -1479,30 +1031,17 @@ export const saveEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getEvaluations = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { handler } = await resolveIssueHandlerOrThrow({
-      issueId: id,
-      handlers: {
-        direct: getDirectEvaluations,
-        pairwise: getPairwiseEvaluations,
-      },
-    });
+  const { handler } = await resolveIssueHandlerOrThrow({
+    issueId: id,
+    handlers: {
+      direct: getDirectEvaluations,
+      pairwise: getPairwiseEvaluations,
+    },
+  });
 
-    return handler(req, res);
-  } catch (error) {
-    console.error("getEvaluations dispatcher error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while fetching evaluations"
-        )
-      );
-  }
+  return handler(req, res);
 };
 
 /**
@@ -1513,30 +1052,17 @@ export const getEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitEvaluations = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { handler } = await resolveIssueHandlerOrThrow({
-      issueId: id,
-      handlers: {
-        direct: submitDirectEvaluations,
-        pairwise: submitPairwiseEvaluations,
-      },
-    });
+  const { handler } = await resolveIssueHandlerOrThrow({
+    issueId: id,
+    handlers: {
+      direct: submitDirectEvaluations,
+      pairwise: submitPairwiseEvaluations,
+    },
+  });
 
-    return handler(req, res);
-  } catch (error) {
-    console.error("submitEvaluations dispatcher error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while submitting evaluations"
-        )
-      );
-  }
+  return handler(req, res);
 };
 
 /**
@@ -1546,30 +1072,16 @@ export const submitEvaluations = async (req, res) => {
  * @param {Object} res Response de Express.
  * @returns {Promise<void>}
  */
-
 export const resolveIssue = async (req, res) => {
-  try {
-    const { id } = req.body;
+  const { id } = req.body;
 
-    const { handler } = await resolveIssueHandlerOrThrow({
-      issueId: id,
-      handlers: {
-        direct: resolveDirectIssue,
-        pairwise: resolvePairwiseIssue,
-      },
-    });
+  const { handler } = await resolveIssueHandlerOrThrow({
+    issueId: id,
+    handlers: {
+      direct: resolveDirectIssue,
+      pairwise: resolvePairwiseIssue,
+    },
+  });
 
-    return handler(req, res);
-  } catch (error) {
-    console.error("resolveIssue dispatcher error:", error);
-
-    return res
-      .status(getErrorStatusCode(error))
-      .json(
-        getErrorResponsePayload(
-          error,
-          "An error occurred while resolving the issue"
-        )
-      );
-  }
+  return handler(req, res);
 };

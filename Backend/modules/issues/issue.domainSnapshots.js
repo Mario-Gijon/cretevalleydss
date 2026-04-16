@@ -1,4 +1,5 @@
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
+import { toIdString } from "../../utils/common/ids.js";
 
 /**
  * Crea snapshots de dominios de expresión para un issue y devuelve un mapa
@@ -26,11 +27,13 @@ export const createIssueDomainSnapshots = async ({
   const uniqueDomainsById = new Map();
 
   for (const domain of domainDocs) {
-    if (!domain?._id) {
+    const domainId = toIdString(domain?._id);
+
+    if (!domainId) {
       continue;
     }
 
-    uniqueDomainsById.set(String(domain._id), domain);
+    uniqueDomainsById.set(domainId, domain);
   }
 
   const uniqueDomainDocs = Array.from(uniqueDomainsById.values());
@@ -56,7 +59,7 @@ export const createIssueDomainSnapshots = async ({
   const snapshotMap = new Map();
 
   for (const snapshot of createdSnapshots) {
-    snapshotMap.set(String(snapshot.sourceDomain), snapshot._id);
+    snapshotMap.set(toIdString(snapshot.sourceDomain), snapshot._id);
   }
 
   return snapshotMap;

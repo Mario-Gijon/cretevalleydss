@@ -40,8 +40,6 @@ import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-
-import { auroraBg, glassSx as glassSxBase } from "../../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 
@@ -53,7 +51,8 @@ import {
   createUser,
   updateUser,
   deleteUser,
-} from "../../../../controllers/adminController";
+} from "../../../../services/admin.service";
+import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../../features/activeIssues/styles/activeIssues.styles";
 
 /* --------------------------------
  * Helpers
@@ -718,7 +717,7 @@ export default function ExpertsSection() {
           sx={{
             position: "relative",
             overflow: "hidden",
-            ...auroraBg(theme, 0.16),
+            ...getActiveIssuesAuroraBg(theme, 0.16),
             "&:after": {
               content: '""',
               position: "absolute",
@@ -910,7 +909,7 @@ export default function ExpertsSection() {
           sx={{
             position: "relative",
             overflow: "hidden",
-            ...auroraBg(theme, 0.14),
+            ...getActiveIssuesAuroraBg(theme, 0.14),
             "&:after": {
               content: '""',
               position: "absolute",

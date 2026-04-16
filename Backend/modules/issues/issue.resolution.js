@@ -137,7 +137,9 @@ const getResolutionContext = async ({
   const issue = await Issue.findById(issueId);
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const evaluationStructure = resolveEvaluationStructure(issue);
@@ -399,9 +401,10 @@ export const resolveDirectIssueFlow = async ({
     }
   );
 
-  const { success, msg, results } = response.data || {};
+  const { success, message, results } = response.data || {};
+
   if (!success) {
-    throw createBadRequestError(msg || "Model execution failed");
+    throw createBadRequestError(message || "Model execution failed");
   }
 
   const currentPhase = await getNextConsensusPhase(issue._id);
@@ -438,9 +441,8 @@ export const resolveDirectIssueFlow = async ({
       await issue.save();
 
       return {
-        success: true,
         finished: true,
-        msg: `Issue '${issue.name}' resolved as final round due to closure date.`,
+        message: `Issue '${issue.name}' resolved as final round due to closure date.`,
         rankedAlternatives,
       };
     }
@@ -450,9 +452,8 @@ export const resolveDirectIssueFlow = async ({
       await issue.save();
 
       return {
-        success: true,
         finished: true,
-        msg: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
+        message: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
         rankedAlternatives,
       };
     }
@@ -462,9 +463,8 @@ export const resolveDirectIssueFlow = async ({
       await issue.save();
 
       return {
-        success: true,
         finished: true,
-        msg: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+        message: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
         rankedAlternatives,
       };
     }
@@ -475,9 +475,8 @@ export const resolveDirectIssueFlow = async ({
     );
 
     return {
-      success: true,
       finished: false,
-      msg: `Issue '${issue.name}' consensus threshold not reached. Another round is needed.`,
+      message: `Issue '${issue.name}' consensus threshold not reached. Another round is needed.`,
     };
   }
 
@@ -486,9 +485,8 @@ export const resolveDirectIssueFlow = async ({
   await issue.save();
 
   return {
-    success: true,
     finished: true,
-    msg: `Issue '${issue.name}' resolved.`,
+    message: `Issue '${issue.name}' resolved.`,
     rankedAlternatives,
   };
 };
@@ -555,9 +553,10 @@ export const resolvePairwiseIssueFlow = async ({
     }
   );
 
-  const { success, msg, results } = response.data || {};
+  const { success, message, results } = response.data || {};
+
   if (!success) {
-    throw createBadRequestError(msg || "Model execution failed");
+    throw createBadRequestError(message || "Model execution failed");
   }
 
   if (modelKey !== "herrera_viedma_crp") {
@@ -623,9 +622,8 @@ export const resolvePairwiseIssueFlow = async ({
     await issue.save();
 
     return {
-      success: true,
       finished: true,
-      msg: `Issue '${issue.name}' resolved as final round due to closure date.`,
+      message: `Issue '${issue.name}' resolved as final round due to closure date.`,
       rankedAlternatives: rankedWithScores,
     };
   }
@@ -635,9 +633,8 @@ export const resolvePairwiseIssueFlow = async ({
     await issue.save();
 
     return {
-      success: true,
       finished: true,
-      msg: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
+      message: `Issue '${issue.name}' resolved: maximum number of consensus rounds reached.`,
       rankedAlternatives: rankedWithScores,
     };
   }
@@ -648,9 +645,8 @@ export const resolvePairwiseIssueFlow = async ({
     await issue.save();
 
     return {
-      success: true,
       finished: true,
-      msg: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
+      message: `Issue '${issue.name}' resolved: consensus threshold ${issue.consensusThreshold} reached.`,
       rankedAlternatives: rankedWithScores,
     };
   }
@@ -661,8 +657,7 @@ export const resolvePairwiseIssueFlow = async ({
   );
 
   return {
-    success: true,
     finished: false,
-    msg: `Issue '${issue.name}' conensus threshold not reached. Another round is needed.`,
+    message: `Issue '${issue.name}' consensus threshold not reached. Another round is needed.`,
   };
 };

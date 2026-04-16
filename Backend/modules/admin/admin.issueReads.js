@@ -29,13 +29,8 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
-
-const asId = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object" && value._id) return String(value._id);
-  return String(value);
-};
+import { toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
 const sortByNameStable = (a, b) => {
   const byName = String(a?.name || "").localeCompare(
@@ -49,18 +44,8 @@ const sortByNameStable = (a, b) => {
 
   if (byName !== 0) return byName;
 
-  return asId(a).localeCompare(asId(b));
+  return toIdString(a).localeCompare(toIdString(b));
 };
-
-/**
- * Obtiene el listado de usuarios visibles desde el panel de administración.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string|Object} params.adminUserId Id del admin autenticado.
- * @param {string} [params.search=""] Texto de búsqueda.
- * @param {boolean} [params.includeAdmins=false] Indica si deben incluirse admins.
- * @returns {Promise<Object>}
- */
 
 /**
  * Construye el árbol jerárquico de criterios para el detalle admin del issue.
@@ -73,12 +58,12 @@ const sortByNameStable = (a, b) => {
  */
 const buildCriteriaTreeAdmin = (criteriaDocs = []) => {
   const nodes = criteriaDocs.map((criterion) => ({
-    id: asId(criterion._id),
+    id: toIdString(criterion._id),
     name: criterion.name,
     type: criterion.type,
     isLeaf: Boolean(criterion.isLeaf),
     parentId: criterion.parentCriterion
-      ? asId(criterion.parentCriterion)
+      ? toIdString(criterion.parentCriterion)
       : null,
     children: [],
   }));
@@ -237,7 +222,7 @@ const buildParticipantExpertPayload = (expert, fallbackId = "") => {
   }
 
   return {
-    id: asId(expert._id),
+    id: toIdString(expert._id),
     name: expert.name,
     email: expert.email,
     role: expert.role || "user",
@@ -264,8 +249,10 @@ const buildParticipantExpertPayload = (expert, fallbackId = "") => {
  * @returns {Promise<Object>}
  */
 export const getIssueAdminDetailPayload = async ({ issueId }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
-    throw createBadRequestError("Valid issue id is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
   let issue = await Issue.findById(issueId)
@@ -277,7 +264,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     .lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const orderedIssue = await ensureIssueOrdersDb({ issueId });
@@ -379,13 +368,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
 
   orderedLeafCriteria.forEach((criterion, index) => {
     const value = finalWeightsArray[index] ?? null;
-    finalWeightsById[asId(criterion._id)] = value;
+    finalWeightsById[toIdString(criterion._id)] = value;
     finalWeightsByName[criterion.name] = value;
   });
 
   const evaluationAggMap = new Map(
     evaluationAggByExpert.map((row) => [
-      asId(row._id),
+      toIdString(row._id),
       {
         totalDocs: row.totalDocs || 0,
         filledDocs: row.filledDocs || 0,
@@ -395,12 +384,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   );
 
   const weightDocMap = new Map(
-    weightDocs.map((weightDoc) => [asId(weightDoc.expert), weightDoc])
+    weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
   );
 
   const exitMap = new Map(
     exits.map((exit) => [
-      asId(exit.user?._id || exit.user),
+      toIdString(exit.user?._id || exit.user),
       {
         hidden: Boolean(exit.hidden),
         timestamp: exit.timestamp || null,
@@ -410,7 +399,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         history: Array.isArray(exit.history) ? exit.history : [],
         user: exit.user
           ? {
-              id: asId(exit.user._id),
+              id: toIdString(exit.user._id),
               name: exit.user.name,
               email: exit.user.email,
               role: exit.user.role || "user",
@@ -423,7 +412,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   );
 
   const participantsDetailed = participations.map((participation) => {
-    const expertId = asId(participation.expert?._id || participation.expert);
+    const expertId = toIdString(participation.expert?._id || participation.expert);
     const evaluationStats = evaluationAggMap.get(expertId) || {
       totalDocs: 0,
       filledDocs: 0,
@@ -466,16 +455,16 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
 
   const currentParticipantIds = new Set(
     participations.map((participation) =>
-      asId(participation.expert?._id || participation.expert)
+      toIdString(participation.expert?._id || participation.expert)
     )
   );
 
   const exitedUsersDetailed = exits
     .filter(
-      (exit) => !currentParticipantIds.has(asId(exit.user?._id || exit.user))
+      (exit) => !currentParticipantIds.has(toIdString(exit.user?._id || exit.user))
     )
     .map((exit) => ({
-      expert: buildParticipantExpertPayload(exit.user, asId(exit.user)),
+      expert: buildParticipantExpertPayload(exit.user, toIdString(exit.user)),
       currentParticipant: false,
       exitInfo: {
         hidden: Boolean(exit.hidden),
@@ -522,7 +511,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
 
   return {
     issue: {
-      id: asId(issue._id),
+      id: toIdString(issue._id),
       name: issue.name,
       description: issue.description,
       active: Boolean(issue.active),
@@ -536,7 +525,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       closureDate: issue.closureDate || null,
       admin: issue.admin
         ? {
-            id: asId(issue.admin._id),
+            id: toIdString(issue.admin._id),
             name: issue.admin.name,
             email: issue.admin.email,
             role: issue.admin.role || "user",
@@ -545,7 +534,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         : null,
       model: issue.model
         ? {
-            id: asId(issue.model._id),
+            id: toIdString(issue.model._id),
             name: issue.model.name,
             isPairwise: issueIsPairwise,
             isConsensus: Boolean(issue.model.isConsensus),
@@ -555,12 +544,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           }
         : null,
       alternatives: orderedAlternatives.map((alternative) => ({
-        id: asId(alternative._id),
+        id: toIdString(alternative._id),
         name: alternative.name,
       })),
       criteria: criteriaTree,
       leafCriteria: orderedLeafCriteria.map((criterion) => ({
-        id: asId(criterion._id),
+        id: toIdString(criterion._id),
         name: criterion.name,
         type: criterion.type,
       })),
@@ -575,9 +564,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         latestAt: latestConsensus?.timestamp || null,
       },
       scenarios: scenarios.map((scenario) => ({
-        id: asId(scenario._id),
+        id: toIdString(scenario._id),
         name: scenario.name || "",
-        targetModelId: asId(scenario.targetModel),
+        targetModelId: toIdString(scenario.targetModel),
         targetModelName: scenario.targetModelName || "",
         domainType: scenario.domainType || null,
         isPairwise:
@@ -587,7 +576,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         createdAt: scenario.createdAt || null,
         createdBy: scenario.createdBy
           ? {
-              id: asId(scenario.createdBy._id),
+              id: toIdString(scenario.createdBy._id),
               name: scenario.createdBy.name,
               email: scenario.createdBy.email,
             }
@@ -717,8 +706,10 @@ const buildExpertProgressRow = ({
  * @returns {Promise<Object>}
  */
 export const getIssueExpertsProgressPayload = async ({ issueId }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
-    throw createBadRequestError("Valid issue id is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
   let issue = await Issue.findById(issueId)
@@ -726,7 +717,9 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
     .lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const orderedIssue = await ensureIssueOrdersDb({ issueId });
@@ -805,7 +798,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
 
   const evaluationMap = new Map(
     evaluationAgg.map((row) => [
-      asId(row._id),
+      toIdString(row._id),
       {
         totalDocs: row.totalDocs || 0,
         filledDocs: row.filledDocs || 0,
@@ -815,17 +808,17 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   );
 
   const weightMap = new Map(
-    weightDocs.map((weightDoc) => [asId(weightDoc.expert), weightDoc])
+    weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
   );
 
   const currentParticipantIds = new Set(
     participations.map((participation) =>
-      asId(participation.expert?._id || participation.expert)
+      toIdString(participation.expert?._id || participation.expert)
     )
   );
 
   const rows = participations.map((participation) => {
-    const expertId = asId(participation.expert?._id || participation.expert);
+    const expertId = toIdString(participation.expert?._id || participation.expert);
 
     return buildExpertProgressRow({
       expert: participation.expert,
@@ -843,7 +836,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   });
 
   for (const exit of exits) {
-    const expertId = asId(exit.user?._id || exit.user);
+    const expertId = toIdString(exit.user?._id || exit.user);
 
     if (currentParticipantIds.has(expertId)) {
       continue;
@@ -880,7 +873,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
 
   return {
     issue: {
-      id: asId(issue._id),
+      id: toIdString(issue._id),
       name: issue.name,
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
@@ -889,7 +882,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       isPairwise,
       model: issue.model
         ? {
-            id: asId(issue.model._id),
+            id: toIdString(issue.model._id),
             name: issue.model.name,
           }
         : null,
@@ -947,7 +940,7 @@ const formatIssueSnapshotDomain = (domain) => {
   if (!domain) return null;
 
   return {
-    id: asId(domain._id),
+    id: toIdString(domain._id),
     name: domain.name,
     type: domain.type,
     ...(domain.type === "numeric" && {
@@ -1015,12 +1008,16 @@ export const getIssueExpertEvaluationsPayload = async ({
   issueId,
   expertId,
 }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
-    throw createBadRequestError("Valid issue id is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
-  if (!expertId || !mongoose.Types.ObjectId.isValid(expertId)) {
-    throw createBadRequestError("Valid expert id is required");
+  if (!expertId || !isValidObjectIdLike(expertId)) {
+    throw createBadRequestError("Valid expert id is required", {
+      field: "expertId",
+    });
   }
 
   let issue = await Issue.findById(issueId)
@@ -1028,7 +1025,9 @@ export const getIssueExpertEvaluationsPayload = async ({
     .lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const orderedIssue = await ensureIssueOrdersDb({ issueId });
@@ -1085,7 +1084,9 @@ export const getIssueExpertEvaluationsPayload = async ({
       .lean();
 
     if (!participation && !expert && evaluationDocs.length === 0) {
-      throw createNotFoundError("Expert data for this issue not found");
+      throw createNotFoundError("Expert data for this issue not found", {
+        field: "expertId",
+      });
     }
 
     const evaluations = {};
@@ -1155,7 +1156,7 @@ export const getIssueExpertEvaluationsPayload = async ({
 
     return {
       issue: {
-        id: asId(issue._id),
+        id: toIdString(issue._id),
         name: issue.name,
         currentStage: issue.currentStage,
         weightingMode: issue.weightingMode,
@@ -1200,8 +1201,8 @@ export const getIssueExpertEvaluationsPayload = async ({
   let filledCells = 0;
 
   for (const doc of evaluationDocs) {
-    const alternativeId = asId(doc.alternative?._id || doc.alternative);
-    const criterionId = asId(doc.criterion?._id || doc.criterion);
+    const alternativeId = toIdString(doc.alternative?._id || doc.alternative);
+    const criterionId = toIdString(doc.criterion?._id || doc.criterion);
 
     evaluationMap.set(`${alternativeId}__${criterionId}`, doc);
 
@@ -1222,7 +1223,7 @@ export const getIssueExpertEvaluationsPayload = async ({
 
     for (const criterion of orderedLeafCriteria) {
       const doc = evaluationMap.get(
-        `${asId(alternative._id)}__${asId(criterion._id)}`
+        `${toIdString(alternative._id)}__${toIdString(criterion._id)}`
       );
 
       evaluations[alternative.name][criterion.name] = {
@@ -1236,7 +1237,7 @@ export const getIssueExpertEvaluationsPayload = async ({
 
   return {
     issue: {
-      id: asId(issue._id),
+      id: toIdString(issue._id),
       name: issue.name,
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
@@ -1280,12 +1281,16 @@ export const getIssueExpertWeightsPayload = async ({
   issueId,
   expertId,
 }) => {
-  if (!issueId || !mongoose.Types.ObjectId.isValid(issueId)) {
-    throw createBadRequestError("Valid issue id is required");
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
   }
 
-  if (!expertId || !mongoose.Types.ObjectId.isValid(expertId)) {
-    throw createBadRequestError("Valid expert id is required");
+  if (!expertId || !isValidObjectIdLike(expertId)) {
+    throw createBadRequestError("Valid expert id is required", {
+      field: "expertId",
+    });
   }
 
   let issue = await Issue.findById(issueId)
@@ -1293,7 +1298,9 @@ export const getIssueExpertWeightsPayload = async ({
     .lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const orderedIssue = await ensureIssueOrdersDb({ issueId });
@@ -1325,7 +1332,9 @@ export const getIssueExpertWeightsPayload = async ({
     ]);
 
   if (!expert && !participation && !weightDoc) {
-    throw createNotFoundError("Expert weight data for this issue not found");
+    throw createNotFoundError("Expert weight data for this issue not found", {
+      field: "expertId",
+    });
   }
 
   const leafNames = orderedLeafCriteria.map((criterion) => criterion.name);
@@ -1371,7 +1380,7 @@ export const getIssueExpertWeightsPayload = async ({
 
   return {
     issue: {
-      id: asId(issue._id),
+      id: toIdString(issue._id),
       name: issue.name,
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
@@ -1379,7 +1388,7 @@ export const getIssueExpertWeightsPayload = async ({
       evaluationStructure: resolveEvaluationStructure(issue),
       model: issue.model
         ? {
-            id: asId(issue.model._id),
+            id: toIdString(issue.model._id),
             name: issue.model.name,
             isPairwise:
               resolveEvaluationStructure(issue) ===
@@ -1471,14 +1480,14 @@ const buildAdminIssuesFilter = ({
 
   if (
     normalizedAdminId &&
-    mongoose.Types.ObjectId.isValid(normalizedAdminId)
+    isValidObjectIdLike(normalizedAdminId)
   ) {
     filter.admin = normalizedAdminId;
   }
 
   if (
     normalizedModelId &&
-    mongoose.Types.ObjectId.isValid(normalizedModelId)
+    isValidObjectIdLike(normalizedModelId)
   ) {
     filter.model = normalizedModelId;
   }
@@ -1670,32 +1679,32 @@ export const getAdminIssuesListPayload = async ({
   ]);
 
   const alternativesMap = new Map(
-    alternativesAgg.map((row) => [asId(row._id), row.total || 0])
+    alternativesAgg.map((row) => [toIdString(row._id), row.total || 0])
   );
 
   const leafCriteriaMap = new Map(
-    leafCriteriaAgg.map((row) => [asId(row._id), row.total || 0])
+    leafCriteriaAgg.map((row) => [toIdString(row._id), row.total || 0])
   );
 
   const participationsMap = new Map(
-    participationsAgg.map((row) => [asId(row._id), row])
+    participationsAgg.map((row) => [toIdString(row._id), row])
   );
 
   const consensusMap = new Map(
-    consensusAgg.map((row) => [asId(row._id), row])
+    consensusAgg.map((row) => [toIdString(row._id), row])
   );
 
   const scenariosMap = new Map(
-    scenariosAgg.map((row) => [asId(row._id), row.total || 0])
+    scenariosAgg.map((row) => [toIdString(row._id), row.total || 0])
   );
 
   const evaluationsMap = new Map(
-    evaluationsAgg.map((row) => [asId(row._id), row])
+    evaluationsAgg.map((row) => [toIdString(row._id), row])
   );
 
   return {
     issues: issues.map((issue) => {
-      const issueId = asId(issue._id);
+      const issueId = toIdString(issue._id);
 
       const totalAlternatives = alternativesMap.get(issueId) || 0;
       const totalLeafCriteria = leafCriteriaMap.get(issueId) || 0;
@@ -1754,7 +1763,7 @@ export const getAdminIssuesListPayload = async ({
         isPairwise,
         admin: issue.admin
           ? {
-              id: asId(issue.admin._id),
+              id: toIdString(issue.admin._id),
               name: issue.admin.name,
               email: issue.admin.email,
               role: issue.admin.role || "user",
@@ -1763,7 +1772,7 @@ export const getAdminIssuesListPayload = async ({
           : null,
         model: issue.model
           ? {
-              id: asId(issue.model._id),
+              id: toIdString(issue.model._id),
               name: issue.model.name,
               evaluationStructure: modelEvaluationStructure,
               isPairwise:

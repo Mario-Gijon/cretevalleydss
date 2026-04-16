@@ -1,5 +1,7 @@
 import { Router } from "express";
 
+import { asyncHandler } from "../middlewares/asyncHandler.js";
+
 import {
   loginUser,
   signupUser,
@@ -17,7 +19,7 @@ import {
 import { requireToken } from "../middlewares/requireToken.js";
 import { refreshToken } from "../middlewares/refreshToken.js";
 import {
-  singupValidationRules,
+  signupValidationRules,
   loginValidationRules,
   updatePasswordValidationRules,
   newUniversityValidationRules,
@@ -26,6 +28,7 @@ import {
 } from "../middlewares/authValidations.js";
 import { requireRefreshToken } from "../middlewares/requireRefreshToken.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
+import { sendSuccess } from "../utils/common/responses.js";
 
 const router = Router();
 
@@ -38,12 +41,8 @@ const router = Router();
  *     security: []
  *     summary: Registra un nuevo usuario
  *     description: |
- *       Crea una cuenta pendiente de confirmación y envía el correo de verificación.
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
- *
- *       Actualmente este endpoint devuelve HTTP 200 tanto en éxito como en
- *       errores de validación middleware o errores funcionales del controller,
- *       diferenciando el resultado mediante el contenido del body.
+ *       Crea una cuenta pendiente de confirmación y envía un correo de verificación.
+ *       Aplica validaciones previas con express-validator.
  *     requestBody:
  *       required: true
  *       content:
@@ -76,51 +75,67 @@ const router = Router();
  *                 format: password
  *                 example: secret123
  *     responses:
- *       200:
- *         description: |
- *           Resultado del registro. Puede representar éxito, error de validación
- *           middleware o error funcional del controller.
+ *       201:
+ *         description: Registro completado correctamente
  *         content:
  *           application/json:
  *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Signup successful
+ *                 data:
+ *                   nullable: true
+ *                   example: null
+ *       400:
+ *         description: Error de validación o solicitud inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *                 - error
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Validation failed.
+ *                 data:
+ *                   nullable: true
+ *                   example: null
+ *                 error:
+ *                   type: object
  *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
+ *                     code:
  *                       type: string
- *                       example: Signup successful
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
+ *                       example: BAD_REQUEST
+ *                     field:
+ *                       type: string
+ *                       nullable: true
+ *                       example: email
+ *                     details:
  *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         email: Invalid email
- *                 - type: object
- *                   required:
- *                     - success
- *                     - errors
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: false
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         email: Email already registered
+ *                       nullable: true
+ *                       additionalProperties: true
+ *       409:
+ *         description: Conflicto por email ya registrado
+ *       500:
+ *         description: Error interno del servidor
  */
-router.post("/signup", singupValidationRules, signupUser);
+router.post("/signup", signupValidationRules, asyncHandler(signupUser));
 
 /**
  * @openapi
@@ -133,10 +148,7 @@ router.post("/signup", singupValidationRules, signupUser);
  *     description: |
  *       Valida las credenciales del usuario, devuelve un access token
  *       y genera la cookie de refresh token.
- *
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
- *       Actualmente responde con HTTP 200 tanto en éxito como en errores de validación
- *       o credenciales, diferenciando el resultado mediante el body.
+ *       Aplica validaciones previas con express-validator.
  *     requestBody:
  *       required: true
  *       content:
@@ -157,68 +169,50 @@ router.post("/signup", singupValidationRules, signupUser);
  *                 example: secret123
  *     responses:
  *       200:
- *         description: |
- *           Resultado del login. Puede representar éxito, error de validación
- *           middleware o error funcional del controller.
+ *         description: Login realizado correctamente
  *         content:
  *           application/json:
  *             schema:
- *               oneOf:
- *                 - type: object
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 data:
+ *                   type: object
  *                   required:
- *                     - success
- *                     - msg
+ *                     - userId
  *                     - token
  *                     - expiresIn
  *                     - role
  *                     - isAdmin
  *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
+ *                     userId:
  *                       type: string
- *                       example: Login successful
  *                     token:
  *                       type: string
- *                       example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *                     expiresIn:
- *                       oneOf:
- *                         - type: integer
- *                         - type: string
- *                       example: 3600
+ *                       type: integer
+ *                       example: 900
  *                     role:
  *                       type: string
  *                       example: user
  *                     isAdmin:
  *                       type: boolean
  *                       example: false
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         email: Invalid email
- *                 - type: object
- *                   required:
- *                     - success
- *                     - errors
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: false
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         password: Incorrect password
+ *       400:
+ *         description: Error de validación o credenciales inválidas
+ *       500:
+ *         description: Error interno del servidor
  */
-router.post("/login", loginValidationRules, loginUser);
+router.post("/login", loginValidationRules, asyncHandler(loginUser));
 
 /**
  * @openapi
@@ -238,16 +232,20 @@ router.post("/login", loginValidationRules, loginUser);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Logged out successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  */
-router.post("/logout", logout);
+router.post("/logout", asyncHandler(logout));
 
 /**
  * @openapi
@@ -259,89 +257,53 @@ router.post("/logout", logout);
  *     description: |
  *       Devuelve los datos públicos del usuario autenticado.
  *       Requiere un access token válido en la cabecera Authorization.
- *
- *       Actualmente este endpoint responde con HTTP 200 tanto en éxito como en
- *       algunos errores lógicos del controller, y con HTTP 401 si falla el middleware
- *       de autenticación.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Perfil obtenido o error lógico del controller
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - university
- *                     - name
- *                     - email
- *                     - accountCreation
- *                     - role
- *                     - isAdmin
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     university:
- *                       type: string
- *                       example: Universidad de Granada
- *                     name:
- *                       type: string
- *                       example: Mario
- *                     email:
- *                       type: string
- *                       format: email
- *                       example: mario@example.com
- *                     accountCreation:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
- *                     role:
- *                       type: string
- *                       example: user
- *                     isAdmin:
- *                       type: boolean
- *                       example: false
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: false
- *                     msg:
- *                       type: string
- *                       example: Error fetching user data
- *       401:
- *         description: Access token ausente, expirado o inválido
+ *         description: Perfil obtenido correctamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               required:
- *                 - msg
  *                 - success
- *                 - code
+ *                 - message
+ *                 - data
  *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
  *                 success:
  *                   type: boolean
- *                   example: false
- *                 code:
+ *                   example: true
+ *                 message:
  *                   type: string
- *                   example: TOKEN_INVALID
- */
-router.get("/me", requireToken, infoUser);
-
-/**
- * @openapi
- * /auth/me:
+ *                   example: User data fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         university:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                           format: email
+ *                         accountCreation:
+ *                           type: string
+ *                           format: date-time
+ *                           nullable: true
+ *                         role:
+ *                           type: string
+ *                         isAdmin:
+ *                           type: boolean
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  *   delete:
  *     tags:
  *       - Auth
@@ -349,51 +311,38 @@ router.get("/me", requireToken, infoUser);
  *     description: |
  *       Elimina la cuenta del usuario autenticado.
  *       Requiere un access token válido.
- *
- *       Actualmente este endpoint responde con HTTP 200 tanto en éxito como en
- *       algunos errores lógicos del controller, y con HTTP 401 si falla el middleware
- *       de autenticación.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Cuenta eliminada o error lógico del controller
+ *         description: Cuenta eliminada correctamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Account deleted successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
-router.delete("/me", requireToken, deleteAccount);
+router.get("/me", requireToken, asyncHandler(infoUser));
+router.delete("/me", requireToken, asyncHandler(deleteAccount));
 
 /**
  * @openapi
@@ -405,12 +354,7 @@ router.delete("/me", requireToken, deleteAccount);
  *     description: |
  *       Actualiza la contraseña del usuario autenticado.
  *       Requiere un access token válido.
- *
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
- *       Actualmente este endpoint puede responder:
- *       - 401 si falla el middleware de autenticación
- *       - 200 si la validación middleware falla
- *       - 200 si el controller termina en éxito o en ciertos errores lógicos
+ *       Aplica validaciones previas con express-validator.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -433,70 +377,39 @@ router.delete("/me", requireToken, deleteAccount);
  *                 example: newSecret123
  *     responses:
  *       200:
- *         description: |
- *           Contraseña actualizada, error de validación middleware o error lógico del controller.
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
- *                       type: string
- *                       example: Password updated successfully
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         newPassword: Password must be at least 6 characters, with at least 1 number and 1 letter
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: false
- *                     msg:
- *                       type: string
- *                       example: Passwords do not match
- *       401:
- *         description: Access token ausente, expirado o inválido
+ *         description: Contraseña actualizada correctamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               required:
- *                 - msg
  *                 - success
- *                 - code
+ *                 - message
+ *                 - data
  *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token does not exist
  *                 success:
  *                   type: boolean
- *                   example: false
- *                 code:
+ *                   example: true
+ *                 message:
  *                   type: string
- *                   example: NO_TOKEN
+ *                   example: Password updated successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
+ *       400:
+ *         description: Error de validación o solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.put(
   "/me/password",
   requireToken,
   updatePasswordValidationRules,
-  updatePassword
+  asyncHandler(updatePassword)
 );
 
 /**
@@ -509,10 +422,7 @@ router.put(
  *     description: |
  *       Actualiza la universidad del usuario autenticado.
  *       Requiere un access token válido.
- *
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
- *       Puede responder con 200 en éxito o error de validación middleware,
- *       y con 400, 404 o 500 en errores del controller.
+ *       Aplica validaciones previas con express-validator.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -529,106 +439,39 @@ router.put(
  *                 example: Universidad de Granada
  *     responses:
  *       200:
- *         description: Universidad actualizada o error de validación middleware
+ *         description: Universidad actualizada correctamente
  *         content:
  *           application/json:
  *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
- *                       type: string
- *                       example: University updated successfully
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         newUniversity: Only letters and spaces, min 2, max 25
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: University updated successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
- *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: University is required
- *       404:
- *         description: Usuario no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: User not found
- *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Server error
+ *         description: Error de validación o solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.patch(
   "/me/university",
   requireToken,
   newUniversityValidationRules,
-  modifyUniversity
+  asyncHandler(modifyUniversity)
 );
 
 /**
@@ -641,10 +484,7 @@ router.patch(
  *     description: |
  *       Actualiza el nombre del usuario autenticado.
  *       Requiere un access token válido.
- *
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
- *       Puede responder con 200 en éxito o error de validación middleware,
- *       y con 400, 404 o 500 en errores del controller.
+ *       Aplica validaciones previas con express-validator.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -661,106 +501,39 @@ router.patch(
  *                 example: Mario Gijón
  *     responses:
  *       200:
- *         description: Nombre actualizado o error de validación middleware
+ *         description: Nombre actualizado correctamente
  *         content:
  *           application/json:
  *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
- *                       type: string
- *                       example: Name updated successfully
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         newName: Only letters and spaces, min 2, max 25
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Name updated successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
- *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Name is required
- *       404:
- *         description: Usuario no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: User not found
- *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Server error
+ *         description: Error de validación o solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.patch(
   "/me/name",
   requireToken,
   newNameValidationRules,
-  modifyName
+  asyncHandler(modifyName)
 );
 
 /**
@@ -773,9 +546,8 @@ router.patch(
  *     description: |
  *       Genera un token de confirmación y envía un correo al nuevo email.
  *       El cambio real no se aplica hasta confirmar el token.
- *
  *       Requiere un access token válido.
- *       Antes de ejecutar el controller, se aplican validaciones con express-validator.
+ *       Aplica validaciones previas con express-validator.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -793,122 +565,41 @@ router.patch(
  *                 example: mario.new@example.com
  *     responses:
  *       200:
- *         description: Solicitud procesada o error de validación middleware
+ *         description: Solicitud de cambio de email procesada correctamente
  *         content:
  *           application/json:
  *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - success
- *                     - msg
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     msg:
- *                       type: string
- *                       example: Please, check new email for confirmation
- *                 - type: object
- *                   required:
- *                     - errors
- *                   properties:
- *                     errors:
- *                       type: object
- *                       additionalProperties:
- *                         type: string
- *                       example:
- *                         newEmail: Invalid email
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Please, check new email for confirmation
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
- *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: New email must be different from the current email
- *       404:
- *         description: Usuario no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: User not found
- *       409:
- *         description: Conflicto por email ya registrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Email already registered
- *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Server error
+ *         description: Error de validación o solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
+ *       404:
+ *         description: Usuario no encontrado
+ *       409:
+ *         description: Conflicto por email ya registrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.patch(
   "/me/email",
   requireToken,
   newEmailValidationRules,
-  modifyEmail
+  asyncHandler(modifyEmail)
 );
 
 /**
@@ -922,62 +613,39 @@ router.patch(
  *     description: |
  *       Usa la cookie `refreshToken` para emitir un nuevo access token.
  *       El middleware previo valida la cookie y añade `req.uid`.
- *
- *       Este endpoint puede responder:
- *       - 200 con un nuevo token
- *       - 401 si la cookie no existe, es inválida o el usuario no existe
- *       - 200 con `success: false` si ocurre un error interno controlado en el middleware de refresh
  *     responses:
  *       200:
- *         description: Token renovado correctamente o error interno controlado
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   required:
- *                     - token
- *                     - expiresIn
- *                     - success
- *                   properties:
- *                     token:
- *                       type: string
- *                       example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                     expiresIn:
- *                       oneOf:
- *                         - type: integer
- *                         - type: string
- *                       example: 3600
- *                     success:
- *                       type: boolean
- *                       example: true
- *                 - type: object
- *                   required:
- *                     - msg
- *                     - success
- *                   properties:
- *                     msg:
- *                       type: string
- *                       example: Refresh token failed
- *                     success:
- *                       type: boolean
- *                       example: false
- *       401:
- *         description: Refresh token ausente, inválido o usuario no encontrado
+ *         description: Access token renovado correctamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               required:
- *                 - msg
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid refresh token
  *                 success:
  *                   type: boolean
- *                   example: false
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Access token refreshed successfully.
+ *                 data:
+ *                   type: object
+ *                   required:
+ *                     - token
+ *                     - expiresIn
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                     expiresIn:
+ *                       type: integer
+ *                       example: 900
+ *       401:
+ *         description: Refresh token ausente, inválido o usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.get("/refresh", requireRefreshToken, refreshToken);
 
@@ -1003,7 +671,7 @@ router.get("/refresh", requireRefreshToken, refreshToken);
  *       302:
  *         description: Redirección al frontend con el resultado de la confirmación
  */
-router.get("/account/confirm/:token", accountConfirm);
+router.get("/account/confirm/:token", asyncHandler(accountConfirm));
 
 /**
  * @openapi
@@ -1027,7 +695,7 @@ router.get("/account/confirm/:token", accountConfirm);
  *       302:
  *         description: Redirección al frontend con el resultado de la confirmación
  */
-router.get("/email-change/confirm/:token", confirmEmailChange);
+router.get("/email-change/confirm/:token", asyncHandler(confirmEmailChange));
 
 /**
  * @openapi
@@ -1050,56 +718,25 @@ router.get("/email-change/confirm/:token", confirmEmailChange);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Admin access granted
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  */
 router.get("/admin/check", requireToken, requireAdmin, (req, res) => {
-  return res.json({
-    success: true,
-    msg: "Admin access granted",
-  });
+  return sendSuccess(res, "Admin access granted");
 });
 
 export default router;

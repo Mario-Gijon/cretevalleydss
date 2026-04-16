@@ -18,8 +18,12 @@ import {
   getOrderedLeafCriteriaDb,
 } from "../../modules/issues/issue.ordering.js";
 import { detectIssueDomainTypeOrThrow } from "./issue.scenarios.js";
-import { createNotFoundError } from "../../utils/common/errors.js";
+import {
+  createBadRequestError,
+  createNotFoundError,
+} from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
 // Modules
 import {
@@ -146,10 +150,18 @@ const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
  * @returns {Promise<Object>}
  */
 export const getFinishedIssueInfoPayload = async ({ issueId }) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
+
   const issue = await Issue.findById(issueId).populate("model").lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const issueEvaluationStructure =

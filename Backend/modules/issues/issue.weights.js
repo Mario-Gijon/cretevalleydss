@@ -48,15 +48,13 @@ import { sameId } from "../../utils/common/ids.js";
 
 /**
  * @typedef {Object} BwmWeightsPayloadResult
- * @property {boolean} success Resultado correcto.
  * @property {BwmResponseData} bwmData Datos BWM formateados.
  */
 
 /**
  * @typedef {Object} CollectiveWeightsResult
- * @property {boolean} success Resultado correcto.
  * @property {boolean} finished Indica si la fase quedó finalizada.
- * @property {string} msg Mensaje de resultado.
+ * @property {string} message Mensaje de resultado.
  * @property {Array<*>} weights Pesos calculados.
  * @property {string[]} criteriaOrder Orden de criterios aplicado.
  */
@@ -140,8 +138,6 @@ export const getRawManualWeightsPayload = (body) =>
   body?.manualWeights ||
   body?.weights?.manualWeights ||
   body?.weights ||
-  body?.weigths?.manualWeights ||
-  body?.weigths ||
   {};
 
 /**
@@ -398,7 +394,6 @@ export const getManualWeightsPayload = async ({ issueId, userId }) => {
   }).lean();
 
   return {
-    success: true,
     manualWeights: buildManualWeightsResponse({
       manualWeights: evaluation?.manualWeights || {},
       criterionNames,
@@ -436,8 +431,7 @@ export const saveManualWeightsDraftFlow = async ({
   });
 
   return {
-    success: true,
-    msg: "Manual weights saved successfully",
+    message: "Manual weights saved successfully",
   };
 };
 
@@ -485,8 +479,7 @@ export const submitManualWeightsFlow = async ({
   await syncIssueStageAfterWeightsCompletion(issue);
 
   return {
-    success: true,
-    msg: "Manual weights submitted successfully",
+    message: "Manual weights submitted successfully",
   };
 };
 
@@ -656,10 +649,10 @@ export const computeBwmCollectiveWeightsFlow = async ({
     eps_penalty: 1,
   });
 
-  const { success, msg, results } = response.data || {};
+  const { success, message, results } = response.data || {};
 
   if (!success) {
-    throw createBadRequestError(msg || "Model execution failed");
+    throw createBadRequestError(message || "Model execution failed");
   }
 
   const weights = results?.weights || [];
@@ -673,14 +666,12 @@ export const computeBwmCollectiveWeightsFlow = async ({
   await issue.save();
 
   return {
-    success: true,
     finished: true,
-    msg: `Criteria weights for '${issue.name}' successfully computed.`,
+    message: `Criteria weights for '${issue.name}' successfully computed.`,
     weights: issue.modelParameters.weights,
     criteriaOrder: criterionNames,
   };
 };
-
 /**
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
@@ -748,9 +739,8 @@ export const computeManualCollectiveWeightsFlow = async ({
   await issue.save();
 
   return {
-    success: true,
     finished: true,
-    msg: "Criteria weights computed",
+    message: "Criteria weights computed",
     weights: issue.modelParameters.weights,
     criteriaOrder: criterionNames,
   };
@@ -879,7 +869,9 @@ const validateSubmittedBwmDataOrThrow = (bwmData) => {
   const validation = validateFinalWeights(bwmData);
 
   if (!validation.valid) {
-    const error = createBadRequestError(validation.msg || "Invalid BWM weight data");
+    const error = createBadRequestError(
+      validation.message || "Invalid BWM weight data"
+    );
 
     if (validation.field) {
       error.field = validation.field;
@@ -939,7 +931,6 @@ export const getBwmWeightsPayload = async ({ issueId, userId }) => {
   }).lean();
 
   return {
-    success: true,
     bwmData: buildBwmResponseData({
       evaluation,
       criterionNames,
@@ -980,8 +971,7 @@ export const saveBwmWeightsDraftFlow = async ({
   });
 
   return {
-    success: true,
-    msg: "Weights saved successfully",
+    message: "Weights saved successfully",
   };
 };
 
@@ -1024,7 +1014,6 @@ export const submitBwmWeightsFlow = async ({
   await syncIssueStageAfterWeightsCompletion(issue);
 
   return {
-    success: true,
-    msg: "Weights submitted successfully",
+    message: "Weights submitted successfully",
   };
 };

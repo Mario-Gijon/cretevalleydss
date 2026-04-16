@@ -17,7 +17,12 @@ import {
 } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { alpha, useTheme } from "@mui/material/styles";
-
+import {
+  auroraBg,
+  softIconBtnSx,
+  inputSx,
+  sectionSx,
+} from "../../styles/weightEvaluationDialog.styles.js";
 import CloseIcon from "@mui/icons-material/Close";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
@@ -26,40 +31,28 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { GlassDialog } from "../StyledComponents/GlassDialog";
-import { CircularLoading } from "../LoadingProgress/CircularLoading";
-import { getLeafCriteria } from "../../utils/createIssueUtils";
-import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import { saveManualWeights, getManualWeights, sendManualWeights } from "../../services/issue.service";
-import { useIssuesDataContext } from "../../context/issues/issues.context";
+import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
+import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
+import { useIssuesDataContext } from "../../../../context/issues/issues.context";
+import {
+  getManualWeightDraft,
+  saveManualWeightDraft,
+  submitManualWeights,
+} from "../../services/weightEvaluation.service.js";
+import { getLeafCriteria } from "../../utils/leafCriteria.utils.js";
 
-const auroraBg = (theme, intensity = 0.16) => ({
-  backgroundImage: `radial-gradient(1100px 520px at 12% 0%, ${alpha(theme.palette.info.main, intensity)}, transparent 62%),
-                    radial-gradient(900px 500px at 88% 14%, ${alpha(theme.palette.secondary.main, intensity)}, transparent 58%)`,
-});
-
-const softIconBtnSx = (theme) => ({
-  borderRadius: 3,
-  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-  bgcolor: alpha(theme.palette.common.white, 0.05),
-  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.08) },
-});
-
-const inputSx = (theme) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    bgcolor: alpha(theme.palette.common.white, 0.04),
-  },
-});
-
-const sectionSx = (theme) => ({
-  borderRadius: 4,
-  p: 2,
-  bgcolor: alpha(theme.palette.common.white, 0.035),
-  border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-});
-
-export const RateConsensusWeightsDialog = ({
+/**
+ * Diálogo de evaluación manual de pesos.
+ *
+ * @param {Object} props
+ * @param {Function} props.handleCloseIssueDialog
+ * @param {boolean} props.isRatingWeights
+ * @param {Function} props.setIsRatingWeights
+ * @param {Object} props.selectedIssue
+ * @returns {JSX.Element}
+ */
+const ManualWeightsEvaluationDialog = ({
   handleCloseIssueDialog,
   isRatingWeights,
   setIsRatingWeights,
@@ -71,7 +64,10 @@ export const RateConsensusWeightsDialog = ({
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
-  const leafCriteria = useMemo(() => getLeafCriteria(selectedIssue?.criteria || []), [selectedIssue]);
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(selectedIssue?.criteria || []),
+    [selectedIssue]
+  );
   const hasMultipleCriteria = leafCriteria.length > 1;
 
   const [manualWeights, setManualWeights] = useState({});
@@ -90,44 +86,51 @@ export const RateConsensusWeightsDialog = ({
     const values = [];
     let acc = 0;
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; i += 1) {
       if (i < n - 1) {
-        const v = Number((1 / n).toFixed(6));
-        values.push(v);
-        acc += v;
+        const value = Number((1 / n).toFixed(6));
+        values.push(value);
+        acc += value;
       } else {
         values.push(Number((1 - acc).toFixed(6)));
       }
     }
 
     setManualWeights(
-      Object.fromEntries(leafCriteria.map((c, idx) => [c.name, values[idx]]))
+      Object.fromEntries(leafCriteria.map((criterion, idx) => [criterion.name, values[idx]]))
     );
   };
 
   useEffect(() => {
-    if (equalWeightsMode) applyEqualWeights();
+    if (equalWeightsMode) {
+      applyEqualWeights();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equalWeightsMode, leafCriteria]);
 
   useEffect(() => {
-    if (!isRatingWeights || !selectedIssue?.name) return;
+    if (!isRatingWeights || !selectedIssue?.id) {
+      return;
+    }
 
     const fetchSaved = async () => {
       setLoading(true);
+
       try {
-        const response = await getManualWeights(selectedIssue.id);
+        const response = await getManualWeightDraft(selectedIssue.id);
 
         if (response.success && response.manualWeights) {
           setManualWeights(response.manualWeights);
           setInitialData(JSON.stringify(response.manualWeights));
         } else {
-          const empty = Object.fromEntries(leafCriteria.map((c) => [c.name, ""]));
+          const empty = Object.fromEntries(
+            leafCriteria.map((criterion) => [criterion.name, ""])
+          );
           setManualWeights(empty);
           setInitialData(JSON.stringify(empty));
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(error);
         showSnackbarAlert("Error fetching saved weights", "error");
       } finally {
         setLoading(false);
@@ -138,14 +141,18 @@ export const RateConsensusWeightsDialog = ({
   }, [isRatingWeights, selectedIssue, leafCriteria, showSnackbarAlert]);
 
   const clearAll = () => {
-    setManualWeights(Object.fromEntries(leafCriteria.map((c) => [c.name, ""])));
+    setManualWeights(
+      Object.fromEntries(leafCriteria.map((criterion) => [criterion.name, ""]))
+    );
     setEqualWeightsMode(false);
   };
 
   const handleConfirmClose = () => {
     const current = JSON.stringify(manualWeights);
-    if (current !== initialData) setOpenSaveDialog(true);
-    else {
+
+    if (current !== initialData) {
+      setOpenSaveDialog(true);
+    } else {
       setIsRatingWeights(false);
       clearAll();
     }
@@ -155,11 +162,10 @@ export const RateConsensusWeightsDialog = ({
     setLoading(true);
     setOpenSaveDialog(false);
 
-    console.log(manualWeights)
-
-    const response = await saveManualWeights(selectedIssue.id, manualWeights);
+    const response = await saveManualWeightDraft(selectedIssue.id, manualWeights);
 
     setLoading(false);
+
     if (response.success) {
       showSnackbarAlert("Weights saved successfully", "success");
       setIsRatingWeights(false);
@@ -172,11 +178,10 @@ export const RateConsensusWeightsDialog = ({
     setLoading(true);
     setOpenSendDialog(false);
 
-    console.log(manualWeights)
-
-    const response = await sendManualWeights(selectedIssue.id, manualWeights);
+    const response = await submitManualWeights(selectedIssue.id, manualWeights);
 
     setLoading(false);
+
     if (response.success) {
       showSnackbarAlert("Weights submitted successfully", "success");
       handleCloseIssueDialog();
@@ -188,21 +193,29 @@ export const RateConsensusWeightsDialog = ({
   };
 
   const isComplete = useMemo(() => {
-    const allFilled = leafCriteria.every((c) => {
-      const val = manualWeights[c.name];
-      if (val === "" || val === null) return false;
-      const num = Number(val);
-      return num >= 0 && num <= 1;
+    const allFilled = leafCriteria.every((criterion) => {
+      const value = manualWeights[criterion.name];
+      if (value === "" || value === null) {
+        return false;
+      }
+
+      const numericValue = Number(value);
+      return numericValue >= 0 && numericValue <= 1;
     });
-    if (!allFilled) return false;
 
-    const values = leafCriteria.map((c) => Number(manualWeights[c.name]));
+    if (!allFilled) {
+      return false;
+    }
+
+    const values = leafCriteria.map((criterion) => Number(manualWeights[criterion.name]));
     const first = values[0];
-    const allEqual = values.every((v) => Math.abs(v - first) < 0.0001);
+    const allEqual = values.every((value) => Math.abs(value - first) < 0.0001);
 
-    if (equalWeightsMode && allEqual) return true;
+    if (equalWeightsMode && allEqual) {
+      return true;
+    }
 
-    const sum = values.reduce((acc, v) => acc + v, 0);
+    const sum = values.reduce((acc, value) => acc + value, 0);
     return Math.abs(sum - 1) < 0.0001;
   }, [manualWeights, leafCriteria, equalWeightsMode]);
 
@@ -222,9 +235,18 @@ export const RateConsensusWeightsDialog = ({
         maxWidth="md"
         PaperProps={{ elevation: 0 }}
       >
-        {/* HEADER */}
-        <Box sx={{ ...auroraBg(theme, 0.18), borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}` }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.6 }}>
+        <Box
+          sx={{
+            ...auroraBg(theme, 0.18),
+            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 2, py: 1.6 }}
+          >
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
               <Avatar
                 sx={{
@@ -242,7 +264,10 @@ export const RateConsensusWeightsDialog = ({
                 <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
                   Consensus weights
                 </Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 900 }}
+                >
                   {selectedIssue?.name}
                 </Typography>
               </Stack>
@@ -266,14 +291,17 @@ export const RateConsensusWeightsDialog = ({
           }}
         >
           <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
-            {/* Intro / toggle */}
             <Box sx={sectionSx(theme)}>
               <Stack spacing={1}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
                   Rate each criterion between 0 and 1
                 </Typography>
+
                 {hasMultipleCriteria && (
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "text.secondary", fontWeight: 850 }}
+                  >
                     Weights must sum 1 unless “Equal weights” is enabled.
                   </Typography>
                 )}
@@ -292,7 +320,9 @@ export const RateConsensusWeightsDialog = ({
                         py: 0.6,
                         fontWeight: 950,
                         borderColor: alpha(theme.palette.common.white, 0.14),
-                        bgcolor: equalWeightsMode ? alpha(theme.palette.info.main, 0.14) : alpha(theme.palette.common.white, 0.03),
+                        bgcolor: equalWeightsMode
+                          ? alpha(theme.palette.info.main, 0.14)
+                          : alpha(theme.palette.common.white, 0.03),
                         "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.12) },
                       }}
                     >
@@ -303,48 +333,68 @@ export const RateConsensusWeightsDialog = ({
               </Stack>
             </Box>
 
-            {/* Inputs list - calm, no boxes per row */}
             <Box sx={sectionSx(theme)}>
               <Stack spacing={0.25}>
-                {leafCriteria.map((c, idx) => (
-                  <Box key={c.name}>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 1, px: 0.5 }}>
+                {leafCriteria.map((criterion, index) => (
+                  <Box key={criterion.name}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ py: 1, px: 0.5 }}
+                    >
                       <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                        {c.name}
+                        {criterion.name}
                       </Typography>
 
                       <TextField
                         type="number"
                         size="small"
                         color="info"
-                        value={manualWeights[c.name] ?? ""}
+                        value={manualWeights[criterion.name] ?? ""}
                         disabled={equalWeightsMode}
-                        onChange={(e) => {
-                          let val = e.target.value;
+                        onChange={(event) => {
+                          let value = event.target.value;
 
-                          if (val === "") {
-                            setManualWeights((prev) => ({ ...prev, [c.name]: "" }));
+                          if (value === "") {
+                            setManualWeights((prev) => ({
+                              ...prev,
+                              [criterion.name]: "",
+                            }));
                             return;
                           }
-                          if (val === "." || val === "0.") {
-                            setManualWeights((prev) => ({ ...prev, [c.name]: val }));
+
+                          if (value === "." || value === "0.") {
+                            setManualWeights((prev) => ({
+                              ...prev,
+                              [criterion.name]: value,
+                            }));
                             return;
                           }
 
-                          const num = parseFloat(val);
-                          if (isNaN(num)) return;
-                          if (num < 0) val = 0;
-                          if (num > 1) val = 1;
+                          const numericValue = parseFloat(value);
 
-                          setManualWeights((prev) => ({ ...prev, [c.name]: val }));
+                          if (isNaN(numericValue)) {
+                            return;
+                          }
+
+                          if (numericValue < 0) value = 0;
+                          if (numericValue > 1) value = 1;
+
+                          setManualWeights((prev) => ({
+                            ...prev,
+                            [criterion.name]: value,
+                          }));
                         }}
                         sx={{ width: 120, ...inputSx(theme) }}
                         inputProps={{ min: 0, max: 1, step: 0.1 }}
                       />
                     </Stack>
 
-                    {idx < leafCriteria.length - 1 && (
-                      <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+                    {index < leafCriteria.length - 1 && (
+                      <Divider
+                        sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }}
+                      />
                     )}
                   </Box>
                 ))}
@@ -353,9 +403,20 @@ export const RateConsensusWeightsDialog = ({
           </Stack>
         </DialogContent>
 
-        {/* FOOTER */}
-        <DialogActions sx={{ px: 2, py: 1.5, borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`, gap: 1 }}>
-          <Button variant="outlined" color="error" onClick={clearAll} startIcon={<DeleteSweepOutlinedIcon />}>
+        <DialogActions
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+            gap: 1,
+          }}
+        >
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={clearAll}
+            startIcon={<DeleteSweepOutlinedIcon />}
+          >
             Clear all
           </Button>
 
@@ -373,8 +434,12 @@ export const RateConsensusWeightsDialog = ({
         </DialogActions>
       </GlassDialog>
 
-      {/* SAVE ON CLOSE */}
-      <GlassDialog open={openSaveDialog} onClose={() => setOpenSaveDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog
+        open={openSaveDialog}
+        onClose={() => setOpenSaveDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle sx={{ fontWeight: 950 }}>Save your progress?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
@@ -382,7 +447,12 @@ export const RateConsensusWeightsDialog = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="info" onClick={handleSaveWeights} startIcon={<SaveOutlinedIcon />}>
+          <Button
+            variant="outlined"
+            color="info"
+            onClick={handleSaveWeights}
+            startIcon={<SaveOutlinedIcon />}
+          >
             Save draft
           </Button>
           <Button
@@ -400,8 +470,12 @@ export const RateConsensusWeightsDialog = ({
         </DialogActions>
       </GlassDialog>
 
-      {/* SUBMIT CONFIRM */}
-      <GlassDialog open={openSendDialog} onClose={() => setOpenSendDialog(false)} maxWidth="xs" fullWidth>
+      <GlassDialog
+        open={openSendDialog}
+        onClose={() => setOpenSendDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle sx={{ fontWeight: 950 }}>Submit your weights?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ color: "text.secondary" }}>
@@ -409,10 +483,20 @@ export const RateConsensusWeightsDialog = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="success" onClick={handleSendWeights} startIcon={<CheckCircleOutlineIcon />}>
+          <Button
+            variant="outlined"
+            color="success"
+            onClick={handleSendWeights}
+            startIcon={<CheckCircleOutlineIcon />}
+          >
             Submit
           </Button>
-          <Button variant="outlined" color="warning" onClick={() => setOpenSendDialog(false)} startIcon={<CloseIcon />}>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={() => setOpenSendDialog(false)}
+            startIcon={<CloseIcon />}
+          >
             Cancel
           </Button>
         </DialogActions>
@@ -420,3 +504,5 @@ export const RateConsensusWeightsDialog = ({
     </>
   );
 };
+
+export default ManualWeightsEvaluationDialog;

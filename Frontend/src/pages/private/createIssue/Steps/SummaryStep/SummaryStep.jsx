@@ -35,9 +35,7 @@ import { CriterionAccordion } from "../../../../../components/CriterionAccordion
 import { ModelParameters } from "../../../../../components/ModelParameters/ModelParameters";
 
 import { getRemainingTime, groupDomainData, setDefaults } from "../../../../../utils/createIssueUtils";
-
-// ✅ solo reusamos Pill; el “glass/aurora” ya lo pone CreateIssuePage (evitamos doble capa)
-import { Pill } from "../../../../../components/ActiveIssuesHeader/ActiveIssuesHeader";
+import ActiveIssuesPill from "../../../../../features/activeIssues/components/shared/ActiveIssuesPill";
 
 dayjs.extend(duration);
 dayjs.extend(customParseFormat);
@@ -205,7 +203,7 @@ export const SummaryStep = ({
         {/* ✅ STRUCTURE: Alternatives */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Alternatives", <Pill tone="info">{alternatives.length}</Pill>)}
+            {sectionHeader("Alternatives", <ActiveIssuesPill tone="info">{alternatives.length}</ActiveIssuesPill>)}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
@@ -236,7 +234,7 @@ export const SummaryStep = ({
         {/* ✅ STRUCTURE: Criteria */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Criteria", <Pill tone="info">{criteria.length}</Pill>)}
+            {sectionHeader("Criteria", <ActiveIssuesPill tone="info">{criteria.length}</ActiveIssuesPill>)}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
@@ -253,7 +251,7 @@ export const SummaryStep = ({
         {/* ✅ EXPERTS */}
         <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Experts", <Pill tone="warning">{addedExperts.length}</Pill>)}
+            {sectionHeader("Experts", <ActiveIssuesPill tone="warning">{addedExperts.length}</ActiveIssuesPill>)}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>

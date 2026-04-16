@@ -1,9 +1,29 @@
 import { DataGrid } from "@mui/x-data-grid";
 import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
-export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, collectiveEvaluations, permitEdit = true }) => {
-
+/**
+ * Matriz de evaluación directa alternativa x criterio.
+ *
+ * @param {Object} props
+ * @param {string[]} props.alternatives
+ * @param {string[]} props.criteria
+ * @param {Object} props.evaluations
+ * @param {Function} props.setEvaluations
+ * @param {Object} props.collectiveEvaluations
+ * @param {boolean} [props.permitEdit=true]
+ * @returns {JSX.Element}
+ */
+const DirectEvaluationMatrix = ({
+  alternatives,
+  criteria,
+  evaluations,
+  setEvaluations,
+  collectiveEvaluations,
+  permitEdit = true,
+}) => {
   const theme = useTheme();
+
+  console.log(evaluations)
 
   const getDomain = (cell) =>
     cell && typeof cell === "object" && cell.domain ? cell.domain : null;
@@ -12,14 +32,18 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
     cell && typeof cell === "object" ? cell.value : cell;
 
   const columns = [
-    { field: "id", headerName: "Alternative/Criterion", minWidth: 120, flex: 1 },
+    {
+      field: "id",
+      headerName: "Alternative/Criterion",
+      minWidth: 120,
+      flex: 1,
+    },
     ...criteria.map((criterion) => ({
       field: criterion,
       headerName: criterion,
       editable: permitEdit,
       flex: 1,
       minWidth: 120,
-      // 🔹 Esto evita el [Object object]
       valueGetter: (params) => {
         const cell = params.row?.[criterion];
         if (!cell) return "";
@@ -30,12 +54,13 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         const critName = params.field;
         const cell = evaluations?.[rowId]?.[critName];
 
-        if (cell == null) return "";
+        if (cell == null) {
+          return "";
+        }
 
         const domain = getDomain(cell);
         const value = getValue(cell);
 
-        // Mostrar colectiva siempre que evaluations tenga un valor numérico
         if (typeof value === "number") {
           const userValue = value;
           const collectiveValue = parseFloat(
@@ -43,14 +68,23 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
           );
 
           return (
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
               {userValue !== null && userValue !== "" ? userValue : ""}
               {!isNaN(collectiveValue) && (
                 <Chip
                   label={collectiveValue}
                   variant="outlined"
                   size="small"
-                  sx={{ ml: 1, fontSize: "0.75rem", height: 20, pointerEvents: "none" }}
+                  sx={{
+                    ml: 1,
+                    fontSize: "0.75rem",
+                    height: 20,
+                    pointerEvents: "none",
+                  }}
                   color="info"
                 />
               )}
@@ -65,8 +99,9 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
               fullWidth
               color="secondary"
               value={value || ""}
-              onChange={(e) => {
-                const newValue = e.target.value;
+              onChange={(event) => {
+                const newValue = event.target.value;
+
                 setEvaluations((prev) => ({
                   ...prev,
                   [rowId]: {
@@ -77,8 +112,10 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
               }}
               sx={{ minWidth: 120 }}
             >
-              {(domain.labels || []).map((lbl, idx) => (
-                <MenuItem key={idx} value={lbl.label}>{lbl.label}</MenuItem>
+              {(domain.labels || []).map((label, index) => (
+                <MenuItem key={index} value={label.label}>
+                  {label.label}
+                </MenuItem>
               ))}
             </Select>
           );
@@ -89,42 +126,49 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
     })),
   ];
 
-
-
   const handleProcessRowUpdate = (newRow, oldRow) => {
-    if (!permitEdit) return oldRow;
+    if (!permitEdit) {
+      return oldRow;
+    }
 
     const changedField = Object.keys(newRow).find(
-      (key) => key !== "id" && JSON.stringify(newRow[key]) !== JSON.stringify(oldRow[key])
+      (key) =>
+        key !== "id" &&
+        JSON.stringify(newRow[key]) !== JSON.stringify(oldRow[key])
     );
-    if (!changedField) return newRow;
+
+    if (!changedField) {
+      return newRow;
+    }
 
     const prevCell = oldRow[changedField];
     const prevDomain = getDomain(prevCell);
-
-    // Lo que el usuario ha tecleado (puede ser string/number o {value, domain})
     const raw = newRow[changedField];
 
     let nextCell;
 
     if (prevDomain?.type === "numeric") {
-      // Tomamos el valor crudo (si es objeto, cojo su value; si es string, lo uso tal cual)
-      const rawVal = getValue(raw);
-      const num = parseFloat(rawVal);
+      const rawValue = getValue(raw);
+      const numericValue = parseFloat(rawValue);
       const min = prevDomain.range?.min ?? 0;
       const max = prevDomain.range?.max ?? 1;
 
-      if (Number.isNaN(num) || num < min || num > max) {
+      if (
+        Number.isNaN(numericValue) ||
+        numericValue < min ||
+        numericValue > max
+      ) {
         nextCell = { value: "", domain: prevDomain };
       } else {
-        nextCell = { value: Math.round(num * 100) / 100, domain: prevDomain };
+        nextCell = {
+          value: Math.round(numericValue * 100) / 100,
+          domain: prevDomain,
+        };
       }
     } else if (prevDomain?.type === "linguistic") {
-      // Normalmente no entra aquí porque se usa <Select/>, pero por si acaso
-      const rawVal = getValue(raw) ?? "";
-      nextCell = { value: rawVal, domain: prevDomain };
+      const rawValue = getValue(raw) ?? "";
+      nextCell = { value: rawValue, domain: prevDomain };
     } else {
-      // Si no tenemos dominio, deja el valor como vino
       nextCell = raw;
     }
 
@@ -141,15 +185,16 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
     return resultRow;
   };
 
-  // Prepara las filas con alternativas como id y valores de evaluaciones
-  const rows = alternatives.map((alt) => {
-    const row = { id: alt };
-    criteria.forEach((crit) => {
-      row[crit] = evaluations[alt]?.[crit] ?? { value: "", domain: null };
+  const rows = alternatives.map((alternative) => {
+    const row = { id: alternative };
+
+    criteria.forEach((criterion) => {
+      row[criterion] =
+        evaluations[alternative]?.[criterion] ?? { value: "", domain: null };
     });
+
     return row;
   });
-
 
   return (
     <DataGrid
@@ -166,7 +211,10 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
       disableColumnSelector
       density="compact"
       getCellClassName={(params) => {
-        if (params.field === "id") return "first-column";
+        if (params.field === "id") {
+          return "first-column";
+        }
+
         return "grid-cell";
       }}
       sx={{
@@ -185,13 +233,15 @@ export const Matrix = ({ alternatives, criteria, evaluations, setEvaluations, co
         maxWidth: "100%",
         minWidth: "60%",
         backgroundColor: "rgba(5, 41, 55, 0.01)",
-        '& .MuiDataGrid-withBorderColor': {
-          backgroundColor: 'rgba(1, 12, 29, 0.8)', // fondo del datagrid
-          backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)',
-          fontWeight: 'bold',
+        "& .MuiDataGrid-withBorderColor": {
+          backgroundColor: "rgba(1, 12, 29, 0.8)",
+          backdropFilter: "blur(15px)",
+          WebkitBackdropFilter: "blur(15px)",
+          fontWeight: "bold",
         },
       }}
     />
   );
 };
+
+export default DirectEvaluationMatrix;

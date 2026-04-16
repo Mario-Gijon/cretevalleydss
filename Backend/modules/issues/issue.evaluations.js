@@ -68,7 +68,9 @@ export const getEvaluationSaveContext = async ({
   const issue = await Issue.findById(issueId).lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const evaluationStructure = resolveEvaluationStructure(issue);
@@ -320,7 +322,6 @@ export const saveDirectEvaluationDrafts = async ({
   userId,
   evaluations,
 }) => {
-  console.log(evaluations)
   const { issue, currentPhase, alternativeMap, criterionMap } =
     await getEvaluationSaveContext({
       issueId,
@@ -416,21 +417,17 @@ export const savePairwiseEvaluationDrafts = async ({
  * @param {Object} validation Resultado de validación.
  * @returns {Error}
  */
-const buildDirectEvaluationValidationError = (validation) => {
-  const error = createBadRequestError(
-    validation?.error?.message || "Invalid direct evaluations"
+const buildDirectEvaluationValidationError = (validation) =>
+  createBadRequestError(
+    validation?.error?.message || "Invalid direct evaluations",
+    {
+      field: "evaluations",
+      details: {
+        alternative: validation?.error?.alternative ?? null,
+        criterion: validation?.error?.criterion ?? null,
+      },
+    }
   );
-
-  if (validation?.error?.alternative) {
-    error.alternative = validation.error.alternative;
-  }
-
-  if (validation?.error?.criterion) {
-    error.criterion = validation.error.criterion;
-  }
-
-  return error;
-};
 
 /**
  * Construye un error de validación para evaluaciones pairwise.
@@ -438,25 +435,18 @@ const buildDirectEvaluationValidationError = (validation) => {
  * @param {Object} validation Resultado de validación.
  * @returns {Error}
  */
-const buildPairwiseEvaluationValidationError = (validation) => {
-  const error = createBadRequestError(
-    validation?.error?.message || "Invalid pairwise evaluations"
+const buildPairwiseEvaluationValidationError = (validation) =>
+  createBadRequestError(
+    validation?.error?.message || "Invalid pairwise evaluations",
+    {
+      field: "evaluations",
+      details: {
+        criterion: validation?.error?.criterion ?? null,
+        row: validation?.error?.row ?? null,
+        col: validation?.error?.col ?? null,
+      },
+    }
   );
-
-  if (validation?.error?.criterion) {
-    error.criterion = validation.error.criterion;
-  }
-
-  if (validation?.error?.row) {
-    error.row = validation.error.row;
-  }
-
-  if (validation?.error?.col) {
-    error.col = validation.error.col;
-  }
-
-  return error;
-};
 
 /**
  * Marca la participación del experto como evaluación completada.
@@ -517,8 +507,7 @@ export const submitDirectEvaluationFlow = async ({
   });
 
   return {
-    success: true,
-    msg: "Evaluations submitted successfully",
+    message: "Evaluations submitted successfully",
   };
 };
 
@@ -554,8 +543,7 @@ export const submitPairwiseEvaluationFlow = async ({
   });
 
   return {
-    success: true,
-    msg: "Evaluations submitted successfully",
+    message: "Evaluations submitted successfully",
   };
 };
 
@@ -578,7 +566,9 @@ export const getEvaluationReadContext = async ({
   const issue = await Issue.findById(issueId).lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   const evaluationStructure = resolveEvaluationStructure(issue);

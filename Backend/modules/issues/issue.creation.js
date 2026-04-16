@@ -19,6 +19,7 @@ import {
   resolveInitialIssueStage,
 } from "./issue.evaluationStructure.js";
 import { normalizeSingleWeight } from "./issue.weights.js";
+import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
 
 // Utils
 import { compareNameId } from "../../modules/issues/issue.ordering.js";
@@ -29,27 +30,14 @@ import {
   normalizeString,
 } from "../../utils/common/strings.js";
 import { toIdString } from "../../utils/common/ids.js";
+import {
+  createBadRequestError,
+  createConflictError,
+  createNotFoundError,
+} from "../../utils/common/errors.js";
 
 // External libraries
 import dayjs from "dayjs";
-import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
-
-/**
- * Crea un error HTTP enriquecido con status y metadata opcional.
- *
- * @param {number} status Código HTTP.
- * @param {string} message Mensaje del error.
- * @param {string} [obj] Campo relacionado con el error.
- * @returns {Error}
- */
-const createIssueCreationError = (status, message, obj) => {
-  const error = new Error(message);
-  error.status = status;
-  if (obj) {
-    error.obj = obj;
-  }
-  return error;
-};
 
 /**
  * Normaliza y valida la entrada base para crear un issue.
@@ -79,20 +67,22 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
   const weightingMode = normalizeString(issueInfo.weightingMode || "manual");
 
   if (!issueName) {
-    throw createIssueCreationError(400, "Issue name is required", "issueName");
+    throw createBadRequestError("Issue name is required", {
+      field: "issueName",
+    });
   }
 
   if (!selectedModelName) {
-    throw createIssueCreationError(400, "Model is required", "selectedModel");
+    throw createBadRequestError("Model is required", {
+      field: "selectedModel",
+    });
   }
 
   const uniqueAlternativeNames = getUniqueTrimmedStrings(alternatives);
   if (uniqueAlternativeNames.length <= 1) {
-    throw createIssueCreationError(
-      400,
-      "Must be at least two valid alternatives",
-      "alternatives"
-    );
+    throw createBadRequestError("Must be at least two valid alternatives", {
+      field: "alternatives",
+    });
   }
 
   const uniqueExpertEmails = Array.from(
@@ -100,19 +90,15 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
   );
 
   if (uniqueExpertEmails.length === 0) {
-    throw createIssueCreationError(
-      400,
-      "Must be at least one expert",
-      "addedExperts"
-    );
+    throw createBadRequestError("Must be at least one expert", {
+      field: "addedExperts",
+    });
   }
 
   if (!criteria.length) {
-    throw createIssueCreationError(
-      400,
-      "At least one criterion is required",
-      "criteria"
-    );
+    throw createBadRequestError("At least one criterion is required", {
+      field: "criteria",
+    });
   }
 
   if (
@@ -121,11 +107,9 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
     !domainAssignments.experts ||
     typeof domainAssignments.experts !== "object"
   ) {
-    throw createIssueCreationError(
-      400,
-      "domainAssignments.experts is required",
-      "domainAssignments"
-    );
+    throw createBadRequestError("domainAssignments.experts is required", {
+      field: "domainAssignments",
+    });
   }
 
   const normalizedAssignmentsByExpert = Object.fromEntries(
@@ -173,12 +157,14 @@ const loadCreateIssueActorsAndModel = async ({
   );
 
   if (!existingModel) {
-    throw createIssueCreationError(400, "Model does not exist", "selectedModel");
+    throw createBadRequestError("Model does not exist", {
+      field: "selectedModel",
+    });
   }
 
   const admin = await User.findById(adminUserId).session(session);
   if (!admin) {
-    throw createIssueCreationError(400, "Admin not found");
+    throw createNotFoundError("Admin not found");
   }
 
   const expertUsers = await User.find({
@@ -194,10 +180,11 @@ const loadCreateIssueActorsAndModel = async ({
   );
 
   if (missingExperts.length > 0) {
-    throw createIssueCreationError(
-      400,
+    throw createBadRequestError(
       `Experts not found: ${missingExperts.join(", ")}`,
-      "addedExperts"
+      {
+        field: "addedExperts",
+      }
     );
   }
 
@@ -265,7 +252,9 @@ const createCriteriaRecursively = async ({
     const criterionType = normalizeString(node?.type);
 
     if (!criterionName) {
-      throw createIssueCreationError(400, "Criterion name is required", "criteria");
+      throw createBadRequestError("Criterion name is required", {
+        field: "criteria",
+      });
     }
 
     const criterion = new Criterion({
@@ -326,10 +315,11 @@ const buildExpertAssignmentDomainMap = ({
     const expertAssignments = normalizedAssignmentsByExpert[email];
 
     if (!expertAssignments || typeof expertAssignments !== "object") {
-      throw createIssueCreationError(
-        400,
+      throw createBadRequestError(
         `Missing domain assignments for expert '${email}'`,
-        "domainAssignments"
+        {
+          field: "domainAssignments",
+        }
       );
     }
 
@@ -341,10 +331,11 @@ const buildExpertAssignmentDomainMap = ({
       const criteriaBlock = alternativesBlock[alternativeName]?.criteria || {};
 
       if (!alternativeDoc) {
-        throw createIssueCreationError(
-          400,
+        throw createBadRequestError(
           `Alternative '${alternativeName}' not found while building assignments`,
-          "domainAssignments"
+          {
+            field: "domainAssignments",
+          }
         );
       }
 
@@ -354,10 +345,11 @@ const buildExpertAssignmentDomainMap = ({
         const domainId = toIdString(criteriaBlock[leafCriterion.name]);
 
         if (!domainId) {
-          throw createIssueCreationError(
-            400,
+          throw createBadRequestError(
             `Missing domain assignment for criterion '${leafCriterion.name}' (expert ${email}, alternative ${alternativeName})`,
-            "domainAssignments"
+            {
+              field: "domainAssignments",
+            }
           );
         }
 
@@ -409,10 +401,11 @@ const loadAccessibleExpressionDomains = async ({
   );
 
   if (missingDomains.length > 0) {
-    throw createIssueCreationError(
-      400,
+    throw createBadRequestError(
       `ExpressionDomain not found or not accessible: ${missingDomains.join(", ")}`,
-      "domainAssignments"
+      {
+        field: "domainAssignments",
+      }
     );
   }
 
@@ -461,10 +454,11 @@ const buildIssueEvaluationDocsWithSnapshots = ({
     const issueSnapshotId = snapshotMap.get(toIdString(sourceDomainId));
 
     if (!issueSnapshotId) {
-      throw createIssueCreationError(
-        400,
+      throw createBadRequestError(
         `Snapshot not found for domain ${String(sourceDomainId)}`,
-        "domainAssignments"
+        {
+          field: "domainAssignments",
+        }
       );
     }
 
@@ -502,7 +496,9 @@ export const createIssueFlow = async ({
     session
   );
   if (existingIssue) {
-    throw createIssueCreationError(400, "Issue name already exists", "issueName");
+    throw createConflictError("Issue name already exists", {
+      field: "issueName",
+    });
   }
 
   const {
@@ -557,11 +553,9 @@ export const createIssueFlow = async ({
   });
 
   if (leafCriteria.length === 0) {
-    throw createIssueCreationError(
-      400,
-      "At least one leaf criterion is required",
-      "criteria"
-    );
+    throw createBadRequestError("At least one leaf criterion is required", {
+      field: "criteria",
+    });
   }
 
   issue.alternativeOrder = createdAlternatives

@@ -5,7 +5,6 @@
 import { Schema, model } from "mongoose";
 import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayValidator.js";
 
-
 /**
  * Documento persistido de dominio de expresión reutilizable.
  *
@@ -17,10 +16,12 @@ import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayVa
  * @property {boolean} locked Indica si el dominio está bloqueado.
  * @property {string} type Tipo de dominio.
  * @property {Object} numericRange Rango numérico permitido.
+ * @property {number} numericRange.min Valor mínimo permitido.
+ * @property {number} numericRange.max Valor máximo permitido.
+ * @property {number|null} numericRange.step Paso permitido entre valores. Null indica dominio continuo.
  * @property {Array<Object>} linguisticLabels Etiquetas lingüísticas y valores.
  * @property {Date} createdAt Fecha de creación.
  */
-
 
 /**
  * Modelo de dominio de expresión reutilizable.
@@ -41,6 +42,10 @@ import { orderedNumericArrayValidator } from "./validators/orderedNumericArrayVa
  * - `locked`: indica si el dominio no debe editarse libremente.
  * - `type`: tipo del dominio (`numeric` o `linguistic`).
  * - `numericRange`: rango permitido para dominios numéricos.
+ * - `numericRange.step`: granularidad opcional del dominio numérico.
+ *   - `null` indica dominio continuo.
+ *   - `1` indica valores enteros.
+ *   - cualquier otro número positivo indica el salto permitido.
  * - `linguisticLabels`: etiquetas y valores asociados para dominios lingüísticos.
  *
  * Restricciones:
@@ -87,6 +92,14 @@ const expressionDomainSchema = new Schema({
   numericRange: {
     min: { type: Number },
     max: { type: Number },
+    step: {
+      type: Number,
+      default: null,
+      validate: {
+        validator: (value) => value == null || (Number.isFinite(value) && value > 0),
+        message: "numericRange.step must be null or a positive number",
+      },
+    },
   },
 
   linguisticLabels: [
@@ -130,7 +143,6 @@ expressionDomainSchema.index(
     partialFilterExpression: { isGlobal: true },
   }
 );
-
 
 /**
  * Modelo Mongoose compilado desde el schema del módulo.

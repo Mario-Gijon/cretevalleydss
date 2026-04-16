@@ -1,9 +1,9 @@
 import { User } from "../../models/Users.js";
-
 import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+
 /**
  * @typedef {Object} AuthenticatedUserProfilePayload
  * @property {string} university Universidad del usuario.
@@ -12,16 +12,6 @@ import {
  * @property {Date|null} accountCreation Fecha de creación de la cuenta.
  * @property {string} role Rol actual del usuario.
  * @property {boolean} isAdmin Indica si el usuario es administrador.
- */
-
-/**
- * @typedef {Object} AuthenticatedUserProfilePayload
- * @property {string} university
- * @property {string} name
- * @property {string} email
- * @property {Date|null} accountCreation
- * @property {string} role
- * @property {boolean} isAdmin
  */
 
 const withOptionalSession = (query, session = null) =>
@@ -57,7 +47,9 @@ export const getAuthenticatedUserProfilePayload = async ({ userId }) => {
   const user = await User.findById(userId).lean();
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "userId",
+    });
   }
 
   return buildAuthenticatedUserProfilePayload(user);
@@ -80,13 +72,17 @@ export const updateAuthenticatedUserNameFlow = async ({
   const cleanName = String(newName ?? "").trim();
 
   if (!cleanName) {
-    throw createBadRequestError("Name is required");
+    throw createBadRequestError("Name is required", {
+      field: "newName",
+    });
   }
 
   const user = await withOptionalSession(User.findById(userId), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "userId",
+    });
   }
 
   user.name = cleanName;
@@ -94,7 +90,7 @@ export const updateAuthenticatedUserNameFlow = async ({
   await user.save({ session });
 
   return {
-    msg: "Name updated successfully",
+    message: "Name updated successfully",
   };
 };
 
@@ -115,13 +111,17 @@ export const updateAuthenticatedUserUniversityFlow = async ({
   const cleanUniversity = String(newUniversity ?? "").trim();
 
   if (!cleanUniversity) {
-    throw createBadRequestError("University is required");
+    throw createBadRequestError("University is required", {
+      field: "newUniversity",
+    });
   }
 
   const user = await withOptionalSession(User.findById(userId), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "userId",
+    });
   }
 
   user.university = cleanUniversity;
@@ -129,7 +129,7 @@ export const updateAuthenticatedUserUniversityFlow = async ({
   await user.save({ session });
 
   return {
-    msg: "University updated successfully",
+    message: "University updated successfully",
   };
 };
 
@@ -153,21 +153,29 @@ export const updateAuthenticatedUserPasswordFlow = async ({
   const cleanRepeatPassword = String(repeatNewPassword ?? "");
 
   if (!cleanPassword.trim()) {
-    throw createBadRequestError("New password is required");
+    throw createBadRequestError("New password is required", {
+      field: "newPassword",
+    });
   }
 
   if (cleanPassword.length < 6) {
-    throw createBadRequestError("Password must be at least 6 characters");
+    throw createBadRequestError("Password must be at least 6 characters", {
+      field: "newPassword",
+    });
   }
 
   if (cleanPassword !== cleanRepeatPassword) {
-    throw createBadRequestError("Passwords do not match");
+    throw createBadRequestError("Passwords do not match", {
+      field: "repeatNewPassword",
+    });
   }
 
   const user = await withOptionalSession(User.findById(userId), session);
 
   if (!user) {
-    throw createNotFoundError("User not found");
+    throw createNotFoundError("User not found", {
+      field: "userId",
+    });
   }
 
   user.password = cleanPassword;
@@ -176,6 +184,6 @@ export const updateAuthenticatedUserPasswordFlow = async ({
   await user.save({ session });
 
   return {
-    msg: "Password updated successfully",
+    message: "Password updated successfully",
   };
 };

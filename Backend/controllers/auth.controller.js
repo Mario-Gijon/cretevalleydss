@@ -16,6 +16,7 @@ import {
   updateAuthenticatedUserUniversityFlow,
 } from "../modules/auth/auth.profile.js";
 import { loginUserFlow } from "../modules/auth/auth.session.js";
+import { sendSuccess } from "../utils/common/responses.js";
 import { generateRefreshToken } from "../services/token.service.js";
 import {
   sendEmailChangeConfirmation,
@@ -25,9 +26,12 @@ import {
   abortTransactionSafely,
   endSessionSafely,
 } from "../utils/common/mongoose.js";
-import { getErrorStatusCode } from "../utils/common/errors.js";
 
-const STATUS_COOKIE_OPTIONS = { secure: false, sameSite: "strict", maxAge: 30000, };
+const STATUS_COOKIE_OPTIONS = {
+  secure: false,
+  sameSite: "strict",
+  maxAge: 30000,
+};
 
 /**
  * Añade una cookie temporal de estado para redirecciones del frontend.
@@ -52,46 +56,34 @@ const redirectToFrontend = (res) => {
 };
 
 /**
- * Inicia sesión y devuelve el token de acceso y refresh token.
+ * Inicia sesión y devuelve la respuesta de autenticación.
+ *
+ * Los errores se delegan al middleware global de errores.
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const loginUser = async (req, res) => {
-  try {
-    const result = await loginUserFlow({
-      email: req.body?.email,
-      password: req.body?.password,
-    });
+  const result = await loginUserFlow({
+    email: req.body?.email,
+    password: req.body?.password,
+  });
 
-    generateRefreshToken(result.userId, res);
+  generateRefreshToken(result.userId, res);
 
-    const { userId, ...payload } = result;
-
-    return res.json({
-      ...payload,
-      success: true,
-    });
-  } catch (err) {
-    console.error("loginUser error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400) {
-      return res.json({
-        errors: {
-          [err.field || "general"]: err.message,
-        },
-        success: false,
-      });
-    }
-
-    return res.json({
-      errors: { general: "Internal server error" },
-      success: false,
-    });
-  }
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      userId: result.userId,
+      token: result.token,
+      expiresIn: result.expiresIn,
+      role: result.role,
+      isAdmin: result.isAdmin,
+    },
+    200
+  );
 };
 
 /**
@@ -99,19 +91,23 @@ export const loginUser = async (req, res) => {
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {void}
+ * @returns {Object}
  */
 export const logout = (req, res) => {
   res.clearCookie("refreshToken");
-  res.json({ msg: "Logged out successfully", success: true });
+
+  return sendSuccess(res, "Logged out successfully", null, 200);
 };
 
 /**
  * Actualiza la contraseña del usuario autenticado.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const updatePassword = async (req, res) => {
   const session = await mongoose.startSession();
@@ -119,7 +115,7 @@ export const updatePassword = async (req, res) => {
   try {
     session.startTransaction();
 
-    const payload = await updateAuthenticatedUserPasswordFlow({
+    const result = await updateAuthenticatedUserPasswordFlow({
       userId: req.uid,
       newPassword: req.body?.newPassword,
       repeatNewPassword: req.body?.repeatNewPassword,
@@ -128,27 +124,10 @@ export const updatePassword = async (req, res) => {
 
     await session.commitTransaction();
 
-    return res.json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 200);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("updatePassword error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404) {
-      return res.json({
-        msg: err.message,
-        success: false,
-      });
-    }
-
-    return res.json({
-      msg: "Internal Server Error",
-      success: false,
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }
@@ -157,9 +136,12 @@ export const updatePassword = async (req, res) => {
 /**
  * Actualiza la universidad del usuario autenticado.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const modifyUniversity = async (req, res) => {
   const session = await mongoose.startSession();
@@ -167,7 +149,7 @@ export const modifyUniversity = async (req, res) => {
   try {
     session.startTransaction();
 
-    const payload = await updateAuthenticatedUserUniversityFlow({
+    const result = await updateAuthenticatedUserUniversityFlow({
       userId: req.uid,
       newUniversity: req.body?.newUniversity,
       session,
@@ -175,27 +157,10 @@ export const modifyUniversity = async (req, res) => {
 
     await session.commitTransaction();
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 200);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("modifyUniversity error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404) {
-      return res.status(statusCode).json({
-        success: false,
-        msg: err.message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }
@@ -204,9 +169,12 @@ export const modifyUniversity = async (req, res) => {
 /**
  * Actualiza el nombre del usuario autenticado.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const modifyName = async (req, res) => {
   const session = await mongoose.startSession();
@@ -214,7 +182,7 @@ export const modifyName = async (req, res) => {
   try {
     session.startTransaction();
 
-    const payload = await updateAuthenticatedUserNameFlow({
+    const result = await updateAuthenticatedUserNameFlow({
       userId: req.uid,
       newName: req.body?.newName,
       session,
@@ -222,27 +190,10 @@ export const modifyName = async (req, res) => {
 
     await session.commitTransaction();
 
-    return res.status(200).json({
-      success: true,
-      ...payload,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 200);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("modifyName error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404) {
-      return res.status(statusCode).json({
-        success: false,
-        msg: err.message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }
@@ -251,45 +202,36 @@ export const modifyName = async (req, res) => {
 /**
  * Obtiene los datos del usuario autenticado.
  *
+ * Los errores se delegan al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const infoUser = async (req, res) => {
-  try {
-    const payload = await getAuthenticatedUserProfilePayload({
-      userId: req.uid,
-    });
+  const profile = await getAuthenticatedUserProfilePayload({
+    userId: req.uid,
+  });
 
-    return res.json({
-      ...payload,
-      success: true,
-    });
-  } catch (err) {
-    console.error("infoUser error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 404) {
-      return res.json({
-        msg: err.message,
-        success: false,
-      });
-    }
-
-    return res.json({
-      msg: "Error fetching user data",
-      success: false,
-    });
-  }
+  return sendSuccess(
+    res,
+    "User data fetched successfully",
+    {
+      user: profile,
+    },
+    200
+  );
 };
 
 /**
  * Inicia el proceso de cambio de email enviando un correo de confirmación.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const modifyEmail = async (req, res) => {
   const session = await mongoose.startSession();
@@ -307,27 +249,10 @@ export const modifyEmail = async (req, res) => {
 
     await sendEmailChangeConfirmation(result.emailChangeConfirmation);
 
-    return res.status(200).json({
-      success: true,
-      msg: result.msg,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 200);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("modifyEmail error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404 || statusCode === 409) {
-      return res.status(statusCode).json({
-        success: false,
-        msg: err.message,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      msg: "Server error",
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }
@@ -335,6 +260,8 @@ export const modifyEmail = async (req, res) => {
 
 /**
  * Confirma el cambio de email a partir del token recibido.
+ *
+ * Mantiene la lógica de redirección y cookies de estado.
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
@@ -355,13 +282,10 @@ export const confirmEmailChange = async (req, res) => {
 
     setStatusCookie(res, "emailChangeStatus", "verified");
     return redirectToFrontend(res);
-  } catch (err) {
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("confirmEmailChange error:", err);
 
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404 || statusCode === 409) {
+    if ([400, 404, 409].includes(error?.statusCode ?? error?.status)) {
       setStatusCookie(res, "emailChangeStatus", "verification_failed");
       return redirectToFrontend(res);
     }
@@ -376,9 +300,12 @@ export const confirmEmailChange = async (req, res) => {
 /**
  * Registra un nuevo usuario y envía el correo de verificación.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const signupUser = async (req, res) => {
   const session = await mongoose.startSession();
@@ -395,34 +322,10 @@ export const signupUser = async (req, res) => {
 
     await sendVerificationEmail(result.verificationEmail);
 
-    return res.json({
-      msg: result.msg,
-      success: true,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 201);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("signupUser error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400) {
-      return res.json({
-        errors: { general: err.message },
-        success: false,
-      });
-    }
-
-    if (statusCode === 409) {
-      return res.json({
-        errors: { email: err.message },
-        success: false,
-      });
-    }
-
-    return res.json({
-      errors: { general: "Internal server error" },
-      success: false,
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }
@@ -430,6 +333,8 @@ export const signupUser = async (req, res) => {
 
 /**
  * Confirma una cuenta a partir del token de verificación.
+ *
+ * Mantiene la lógica de redirección y cookies de estado.
  *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
@@ -450,13 +355,10 @@ export const accountConfirm = async (req, res) => {
 
     setStatusCookie(res, "accountStatus", "verified");
     return redirectToFrontend(res);
-  } catch (err) {
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("accountConfirm error:", err);
 
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 400 || statusCode === 404) {
+    if ([400, 404].includes(error?.statusCode ?? error?.status)) {
       setStatusCookie(res, "accountStatus", "verification_failed");
       return redirectToFrontend(res);
     }
@@ -471,9 +373,12 @@ export const accountConfirm = async (req, res) => {
 /**
  * Elimina la cuenta del usuario autenticado.
  *
+ * En caso de error solo se gestiona el rollback de la transacción;
+ * la respuesta HTTP final se delega al middleware global de errores.
+ *
  * @param {Object} req Request de Express.
  * @param {Object} res Response de Express.
- * @returns {Promise<void>}
+ * @returns {Promise<Object>}
  */
 export const deleteAccount = async (req, res) => {
   const session = await mongoose.startSession();
@@ -481,34 +386,17 @@ export const deleteAccount = async (req, res) => {
   try {
     session.startTransaction();
 
-    const payload = await deleteAuthenticatedUserAccountFlow({
+    const result = await deleteAuthenticatedUserAccountFlow({
       userId: req.uid,
       session,
     });
 
     await session.commitTransaction();
 
-    return res.json({
-      ...payload,
-      success: true,
-    });
-  } catch (err) {
+    return sendSuccess(res, result.message, null, 200);
+  } catch (error) {
     await abortTransactionSafely(session);
-    console.error("deleteAccount error:", err);
-
-    const statusCode = getErrorStatusCode(err);
-
-    if (statusCode === 404) {
-      return res.json({
-        msg: err.message,
-        success: false,
-      });
-    }
-
-    return res.json({
-      msg: "Internal Server Error",
-      success: false,
-    });
+    throw error;
   } finally {
     await endSessionSafely(session);
   }

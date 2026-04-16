@@ -1,5 +1,7 @@
 import { Router } from "express";
 
+import { asyncHandler } from "../middlewares/asyncHandler.js";
+
 import {
   createIssue,
   modelsInfo,
@@ -45,8 +47,8 @@ const router = Router();
  * Copia valores de req.params a req.body para mantener compatibilidad
  * con controllers que todavía esperan ids o claves en el body.
  *
- * @param {Record<string, string>} mapping Mapa bodyKey -> paramKey.
- * @returns {import("express").RequestHandler}
+ * @param {Object.<string, string>} mapping Mapa bodyKey -> paramKey.
+ * @returns {Function}
  */
 const mapParamsToBody = (mapping) => (req, _res, next) => {
   req.body = req.body ?? {};
@@ -81,36 +83,26 @@ router.use(requireToken);
  *               type: object
  *               required:
  *                 - success
+ *                 - message
  *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Models fetched successfully
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
  *                     additionalProperties: true
- *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Server error
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error interno del servidor
  */
-router.get("/models", modelsInfo);
+router.get("/models", asyncHandler(modelsInfo));
 
 /**
  * @openapi
@@ -133,11 +125,15 @@ router.get("/models", modelsInfo);
  *               type: object
  *               required:
  *                 - success
+ *                 - message
  *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Users fetched successfully
  *                 data:
  *                   type: array
  *                   items:
@@ -152,26 +148,12 @@ router.get("/models", modelsInfo);
  *                       email:
  *                         type: string
  *                         format: email
- *       500:
- *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Server error
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error interno del servidor
  */
-router.get("/users", getAllUsers);
+router.get("/users", asyncHandler(getAllUsers));
 
 /**
  * @openapi
@@ -194,34 +176,22 @@ router.get("/users", getAllUsers);
  *               type: object
  *               required:
  *                 - success
+ *                 - message
  *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     additionalProperties: true
- *       500:
- *         description: Error obteniendo dominios
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
+ *                 message:
  *                   type: string
- *                   example: Error fetching domains
+ *                   example: Expression domains fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error obteniendo dominios
  *   post:
  *     tags:
  *       - Issues
@@ -241,9 +211,10 @@ router.get("/users", getAllUsers);
  *             example:
  *               name: Numeric 0-10 custom
  *               type: numeric
- *               range:
+ *               numericRange:
  *                 min: 0
  *                 max: 10
+ *                 step: 1
  *     responses:
  *       201:
  *         description: Dominio creado correctamente
@@ -253,57 +224,31 @@ router.get("/users", getAllUsers);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
  *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Domain Numeric 0-10 custom created successfully
  *                 data:
  *                   type: object
  *                   additionalProperties: true
- *       409:
- *         description: Ya existe un dominio con el mismo nombre para el usuario
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: A domain with the same name already exists (for this user).
- *       500:
- *         description: Error creando dominio
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Error creating domain
+ *       400:
+ *         description: Solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       409:
+ *         description: Ya existe un dominio con el mismo nombre para el usuario
+ *       500:
+ *         description: Error creando dominio
  */
 router
   .route("/expression-domains")
-  .get(getExpressionsDomain)
-  .post(createExpressionDomain);
+  .get(asyncHandler(getExpressionsDomain))
+  .post(asyncHandler(createExpressionDomain));
 
 /**
  * @openapi
@@ -345,13 +290,13 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
  *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Domain updated successfully
  *                 data:
@@ -359,12 +304,12 @@ router
  *                   additionalProperties: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Dominio no encontrado
  *       500:
  *         description: Error actualizando dominio
- *       401:
- *         description: Access token ausente, expirado o inválido
  *   delete:
  *     tags:
  *       - Issues
@@ -390,27 +335,33 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Domain deleted
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Dominio no encontrado
  *       500:
  *         description: Error eliminando dominio
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router
   .route("/expression-domains/:id")
-  .patch(mapParamsToBody({ id: "id" }), updateExpressionDomain)
-  .delete(mapParamsToBody({ id: "id" }), removeExpressionDomain);
+  .patch(mapParamsToBody({ id: "id" }), asyncHandler(updateExpressionDomain))
+  .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeExpressionDomain));
 
 /**
  * @openapi
@@ -446,24 +397,31 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Issue Sustainability study created successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
+ *                       nullable: true
  *       400:
  *         description: Datos del issue inválidos
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Alguna entidad referenciada no existe
  *       500:
  *         description: Error creando issue
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.post("/", createIssue);
+router.post("/", asyncHandler(createIssue));
 
 /**
  * @openapi
@@ -473,8 +431,8 @@ router.post("/", createIssue);
  *       - Issues
  *     summary: Obtiene los issues activos visibles para el usuario actual
  *     description: |
- *       Devuelve la vista principal de issues activos, incluyendo:
- *       lista de issues visibles, tareas, task center y metadatos de filtros.
+ *       Devuelve la vista principal de issues activos, incluyendo lista de issues,
+ *       tareas, task center y metadatos de filtros.
  *       Requiere un access token válido.
  *     security:
  *       - bearerAuth: []
@@ -487,33 +445,42 @@ router.post("/", createIssue);
  *               type: object
  *               required:
  *                 - success
- *                 - issues
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 issues:
- *                   type: array
- *                   items:
- *                     type: object
- *                     additionalProperties: true
- *                 tasks:
- *                   type: array
- *                   items:
- *                     type: object
- *                     additionalProperties: true
- *                 taskCenter:
+ *                 message:
+ *                   type: string
+ *                   example: Active issues fetched successfully
+ *                 data:
  *                   type: object
- *                   additionalProperties: true
- *                 filtersMeta:
- *                   type: object
- *                   additionalProperties: true
- *       500:
- *         description: Error obteniendo issues activos
+ *                   properties:
+ *                     issues:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         additionalProperties: true
+ *                     tasks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         additionalProperties: true
+ *                     taskCenter:
+ *                       type: object
+ *                       nullable: true
+ *                       additionalProperties: true
+ *                     filtersMeta:
+ *                       type: object
+ *                       nullable: true
+ *                       additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error obteniendo issues activos
  */
-router.get("/active", getAllActiveIssues);
+router.get("/active", asyncHandler(getAllActiveIssues));
 
 /**
  * @openapi
@@ -536,12 +503,16 @@ router.get("/active", getAllActiveIssues);
  *               type: object
  *               required:
  *                 - success
- *                 - issues
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 issues:
+ *                 message:
+ *                   type: string
+ *                   example: Finished issues fetched successfully
+ *                 data:
  *                   type: array
  *                   items:
  *                     type: object
@@ -565,12 +536,12 @@ router.get("/active", getAllActiveIssues);
  *                         nullable: true
  *                       isAdmin:
  *                         type: boolean
- *       500:
- *         description: Error obteniendo issues finalizados
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error obteniendo issues finalizados
  */
-router.get("/finished", getAllFinishedIssues);
+router.get("/finished", asyncHandler(getAllFinishedIssues));
 
 /**
  * @openapi
@@ -600,24 +571,24 @@ router.get("/finished", getAllFinishedIssues);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
- *                 - issueInfo
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Issue info sent
- *                 issueInfo:
+ *                 data:
  *                   type: object
  *                   additionalProperties: true
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error obteniendo detalle del issue
- *       401:
- *         description: Access token ausente, expirado o inválido
  *   delete:
  *     tags:
  *       - Issues
@@ -644,25 +615,31 @@ router.get("/finished", getAllFinishedIssues);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
- *                   example: Issue removed from finished list
+ *                   example: Issue Sustainability study removed
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error eliminando issue finalizado
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router
   .route("/finished/:id")
-  .get(mapParamsToBody({ id: "id" }), getFinishedIssueInfo)
-  .delete(mapParamsToBody({ id: "id" }), removeFinishedIssue);
+  .get(mapParamsToBody({ id: "id" }), asyncHandler(getFinishedIssueInfo))
+  .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeFinishedIssue));
 
 /**
  * @openapi
@@ -692,24 +669,30 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Issue Sustainability study removed
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error eliminando issue
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.delete("/:id", mapParamsToBody({ id: "id" }), removeIssue);
+router.delete("/:id", mapParamsToBody({ id: "id" }), asyncHandler(removeIssue));
 
 /**
  * @openapi
@@ -739,24 +722,31 @@ router.delete("/:id", mapParamsToBody({ id: "id" }), removeIssue);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: You have left the issue successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
+ *                       nullable: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue o participación no encontrada
  *       500:
  *         description: Error abandonando issue
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.post("/:id/leave", mapParamsToBody({ id: "id" }), leaveIssue);
+router.post("/:id/leave", mapParamsToBody({ id: "id" }), asyncHandler(leaveIssue));
 
 /**
  * @openapi
@@ -792,9 +782,6 @@ router.post("/:id/leave", mapParamsToBody({ id: "id" }), leaveIssue);
  *                 type: array
  *                 items:
  *                   type: string
- *               domainAssignments:
- *                 type: object
- *                 additionalProperties: true
  *     responses:
  *       200:
  *         description: Expertos editados correctamente
@@ -804,24 +791,28 @@ router.post("/:id/leave", mapParamsToBody({ id: "id" }), leaveIssue);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Experts updated successfully.
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error editando expertos
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.patch("/:id/experts", mapParamsToBody({ id: "id" }), editExperts);
+router.patch("/:id/experts", mapParamsToBody({ id: "id" }), asyncHandler(editExperts));
 
 /**
  * @openapi
@@ -862,20 +853,33 @@ router.patch("/:id/experts", mapParamsToBody({ id: "id" }), editExperts);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Invitation status updated successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Invitación o issue no encontrado
  *       500:
  *         description: Error actualizando el estado de invitación
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/invitation-response",
   mapParamsToBody({ id: "id" }),
-  changeInvitationStatus
+  asyncHandler(changeInvitationStatus)
 );
 
 /**
@@ -897,13 +901,31 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
- *       500:
- *         description: Error obteniendo notificaciones
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Notifications fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notifications:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error obteniendo notificaciones
  */
-router.get("/notifications", getNotifications);
+router.get("/notifications", asyncHandler(getNotifications));
 
 /**
  * @openapi
@@ -924,13 +946,26 @@ router.get("/notifications", getNotifications);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
- *       500:
- *         description: Error actualizando notificaciones
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Notifications updated successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       401:
  *         description: Access token ausente, expirado o inválido
+ *       500:
+ *         description: Error actualizando notificaciones
  */
-router.post("/notifications/read-all", markAllNotificationsAsRead);
+router.post("/notifications/read-all", asyncHandler(markAllNotificationsAsRead));
 
 /**
  * @openapi
@@ -958,18 +993,33 @@ router.post("/notifications/read-all", markAllNotificationsAsRead);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Notification removed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notificationId:
+ *                       type: string
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Notificación no encontrada
  *       500:
  *         description: Error eliminando notificación
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.delete(
   "/notifications/:notificationId",
   mapParamsToBody({ notificationId: "notificationId" }),
-  removeNotificationById
+  asyncHandler(removeNotificationById)
 );
 
 /**
@@ -982,7 +1032,7 @@ router.delete(
  *     description: |
  *       Devuelve las evaluaciones del usuario actual para el issue indicado.
  *       La forma exacta de la respuesta depende de la estructura de evaluación
- *       del issue (directa o pairwise).
+ *       del issue, directa o pairwise.
  *       Requiere un access token válido.
  *     security:
  *       - bearerAuth: []
@@ -1000,17 +1050,34 @@ router.delete(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Evaluations fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue o evaluaciones no encontradas
  *       500:
  *         description: Error obteniendo evaluaciones
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.get("/:id/evaluations", mapParamsToBody({ id: "id" }), getEvaluations);
+router.get(
+  "/:id/evaluations",
+  mapParamsToBody({ id: "id" }),
+  asyncHandler(getEvaluations)
+);
 
 /**
  * @openapi
@@ -1022,7 +1089,7 @@ router.get("/:id/evaluations", mapParamsToBody({ id: "id" }), getEvaluations);
  *     description: |
  *       Guarda borradores de evaluaciones para el usuario actual.
  *       La forma del payload depende de la estructura de evaluación
- *       del issue (directa o pairwise).
+ *       del issue, directa o pairwise.
  *       Requiere un access token válido.
  *     security:
  *       - bearerAuth: []
@@ -1052,20 +1119,33 @@ router.get("/:id/evaluations", mapParamsToBody({ id: "id" }), getEvaluations);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Evaluations saved successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error guardando evaluaciones
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/evaluations/draft",
   mapParamsToBody({ id: "id" }),
-  saveEvaluations
+  asyncHandler(saveEvaluations)
 );
 
 /**
@@ -1078,7 +1158,7 @@ router.post(
  *     description: |
  *       Valida y envía las evaluaciones del usuario actual.
  *       La forma del payload depende de la estructura de evaluación
- *       del issue (directa o pairwise).
+ *       del issue, directa o pairwise.
  *       Requiere un access token válido.
  *     security:
  *       - bearerAuth: []
@@ -1108,20 +1188,33 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Evaluations submitted successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error enviando evaluaciones
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/evaluations/submit",
   mapParamsToBody({ id: "id" }),
-  submitEvaluations
+  asyncHandler(submitEvaluations)
 );
 
 /**
@@ -1162,17 +1255,35 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Issue resolved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     finished:
+ *                       type: boolean
+ *                     rankedAlternatives:
+ *                       nullable: true
+ *                       example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error resolviendo issue
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.post("/:id/resolve", mapParamsToBody({ id: "id" }), resolveIssue);
+router.post("/:id/resolve", mapParamsToBody({ id: "id" }), asyncHandler(resolveIssue));
 
 /**
  * @openapi
@@ -1200,17 +1311,33 @@ router.post("/:id/resolve", mapParamsToBody({ id: "id" }), resolveIssue);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Weights fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bwmData:
+ *                       type: object
+ *                       additionalProperties: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue o pesos no encontrados
  *       500:
  *         description: Error obteniendo pesos BWM
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.get("/:id/weights/bwm", mapParamsToBody({ id: "id" }), getBwmWeights);
+router.get("/:id/weights/bwm", mapParamsToBody({ id: "id" }), asyncHandler(getBwmWeights));
 
 /**
  * @openapi
@@ -1250,20 +1377,33 @@ router.get("/:id/weights/bwm", mapParamsToBody({ id: "id" }), getBwmWeights);
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Weights saved successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error guardando pesos BWM
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/bwm/draft",
   mapParamsToBody({ id: "id" }),
-  saveBwmWeights
+  asyncHandler(saveBwmWeights)
 );
 
 /**
@@ -1304,20 +1444,33 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Weights submitted successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error enviando pesos BWM
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/bwm/submit",
   mapParamsToBody({ id: "id" }),
-  sendBwmWeights
+  asyncHandler(sendBwmWeights)
 );
 
 /**
@@ -1346,20 +1499,43 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Criteria weights for 'Issue name' successfully computed.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     finished:
+ *                       type: boolean
+ *                     weights:
+ *                       type: array
+ *                       items:
+ *                         nullable: true
+ *                     criteriaOrder:
+ *                       type: array
+ *                       items:
+ *                         type: string
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error calculando pesos BWM
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/bwm/compute",
   mapParamsToBody({ id: "id" }),
-  computeWeights
+  asyncHandler(computeWeights)
 );
 
 /**
@@ -1370,8 +1546,7 @@ router.post(
  *       - Issues
  *     summary: Obtiene los pesos manuales guardados del usuario actual
  *     description: |
- *       Devuelve los pesos manuales guardados del usuario autenticado
- *       para el issue indicado.
+ *       Devuelve los pesos manuales guardados del usuario autenticado para el issue indicado.
  *       Requiere un access token válido.
  *     security:
  *       - bearerAuth: []
@@ -1389,17 +1564,37 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Manual weights fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     manualWeights:
+ *                       type: object
+ *                       additionalProperties: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue o pesos no encontrados
  *       500:
  *         description: Error obteniendo pesos manuales
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
-router.get("/:id/weights/manual", mapParamsToBody({ id: "id" }), getManualWeights);
+router.get(
+  "/:id/weights/manual",
+  mapParamsToBody({ id: "id" }),
+  asyncHandler(getManualWeights)
+);
 
 /**
  * @openapi
@@ -1439,20 +1634,33 @@ router.get("/:id/weights/manual", mapParamsToBody({ id: "id" }), getManualWeight
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Manual weights saved successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error guardando pesos manuales
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/manual/draft",
   mapParamsToBody({ id: "id" }),
-  saveManualWeights
+  asyncHandler(saveManualWeights)
 );
 
 /**
@@ -1493,20 +1701,33 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Manual weights submitted successfully
+ *                 data:
+ *                   nullable: true
+ *                   example: null
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error enviando pesos manuales
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/manual/submit",
   mapParamsToBody({ id: "id" }),
-  sendManualWeights
+  asyncHandler(sendManualWeights)
 );
 
 /**
@@ -1535,20 +1756,43 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Criteria weights computed
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     finished:
+ *                       type: boolean
+ *                     weights:
+ *                       type: array
+ *                       items:
+ *                         nullable: true
+ *                     criteriaOrder:
+ *                       type: array
+ *                       items:
+ *                         type: string
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error calculando pesos manuales
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router.post(
   "/:id/weights/manual/compute",
   mapParamsToBody({ id: "id" }),
-  computeManualWeights
+  asyncHandler(computeManualWeights)
 );
 
 /**
@@ -1579,24 +1823,28 @@ router.post(
  *               type: object
  *               required:
  *                 - success
- *                 - scenarios
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 scenarios:
+ *                 message:
+ *                   type: string
+ *                   example: Scenarios fetched successfully
+ *                 data:
  *                   type: array
  *                   items:
  *                     type: object
  *                     additionalProperties: true
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue no encontrado
  *       500:
  *         description: Error listando escenarios
- *       401:
- *         description: Access token ausente, expirado o inválido
  *   post:
  *     tags:
  *       - Issues
@@ -1639,20 +1887,35 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Scenario created successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     scenarioId:
+ *                       type: string
  *       400:
  *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Issue o modelo no encontrado
  *       500:
  *         description: Error creando escenario
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router
   .route("/:id/scenarios")
-  .get(mapParamsToBody({ issueId: "id" }), getIssueScenarios)
-  .post(mapParamsToBody({ issueId: "id" }), createIssueScenario);
+  .get(mapParamsToBody({ issueId: "id" }), asyncHandler(getIssueScenarios))
+  .post(mapParamsToBody({ issueId: "id" }), asyncHandler(createIssueScenario));
 
 /**
  * @openapi
@@ -1682,20 +1945,24 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - scenario
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 scenario:
+ *                 message:
+ *                   type: string
+ *                   example: Scenario fetched successfully
+ *                 data:
  *                   type: object
  *                   additionalProperties: true
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Escenario no encontrado
  *       500:
  *         description: Error obteniendo escenario
- *       401:
- *         description: Access token ausente, expirado o inválido
  *   delete:
  *     tags:
  *       - Issues
@@ -1722,24 +1989,30 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Scenario deleted
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     scenarioId:
+ *                       type: string
+ *       401:
+ *         description: Access token ausente, expirado o inválido
  *       404:
  *         description: Escenario no encontrado
  *       500:
  *         description: Error eliminando escenario
- *       401:
- *         description: Access token ausente, expirado o inválido
  */
 router
   .route("/scenarios/:scenarioId")
-  .get(mapParamsToBody({ scenarioId: "scenarioId" }), getScenarioById)
-  .delete(mapParamsToBody({ scenarioId: "scenarioId" }), removeScenario);
+  .get(mapParamsToBody({ scenarioId: "scenarioId" }), asyncHandler(getScenarioById))
+  .delete(mapParamsToBody({ scenarioId: "scenarioId" }), asyncHandler(removeScenario));
 
 export default router;

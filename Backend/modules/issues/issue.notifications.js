@@ -12,7 +12,6 @@ import { toIdString } from "../../utils/common/ids.js";
 
 /**
  * @typedef {Object} NotificationsPayload
- * @property {boolean} success Resultado correcto.
  * @property {Array<Object>} notifications Lista de notificaciones formateadas.
  */
 
@@ -95,7 +94,6 @@ export const getNotificationsPayload = async ({ userId }) => {
   );
 
   return {
-    success: true,
     notifications: notifications.map((notification) =>
       buildNotificationItem({
         notification,
@@ -116,8 +114,7 @@ export const markAllNotificationsAsReadFlow = async ({ userId }) => {
   await Notification.updateMany({ expert: userId, read: false }, { read: true });
 
   return {
-    success: true,
-    msg: "Notifications marked as read",
+    message: "Notifications marked as read",
   };
 };
 
@@ -148,7 +145,9 @@ export const changeInvitationStatusFlow = async ({
   }
 
   if (action !== "accepted" && action !== "declined") {
-    throw createBadRequestError("Invalid invitation action");
+    throw createBadRequestError("Invalid invitation action", {
+      field: "action",
+    });
   }
 
   const issue = await Issue.findById(issueId)
@@ -179,8 +178,7 @@ export const changeInvitationStatusFlow = async ({
   await participation.save({ session });
 
   return {
-    success: true,
-    msg:
+    message:
       action === "accepted"
         ? `Invitation to issue ${issue.name} accepted`
         : `Invitation to issue ${issue.name} declined`,
@@ -199,6 +197,12 @@ export const removeNotificationForUserFlow = async ({
   notificationId,
   userId,
 }) => {
+  if (!notificationId) {
+    throw createBadRequestError("Notification id is required", {
+      field: "notificationId",
+    });
+  }
+
   const notification = await Notification.findOne({
     _id: notificationId,
     expert: userId,
@@ -211,7 +215,6 @@ export const removeNotificationForUserFlow = async ({
   await Notification.deleteOne({ _id: notification._id });
 
   return {
-    success: true,
-    msg: "Message removed",
+    message: "Notification removed successfully",
   };
 };

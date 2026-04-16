@@ -1,4 +1,6 @@
 import { Router } from "express";
+
+import { asyncHandler } from "../middlewares/asyncHandler.js";
 import {
   getAllUsersAdmin,
   createUserAdmin,
@@ -25,8 +27,8 @@ const router = Router();
  * Copia valores de req.params a req.body para mantener compatibilidad
  * con controllers que todavía esperan ids en el body.
  *
- * @param {Record<string, string>} mapping Mapa bodyKey -> paramKey.
- * @returns {import("express").RequestHandler}
+ * @param {Object.<string, string>} mapping Mapa bodyKey -> paramKey.
+ * @returns {Function}
  */
 const mapParamsToBody = (mapping) => (req, _res, next) => {
   req.body = req.body ?? {};
@@ -76,47 +78,24 @@ const mapParamsToBody = (mapping) => (req, _res, next) => {
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Users fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
+ *       500:
+ *         description: Error interno del servidor
  *   post:
  *     tags:
  *       - Admin
@@ -152,7 +131,7 @@ const mapParamsToBody = (mapping) => (req, _res, next) => {
  *                 example: true
  *               role:
  *                 type: string
- *                 example: expert
+ *                 example: user
  *     responses:
  *       201:
  *         description: Usuario creado correctamente
@@ -162,68 +141,36 @@ const mapParamsToBody = (mapping) => (req, _res, next) => {
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
- *       409:
- *         description: Conflicto por email ya registrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
+ *                 message:
  *                   type: string
- *                   example: Email already registered
+ *                   example: User mario@example.com created successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       additionalProperties: true
+ *       400:
+ *         description: Solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
+ *       409:
+ *         description: Conflicto por email ya registrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router
   .route("/experts")
-  .get(requireToken, requireAdmin, getAllUsersAdmin)
-  .post(requireToken, requireAdmin, createUserAdmin);
+  .get(requireToken, requireAdmin, asyncHandler(getAllUsersAdmin))
+  .post(requireToken, requireAdmin, asyncHandler(createUserAdmin));
 
 /**
  * @openapi
@@ -270,7 +217,7 @@ router
  *                 example: true
  *               role:
  *                 type: string
- *                 example: expert
+ *                 example: user
  *     responses:
  *       200:
  *         description: Usuario actualizado correctamente
@@ -280,63 +227,33 @@ router
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
- *       409:
- *         description: Conflicto por email ya registrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
+ *                 message:
  *                   type: string
- *                   example: Email already registered
+ *                   example: User mario@example.com updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       additionalProperties: true
+ *       400:
+ *         description: Solicitud inválida
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
+ *       404:
+ *         description: Usuario no encontrado
+ *       409:
+ *         description: Conflicto por email ya registrado
+ *       500:
+ *         description: Error interno del servidor
  *   delete:
  *     tags:
  *       - Admin
@@ -362,70 +279,34 @@ router
  *               type: object
  *               required:
  *                 - success
- *                 - msg
- *                 - summary
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: User mario@example.com deleted successfully
- *                 summary:
+ *                 data:
  *                   type: object
- *                   additionalProperties: true
+ *                   properties:
+ *                     deletedUser:
+ *                       type: object
+ *                       additionalProperties: true
+ *                     summary:
+ *                       type: object
+ *                       additionalProperties: true
  *       400:
  *         description: Id de usuario inválido o ausente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid user id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token does not exist
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: NO_TOKEN
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router
   .route("/experts/:id")
@@ -433,13 +314,13 @@ router
     requireToken,
     requireAdmin,
     mapParamsToBody({ id: "id" }),
-    updateUserAdmin
+    asyncHandler(updateUserAdmin)
   )
   .delete(
     requireToken,
     requireAdmin,
     mapParamsToBody({ id: "id" }),
-    deleteUserAdmin
+    asyncHandler(deleteUserAdmin)
   );
 
 /**
@@ -504,49 +385,26 @@ router
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Issues fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
+ *       500:
+ *         description: Error interno del servidor
  */
-router.get("/issues", requireToken, requireAdmin, getAllIssuesAdmin);
+router.get("/issues", requireToken, requireAdmin, asyncHandler(getAllIssuesAdmin));
 
 /**
  * @openapi
@@ -576,63 +434,26 @@ router.get("/issues", requireToken, requireAdmin, getAllIssuesAdmin);
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Issue detail fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  *   delete:
  *     tags:
  *       - Admin
@@ -658,91 +479,39 @@ router.get("/issues", requireToken, requireAdmin, getAllIssuesAdmin);
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
  *                   example: Issue Sustainability study removed
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
  *       400:
  *         description: Id inválido o datos insuficientes
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid issue id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router
   .route("/issues/:id")
-  .get(requireToken, requireAdmin, getIssueAdminById)
+  .get(requireToken, requireAdmin, asyncHandler(getIssueAdminById))
   .delete(
     requireToken,
     requireAdmin,
     mapParamsToBody({ issueId: "id" }),
-    removeIssueAdmin
+    asyncHandler(removeIssueAdmin)
   );
 
 /**
@@ -773,69 +542,32 @@ router
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Issue experts progress fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.get(
   "/issues/:id/experts/progress",
   requireToken,
   requireAdmin,
-  getIssueExpertsProgressAdmin
+  asyncHandler(getIssueExpertsProgressAdmin)
 );
 
 /**
@@ -872,69 +604,32 @@ router.get(
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Expert evaluations fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue o experto no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Expert not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.get(
   "/issues/:issueId/experts/:expertId/evaluations",
   requireToken,
   requireAdmin,
-  getIssueExpertEvaluationsAdmin
+  asyncHandler(getIssueExpertEvaluationsAdmin)
 );
 
 /**
@@ -971,69 +666,32 @@ router.get(
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Expert weights fetched successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue o experto no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Expert not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.get(
   "/issues/:issueId/experts/:expertId/weights",
   requireToken,
   requireAdmin,
-  getIssueExpertWeightsAdmin
+  asyncHandler(getIssueExpertWeightsAdmin)
 );
 
 /**
@@ -1076,86 +734,41 @@ router.get(
  *               type: object
  *               required:
  *                 - success
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *               additionalProperties: true
+ *                 message:
+ *                   type: string
+ *                   example: Issue Sustainability study reassigned to admin@example.com successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issue:
+ *                       type: object
+ *                       additionalProperties: true
+ *                     admin:
+ *                       type: object
+ *                       additionalProperties: true
  *       400:
  *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid issue id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue o usuario no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.patch(
   "/issues/:id/admin",
   requireToken,
   requireAdmin,
   mapParamsToBody({ issueId: "id" }),
-  reassignIssueAdminAdmin
+  asyncHandler(reassignIssueAdminAdmin)
 );
 
 /**
@@ -1189,17 +802,10 @@ router.patch(
  *                 type: array
  *                 items:
  *                   type: string
- *                 example:
- *                   - 661b3d9f7c7f0f8a4a123456
  *               expertsToRemove:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example:
- *                   - 661b3d9f7c7f0f8a4a654321
- *               domainAssignments:
- *                 type: object
- *                 additionalProperties: true
  *     responses:
  *       200:
  *         description: Expertos editados correctamente
@@ -1209,89 +815,37 @@ router.patch(
  *               type: object
  *               required:
  *                 - success
- *                 - msg
+ *                 - message
+ *                 - data
  *               properties:
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 msg:
+ *                 message:
  *                   type: string
- *                   example: Experts updated successfully.
+ *                   example: Experts updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     issueName:
+ *                       type: string
  *       400:
  *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid issue id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.patch(
   "/issues/:id/experts",
   requireToken,
   requireAdmin,
   mapParamsToBody({ issueId: "id" }),
-  editIssueExpertsAdmin
+  asyncHandler(editIssueExpertsAdmin)
 );
 
 /**
@@ -1322,82 +876,47 @@ router.patch(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Criteria weights computed
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     finished:
+ *                       type: boolean
+ *                     weights:
+ *                       type: array
+ *                       items:
+ *                         nullable: true
+ *                     criteriaOrder:
+ *                       type: array
+ *                       items:
+ *                         type: string
  *       400:
  *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid issue id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Token expired
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_EXPIRED
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.post(
   "/issues/:id/weights/compute",
   requireToken,
   requireAdmin,
   mapParamsToBody({ issueId: "id" }),
-  computeIssueWeightsAdmin
+  asyncHandler(computeIssueWeightsAdmin)
 );
 
 /**
@@ -1437,82 +956,42 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               additionalProperties: true
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Issue resolved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     finished:
+ *                       type: boolean
+ *                     rankedAlternatives:
+ *                       nullable: true
+ *                       example: null
  *       400:
  *         description: Solicitud inválida
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Valid issue id is required
  *       401:
  *         description: Access token ausente, expirado o inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *                 - code
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Invalid token
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: TOKEN_INVALID
  *       403:
  *         description: Usuario autenticado sin permisos de administrador
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - msg
- *                 - success
- *               properties:
- *                 msg:
- *                   type: string
- *                   example: Admin only
- *                 success:
- *                   type: boolean
- *                   example: false
  *       404:
  *         description: Issue no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - success
- *                 - msg
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 msg:
- *                   type: string
- *                   example: Issue not found
+ *       500:
+ *         description: Error interno del servidor
  */
 router.post(
   "/issues/:id/resolve",
   requireToken,
   requireAdmin,
   mapParamsToBody({ issueId: "id" }),
-  resolveIssueAdmin
+  asyncHandler(resolveIssueAdmin)
 );
 
 export default router;

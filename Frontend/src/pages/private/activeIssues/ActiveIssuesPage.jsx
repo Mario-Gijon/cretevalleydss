@@ -12,7 +12,7 @@ import { useActiveIssuesScreenSync } from "../../../features/activeIssues/hooks/
 import { useActiveIssueConfirm } from "../../../features/activeIssues/hooks/useActiveIssueConfirm";
 import ActiveIssuesDesktopLayout from "../../../features/activeIssues/components/layout/ActiveIssuesDesktopLayout";
 import ActiveIssuesMobileLayout from "../../../features/activeIssues/components/layout/ActiveIssuesMobileLayout";
-import ActiveIssuesOverlays from "../../../features/activeIssues/components/shared/ActiveIssuesOverlays"
+import ActiveIssuesOverlays from "../../../features/activeIssues/components/shared/ActiveIssuesOverlays";
 import IssueExpertsFlowProvider from "../../../features/issueExperts/providers/IssueExpertsFlowProvider.jsx";
 
 /**
@@ -82,7 +82,6 @@ const ActiveIssuesPage = () => {
 
   const {
     selectedIssue,
-    EvaluationDialogComponent,
     drawerOpen,
     drawerTab,
     setDrawerTab,
@@ -203,7 +202,6 @@ const ActiveIssuesPage = () => {
           handleRemoveIssue={handleRemoveIssue}
           setIsRatingAlternatives={setIsRatingAlternatives}
           setIsRatingWeights={setIsRatingWeights}
-          EvaluationDialogComponent={EvaluationDialogComponent}
           setDrawerOpen={setDrawerOpen}
           isRatingAlternatives={isRatingAlternatives}
           isRatingWeights={isRatingWeights}

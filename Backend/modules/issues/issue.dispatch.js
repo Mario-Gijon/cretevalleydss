@@ -12,6 +12,7 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
 /**
  * Devuelve el handler adecuado según la estructura de evaluación del issue.
@@ -40,12 +41,20 @@ export const getIssueStructureHandler = (evaluationStructure, handlers) => {
  * @returns {Promise<string>}
  */
 export const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
+
   const issue = await Issue.findById(issueId)
     .select("_id evaluationStructure isPairwise")
     .lean();
 
   if (!issue) {
-    throw createNotFoundError("Issue not found");
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
   }
 
   return resolveEvaluationStructure(issue);
