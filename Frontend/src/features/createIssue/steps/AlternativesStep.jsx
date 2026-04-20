@@ -17,7 +17,7 @@ import {
   addAlternative,
   removeAlternative,
   saveEditAlternative,
-} from "../../../utils/createIssueUtils.js";
+} from "../utils/createIssue.utils";
 import { AlternativeItem } from "../components/AlternativeItem.jsx";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {

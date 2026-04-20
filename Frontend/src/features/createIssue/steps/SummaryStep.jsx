@@ -37,9 +37,9 @@ import { useCreateIssueContext } from "../context/createIssue.context";
 
 import {
   getRemainingTime,
-  groupDomainData,
   setDefaults,
-} from "../../../utils/createIssueUtils";
+} from "../utils/createIssue.utils";
+import { groupDomainData } from "../../../utils/domainAssignments.utils";
 import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
 import {
   getCreateIssueSummaryAccordionSx,

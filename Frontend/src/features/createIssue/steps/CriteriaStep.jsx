@@ -21,15 +21,15 @@ import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@mui/material/styles";
 
 import {
+  countLeafCriteria,
   removeCriteriaItemRecursively,
   updateCriterion,
   validateCriterion,
-} from "../../../utils/createIssueUtils";
+} from "../../../utils/criteria.utils";
 import { CriteriaItem } from "../components/CriteriaItem";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { useCreateIssueContext } from "../context/createIssue.context";
-import { countLeafCriteria } from "../utils/createIssue.utils";
 import {
   createIssueStepContainerSx,
   getCreateIssueRowDividerSx,

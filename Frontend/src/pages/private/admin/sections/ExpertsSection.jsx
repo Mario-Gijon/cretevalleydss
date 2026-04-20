@@ -44,7 +44,7 @@ import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
-import { removeAccents } from "../../../../utils/createIssueUtils";
+import { removeAccents } from "../../../../utils/text.utils";
 
 import {
   getAllUsers,

@@ -16,7 +16,8 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { getLeafCriteria, getMixedOrValue } from "../../../utils/createIssueUtils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
+import { getMixedOrValue } from "../../../utils/domainAssignments.utils";
 
 const rowSx = {
   width: "100%",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { buildFuzzyTriangles } from "../../../utils/createIssueUtils";
+import { buildFuzzyTriangles } from "../utils/createIssue.utils";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import {
   Button,

@@ -196,16 +196,8 @@
 │   │   ├── components
 │   │   │   ├── Account
 │   │   │   │   └── Account.jsx
-│   │   │   ├── AlternativeItem
-│   │   │   │   └── AlternativeItem.jsx
-│   │   │   ├── CreateLinguisticExpressionDialog
-│   │   │   │   └── CreateLinguisticExpressionDialog.jsx
-│   │   │   ├── CriteriaItem
-│   │   │   │   └── CriteriaItem.jsx
 │   │   │   ├── CriteriaList
 │   │   │   │   └── CriteriaList.jsx
-│   │   │   ├── CriterionAccordion
-│   │   │   │   └── CriterionAccordion.jsx
 │   │   │   ├── FinishedIssueDialog
 │   │   │   │   └── FinishedIssueDialog.jsx
 │   │   │   ├── FuzzyPreviewChart
@@ -214,8 +206,6 @@
 │   │   │   │   └── GoUpButton.jsx
 │   │   │   ├── LoadingProgress
 │   │   │   │   └── CircularLoading.jsx
-│   │   │   ├── ModelParameters
-│   │   │   │   └── ModelParameters.jsx
 │   │   │   ├── ModelParamsView
 │   │   │   │   └── ModelParamsView.jsx
 │   │   │   ├── ResponsiveNabvar
@@ -237,17 +227,15 @@
 │   │   │   │       └── validationUtils.js
 │   │   │   ├── SnackbarAlert
 │   │   │   │   └── SnackbarAlert.jsx
-│   │   │   ├── StyledComponents
-│   │   │   │   ├── GlassAccordion.jsx
-│   │   │   │   ├── GlassCard.jsx
-│   │   │   │   ├── GlassDialog.jsx
-│   │   │   │   ├── GlassPaper.jsx
-│   │   │   │   ├── GradientTabs.jsx
-│   │   │   │   ├── MaterialUISwitch.jsx
-│   │   │   │   ├── StepperLibConnector.jsx
-│   │   │   │   └── StyledChip.jsx
-│   │   │   └── ViewExpressionsDomainDialog
-│   │   │       └── ViewExpressionsDomainDialog.jsx
+│   │   │   └── StyledComponents
+│   │   │       ├── GlassAccordion.jsx
+│   │   │       ├── GlassCard.jsx
+│   │   │       ├── GlassDialog.jsx
+│   │   │       ├── GlassPaper.jsx
+│   │   │       ├── GradientTabs.jsx
+│   │   │       ├── MaterialUISwitch.jsx
+│   │   │       ├── StepperLibConnector.jsx
+│   │   │       └── StyledChip.jsx
 │   │   ├── context
 │   │   │   ├── auth
 │   │   │   │   ├── auth.context.js
@@ -332,6 +320,32 @@
 │   │   │   │       ├── authStatus.utils.js
 │   │   │   │       ├── loginForm.validation.js
 │   │   │   │       └── signupForm.validation.js
+│   │   │   ├── createIssue
+│   │   │   │   ├── components
+│   │   │   │   │   ├── AlternativeItem.jsx
+│   │   │   │   │   ├── CreateIssueFlow.jsx
+│   │   │   │   │   ├── CreateLinguisticExpressionDialog.jsx
+│   │   │   │   │   ├── CriteriaItem.jsx
+│   │   │   │   │   ├── CriterionAccordion.jsx
+│   │   │   │   │   ├── ModelParameters.jsx
+│   │   │   │   │   └── ViewExpressionsDomainDialog.jsx
+│   │   │   │   ├── context
+│   │   │   │   │   ├── createIssue.context.js
+│   │   │   │   │   └── createIssue.provider.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useCreateIssueFlow.js
+│   │   │   │   ├── steps
+│   │   │   │   │   ├── AlternativesStep.jsx
+│   │   │   │   │   ├── CriteriaStep.jsx
+│   │   │   │   │   ├── ExpertsStep.jsx
+│   │   │   │   │   ├── ExpressionDomainStep.jsx
+│   │   │   │   │   ├── ModelStep.jsx
+│   │   │   │   │   └── SummaryStep.jsx
+│   │   │   │   ├── styles
+│   │   │   │   │   ├── createIssueStep.styles.js
+│   │   │   │   │   └── createIssue.styles.js
+│   │   │   │   └── utils
+│   │   │   │       └── createIssue.utils.js
 │   │   │   ├── issueAlternativeEvaluation
 │   │   │   │   ├── components
 │   │   │   │   │   ├── direct
@@ -414,20 +428,7 @@
 │   │   │       │       ├── ModelsSection.jsx
 │   │   │       │       └── ReportsSection.jsx
 │   │   │       ├── createIssue
-│   │   │       │   ├── CreateIssuePage.jsx
-│   │   │       │   └── Steps
-│   │   │       │       ├── AlternativesStep
-│   │   │       │       │   └── AlternativesStep.jsx
-│   │   │       │       ├── CriteriaStep
-│   │   │       │       │   └── CriteriaStep.jsx
-│   │   │       │       ├── ExpertsStep
-│   │   │       │       │   └── ExpertsStep.jsx
-│   │   │       │       ├── ExpressionDomainStep
-│   │   │       │       │   └── ExpressionDomainStep.jsx
-│   │   │       │       ├── ModelStep
-│   │   │       │       │   └── ModelStep.jsx
-│   │   │       │       └── SummaryStep
-│   │   │       │           └── SummaryStep.jsx
+│   │   │       │   └── CreateIssuePage.jsx
 │   │   │       ├── finishedIssues
 │   │   │       │   └── FinishedIssuesPage.jsx
 │   │   │       ├── issuesModels
@@ -457,4 +458,4 @@
         ├── by_language.csv
         └── totals.csv
 
-131 directories, 327 files
+125 directories, 334 files

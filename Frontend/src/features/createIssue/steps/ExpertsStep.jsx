@@ -25,7 +25,7 @@ import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 import { useTheme } from "@mui/material/styles";
 
-import { removeAccents } from "../../../utils/createIssueUtils";
+import { removeAccents } from "../../../utils/text.utils";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {

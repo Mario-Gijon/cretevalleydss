@@ -5,17 +5,19 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
-  buildInitialAssignments,
-  getLeafCriteria,
+  readStoredCreateIssueData,
   steps,
   updateParamValues,
-  validateDomainAssigments,
   validateIssueDescription,
   validateIssueName,
-} from "../../../utils/createIssueUtils";
+} from "../utils/createIssue.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
+import {
+  buildInitialAssignments,
+  validateDomainAssigments,
+} from "../../../utils/domainAssignments.utils";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { readStoredCreateIssueData } from "../utils/createIssue.utils";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 

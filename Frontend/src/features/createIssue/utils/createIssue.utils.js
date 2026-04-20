@@ -1,17 +1,379 @@
+import dayjs from "dayjs";
+
 /**
- * Cuenta criterios hoja dentro de un árbol de criterios.
+ * Pasos del flujo de creación de issues.
  *
- * @param {Array} items Árbol de criterios.
- * @returns {number}
+ * @type {string[]}
  */
-export const countLeafCriteria = (items = []) => {
-  return items.reduce((accumulator, item) => {
-    if (!item?.children || item.children.length === 0) {
-      return accumulator + 1;
+export const steps = [
+  "Model",
+  "Alternatives",
+  "Criteria",
+  "Experts",
+  "Expression domain",
+  "Summary",
+];
+
+/**
+ * Construye triángulos difusos básicos para un número dado de etiquetas.
+ *
+ * @param {number} nLabels Número de etiquetas.
+ * @returns {object[]}
+ */
+export const buildFuzzyTriangles = (nLabels) => {
+  const step = 1 / (nLabels - 1);
+
+  return Array.from({ length: nLabels }, (_, i) => {
+    const m = i * step;
+    const l = Math.max(0, m - step);
+    const u = Math.min(1, m + step);
+
+    return {
+      label: `Etiqueta ${i + 1}`,
+      values: [l, m, u],
+    };
+  });
+};
+
+/**
+ * Valida el nombre del issue.
+ *
+ * @param {string} issueName Nombre del issue.
+ * @param {Function} setIssueNameError Setter del error.
+ * @returns {boolean}
+ */
+export const validateIssueName = (issueName, setIssueNameError) => {
+  if (issueName.length > 35) {
+    setIssueNameError("Max 35 characters");
+    return false;
+  }
+
+  if (!issueName) {
+    setIssueNameError("Cannot be empty");
+    return false;
+  }
+
+  if (issueName.length < 3) {
+    setIssueNameError("Must contain min 3 characters");
+    return false;
+  }
+
+  if (!/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(issueName)) {
+    setIssueNameError("Must contain at least one letter");
+    return false;
+  }
+
+  setIssueNameError(false);
+  return true;
+};
+
+/**
+ * Valida la descripción del issue.
+ *
+ * @param {string} issueDescription Descripción del issue.
+ * @param {Function} setIssueDescriptionError Setter del error.
+ * @returns {boolean}
+ */
+export const validateIssueDescription = (
+  issueDescription,
+  setIssueDescriptionError
+) => {
+  if (issueDescription.length > 80) {
+    setIssueDescriptionError("Max 80 characters");
+    return false;
+  }
+
+  if (!issueDescription) {
+    setIssueDescriptionError("Cannot be empty");
+    return false;
+  }
+
+  if ((issueDescription.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/g) || []).length < 5) {
+    setIssueDescriptionError("Must contain at least 5 letters");
+    return false;
+  }
+
+  setIssueDescriptionError(false);
+  return true;
+};
+
+/**
+ * Calcula el tiempo restante hasta la fecha de cierre.
+ *
+ * @param {object|null} closureDate Fecha de cierre en formato dayjs.
+ * @returns {string}
+ */
+export const getRemainingTime = (closureDate) => {
+  if (!closureDate) return "Without closure date";
+
+  const now = dayjs();
+  const years = closureDate.diff(now, "year");
+  const months = closureDate.diff(now.add(years, "year"), "month");
+  const days = closureDate.diff(
+    now.add(years, "year").add(months, "month"),
+    "day"
+  );
+
+  let hours = closureDate.diff(
+    now.add(years, "year").add(months, "month").add(days, "day"),
+    "hour"
+  );
+
+  let message = "Close in ";
+  if (years > 0) message += `${years} year${years > 1 ? "s" : ""}, `;
+  if (months > 0) message += `${months} month${months > 1 ? "s" : ""}, `;
+  if (days > 0) message += `${days} day${days !== 1 ? "s" : ""}, `;
+  if (hours > 0) message += `${hours} hour${hours !== 1 ? "s" : ""}`;
+
+  if (days === 0 && hours === 0) {
+    message = "Close in less than an hour";
+  }
+
+  return message;
+};
+
+/**
+ * Filtra modelos por soporte de consenso y texto de búsqueda.
+ *
+ * @param {object[]} models Modelos disponibles.
+ * @param {boolean} withConsensus Indica si se buscan modelos con consenso.
+ * @param {string} searchQuery Texto de búsqueda.
+ * @returns {object[]}
+ */
+export const filterModels = (models, withConsensus, searchQuery) => {
+  return models.filter((model) => {
+    const matchesConsensus = withConsensus
+      ? model.isConsensus
+      : !model.isConsensus;
+    const matchesSearch = model.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+
+    return matchesConsensus && matchesSearch;
+  });
+};
+
+/**
+ * Comprueba si el nombre de una alternativa ya existe.
+ *
+ * @param {string} name Nombre de la alternativa.
+ * @param {string[]} alternatives Alternativas existentes.
+ * @returns {boolean}
+ */
+const isAlternativeNameDuplicate = (name, alternatives) => {
+  return alternatives.includes(name);
+};
+
+/**
+ * Añade una alternativa al listado si es válida.
+ *
+ * @param {string} inputValue Valor del input.
+ * @param {string[]} alternatives Alternativas actuales.
+ * @param {Function} setAlternatives Setter de alternativas.
+ * @param {Function} setInputValue Setter del valor del input.
+ * @param {Function} setInputError Setter del error.
+ * @returns {void}
+ */
+export const addAlternative = (
+  inputValue,
+  alternatives,
+  setAlternatives,
+  setInputValue,
+  setInputError
+) => {
+  const trimmedValue = inputValue.trim();
+
+  if (!trimmedValue) return;
+
+  if (trimmedValue.length > 35) {
+    setInputError("Max 35 characters");
+    return;
+  }
+
+  if (isAlternativeNameDuplicate(trimmedValue, alternatives)) {
+    setInputError("Alternative already exists");
+    return;
+  }
+
+  setAlternatives((prev) => [...prev, trimmedValue]);
+  setInputValue("");
+  setInputError("");
+};
+
+/**
+ * Elimina una alternativa del listado.
+ *
+ * @param {string} item Alternativa a eliminar.
+ * @param {Function} setAlternatives Setter de alternativas.
+ * @returns {void}
+ */
+export const removeAlternative = (item, setAlternatives) => {
+  setAlternatives((prev) => prev.filter((i) => i !== item));
+};
+
+/**
+ * Guarda la edición de una alternativa existente.
+ *
+ * @param {string} editValue Nuevo valor.
+ * @param {string} editingAlternative Alternativa en edición.
+ * @param {string[]} alternatives Alternativas actuales.
+ * @param {Function} setAlternatives Setter de alternativas.
+ * @param {Function} setEditingAlternative Setter de edición actual.
+ * @param {Function} setEditValue Setter del valor editado.
+ * @param {Function} setEditError Setter del error.
+ * @returns {void}
+ */
+export const saveEditAlternative = (
+  editValue,
+  editingAlternative,
+  alternatives,
+  setAlternatives,
+  setEditingAlternative,
+  setEditValue,
+  setEditError
+) => {
+  const trimmedValue = editValue.trim();
+
+  if (!trimmedValue) {
+    setEditError("Alternative cannot be empty");
+    return;
+  }
+
+  if (trimmedValue.length > 35) {
+    setEditError("Max 35 characters");
+    return;
+  }
+
+  if (
+    isAlternativeNameDuplicate(trimmedValue, alternatives) &&
+    trimmedValue !== editingAlternative
+  ) {
+    setEditError("Alternative already exists");
+    return;
+  }
+
+  setAlternatives((prev) =>
+    prev.map((alt) => (alt === editingAlternative ? trimmedValue : alt))
+  );
+
+  setEditingAlternative(null);
+  setEditValue("");
+  setEditError(null);
+};
+
+/**
+ * Construye los valores por defecto de los parámetros de un modelo.
+ *
+ * @param {object} allData Datos necesarios para construir los valores.
+ * @returns {object}
+ */
+export const setDefaults = (allData) => {
+  const newValues = {};
+
+  allData.selectedModel.parameters.forEach((param) => {
+    const { name, type, restrictions, default: defaultValue } = param;
+
+    if (type === "number") {
+      newValues[name] = defaultValue ?? "";
     }
 
-    return accumulator + countLeafCriteria(item.children);
-  }, 0);
+    if (type === "array") {
+      const length =
+        restrictions?.length === "matchCriteria"
+          ? allData.criteria.length
+          : restrictions?.length || 2;
+
+      let values;
+
+      if (restrictions?.length === "matchCriteria") {
+        const equalWeight = 1 / length;
+        values = Array(length).fill(equalWeight);
+      } else if (
+        restrictions?.min !== null &&
+        restrictions?.max !== null
+      ) {
+        values = defaultValue ?? [restrictions.min, restrictions.max];
+      } else {
+        values = defaultValue ?? Array(length).fill("");
+      }
+
+      newValues[name] = values;
+    }
+
+    if (type === "fuzzyArray") {
+      const length =
+        restrictions?.length === "matchCriteria"
+          ? allData.criteria.length
+          : restrictions?.length || 1;
+
+      const delta = 0.05;
+      let values;
+
+      if (restrictions?.length === "matchCriteria") {
+        const equalWeight = 1 / length;
+        values = Array(length)
+          .fill(null)
+          .map(() => [
+            Math.max(0, +(equalWeight - delta).toFixed(2)),
+            +equalWeight.toFixed(2),
+            Math.min(1, +(equalWeight + delta).toFixed(2)),
+          ]);
+      } else {
+        values = defaultValue ?? Array(length).fill([0, 0, 0]);
+      }
+
+      newValues[name] = values;
+    }
+  });
+
+  return newValues;
+};
+
+/**
+ * Ajusta los valores de parámetros cuando cambian el modelo o los criterios.
+ *
+ * @param {object} prev Valores anteriores.
+ * @param {object} selectedModel Modelo seleccionado.
+ * @param {object[]} criteria Criterios actuales.
+ * @returns {object}
+ */
+export const updateParamValues = (prev, selectedModel, criteria) => {
+  const newValues = { ...prev };
+
+  selectedModel?.parameters.forEach((param) => {
+    const { name, type, restrictions } = param;
+
+    if (type === "array" && restrictions?.length === "matchCriteria") {
+      const length = criteria.length;
+      const equalWeight = 1 / length;
+
+      if (!Array.isArray(newValues[name]) || newValues[name].length !== length) {
+        newValues[name] = Array(length).fill(equalWeight);
+      }
+    }
+
+    if (type === "fuzzyArray" && restrictions?.length === "matchCriteria") {
+      const length = criteria.length;
+      const equalWeight = 1 / length;
+      const delta = 0.05;
+
+      if (
+        !Array.isArray(newValues[name]) ||
+        newValues[name].length !== length ||
+        newValues[name].some((t) => !Array.isArray(t) || t.length !== 3)
+      ) {
+        newValues[name] = Array(length)
+          .fill(null)
+          .map(() => [
+            Math.max(0, +(equalWeight - delta).toFixed(2)),
+            +equalWeight.toFixed(2),
+            Math.min(1, +(equalWeight + delta).toFixed(2)),
+          ]);
+      }
+    }
+  });
+
+  return newValues;
 };
 
 /**

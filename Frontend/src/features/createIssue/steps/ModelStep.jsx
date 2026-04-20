@@ -16,11 +16,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { filterModels } from "../../../utils/createIssueUtils";
+import { filterModels } from "../utils/createIssue.utils";
+import { countLeafCriteria } from "../../../utils/criteria.utils";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useCreateIssueContext } from "../context/createIssue.context";
-import { countLeafCriteria } from "../utils/createIssue.utils";
 import {
   createIssueStepContainerSx,
   getCreateIssueModelPillToggleSx,

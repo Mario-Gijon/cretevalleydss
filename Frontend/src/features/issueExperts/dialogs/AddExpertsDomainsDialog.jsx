@@ -22,9 +22,9 @@ import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
   buildInitialAssignments,
-  getLeafCriteria,
   validateDomainAssigments,
-} from "../../../utils/createIssueUtils";
+} from "../../../utils/domainAssignments.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
 import { DomainAssignments } from "../components/IssueExpertsDomainAssigments.jsx";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { getIssueExpertsAuroraBg } from "../styles/issueExperts.styles.js";

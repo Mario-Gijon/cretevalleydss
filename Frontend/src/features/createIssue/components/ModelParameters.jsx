@@ -4,7 +4,7 @@ import {
   ButtonGroup, Button
 } from "@mui/material";
 import { handleNumberInput } from "../../../utils/handleTwoDecimals";
-import { getLeafCriteria } from "../../../utils/createIssueUtils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
 
 export const ModelParameters = ({ selectedModel, allData, paramValues, setParamValues, defaultModelParams, setDefaultModelParams, handleDefaultChange, weightingMode, setWeightingMode, bwmData, setBwmData }) => {
   

@@ -13,7 +13,7 @@ import { useActiveIssueConfirm } from "../../../features/activeIssues/hooks/useA
 import ActiveIssuesDesktopLayout from "../../../features/activeIssues/components/layout/ActiveIssuesDesktopLayout";
 import ActiveIssuesMobileLayout from "../../../features/activeIssues/components/layout/ActiveIssuesMobileLayout";
 import ActiveIssuesOverlays from "../../../features/activeIssues/components/shared/ActiveIssuesOverlays";
-import IssueExpertsFlowProvider from "../../../features/issueExperts/providers/IssueExpertsFlowProvider.jsx";
+import IssueExpertsFlowProvider from "../../../features/issueExperts/context/issueExpertsFlow.provider.jsx";
 
 /**
  * Página de issues activos.

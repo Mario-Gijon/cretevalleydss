@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 
-import IssueExpertsFlowContext from "../context/issueExpertsFlow.context.js";
+import IssueExpertsFlowContext from "./issueExpertsFlow.context.js";
 import { useIssueExpertsFlow } from "../hooks/useIssueExpertsFlow.js";
 
 /**
