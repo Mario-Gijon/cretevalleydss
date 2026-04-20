@@ -1,6 +1,5 @@
                          
 import { useState } from 'react';
-import PropTypes from 'prop-types';
 import LockIcon from '@mui/icons-material/Lock';
 import CancelIcon from '@mui/icons-material/Cancel';
                                      

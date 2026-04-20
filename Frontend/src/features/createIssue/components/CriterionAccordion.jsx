@@ -1,6 +1,6 @@
 import { Typography, Stack, Chip, AccordionSummary, AccordionDetails, Divider } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { GlassAccordion } from "../StyledComponents/GlassAccordion";
+import { GlassAccordion } from "../../../components/StyledComponents/GlassAccordion";
 
 export const CriterionAccordion = ({ criterion, weightMap, elevation = 1 }) => {
   const isLeaf = !criterion.children || criterion.children.length === 0;
@@ -55,8 +55,6 @@ export const CriterionAccordion = ({ criterion, weightMap, elevation = 1 }) => {
           </Stack>
         </Stack>
       </AccordionSummary>
-
-      {                               }
       {!isLeaf && (
         <AccordionDetails sx={{ pl: 2, pt: 0, pb: elevation === 1 ? 1.5 : 1 }}>
           <Stack spacing={0}>

@@ -18,7 +18,7 @@ import {
   Grid2 as Grid,
   Divider,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -30,19 +30,35 @@ import duration from "dayjs/plugin/duration";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import "dayjs/locale/en-gb";
 
-import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
-import { CriterionAccordion } from "../../../../../components/CriterionAccordion/CriterionAccordion";
-import { ModelParameters } from "../../../../../components/ModelParameters/ModelParameters";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { CriterionAccordion } from "../components/CriterionAccordion";
+import { ModelParameters } from "../components/ModelParameters";
+import { useCreateIssueContext } from "../context/createIssue.context";
 
-import { getRemainingTime, groupDomainData, setDefaults } from "../../../../../utils/createIssueUtils";
-import ActiveIssuesPill from "../../../../../features/activeIssues/components/shared/ActiveIssuesPill";
+import {
+  getRemainingTime,
+  groupDomainData,
+  setDefaults,
+} from "../../../utils/createIssueUtils";
+import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
+import {
+  getCreateIssueSummaryAccordionSx,
+  getCreateIssueSummaryAlternativeItemSx,
+  getCreateIssueSummaryDomainHeaderCellSx,
+  getCreateIssueSummaryDomainTableContainerSx,
+  getCreateIssueSummaryExpertChipSx,
+  getCreateIssueSummaryUnlimitedToggleSx,
+} from "../styles/createIssueStep.styles";
 
 dayjs.extend(duration);
 dayjs.extend(customParseFormat);
 
 const KVRow = ({ k, v }) => (
   <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
-    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}>
+    <Typography
+      variant="caption"
+      sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}
+    >
       {k}
     </Typography>
     <Typography variant="body2" sx={{ fontWeight: 850, wordBreak: "break-word" }}>
@@ -51,45 +67,59 @@ const KVRow = ({ k, v }) => (
   </Stack>
 );
 
-export const SummaryStep = ({
-  allData,
-  issueName,
-  issueDescription,
-  issueNameError,
-  issueDescriptionError,
-  handleValidateIssueName,
-  handleValidateIssueDescription,
-  closureDate,
-  setClosureDate,
-  closureDateError,
-  handleClosureDateError,
-  consensusMaxPhases,
-  setConsensusMaxPhases,
-  consensusThreshold,
-  setConsensusThreshold,
-  paramValues,
-  setParamValues,
-  defaultModelParams,
-  setDefaultModelParams,
-  bwmData,
-  setBwmData,
-  weightingMode,
-  setWeightingMode,
-}) => {
+export const SummaryStep = () => {
   const theme = useTheme();
   const { globalDomains, expressionDomains } = useIssuesDataContext();
+  const {
+    allData,
+    issueName,
+    issueDescription,
+    issueNameError,
+    issueDescriptionError,
+    handleValidateIssueName,
+    handleValidateIssueDescription,
+    closureDate,
+    setClosureDate,
+    closureDateError,
+    handleClosureDateError,
+    consensusMaxPhases,
+    setConsensusMaxPhases,
+    consensusThreshold,
+    setConsensusThreshold,
+    paramValues,
+    setParamValues,
+    defaultModelParams,
+    setDefaultModelParams,
+    bwmData,
+    setBwmData,
+    weightingMode,
+    setWeightingMode,
+  } = useCreateIssueContext();
 
   const [unlimited, setUnlimited] = useState(consensusMaxPhases === null);
   const [openCalendar, setOpenCalendar] = useState(false);
 
-  const { selectedModel, withConsensus, alternatives, criteria, addedExperts, domainAssignments } = allData;
+  const {
+    selectedModel,
+    withConsensus,
+    alternatives,
+    criteria,
+    addedExperts,
+    domainAssignments,
+  } = allData;
 
   const domainNameMap = useMemo(
-    () => Object.fromEntries([...globalDomains, ...expressionDomains].map((d) => [d._id, d.name])),
+    () =>
+      Object.fromEntries(
+        [...globalDomains, ...expressionDomains].map((domain) => [domain._id, domain.name])
+      ),
     [globalDomains, expressionDomains]
   );
 
-  const groupedData = useMemo(() => groupDomainData(domainAssignments), [domainAssignments]);
+  const groupedData = useMemo(
+    () => groupDomainData(domainAssignments),
+    [domainAssignments]
+  );
 
   const handleDefaultChange = () => {
     if (!defaultModelParams) {
@@ -115,23 +145,8 @@ export const SummaryStep = ({
     );
   }
 
-  const accordionSx = {
-    borderRadius: 4,
-    overflow: "hidden",
-    bgcolor: alpha(theme.palette.common.white, 0.0),
-    border: `1px solid ${alpha(theme.palette.common.white, 0.00)}`,
-    boxShadow: `0 14px 34px ${alpha(theme.palette.common.black, 0.06)}`,
-    "&:before": { display: "none" },
-  };
-
-  const inputSx = {
-                                    
-                      
-                                                       
-                                                                     
-                                                               
-         
-  };
+  const accordionSx = getCreateIssueSummaryAccordionSx(theme);
+  const domainHeaderCellSx = getCreateIssueSummaryDomainHeaderCellSx(theme);
 
   const sectionHeader = (title, right) => (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center", width: "100%" }}>
@@ -161,11 +176,12 @@ export const SummaryStep = ({
                   fullWidth
                   autoComplete="off"
                   value={issueName}
-                  onChange={(e) => handleValidateIssueName(e.target.value)}
+                  onChange={(event) => handleValidateIssueName(event.target.value)}
                   error={Boolean(issueNameError)}
                   helperText={issueNameError || " "}
-                  onKeyDown={(e) => e.key === "Enter" && handleValidateIssueName(e.target.value)}
-                  sx={inputSx}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" && handleValidateIssueName(event.target.value)
+                  }
                 />
               </Grid>
 
@@ -178,18 +194,23 @@ export const SummaryStep = ({
                   fullWidth
                   autoComplete="off"
                   value={issueDescription}
-                  onChange={(e) => handleValidateIssueDescription(e.target.value)}
+                  onChange={(event) => handleValidateIssueDescription(event.target.value)}
                   error={Boolean(issueDescriptionError)}
                   helperText={issueDescriptionError ? "Invalid description" : " "}
-                  onKeyDown={(e) => e.key === "Enter" && handleValidateIssueDescription(e.target.value)}
-                  sx={inputSx}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" &&
+                    handleValidateIssueDescription(event.target.value)
+                  }
                 />
               </Grid>
 
               <Grid item size={{ xs: 12, md: 12 }}>
                 <Stack spacing={1}>
                   <KVRow k="Model" v={selectedModel?.name} />
-                  <KVRow k="Consensus" v={withConsensus ? "With consensus" : "Without consensus"} />
+                  <KVRow
+                    k="Consensus"
+                    v={withConsensus ? "With consensus" : "Without consensus"}
+                  />
                   <KVRow k="Experts" v={addedExperts.length} />
                 </Stack>
               </Grid>
@@ -197,29 +218,25 @@ export const SummaryStep = ({
           </AccordionDetails>
         </Accordion>
 
-        <Divider/>
+        <Divider />
 
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Alternatives", <ActiveIssuesPill tone="info">{alternatives.length}</ActiveIssuesPill>)}
+            {sectionHeader(
+              "Alternatives",
+              <ActiveIssuesPill tone="info">{alternatives.length}</ActiveIssuesPill>
+            )}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Stack spacing={0.8}>
-              {alternatives.map((a, idx) => (
+              {alternatives.map((alternative, index) => (
                 <Box
-                  key={`${a}_${idx}`}
-                  sx={{
-                    borderRadius: 3,
-                    px: 1.25,
-                    py: 0.9,
-                    bgcolor: alpha(theme.palette.common.white, 0.02),
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-                    "&:hover": { bgcolor: alpha(theme.palette.secondary.main, 0.08) },
-                  }}
+                  key={`${alternative}_${index}`}
+                  sx={getCreateIssueSummaryAlternativeItemSx(theme)}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                    {a}
+                    {alternative}
                   </Typography>
                 </Box>
               ))}
@@ -227,11 +244,14 @@ export const SummaryStep = ({
           </AccordionDetails>
         </Accordion>
 
-        <Divider/>
+        <Divider />
 
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Criteria", <ActiveIssuesPill tone="info">{criteria.length}</ActiveIssuesPill>)}
+            {sectionHeader(
+              "Criteria",
+              <ActiveIssuesPill tone="info">{criteria.length}</ActiveIssuesPill>
+            )}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
@@ -243,33 +263,32 @@ export const SummaryStep = ({
           </AccordionDetails>
         </Accordion>
 
-        <Divider/>
+        <Divider />
 
         <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Experts", <ActiveIssuesPill tone="warning">{addedExperts.length}</ActiveIssuesPill>)}
+            {sectionHeader(
+              "Experts",
+              <ActiveIssuesPill tone="warning">{addedExperts.length}</ActiveIssuesPill>
+            )}
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              {addedExperts.map((expert, idx) => (
+              {addedExperts.map((expert, index) => (
                 <Chip
-                  key={idx}
+                  key={index}
                   variant="outlined"
                   label={expert}
                   size="small"
-                  sx={{
-                    bgcolor: alpha(theme.palette.common.white, 0.02),
-                    borderColor: alpha(theme.palette.common.white, 0.10),
-                    fontWeight: 850,
-                  }}
+                  sx={getCreateIssueSummaryExpertChipSx(theme)}
                 />
               ))}
             </Box>
           </AccordionDetails>
         </Accordion>
 
-        <Divider/>
+        <Divider />
 
         {selectedModel?.parameters?.length ? (
           <Accordion disableGutters elevation={0} sx={accordionSx}>
@@ -295,7 +314,7 @@ export const SummaryStep = ({
           </Accordion>
         ) : null}
 
-        <Divider/>
+        <Divider />
 
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -305,7 +324,11 @@ export const SummaryStep = ({
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={1.4} alignItems="center">
               <Grid item size={withConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems="flex-start">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.2}
+                  alignItems="flex-start"
+                >
                   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
                     <DatePicker
                       label="Closure date"
@@ -325,7 +348,6 @@ export const SummaryStep = ({
                           color: "secondary",
                           error: closureDateError,
                           onClick: () => setOpenCalendar(true),
-                          sx: inputSx,
                         },
                       }}
                     />
@@ -359,14 +381,14 @@ export const SummaryStep = ({
                           size="small"
                           color="secondary"
                           value={unlimited ? "" : consensusMaxPhases}
-                          onChange={(e) => {
-                            let value = e.target.value.replace(/\D/g, "");
+                          onChange={(event) => {
+                            let value = event.target.value.replace(/\D/g, "");
                             value = value ? Math.max(1, parseInt(value, 10)) : "";
                             setConsensusMaxPhases(value);
                           }}
                           disabled={unlimited}
                           inputProps={{ min: 1 }}
-                          sx={{ width: 120, ...inputSx }}
+                          sx={{ width: 120 }}
                         />
                       )}
 
@@ -379,12 +401,7 @@ export const SummaryStep = ({
                         }}
                         color="secondary"
                         size="small"
-                        sx={{
-                          borderRadius: 999,
-                          px: 1.6,
-                          border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-                          bgcolor: unlimited ? alpha(theme.palette.secondary.main, 0.12) : "transparent",
-                        }}
+                        sx={getCreateIssueSummaryUnlimitedToggleSx(theme, unlimited)}
                       >
                         Unlimited
                       </ToggleButton>
@@ -407,19 +424,23 @@ export const SummaryStep = ({
                         size="small"
                         color="secondary"
                         value={consensusThreshold}
-                        onChange={(e) => {
-                          let value = e.target.value;
+                        onChange={(event) => {
+                          let value = event.target.value;
                           if (value === "") {
                             setConsensusThreshold("");
                             return;
                           }
+
                           value = value.replace(/[^0-9.]/g, "");
                           if (value.split(".").length > 2) return;
-                          const numValue = parseFloat(value);
-                          if (!isNaN(numValue) && numValue >= 0 && numValue <= 1) setConsensusThreshold(value);
+
+                          const numberValue = parseFloat(value);
+                          if (!isNaN(numberValue) && numberValue >= 0 && numberValue <= 1) {
+                            setConsensusThreshold(value);
+                          }
                         }}
                         inputProps={{ min: 0, max: 1, step: 0.1 }}
-                        sx={{ width: 180, ...inputSx }}
+                        sx={{ width: 180 }}
                       />
                     </Stack>
                   </Grid>
@@ -429,7 +450,7 @@ export const SummaryStep = ({
           </AccordionDetails>
         </Accordion>
 
-        <Divider/>
+        <Divider />
 
         <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -437,58 +458,49 @@ export const SummaryStep = ({
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
-            <TableContainer
-              sx={{
-                maxHeight: "45vh",
-                borderRadius: 4,
-                overflow: "hidden",
-                bgcolor: alpha(theme.palette.common.white, 0.02),
-                border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-              }}
-            >
+            <TableContainer sx={getCreateIssueSummaryDomainTableContainerSx(theme)}>
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    {["Expert", "Alternative", "Criterion", "Domain"].map((h) => (
-                      <TableCell
-                        key={h}
-                        sx={{
-                          fontWeight: 950,
-                          color: "text.secondary",
-                          bgcolor: alpha(theme.palette.background.paper, 0.22),
-                          borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-                        }}
-                      >
-                        {h}
+                    {["Expert", "Alternative", "Criterion", "Domain"].map((header) => (
+                      <TableCell key={header} sx={domainHeaderCellSx}>
+                        {header}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
 
                 <TableBody>
-                  {Object.entries(groupedData).map(([expert, alternativesObj]) => {
-                    const expertRowSpan = Object.values(alternativesObj).reduce((sum, arr) => sum + arr.length, 0);
+                  {Object.entries(groupedData).map(([expert, alternativesObject]) => {
+                    const expertRowSpan = Object.values(alternativesObject).reduce(
+                      (sum, rows) => sum + rows.length,
+                      0
+                    );
 
-                    return Object.entries(alternativesObj).map(([alternative, critArr], altIndex) => {
-                      const alternativeRowSpan = critArr.length;
+                    return Object.entries(alternativesObject).map(
+                      ([alternative, criteriaArray], alternativeIndex) => {
+                        const alternativeRowSpan = criteriaArray.length;
 
-                      return critArr.map(({ criterion, dataType }, critIndex) => (
-                        <TableRow key={`${expert}-${alternative}-${criterion}`} hover>
-                          {altIndex === 0 && critIndex === 0 && (
-                            <TableCell rowSpan={expertRowSpan} sx={{ fontWeight: 850 }}>
-                              {expert}
+                        return criteriaArray.map(({ criterion, dataType }, criterionIndex) => (
+                          <TableRow key={`${expert}-${alternative}-${criterion}`} hover>
+                            {alternativeIndex === 0 && criterionIndex === 0 && (
+                              <TableCell rowSpan={expertRowSpan} sx={{ fontWeight: 850 }}>
+                                {expert}
+                              </TableCell>
+                            )}
+                            {criterionIndex === 0 && (
+                              <TableCell rowSpan={alternativeRowSpan} sx={{ fontWeight: 850 }}>
+                                {alternative}
+                              </TableCell>
+                            )}
+                            <TableCell sx={{ fontWeight: 850 }}>{criterion}</TableCell>
+                            <TableCell sx={{ fontWeight: 850 }}>
+                              {domainNameMap[dataType] || "undefined"}
                             </TableCell>
-                          )}
-                          {critIndex === 0 && (
-                            <TableCell rowSpan={alternativeRowSpan} sx={{ fontWeight: 850 }}>
-                              {alternative}
-                            </TableCell>
-                          )}
-                          <TableCell sx={{ fontWeight: 850 }}>{criterion}</TableCell>
-                          <TableCell sx={{ fontWeight: 850 }}>{domainNameMap[dataType] || "undefined"}</TableCell>
-                        </TableRow>
-                      ));
-                    });
+                          </TableRow>
+                        ));
+                      }
+                    );
                   })}
                 </TableBody>
               </Table>

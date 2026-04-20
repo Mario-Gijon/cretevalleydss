@@ -3,20 +3,20 @@ import {
   Stack, Typography, ToggleButton, TextField, MenuItem,
   ButtonGroup, Button
 } from "@mui/material";
-import { handleNumberInput } from "../../utils/handleTwoDecimals";
-import { getLeafCriteria } from "../../utils/createIssueUtils";
+import { handleNumberInput } from "../../../utils/handleTwoDecimals";
+import { getLeafCriteria } from "../../../utils/createIssueUtils";
 
 export const ModelParameters = ({ selectedModel, allData, paramValues, setParamValues, defaultModelParams, setDefaultModelParams, handleDefaultChange, weightingMode, setWeightingMode, bwmData, setBwmData }) => {
-
-                                             
+  
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
     return getLeafCriteria(allData.criteria);
-                                                           
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(allData?.criteria)]);
 
 
-                                                             
+
   const ensureLength = (arr, len, filler = "") => {
     const a = Array.isArray(arr) ? [...arr] : [];
     if (a.length < len) return [...a, ...Array(len - a.length).fill(filler)];
@@ -24,7 +24,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
     return a;
   };
 
-                                                   
+
   const handleFuzzyInput = (value, min = 0, max = 1) => {
     if (value === "") return "";
     if (value === "0." || value === ".") return value;
@@ -41,7 +41,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
     return (
       <Stack spacing={2}>
 
-        {                            }
+        { }
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2">Best (most important):</Typography>
           <TextField
@@ -61,7 +61,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </TextField>
         </Stack>
 
-        {                           }
+        { }
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2">Worst (least important):</Typography>
           <TextField
@@ -81,7 +81,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </TextField>
         </Stack>
 
-        {                                            }
+        { }
         {bwmData.best && (
           <Stack spacing={1}>
             <Typography variant="body2">
@@ -114,7 +114,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </Stack>
         )}
 
-        {                                             }
+        { }
         {bwmData.worst && (
           <Stack spacing={1}>
             <Typography variant="body2">
@@ -153,7 +153,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
 
   return (
     <Stack spacing={2}>
-      {                        }
+      { }
       <Stack direction={"row"} spacing={2} sx={{ mb: 2 }} alignItems={"center"}>
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
           Model parameters:
@@ -170,12 +170,12 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
         </ToggleButton>
       </Stack>
 
-      {                          }
+      { }
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap={"wrap"}>
         {selectedModel.parameters.map((param) => {
           const { name, type, restrictions, default: defaultValue } = param;
 
-                                       
+
           if (type === "number" && restrictions?.allowed) {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
@@ -204,7 +204,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-                                 
+
           if (type === "number") {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
@@ -231,11 +231,11 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-                                               
+
           if (type === "array") {
             const length =
               restrictions?.length === "matchCriteria"
-                ? leafCriteria.length                                
+                ? leafCriteria.length
                 : restrictions?.length || 2;
 
             const currentValues = ensureLength(
@@ -250,7 +250,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
               !restrictions?.sum &&
               restrictions?.length !== "matchCriteria";
 
-                                    
+
             if (isInterval) {
               return (
                 <Stack key={param._id} spacing={1} direction={"row"} alignItems={"center"}>
@@ -287,7 +287,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
               );
             }
 
-                                                                  
+
             return (
               <Stack key={param._id} spacing={1} alignItems={"flex-start"}>
                 <Stack pb={1} direction={"row"} spacing={2} alignItems={"center"}>
@@ -338,14 +338,14 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                 </Stack>
 
                 {leafCriteria.length === 1 ? (
-                                                    
+
                   <Stack spacing={1} alignItems="flex-start">
                     <Typography variant="body2">
                       Since there is only one criterion, its weight is fixed to <b>1</b>.
                     </Typography>
                   </Stack>
                 ) : weightingMode === "manual" ? (
-                                                          
+
                   <Stack direction="row" flexWrap="wrap" gap={2}>
                     {leafCriteria.map((crit, i) => (
                       <Stack key={i} spacing={0.5} alignItems="center">
@@ -388,7 +388,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-                                                     
+
           if (type === "fuzzyArray") {
             const length =
               restrictions?.length === "matchCriteria"

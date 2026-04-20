@@ -1,51 +1,45 @@
 import { useState } from "react";
 import { Stack, Typography, Button, Box, Avatar, Divider } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 
 import AddIcon from "@mui/icons-material/Add";
 import TuneIcon from "@mui/icons-material/Tune";
 
-import { useSnackbarAlertContext } from "../../../../../context/snackbarAlert/snackbarAlert.context";
-import { CreateLinguisticExpressionDialog } from "../../../../../components/CreateLinguisticExpressionDialog/CreateLinguisticExpressionDialog";
-import { ViewExpressionsDomainDialog } from "../../../../../components/ViewExpressionsDomainDialog/ViewExpressionsDomainDialog";
-import { CircularLoading } from "../../../../../components/LoadingProgress/CircularLoading";
-import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
-import { removeExpressionDomain } from "../../../../../services/issue.service";
-import { DomainAssignments } from "../../../../../features/issueExperts/components/IssueExpertsDomainAssigments";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { CreateLinguisticExpressionDialog } from "../components/CreateLinguisticExpressionDialog";
+import { ViewExpressionsDomainDialog } from "../components/ViewExpressionsDomainDialog";
+import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { removeExpressionDomain } from "../../../services/issue.service";
+import { DomainAssignments } from "../../issueExperts/components/IssueExpertsDomainAssigments";
+import { useCreateIssueContext } from "../context/createIssue.context";
+import {
+  createIssueStepContainerSx,
+  getCreateIssueExpressionActionBtnSx,
+  getCreateIssueExpressionCountBadgeSx,
+  getCreateIssueExpressionHeaderIconSx,
+} from "../styles/createIssueStep.styles";
 
-const headerIconSx = (theme) => ({
-  width: 44,
-  height: 44,
-  bgcolor: alpha(theme.palette.info.main, 0.12),
-  color: "info.main",
-  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-});
-
-const actionBtnSx = (theme) => ({
-  borderRadius: 999,
-  px: 1.4,
-  py: 0.8,
-  fontWeight: 950,
-  textTransform: "none",
-  borderColor: alpha(theme.palette.common.white, 0.14),
-  bgcolor: alpha(theme.palette.common.white, 0.03),
-  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.05) },
-});
-
-export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssignments }) => {
+export const ExpressionDomainStep = () => {
   const theme = useTheme();
+  const { allData, domainAssignments, setDomainAssignments } = useCreateIssueContext();
   const { selectedModel, addedExperts, alternatives, criteria } = allData;
 
   const { expressionDomains, setExpressionDomains } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
 
-  const [openCreateDomainExpressionDialog, setOpenCreateDomainExpressionDialog] = useState(false);
+  const [openCreateDomainExpressionDialog, setOpenCreateDomainExpressionDialog] =
+    useState(false);
   const [openViewDomainExpressions, setOpenViewDomainExpressions] = useState(false);
   const [editingDomain, setEditingDomain] = useState(null);
 
   const handleOpenEditDomain = (domain = null) => {
-    if (domain) setEditingDomain(domain);
-    else setEditingDomain(null);
+    if (domain) {
+      setEditingDomain(domain);
+    } else {
+      setEditingDomain(null);
+    }
+
     setOpenCreateDomainExpressionDialog(true);
   };
 
@@ -53,7 +47,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
     const result = await removeExpressionDomain(id);
 
     if (result && result.success) {
-      setExpressionDomains((prev) => prev.filter((d) => d._id !== id));
+      setExpressionDomains((previous) => previous.filter((domain) => domain._id !== id));
       showSnackbarAlert(result?.message || "Domain deleted", "success");
     } else {
       showSnackbarAlert(result?.message || "Error deleting domain", "error");
@@ -65,15 +59,17 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
   }
 
   const missingPrevSteps =
-    !selectedModel || addedExperts.length === 0 || alternatives.length === 0 || criteria.length === 0;
+    !selectedModel ||
+    addedExperts.length === 0 ||
+    alternatives.length === 0 ||
+    criteria.length === 0;
 
   return (
     <>
-      <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-        {                     }
+      <Stack spacing={1.6} sx={createIssueStepContainerSx}>
         <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
-            <Avatar sx={headerIconSx(theme)}>
+            <Avatar sx={getCreateIssueExpressionHeaderIconSx(theme)}>
               <TuneIcon />
             </Avatar>
 
@@ -87,18 +83,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
             </Stack>
           </Stack>
 
-          <Box
-            sx={{
-              px: 1.1,
-              py: 0.55,
-              borderRadius: 999,
-              bgcolor: alpha(theme.palette.info.main, 0.10),
-              color: "info.main",
-              fontSize: 12,
-              fontWeight: 950,
-              border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-            }}
-          >
+          <Box sx={getCreateIssueExpressionCountBadgeSx(theme)}>
             {expressionDomains?.length ?? 0} custom
           </Box>
         </Stack>
@@ -111,14 +96,17 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
           </Box>
         ) : (
           <>
-            {                 }
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.2}
+              alignItems={{ xs: "stretch", sm: "center" }}
+            >
               <Button
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpenEditDomain()}
                 color="secondary"
-                sx={actionBtnSx(theme)}
+                sx={getCreateIssueExpressionActionBtnSx(theme)}
               >
                 Create linguistic expression
               </Button>
@@ -128,7 +116,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
                 onClick={() => setOpenViewDomainExpressions(true)}
                 color="info"
                 disabled={!expressionDomains || expressionDomains.length === 0}
-                sx={actionBtnSx(theme)}
+                sx={getCreateIssueExpressionActionBtnSx(theme)}
               >
                 Manage domains
               </Button>
@@ -136,9 +124,8 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
               <Box sx={{ flex: 1 }} />
             </Stack>
 
-            <Divider/>
+            <Divider />
 
-            {                         }
             <Stack variant="elevation" sx={{ p: { xs: 1.4, sm: 1.8 }, bgcolor: "transparent" }}>
               <DomainAssignments
                 allData={allData}
@@ -151,7 +138,6 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
         )}
       </Stack>
 
-      {                             }
       <CreateLinguisticExpressionDialog
         open={openCreateDomainExpressionDialog}
         editingDomain={editingDomain}
@@ -159,7 +145,6 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
         showSnackbarAlert={showSnackbarAlert}
       />
 
-      {                    }
       <ViewExpressionsDomainDialog
         open={openViewDomainExpressions}
         onClose={() => setOpenViewDomainExpressions(false)}

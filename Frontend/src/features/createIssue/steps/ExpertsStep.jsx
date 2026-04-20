@@ -17,90 +17,80 @@ import {
   Box,
   Tooltip,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
+import { useTheme } from "@mui/material/styles";
 
-import { removeAccents } from "../../../../../utils/createIssueUtils";
-import { useIssuesDataContext } from "../../../../../context/issues/issues.context";
+import { removeAccents } from "../../../utils/createIssueUtils";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { useCreateIssueContext } from "../context/createIssue.context";
+import {
+  createIssueStepContainerSx,
+  getCreateIssueExpertsBodyCellSx,
+  getCreateIssueExpertsChipSx,
+  getCreateIssueExpertsCountBadgeSx,
+  getCreateIssueExpertsHeadCellSx,
+  getCreateIssueExpertsHeaderAvatarSx,
+  getCreateIssueExpertsHoverRowSx,
+  getCreateIssueExpertsSearchInputSx,
+  getCreateIssueExpertsTableContainerSx,
+} from "../styles/createIssueStep.styles";
 
 export const ExpertsStep = ({
   initialExperts: initialExpertsProp,
-  addedExperts,
-  setAddedExperts,
   closeAddExpertsDialog = false,
 }) => {
   const theme = useTheme();
   const { initialExperts: contextExperts } = useIssuesDataContext();
+  const { addedExperts, setAddedExperts } = useCreateIssueContext();
   const [searchFilter, setSearchFilter] = useState("");
 
-                                                     
-  const sourceExperts = Array.isArray(initialExpertsProp) ? initialExpertsProp : (contextExperts || []);
+  const sourceExperts = Array.isArray(initialExpertsProp)
+    ? initialExpertsProp
+    : contextExperts || [];
 
-                                                            
-  const experts = sourceExperts.filter((expert) => !addedExperts.includes(expert.email));
+  const experts = sourceExperts.filter(
+    (expert) => !addedExperts.includes(expert.email)
+  );
 
   const filteredExperts = useMemo(() => {
-    const q = removeAccents(searchFilter.toLowerCase().trim());
-    if (!q) return experts;
+    const query = removeAccents(searchFilter.toLowerCase().trim());
+    if (!query) return experts;
 
     return experts.filter((expert) => {
       const name = removeAccents((expert.name || "").toLowerCase());
       const email = removeAccents((expert.email || "").toLowerCase());
-      const uni = removeAccents((expert.university || "").toLowerCase());
-      return name.includes(q) || email.includes(q) || uni.includes(q);
+      const university = removeAccents((expert.university || "").toLowerCase());
+      return (
+        name.includes(query) ||
+        email.includes(query) ||
+        university.includes(query)
+      );
     });
   }, [experts, searchFilter]);
 
   const handleAddExpert = (email) => {
-    setAddedExperts((prev) => [...new Set([...(prev || []), email])]);
+    setAddedExperts((previous) => [...new Set([...(previous || []), email])]);
   };
 
   const handleDeleteExpert = (email) => {
-    setAddedExperts((prev) => prev.filter((e) => e !== email));
+    setAddedExperts((previous) => previous.filter((value) => value !== email));
   };
 
   const selectedCount = Array.isArray(addedExperts) ? addedExperts.length : 0;
 
-  const headCellSx = {
-    fontWeight: 950,
-    color: alpha(theme.palette.common.white, 0.82),
-    borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-    bgcolor: "#1a2a2fcf",
-    py: 1.05,
-  };
-
-  const bodyCellSx = {
-    color: alpha(theme.palette.common.white, 0.90),
-    fontWeight: 850,
-    borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-    py: 1.05,
-  };
-
-  const inputSx = {
-    "& .MuiOutlinedInput-root": {
-      bgcolor: alpha(theme.palette.common.white, 0.04),
-      borderRadius: 3,
-    },
-  };
+  const headCellSx = getCreateIssueExpertsHeadCellSx(theme);
+  const bodyCellSx = getCreateIssueExpertsBodyCellSx(theme);
 
   return (
-    <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
+    <Stack spacing={1.6} sx={createIssueStepContainerSx}>
       <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
         <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
-          <Avatar
-            sx={{
-              width: 44,
-              height: 44,
-              bgcolor: alpha(theme.palette.info.main, 0.12),
-              color: "info.main",
-              border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-            }}
-          >
+          <Avatar sx={getCreateIssueExpertsHeaderAvatarSx(theme)}>
             <PeopleAltIcon />
           </Avatar>
 
@@ -115,20 +105,7 @@ export const ExpertsStep = ({
         </Stack>
 
         {selectedCount > 0 ? (
-          <Box
-            sx={{
-              px: 1.1,
-              py: 0.55,
-              borderRadius: 999,
-              bgcolor: alpha(theme.palette.info.main, 0.10),
-              color: "info.main",
-              fontSize: 12,
-              fontWeight: 950,
-              border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
-            }}
-          >
-            {selectedCount}
-          </Box>
+          <Box sx={getCreateIssueExpertsCountBadgeSx(theme)}>{selectedCount}</Box>
         ) : null}
       </Stack>
 
@@ -138,7 +115,7 @@ export const ExpertsStep = ({
         color="info"
         size="small"
         value={searchFilter}
-        onChange={(e) => setSearchFilter(e.target.value)}
+        onChange={(event) => setSearchFilter(event.target.value)}
         autoComplete="off"
         fullWidth
         InputProps={{
@@ -148,7 +125,7 @@ export const ExpertsStep = ({
             </InputAdornment>
           ),
         }}
-        sx={inputSx}
+        sx={getCreateIssueExpertsSearchInputSx(theme)}
       />
 
       {selectedCount > 0 ? (
@@ -159,45 +136,22 @@ export const ExpertsStep = ({
               variant="outlined"
               label={email}
               onDelete={() => handleDeleteExpert(email)}
-              sx={{
-                borderColor: alpha(theme.palette.common.white, 0.18),
-                color: alpha(theme.palette.common.white, 0.88),
-                bgcolor: alpha(theme.palette.common.white, 0.03),
-                "& .MuiChip-deleteIcon": { color: alpha(theme.palette.common.white, 0.55) },
-                "& .MuiChip-deleteIcon:hover": { color: alpha(theme.palette.common.white, 0.85) },
-              }}
+              sx={getCreateIssueExpertsChipSx(theme)}
             />
           ))}
         </Stack>
       ) : null}
 
-      <TableContainer
-        sx={{
-          maxHeight: "52vh",
-          borderRadius: 4,
-          border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-          bgcolor: alpha(theme.palette.common.white, 0.02),
-          overflow: "auto",
-          scrollbarWidth: "thin",
-          scrollbarColor: `${alpha(theme.palette.common.white, 0.22)} transparent`,
-          "&::-webkit-scrollbar": { width: 8, height: 8 },
-          "&::-webkit-scrollbar-track": { background: "transparent" },
-          "&::-webkit-scrollbar-thumb": {
-            backgroundColor: alpha(theme.palette.common.white, 0.16),
-            borderRadius: 999,
-            border: `2px solid transparent`,
-            backgroundClip: "content-box",
-          },
-          "&::-webkit-scrollbar-thumb:hover": { backgroundColor: alpha(theme.palette.common.white, 0.24) },
-        }}
-      >
+      <TableContainer sx={getCreateIssueExpertsTableContainerSx(theme)}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
               <TableCell sx={headCellSx}>Name</TableCell>
               <TableCell sx={headCellSx}>Email</TableCell>
               <TableCell sx={headCellSx}>University</TableCell>
-              <TableCell sx={{ ...headCellSx, width: 72, textAlign: "center" }}>Add</TableCell>
+              <TableCell sx={{ ...headCellSx, width: 72, textAlign: "center" }}>
+                Add
+              </TableCell>
             </TableRow>
           </TableHead>
 
@@ -212,11 +166,7 @@ export const ExpertsStep = ({
               </TableRow>
             ) : (
               filteredExperts.map((expert) => (
-                <TableRow
-                  key={expert.email}
-                  hover
-                  sx={{ "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.08) } }}
-                >
+                <TableRow key={expert.email} hover sx={getCreateIssueExpertsHoverRowSx(theme)}>
                   <TableCell sx={bodyCellSx}>{expert.name}</TableCell>
                   <TableCell sx={bodyCellSx}>{expert.email}</TableCell>
                   <TableCell sx={bodyCellSx}>{expert.university}</TableCell>

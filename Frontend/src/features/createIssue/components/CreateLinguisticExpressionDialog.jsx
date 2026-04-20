@@ -1,23 +1,37 @@
 import { useEffect, useState } from "react";
-import { buildFuzzyTriangles } from "../../utils/createIssueUtils";
-import { GlassDialog } from "../StyledComponents/GlassDialog";
-import { Button, DialogActions, DialogContent, DialogTitle, Divider, Stack, TextField, Typography } from "@mui/material";
-import { FuzzyPreviewChart } from "../FuzzyPreviewChart/FuzzyPreviewChart";
-import { createExpressionDomain, updateExpressionDomain } from "../../services/issue.service";
-import { useIssuesDataContext } from "../../context/issues/issues.context";
-import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
+import { buildFuzzyTriangles } from "../../../utils/createIssueUtils";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import {
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
+  Box,
+} from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import { FuzzyPreviewChart } from "../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
+import { createExpressionDomain, updateExpressionDomain } from "../../../services/issue.service";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import {
+  getCreateIssueCompactDialogActionsSx,
+  getCreateIssueCompactDialogContentSx,
+  getCreateIssueCompactDialogTitleSx,
+} from "../styles/createIssueStep.styles";
 
 export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose }) => {
-
-  const {showSnackbarAlert} = useSnackbarAlertContext();
+  const theme = useTheme();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
 
   const { setExpressionDomains } = useIssuesDataContext();
 
   const [name, setName] = useState("");
   const [nLabels, setNLabels] = useState(5);
   const [labels, setLabels] = useState(buildFuzzyTriangles(5));
-
-                         
   useEffect(() => {
     if (open) {
       if (editingDomain) {
@@ -90,61 +104,82 @@ export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose 
 
   return (
     <GlassDialog open={open} onClose={onClose} fullWidth>
-      <DialogTitle>
+      <DialogTitle sx={getCreateIssueCompactDialogTitleSx(theme)}>
         {editingDomain ? "Edit linguistic expression" : "New linguistic expression"}
       </DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 2 }}>
-          <Stack direction="row" spacing={2}>
+      <DialogContent sx={getCreateIssueCompactDialogContentSx(theme)}>
+        <Stack spacing={2.2} sx={{ mt: 3, mb:2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
             <TextField
+              variant="outlined"
+              color="info"
               label="Name"
               autoComplete="off"
               value={name}
               onChange={(e) => setName(e.target.value)}
               fullWidth
-              color="secondary"
               helperText={!name.trim() ? "Name is required" : ""}
+              size="small"
             />
             <TextField
+              variant="outlined"
               type="number"
               label="NºLabels"
               value={nLabels}
               onChange={handleNLabelsChange}
               inputProps={{ min: 3, step: 2 }}
-              color="secondary"
+              color="info"
               error={nLabels < 3 || nLabels % 2 === 0}
-              sx={{ width: 100 }}
+              sx={{ width: { xs: "100%", sm: 130 } }}
               helperText={
                 nLabels < 3 || nLabels % 2 === 0 ? "Must be odd and ≥ 3" : ""
               }
+              size="small"
             />
           </Stack>
 
           <Divider />
 
-          <Stack spacing={3}>
+          <Stack spacing={2}>
             {labels.map((lbl, i) => (
               <TextField
                 key={i}
+                variant="outlined"
+                color="info"
                 label={`L${i + 1}`}
                 value={lbl.label}
                 onChange={(e) => handleLabelChange(i, e.target.value)}
-                color="secondary"
+                size="small"
               />
             ))}
           </Stack>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 0.6 }} />
 
-          <Typography variant="subtitle1">Preview</Typography>
-          <FuzzyPreviewChart labels={labels} />
+          <Typography variant="subtitle1" sx={{color: "text.secondary" }}>
+            Preview
+          </Typography>
+          <Box
+            sx={{
+              borderRadius: 2.5,
+              p: 1,
+              bgcolor: alpha(theme.palette.common.white, 0.015),
+            }}
+          >
+            <FuzzyPreviewChart labels={labels} />
+          </Box>
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="error">
+      <DialogActions sx={getCreateIssueCompactDialogActionsSx(theme)}>
+        <Button onClick={onClose} color="warning" variant="outlined">
           Cancel
         </Button>
-        <Button onClick={handleSave} color="success" disabled={!isValidDomain()}>
+        <Button
+          onClick={handleSave}
+          color="success"
+          variant="outlined"
+          disabled={!isValidDomain()}
+        >
           {editingDomain ? "Update" : "Create"}
         </Button>
       </DialogActions>

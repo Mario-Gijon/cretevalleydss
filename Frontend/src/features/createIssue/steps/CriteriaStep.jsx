@@ -16,52 +16,33 @@ import {
   Typography,
   Box,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
+import { useTheme } from "@mui/material/styles";
 
-import { removeCriteriaItemRecursively, updateCriterion, validateCriterion } from "../../../../../utils/createIssueUtils";
-import { CriteriaItem } from "../../../../../components/CriteriaItem/CriteriaItem";
-import { useSnackbarAlertContext } from "../../../../../context/snackbarAlert/snackbarAlert.context";
-import { GlassDialog } from "../../../../../components/StyledComponents/GlassDialog";
+import {
+  removeCriteriaItemRecursively,
+  updateCriterion,
+  validateCriterion,
+} from "../../../utils/createIssueUtils";
+import { CriteriaItem } from "../components/CriteriaItem";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { useCreateIssueContext } from "../context/createIssue.context";
+import { countLeafCriteria } from "../utils/createIssue.utils";
+import {
+  createIssueStepContainerSx,
+  getCreateIssueRowDividerSx,
+  getCreateIssueStepEmptyStateSx,
+  getCreateIssueStepInputSx,
+  getCreateIssueStepScrollableSx,
+} from "../styles/createIssueStep.styles";
 
-const countLeafCriteria = (items) =>
-  items.reduce((acc, item) => {
-    if (!item.children || item.children.length === 0) return acc + 1;
-    return acc + countLeafCriteria(item.children);
-  }, 0);
-
-const inputSx = (theme) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 3,
-    bgcolor: alpha(theme.palette.common.white, 0.04),
-  },
-});
-
-const listSx = (theme) => ({
-  borderRadius: 4,
-  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-  bgcolor: alpha(theme.palette.common.white, 0.02),
-  overflow: "hidden",
-  maxHeight: "52vh",
-  minHeight: 0,
-  overflowY: "auto",
-  scrollbarWidth: "thin",
-  scrollbarColor: `${alpha(theme.palette.common.white, 0.22)} transparent`,
-  "&::-webkit-scrollbar": { width: 8, height: 8 },
-  "&::-webkit-scrollbar-track": { background: "transparent" },
-  "&::-webkit-scrollbar-thumb": {
-    backgroundColor: alpha(theme.palette.common.white, 0.16),
-    borderRadius: 999,
-    border: `2px solid transparent`,
-    backgroundClip: "content-box",
-  },
-  "&::-webkit-scrollbar-thumb:hover": { backgroundColor: alpha(theme.palette.common.white, 0.24) },
-});
-
-export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
+export const CriteriaStep = () => {
   const theme = useTheme();
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const { criteria, setCriteria, selectedModel } = useCreateIssueContext();
+  const isMultiCriteria = selectedModel?.isMultiCriteria;
 
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState("");
@@ -96,7 +77,15 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
       setEditCriterionError(error);
       return;
     }
-    setCriteria((prev) => updateCriterion(prev, editingCriterion, editCriterionValue.trim(), editCriterionType));
+
+    setCriteria((previous) =>
+      updateCriterion(
+        previous,
+        editingCriterion,
+        editCriterionValue.trim(),
+        editCriterionType
+      )
+    );
     setEditingCriterion(null);
     setEditCriterionError("");
     setEditBlur(true);
@@ -119,14 +108,21 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
       return;
     }
 
-    setCriteria((prev) => [...prev, { name: inputValue.trim(), type: selectedType, children: [] }]);
+    setCriteria((previous) => [
+      ...previous,
+      { name: inputValue.trim(), type: selectedType, children: [] },
+    ]);
     setInputValue("");
     setInputError(false);
   };
 
-  const handleRemoveCriteria = (item) => setCriteria((prev) => removeCriteriaItemRecursively(prev, item));
+  const handleRemoveCriteria = (item) => {
+    setCriteria((previous) => removeCriteriaItemRecursively(previous, item));
+  };
 
-  const handleToggle = (itemName) => setOpenItems((prev) => ({ ...prev, [itemName]: !prev[itemName] }));
+  const handleToggle = (itemName) => {
+    setOpenItems((previous) => ({ ...previous, [itemName]: !previous[itemName] }));
+  };
 
   const handleAddChild = () => {
     if (!childInputValue.trim()) return;
@@ -139,11 +135,21 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
           if (item.name === selectedParent.name) {
             return {
               ...item,
-              children: [...item.children, { name: childInputValue.trim(), type: selectedParent.type, children: [] }],
+              children: [
+                ...item.children,
+                {
+                  name: childInputValue.trim(),
+                  type: selectedParent.type,
+                  children: [],
+                },
+              ],
             };
-          } else if (item.children?.length) {
+          }
+
+          if (item.children?.length) {
             return { ...item, children: addChildSim(item.children) };
           }
+
           return item;
         });
 
@@ -166,23 +172,32 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         if (item.name === selectedParent.name) {
           return {
             ...item,
-            children: [...item.children, { name: childInputValue.trim(), type: selectedParent.type, children: [] }],
+            children: [
+              ...item.children,
+              {
+                name: childInputValue.trim(),
+                type: selectedParent.type,
+                children: [],
+              },
+            ],
           };
-        } else if (item.children?.length) {
+        }
+
+        if (item.children?.length) {
           return { ...item, children: addChild(item.children) };
         }
+
         return item;
       });
 
-    setCriteria((prev) => addChild(prev));
+    setCriteria((previous) => addChild(previous));
     setChildInputValue("");
     setChildInputError(false);
     setOpenDialog(false);
   };
 
   return (
-    <Stack spacing={1.5} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-      {                 }
+    <Stack spacing={1.5} sx={createIssueStepContainerSx}>
       <Stack spacing={0.25}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Criteria
@@ -192,57 +207,71 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         </Typography>
       </Stack>
 
-      {               }
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.25}
+        alignItems={{ xs: "stretch", sm: "flex-start" }}
+      >
         <TextField
           variant="outlined"
           placeholder="Criterion"
           autoComplete="off"
           size="small"
           value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
+          onChange={(event) => {
+            setInputValue(event.target.value);
             setInputError(false);
           }}
-          onKeyDown={(e) => e.key === "Enter" && handleAddCriteria()}
-          error={!!inputError}
+          onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
+          error={Boolean(inputError)}
           helperText={inputError}
           color="info"
-          sx={{ flex: 1, ...inputSx(theme) }}
+          sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
         />
 
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <InputLabel color="info">Type</InputLabel>
-          <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} label="Type" color="info" sx={inputSx(theme)}>
+          <Select
+            value={selectedType}
+            onChange={(event) => setSelectedType(event.target.value)}
+            label="Type"
+            color="info"
+            sx={getCreateIssueStepInputSx(theme)}
+          >
             <MenuItem value="benefit">Benefit</MenuItem>
             <MenuItem value="cost">Cost</MenuItem>
           </Select>
         </FormControl>
 
-        <Button startIcon={<AddIcon />} color="info" variant="outlined" onClick={handleAddCriteria} disabled={!inputValue.trim()}>
+        <Button
+          startIcon={<AddIcon />}
+          color="info"
+          variant="outlined"
+          onClick={handleAddCriteria}
+          disabled={!inputValue.trim()}
+        >
           Add
         </Button>
       </Stack>
 
-      {          }
       {criteria.length === 0 ? (
-        <Box
-          sx={{
-            mt: 0.5,
-            borderRadius: 4,
-            border: `1px dashed ${alpha(theme.palette.common.white, 0.14)}`,
-            bgcolor: alpha(theme.palette.common.white, 0.015),
-            p: 2,
-          }}
-        >
+        <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
           <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
             No criteria yet. Add at least 1 leaf criterion.
           </Typography>
         </Box>
       ) : (
-        <List disablePadding sx={listSx(theme)}>
+        <List
+          disablePadding
+          sx={{
+            ...getCreateIssueStepScrollableSx(theme, "52vh"),
+            overflow: "hidden",
+            overflowY: "auto",
+            minHeight: 0,
+          }}
+        >
           <TransitionGroup>
-            {reversed.map((item, idx) => (
+            {reversed.map((item, index) => (
               <Collapse key={item.name}>
                 <CriteriaItem
                   item={item}
@@ -262,8 +291,8 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
                   handleRemoveCriteria={handleRemoveCriteria}
                   setOpenDialog={setOpenDialog}
                 />
-                {idx !== reversed.length - 1 ? (
-                  <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.07) }} />
+                {index !== reversed.length - 1 ? (
+                  <Divider sx={getCreateIssueRowDividerSx(theme)} />
                 ) : null}
               </Collapse>
             ))}
@@ -271,41 +300,55 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         </List>
       )}
 
-      {                              }
       <GlassDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 950 }}>
-          Add child criterion
-          {selectedParent?.name ? (
-            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", fontWeight: 900, mt: 0.25 }}>
-              Parent: {selectedParent.name}
+        <DialogTitle>
+          <Stack>
+            <Typography fontWeight={"bold"} variant="h5">
+              Add child criterion
             </Typography>
-          ) : null}
+            {selectedParent?.name ? (
+              <Typography variant="caption">
+                Parent: {selectedParent.name}
+              </Typography>
+            ) : null}
+          </Stack>
         </DialogTitle>
-
-        <DialogContent sx={{ pt: 1.5 }}>
+        <DialogContent>
           <TextField
             color="info"
             variant="outlined"
             label="Child name"
             value={childInputValue}
-            onChange={(e) => {
-              setChildInputValue(e.target.value);
+            onChange={(event) => {
+              setChildInputValue(event.target.value);
               setChildInputError(false);
             }}
-            onKeyDown={(e) => e.key === "Enter" && handleAddChild()}
+            onKeyDown={(event) => event.key === "Enter" && handleAddChild()}
             fullWidth
             autoFocus
-            error={!!childInputError}
+            error={Boolean(childInputError)}
             helperText={childInputError}
-            sx={inputSx(theme)}
+            sx={{ mt: 1 }}
+            
           />
         </DialogContent>
 
-        <DialogActions sx={{ gap: 1 }}>
-          <Button variant="outlined" color="warning" onClick={() => setOpenDialog(false)}>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={() => setOpenDialog(false)}
+            size="small"
+          >
             Cancel
           </Button>
-          <Button variant="outlined" color="info" onClick={handleAddChild} disabled={!childInputValue.trim()}>
+          <Button
+            variant="outlined"
+            color="info"
+            onClick={handleAddChild}
+            disabled={!childInputValue.trim()}
+            size="small"
+          >
             Add
           </Button>
         </DialogActions>

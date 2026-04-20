@@ -60,9 +60,6 @@ export const CriteriaItem = ({
                       ),
                     }}
                   />
-
-
-                  {                                                                                   }
                   {isFirstLevel && (
                     <Select
                       value={editCriterionType}
@@ -80,8 +77,6 @@ export const CriteriaItem = ({
               ) : (
                 <>
                   <span>{item.name}</span>
-
-                  {                                              }
                   {isFirstLevel && (
                     <Chip
                       variant="outlined"
@@ -95,8 +90,6 @@ export const CriteriaItem = ({
             </Stack>
           }
         />
-
-        {                         }
         {hasChildren && (
           <IconButton onClick={() => handleToggle(item.name)}>
             {openItems[item.name] ? <ExpandLess /> : <ExpandMore />}
@@ -115,7 +108,6 @@ export const CriteriaItem = ({
         </Stack>
       </ListItem>
 
-      {                          }
       {hasChildren && (
         <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
           <List disablePadding>
