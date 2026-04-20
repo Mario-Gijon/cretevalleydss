@@ -1,4 +1,4 @@
-// private/admin/AdminPage.jsx
+                              
 import { useMemo } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Box, Stack, Typography, Paper, Grid, Avatar, IconButton, Chip, Divider, useMediaQuery } from "@mui/material";
@@ -16,16 +16,16 @@ import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../features/activeIssues/styles/activeIssues.styles";
 
-// Sections
+           
 import ReportsSection from "./sections/ReportsSection";
 import ExpertsSection from "./sections/ExpertsSection";
 import IssuesSection from "./sections/IssuesSection";
 import ModelsSection from "./sections/ModelsSection";
 import LogsSection from "./sections/LogsSection";
 
-/* --------------------------------
- * Styles (simple, clean admin panel)
- * -------------------------------- */
+                                   
+                                     
+                                      
 
 const panelSx = (theme, strength = 0.14) => ({
   borderRadius: 5,
@@ -86,9 +86,9 @@ const Tag = ({ tone = "info", children }) => {
   );
 };
 
-/* --------------------------------
- * Sections (admin essentials)
- * -------------------------------- */
+                                   
+                              
+                                      
 
 const SECTIONS = [
   {
@@ -133,9 +133,9 @@ const SECTIONS = [
   },
 ];
 
-/* --------------------------------
- * Home (clear options)
- * -------------------------------- */
+                                   
+                       
+                                      
 
 function AdminHome() {
   const theme = useTheme();
@@ -264,9 +264,9 @@ function AdminHome() {
   );
 }
 
-/* --------------------------------
- * Section shell (full-screen layout)
- * -------------------------------- */
+                                   
+                                     
+                                      
 
 function AdminSectionShell({ sectionKey, children }) {
   const theme = useTheme();
@@ -328,9 +328,9 @@ function AdminSectionShell({ sectionKey, children }) {
   );
 }
 
-/* --------------------------------
- * Main AdminPage (internal routes)
- * -------------------------------- */
+                                   
+                                   
+                                      
 
 export default function AdminPage() {
   const location = useLocation();

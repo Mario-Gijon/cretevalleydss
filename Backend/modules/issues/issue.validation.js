@@ -36,10 +36,18 @@ const hasMoreThanTwoDecimals = (value) => {
   return numericValue !== Math.round(numericValue * 100) / 100;
 };
 
+const isStepAligned = ({ value, min, step }) => {
+  if (!Number.isFinite(step) || step <= 0) return true;
+
+  const stepsFromMin = (value - min) / step;
+  return Math.abs(stepsFromMin - Math.round(stepsFromMin)) < 1e-9;
+};
+
 const validateCellByDomain = ({ value, domain, locationLabel }) => {
   if (domain?.type === "numeric") {
     const min = domain.range?.min ?? 0;
     const max = domain.range?.max ?? 1;
+    const step = Number(domain?.range?.step);
     const numericValue = parseFloat(value);
 
     if (isNaN(numericValue) || numericValue < min || numericValue > max) {
@@ -53,6 +61,13 @@ const validateCellByDomain = ({ value, domain, locationLabel }) => {
       return {
         valid: false,
         message: `Value for ${locationLabel} must have at most two decimals.`,
+      };
+    }
+
+    if (!isStepAligned({ value: numericValue, min, step })) {
+      return {
+        valid: false,
+        message: `Value for ${locationLabel} must follow step ${step}.`,
       };
     }
   }
@@ -85,7 +100,7 @@ export const validateFinalPairwiseEvaluations = (evaluations) => {
 
     for (const row of criterionMatrix) {
       for (const altCol in row) {
-        if (altCol === "id") continue;
+        if (altCol === "id" || row.id === altCol) continue;
 
         const cell = row[altCol];
         const value = getCellValue(cell);

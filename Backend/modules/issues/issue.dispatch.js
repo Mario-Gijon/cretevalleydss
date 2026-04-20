@@ -1,13 +1,13 @@
-// Models
+         
 import { Issue } from "../../models/Issues.js";
 
-// Modules
+          
 import {
   EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createNotFoundError,

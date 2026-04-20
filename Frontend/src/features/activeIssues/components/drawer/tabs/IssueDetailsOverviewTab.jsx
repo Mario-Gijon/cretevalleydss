@@ -85,7 +85,7 @@ const IssueDetailsOverviewTab = ({
         </Stack>
 
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-          {/* espacio reservado para una posible descripción futura */}
+          {                                                           }
         </Typography>
       </Box>
 

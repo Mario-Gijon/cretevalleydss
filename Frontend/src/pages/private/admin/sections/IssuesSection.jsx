@@ -74,9 +74,9 @@ import {
 import AddExpertsDomainsDialog from "../../../../features/issueExperts/dialogs/AddExpertsDomainsDialog";
 import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../../features/activeIssues/styles/activeIssues.styles";
 
-/* --------------------------------
- * Helpers
- * -------------------------------- */
+                                   
+          
+                                      
 
 const formatWeightValue = (value) => {
   if (value == null || value === "") return "—";
@@ -86,7 +86,7 @@ const formatWeightValue = (value) => {
 
   const raw = String(num);
 
-  // Evitar notación rara tipo 1e-7
+                                   
   if (raw.includes("e") || raw.includes("E")) {
     const fixed = num.toFixed(6).replace(/\.?0+$/, "");
     const [intPart, decPart = ""] = fixed.split(".");
@@ -885,9 +885,9 @@ const AddExpertsPickerDialog = ({
   );
 };
 
-/* --------------------------------
- * Main component
- * -------------------------------- */
+                                   
+                 
+                                      
 
 export default function IssuesSection() {
   const theme = useTheme();
@@ -964,7 +964,7 @@ export default function IssuesSection() {
 
   useEffect(() => {
     fetchIssuesData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, []);
 
   const resetExpertEditionState = () => {
@@ -1078,7 +1078,7 @@ export default function IssuesSection() {
     };
 
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [detailOpen, issueDetail?.id, selectedExpertId]);
 
   const filteredIssues = useMemo(() => {
@@ -1772,7 +1772,7 @@ export default function IssuesSection() {
         </Paper>
       </Stack>
 
-      {/* Detail dialog */}
+      {                   }
       <GlassDialog
         open={detailOpen}
         onClose={closeDetail}
@@ -1886,7 +1886,7 @@ export default function IssuesSection() {
               <Tab label="Expert review" />
             </Tabs>
 
-            {/* Overview */}
+            {              }
             {detailTab === 0 ? (
               <Stack spacing={1.25}>
                 <Box
@@ -2214,7 +2214,7 @@ export default function IssuesSection() {
               </Stack>
             ) : null}
 
-            {/* Experts */}
+            {             }
             {detailTab === 1 ? (
               <Stack spacing={1.1}>
                 <Paper elevation={0} sx={detailCardSx(theme)}>
@@ -2506,7 +2506,7 @@ export default function IssuesSection() {
               </Stack>
             ) : null}
 
-            {/* Expert review */}
+            {                   }
             {detailTab === 2 ? (
               <Stack spacing={1.1}>
                 <Paper elevation={0} sx={detailCardSx(theme)}>
@@ -2632,7 +2632,7 @@ export default function IssuesSection() {
         )}
       </GlassDialog>
 
-      {/* Add experts picker */}
+      {                        }
       <AddExpertsPickerDialog
         open={addExpertsOpen}
         onClose={() => setAddExpertsOpen(false)}
@@ -2642,7 +2642,7 @@ export default function IssuesSection() {
         setExpertsToAdd={setExpertsToAdd}
       />
 
-      {/* Assign expression domains */}
+      {                               }
       <AddExpertsDomainsDialog
         open={assignDomainsOpen}
         onClose={() => setAssignDomainsOpen(false)}
@@ -2651,7 +2651,7 @@ export default function IssuesSection() {
         onConfirmDomains={handleConfirmDomains}
       />
 
-      {/* Reassign admin dialog */}
+      {                           }
       <GlassDialog
         open={reassignOpen}
         onClose={() => setReassignOpen(false)}
@@ -2761,7 +2761,7 @@ export default function IssuesSection() {
         </Box>
       </GlassDialog>
 
-      {/* Confirm action dialog */}
+      {                           }
       <GlassDialog
         open={Boolean(confirmAction)}
         onClose={closeConfirmAction}

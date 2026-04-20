@@ -1,6 +1,6 @@
-// Importa hooks de React
+                         
 import { useEffect, useState, useMemo } from "react";
-// Importa componentes de Material UI
+                                     
 import {
   Stack,
   MobileStepper,
@@ -37,7 +37,7 @@ import {
   validateDomainAssigments,
   validateIssueDescription,
   validateIssueName,
-  /* validateModelParams */
+                           
 } from "../../../utils/createIssueUtils";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
@@ -46,7 +46,6 @@ import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbar
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
-// ✅ si ya lo tienes en el proyecto, úsalo (igual que en otros sitios)
 import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
@@ -74,7 +73,6 @@ const shellSx = (theme) => ({
   overflow: "hidden",
   position: "relative",
 
-  // ✅ “atmósfera” global para TODA la página de creación
   backgroundColor: alpha(theme.palette.background.paper, 0.10),
   ...auroraBg(theme, 0.12),
   backdropFilter: "blur(16px)",
@@ -82,7 +80,6 @@ const shellSx = (theme) => ({
   border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
   boxShadow: `0 18px 60px ${alpha(theme.palette.common.black, 0.12)}`,
 
-  // ✅ highlight superior suave (mantiene tu look sin cajas extra)
   "&:after": {
     content: '""',
     position: "absolute",
@@ -93,12 +90,10 @@ const shellSx = (theme) => ({
     zIndex: 0,
   },
 
-  // ✅ todo el contenido por encima del overlay
   "& > *": { position: "relative", zIndex: 1 },
 });
 
 const headerSx = (theme) => ({
-  // ✅ como el shell ya tiene aurora, bajamos un poco la intensidad para que no “doble”
   ...auroraBg(theme, 0.10),
   borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
   px: { xs: 1.8, sm: 2.2 },
@@ -216,7 +211,7 @@ const CreateIssuePage = () => {
 
       setParamValues(defaults);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [selectedModel]);
 
   useEffect(() => {
@@ -330,7 +325,6 @@ const CreateIssuePage = () => {
     setLoading(false);
   };
 
-  // ✅ Solo UI: para el subtitle y el iconito del header
   const headerSubtitle = useMemo(() => {
     const label = steps?.[activeStep] ?? "";
     const total = steps?.length ?? 0;
@@ -344,7 +338,7 @@ const CreateIssuePage = () => {
   return (
     <Stack sx={{ width: "100%", px: { xs: 1.2, sm: 2.2 }, mt: 1.5 }} justifyContent={"center"} alignItems={"center"}>
       <GlassPaper variant="elevation" elevation={0} sx={shellSx(theme)}>
-        {/* Header bonito */}
+        {                   }
         <Box sx={headerSx(theme)}>
           <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between">
             <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
@@ -362,7 +356,7 @@ const CreateIssuePage = () => {
               </Stack>
             </Stack>
 
-            {/* Título mobile solo */}
+            {                        }
             <Typography
               sx={{ display: { xs: "block", sm: "none" }, fontWeight: 900, color: "text.secondary" }}
               variant="caption"
@@ -372,7 +366,7 @@ const CreateIssuePage = () => {
           </Stack>
         </Box>
 
-        {/* Stepper (desktop) */}
+        {                       }
         <Box sx={stepperWrapSx(theme)}>
           <Stepper
             sx={{ display: { xs: "none", sm: "flex" }, width: "100%" }}
@@ -385,12 +379,10 @@ const CreateIssuePage = () => {
                 key={label}
                 completed={completed[index]}
                 sx={{ cursor: "pointer" }}
-                // ✅ No cambies esto: click en Step funciona hacia delante y hacia atrás
                 onClick={() => setActiveStep(index)}
               >
                 <StepButton
                   color="inherit"
-                  // ✅ No cambies esto: click en StepButton también
                   onClick={() => setActiveStep(index)}
                 >
                   <StepLabel slots={{ stepIcon: ColorlibStepIcon }}>{label}</StepLabel>
@@ -400,9 +392,9 @@ const CreateIssuePage = () => {
           </Stepper>
         </Box>
 
-        {/* Contenido del step */}
+        {                        }
         <Box sx={contentSx}>
-          {/* Importante: no tocamos lógica. Solo wrapper. */}
+          {                                                  }
           <Stack sx={{ width: "100%", minHeight: 0, mt:2 }}>
             {activeStep === 0 && (
               <ModelStep
@@ -460,7 +452,7 @@ const CreateIssuePage = () => {
           </Stack>
         </Box>
 
-        {/* Footer navegación (misma lógica, mejor look) */}
+        {                                                  }
         <Box sx={footerSx(theme)}>
           <Stack direction="row" gap={{ xs: 1, sm: 4 }} sx={{ justifyContent: "center", alignItems: "center" }}>
             <MobileStepper

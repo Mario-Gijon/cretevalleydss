@@ -64,7 +64,7 @@ export const useActiveIssuesListing = ({
    */
   const filteredIssuesBase = useMemo(() => {
     return (activeIssues || []).filter(matchQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [activeIssues, query, searchBy]);
 
   /**

@@ -1,17 +1,17 @@
-// Models
+         
 import { Consensus } from "../../models/Consensus.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import {
   ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
 } from "./issue.ordering.js";
 
-// Utils
+        
 import { toIdString, uniqueIdStrings } from "../../utils/common/ids.js";
 
 /**

@@ -30,15 +30,40 @@ const getPairwiseCellNumericValue = (cell) => {
 const getPairwiseCellRange = (cell) => {
   const min = Number(cell?.domain?.range?.min);
   const max = Number(cell?.domain?.range?.max);
+  const step = Number(cell?.domain?.range?.step);
 
   if (Number.isFinite(min) && Number.isFinite(max) && min < max) {
-    return { min, max };
+    return {
+      min,
+      max,
+      step: Number.isFinite(step) && step > 0 ? step : null,
+    };
   }
 
-  return { min: 0, max: 1 };
+  return { min: 0, max: 1, step: null };
 };
 
 const round2 = (value) => Math.round(value * 100) / 100;
+
+const alignToStep = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return round2(value);
+  }
+
+  const snapped = min + Math.round((value - min) / step) * step;
+  const bounded = Math.min(max, Math.max(min, snapped));
+
+  return round2(bounded);
+};
+
+const isStepAligned = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return true;
+  }
+
+  const aligned = alignToStep({ value, min, max, step });
+  return Math.abs(aligned - value) < 1e-9;
+};
 
 const normalizeToUnit = (value, min, max) => {
   if (max === min) {
@@ -55,14 +80,18 @@ const denormalizeFromUnit = (normalizedValue, min, max) => {
 const getExpectedInverseValue = ({ value, sourceRange, targetRange }) => {
   const normalized = normalizeToUnit(value, sourceRange.min, sourceRange.max);
   const inverseNormalized = 1 - normalized;
-
-  return round2(
-    denormalizeFromUnit(
-      inverseNormalized,
-      targetRange.min,
-      targetRange.max
-    )
+  const expected = denormalizeFromUnit(
+    inverseNormalized,
+    targetRange.min,
+    targetRange.max
   );
+
+  return alignToStep({
+    value: expected,
+    min: targetRange.min,
+    max: targetRange.max,
+    step: targetRange.step,
+  });
 };
 
 /**
@@ -123,6 +152,23 @@ export const validatePairwiseEvaluations = (
               col: altCol,
               criterion: criterionId,
               message: `Invalid value for [${row.id}, ${altCol}]. Must be between ${range.min} and ${range.max}.`,
+            };
+            break;
+          }
+
+          if (
+            !isStepAligned({
+              value,
+              min: range.min,
+              max: range.max,
+              step: range.step,
+            })
+          ) {
+            firstInvalidCell = {
+              row: row.id,
+              col: altCol,
+              criterion: criterionId,
+              message: `Value for [${row.id}, ${altCol}] must follow step ${range.step}.`,
             };
             break;
           }

@@ -1,4 +1,4 @@
-// Models
+         
 import { Alternative } from "../models/Alternatives.js";
 import { Consensus } from "../models/Consensus.js";
 import { Criterion } from "../models/Criteria.js";
@@ -7,7 +7,7 @@ import { IssueModel } from "../models/IssueModels.js";
 import { Participation } from "../models/Participations.js";
 import { User } from "../models/Users.js";
 
-// Utils
+        
 import {
   getUserFinishedIssueIds,
   getVisibleActiveIssueIdsForUser,
@@ -19,7 +19,7 @@ import { endSessionSafely } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import { resolveIssueHandlerOrThrow } from "../modules/issues/issue.dispatch.js";
 
-// Modules
+          
 import {
   buildActiveIssueCollections,
   buildActiveIssueView,
@@ -78,7 +78,7 @@ import { getFinishedIssueInfoPayload } from "../modules/issues/issue.finished.js
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import { createIssueFlow } from "../modules/issues/issue.creation.js";
 
-// External libraries
+                     
 import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";

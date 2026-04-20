@@ -36,9 +36,9 @@ import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { getActiveIssuesAuroraBg, getActiveIssuesPanelGlassSx } from "../../../features/activeIssues/styles/activeIssues.styles";
 import ActiveIssuesPill from "../../../features/activeIssues/components/shared/ActiveIssuesPill";
 
-/* -----------------------------
- * Helpers
- * ----------------------------- */
+                                
+          
+                                   
 
 const normalize = (v) => (v == null ? "" : String(v)).toLowerCase();
 
@@ -82,16 +82,16 @@ const alternativesContains = (issue, q) => {
 
 const parseDateDDMMYYYY = (d) => {
   if (!d || typeof d !== "string") return 0;
-  // soporta "dd-mm-yyyy" o "dd/mm/yyyy"
+                                        
   const parts = d.includes("-") ? d.split("-") : d.split("/");
   const [dd, mm, yyyy] = parts.map((x) => Number(x));
   if (!dd || !mm || !yyyy) return 0;
   return new Date(yyyy, mm - 1, dd).getTime();
 };
 
-/* -----------------------------
- * Card shell (mismo look IssuesGrid)
- * ----------------------------- */
+                                
+                                     
+                                   
 
 const FinishedIssueCard = styled(Paper)(({ theme }) => ({
   borderRadius: 20,
@@ -114,9 +114,9 @@ const FinishedIssueCard = styled(Paper)(({ theme }) => ({
 
 const CARD_HEIGHT = 250;
 
-/* -----------------------------
- * Header (auto height, sin stats)
- * ----------------------------- */
+                                
+                                  
+                                   
 
 const FinishedIssuesHeader = ({
   overview,
@@ -147,7 +147,7 @@ const FinishedIssuesHeader = ({
       sx={{
         borderRadius: 3,
         p: { xs: 1.6, md: 2.0 },
-        height: "auto", // ✅ auto SIEMPRE
+        height: "auto",
         overflow: "hidden",
         position: "relative",
         ...getActiveIssuesPanelGlassSx(theme, 0.16, "crystal"),
@@ -163,7 +163,7 @@ const FinishedIssuesHeader = ({
       }}
     >
       <Stack spacing={1.05} sx={{ position: "relative", zIndex: 1 }}>
-        {/* Title row */}
+        {               }
         <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
           <Stack spacing={1} sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1.1}>
@@ -208,7 +208,7 @@ const FinishedIssuesHeader = ({
           </Tooltip>
         </Stack>
 
-        {/* Controls row */}
+        {                  }
         <Grid container spacing={1} alignItems="stretch" sx={{ rowGap: 0.5 }}>
           <Grid item xs={12} md={8}>
             <TextField
@@ -277,9 +277,9 @@ const FinishedIssuesHeader = ({
   );
 };
 
-/* -----------------------------
- * Page
- * ----------------------------- */
+                                
+       
+                                   
 
 const FinishedIssuesPage = () => {
   const theme = useTheme();
@@ -299,7 +299,7 @@ const FinishedIssuesPage = () => {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // filtros
+            
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
   const [sortBy, setSortBy] = useState("createdRecent");
@@ -312,7 +312,7 @@ const FinishedIssuesPage = () => {
       );
       setIssueCreated("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [issueCreated, setIssueCreated]);
 
   const handleRefresh = async () => {
@@ -373,7 +373,7 @@ const FinishedIssuesPage = () => {
     return byIssue || byModel || byAdmin || byAlts || byCriteria;
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                         
   const filteredBase = useMemo(() => (finishedIssues || []).filter(matchQuery), [finishedIssues, query, searchBy]);
 
   const filtered = useMemo(() => {
@@ -389,7 +389,7 @@ const FinishedIssuesPage = () => {
           new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
       );
     } else {
-      // closedRecent (default)
+                               
       arr.sort((a, b) => parseDateDDMMYYYY(b?.closureDate) - parseDateDDMMYYYY(a?.closureDate));
     }
 
@@ -430,7 +430,7 @@ const FinishedIssuesPage = () => {
             sx={{
               display: "grid",
               gridTemplateColumns: "minmax(560px, 1fr)",
-              gridTemplateRows: "auto auto", // ✅ nada fijo
+              gridTemplateRows: "auto auto",
               gridTemplateAreas: `
                 "header"
                 "issues"
@@ -474,10 +474,10 @@ const FinishedIssuesPage = () => {
                             flexDirection: "column",
                           }}
                         >
-                          {/* Left accent bar */}
+                          {                     }
                           <Box sx={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, bgcolor: accent }} />
 
-                          {/* Soft glow */}
+                          {               }
                           <Box
                             sx={{
                               position: "absolute",
@@ -491,7 +491,7 @@ const FinishedIssuesPage = () => {
                           />
 
                           <Stack spacing={1.05} sx={{ position: "relative", zIndex: 1, minHeight: 0, flex: 1 }}>
-                            {/* Name + admin */}
+                            {                  }
                             <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
                               <Typography
                                 variant="h6"
@@ -528,7 +528,7 @@ const FinishedIssuesPage = () => {
                               ) : null}
                             </Stack>
 
-                            {/* Description */}
+                            {                 }
                             <Typography
                               variant="body2"
                               sx={{
@@ -544,14 +544,14 @@ const FinishedIssuesPage = () => {
                               {issue?.description || "—"}
                             </Typography>
 
-                            {/* Status */}
+                            {            }
                             <Box sx={{ mt: 0.2 }}>
                               <ActiveIssuesPill tone="success">Finished</ActiveIssuesPill>
                             </Box>
 
                             <Divider sx={{ opacity: 0.14, my: 0.7, borderColor: alpha("#fff", 0.12) }} />
 
-                            {/* Dates */}
+                            {           }
                             <Stack spacing={0.55}>
                               <Stack direction="row" spacing={0.6} sx={{ alignItems: "center" }}>
                                 <CalendarMonthIcon sx={{ fontSize: 16, opacity: 0.75 }} />
@@ -711,7 +711,7 @@ const FinishedIssuesPage = () => {
         )}
       </Box>
 
-      {/* Dialog detalle */}
+      {                    }
       {selectedIssue && (
         <FinishedIssueDialog
           selectedIssue={selectedIssue}
@@ -722,7 +722,7 @@ const FinishedIssuesPage = () => {
         />
       )}
 
-      {/* Confirm remove */}
+      {                    }
       <GlassDialog
         open={openRemoveConfirmDialog}
         onClose={() => setOpenRemoveConfirmDialog(false)}

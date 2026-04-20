@@ -1,9 +1,9 @@
-// Models
+         
 import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createNotFoundError,

@@ -1,11 +1,11 @@
-// Models
+         
 import { Consensus } from "../../models/Consensus.js";
 import { Issue } from "../../models/Issues.js";
 import { IssueModel } from "../../models/IssueModels.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Participation } from "../../models/Participations.js";
 
-// Utils
+        
 import {
   createAlternativesRankingsSection,
   createAnalyticalGraphsSection,
@@ -25,7 +25,7 @@ import {
 import { toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
-// Modules
+          
 import {
   buildDefaultsResolved,
   mergeParamsResolved,

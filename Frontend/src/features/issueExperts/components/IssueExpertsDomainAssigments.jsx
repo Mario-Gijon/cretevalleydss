@@ -35,7 +35,7 @@ const selectSx = (theme, effectiveValue) => ({
   minWidth: 220,
   "& .MuiOutlinedInput-root": {
     borderRadius: 3,
-    bgcolor: "transparent", // ✅ sin fondos
+    bgcolor: "transparent",
     border: `1px solid ${effectiveValue === "mixed"
       ? alpha(theme.palette.info.main, 0.35)
       : alpha(theme.palette.common.white, 0.12)
@@ -84,7 +84,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
   const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
   const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
 
-  // Opciones del select según soporte del modelo
+                                                 
   const domainOptions = useMemo(() => {
     const opts = [];
 
@@ -111,7 +111,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     return opts;
   }, [supportsNumeric, supportsLinguistic, globalDomains, expressionDomains]);
 
-  // 📌 Propagaciones (global / por alternativa / por criterio / individual)
   const assignValue = (path, value) => {
     setDomainAssignments((prev) => {
       const updated = structuredClone(prev || { experts: {} });
@@ -155,7 +154,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     });
   };
 
-  // 🎛️ Select con fallback visible y robusto
   const renderSelect = (path, values, isSingle = false) => {
     let currentValue = getMixedOrValue(values);
 
@@ -163,12 +161,12 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
       currentValue = String(currentValue);
     }
 
-    // Nunca debe ser "mixed" para celdas individuales
+                                                      
     if (isSingle && currentValue === "mixed" && values.length === 1) {
       currentValue = values[0];
     }
 
-    // Fallback según soporte del modelo
+                                        
     const fallback = supportsNumeric
       ? String(
         globalDomains.find(
@@ -185,7 +183,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
     const validValues = domainOptions.map((o) => o.value);
 
-    // ⛳️ IMPORTANTE: si es "mixed", NO tocarlo (queremos mostrarlo)
     if (effectiveValue !== "mixed" && !validValues.includes(effectiveValue)) {
       effectiveValue = validValues[0] || "undefined";
     }
@@ -226,7 +223,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     );
   };
 
-  // Caso sin dominios lingüísticos disponibles
+                                               
   if (supportsLinguistic && !supportsNumeric && domainOptions.length === 0) {
     return (
       <Box sx={{ py: 1.5 }}>
@@ -242,7 +239,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
   return (
     <Stack spacing={1.5} sx={{ width: "100%", minHeight: 0 }}>
-      {/* ---------- GLOBAL SETTINGS (sin cajas) ---------- */}
+      {                                                       }
       <Stack spacing={0.35}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Global settings
@@ -252,7 +249,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
         </Typography>
       </Stack>
 
-      {/* Global */}
+      {            }
       <Stack sx={rowSx}>
         <Typography variant="body2" sx={labelSx}>
           Global
@@ -267,13 +264,13 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
         )}
       </Stack>
 
-      {/* Alternatives + Criteria (sin cards, sólo líneas) */}
+      {                                                      }
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={{ xs: 1.2, md: 2.4 }}
         alignItems={{ xs: "stretch", md: "flex-start" }}
       >
-        {/* Alternatives */}
+        {                  }
         <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
             Alternatives
@@ -294,7 +291,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                 )}
               </Stack>
 
-              {/* {idx !== alternatives.length - 1 ? <Divider sx={{ ...subtleDividerSx(theme), mt: 1.1 }} /> : null} */}
+              {                                                                                                        }
             </Box>
           ))}
         </Stack>
@@ -305,7 +302,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
           sx={{ display: { xs: "none", md: "block" }, borderColor: alpha(theme.palette.common.white, 0.08) }}
         />
 
-        {/* Criteria */}
+        {              }
         <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
             Leaf criteria
@@ -326,13 +323,13 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                 )}
               </Stack>
 
-              {/* {idx !== leafCriteria.length - 1 ? <Divider sx={{ ...subtleDividerSx(theme), mt: 1.1 }} /> : null} */}
+              {                                                                                                        }
             </Box>
           ))}
         </Stack>
       </Stack>
 
-      {/* ---------- DETAILED TABLE (borde fino) ---------- */}
+      {                                                       }
       <Divider sx={{ pt: 2 }} />
 
       <Stack spacing={0.35} sx={{ pt: 2 }}>
@@ -349,8 +346,8 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
           maxHeight: "55vh",
           borderRadius: 4,
           overflow: "auto",
-          border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`, // ✅ borde fino
-          bgcolor: "transparent", // ✅ nada de fondos
+          border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+          bgcolor: "transparent",
           ...scrollSx(theme),
         }}
       >
@@ -363,7 +360,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                   sx={{
                     fontWeight: 950,
                     color: "text.secondary",
-                    bgcolor: alpha(theme.palette.common.white, 0.02), // ✅ muy suave
+                    bgcolor: alpha(theme.palette.common.white, 0.02),
                     borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
                     py: 1.05,
                   }}
@@ -386,7 +383,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                     key={`${exp}-${alt}-${crit.name}`}
                     hover
                     sx={{
-                      "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.06) }, // ✅ hover suave
+                      "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.06) },
                     }}
                   >
                     {altIndex === 0 && critIndex === 0 && (

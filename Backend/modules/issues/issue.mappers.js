@@ -4,6 +4,20 @@
  * @param {Object|null|undefined} domain Dominio poblado.
  * @returns {Object|null}
  */
+const buildNumericRangeForClient = (domain) => {
+  const range = { ...(domain?.numericRange || {}) };
+
+  if (range.step === undefined) {
+    const sourceStep = domain?.sourceDomain?.numericRange?.step;
+
+    if (sourceStep !== undefined) {
+      range.step = sourceStep;
+    }
+  }
+
+  return range;
+};
+
 export const formatExpressionDomainForClient = (domain) => {
   if (!domain) return null;
 
@@ -11,7 +25,7 @@ export const formatExpressionDomainForClient = (domain) => {
     id: domain._id,
     name: domain.name,
     type: domain.type,
-    ...(domain.type === "numeric" && { range: domain.numericRange }),
+    ...(domain.type === "numeric" && { range: buildNumericRangeForClient(domain) }),
     ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
   };
 };
@@ -34,7 +48,7 @@ export const formatPairwiseEvaluationsByCriterion = (evaluations) => {
       expressionDomain,
     } = evaluation;
 
-    if (!value || !criterion || !alternative) {
+    if (!criterion || !alternative) {
       continue;
     }
 
@@ -51,14 +65,14 @@ export const formatPairwiseEvaluationsByCriterion = (evaluations) => {
     }
 
     const evalData = {
-      value,
+      value: value ?? "",
       domain: expressionDomain
         ? {
             id: expressionDomain._id,
             name: expressionDomain.name,
             type: expressionDomain.type,
             ...(expressionDomain.type === "numeric" && {
-              range: expressionDomain.numericRange,
+              range: buildNumericRangeForClient(expressionDomain),
             }),
             ...(expressionDomain.type === "linguistic" && {
               labels: expressionDomain.linguisticLabels,

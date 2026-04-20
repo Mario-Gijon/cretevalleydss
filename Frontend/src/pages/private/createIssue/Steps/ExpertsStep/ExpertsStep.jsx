@@ -38,10 +38,10 @@ export const ExpertsStep = ({
   const { initialExperts: contextExperts } = useIssuesDataContext();
   const [searchFilter, setSearchFilter] = useState("");
 
-  // Usa la prop si viene; si no, fallback al context
+                                                     
   const sourceExperts = Array.isArray(initialExpertsProp) ? initialExpertsProp : (contextExperts || []);
 
-  // Evita mostrar los ya seleccionados en esta misma sesión
+                                                            
   const experts = sourceExperts.filter((expert) => !addedExperts.includes(expert.email));
 
   const filteredExperts = useMemo(() => {

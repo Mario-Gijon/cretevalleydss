@@ -10,17 +10,17 @@ import dayjs from "dayjs";
  */
 const checkAndCloseIssues = async () => {
   try {
-    // Obtener la fecha de hoy en formato 'DD-MM-YYYY'
+                                                      
     const todayStr = dayjs().format("DD-MM-YYYY");
 
-    // Buscar todos los issues activos cuya closureDate coincide con hoy
+                                                                        
     const issuesToClose = await Issue.find({
       active: true,
       closureDate: todayStr,
     });
 
     for (const issue of issuesToClose) {
-      // Obtener los expertos aceptados
+                                       
       const participations = await Participation.find({
         issue: issue._id,
         invitationStatus: "accepted",
@@ -29,14 +29,14 @@ const checkAndCloseIssues = async () => {
       const allEvaluated = participations.every(p => p.evaluationCompleted);
 
       if (allEvaluated) {
-        // Todos valoraron
+                          
         if (issue.isConsensus) {
           await resolveIssueLogic(issue._id, { forceFinalize: true });
         } else {
           await resolveIssueLogic(issue._id);
         }
       } else {
-        // No todos valoraron
+                             
         if (!issue.isConsensus || !issueHasPreviousConsensus(issue)) {
           await removeIssueLogic(issue._id);
         } else {
@@ -55,7 +55,7 @@ const issueHasPreviousConsensus = (issue) => {
   return issue.consensusMaxPhases && issue.consensusMaxPhases > 0;
 };
 
-// Cron job: se ejecuta todos los días a las 00:00 del servidor
+                                                               
 cron.schedule("0 0 * * *", () => {
   console.log("Ejecutando cron job para cerrar issues por fecha...");
   checkAndCloseIssues();

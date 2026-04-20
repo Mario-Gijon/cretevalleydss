@@ -118,10 +118,24 @@ const PairwiseAlternativesEvaluationDialog = ({
     if (domain.type === "numeric") {
       const min = Number(domain.range?.min ?? 0);
       const max = Number(domain.range?.max ?? 1);
-      const midpoint = Math.round(((min + max) / 2) * 100) / 100;
+      const step = Number(domain.range?.step);
+      const midpoint = (min + max) / 2;
+      const normalizedStep = Number.isFinite(step) && step > 0 ? step : null;
+
+      const neutralValue = normalizedStep
+        ? Math.round(
+          Math.min(
+            max,
+            Math.max(
+              min,
+              min + Math.round((midpoint - min) / normalizedStep) * normalizedStep
+            )
+          ) * 100
+        ) / 100
+        : Math.round(midpoint * 100) / 100;
 
       return {
-        value: midpoint,
+        value: neutralValue,
         domain,
         isNeutralFallback: false,
       };
@@ -223,7 +237,7 @@ const PairwiseAlternativesEvaluationDialog = ({
     };
 
     fetchCurrentEvaluations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [isRatingAlternatives, selectedIssue]);
 
   const handleChangeCriterion = (index) => {

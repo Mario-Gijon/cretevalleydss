@@ -1,13 +1,13 @@
-// modules/issues/issue.resolution.js
+                                     
 
-// Models
+         
 import { Consensus } from "../../models/Consensus.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Issue } from "../../models/Issues.js";
 import { IssueModel } from "../../models/IssueModels.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import {
   EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
@@ -18,7 +18,7 @@ import {
   buildScenarioPairwiseMatrices,
 } from "./issue.scenarios.js";
 
-// Utils
+        
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,

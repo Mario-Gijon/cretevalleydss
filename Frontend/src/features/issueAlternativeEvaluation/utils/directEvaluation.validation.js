@@ -11,6 +11,26 @@ export const validateDirectEvaluations = (
   evaluations,
   { leafCriteria = [], allowEmpty = false } = {}
 ) => {
+  const alignToStep = ({ value, min, max, step }) => {
+    if (!Number.isFinite(step) || step <= 0) {
+      return Math.round(value * 100) / 100;
+    }
+
+    const snapped = min + Math.round((value - min) / step) * step;
+    const bounded = Math.min(max, Math.max(min, snapped));
+
+    return Math.round(bounded * 100) / 100;
+  };
+
+  const isStepAligned = ({ value, min, max, step }) => {
+    if (!Number.isFinite(step) || step <= 0) {
+      return true;
+    }
+
+    const aligned = alignToStep({ value, min, max, step });
+    return Math.abs(aligned - value) < 1e-9;
+  };
+
   let firstInvalidCell = null;
 
   for (const alternativeName in evaluations) {
@@ -36,10 +56,12 @@ export const validateDirectEvaluations = (
 
       if (value !== "" && value !== null && value !== undefined) {
         if (domain?.type === "numeric") {
-          const min = domain.range?.min ?? 0;
-          const max = domain.range?.max ?? 1;
+          const min = Number(domain?.range?.min ?? 0);
+          const max = Number(domain?.range?.max ?? 1);
+          const step = Number(domain?.range?.step);
+          const numericValue = Number(value);
 
-          if (isNaN(value) || value < min || value > max) {
+          if (isNaN(numericValue) || numericValue < min || numericValue > max) {
             firstInvalidCell = {
               alternative: alternativeName,
               criterion: criterionName,
@@ -48,8 +70,24 @@ export const validateDirectEvaluations = (
             break;
           }
 
-          const roundedValue = Math.round(value * 100) / 100;
-          if (value !== roundedValue) {
+          if (
+            !isStepAligned({
+              value: numericValue,
+              min,
+              max,
+              step,
+            })
+          ) {
+            firstInvalidCell = {
+              alternative: alternativeName,
+              criterion: criterionName,
+              message: `Value for [${alternativeName}, ${criterionName}] must follow step ${step}.`,
+            };
+            break;
+          }
+
+          const roundedValue = Math.round(numericValue * 100) / 100;
+          if (numericValue !== roundedValue) {
             firstInvalidCell = {
               alternative: alternativeName,
               criterion: criterionName,

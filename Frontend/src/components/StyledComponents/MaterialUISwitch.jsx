@@ -1,7 +1,7 @@
 import { styled } from '@mui/system';
 import { Switch } from '@mui/material';
 
-// Estilo personalizado para el switch
+                                      
 export const MaterialUISwitch = styled(Switch)(({ theme }) => ({
   width: 60,
   height: 34,

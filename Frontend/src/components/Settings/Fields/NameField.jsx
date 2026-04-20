@@ -1,19 +1,19 @@
-// Importar componentes necesarios de MUI
+                                         
 import { TextField, IconButton, Button, FormHelperText, CircularProgress } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PersonIcon from '@mui/icons-material/Person';
 
-// Definir el componente NameField
+                                  
 export default function NameField({initialValue, value, setValue, showReset, onSave, error, color, loading }) {
 
-  // Función para manejar la tecla Enter
+                                        
   const handleKeyDown = (e) => {
     e.key === 'Enter' && onSave()
   }
 
   return (
     <>
-      {/* Campo de texto para el nombre */}
+      {                                   }
       <TextField
         label="Name"
         variant="filled"
@@ -21,7 +21,7 @@ export default function NameField({initialValue, value, setValue, showReset, onS
         value={value}
         onChange={(e) => setValue(e.target.value)}
         color={color}
-        error={error} // Si hay error, el campo se marcará como error
+        error={error}                                                
         autoComplete="off"
         onKeyDown={showReset && handleKeyDown}
         InputProps={{
@@ -32,9 +32,9 @@ export default function NameField({initialValue, value, setValue, showReset, onS
           ) : null,
         }}
       />
-      {/* Mostrar el error si existe */}
+      {                                }
       {error && <FormHelperText error>{error}</FormHelperText>} 
-      {/* Botón para modificar el nombre */}
+      {                                    }
       <Button
         variant="contained"
         color={color}

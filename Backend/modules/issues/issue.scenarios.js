@@ -1,4 +1,4 @@
-// Models
+         
 import { Consensus } from "../../models/Consensus.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Issue } from "../../models/Issues.js";
@@ -7,13 +7,13 @@ import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Participation } from "../../models/Participations.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 
-// Modules
+          
 import {
   EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
 
-// Utils
+        
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
@@ -30,7 +30,7 @@ import { sameId, toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
 
-// External libraries
+                     
 import axios from "axios";
 
 /**

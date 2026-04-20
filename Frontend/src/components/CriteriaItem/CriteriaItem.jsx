@@ -38,7 +38,7 @@ export const CriteriaItem = ({
             <Stack direction="row" alignItems="center" spacing={1.5}>
               {editingCriterion?.name === item.name ? (
                 <>
-                  {/* Input para editar el nombre */}
+                  {                                 }
                   <TextField
                     variant="standard"
                     value={editCriterionValue}
@@ -50,8 +50,8 @@ export const CriteriaItem = ({
                     autoFocus
                     fullWidth
                     color="secondary"
-                    error={!!editCriterionError} // Mostrar error solo si hay un mensaje
-                    helperText={editCriterionError} // Mostrar el mensaje de error
+                    error={!!editCriterionError}                                        
+                    helperText={editCriterionError}                               
                     InputProps={{
                       endAdornment: (
                         <IconButton onClick={handleSaveCriterionEdit} color="secondary" size="small">
@@ -62,7 +62,7 @@ export const CriteriaItem = ({
                   />
 
 
-                  {/* Si es un criterio de primer nivel, mostramos el Select para modificar el tipo */}
+                  {                                                                                   }
                   {isFirstLevel && (
                     <Select
                       value={editCriterionType}
@@ -81,7 +81,7 @@ export const CriteriaItem = ({
                 <>
                   <span>{item.name}</span>
 
-                  {/* Etiqueta del tipo (solo en primer nivel) */}
+                  {                                              }
                   {isFirstLevel && (
                     <Chip
                       variant="outlined"
@@ -96,7 +96,7 @@ export const CriteriaItem = ({
           }
         />
 
-        {/* Botones de acciones */}
+        {                         }
         {hasChildren && (
           <IconButton onClick={() => handleToggle(item.name)}>
             {openItems[item.name] ? <ExpandLess /> : <ExpandMore />}
@@ -115,7 +115,7 @@ export const CriteriaItem = ({
         </Stack>
       </ListItem>
 
-      {/* Renderizado de hijos */}
+      {                          }
       {hasChildren && (
         <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
           <List disablePadding>

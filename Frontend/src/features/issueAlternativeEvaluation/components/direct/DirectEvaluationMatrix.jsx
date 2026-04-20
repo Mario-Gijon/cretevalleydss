@@ -23,7 +23,37 @@ const DirectEvaluationMatrix = ({
 }) => {
   const theme = useTheme();
 
-  console.log(evaluations)
+  const getNumericRange = (domain) => {
+    const min = Number(domain?.range?.min);
+    const max = Number(domain?.range?.max);
+    const step = Number(domain?.range?.step);
+
+    return {
+      min: Number.isFinite(min) ? min : 0,
+      max: Number.isFinite(max) ? max : 1,
+      step: Number.isFinite(step) && step > 0 ? step : null,
+    };
+  };
+
+  const alignToStep = ({ value, min, max, step }) => {
+    if (!Number.isFinite(step) || step <= 0) {
+      return Math.round(value * 100) / 100;
+    }
+
+    const snapped = min + Math.round((value - min) / step) * step;
+    const bounded = Math.min(max, Math.max(min, snapped));
+
+    return Math.round(bounded * 100) / 100;
+  };
+
+  const isStepAligned = ({ value, min, max, step }) => {
+    if (!Number.isFinite(step) || step <= 0) {
+      return true;
+    }
+
+    const aligned = alignToStep({ value, min, max, step });
+    return Math.abs(aligned - value) < 1e-9;
+  };
 
   const getDomain = (cell) =>
     cell && typeof cell === "object" && cell.domain ? cell.domain : null;
@@ -150,18 +180,28 @@ const DirectEvaluationMatrix = ({
     if (prevDomain?.type === "numeric") {
       const rawValue = getValue(raw);
       const numericValue = parseFloat(rawValue);
-      const min = prevDomain.range?.min ?? 0;
-      const max = prevDomain.range?.max ?? 1;
+      const { min, max, step } = getNumericRange(prevDomain);
 
       if (
         Number.isNaN(numericValue) ||
         numericValue < min ||
-        numericValue > max
+        numericValue > max ||
+        !isStepAligned({
+          value: numericValue,
+          min,
+          max,
+          step,
+        })
       ) {
         nextCell = { value: "", domain: prevDomain };
       } else {
         nextCell = {
-          value: Math.round(numericValue * 100) / 100,
+          value: alignToStep({
+            value: numericValue,
+            min,
+            max,
+            step,
+          }),
           domain: prevDomain,
         };
       }

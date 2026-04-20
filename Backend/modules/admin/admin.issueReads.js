@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// Models
+         
 import { Alternative } from "../../models/Alternatives.js";
 import { User } from "../../models/Users.js";
 import { Consensus } from "../../models/Consensus.js";
@@ -13,7 +13,7 @@ import { Issue } from "../../models/Issues.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
@@ -24,7 +24,7 @@ import {
   resolveEvaluationStructure,
 } from "../issues/issue.evaluationStructure.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createNotFoundError,

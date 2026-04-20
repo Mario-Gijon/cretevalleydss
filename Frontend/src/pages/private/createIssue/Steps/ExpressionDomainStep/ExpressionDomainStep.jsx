@@ -70,7 +70,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
   return (
     <>
       <Stack spacing={1.6} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-        {/* Header sin caja */}
+        {                     }
         <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
             <Avatar sx={headerIconSx(theme)}>
@@ -111,7 +111,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
           </Box>
         ) : (
           <>
-            {/* Actions bar */}
+            {                 }
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ xs: "stretch", sm: "center" }}>
               <Button
                 variant="outlined"
@@ -138,7 +138,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
 
             <Divider/>
 
-            {/* Assignments surface */}
+            {                         }
             <Stack variant="elevation" sx={{ p: { xs: 1.4, sm: 1.8 }, bgcolor: "transparent" }}>
               <DomainAssignments
                 allData={allData}
@@ -151,7 +151,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
         )}
       </Stack>
 
-      {/* Dialog creación/edición */}
+      {                             }
       <CreateLinguisticExpressionDialog
         open={openCreateDomainExpressionDialog}
         editingDomain={editingDomain}
@@ -159,7 +159,7 @@ export const ExpressionDomainStep = ({ allData, domainAssignments, setDomainAssi
         showSnackbarAlert={showSnackbarAlert}
       />
 
-      {/* Dialog gestión */}
+      {                    }
       <ViewExpressionsDomainDialog
         open={openViewDomainExpressions}
         onClose={() => setOpenViewDomainExpressions(false)}

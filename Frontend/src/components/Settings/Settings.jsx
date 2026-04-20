@@ -1,53 +1,53 @@
-// Importar hooks y componentes necesarios de React y MUI
+                                                         
 import { useState, useEffect, forwardRef } from 'react';
-// Importar componentes de MUI
+                              
 import { Slide, Container, Backdrop, Typography, Stack, CircularProgress, Divider } from '@mui/material';
 import Grid from '@mui/material/Grid2';
-// Importar contexto de autenticación
+                                     
 import { useAuthContext } from '../../context/auth/auth.context';
-// Importar helpers de autenticación
+                                    
 import { logout, deleteAccount, updatePassword, modifyUniversity, modifyName, modifyEmail } from '../../services/auth.service';
-// Importar hook de esquema de color de MUI
+                                           
 import { useColorScheme } from '@mui/material';
-// Importar funciones de validación
+                                   
 import { validateUniversity, validateName, validateEmail, validatePassword } from './utils/validationUtils';
-// Importar componentes personalizados
+                                      
 import SettingsHeader from './SettingsHeader';
 import UniversityField from './Fields/UniversityField';
 import NameField from './Fields/NameField';
 import EmailField from './Fields/EmailField';
 import PasswordField from './Fields/PasswordField';
-/* import NotificationsSwitch from './NotificationsSwitch'; */
+                                                              
 import DeleteAccountButton from './Fields/DeleteAccountButton';
 import ConfirmDeleteDialog from './Fields/ConfirmDeleteDialog';
 import ConfirmPasswordDialog from './Fields/ConfirmPasswordDialog';
 import { useSnackbarAlertContext } from '../../context/snackbarAlert/snackbarAlert.context';
 import { GlassDialog } from '../StyledComponents/GlassDialog';
 
-// Definir el componente de transición para el Dialog
+                                                     
 const Transition = forwardRef(function Transition(props, ref) {
   return <Slide in direction="down" ref={ref} {...props} />;
 });
 
-// Definir el componente Settings
+                                 
 export function Settings({ open, setOpen }) {
-  // Función para manejar el cierre del diálogo
+                                               
   const handleClose = () => setOpen(false);
 
-  // Obtener el modo (claro u oscuro) del hook useColorScheme
+                                                             
   const { mode } = useColorScheme();
 
   const {showSnackbarAlert} = useSnackbarAlertContext();
 
-  // Obtener valores del contexto de autenticación
+                                                  
   const { value, setIsLoggedIn, setValue } = useAuthContext();
 
-  // Definir variables de estado
+                                
   const [university, setUniversity] = useState(value.university);
   const [name, setName] = useState(value.name);
   const [email, setEmail] = useState(value.email);
   const [password, setPassword] = useState('');
-  /* const [notifications, setNotifications] = useState(false); */
+                                                                  
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [showUniversityReset, setShowUniversityReset] = useState(false);
   const [showNameReset, setShowNameReset] = useState(false);
@@ -75,21 +75,21 @@ export function Settings({ open, setOpen }) {
     repeatPassword: '',
   });
 
-  // Efecto para mostrar botones de reinicio para campos con cambios
+                                                                    
   useEffect(() => {
     setShowUniversityReset(university !== value.university);
     setShowNameReset(name !== value.name);
     setShowEmailReset(email !== value.email);
   }, [university, name, email, value.university, value.name, value.email]);
 
-  // Efecto para reiniciar campos cuando el diálogo se cierra
+                                                             
   useEffect(() => {
     if (!open) {
       setUniversity(value.university)
       setName(value.name)
       setEmail(value.email)
       setPassword('')
-      /* setNotifications(false) */
+                                   
       setFieldColors({
         university: 'secondary',
         name: 'secondary',
@@ -99,39 +99,39 @@ export function Settings({ open, setOpen }) {
     }
   }, [open, value]);
 
-  // Función para manejar la confirmación de eliminación
+                                                        
   const handleConfirmDelete = () => setConfirmOpen(true);
   const handleCancelDelete = () => setConfirmOpen(false);
 
-  // Función para manejar cambios en University
+                                               
   const handleUniversityChange = (newValue) => {
     setUniversity(newValue);
     setFieldColors((prevColor) => ({ ...prevColor, university: 'secondary' }));
     setErrors((prevErrors) => ({ ...prevErrors, university: '' }));
   };
 
-  // Función para manejar cambios en name
+                                         
   const handleNameChange = (newValue) => {
     setName(newValue);
     setFieldColors((prevColor) => ({ ...prevColor, name: 'secondary' }));
     setErrors((prevErrors) => ({ ...prevErrors, name: '' }));
   };
 
-  // Función para manejar cambios en email
+                                          
   const handleEmailChange = (newValue) => {
     setEmail(newValue);
     setFieldColors((prevColor) => ({ ...prevColor, email: 'secondary' }));
     setErrors((prevErrors) => ({ ...prevErrors, email: '' }));
   };
 
-  // Función para manejar cambios en password
+                                             
   const handlePasswordChange = (newValue) => {
     setPassword(newValue);
     setFieldColors((prevColor) => ({ ...prevColor, password: 'secondary' }));
     setErrors((prevErrors) => ({ ...prevErrors, password: '' }));
   };
 
-  // Función para manejar la eliminación de la cuenta
+                                                     
   const handleDelete = async () => {
     setLoadingDelete(true);
     await new Promise(r => setTimeout(r, 1000));
@@ -148,7 +148,7 @@ export function Settings({ open, setOpen }) {
     setLoadingDelete(false);
   };
 
-  // Función para manejar la modificación de University
+                                                       
   const handleUniversityModify = async () => {
     const error = validateUniversity(university);
     if (error) {
@@ -181,7 +181,7 @@ export function Settings({ open, setOpen }) {
     }
   };
 
-  // Función para manejar la modificación de name
+                                                 
   const handleNameModify = async () => {
     const error = validateName(name);
     if (error) {
@@ -216,7 +216,7 @@ export function Settings({ open, setOpen }) {
 
 
 
-  // Función para manejar la modificación de email
+                                                  
   const handleEmailModify = async () => {
     const error = validateEmail(email);
     if (error) {
@@ -250,7 +250,7 @@ export function Settings({ open, setOpen }) {
 
   }
 
-  // Función para manejar la modificación de password
+                                                     
   const handlePasswordModify = () => {
     const passwordError = validatePassword(password);
     if (passwordError) {
@@ -263,7 +263,7 @@ export function Settings({ open, setOpen }) {
     }
   };
 
-  // Función para manejar la repetición de password
+                                                   
   const handleRepeatPassword = async () => {
     if (password === repeatPassword) {
 
@@ -313,7 +313,7 @@ export function Settings({ open, setOpen }) {
     }
   };
 
-  // Función para manejar la cancelación del diálogo de password
+                                                                
   const handleCancelPasswordDialog = () => {
     setConfirmPasswordDialogOpen(false);
     setPassword('');

@@ -1,4 +1,4 @@
-// Models
+         
 import { Alternative } from "../../models/Alternatives.js";
 import { Consensus } from "../../models/Consensus.js";
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
@@ -11,10 +11,10 @@ import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import { getNextConsensusPhase } from "./issue.queries.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createForbiddenError,

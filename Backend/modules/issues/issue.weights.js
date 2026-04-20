@@ -1,9 +1,9 @@
-// Models
+         
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
 import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import {
   getAcceptedParticipation,
   getWeightCompletionStats,
@@ -14,7 +14,7 @@ import {
 } from "./issue.ordering.js";
 import { validateFinalWeights } from "./issue.validation.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createForbiddenError,

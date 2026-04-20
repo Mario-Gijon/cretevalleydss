@@ -1,12 +1,12 @@
-// Importa componentes de Material UI
+                                     
 import { Dialog, DialogActions, CircularProgress, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-// Componente ConfirmDeleteDialog
+                                 
 export default function ConfirmDeleteDialog({ open, handleCancel, loading, handleDelete }) {
   return (
-    // Diálogo de confirmación de eliminación
+                                             
     <Dialog
       open={open}
       onClose={handleCancel}

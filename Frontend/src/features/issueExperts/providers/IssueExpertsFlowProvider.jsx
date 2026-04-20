@@ -36,7 +36,7 @@ const IssueExpertsFlowProvider = ({
 
   useEffect(() => {
     flow.resetExpertsEdition();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                         
   }, [selectedIssue?.id]);
 
   const value = useMemo(() => {

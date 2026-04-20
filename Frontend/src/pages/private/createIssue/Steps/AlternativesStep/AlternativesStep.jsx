@@ -64,7 +64,7 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
 
   return (
     <Stack spacing={1.5} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-      {/* Mini header (sin caja) */}
+      {                            }
       <Stack spacing={0.25}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Alternatives
@@ -74,7 +74,7 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
         </Typography>
       </Stack>
 
-      {/* Input row (plano) */}
+      {                       }
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1.25}
@@ -109,7 +109,7 @@ export const AlternativesStep = ({ alternatives, setAlternatives }) => {
         </Button>
       </Stack>
 
-      {/* Lista (UNA sola “superficie”) */}
+      {                                   }
       {alternatives.length === 0 ? (
         <Box
           sx={{

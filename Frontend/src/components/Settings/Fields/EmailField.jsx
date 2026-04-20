@@ -1,18 +1,18 @@
-// Importar componentes necesarios de MUI
+                                         
 import { TextField, IconButton, Button, FormHelperText, CircularProgress } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EmailIcon from '@mui/icons-material/Email';
 
-// Definir el componente EmailField
+                                   
 export default function EmailField({ initialValue, value, setValue, showReset, onSave, error, color, loading }) {
-  // Maneja el evento de presionar "Enter" en el campo de texto
+                                                               
   const handleKeyDown = (e) => {
     e.key === 'Enter' && onSave()
   }
 
   return (
     <>
-      {/* Campo de texto para el correo electrónico */}
+      {                                               }
       <TextField
         label="Email"
         variant="filled"
@@ -20,7 +20,7 @@ export default function EmailField({ initialValue, value, setValue, showReset, o
         value={value}
         onChange={(e) => setValue(e.target.value)}
         color={color}
-        error={error} // Si hay error, el campo se marcará como error
+        error={error}                                                
         autoComplete="off"
         onKeyDown={showReset && handleKeyDown}
         InputProps={{
@@ -31,9 +31,9 @@ export default function EmailField({ initialValue, value, setValue, showReset, o
           ) : null,
         }}
       />
-      {/* Mostrar el error si existe */}
+      {                                }
       {error && <FormHelperText error>{error}</FormHelperText>}
-      {/* Botón para modificar el correo electrónico */}
+      {                                                }
       <Button
         variant="contained"
         color={color}

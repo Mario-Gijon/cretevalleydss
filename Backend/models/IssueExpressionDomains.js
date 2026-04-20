@@ -87,6 +87,15 @@ const issueExpressionDomainSchema = new Schema(
         type: Number,
         default: null,
       },
+      step: {
+        type: Number,
+        default: null,
+        validate: {
+          validator: (value) =>
+            value == null || (Number.isFinite(value) && value > 0),
+          message: "numericRange.step must be null or a positive number",
+        },
+      },
     },
 
     linguisticLabels: [

@@ -3,7 +3,7 @@ import { styled, Paper } from "@mui/material";
 export const GlassCard = styled(Paper)(() => ({
   borderRadius: "12px",
   transition: "transform 0.2s, boxShadow 0.2s, background 0.3s",
-  /* Glass real */
+                  
   background: "rgba(21, 30, 38, 1)",
   color: "#FFFFFF",
   boxShadow: "0 8px 24px rgba(29, 82, 81, 0.2)",

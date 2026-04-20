@@ -1,4 +1,4 @@
-// private/admin/sections/LogsSection.jsx
+                                         
 import { Paper, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 

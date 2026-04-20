@@ -55,7 +55,7 @@ const StyledBadge = styled(Badge)(() => ({
   }
 }));
 
-// Componente para ocultar el AppBar cuando se hace scroll
+                                                          
 const HideOnScroll = (props) => {
   const { children, window } = props;
   const trigger = useScrollTrigger({ target: window ? window() : undefined });
@@ -66,7 +66,7 @@ const LogoIcon = (props) => {
   return <SvgIcon component={LogoSVG} viewBox="0 0 200 200" {...props} />;
 };
 
-// Componente principal de la barra de navegación responsive
+                                                            
 export const ResponsiveNavbar = (props) => {
 
   const auth = useAuthContext();
@@ -78,7 +78,7 @@ export const ResponsiveNavbar = (props) => {
   const { fetchActiveIssues } = useIssuesDataContext();
   const { mode, setMode } = useColorScheme();
 
-  // Evita setMode en cada render
+                                 
   useEffect(() => {
     if (mode !== "dark") setMode("dark");
   }, [mode, setMode]);
@@ -99,7 +99,6 @@ export const ResponsiveNavbar = (props) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedNotificationId, setSelectedNotificationId] = useState(null);
 
-  // ✅ Admin justo a la derecha de Models (sin duplicar) y solo visible para admins
   const navPages = useMemo(() => {
     const adminPage = { label: "Admin", url: "/dashboard/admin", path: "/dashboard/admin" };
     const cloned = Array.isArray(pages) ? [...pages] : [];
@@ -135,7 +134,7 @@ export const ResponsiveNavbar = (props) => {
     setOpenDialog(false);
   };
 
-  // Sync tab con ruta actual
+                             
   useEffect(() => {
     const currentPage = navPages.findIndex(page => location.pathname.startsWith(page.path));
     setNavValue(currentPage !== -1 ? currentPage : 0);
@@ -280,7 +279,7 @@ export const ResponsiveNavbar = (props) => {
           <Toolbar sx={{ position: "relative", color: "#FFFFFF", overflow: "hidden" }}>
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", flexGrow: 1 }}>
 
-              {/* Pantalla grande */}
+              {                     }
               <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: 'none', md: 'flex' } }}>
                 <Box sx={{ display: 'flex', flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
                   <LogoIcon sx={{ fontSize: "50px" }} />
@@ -320,7 +319,7 @@ export const ResponsiveNavbar = (props) => {
                 </Box>
               </Stack>
 
-              {/* Pantalla pequeña */}
+              {                      }
               <Stack direction="row" spacing={0} sx={{ justifyContent: "space-between", alignItems: "center", display: { xs: 'flex', md: 'none' } }}>
                 <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none', alignItems: "center", justifyContent: "center" } }}>
                   <IconButton
@@ -373,7 +372,7 @@ export const ResponsiveNavbar = (props) => {
                 </Stack>
               </Stack>
 
-              {/* Opciones del usuario */}
+              {                          }
               <Stack direction="row" spacing={2} sx={{ justifyContent: "center", alignItems: "center" }}>
                 <Tooltip title="Open options" arrow slots={{ transition: Zoom }}>
                   <IconButton

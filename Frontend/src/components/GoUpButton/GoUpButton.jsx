@@ -1,37 +1,37 @@
-// Importa hooks de React
+                         
 import { useState, useEffect } from "react";
 
-// Importa componentes de Material UI
+                                     
 import { Fab, Zoom } from "@mui/material";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
-// Componente Dashboard
+                       
 export const GoUpButton = () => {
 
-  // Estado para controlar la visibilidad del FAB (botón de acción flotante)
+                                                                            
   const [isVisible, setIsVisible] = useState(false);
 
-  // Maneja la visibilidad del FAB basado en el desplazamiento de la página
+                                                                           
   const handleScroll = () => {
     const scrolled = window.scrollY;
-    setIsVisible(scrolled > 200); // El FAB aparece después de hacer scroll más de 200px
+    setIsVisible(scrolled > 200);                                                       
   };
 
-  // Registra y elimina el evento de scroll
+                                           
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Función para desplazar la página al inicio
+                                               
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
-      behavior: "smooth", // Desplazamiento suave
+      behavior: "smooth",                        
     });
   };
 
-  // Duración de la transición del FAB
+                                      
   const transitionDuration = {
     enter: 300,
     exit: 200,
@@ -39,7 +39,7 @@ export const GoUpButton = () => {
 
   return (
     <>
-      {/* Botón de acción flotante con animación Zoom */}
+      {                                                 }
       <Zoom
         in={isVisible}
         timeout={transitionDuration}

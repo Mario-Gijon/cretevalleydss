@@ -97,7 +97,8 @@ const DirectAlternativesEvaluationDialog = ({
     };
 
     fetchCurrentEvaluations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRatingAlternatives, selectedIssue]);
 
   const mergeEvaluations = (fetchedEvaluations = {}) => {

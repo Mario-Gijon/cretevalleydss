@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Stack, Typography, useMediaQuery } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-// ---- helpers (self-contained) ----
+                                     
 const WEIGHTS_KEY = "weights";
 const filterOutWeightsParam = (p) => Boolean(p) && p?.name !== WEIGHTS_KEY;
 const filterOutWeightsParams = (params) => (Array.isArray(params) ? params.filter(filterOutWeightsParam) : []);
@@ -112,7 +112,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
             const v = values?.[p.name];
             const type = p.type;
 
-            // ---------- number ----------
+                                           
             if (type === "number") {
               const shown = v ?? p.default ?? "—";
               return (
@@ -124,7 +124,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
               );
             }
 
-            // ---------- array ----------
+                                          
             if (type === "array") {
               const isMatch = p?.restrictions?.length === "matchCriteria";
               const arr = Array.isArray(v) ? v : Array.isArray(p.default) ? p.default : null;
@@ -138,7 +138,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
                 );
               }
 
-              // matchCriteria → lista compacta (grid)
+                                                      
               if (isMatch && Array.isArray(leafNames) && leafNames.length === arr.length) {
                 return (
                   <ParamRow key={p._id || p.name} name={p.name}>
@@ -188,7 +188,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
                 );
               }
 
-              // normal array → INLINE [a, b, c]
+                                                
               return (
                 <ParamRow key={p._id || p.name} name={p.name}>
                   <InlineArray arr={arr} />
@@ -196,7 +196,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
               );
             }
 
-            // ---------- fuzzyArray ----------
+                                               
             if (type === "fuzzyArray") {
               const triples = Array.isArray(v) ? v : Array.isArray(p.default) ? p.default : null;
               if (!triples) {
@@ -211,7 +211,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
 
               const isMatch = p?.restrictions?.length === "matchCriteria";
 
-              // matchCriteria → grid criterio → [l,m,u]
+                                                        
               if (isMatch && Array.isArray(leafNames) && leafNames.length === triples.length) {
                 return (
                   <ParamRow key={p._id || p.name} name={p.name}>
@@ -261,7 +261,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
                 );
               }
 
-              // no-match → lista horizontal con chips “[#i [l,m,u]]”
+                                                                     
               return (
                 <ParamRow key={p._id || p.name} name={p.name}>
                   <Stack direction="row" flexWrap="wrap" gap={1} sx={{ rowGap: 1 }}>
@@ -275,7 +275,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
               );
             }
 
-            // ---------- fallback (json prettified) ----------
+                                                               
             const pretty = safeJsonStringify(v ?? p.default ?? "");
             return (
               <ParamRow key={p._id || p.name} name={p.name}>

@@ -1,6 +1,6 @@
-// private/admin/AdminRoute.jsx
+                               
 import { Navigate } from "react-router-dom";
-import { useAuthContext } from "../../../context/auth/auth.context"; // ajusta si hace falta
+import { useAuthContext } from "../../../context/auth/auth.context";                        
 
 export default function AdminRoute({ children }) {
   const { value, loading } = useAuthContext();

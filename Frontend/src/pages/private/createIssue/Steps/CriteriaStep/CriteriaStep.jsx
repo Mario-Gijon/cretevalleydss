@@ -182,7 +182,7 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
 
   return (
     <Stack spacing={1.5} sx={{ width: "100%", maxWidth: 1250, mx: "auto", minHeight: 0 }}>
-      {/* Mini header */}
+      {                 }
       <Stack spacing={0.25}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Criteria
@@ -192,7 +192,7 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         </Typography>
       </Stack>
 
-      {/* Input row */}
+      {               }
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "flex-start" }}>
         <TextField
           variant="outlined"
@@ -224,7 +224,7 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         </Button>
       </Stack>
 
-      {/* List */}
+      {          }
       {criteria.length === 0 ? (
         <Box
           sx={{
@@ -271,7 +271,7 @@ export const CriteriaStep = ({ criteria, setCriteria, isMultiCriteria }) => {
         </List>
       )}
 
-      {/* Add child dialog (Glass) */}
+      {                              }
       <GlassDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 950 }}>
           Add child criterion

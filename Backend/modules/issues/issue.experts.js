@@ -1,4 +1,4 @@
-// Models
+         
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Issue } from "../../models/Issues.js";
@@ -6,7 +6,7 @@ import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 
-// Modules
+          
 import {
   buildInitialCriteriaWeightEvaluationDocs,
   buildInitialEvaluationDocs,
@@ -16,7 +16,7 @@ import {
 import { mapIssueStageToExitStage, registerUserExit } from "./issue.lifecycle.js";
 import { getDefaultIssueSnapshot, getNextConsensusPhase } from "./issue.queries.js";
 
-// Utils
+        
 import { cleanupExpertDraftsOnExit } from "../../modules/issues/issue.lifecycle.js";
 import {
   createBadRequestError,

@@ -1,4 +1,4 @@
-// Models
+         
 import { Consensus } from "../../models/Consensus.js";
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
 import { Evaluation } from "../../models/Evaluations.js";
@@ -9,7 +9,7 @@ import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 
-// Modules
+          
 import {
   deleteIssueCascade,
   getFinishedIssueVisibleUserIds,
@@ -17,7 +17,7 @@ import {
   registerUserExit,
 } from "../issues/issue.lifecycle.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createConflictError,

@@ -9,8 +9,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
 
   const handleToggle = () => setOpen((v) => !v);
 
-  // 👇 indent MUY suave sólo si hubiera hijos (en tu caso depth=0 => 0)
-  const indent = depth ? depth * 0.75 : 0; // 0.75 * 8px = 6px por nivel
+  const indent = depth ? depth * 0.75 : 0;                              
 
   const Content = (
     <Stack direction="row" spacing={1} alignItems="center" width="100%" sx={{ minWidth: 0 }}>
@@ -18,7 +17,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
         {criterion.name}
       </Typography>
 
-      {/* chip cost/benefit sólo para raíces */}
+      {                                        }
       {!isChild && criterion.type ? (
         <Chip
           variant="outlined"
@@ -28,7 +27,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
         />
       ) : null}
 
-      {/* weight si es hoja */}
+      {                       }
       {criterion.isLeaf && criterion.weight != null ? (
         <Chip
           size="small"
@@ -52,9 +51,9 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
           disableGutters
           onClick={handleToggle}
           sx={{
-            px: 0,          // 👈 sin padding lateral
+            px: 0,
             py: 0.35,
-            pl: indent,     // 👈 indent suave (0 en raíz)
+            pl: indent,
           }}
         >
           {Content}
@@ -63,9 +62,9 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
         <ListItem
           disableGutters
           sx={{
-            px: 0,          // 👈 sin padding lateral
+            px: 0,
             py: 0.35,
-            pl: indent,     // 👈 indent suave (0 en raíz)
+            pl: indent,
           }}
         >
           {Content}

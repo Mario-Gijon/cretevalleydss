@@ -23,8 +23,6 @@ import { useIssuesDataContext } from "../../../../../context/issues/issues.conte
 const inputSx = (theme) => ({
   "& .MuiOutlinedInput-root": {
     borderRadius: 3,
-    // ✅ ahora que vive dentro del CreateIssuePage (ya con “shell” y blur),
-    // bajamos un pelín la opacidad para que no se “embarre”.
     bgcolor: alpha(theme.palette.common.white, 0.03),
     border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
     "& fieldset": { border: "none" },
@@ -98,7 +96,7 @@ export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setW
 
   return (
     <Stack spacing={2} sx={{ width: "100%", maxWidth: 1250, mx: "auto" }}>
-      {/* Controls */}
+      {              }
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "flex-end" }}>
         <ToggleButton
           value="consensus"
@@ -140,7 +138,7 @@ export const ModelStep = ({ selectedModel, setSelectedModel, withConsensus, setW
         />
       </Stack>
 
-      {/* Model list (tiles) */}
+      {                        }
       <Grid container spacing={1.5} sx={{ width: "100%" }}>
         {filteredModels.map((model) => {
           const selected = selectedModel?.name === model?.name;

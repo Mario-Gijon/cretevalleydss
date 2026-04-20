@@ -1,4 +1,4 @@
-// private/admin/sections/ModelsSection.jsx
+                                           
 import { Paper, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 

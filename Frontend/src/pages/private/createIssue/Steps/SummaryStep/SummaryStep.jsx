@@ -125,12 +125,12 @@ export const SummaryStep = ({
   };
 
   const inputSx = {
-    /* "& .MuiOutlinedInput-root": {
-      borderRadius: 3,
-      bgcolor: alpha(theme.palette.common.white, 0.03),
-      border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-      "& fieldset": { border: "none" }, // evitamos doble borde
-    }, */
+                                    
+                      
+                                                       
+                                                                     
+                                                               
+         
   };
 
   const sectionHeader = (title, right) => (
@@ -145,7 +145,6 @@ export const SummaryStep = ({
   return (
     <Box>
       <Stack spacing={1.25} sx={{ position: "relative", zIndex: 1 }}>
-        {/* ✅ BASIC INFO */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Basic info", null)}
@@ -200,7 +199,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ STRUCTURE: Alternatives */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Alternatives", <ActiveIssuesPill tone="info">{alternatives.length}</ActiveIssuesPill>)}
@@ -231,7 +229,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ STRUCTURE: Criteria */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Criteria", <ActiveIssuesPill tone="info">{criteria.length}</ActiveIssuesPill>)}
@@ -248,7 +245,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ EXPERTS */}
         <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Experts", <ActiveIssuesPill tone="warning">{addedExperts.length}</ActiveIssuesPill>)}
@@ -275,7 +271,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ MODEL PARAMETERS */}
         {selectedModel?.parameters?.length ? (
           <Accordion disableGutters elevation={0} sx={accordionSx}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -302,7 +297,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ SCHEDULING + CONSENSUS SETTINGS */}
         <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Scheduling", null)}
@@ -437,7 +431,6 @@ export const SummaryStep = ({
 
         <Divider/>
 
-        {/* ✅ EXPRESSION DOMAINS */}
         <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader("Expression domain", null)}

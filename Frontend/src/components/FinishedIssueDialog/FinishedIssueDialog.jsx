@@ -113,6 +113,7 @@ const countLeafCriteria = (nodes) => {
   return count;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const getLeafCriteriaCountFromIssue = (source) => {
   if (Array.isArray(source?.modelParams?.leafCriteria)) {
     return source.modelParams.leafCriteria.length;
@@ -133,6 +134,7 @@ export const getLeafCriteriaCountFromIssue = (source) => {
   return 0;
 };
 
+                                                                
 // eslint-disable-next-line react-refresh/only-export-components
 export const hasSingleLeafCriterion = (source) =>
   getLeafCriteriaCountFromIssue(source) === 1;
@@ -1414,6 +1416,7 @@ export const FinishedIssueDialog = ({
         setRunCache({});
         setCurrentPhaseIndex(0);
       } finally {
+                                                     
         // eslint-disable-next-line no-unsafe-finally
         if (cancelled || openTokenRef.current !== token) return;
         setLoadingInfo(false);
@@ -1493,6 +1496,7 @@ export const FinishedIssueDialog = ({
     selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
 
   const baseModelParamsBlock = issue?.modelParams || null;
+                                                         
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const availableModelsRaw = baseModelParamsBlock?.availableModels || [];
   const availableModels = useMemo(

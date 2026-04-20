@@ -12,10 +12,10 @@ export const SnackbarAlert = ({ open, onClose, message, severity="error" }) => {
   return (
     <Snackbar
       open={open}
-      autoHideDuration={5000} // Se cierra automáticamente en 4 segundos
+      autoHideDuration={5000}                                           
       onClose={handleClose}
       anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      TransitionComponent={SlideTransition} // Animación de slide desde arriba
+      TransitionComponent={SlideTransition}                                   
     >
       <Alert
         severity={severity}

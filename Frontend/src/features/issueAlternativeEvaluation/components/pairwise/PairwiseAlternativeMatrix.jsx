@@ -40,15 +40,40 @@ const getCellRange = (cell) => {
   const domain = getCellDomain(cell);
   const min = Number(domain?.range?.min);
   const max = Number(domain?.range?.max);
+  const step = Number(domain?.range?.step);
 
   if (Number.isFinite(min) && Number.isFinite(max) && min < max) {
-    return { min, max };
+    return {
+      min,
+      max,
+      step: Number.isFinite(step) && step > 0 ? step : null,
+    };
   }
 
-  return { min: 0, max: 1 };
+  return { min: 0, max: 1, step: null };
 };
 
 const round2 = (value) => Math.round(value * 100) / 100;
+
+const alignToStep = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return round2(value);
+  }
+
+  const snapped = min + Math.round((value - min) / step) * step;
+  const bounded = Math.min(max, Math.max(min, snapped));
+
+  return round2(bounded);
+};
+
+const isStepAligned = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return true;
+  }
+
+  const aligned = alignToStep({ value, min, max, step });
+  return Math.abs(aligned - value) < 1e-9;
+};
 
 const normalizeToUnit = (value, min, max) => {
   if (max === min) return 0;
@@ -62,14 +87,18 @@ const denormalizeFromUnit = (normalizedValue, min, max) => {
 const getExpectedInverseValue = ({ value, sourceRange, targetRange }) => {
   const normalized = normalizeToUnit(value, sourceRange.min, sourceRange.max);
   const inverseNormalized = 1 - normalized;
-
-  return round2(
-    denormalizeFromUnit(
-      inverseNormalized,
-      targetRange.min,
-      targetRange.max
-    )
+  const expected = denormalizeFromUnit(
+    inverseNormalized,
+    targetRange.min,
+    targetRange.max
   );
+
+  return alignToStep({
+    value: expected,
+    min: targetRange.min,
+    max: targetRange.max,
+    step: targetRange.step,
+  });
 };
 
 const preserveCellShape = (previousCell, nextValue) => {
@@ -86,10 +115,6 @@ const preserveCellShape = (previousCell, nextValue) => {
   }
 
   return nextValue;
-};
-
-const shouldShowNeutralFallback = (cell, isDiagonal) => {
-  return Boolean(isDiagonal && cell?.isNeutralFallback);
 };
 
 /**
@@ -117,8 +142,6 @@ const PairwiseAlternativeMatrix = ({
   permitEdit = true,
 }) => {
   const theme = useTheme();
-
-  console.log(evaluations)
 
   const sortedAlternatives = [...alternatives].sort((a, b) =>
     a.localeCompare(b)
@@ -171,7 +194,6 @@ const PairwiseAlternativeMatrix = ({
         const collectiveValue = getCellNumericValue(collectiveRow?.[altCol]);
 
         const isDiagonal = rowId === altCol;
-        const showNeutralFallback = shouldShowNeutralFallback(cell, isDiagonal);
 
         return (
           <Stack
@@ -179,7 +201,7 @@ const PairwiseAlternativeMatrix = ({
             justifyContent="space-between"
             alignItems="center"
           >
-            {showNeutralFallback ? "Neutral" : userValue == null ? "" : userValue}
+            {isDiagonal ? "Neutral" : userValue == null ? "" : userValue}
 
             {collectiveValue != null && !isDiagonal && (
               <Chip
@@ -233,7 +255,13 @@ const PairwiseAlternativeMatrix = ({
     if (
       value == null ||
       value < sourceRange.min ||
-      value > sourceRange.max
+      value > sourceRange.max ||
+      !isStepAligned({
+        value,
+        min: sourceRange.min,
+        max: sourceRange.max,
+        step: sourceRange.step,
+      })
     ) {
       updatedRows = evaluations.map((row) => {
         if (!row || typeof row !== "object" || !row.id) {
@@ -265,7 +293,12 @@ const PairwiseAlternativeMatrix = ({
       };
     }
 
-    const normalizedValue = round2(value);
+    const normalizedValue = alignToStep({
+      value,
+      min: sourceRange.min,
+      max: sourceRange.max,
+      step: sourceRange.step,
+    });
     const inverseValue = getExpectedInverseValue({
       value: normalizedValue,
       sourceRange,

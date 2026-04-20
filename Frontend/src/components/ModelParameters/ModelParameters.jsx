@@ -8,15 +8,15 @@ import { getLeafCriteria } from "../../utils/createIssueUtils";
 
 export const ModelParameters = ({ selectedModel, allData, paramValues, setParamValues, defaultModelParams, setDefaultModelParams, handleDefaultChange, weightingMode, setWeightingMode, bwmData, setBwmData }) => {
 
-  // Criterios HOJA para pesos y fuzzy arrays
+                                             
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
     return getLeafCriteria(allData.criteria);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [JSON.stringify(allData?.criteria)]);
 
 
-  // util: asegurar longitud para arrays basados en criterios
+                                                             
   const ensureLength = (arr, len, filler = "") => {
     const a = Array.isArray(arr) ? [...arr] : [];
     if (a.length < len) return [...a, ...Array(len - a.length).fill(filler)];
@@ -24,7 +24,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
     return a;
   };
 
-  // fuzzy helper (mismo comportamiento que tenías)
+                                                   
   const handleFuzzyInput = (value, min = 0, max = 1) => {
     if (value === "") return "";
     if (value === "0." || value === ".") return value;
@@ -41,7 +41,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
     return (
       <Stack spacing={2}>
 
-        {/* Paso 1: Mejor criterio */}
+        {                            }
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2">Best (most important):</Typography>
           <TextField
@@ -61,7 +61,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </TextField>
         </Stack>
 
-        {/* Paso 2: Peor criterio */}
+        {                           }
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2">Worst (least important):</Typography>
           <TextField
@@ -81,7 +81,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </TextField>
         </Stack>
 
-        {/* Paso 3: Comparar el Best con los demás */}
+        {                                            }
         {bwmData.best && (
           <Stack spacing={1}>
             <Typography variant="body2">
@@ -114,7 +114,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           </Stack>
         )}
 
-        {/* Paso 4: Comparar los demás con el Worst */}
+        {                                             }
         {bwmData.worst && (
           <Stack spacing={1}>
             <Typography variant="body2">
@@ -153,7 +153,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
 
   return (
     <Stack spacing={2}>
-      {/* Header con Default */}
+      {                        }
       <Stack direction={"row"} spacing={2} sx={{ mb: 2 }} alignItems={"center"}>
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
           Model parameters:
@@ -170,12 +170,12 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
         </ToggleButton>
       </Stack>
 
-      {/* Render de parámetros */}
+      {                          }
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap={"wrap"}>
         {selectedModel.parameters.map((param) => {
           const { name, type, restrictions, default: defaultValue } = param;
 
-          // === NUMBER con allowed ===
+                                       
           if (type === "number" && restrictions?.allowed) {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
@@ -204,7 +204,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-          // === NUMBER libre ===
+                                 
           if (type === "number") {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
@@ -231,11 +231,11 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-          // === ARRAY (intervalos o pesos) ===
+                                               
           if (type === "array") {
             const length =
               restrictions?.length === "matchCriteria"
-                ? leafCriteria.length // <-- ahora sí: criterios HOJA
+                ? leafCriteria.length                                
                 : restrictions?.length || 2;
 
             const currentValues = ensureLength(
@@ -250,7 +250,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
               !restrictions?.sum &&
               restrictions?.length !== "matchCriteria";
 
-            // Intervalo [a, b, ...]
+                                    
             if (isInterval) {
               return (
                 <Stack key={param._id} spacing={1} direction={"row"} alignItems={"center"}>
@@ -287,7 +287,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
               );
             }
 
-            // Pesos (por criterio hoja). Mantiene tu botón group.
+                                                                  
             return (
               <Stack key={param._id} spacing={1} alignItems={"flex-start"}>
                 <Stack pb={1} direction={"row"} spacing={2} alignItems={"center"}>
@@ -338,14 +338,14 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                 </Stack>
 
                 {leafCriteria.length === 1 ? (
-                  // Caso especial: solo un criterio
+                                                    
                   <Stack spacing={1} alignItems="flex-start">
                     <Typography variant="body2">
                       Since there is only one criterion, its weight is fixed to <b>1</b>.
                     </Typography>
                   </Stack>
                 ) : weightingMode === "manual" ? (
-                  // Modo manual: permite editar los pesos
+                                                          
                   <Stack direction="row" flexWrap="wrap" gap={2}>
                     {leafCriteria.map((crit, i) => (
                       <Stack key={i} spacing={0.5} alignItems="center">
@@ -388,7 +388,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
-          // === FUZZY ARRAY (usa criterios HOJA) ===
+                                                     
           if (type === "fuzzyArray") {
             const length =
               restrictions?.length === "matchCriteria"

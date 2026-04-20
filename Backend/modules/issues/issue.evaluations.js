@@ -1,4 +1,4 @@
-// Models
+         
 import { Alternative } from "../../models/Alternatives.js";
 import { Consensus } from "../../models/Consensus.js";
 import { Criterion } from "../../models/Criteria.js";
@@ -7,7 +7,7 @@ import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
 
-// Modules
+          
 import {
   getAcceptedParticipation,
   getDefaultIssueSnapshot,
@@ -24,7 +24,7 @@ import {
   formatPairwiseEvaluationsByCriterion,
 } from "./issue.mappers.js";
 
-// Utils
+        
 import {
   createBadRequestError,
   createForbiddenError,
@@ -249,14 +249,10 @@ export const buildPairwiseEvaluationBulkOperations = ({
       const alternativeId = alternativeMap.get(alternativeName);
       if (!alternativeId) continue;
 
-      const snapshotId =
+      const rowSnapshotId =
         toIdString(rest?.expressionDomain?.id) ||
         toIdString(rest?.domain?.id) ||
         defaultSnapshotId;
-
-      if (snapshotId) {
-        snapshotIds.add(snapshotId);
-      }
 
       const comparisons = { ...rest };
       delete comparisons.expressionDomain;
@@ -278,6 +274,16 @@ export const buildPairwiseEvaluationBulkOperations = ({
             ? valueOrObj.value
             : valueOrObj;
 
+        const cellSnapshotId =
+          toIdString(valueOrObj?.expressionDomain?.id) ||
+          toIdString(valueOrObj?.domain?.id) ||
+          rowSnapshotId ||
+          defaultSnapshotId;
+
+        if (cellSnapshotId) {
+          snapshotIds.add(cellSnapshotId);
+        }
+
         bulkOperations.push({
           updateOne: {
             filter: {
@@ -290,7 +296,7 @@ export const buildPairwiseEvaluationBulkOperations = ({
             update: {
               $set: {
                 value,
-                expressionDomain: snapshotId,
+                expressionDomain: cellSnapshotId,
                 timestamp: new Date(),
                 consensusPhase: currentPhase,
               },
@@ -618,7 +624,13 @@ export const getDirectEvaluationPayload = async ({ issueId, userId }) => {
     })
       .populate("alternative")
       .populate("criterion")
-      .populate("expressionDomain")
+      .populate({
+        path: "expressionDomain",
+        populate: {
+          path: "sourceDomain",
+          select: "numericRange",
+        },
+      })
       .lean(),
   ]);
 
@@ -675,12 +687,17 @@ export const getPairwiseEvaluationPayload = async ({ issueId, userId }) => {
   const evaluations = await Evaluation.find({
     issue: issue._id,
     expert: userId,
-    value: { $ne: null },
   })
     .populate("alternative")
     .populate("comparedAlternative")
     .populate("criterion")
-    .populate("expressionDomain")
+    .populate({
+      path: "expressionDomain",
+      populate: {
+        path: "sourceDomain",
+        select: "numericRange",
+      },
+    })
     .lean();
 
   const formattedEvaluations = formatPairwiseEvaluationsByCriterion(evaluations);

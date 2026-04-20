@@ -105,7 +105,7 @@ const ManualWeightsEvaluationDialog = ({
     if (equalWeightsMode) {
       applyEqualWeights();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, [equalWeightsMode, leafCriteria]);
 
   useEffect(() => {

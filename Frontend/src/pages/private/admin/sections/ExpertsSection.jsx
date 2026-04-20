@@ -54,9 +54,9 @@ import {
 } from "../../../../services/admin.service";
 import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../../features/activeIssues/styles/activeIssues.styles";
 
-/* --------------------------------
- * Helpers
- * -------------------------------- */
+                                   
+          
+                                      
 
 const normalize = (v) => removeAccents(String(v ?? "").toLowerCase().trim());
 
@@ -146,9 +146,9 @@ function StatusPill({ confirmed }) {
   );
 }
 
-/* --------------------------------
- * Main section
- * -------------------------------- */
+                                   
+               
+                                      
 
 export default function ExpertsSection() {
   const theme = useTheme();
@@ -198,7 +198,7 @@ export default function ExpertsSection() {
 
   useEffect(() => {
     fetchExpertsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+                                                           
   }, []);
 
   const filteredExperts = useMemo(() => {

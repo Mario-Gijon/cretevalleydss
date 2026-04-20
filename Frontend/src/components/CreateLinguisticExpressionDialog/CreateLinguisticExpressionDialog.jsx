@@ -17,7 +17,7 @@ export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose 
   const [nLabels, setNLabels] = useState(5);
   const [labels, setLabels] = useState(buildFuzzyTriangles(5));
 
-  // inicializar al abrir
+                         
   useEffect(() => {
     if (open) {
       if (editingDomain) {
@@ -65,7 +65,6 @@ export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose 
     let result;
 
     if (editingDomain) {
-      // 🔄 actualización
       result = await updateExpressionDomain(editingDomain._id, domain);
 
       if (result.success) {
@@ -74,7 +73,6 @@ export const CreateLinguisticExpressionDialog = ({ open, editingDomain, onClose 
         );
       }
     } else {
-      // ➕ creación
       result = await createExpressionDomain(domain);
 
       if (result.success) {

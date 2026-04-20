@@ -1,4 +1,4 @@
-// Models
+         
 import { Alternative } from "../../models/Alternatives.js";
 import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
 import { Criterion } from "../../models/Criteria.js";
@@ -10,7 +10,7 @@ import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 
-// Modules
+          
 import {
   buildInitialCriteriaWeightEvaluationDocs,
   buildInitialEvaluationDocs,
@@ -21,7 +21,7 @@ import {
 import { normalizeSingleWeight } from "./issue.weights.js";
 import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
 
-// Utils
+        
 import { compareNameId } from "../../modules/issues/issue.ordering.js";
 import {
   getUniqueTrimmedStrings,
@@ -36,7 +36,7 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 
-// External libraries
+                     
 import dayjs from "dayjs";
 
 /**

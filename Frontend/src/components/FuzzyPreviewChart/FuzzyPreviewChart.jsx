@@ -38,8 +38,8 @@ const buildChartData = (labels) => {
       borderColor: `hsl(${(i * 360) / labels.length}, 70%, 50%)`,
       backgroundColor: "transparent",
       borderWidth: 2,
-      tension: 0, // líneas rectas
-      pointRadius: 0, // sin puntos
+      tension: 0,                 
+      pointRadius: 0,              
     };
   });
 

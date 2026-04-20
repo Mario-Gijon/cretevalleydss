@@ -14,7 +14,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
  *
  * @returns {Object}
  */
-// eslint-disable-next-line react-refresh/only-export-components
+                                                                
 export const getIssueDetailsDrawerCrystalBorder = () => {
   return { border: "1px solid rgba(117, 199, 209, 0.8)" };
 };
@@ -27,7 +27,7 @@ export const getIssueDetailsDrawerCrystalBorder = () => {
  * @param {number} options.bg Intensidad del fondo.
  * @returns {Object}
  */
-// eslint-disable-next-line react-refresh/only-export-components
+                                                                
 export const getIssueDetailsDrawerPanelSx = (
   theme,
   { bg = 0.10 } = {}

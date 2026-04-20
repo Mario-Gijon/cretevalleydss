@@ -56,7 +56,7 @@ export const CriterionAccordion = ({ criterion, weightMap, elevation = 1 }) => {
         </Stack>
       </AccordionSummary>
 
-      {/* Render recursivo de hijos */}
+      {                               }
       {!isLeaf && (
         <AccordionDetails sx={{ pl: 2, pt: 0, pb: elevation === 1 ? 1.5 : 1 }}>
           <Stack spacing={0}>

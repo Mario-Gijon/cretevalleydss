@@ -1,4 +1,4 @@
-// ViewDomainExpressionsDialog.jsx
+                                  
 import {
   DialogTitle,
   DialogContent,
@@ -20,14 +20,12 @@ export const ViewExpressionsDomainDialog = ({open,onClose,handleOpenEdit,handleD
 
   const {expressionDomains} = useIssuesDataContext()
 
-  // 🔹 cerrar el dialogo si no quedan dominios
   useEffect(() => {
     if (open && expressionDomains.length === 0) {
       onClose();
     }
   }, [expressionDomains, open, onClose]);
 
-  // 🔹 lógica para gridProps dinámico
   const getGridProps = () => {
     const count = expressionDomains.length;
 
@@ -50,7 +48,7 @@ export const ViewExpressionsDomainDialog = ({open,onClose,handleOpenEdit,handleD
             <Grid2 key={domain._id} size={getGridProps()} alignItems="center">
               <GlassPaper sx={{ p: 2 }}>
                 <Stack spacing={2} alignItems="center" width="100%">
-                  {/* Header */}
+                  {            }
                   <Stack alignItems="center" width="100%">
                     <Stack
                       direction="row"
@@ -86,7 +84,7 @@ export const ViewExpressionsDomainDialog = ({open,onClose,handleOpenEdit,handleD
 
                   <Divider orientation="horizontal" flexItem />
 
-                  {/* Linguistic details */}
+                  {                        }
                   {domain.type === "linguistic" && (
                     <Stack spacing={3} alignItems="center" width="100%">
                       <Stack
@@ -129,4 +127,3 @@ export const ViewExpressionsDomainDialog = ({open,onClose,handleOpenEdit,handleD
     </GlassDialog>
   );
 };
-
