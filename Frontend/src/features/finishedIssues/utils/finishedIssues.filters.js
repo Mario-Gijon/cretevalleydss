@@ -7,7 +7,7 @@
  * @param {*} value Valor a normalizar.
  * @returns {string}
  */
-export const normalizeActiveIssueValue = (value) => {
+export const normalizeFinishedIssueValue = (value) => {
   return value == null ? "" : String(value).toLowerCase();
 };
 
@@ -31,7 +31,7 @@ export const criteriaContainsQuery = (nodes, query) => {
     const node = stack.pop();
     if (!node) continue;
 
-    if (normalizeActiveIssueValue(node?.name).includes(query)) {
+    if (normalizeFinishedIssueValue(node?.name).includes(query)) {
       return true;
     }
 
@@ -69,7 +69,7 @@ export const adminContainsQuery = (issue, query) => {
   ];
 
   return candidates.some((candidate) =>
-    normalizeActiveIssueValue(candidate).includes(query)
+    normalizeFinishedIssueValue(candidate).includes(query)
   );
 };
 
@@ -89,22 +89,22 @@ export const alternativesContainsQuery = (issue, query) => {
 
   return alternatives.some((alternative) => {
     if (typeof alternative === "string") {
-      return normalizeActiveIssueValue(alternative).includes(query);
+      return normalizeFinishedIssueValue(alternative).includes(query);
     }
 
-    return normalizeActiveIssueValue(
+    return normalizeFinishedIssueValue(
       alternative?.name || alternative?.title || alternative?.label
     ).includes(query);
   });
 };
 
 /**
- * Convierte una fecha en formato DD-MM-YYYY a timestamp.
+ * Convierte una fecha en formato DD-MM-YYYY o DD/MM/YYYY a timestamp.
  *
  * Si la fecha no es válida devuelve 0 para evitar errores
  * en ordenaciones y comparaciones.
  *
- * @param {string} value Fecha en formato DD-MM-YYYY.
+ * @param {string} value Fecha en formato DD-MM-YYYY o DD/MM/YYYY.
  * @returns {number}
  */
 export const parseIssueDateDDMMYYYY = (value) => {
@@ -128,51 +128,34 @@ export const parseIssueDateDDMMYYYY = (value) => {
  * @param {string} searchBy Campo de búsqueda seleccionado.
  * @returns {boolean}
  */
-export const issueMatchesSearch = (issue, query, searchBy) => {
-  const normalizedQuery = normalizeActiveIssueValue(query).trim();
+export const finishedIssueMatchesSearch = (issue, query, searchBy) => {
+  const normalizedQuery = normalizeFinishedIssueValue(query).trim();
 
   if (!normalizedQuery) return true;
 
-  const issueName = normalizeActiveIssueValue(issue?.name);
-  const model = normalizeActiveIssueValue(issue?.model);
+  const byIssue = normalizeFinishedIssueValue(issue?.name).includes(normalizedQuery);
+  const byModel = normalizeFinishedIssueValue(issue?.model?.name).includes(normalizedQuery);
+  const byAdmin = adminContainsQuery(issue, normalizedQuery);
+  const byAlternatives = alternativesContainsQuery(issue, normalizedQuery);
+  const byCriteria = criteriaContainsQuery(issue?.criteria, normalizedQuery);
 
-  if (searchBy === "issue") {
-    return issueName.includes(normalizedQuery);
-  }
+  if (searchBy === "issue") return byIssue;
+  if (searchBy === "model") return byModel;
+  if (searchBy === "admin") return byAdmin;
+  if (searchBy === "alternatives") return byAlternatives;
+  if (searchBy === "criteria") return byCriteria;
 
-  if (searchBy === "alternatives") {
-    return alternativesContainsQuery(issue, normalizedQuery);
-  }
-
-  if (searchBy === "criteria") {
-    return criteriaContainsQuery(issue?.criteria, normalizedQuery);
-  }
-
-  if (searchBy === "model") {
-    return model.includes(normalizedQuery);
-  }
-
-  if (searchBy === "admin") {
-    return adminContainsQuery(issue, normalizedQuery);
-  }
-
-  return (
-    issueName.includes(normalizedQuery) ||
-    alternativesContainsQuery(issue, normalizedQuery) ||
-    criteriaContainsQuery(issue?.criteria, normalizedQuery) ||
-    model.includes(normalizedQuery) ||
-    adminContainsQuery(issue, normalizedQuery)
-  );
+  return byIssue || byModel || byAdmin || byAlternatives || byCriteria;
 };
 
 /**
- * Ordena la colección de issues según el criterio indicado.
+ * Ordena la colección de issues finalizados según el criterio indicado.
  *
  * @param {Array} issues Lista de issues.
  * @param {string} sortBy Criterio de ordenación.
  * @returns {Array}
  */
-export const sortActiveIssues = (issues, sortBy) => {
+export const sortFinishedIssues = (issues, sortBy) => {
   const list = [...issues];
 
   const compareByName = (a, b) =>
@@ -226,24 +209,4 @@ export const sortActiveIssues = (issues, sortBy) => {
   }
 
   return list.sort(compareByName);
-};
-
-/**
- * Filtra y ordena la lista de issues activos.
- *
- * Esta función centraliza la lógica de listado para que la page
- * no tenga que ocuparse de detalles de búsqueda y ordenación.
- *
- * @param {Array} issues Lista de issues.
- * @param {string} query Texto de búsqueda.
- * @param {string} searchBy Campo de búsqueda.
- * @param {string} sortBy Criterio de ordenación.
- * @returns {Array}
- */
-export const filterAndSortActiveIssues = (issues, query, searchBy, sortBy) => {
-  const safeIssues = Array.isArray(issues) ? issues : [];
-
-  const filtered = safeIssues.filter((issue) => issueMatchesSearch(issue, query, searchBy));
-
-  return sortActiveIssues(filtered, sortBy);
 };

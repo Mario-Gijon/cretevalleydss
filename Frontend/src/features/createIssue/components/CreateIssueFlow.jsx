@@ -24,7 +24,7 @@ import { ExpertsStep } from "../steps/ExpertsStep";
 import { ExpressionDomainStep } from "../steps/ExpressionDomainStep";
 import { SummaryStep } from "../steps/SummaryStep";
 
-import { ColorlibConnector, ColorlibStepIcon } from "../../../components/StyledComponents/StepperLibConnector";
+import { ColorlibConnector, ColorlibStepIcon } from "./StepperLibConnector";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
 import { steps } from "../utils/createIssue.utils";

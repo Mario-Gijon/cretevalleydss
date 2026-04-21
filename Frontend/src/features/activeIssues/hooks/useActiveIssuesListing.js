@@ -18,17 +18,15 @@ import {
  * @param {Object} params Parámetros del hook.
  * @param {Array} params.activeIssues Lista de issues activos.
  * @param {Object|null} params.taskCenter Task center recibido del servidor.
- * @param {Object|null} params.filtersMeta Metadatos de filtros del servidor.
  * @returns {Object}
  */
 export const useActiveIssuesListing = ({
   activeIssues = [],
   taskCenter = null,
-  filtersMeta = null,
 }) => {
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
-  const [sortBy, setSortBy] = useState(filtersMeta?.defaults?.sort || "recent");
+  const [sortBy, setSortBy] = useState("name");
   const [taskType, setTaskType] = useState("all");
 
   /**
@@ -76,48 +74,58 @@ export const useActiveIssuesListing = ({
   const filteredIssues = useMemo(() => {
     const list = [...filteredIssuesBase];
 
-    const deadlineDays = (issue) => {
-      const deadline = issue?.ui?.deadline;
+    const compareByName = (a, b) =>
+      String(a?.name || "").localeCompare(String(b?.name || ""));
 
-      if (deadline?.hasDeadline && typeof deadline.daysLeft === "number") {
-        return deadline.daysLeft;
+    const creationTimestamp = (issue) => {
+      const fromCreatedAt = new Date(issue?.createdAt || 0).getTime();
+      if (Number.isFinite(fromCreatedAt) && fromCreatedAt > 0) {
+        return fromCreatedAt;
       }
 
-      if (issue?.closureDate) {
-        const end = parseIssueDateDDMMYYYY(issue.closureDate);
-        const now = Date.now();
-        return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-      }
-
-      return 999999;
+      return parseIssueDateDDMMYYYY(issue?.creationDate);
     };
 
-    const smartPriority = (issue) => issue?.ui?.sortPriority ?? 90;
+    const finalizationTimestamp = (issue) =>
+      parseIssueDateDDMMYYYY(issue?.closureDate);
 
-    if (sortBy === "name" || sortBy === "nameAsc") {
-      list.sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
-    } else if (sortBy === "nameDesc") {
-      list.sort((a, b) => (b?.name || "").localeCompare(a?.name || ""));
-    } else if (sortBy === "deadlineSoon") {
-      list.sort((a, b) => deadlineDays(a) - deadlineDays(b));
-    } else if (sortBy === "recent") {
-      list.sort(
-        (a, b) =>
-          new Date(b?.createdAt || 0).getTime() -
-          new Date(a?.createdAt || 0).getTime()
-      );
-    } else {
+    if (sortBy === "creationDate") {
       list.sort((a, b) => {
-        const priorityDiff = smartPriority(a) - smartPriority(b);
-        if (priorityDiff !== 0) return priorityDiff;
-
-        const deadlineDiff = deadlineDays(a) - deadlineDays(b);
-        if (deadlineDiff !== 0) return deadlineDiff;
-
-        return (a?.name || "").localeCompare(b?.name || "");
+        const diff = creationTimestamp(b) - creationTimestamp(a);
+        if (diff !== 0) return diff;
+        return compareByName(a, b);
       });
+      return list;
     }
 
+    if (sortBy === "finalizationDate") {
+      const withDeadline = [];
+      const withoutDeadline = [];
+
+      list.forEach((issue) => {
+        const timestamp = finalizationTimestamp(issue);
+        if (timestamp > 0) {
+          withDeadline.push({ issue, timestamp });
+          return;
+        }
+        withoutDeadline.push(issue);
+      });
+
+      withDeadline.sort((a, b) => {
+        const diff = a.timestamp - b.timestamp;
+        if (diff !== 0) return diff;
+        return compareByName(a.issue, b.issue);
+      });
+
+      withoutDeadline.sort(compareByName);
+
+      return [
+        ...withDeadline.map((entry) => entry.issue),
+        ...withoutDeadline,
+      ];
+    }
+
+    list.sort(compareByName);
     return list;
   }, [filteredIssuesBase, sortBy]);
 

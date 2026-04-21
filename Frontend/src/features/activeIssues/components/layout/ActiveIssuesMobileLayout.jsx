@@ -33,7 +33,6 @@ const ActiveIssuesMobileLayout = ({
   setSearchBy,
   sortBy,
   setSortBy,
-  filtersMeta,
   taskCenter,
   taskGroupsLegacy,
   tasksCount,
@@ -58,7 +57,6 @@ const ActiveIssuesMobileLayout = ({
         sortBy={sortBy}
         setSortBy={setSortBy}
         height="auto"
-        filtersMeta={filtersMeta}
       />
 
       {!isMobile ? (

@@ -47,7 +47,6 @@ import ActiveIssuesTinyStat from "../shared/ActiveIssuesTinyStat";
  * @param {Function} props.setSearchBy Setter del campo de búsqueda.
  * @param {string} props.sortBy Orden activo.
  * @param {Function} props.setSortBy Setter del orden.
- * @param {Object|null} props.filtersMeta Metadatos de filtros del servidor.
  * @param {number|string} props.height Altura deseada del panel.
  * @param {Object} props.paperSx Estilos adicionales del Paper.
  * @returns {JSX.Element}
@@ -63,7 +62,6 @@ const ActiveIssuesHeader = ({
   setSearchBy,
   sortBy,
   setSortBy,
-  filtersMeta,
   height = 350,
   paperSx,
 }) => {
@@ -75,18 +73,14 @@ const ActiveIssuesHeader = ({
       : { search: { xs: 12, md: 8 }, sort: { xs: 12, md: 4 } };
   }, [isLgUp]);
 
-  const sortOptions = useMemo(() => {
-    const options = filtersMeta?.sortOptions;
-
-    if (Array.isArray(options) && options.length > 0) {
-      return options;
-    }
-
-    return [
-      { value: "recent", label: "Recent" },
+  const sortOptions = useMemo(
+    () => [
       { value: "name", label: "Name" },
-    ];
-  }, [filtersMeta]);
+      { value: "finalizationDate", label: "Deadline date" },
+      { value: "creationDate", label: "Creation date" },
+    ],
+    []
+  );
 
   const resolvedHeight = height === "auto" ? "auto" : height;
 

@@ -249,6 +249,7 @@
 │   │   ├── features
 │   │   │   ├── activeIssues
 │   │   │   │   ├── components
+│   │   │   │   │   ├── ActiveIssuesView.jsx
 │   │   │   │   │   ├── dialogs
 │   │   │   │   │   │   └── ActiveIssueConfirmDialog.jsx
 │   │   │   │   │   ├── drawer
@@ -346,6 +347,20 @@
 │   │   │   │   │   └── createIssue.styles.js
 │   │   │   │   └── utils
 │   │   │   │       └── createIssue.utils.js
+│   │   │   ├── finishedIssues
+│   │   │   │   ├── components
+│   │   │   │   │   ├── FinishedIssueRemoveDialog.jsx
+│   │   │   │   │   ├── FinishedIssuesCards.jsx
+│   │   │   │   │   ├── FinishedIssuesEmptyState.jsx
+│   │   │   │   │   ├── FinishedIssuesHeader.jsx
+│   │   │   │   │   └── FinishedIssuesView.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── useFinishedIssuesListing.js
+│   │   │   │   │   └── useFinishedIssuesView.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── finishedIssues.styles.js
+│   │   │   │   └── utils
+│   │   │   │       └── finishedIssues.filters.js
 │   │   │   ├── issueAlternativeEvaluation
 │   │   │   │   ├── components
 │   │   │   │   │   ├── direct
@@ -380,14 +395,13 @@
 │   │   │   │   │   ├── IssueExpertsPill.jsx
 │   │   │   │   │   └── IssueExpertsSection.jsx
 │   │   │   │   ├── context
-│   │   │   │   │   └── issueExpertsFlow.context.js
+│   │   │   │   │   ├── issueExpertsFlow.context.js
+│   │   │   │   │   └── issueExpertsFlow.provider.jsx
 │   │   │   │   ├── dialogs
 │   │   │   │   │   ├── AddExpertsDomainsDialog.jsx
 │   │   │   │   │   └── AddExpertsPickerDialog.jsx
 │   │   │   │   ├── hooks
 │   │   │   │   │   └── useIssueExpertsFlow.js
-│   │   │   │   ├── providers
-│   │   │   │   │   └── IssueExpertsFlowProvider.jsx
 │   │   │   │   ├── services
 │   │   │   │   │   └── issueExperts.service.js
 │   │   │   │   ├── styles
@@ -446,8 +460,10 @@
 │   │   │   └── globalStyles.js
 │   │   └── utils
 │   │       ├── authFetch.js
-│   │       ├── createIssueUtils.js
-│   │       └── handleTwoDecimals.js
+│   │       ├── criteria.utils.js
+│   │       ├── domainAssignments.utils.js
+│   │       ├── handleTwoDecimals.js
+│   │       └── text.utils.js
 │   └── vite.config.js
 ├── .gitignore
 ├── proyect-structure.txt
@@ -458,4 +474,4 @@
         ├── by_language.csv
         └── totals.csv
 
-125 directories, 334 files
+129 directories, 346 files

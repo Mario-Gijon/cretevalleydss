@@ -1,23 +1,38 @@
 import { useState } from "react";
-import { List, ListItem, ListItemButton, Collapse, Typography, Chip, Stack } from "@mui/material";
+import {
+  Chip,
+  Collapse,
+  List,
+  ListItem,
+  ListItemButton,
+  Stack,
+  Typography,
+} from "@mui/material";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 
+/**
+ * Item recursivo para visualizar arbol de criterios en el summary.
+ *
+ * @param {Object} props Props del componente.
+ * @returns {JSX.Element}
+ */
 export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
   const [open, setOpen] = useState(false);
   const hasChildren = Array.isArray(criterion.children) && criterion.children.length > 0;
 
-  const handleToggle = () => setOpen((v) => !v);
+  const handleToggle = () => setOpen((value) => !value);
+  const indent = depth ? depth * 0.75 : 0;
 
-  const indent = depth ? depth * 0.75 : 0;                              
-
-  const Content = (
+  const content = (
     <Stack direction="row" spacing={1} alignItems="center" width="100%" sx={{ minWidth: 0 }}>
-      <Typography variant="body2" sx={{ color: "text.primary", fontWeight: 850, flexGrow: 1, minWidth: 0 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "text.primary", fontWeight: 850, flexGrow: 1, minWidth: 0 }}
+      >
         {criterion.name}
       </Typography>
 
-      {                                        }
       {!isChild && criterion.type ? (
         <Chip
           variant="outlined"
@@ -27,7 +42,6 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
         />
       ) : null}
 
-      {                       }
       {criterion.isLeaf && criterion.weight != null ? (
         <Chip
           size="small"
@@ -56,7 +70,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
             pl: indent,
           }}
         >
-          {Content}
+          {content}
         </ListItemButton>
       ) : (
         <ListItem
@@ -67,7 +81,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
             pl: indent,
           }}
         >
-          {Content}
+          {content}
         </ListItem>
       )}
 
@@ -83,3 +97,5 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
     </>
   );
 };
+
+export default CriterionItem;

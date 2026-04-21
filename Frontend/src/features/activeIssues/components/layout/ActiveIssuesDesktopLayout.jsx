@@ -21,7 +21,6 @@ const ActiveIssuesDesktopLayout = ({
   setSearchBy,
   sortBy,
   setSortBy,
-  filtersMeta,
   taskCenter,
   taskGroupsLegacy,
   tasksCount,
@@ -80,7 +79,6 @@ const ActiveIssuesDesktopLayout = ({
               sortBy={sortBy}
               setSortBy={setSortBy}
               height="100%"
-              filtersMeta={filtersMeta}
               paperSx={{
                 p: 0,
                 height: "100%",
