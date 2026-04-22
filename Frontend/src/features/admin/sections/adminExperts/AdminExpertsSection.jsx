@@ -111,6 +111,7 @@ export default function AdminExpertsSection() {
   useEffect(() => {
     fetchExpertsData();
                                                            
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredExperts = useMemo(() => {
