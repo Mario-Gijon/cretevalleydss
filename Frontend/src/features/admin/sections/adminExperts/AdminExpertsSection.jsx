@@ -44,7 +44,6 @@ import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
-import { removeAccents } from "../../../../utils/text.utils";
 
 import {
   getAllUsers,
@@ -52,105 +51,18 @@ import {
   updateUser,
   deleteUser,
 } from "../../../../services/admin.service";
-import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../../features/activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
+import {
+  emptyForm,
+  formatDateTime,
+  normalize,
+  pillSx,
+  sectionPanelSx,
+} from "./adminExperts.utils";
+import AdminRolePill from "./components/AdminRolePill";
+import AdminStatusPill from "./components/AdminStatusPill";
 
-                                   
-          
-                                      
-
-const normalize = (v) => removeAccents(String(v ?? "").toLowerCase().trim());
-
-const formatDateTime = (value) => {
-  if (!value) return "—";
-
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(d);
-  } catch {
-    return d.toLocaleString();
-  }
-};
-
-const toneColor = (theme, tone) => {
-  if (tone === "success") return theme.palette.success.main;
-  if (tone === "warning") return theme.palette.warning.main;
-  if (tone === "error") return theme.palette.error.main;
-  if (tone === "secondary") return theme.palette.secondary.main;
-  return theme.palette.info.main;
-};
-
-const pillSx = (theme, tone = "info") => {
-  const c = toneColor(theme, tone);
-  return {
-    height: 26,
-    borderRadius: 999,
-    fontWeight: 950,
-    bgcolor: alpha(c, 0.1),
-    borderColor: alpha(c, 0.25),
-    color: "text.secondary",
-  };
-};
-
-const sectionPanelSx = (theme) => ({
-  borderRadius: 4,
-  position: "relative",
-  overflow: "hidden",
-  ...glassSxBase(theme, 0.2, "crystal"),
-  "&:after": {
-    content: '""',
-    position: "absolute",
-    inset: 0,
-    pointerEvents: "none",
-    background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
-    opacity: 0.18,
-  },
-});
-
-const emptyForm = {
-  id: "",
-  name: "",
-  university: "",
-  email: "",
-  password: "",
-  accountConfirm: true,
-  role: "user",
-};
-
-function RolePill({ role }) {
-  const theme = useTheme();
-  const tone = role === "admin" ? "secondary" : "info";
-  return (
-    <Chip
-      label={role || "user"}
-      size="small"
-      variant="outlined"
-      sx={pillSx(theme, tone)}
-    />
-  );
-}
-
-function StatusPill({ confirmed }) {
-  const theme = useTheme();
-  return (
-    <Chip
-      label={confirmed ? "Confirmed" : "Pending"}
-      size="small"
-      variant="outlined"
-      sx={pillSx(theme, confirmed ? "success" : "warning")}
-    />
-  );
-}
-
-                                   
-               
-                                      
-
-export default function ExpertsSection() {
+export default function AdminExpertsSection() {
   const theme = useTheme();
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -592,11 +504,11 @@ export default function ExpertsSection() {
                           </TableCell>
 
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15 }}>
-                            <RolePill role={expert?.role} />
+                            <AdminRolePill role={expert?.role} />
                           </TableCell>
 
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15 }}>
-                            <StatusPill confirmed={expert?.accountConfirm} />
+                            <AdminStatusPill confirmed={expert?.accountConfirm} />
                           </TableCell>
 
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15, minWidth: 180 }}>

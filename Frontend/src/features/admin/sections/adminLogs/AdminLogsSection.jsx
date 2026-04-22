@@ -1,8 +1,8 @@
-                                           
+                                         
 import { Paper, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-export default function ModelsSection() {
+export default function AdminLogsSection() {
   const theme = useTheme();
 
   return (

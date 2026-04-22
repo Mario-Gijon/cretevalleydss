@@ -71,157 +71,28 @@ import {
   removeIssueAdminAction,
   editIssueExpertsAdminAction,
 } from "../../../../services/admin.service";
-import AddExpertsDomainsDialog from "../../../../features/issueExperts/dialogs/AddExpertsDomainsDialog";
-import { getActiveIssuesAuroraBg, getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../../features/activeIssues/styles/activeIssues.styles";
+import AddExpertsDomainsDialog from "../../../issueExperts/dialogs/AddExpertsDomainsDialog";
+import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
+import {
+  detailCardSx,
+  formatCellValue,
+  formatDateTime,
+  formatWeightValue,
+  getCellTooltip,
+  getProgressTone,
+  normalize,
+  objectEntriesSafe,
+  pickInitialExpertId,
+  pillSx,
+  prettyStage,
+  safeArray,
+  sectionPanelSx,
+  stageTone,
+  summarizeIssueStats,
+  toneColor,
+} from "./adminIssues.utils";
 
-                                   
-          
-                                      
-
-const formatWeightValue = (value) => {
-  if (value == null || value === "") return "—";
-
-  const num = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(num)) return String(value);
-
-  const raw = String(num);
-
-                                   
-  if (raw.includes("e") || raw.includes("E")) {
-    const fixed = num.toFixed(6).replace(/\.?0+$/, "");
-    const [intPart, decPart = ""] = fixed.split(".");
-    if (!decPart) return intPart;
-    if (decPart.length <= 2) return fixed;
-    return `${intPart}.${decPart.slice(0, 2)}...`;
-  }
-
-  const [intPart, decPart = ""] = raw.split(".");
-  if (!decPart) return intPart;
-  if (decPart.length <= 2) return raw;
-
-  return `${intPart}.${decPart.slice(0, 2)}...`;
-};
-
-const normalize = (v) => String(v ?? "").toLowerCase().trim();
-
-const formatDateTime = (value) => {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(d);
-  } catch {
-    return d.toLocaleString();
-  }
-};
-
-const toneColor = (theme, tone) => {
-  if (tone === "success") return theme.palette.success.main;
-  if (tone === "warning") return theme.palette.warning.main;
-  if (tone === "error") return theme.palette.error.main;
-  if (tone === "secondary") return theme.palette.secondary.main;
-  return theme.palette.info.main;
-};
-
-const pillSx = (theme, tone = "info") => {
-  const c = toneColor(theme, tone);
-  return {
-    height: 26,
-    borderRadius: 999,
-    fontWeight: 950,
-    bgcolor: alpha(c, 0.1),
-    borderColor: alpha(c, 0.25),
-    color: "text.secondary",
-  };
-};
-
-const sectionPanelSx = (theme) => ({
-  borderRadius: 4,
-  position: "relative",
-  overflow: "hidden",
-  ...glassSxBase(theme, 0.2, "crystal"),
-  "&:after": {
-    content: '""',
-    position: "absolute",
-    inset: 0,
-    pointerEvents: "none",
-    background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
-    opacity: 0.18,
-  },
-});
-
-const detailCardSx = (theme) => ({
-  borderRadius: 4,
-  p: 1.35,
-  bgcolor: alpha(theme.palette.common.white, 0.04),
-  border: "1px solid rgba(255,255,255,0.08)",
-});
-
-const prettyStage = (issue) =>
-  issue?.currentStageMeta?.label ||
-  issue?.currentStageMeta?.key ||
-  issue?.currentStage ||
-  "—";
-
-const stageTone = (stageKey) => {
-  if (stageKey === "finished") return "success";
-  if (stageKey === "weightsFinished") return "warning";
-  if (stageKey === "criteriaWeighting") return "info";
-  if (stageKey === "alternativeEvaluation") return "info";
-  return "secondary";
-};
-
-const getProgressTone = (pct) => {
-  if (pct >= 100) return "success";
-  if (pct > 0) return "warning";
-  return "info";
-};
-
-const safeArray = (v) => (Array.isArray(v) ? v : []);
-
-const pickInitialExpertId = (rows = []) => {
-  if (!Array.isArray(rows) || rows.length === 0) return "";
-
-  const acceptedCurrent = rows.find(
-    (r) => r?.currentParticipant && r?.invitationStatus === "accepted"
-  );
-  if (acceptedCurrent?.expert?.id) return acceptedCurrent.expert.id;
-
-  const current = rows.find((r) => r?.currentParticipant);
-  if (current?.expert?.id) return current.expert.id;
-
-  return rows[0]?.expert?.id || "";
-};
-
-const getCellTooltip = (cell) => {
-  if (!cell || typeof cell !== "object") return "";
-  const parts = [];
-
-  if (cell?.domain?.name) parts.push(`Domain: ${cell.domain.name}`);
-  if (cell?.consensusPhase != null) parts.push(`Phase: ${cell.consensusPhase}`);
-  if (cell?.timestamp) parts.push(`Saved: ${formatDateTime(cell.timestamp)}`);
-
-  return parts.join(" · ");
-};
-
-const objectEntriesSafe = (obj) =>
-  obj && typeof obj === "object" ? Object.entries(obj) : [];
-
-const summarizeIssueStats = (issues = []) => {
-  const total = issues.length;
-  const active = issues.filter((i) => i?.active).length;
-  const finished = issues.filter((i) => !i?.active).length;
-  const consensus = issues.filter((i) => i?.isConsensus).length;
-  const pairwise = issues.filter((i) => i?.model?.isPairwise).length;
-
-  return { total, active, finished, consensus, pairwise };
-};
-
-const MetaChip = ({ tone = "info", children }) => {
+const AdminMetaChip = ({ tone = "info", children }) => {
   const theme = useTheme();
   return (
     <Chip
@@ -233,7 +104,7 @@ const MetaChip = ({ tone = "info", children }) => {
   );
 };
 
-const InfoRow = ({ label, value }) => (
+const AdminInfoRow = ({ label, value }) => (
   <Stack
     direction={{ xs: "column", sm: "row" }}
     spacing={0.8}
@@ -254,7 +125,7 @@ const InfoRow = ({ label, value }) => (
   </Stack>
 );
 
-const StatCard = ({ icon, label, value, tone = "info" }) => {
+const AdminStatCard = ({ icon, label, value, tone = "info" }) => {
   const theme = useTheme();
   const c = toneColor(theme, tone);
 
@@ -302,7 +173,7 @@ const StatCard = ({ icon, label, value, tone = "info" }) => {
   );
 };
 
-const ReadOnlyWeights = ({ data }) => {
+const AdminReadOnlyWeights = ({ data }) => {
   const theme = useTheme();
 
   if (!data?.weights) {
@@ -357,10 +228,10 @@ const ReadOnlyWeights = ({ data }) => {
   return (
     <Stack spacing={1.25}>
       <Stack direction="row" spacing={1} flexWrap="wrap">
-        <MetaChip tone="secondary">{kind || "unknown"}</MetaChip>
-        {weights?.weightDoc?.completed ? <MetaChip tone="success">Completed</MetaChip> : <MetaChip tone="warning">Draft / pending</MetaChip>}
+        <AdminMetaChip tone="secondary">{kind || "unknown"}</AdminMetaChip>
+        {weights?.weightDoc?.completed ? <AdminMetaChip tone="success">Completed</AdminMetaChip> : <AdminMetaChip tone="warning">Draft / pending</AdminMetaChip>}
         {weights?.weightDoc?.updatedAt ? (
-          <MetaChip tone="info">{formatDateTime(weights.weightDoc.updatedAt)}</MetaChip>
+          <AdminMetaChip tone="info">{formatDateTime(weights.weightDoc.updatedAt)}</AdminMetaChip>
         ) : null}
       </Stack>
 
@@ -377,8 +248,8 @@ const ReadOnlyWeights = ({ data }) => {
 
       {kind === "bwm" ? (
         <Stack spacing={1.1}>
-          <InfoRow label="Best criterion" value={weights?.bwmData?.bestCriterion || "—"} />
-          <InfoRow label="Worst criterion" value={weights?.bwmData?.worstCriterion || "—"} />
+          <AdminInfoRow label="Best criterion" value={weights?.bwmData?.bestCriterion || "—"} />
+          <AdminInfoRow label="Worst criterion" value={weights?.bwmData?.worstCriterion || "—"} />
 
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.8 }}>
@@ -408,14 +279,7 @@ const ReadOnlyWeights = ({ data }) => {
   );
 };
 
-const formatCellValue = (value) => {
-  if (value == null || value === "") return "—";
-  if (Array.isArray(value)) return `[${value.join(", ")}]`;
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-};
-
-const ReadOnlyAxCMatrix = ({ data }) => {
+const AdminReadOnlyAxCMatrix = ({ data }) => {
   const theme = useTheme();
   const evaluations = data?.evaluations || {};
 
@@ -526,7 +390,7 @@ const ReadOnlyAxCMatrix = ({ data }) => {
   );
 };
 
-const ReadOnlyPairwise = ({ data }) => {
+const AdminReadOnlyPairwise = ({ data }) => {
   const theme = useTheme();
   const evaluations = data?.evaluations || {};
   const criteria = Object.keys(evaluations);
@@ -622,7 +486,7 @@ const ReadOnlyPairwise = ({ data }) => {
   );
 };
 
-const AddExpertsPickerDialog = ({
+const AdminAddExpertsPickerDialog = ({
   open,
   onClose,
   loading,
@@ -889,7 +753,7 @@ const AddExpertsPickerDialog = ({
                  
                                       
 
-export default function IssuesSection() {
+export default function AdminIssuesSection() {
   const theme = useTheme();
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -1434,9 +1298,9 @@ export default function IssuesSection() {
             },
           }}
         >
-          <StatCard icon={<AssignmentIcon />} label="Total issues" value={stats.total} tone="info" />
-          <StatCard icon={<TimelineIcon />} label="Active" value={stats.active} tone="warning" />
-          <StatCard icon={<RuleOutlinedIcon />} label="Finished" value={stats.finished} tone="success" />
+          <AdminStatCard icon={<AssignmentIcon />} label="Total issues" value={stats.total} tone="info" />
+          <AdminStatCard icon={<TimelineIcon />} label="Active" value={stats.active} tone="warning" />
+          <AdminStatCard icon={<RuleOutlinedIcon />} label="Finished" value={stats.finished} tone="success" />
         </Box>
 
         <Paper elevation={0} sx={{ ...sectionPanelSx(theme), p: 1 }}>
@@ -1692,16 +1556,16 @@ export default function IssuesSection() {
                           </TableCell>
 
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15 }} >
-                            <MetaChip tone={stageTone(issue?.currentStage)}>
+                            <AdminMetaChip tone={stageTone(issue?.currentStage)}>
                               {prettyStage(issue)}
-                            </MetaChip>
+                            </AdminMetaChip>
                           </TableCell>
 
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15 }}>
                             <Stack direction="row" spacing={0.6} flexWrap="wrap">
-                              <MetaChip tone={issue?.active ? "warning" : "success"}>
+                              <AdminMetaChip tone={issue?.active ? "warning" : "success"}>
                                 {issue?.active ? "Active" : "Finished"}
-                              </MetaChip>
+                              </AdminMetaChip>
                             </Stack>
                           </TableCell>
 
@@ -1731,9 +1595,9 @@ export default function IssuesSection() {
                           <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`, py: 1.15, minWidth: 130 }}>
                             <Stack spacing={0.35}>
                               <Stack direction="row" spacing={0.6} alignItems="center">
-                                <MetaChip tone={getProgressTone(progressPct)}>
+                                <AdminMetaChip tone={getProgressTone(progressPct)}>
                                   {progressDone}/{progressTotal}
-                                </MetaChip>
+                                </AdminMetaChip>
                                 <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                                   {progressPct}%
                                 </Typography>
@@ -1824,19 +1688,19 @@ export default function IssuesSection() {
                   </Typography>
 
                   <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                    <MetaChip tone={issueDetail?.active ? "warning" : "success"}>
+                    <AdminMetaChip tone={issueDetail?.active ? "warning" : "success"}>
                       {issueDetail?.active ? "Active" : "Finished"}
-                    </MetaChip>
-                    <MetaChip tone={stageTone(issueDetail?.currentStage)}>
+                    </AdminMetaChip>
+                    <AdminMetaChip tone={stageTone(issueDetail?.currentStage)}>
                       {prettyStage(issueDetail)}
-                    </MetaChip>
+                    </AdminMetaChip>
                     {issueDetail?.isConsensus ? (
-                      <MetaChip tone="secondary">Consensus</MetaChip>
+                      <AdminMetaChip tone="secondary">Consensus</AdminMetaChip>
                     ) : (
-                      <MetaChip tone="info">No consensus</MetaChip>
+                      <AdminMetaChip tone="info">No consensus</AdminMetaChip>
                     )}
                     {issueDetail?.model?.name ? (
-                      <MetaChip tone="info">{issueDetail.model.name}</MetaChip>
+                      <AdminMetaChip tone="info">{issueDetail.model.name}</AdminMetaChip>
                     ) : null}
                   </Stack>
                 </Stack>
@@ -1900,12 +1764,12 @@ export default function IssuesSection() {
                     },
                   }}
                 >
-                  <StatCard icon={<AssignmentIcon />} label="Alternatives" value={issueDetail?.metrics?.totalAlternatives || 0} tone="info" />
-                  <StatCard icon={<CategoryIcon />} label="Leaf criteria" value={issueDetail?.metrics?.totalLeafCriteria || 0} tone="info" />
-                  <StatCard icon={<PeopleAltIcon />} label="Experts" value={issueDetail?.metrics?.totalExperts || 0} tone="warning" />
-                  <StatCard icon={<AnalyticsOutlinedIcon />} label="Consensus rounds" value={issueDetail?.consensus?.rounds || 0} tone="secondary" />
-                  <StatCard icon={<CompareArrowsIcon />} label="Scenarios" value={safeArray(issueDetail?.scenarios).length} tone="secondary" />
-                  <StatCard icon={<FactCheckOutlinedIcon />} label="Filled cells" value={issueDetail?.metrics?.totalFilledEvaluationCells || 0} tone="success" />
+                  <AdminStatCard icon={<AssignmentIcon />} label="Alternatives" value={issueDetail?.metrics?.totalAlternatives || 0} tone="info" />
+                  <AdminStatCard icon={<CategoryIcon />} label="Leaf criteria" value={issueDetail?.metrics?.totalLeafCriteria || 0} tone="info" />
+                  <AdminStatCard icon={<PeopleAltIcon />} label="Experts" value={issueDetail?.metrics?.totalExperts || 0} tone="warning" />
+                  <AdminStatCard icon={<AnalyticsOutlinedIcon />} label="Consensus rounds" value={issueDetail?.consensus?.rounds || 0} tone="secondary" />
+                  <AdminStatCard icon={<CompareArrowsIcon />} label="Scenarios" value={safeArray(issueDetail?.scenarios).length} tone="secondary" />
+                  <AdminStatCard icon={<FactCheckOutlinedIcon />} label="Filled cells" value={issueDetail?.metrics?.totalFilledEvaluationCells || 0} tone="success" />
                 </Box>
 
                 <Box
@@ -1924,14 +1788,14 @@ export default function IssuesSection() {
                     </Stack>
 
                     <Stack spacing={0.9}>
-                      <InfoRow label="Name" value={issueDetail?.name} />
-                      <InfoRow label="Description" value={issueDetail?.description || "—"} />
-                      <InfoRow label="Current admin" value={issueDetail?.admin ? `${issueDetail.admin.name} (${issueDetail.admin.email})` : "—"} />
-                      <InfoRow label="Model" value={issueDetail?.model?.name || "—"} />
-                      <InfoRow label="Stage" value={prettyStage(issueDetail)} />
-                      <InfoRow label="Weighting mode" value={issueDetail?.weightingMode || "—"} />
-                      <InfoRow label="Creation date" value={issueDetail?.creationDate || "—"} />
-                      <InfoRow label="Closure date" value={issueDetail?.closureDate || "—"} />
+                      <AdminInfoRow label="Name" value={issueDetail?.name} />
+                      <AdminInfoRow label="Description" value={issueDetail?.description || "—"} />
+                      <AdminInfoRow label="Current admin" value={issueDetail?.admin ? `${issueDetail.admin.name} (${issueDetail.admin.email})` : "—"} />
+                      <AdminInfoRow label="Model" value={issueDetail?.model?.name || "—"} />
+                      <AdminInfoRow label="Stage" value={prettyStage(issueDetail)} />
+                      <AdminInfoRow label="Weighting mode" value={issueDetail?.weightingMode || "—"} />
+                      <AdminInfoRow label="Creation date" value={issueDetail?.creationDate || "—"} />
+                      <AdminInfoRow label="Closure date" value={issueDetail?.closureDate || "—"} />
                     </Stack>
 
                     <Divider sx={{ opacity: 0.12, my: 1.4 }} />
@@ -1962,21 +1826,21 @@ export default function IssuesSection() {
                     </Stack>
 
                     <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.25 }}>
-                      <MetaChip tone={issueDetail?.creatorActionsState?.canEditExperts ? "success" : "info"}>
+                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canEditExperts ? "success" : "info"}>
                         Edit experts: {issueDetail?.creatorActionsState?.canEditExperts ? "yes" : "no"}
-                      </MetaChip>
+                      </AdminMetaChip>
 
-                      <MetaChip tone={issueDetail?.creatorActionsState?.canRemoveIssue ? "success" : "info"}>
+                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canRemoveIssue ? "success" : "info"}>
                         Remove issue: {issueDetail?.creatorActionsState?.canRemoveIssue ? "yes" : "no"}
-                      </MetaChip>
+                      </AdminMetaChip>
 
-                      <MetaChip tone={issueDetail?.creatorActionsState?.canComputeWeights ? "warning" : "info"}>
+                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canComputeWeights ? "warning" : "info"}>
                         Compute weights: {issueDetail?.creatorActionsState?.canComputeWeights ? "ready" : "not ready"}
-                      </MetaChip>
+                      </AdminMetaChip>
 
-                      <MetaChip tone={issueDetail?.creatorActionsState?.canResolveIssue ? "warning" : "info"}>
+                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canResolveIssue ? "warning" : "info"}>
                         Resolve issue: {issueDetail?.creatorActionsState?.canResolveIssue ? "ready" : "not ready"}
-                      </MetaChip>
+                      </AdminMetaChip>
                     </Stack>
 
                     <Stack spacing={1}>
@@ -2156,9 +2020,9 @@ export default function IssuesSection() {
                                 </Typography>
                               </Stack>
 
-                              <MetaChip tone="info">
+                              <AdminMetaChip tone="info">
                                 {formatWeightValue(issueDetail?.finalWeights?.[crit.name])}
-                              </MetaChip>
+                              </AdminMetaChip>
                             </Stack>
                           </Box>
                         ))
@@ -2229,7 +2093,7 @@ export default function IssuesSection() {
                       <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
                         Experts progress
                       </Typography>
-                      <MetaChip tone="info">{issueExpertsProgress.length}</MetaChip>
+                      <AdminMetaChip tone="info">{issueExpertsProgress.length}</AdminMetaChip>
                     </Stack>
 
                     <Box sx={{ flex: 1 }} />
@@ -2285,14 +2149,14 @@ export default function IssuesSection() {
                     <Stack spacing={0.85} sx={{ mb: 1.25 }}>
                       <Stack direction="row" spacing={0.75} flexWrap="wrap">
                         {expertsToAdd.length > 0 ? (
-                          <MetaChip tone="success">Pending add: {expertsToAdd.length}</MetaChip>
+                          <AdminMetaChip tone="success">Pending add: {expertsToAdd.length}</AdminMetaChip>
                         ) : null}
                         {expertsToRemove.length > 0 ? (
-                          <MetaChip tone="error">Pending remove: {expertsToRemove.length}</MetaChip>
+                          <AdminMetaChip tone="error">Pending remove: {expertsToRemove.length}</AdminMetaChip>
                         ) : null}
-                        <MetaChip tone={resultingExpertsCount > 0 ? "info" : "error"}>
+                        <AdminMetaChip tone={resultingExpertsCount > 0 ? "info" : "error"}>
                           Resulting current experts: {resultingExpertsCount}
-                        </MetaChip>
+                        </AdminMetaChip>
                       </Stack>
 
                       {pendingAddExpertsInfo.length > 0 ? (
@@ -2398,25 +2262,25 @@ export default function IssuesSection() {
 
                                 <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
                                   <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                                    <MetaChip tone={row?.currentParticipant ? "success" : "error"}>
+                                    <AdminMetaChip tone={row?.currentParticipant ? "success" : "error"}>
                                       {row?.currentParticipant ? row?.invitationStatus || "participant" : "exited"}
-                                    </MetaChip>
+                                    </AdminMetaChip>
                                     {isMarkedForRemove ? (
-                                      <MetaChip tone="error">Marked for removal</MetaChip>
+                                      <AdminMetaChip tone="error">Marked for removal</AdminMetaChip>
                                     ) : null}
                                   </Stack>
                                 </TableCell>
 
                                 <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                                  <MetaChip tone={row?.weightsCompleted ? "success" : "warning"}>
+                                  <AdminMetaChip tone={row?.weightsCompleted ? "success" : "warning"}>
                                     {row?.weightsCompleted ? "Completed" : "Pending"}
-                                  </MetaChip>
+                                  </AdminMetaChip>
                                 </TableCell>
 
                                 <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                                  <MetaChip tone={row?.evaluationCompleted ? "success" : "warning"}>
+                                  <AdminMetaChip tone={row?.evaluationCompleted ? "success" : "warning"}>
                                     {row?.evaluationCompleted ? "Submitted" : "Pending"}
-                                  </MetaChip>
+                                  </AdminMetaChip>
                                 </TableCell>
 
                                 <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
@@ -2548,18 +2412,18 @@ export default function IssuesSection() {
                       <Divider sx={{ opacity: 0.12, my: 1.3 }} />
 
                       <Stack direction="row" flexWrap="wrap" gap={1}>
-                        <MetaChip tone={selectedExpertProgress?.currentParticipant ? "success" : "error"}>
+                        <AdminMetaChip tone={selectedExpertProgress?.currentParticipant ? "success" : "error"}>
                           {selectedExpertProgress?.currentParticipant ? "Current participant" : "Exited"}
-                        </MetaChip>
-                        <MetaChip tone={selectedExpertProgress?.weightsCompleted ? "success" : "warning"}>
+                        </AdminMetaChip>
+                        <AdminMetaChip tone={selectedExpertProgress?.weightsCompleted ? "success" : "warning"}>
                           Weights: {selectedExpertProgress?.weightsCompleted ? "completed" : "pending"}
-                        </MetaChip>
-                        <MetaChip tone={selectedExpertProgress?.evaluationCompleted ? "success" : "warning"}>
+                        </AdminMetaChip>
+                        <AdminMetaChip tone={selectedExpertProgress?.evaluationCompleted ? "success" : "warning"}>
                           Evaluations: {selectedExpertProgress?.evaluationCompleted ? "submitted" : "draft / pending"}
-                        </MetaChip>
-                        <MetaChip tone={getProgressTone(selectedExpertProgress?.progress?.evaluationProgressPct || 0)}>
+                        </AdminMetaChip>
+                        <AdminMetaChip tone={getProgressTone(selectedExpertProgress?.progress?.evaluationProgressPct || 0)}>
                           Progress: {selectedExpertProgress?.progress?.evaluationProgressPct || 0}%
-                        </MetaChip>
+                        </AdminMetaChip>
                       </Stack>
                     </>
                   ) : null}
@@ -2590,7 +2454,7 @@ export default function IssuesSection() {
                           </Typography>
                         </Stack>
 
-                        <ReadOnlyWeights data={expertWeights} />
+                        <AdminReadOnlyWeights data={expertWeights} />
                       </Paper>
 
                       <Paper elevation={0} sx={detailCardSx(theme)}>
@@ -2602,10 +2466,10 @@ export default function IssuesSection() {
                         </Stack>
 
                         <Stack spacing={0.75}>
-                          <InfoRow label="Expected cells" value={expertEvaluations?.stats?.expectedCells ?? "—"} />
-                          <InfoRow label="Filled cells" value={expertEvaluations?.stats?.filledCells ?? "—"} />
-                          <InfoRow label="Last saved" value={formatDateTime(expertEvaluations?.stats?.lastEvaluationAt)} />
-                          <InfoRow label="Invitation status" value={expertEvaluations?.participation?.invitationStatus || "—"} />
+                          <AdminInfoRow label="Expected cells" value={expertEvaluations?.stats?.expectedCells ?? "—"} />
+                          <AdminInfoRow label="Filled cells" value={expertEvaluations?.stats?.filledCells ?? "—"} />
+                          <AdminInfoRow label="Last saved" value={formatDateTime(expertEvaluations?.stats?.lastEvaluationAt)} />
+                          <AdminInfoRow label="Invitation status" value={expertEvaluations?.participation?.invitationStatus || "—"} />
                         </Stack>
                       </Paper>
                     </Box>
@@ -2619,9 +2483,9 @@ export default function IssuesSection() {
                       </Stack>
 
                       {expertEvaluations?.issue?.isPairwise ? (
-                        <ReadOnlyPairwise data={expertEvaluations} />
+                        <AdminReadOnlyPairwise data={expertEvaluations} />
                       ) : (
-                        <ReadOnlyAxCMatrix data={expertEvaluations} />
+                        <AdminReadOnlyAxCMatrix data={expertEvaluations} />
                       )}
                     </Paper>
                   </>
@@ -2633,7 +2497,7 @@ export default function IssuesSection() {
       </GlassDialog>
 
       {                        }
-      <AddExpertsPickerDialog
+      <AdminAddExpertsPickerDialog
         open={addExpertsOpen}
         onClose={() => setAddExpertsOpen(false)}
         loading={addExpertsLoading}
@@ -2701,8 +2565,8 @@ export default function IssuesSection() {
 
         <Box sx={{ p: 2.1 }}>
           <Stack spacing={1.35}>
-            <InfoRow label="Issue" value={issueDetail?.name || "—"} />
-            <InfoRow
+            <AdminInfoRow label="Issue" value={issueDetail?.name || "—"} />
+            <AdminInfoRow
               label="Current admin"
               value={issueDetail?.admin ? `${issueDetail.admin.name} (${issueDetail.admin.email})` : "—"}
             />

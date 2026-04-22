@@ -196,18 +196,12 @@
 │   │   ├── components
 │   │   │   ├── Account
 │   │   │   │   └── Account.jsx
-│   │   │   ├── CriteriaList
-│   │   │   │   └── CriteriaList.jsx
-│   │   │   ├── FinishedIssueDialog
-│   │   │   │   └── FinishedIssueDialog.jsx
 │   │   │   ├── FuzzyPreviewChart
 │   │   │   │   └── FuzzyPreviewChart.jsx
 │   │   │   ├── GoUpButton
 │   │   │   │   └── GoUpButton.jsx
 │   │   │   ├── LoadingProgress
 │   │   │   │   └── CircularLoading.jsx
-│   │   │   ├── ModelParamsView
-│   │   │   │   └── ModelParamsView.jsx
 │   │   │   ├── ResponsiveNabvar
 │   │   │   │   ├── navbarUtils.js
 │   │   │   │   └── ResponsiveNavbar.jsx
@@ -218,7 +212,6 @@
 │   │   │   │   │   ├── DeleteAccountButton.jsx
 │   │   │   │   │   ├── EmailField.jsx
 │   │   │   │   │   ├── NameField.jsx
-│   │   │   │   │   ├── NotificationsSwitch.jsx
 │   │   │   │   │   ├── PasswordField.jsx
 │   │   │   │   │   └── UniversityField.jsx
 │   │   │   │   ├── SettingsHeader.jsx
@@ -228,14 +221,9 @@
 │   │   │   ├── SnackbarAlert
 │   │   │   │   └── SnackbarAlert.jsx
 │   │   │   └── StyledComponents
-│   │   │       ├── GlassAccordion.jsx
-│   │   │       ├── GlassCard.jsx
 │   │   │       ├── GlassDialog.jsx
 │   │   │       ├── GlassPaper.jsx
-│   │   │       ├── GradientTabs.jsx
-│   │   │       ├── MaterialUISwitch.jsx
-│   │   │       ├── StepperLibConnector.jsx
-│   │   │       └── StyledChip.jsx
+│   │   │       └── GradientTabs.jsx
 │   │   ├── context
 │   │   │   ├── auth
 │   │   │   │   ├── auth.context.js
@@ -299,7 +287,6 @@
 │   │   │   │   │   ├── useActiveIssueActions.js
 │   │   │   │   │   ├── useActiveIssueConfirm.js
 │   │   │   │   │   ├── useActiveIssueDrawer.js
-│   │   │   │   │   ├── useActiveIssueExperts.js
 │   │   │   │   │   ├── useActiveIssuesListing.js
 │   │   │   │   │   └── useActiveIssuesScreenSync.js
 │   │   │   │   ├── styles
@@ -329,6 +316,7 @@
 │   │   │   │   │   ├── CriteriaItem.jsx
 │   │   │   │   │   ├── CriterionAccordion.jsx
 │   │   │   │   │   ├── ModelParameters.jsx
+│   │   │   │   │   ├── StepperLibConnector.jsx
 │   │   │   │   │   └── ViewExpressionsDomainDialog.jsx
 │   │   │   │   ├── context
 │   │   │   │   │   ├── createIssue.context.js
@@ -347,6 +335,39 @@
 │   │   │   │   │   └── createIssue.styles.js
 │   │   │   │   └── utils
 │   │   │   │       └── createIssue.utils.js
+│   │   │   ├── finishedIssueDialog
+│   │   │   │   ├── components
+│   │   │   │   │   ├── charts
+│   │   │   │   │   │   ├── AnalyticalConsensusLineChart.jsx
+│   │   │   │   │   │   └── AnalyticalScatterChart.jsx
+│   │   │   │   │   ├── dialog
+│   │   │   │   │   │   ├── FinishedIssueDialogHeader.jsx
+│   │   │   │   │   │   ├── FinishedIssueDialog.jsx
+│   │   │   │   │   │   └── FinishedIssueDialogLayout.jsx
+│   │   │   │   │   ├── sections
+│   │   │   │   │   │   ├── AnalysisSection.jsx
+│   │   │   │   │   │   ├── GraphsSection.jsx
+│   │   │   │   │   │   ├── ModelsSectionAddDialog.jsx
+│   │   │   │   │   │   ├── ModelsSection.jsx
+│   │   │   │   │   │   ├── ModelsSectionParametersForm.jsx
+│   │   │   │   │   │   ├── RankingSection.jsx
+│   │   │   │   │   │   ├── RatingsSection.jsx
+│   │   │   │   │   │   ├── shared
+│   │   │   │   │   │   │   └── ModelParamsView.jsx
+│   │   │   │   │   │   └── SummarySection.jsx
+│   │   │   │   │   └── shared
+│   │   │   │   │       ├── CriterionItem.jsx
+│   │   │   │   │       └── FinishedIssueDialogPrimitives.jsx
+│   │   │   │   ├── context
+│   │   │   │   │   ├── finishedIssueDialog.context.js
+│   │   │   │   │   └── finishedIssueDialog.provider.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useFinishedIssueDialogView.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── finishedIssueDialog.styles.js
+│   │   │   │   └── utils
+│   │   │   │       ├── finishedIssueDialog.utils.js
+│   │   │   │       └── finishedIssueRatings.ui.jsx
 │   │   │   ├── finishedIssues
 │   │   │   │   ├── components
 │   │   │   │   │   ├── FinishedIssueRemoveDialog.jsx
@@ -426,7 +447,6 @@
 │   │   │       └── utils
 │   │   │           └── leafCriteria.utils.js
 │   │   ├── hooks
-│   │   │   └── useFetch.js
 │   │   ├── main.jsx
 │   │   ├── pages
 │   │   │   └── private
@@ -446,7 +466,6 @@
 │   │   │       ├── finishedIssues
 │   │   │       │   └── FinishedIssuesPage.jsx
 │   │   │       ├── issuesModels
-│   │   │       │   └── ModelsPage.jsx
 │   │   │       └── PrivateLayout.jsx
 │   │   ├── services
 │   │   │   ├── admin.service.js
@@ -474,4 +493,4 @@
         ├── by_language.csv
         └── totals.csv
 
-129 directories, 346 files
+137 directories, 357 files

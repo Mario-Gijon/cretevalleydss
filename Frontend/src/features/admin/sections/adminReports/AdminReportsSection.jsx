@@ -2,7 +2,7 @@
 import { Paper, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-export default function ReportsSection() {
+export default function AdminReportsSection() {
   const theme = useTheme();
 
   return (
