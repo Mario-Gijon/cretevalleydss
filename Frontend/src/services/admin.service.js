@@ -1,38 +1,26 @@
 import { authFetch } from "../utils/authFetch";
-
-const API = import.meta.env.VITE_API_BACK;
+import { API, buildQuery, jsonRequest, safeJson } from "./service.utils.js";
 
 /**
- * Intenta parsear una respuesta JSON sin lanzar excepción si no hay body.
+ * Ejecuta una petición autenticada del módulo admin y devuelve el payload JSON.
  *
- * @param {Response} res Respuesta de fetch.
- * @returns {Promise<object|null>}
+ * Conserva el contrato actual de la capa admin:
+ * - retorna el payload de la API cuando la petición responde
+ * - retorna `false` ante errores de red/excepciones
+ *
+ * @param {string} path Ruta relativa a la API.
+ * @param {object} options Opciones de fetch.
+ * @param {string} errorPrefix Prefijo para el log de error.
+ * @returns {Promise<object|false>}
  */
-const safeJson = async (res) => {
+const requestAdmin = async (path, options, errorPrefix) => {
   try {
-    return await res.json();
-  } catch {
-    return null;
+    const response = await authFetch(`${API}${path}`, options);
+    return await safeJson(response);
+  } catch (error) {
+    console.error(errorPrefix, error);
+    return false;
   }
-};
-
-/**
- * Construye una query string a partir de un objeto plano.
- *
- * @param {object} paramsObj Parámetros de entrada.
- * @returns {string}
- */
-const buildQuery = (paramsObj = {}) => {
-  const params = new URLSearchParams();
-
-  Object.entries(paramsObj).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
-    if (typeof value === "string" && value.trim() === "") return;
-    params.set(key, String(value));
-  });
-
-  const query = params.toString();
-  return query ? `?${query}` : "";
 };
 
 /**
@@ -40,15 +28,8 @@ const buildQuery = (paramsObj = {}) => {
  *
  * @returns {Promise<object|false>}
  */
-export const checkAdminAccess = async () => {
-  try {
-    const res = await authFetch(`${API}/auth/admin/check`, { method: "GET" });
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error checking admin access:", err);
-    return false;
-  }
-};
+export const checkAdminAccess = async () =>
+  requestAdmin("/auth/admin/check", { method: "GET" }, "Error checking admin access:");
 
 /**
  * Obtiene el listado de expertos del panel admin.
@@ -59,21 +40,16 @@ export const checkAdminAccess = async () => {
  * @returns {Promise<object|false>}
  */
 export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
-  try {
-    const query = buildQuery({
-      q: q?.trim(),
-      includeAdmins: includeAdmins ? "true" : undefined,
-    });
+  const query = buildQuery({
+    q: q?.trim(),
+    includeAdmins: includeAdmins ? "true" : undefined,
+  });
 
-    const res = await authFetch(`${API}/admin/experts${query}`, {
-      method: "GET",
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching experts:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/experts${query}`,
+    { method: "GET" },
+    "Error fetching experts:"
+  );
 };
 
 /**
@@ -82,20 +58,12 @@ export const getAllUsers = async ({ q = "", includeAdmins = true } = {}) => {
  * @param {object} userData Datos del experto.
  * @returns {Promise<object|false>}
  */
-export const createUser = async (userData) => {
-  try {
-    const res = await authFetch(`${API}/admin/experts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error creating user:", err);
-    return false;
-  }
-};
+export const createUser = async (userData) =>
+  requestAdmin(
+    "/admin/experts",
+    jsonRequest("POST", userData),
+    "Error creating user:"
+  );
 
 /**
  * Actualiza un experto desde el panel admin.
@@ -118,27 +86,19 @@ export const updateUser = async ({
   password,
   accountConfirm,
   role,
-}) => {
-  try {
-    const res = await authFetch(`${API}/admin/experts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        university,
-        email,
-        password,
-        accountConfirm,
-        role,
-      }),
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error updating user:", err);
-    return false;
-  }
-};
+}) =>
+  requestAdmin(
+    `/admin/experts/${id}`,
+    jsonRequest("PATCH", {
+      name,
+      university,
+      email,
+      password,
+      accountConfirm,
+      role,
+    }),
+    "Error updating user:"
+  );
 
 /**
  * Elimina un experto desde el panel admin.
@@ -146,18 +106,8 @@ export const updateUser = async ({
  * @param {string} id Id del usuario.
  * @returns {Promise<object|false>}
  */
-export const deleteUser = async (id) => {
-  try {
-    const res = await authFetch(`${API}/admin/experts/${id}`, {
-      method: "DELETE",
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error deleting user:", err);
-    return false;
-  }
-};
+export const deleteUser = async (id) =>
+  requestAdmin(`/admin/experts/${id}`, { method: "DELETE" }, "Error deleting user:");
 
 /**
  * Obtiene el listado de issues del panel admin.
@@ -179,25 +129,20 @@ export const getAllIssues = async ({
   adminId = "",
   modelId = "",
 } = {}) => {
-  try {
-    const query = buildQuery({
-      q: q?.trim(),
-      active,
-      currentStage,
-      isConsensus,
-      adminId,
-      modelId,
-    });
+  const query = buildQuery({
+    q: q?.trim(),
+    active,
+    currentStage,
+    isConsensus,
+    adminId,
+    modelId,
+  });
 
-    const res = await authFetch(`${API}/admin/issues${query}`, {
-      method: "GET",
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching admin issues:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues${query}`,
+    { method: "GET" },
+    "Error fetching admin issues:"
+  );
 };
 
 /**
@@ -207,18 +152,13 @@ export const getAllIssues = async ({
  * @returns {Promise<object|false>}
  */
 export const getIssueByIdAdmin = async (id) => {
-  try {
-    if (!id) return false;
+  if (!id) return false;
 
-    const res = await authFetch(`${API}/admin/issues/${id}`, {
-      method: "GET",
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching admin issue detail:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${id}`,
+    { method: "GET" },
+    "Error fetching admin issue detail:"
+  );
 };
 
 /**
@@ -228,21 +168,13 @@ export const getIssueByIdAdmin = async (id) => {
  * @returns {Promise<object|false>}
  */
 export const getIssueExpertsProgress = async (issueId) => {
-  try {
-    if (!issueId) return false;
+  if (!issueId) return false;
 
-    const res = await authFetch(
-      `${API}/admin/issues/${issueId}/experts/progress`,
-      {
-        method: "GET",
-      }
-    );
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching issue experts progress:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${issueId}/experts/progress`,
+    { method: "GET" },
+    "Error fetching issue experts progress:"
+  );
 };
 
 /**
@@ -253,21 +185,13 @@ export const getIssueExpertsProgress = async (issueId) => {
  * @returns {Promise<object|false>}
  */
 export const getIssueExpertEvaluations = async (issueId, expertId) => {
-  try {
-    if (!issueId || !expertId) return false;
+  if (!issueId || !expertId) return false;
 
-    const res = await authFetch(
-      `${API}/admin/issues/${issueId}/experts/${expertId}/evaluations`,
-      {
-        method: "GET",
-      }
-    );
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching issue expert evaluations:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${issueId}/experts/${expertId}/evaluations`,
+    { method: "GET" },
+    "Error fetching issue expert evaluations:"
+  );
 };
 
 /**
@@ -278,21 +202,13 @@ export const getIssueExpertEvaluations = async (issueId, expertId) => {
  * @returns {Promise<object|false>}
  */
 export const getIssueExpertWeights = async (issueId, expertId) => {
-  try {
-    if (!issueId || !expertId) return false;
+  if (!issueId || !expertId) return false;
 
-    const res = await authFetch(
-      `${API}/admin/issues/${issueId}/experts/${expertId}/weights`,
-      {
-        method: "GET",
-      }
-    );
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error fetching issue expert weights:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${issueId}/experts/${expertId}/weights`,
+    { method: "GET" },
+    "Error fetching issue expert weights:"
+  );
 };
 
 /**
@@ -303,22 +219,12 @@ export const getIssueExpertWeights = async (issueId, expertId) => {
  * @param {string} params.newAdminId Id del nuevo administrador.
  * @returns {Promise<object|false>}
  */
-export const reassignIssueAdmin = async ({ issueId, newAdminId }) => {
-  try {
-    const res = await authFetch(`${API}/admin/issues/${issueId}/admin`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        newAdminId,
-      }),
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error reassigning issue admin:", err);
-    return false;
-  }
-};
+export const reassignIssueAdmin = async ({ issueId, newAdminId }) =>
+  requestAdmin(
+    `/admin/issues/${issueId}/admin`,
+    jsonRequest("PATCH", { newAdminId }),
+    "Error reassigning issue admin:"
+  );
 
 /**
  * Edita los expertos de un issue desde el panel admin.
@@ -335,24 +241,16 @@ export const editIssueExpertsAdminAction = async ({
   expertsToAdd = [],
   expertsToRemove = [],
   domainAssignments = null,
-}) => {
-  try {
-    const res = await authFetch(`${API}/admin/issues/${issueId}/experts`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expertsToAdd,
-        expertsToRemove,
-        domainAssignments,
-      }),
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error editing issue experts as admin:", err);
-    return false;
-  }
-};
+}) =>
+  requestAdmin(
+    `/admin/issues/${issueId}/experts`,
+    jsonRequest("PATCH", {
+      expertsToAdd,
+      expertsToRemove,
+      domainAssignments,
+    }),
+    "Error editing issue experts as admin:"
+  );
 
 /**
  * Computa los pesos de un issue desde el panel admin.
@@ -361,19 +259,16 @@ export const editIssueExpertsAdminAction = async ({
  * @returns {Promise<object|false>}
  */
 export const computeIssueWeightsAdminAction = async (issueId) => {
-  try {
-    if (!issueId) return false;
+  if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/${issueId}/weights/compute`, {
+  return requestAdmin(
+    `/admin/issues/${issueId}/weights/compute`,
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error computing issue weights as admin:", err);
-    return false;
-  }
+    },
+    "Error computing issue weights as admin:"
+  );
 };
 
 /**
@@ -387,22 +282,13 @@ export const resolveIssueAdminAction = async (
   issueId,
   forceFinalize = false
 ) => {
-  try {
-    if (!issueId) return false;
+  if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/${issueId}/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        forceFinalize,
-      }),
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error resolving issue as admin:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${issueId}/resolve`,
+    jsonRequest("POST", { forceFinalize }),
+    "Error resolving issue as admin:"
+  );
 };
 
 /**
@@ -412,16 +298,11 @@ export const resolveIssueAdminAction = async (
  * @returns {Promise<object|false>}
  */
 export const removeIssueAdminAction = async (issueId) => {
-  try {
-    if (!issueId) return false;
+  if (!issueId) return false;
 
-    const res = await authFetch(`${API}/admin/issues/${issueId}`, {
-      method: "DELETE",
-    });
-
-    return await safeJson(res);
-  } catch (err) {
-    console.error("Error removing issue as admin:", err);
-    return false;
-  }
+  return requestAdmin(
+    `/admin/issues/${issueId}`,
+    { method: "DELETE" },
+    "Error removing issue as admin:"
+  );
 };

@@ -1,10 +1,15 @@
 import {
   authFetch,
-  setAccessToken,
   clearAccessToken,
   refreshAccessToken,
+  setAccessToken,
 } from "../utils/authFetch";
-import { API, safeJson, buildNetworkErrorResponse } from "./service.utils.js";
+import {
+  API,
+  buildNetworkErrorResponse,
+  jsonRequest,
+  safeJson,
+} from "./service.utils.js";
 
 export const EmptyAuthState = {
   university: "",
@@ -13,6 +18,67 @@ export const EmptyAuthState = {
   accountCreation: "",
   role: "user",
   isAdmin: false,
+};
+
+/**
+ * Ejecuta una petición pública y devuelve el payload JSON.
+ *
+ * @param {string} path Ruta relativa a la API.
+ * @param {object} options Opciones de fetch.
+ * @param {string} errorPrefix Prefijo del log de error.
+ * @returns {Promise<object|false>}
+ */
+const requestPublicPayload = async (path, options, errorPrefix) => {
+  try {
+    const response = await fetch(`${API}${path}`, options);
+    return await safeJson(response);
+  } catch (error) {
+    console.error(errorPrefix, error);
+    return false;
+  }
+};
+
+/**
+ * Ejecuta una petición autenticada y devuelve el payload JSON.
+ *
+ * @param {string} path Ruta relativa a la API.
+ * @param {object} options Opciones de fetch.
+ * @param {string} errorPrefix Prefijo del log de error.
+ * @returns {Promise<object|false>}
+ */
+const requestAuthPayload = async (path, options, errorPrefix) => {
+  try {
+    const response = await authFetch(`${API}${path}`, options);
+    return await safeJson(response);
+  } catch (error) {
+    console.error(errorPrefix, error);
+    return false;
+  }
+};
+
+/**
+ * Ejecuta una petición autenticada y, ante error de red, devuelve
+ * una respuesta normalizada en lugar de `false`.
+ *
+ * @param {string} path Ruta relativa a la API.
+ * @param {object} options Opciones de fetch.
+ * @param {string} errorPrefix Prefijo del log de error.
+ * @param {string} fallbackMessage Mensaje para error de red.
+ * @returns {Promise<object>}
+ */
+const requestAuthPayloadOrNetworkError = async (
+  path,
+  options,
+  errorPrefix,
+  fallbackMessage
+) => {
+  try {
+    const response = await authFetch(`${API}${path}`, options);
+    return await safeJson(response);
+  } catch (error) {
+    console.error(errorPrefix, error);
+    return buildNetworkErrorResponse(fallbackMessage);
+  }
 };
 
 /**
@@ -32,15 +98,13 @@ export const bootstrapSession = async () => {
  * @returns {Promise<object|false>}
  */
 export const fetchProtectedData = async () => {
-  try {
-    const response = await authFetch(`${API}/auth/me`, { method: "GET" });
-    const data = await safeJson(response);
+  const data = await requestAuthPayload(
+    "/auth/me",
+    { method: "GET" },
+    "Error fetching authenticated user:"
+  );
 
-    return data?.success ? data : false;
-  } catch (error) {
-    console.error("Error fetching authenticated user:", error);
-    return false;
-  }
+  return data?.success ? data : false;
 };
 
 /**
@@ -49,20 +113,12 @@ export const fetchProtectedData = async () => {
  * @param {object} formValues Datos del formulario.
  * @returns {Promise<object|false>}
  */
-export const signup = async (formValues) => {
-  try {
-    const response = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formValues),
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error during signup:", error);
-    return false;
-  }
-};
+export const signup = async (formValues) =>
+  requestPublicPayload(
+    "/auth/signup",
+    jsonRequest("POST", formValues),
+    "Error during signup:"
+  );
 
 /**
  * Inicia sesión y guarda el access token en memoria.
@@ -71,27 +127,22 @@ export const signup = async (formValues) => {
  * @returns {Promise<object|false>}
  */
 export const login = async (formValues) => {
-  try {
-    const response = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formValues),
+  const data = await requestPublicPayload(
+    "/auth/login",
+    {
+      ...jsonRequest("POST", formValues),
       credentials: "include",
-    });
+    },
+    "Error during login:"
+  );
 
-    const data = await safeJson(response);
-
-    if (data?.success && data?.data?.token) {
-      setAccessToken(data.data.token);
-    } else if (data?.success) {
-      await refreshAccessToken();
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error during login:", error);
-    return false;
+  if (data?.success && data?.data?.token) {
+    setAccessToken(data.data.token);
+  } else if (data?.success) {
+    await refreshAccessToken();
   }
+
+  return data;
 };
 
 /**
@@ -105,7 +156,6 @@ export const logout = async () => {
       method: "POST",
       credentials: "include",
     });
-
     const data = await safeJson(response);
 
     clearAccessToken();
@@ -123,22 +173,17 @@ export const logout = async () => {
  * @returns {Promise<object|false>}
  */
 export const deleteAccount = async () => {
-  try {
-    const response = await authFetch(`${API}/auth/me`, {
-      method: "DELETE",
-    });
+  const data = await requestAuthPayload(
+    "/auth/me",
+    { method: "DELETE" },
+    "Error deleting account:"
+  );
 
-    const data = await safeJson(response);
-
-    if (data?.success) {
-      clearAccessToken();
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error deleting account:", error);
-    return false;
+  if (data?.success) {
+    clearAccessToken();
   }
+
+  return data;
 };
 
 /**
@@ -148,20 +193,13 @@ export const deleteAccount = async () => {
  * @param {string} repeatNewPassword Confirmación de contraseña.
  * @returns {Promise<object>}
  */
-export const updatePassword = async (newPassword, repeatNewPassword) => {
-  try {
-    const response = await authFetch(`${API}/auth/me/password`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newPassword, repeatNewPassword }),
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error updating password:", error);
-    return buildNetworkErrorResponse("Error updating password.");
-  }
-};
+export const updatePassword = async (newPassword, repeatNewPassword) =>
+  requestAuthPayloadOrNetworkError(
+    "/auth/me/password",
+    jsonRequest("PUT", { newPassword, repeatNewPassword }),
+    "Error updating password:",
+    "Error updating password."
+  );
 
 /**
  * Actualiza la universidad del usuario autenticado.
@@ -169,20 +207,13 @@ export const updatePassword = async (newPassword, repeatNewPassword) => {
  * @param {string} newUniversity Nueva universidad.
  * @returns {Promise<object>}
  */
-export const modifyUniversity = async (newUniversity) => {
-  try {
-    const response = await authFetch(`${API}/auth/me/university`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newUniversity }),
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error updating university:", error);
-    return buildNetworkErrorResponse("Error updating university.");
-  }
-};
+export const modifyUniversity = async (newUniversity) =>
+  requestAuthPayloadOrNetworkError(
+    "/auth/me/university",
+    jsonRequest("PATCH", { newUniversity }),
+    "Error updating university:",
+    "Error updating university."
+  );
 
 /**
  * Actualiza el nombre del usuario autenticado.
@@ -190,20 +221,13 @@ export const modifyUniversity = async (newUniversity) => {
  * @param {string} newName Nuevo nombre.
  * @returns {Promise<object>}
  */
-export const modifyName = async (newName) => {
-  try {
-    const response = await authFetch(`${API}/auth/me/name`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newName }),
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error updating name:", error);
-    return buildNetworkErrorResponse("Error updating name.");
-  }
-};
+export const modifyName = async (newName) =>
+  requestAuthPayloadOrNetworkError(
+    "/auth/me/name",
+    jsonRequest("PATCH", { newName }),
+    "Error updating name:",
+    "Error updating name."
+  );
 
 /**
  * Solicita el cambio de email del usuario autenticado.
@@ -211,57 +235,40 @@ export const modifyName = async (newName) => {
  * @param {string} newEmail Nuevo email.
  * @returns {Promise<object>}
  */
-export const modifyEmail = async (newEmail) => {
-  try {
-    const response = await authFetch(`${API}/auth/me/email`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newEmail }),
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error updating email:", error);
-    return buildNetworkErrorResponse("Error updating email.");
-  }
-};
+export const modifyEmail = async (newEmail) =>
+  requestAuthPayloadOrNetworkError(
+    "/auth/me/email",
+    jsonRequest("PATCH", { newEmail }),
+    "Error updating email:",
+    "Error updating email."
+  );
 
 /**
  * Obtiene las notificaciones del usuario actual.
  *
  * @returns {Promise<object|false>}
  */
-export const getNotifications = async () => {
-  try {
-    const response = await authFetch(`${API}/issues/notifications`, {
-      method: "GET",
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    return false;
-  }
-};
+export const getNotifications = async () =>
+  requestAuthPayload(
+    "/issues/notifications",
+    { method: "GET" },
+    "Error fetching notifications:"
+  );
 
 /**
  * Marca como leídas todas las notificaciones del usuario actual.
  *
  * @returns {Promise<object|false>}
  */
-export const markAllNotificationsAsRead = async () => {
-  try {
-    const response = await authFetch(`${API}/issues/notifications/read-all`, {
+export const markAllNotificationsAsRead = async () =>
+  requestAuthPayload(
+    "/issues/notifications/read-all",
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    });
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error marking notifications as read:", error);
-    return false;
-  }
-};
+    },
+    "Error marking notifications as read:"
+  );
 
 /**
  * Elimina una notificación del usuario actual.
@@ -269,18 +276,9 @@ export const markAllNotificationsAsRead = async () => {
  * @param {string} notificationId Id de la notificación.
  * @returns {Promise<object|false>}
  */
-export const removeNotification = async (notificationId) => {
-  try {
-    const response = await authFetch(
-      `${API}/issues/notifications/${notificationId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    return await safeJson(response);
-  } catch (error) {
-    console.error("Error removing notification:", error);
-    return false;
-  }
-};
+export const removeNotification = async (notificationId) =>
+  requestAuthPayload(
+    `/issues/notifications/${notificationId}`,
+    { method: "DELETE" },
+    "Error removing notification:"
+  );
