@@ -69,7 +69,7 @@ export const AlternativeItem = ({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "normal",
-            maxWidth: "calc(100% - 96px)",                                  
+            maxWidth: "calc(100% - 96px)",
           }}
         />
       )}

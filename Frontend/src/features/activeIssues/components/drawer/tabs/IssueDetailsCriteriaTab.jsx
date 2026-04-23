@@ -1,8 +1,8 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CategoryIcon from "@mui/icons-material/Category";
+import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
 import {
-  getIssueDetailsDrawerPanelSx,
   IssueDetailsDrawerCriterionTree,
 } from "../shell/IssueDetailsDrawer.parts";
 import { formatIssueDrawerWeight } from "../utils/issueDetailsDrawer.utils";

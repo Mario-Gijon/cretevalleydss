@@ -15,15 +15,15 @@ export const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
   [`&.${stepConnectorClasses.active}`]: {
     [`& .${stepConnectorClasses.line}`]: {
       backgroundImage: theme.palette.mode === 'light'
-        ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 10%, #45C5C5 50%)'              
-        : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 10%, #45C5C5 50%)',               
+        ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 10%, #45C5C5 50%)'
+        : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 10%, #45C5C5 50%)',
     },
   },
   [`&.${stepConnectorClasses.completed}`]: {
     [`& .${stepConnectorClasses.line}`]: {
       backgroundImage: theme.palette.mode === 'light'
-        ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 50%, #45C5C5 100%)'              
-        : 'linear-gradient(95deg, #9AECA4 0%, #70D9B5 50%, #45C5C5 100%)',               
+        ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 50%, #45C5C5 100%)'
+        : 'linear-gradient(95deg, #9AECA4 0%, #70D9B5 50%, #45C5C5 100%)',
     },
   },
   [`& .${stepConnectorClasses.line}`]: {
@@ -55,8 +55,8 @@ export const ColorlibStepIconRoot = styled('div')(({ theme }) => ({
       props: ({ ownerState }) => ownerState.active,
       style: {
         backgroundImage: theme.palette.mode === 'light'
-          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 10%, #45C5C5 50%)'              
-          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 10%, #45C5C5 50%)',               
+          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 10%, #45C5C5 50%)'
+          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 10%, #45C5C5 50%)',
         boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
       },
     },
@@ -64,8 +64,8 @@ export const ColorlibStepIconRoot = styled('div')(({ theme }) => ({
       props: ({ ownerState }) => ownerState.completed,
       style: {
         backgroundImage: theme.palette.mode === 'light'
-          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 60%, #45C5C5 100%)'              
-          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 50%, #45C5C5 100%)',               
+          ? 'linear-gradient(95deg, #C2E812 0%, #84D76C 60%, #45C5C5 100%)'
+          : 'linear-gradient(95deg, #84D76C 0%, #70D9B5 50%, #45C5C5 100%)',
       },
     },
   ],

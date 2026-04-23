@@ -1,7 +1,7 @@
 import { Box, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ViewListIcon from "@mui/icons-material/ViewList";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.parts";
+import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 
 /**

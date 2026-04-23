@@ -11,6 +11,8 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { TransitionGroup } from "react-transition-group";
 
 import {
@@ -19,6 +21,7 @@ import {
   saveEditAlternative,
 } from "../utils/createIssue.utils";
 import { AlternativeItem } from "../components/AlternativeItem.jsx";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {
   createIssueStepContainerSx,
@@ -37,6 +40,8 @@ export const AlternativesStep = () => {
   const [editingAlternative, setEditingAlternative] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [editError, setEditError] = useState(null);
+  const [openRemoveAlternativeDialog, setOpenRemoveAlternativeDialog] = useState(false);
+  const [alternativeToRemove, setAlternativeToRemove] = useState("");
 
   const reversed = useMemo(() => alternatives.slice().reverse(), [alternatives]);
 
@@ -50,7 +55,22 @@ export const AlternativesStep = () => {
     );
   };
 
-  const handleRemoveAlternative = (item) => removeAlternative(item, setAlternatives);
+  const handleAskRemoveAlternative = (item) => {
+    setAlternativeToRemove(item);
+    setOpenRemoveAlternativeDialog(true);
+  };
+
+  const handleCancelRemoveAlternative = () => {
+    setOpenRemoveAlternativeDialog(false);
+    setAlternativeToRemove("");
+  };
+
+  const handleConfirmRemoveAlternative = () => {
+    if (!alternativeToRemove) return;
+
+    removeAlternative(alternativeToRemove, setAlternatives);
+    handleCancelRemoveAlternative();
+  };
 
   const handleSaveEdit = () => {
     saveEditAlternative(
@@ -143,7 +163,7 @@ export const AlternativesStep = () => {
                   editError={editError}
                   handleSaveEdit={handleSaveEdit}
                   handleEditAlternative={handleEditAlternative}
-                  handleRemoveAlternative={handleRemoveAlternative}
+                  handleRemoveAlternative={handleAskRemoveAlternative}
                 />
                 {index !== reversed.length - 1 ? (
                   <Divider sx={getCreateIssueRowDividerSx(theme)} />
@@ -153,6 +173,37 @@ export const AlternativesStep = () => {
           </TransitionGroup>
         </List>
       )}
+
+      <ConfirmationDialog
+        open={openRemoveAlternativeDialog}
+        onClose={handleCancelRemoveAlternative}
+        tone="warning"
+        title="Delete alternative?"
+        subtitle={
+          alternativeToRemove
+            ? `Are you sure you want to delete "${alternativeToRemove}"?`
+            : "Are you sure you want to delete this alternative?"
+        }
+        actions={[
+          {
+            id: "cancel-delete-alternative",
+            label: "Cancel",
+            color: "secondary",
+            icon: <CancelOutlinedIcon />,
+            onClick: handleCancelRemoveAlternative,
+          },
+          {
+            id: "confirm-delete-alternative",
+            label: "Delete",
+            color: "error",
+            icon: <DeleteOutlineIcon />,
+            onClick: handleConfirmRemoveAlternative,
+            autoFocus: true,
+          },
+        ]}
+        maxWidth="xs"
+        fullWidth
+      />
     </Stack>
   );
 };

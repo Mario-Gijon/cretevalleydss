@@ -38,7 +38,6 @@ export const CriteriaItem = ({
             <Stack direction="row" alignItems="center" spacing={1.5}>
               {editingCriterion?.name === item.name ? (
                 <>
-                  {                                 }
                   <TextField
                     variant="standard"
                     value={editCriterionValue}
@@ -50,8 +49,8 @@ export const CriteriaItem = ({
                     autoFocus
                     fullWidth
                     color="secondary"
-                    error={!!editCriterionError}                                        
-                    helperText={editCriterionError}                               
+                    error={!!editCriterionError}
+                    helperText={editCriterionError}
                     InputProps={{
                       endAdornment: (
                         <IconButton onClick={handleSaveCriterionEdit} color="secondary" size="small">

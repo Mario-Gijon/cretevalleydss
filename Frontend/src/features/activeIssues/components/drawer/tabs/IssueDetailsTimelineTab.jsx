@@ -1,7 +1,7 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import TimelineIcon from "@mui/icons-material/Timeline";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.parts";
+import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
 import { IssueTimeline } from "../../shared/IssueTimeline";
 
 /**

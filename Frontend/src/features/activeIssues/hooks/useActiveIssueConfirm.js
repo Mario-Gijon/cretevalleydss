@@ -22,9 +22,6 @@ export const useActiveIssueConfirm = () => {
   /**
    * Abre el diálogo de confirmación con el contenido indicado.
    *
-   * Se conserva el campo tone por compatibilidad con los
-   * callers actuales aunque el componente visual no lo use aún.
-   *
    * @param {Object} params Parámetros del diálogo.
    * @param {string} params.title Título del diálogo.
    * @param {string} params.description Descripción mostrada.

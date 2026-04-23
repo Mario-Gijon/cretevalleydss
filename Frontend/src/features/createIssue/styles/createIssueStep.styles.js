@@ -26,6 +26,40 @@ export const getCreateIssueStepInputSx = (theme) => ({
 });
 
 /**
+ * Estilo del paper para diálogos compactos del flujo createIssue.
+ *
+ * @param {Object} theme Tema de MUI.
+ * @returns {Object}
+ */
+export const getCreateIssueCompactDialogPaperSx = (theme) => ({
+  borderRadius: 3.4,
+  overflow: "hidden",
+  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+  boxShadow: `0 24px 60px ${alpha(theme.palette.common.black, 0.20)}`,
+  background: `radial-gradient(900px 340px at 10% 0%, ${alpha(
+    theme.palette.info.main,
+    0.18
+  )}, transparent 62%), rgba(16, 24, 34, 0.92)`,
+});
+
+/**
+ * Estilo de paper para diálogos simples con aurora sutil en la parte superior.
+ *
+ * @param {Object} theme Tema de MUI.
+ * @returns {Object}
+ */
+export const getCreateIssueSoftTopAuroraDialogPaperSx = (theme) => ({
+  borderRadius: 3.2,
+  overflow: "hidden",
+  border: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
+  boxShadow: `0 20px 52px ${alpha(theme.palette.common.black, 0.20)}`,
+  background: `radial-gradient(860px 150px at 50% 0%, ${alpha(
+    theme.palette.info.main,
+    0.12
+  )}, transparent 58%), rgba(16, 24, 34, 0.92)`,
+});
+
+/**
  * Estilo de título para diálogos compactos del flujo createIssue.
  *
  * @param {Object} theme Tema de MUI.

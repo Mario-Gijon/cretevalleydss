@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Stack,
-  DialogTitle,
   DialogContent,
   DialogActions,
   Divider,
@@ -10,7 +9,6 @@ import {
   TextField,
   Button,
   Backdrop,
-  DialogContentText,
   ToggleButton,
   Avatar,
   Box,
@@ -30,8 +28,10 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -79,7 +79,7 @@ const ManualWeightsEvaluationDialog = ({
 
   const [equalWeightsMode, setEqualWeightsMode] = useState(false);
 
-  const applyEqualWeights = () => {
+  const applyEqualWeights = useCallback(() => {
     const n = leafCriteria.length;
     if (n === 0) return;
 
@@ -99,14 +99,13 @@ const ManualWeightsEvaluationDialog = ({
     setManualWeights(
       Object.fromEntries(leafCriteria.map((criterion, idx) => [criterion.name, values[idx]]))
     );
-  };
+  }, [leafCriteria]);
 
   useEffect(() => {
     if (equalWeightsMode) {
       applyEqualWeights();
     }
-                                                           
-  }, [equalWeightsMode, leafCriteria]);
+  }, [equalWeightsMode, applyEqualWeights]);
 
   useEffect(() => {
     if (!isRatingWeights || !selectedIssue?.id) {
@@ -435,73 +434,74 @@ const ManualWeightsEvaluationDialog = ({
         </DialogActions>
       </GlassDialog>
 
-      <GlassDialog
+      <ConfirmationDialog
         open={openSaveDialog}
         onClose={() => setOpenSaveDialog(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 950 }}>Save your progress?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: "text.secondary" }}>
-            You have unsaved changes. Save as draft or exit without saving.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1 }}>
-          <Button
-            variant="outlined"
-            color="info"
-            onClick={handleSaveWeights}
-            startIcon={<SaveOutlinedIcon />}
-          >
-            Save draft
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => {
+        tone="warning"
+        title="Save your progress?"
+        subtitle="You have unsaved changes. Save as draft or exit without saving."
+        actions={[
+          {
+            id: "cancel-save-manual-weights",
+            label: "Cancel",
+            color: "secondary",
+            variant: "outlined",
+            icon: <CancelOutlinedIcon />,
+            onClick: () => setOpenSaveDialog(false),
+          },
+          {
+            id: "save-manual-weights-draft",
+            label: "Save draft",
+            color: "info",
+            variant: "outlined",
+            icon: <SaveOutlinedIcon />,
+            onClick: handleSaveWeights,
+          },
+          {
+            id: "exit-manual-weights",
+            label: "Exit",
+            color: "error",
+            variant: "outlined",
+            icon: <ExitToAppOutlinedIcon />,
+            onClick: () => {
               setOpenSaveDialog(false);
               setIsRatingWeights(false);
               clearAll();
-            }}
-            startIcon={<ExitToAppOutlinedIcon />}
-          >
-            Exit
-          </Button>
-        </DialogActions>
-      </GlassDialog>
-
-      <GlassDialog
-        open={openSendDialog}
-        onClose={() => setOpenSendDialog(false)}
+            },
+          },
+        ]}
         maxWidth="xs"
         fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 950 }}>Submit your weights?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: "text.secondary" }}>
-            You won&apos;t be able to modify them later.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1 }}>
-          <Button
-            variant="outlined"
-            color="success"
-            onClick={handleSendWeights}
-            startIcon={<CheckCircleOutlineIcon />}
-          >
-            Submit
-          </Button>
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={() => setOpenSendDialog(false)}
-            startIcon={<CloseIcon />}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </GlassDialog>
+      />
+
+      <ConfirmationDialog
+        open={openSendDialog}
+        onClose={() => setOpenSendDialog(false)}
+        tone="warning"
+        title="Submit your weights?"
+        subtitle="You won't be able to modify them later."
+        actions={[
+          {
+            id: "cancel-submit-manual-weights",
+            label: "Cancel",
+            color: "secondary",
+            variant: "outlined",
+            icon: <CancelOutlinedIcon />,
+            onClick: () => setOpenSendDialog(false),
+          },
+          {
+            id: "submit-manual-weights",
+            label: "Submit",
+            color: "success",
+            variant: "outlined",
+            icon: <CheckCircleOutlineIcon />,
+            autoFocus: true,
+            onClick: handleSendWeights,
+          },
+        ]}
+        maxWidth="xs"
+        fullWidth
+      />
     </>
   );
 };

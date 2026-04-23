@@ -8,14 +8,14 @@ function SlideTransition(props) {
 
 export const SnackbarAlert = ({ open, onClose, message, severity="error" }) => {
   const handleClose = () => onClose();
-  
+
   return (
     <Snackbar
       open={open}
-      autoHideDuration={5000}                                           
+      autoHideDuration={5000}
       onClose={handleClose}
       anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      TransitionComponent={SlideTransition}                                   
+      TransitionComponent={SlideTransition}
     >
       <Alert
         severity={severity}

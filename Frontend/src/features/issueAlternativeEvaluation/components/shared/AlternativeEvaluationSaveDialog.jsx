@@ -1,15 +1,7 @@
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
-  Button,
-} from "@mui/material";
-
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 
 /**
  * Confirmación para guardar borrador o salir sin guardar.
@@ -28,35 +20,33 @@ const AlternativeEvaluationSaveDialog = ({
   onExit,
 }) => {
   return (
-    <GlassDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontWeight: 950 }}>Save changes?</DialogTitle>
-
-      <DialogContent>
-        <DialogContentText sx={{ color: "text.secondary" }}>
-          You have unsaved changes. Save as draft or exit without saving.
-        </DialogContentText>
-      </DialogContent>
-
-      <DialogActions sx={{ gap: 1 }}>
-        <Button
-          variant="outlined"
-          color="info"
-          onClick={onSave}
-          startIcon={<SaveOutlinedIcon />}
-        >
-          Save draft
-        </Button>
-
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={onExit}
-          startIcon={<ExitToAppOutlinedIcon />}
-        >
-          Exit
-        </Button>
-      </DialogActions>
-    </GlassDialog>
+    <ConfirmationDialog
+      open={open}
+      onClose={onClose}
+      tone="info"
+      title="Save changes?"
+      subtitle="You have unsaved changes. Save as draft or exit without saving."
+      actions={[
+        {
+          id: "exit-alternative-evaluation",
+          label: "Exit",
+          color: "error",
+          variant: "text",
+          icon: <ExitToAppOutlinedIcon />,
+          onClick: onExit,
+        },
+        {
+          id: "save-draft-alternative-evaluation",
+          label: "Save draft",
+          color: "info",
+          variant: "text",
+          icon: <SaveOutlinedIcon />,
+          onClick: onSave,
+        },
+      ]}
+      maxWidth="xs"
+      fullWidth
+    />
   );
 };
 

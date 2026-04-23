@@ -24,8 +24,8 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 import { stageLabel } from "../../../utils/activeIssues.meta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
+import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
 import {
-  getIssueDetailsDrawerPanelSx,
   IssueDetailsDrawerKeyValueRow,
 } from "../shell/IssueDetailsDrawer.parts";
 import IssueParticipationChart from "../../shared/IssueParticipationChart";
@@ -66,6 +66,7 @@ const IssueDetailsOverviewTab = ({
   onMinimize,
 }) => {
   const theme = useTheme();
+  const isAdminUser = Boolean(selectedIssue?.isAdmin);
 
   return (
     <Stack spacing={2}>
@@ -84,19 +85,128 @@ const IssueDetailsOverviewTab = ({
           </Box>
         </Stack>
 
-        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-          {                                                           }
-        </Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }} />
       </Box>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <Stack width="100%">
-          <Box sx={{ ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }), p: 1.75, height: "100%" }}>
+      {isAdminUser ? (
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Stack width="100%">
+            <Box sx={{ ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }), p: 1.75, height: "100%" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 1 }}>
+                Expert actions
+              </Typography>
+
+              <Stack spacing={1}>
+                <LoadingButton
+                  variant="outlined"
+                  color="info"
+                  startIcon={<FactCheckIcon />}
+                  disabled={!cEvalA}
+                  onClick={() => {
+                    setIsRatingAlternatives(true);
+                    if (isMobile) onMinimize?.();
+                  }}
+                >
+                  Evaluate alternatives
+                </LoadingButton>
+
+                <LoadingButton
+                  variant="outlined"
+                  color="info"
+                  startIcon={<FactCheckIcon />}
+                  disabled={!cEvalW}
+                  onClick={() => {
+                    setIsRatingWeights(true);
+                    if (isMobile) onMinimize?.();
+                  }}
+                >
+                  Evaluate weights
+                </LoadingButton>
+              </Stack>
+            </Box>
+          </Stack>
+
+          <Stack width="100%">
+            <Box
+              sx={{
+                ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }),
+                p: 1.75,
+                height: "100%",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 1 }}>
+                Admin actions
+              </Typography>
+
+              <Stack spacing={1}>
+                <LoadingButton
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<CalculateIcon />}
+                  disabled={!cComputeW}
+                  loading={busy.compute}
+                  onClick={() =>
+                    openConfirm({
+                      title: "Compute weights",
+                      description:
+                        "This will compute the final criteria weights and move the issue forward.",
+                      confirmText: "Compute",
+                      tone: "warning",
+                      action: handleComputeWeights,
+                    })
+                  }
+                >
+                  Compute weights
+                </LoadingButton>
+
+                <LoadingButton
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<GavelIcon />}
+                  disabled={!cResolve}
+                  loading={busy.resolve}
+                  onClick={() =>
+                    openConfirm({
+                      title: "Resolve issue",
+                      description: "This will run the model and move the issue forward.",
+                      confirmText: "Resolve",
+                      tone: "warning",
+                      action: handleResolveIssue,
+                    })
+                  }
+                >
+                  Resolve
+                </LoadingButton>
+
+                <LoadingButton
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineIcon />}
+                  loading={busy.remove}
+                  onClick={() =>
+                    openConfirm({
+                      title: "Remove issue",
+                      description: "This will permanently remove the issue and its data.",
+                      confirmText: "Remove",
+                      tone: "error",
+                      action: handleRemoveIssue,
+                    })
+                  }
+                >
+                  Remove issue
+                </LoadingButton>
+              </Stack>
+            </Box>
+          </Stack>
+        </Stack>
+      ) : (
+        <Stack spacing={1} sx={{ width: "100%" }}>
+          <Box sx={{ ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }), p: 1.75 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 1 }}>
-              Expert actions
+              Actions
             </Typography>
 
-            <Stack spacing={1}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <LoadingButton
                 variant="outlined"
                 color="info"
@@ -106,6 +216,7 @@ const IssueDetailsOverviewTab = ({
                   setIsRatingAlternatives(true);
                   if (isMobile) onMinimize?.();
                 }}
+                sx={{ flex: 1 }}
               >
                 Evaluate alternatives
               </LoadingButton>
@@ -119,108 +230,33 @@ const IssueDetailsOverviewTab = ({
                   setIsRatingWeights(true);
                   if (isMobile) onMinimize?.();
                 }}
+                sx={{ flex: 1 }}
               >
                 Evaluate weights
-              </LoadingButton>
-
-              {!selectedIssue?.isAdmin ? (
-                <LoadingButton
-                  variant="outlined"
-                  color="error"
-                  startIcon={<LogoutIcon />}
-                  loading={busy.leave}
-                  onClick={() =>
-                    openConfirm({
-                      title: "Leave issue",
-                      description: "You will stop participating in this issue.",
-                      confirmText: "Leave",
-                      tone: "error",
-                      action: handleLeaveIssue,
-                    })
-                  }
-                >
-                  Leave issue
-                </LoadingButton>
-              ) : null}
-            </Stack>
-          </Box>
-        </Stack>
-
-        <Stack width="100%">
-          <Box
-            sx={{
-              ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }),
-              p: 1.75,
-              height: "100%",
-              opacity: selectedIssue?.isAdmin ? 1 : 0.55,
-            }}
-          >
-            <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 1 }}>
-              Admin actions
-            </Typography>
-
-            <Stack spacing={1}>
-              <LoadingButton
-                variant="outlined"
-                color="warning"
-                startIcon={<CalculateIcon />}
-                disabled={!selectedIssue?.isAdmin || !cComputeW}
-                loading={busy.compute}
-                onClick={() =>
-                  openConfirm({
-                    title: "Compute weights",
-                    description:
-                      "This will compute the final criteria weights and move the issue forward.",
-                    confirmText: "Compute",
-                    tone: "warning",
-                    action: handleComputeWeights,
-                  })
-                }
-              >
-                Compute weights
-              </LoadingButton>
-
-              <LoadingButton
-                variant="outlined"
-                color="warning"
-                startIcon={<GavelIcon />}
-                disabled={!selectedIssue?.isAdmin || !cResolve}
-                loading={busy.resolve}
-                onClick={() =>
-                  openConfirm({
-                    title: "Resolve issue",
-                    description: "This will run the model and move the issue forward.",
-                    confirmText: "Resolve",
-                    tone: "warning",
-                    action: handleResolveIssue,
-                  })
-                }
-              >
-                Resolve
               </LoadingButton>
 
               <LoadingButton
                 variant="outlined"
                 color="error"
-                startIcon={<DeleteOutlineIcon />}
-                disabled={!selectedIssue?.isAdmin}
-                loading={busy.remove}
+                startIcon={<LogoutIcon />}
+                loading={busy.leave}
                 onClick={() =>
                   openConfirm({
-                    title: "Remove issue",
-                    description: "This will permanently remove the issue and its data.",
-                    confirmText: "Remove",
+                    title: "Leave issue",
+                    description: "You will stop participating in this issue.",
+                    confirmText: "Leave",
                     tone: "error",
-                    action: handleRemoveIssue,
+                    action: handleLeaveIssue,
                   })
                 }
+                sx={{ flex: 1 }}
               >
-                Remove issue
+                Leave issue
               </LoadingButton>
             </Stack>
           </Box>
         </Stack>
-      </Stack>
+      )}
 
       <Accordion
         disableGutters

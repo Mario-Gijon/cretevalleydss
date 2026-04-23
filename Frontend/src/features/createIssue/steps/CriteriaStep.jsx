@@ -6,9 +6,7 @@ import {
   Collapse,
   Stack,
   Divider,
-  DialogTitle,
   DialogContent,
-  DialogActions,
   FormControl,
   InputLabel,
   Select,
@@ -18,6 +16,8 @@ import {
 } from "@mui/material";
 import { TransitionGroup } from "react-transition-group";
 import AddIcon from "@mui/icons-material/Add";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTheme } from "@mui/material/styles";
 
 import {
@@ -29,9 +29,11 @@ import {
 import { CriteriaItem } from "../components/CriteriaItem";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {
   createIssueStepContainerSx,
+  getCreateIssueSoftTopAuroraDialogPaperSx,
   getCreateIssueRowDividerSx,
   getCreateIssueStepEmptyStateSx,
   getCreateIssueStepInputSx,
@@ -61,6 +63,8 @@ export const CriteriaStep = () => {
   const [editCriterionType, setEditCriterionType] = useState("");
   const [editBlur, setEditBlur] = useState(true);
   const [editCriterionError, setEditCriterionError] = useState("");
+  const [openRemoveCriterionDialog, setOpenRemoveCriterionDialog] = useState(false);
+  const [criterionToRemove, setCriterionToRemove] = useState(null);
 
   const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
   const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
@@ -116,8 +120,21 @@ export const CriteriaStep = () => {
     setInputError(false);
   };
 
-  const handleRemoveCriteria = (item) => {
-    setCriteria((previous) => removeCriteriaItemRecursively(previous, item));
+  const handleAskRemoveCriteria = (item) => {
+    setCriterionToRemove(item);
+    setOpenRemoveCriterionDialog(true);
+  };
+
+  const handleCancelRemoveCriteria = () => {
+    setOpenRemoveCriterionDialog(false);
+    setCriterionToRemove(null);
+  };
+
+  const handleConfirmRemoveCriteria = () => {
+    if (!criterionToRemove) return;
+
+    setCriteria((previous) => removeCriteriaItemRecursively(previous, criterionToRemove));
+    handleCancelRemoveCriteria();
   };
 
   const handleToggle = (itemName) => {
@@ -288,7 +305,7 @@ export const CriteriaStep = () => {
                   handleToggle={handleToggle}
                   openItems={openItems}
                   setSelectedParent={setSelectedParent}
-                  handleRemoveCriteria={handleRemoveCriteria}
+                  handleRemoveCriteria={handleAskRemoveCriteria}
                   setOpenDialog={setOpenDialog}
                 />
                 {index !== reversed.length - 1 ? (
@@ -300,59 +317,92 @@ export const CriteriaStep = () => {
         </List>
       )}
 
-      <GlassDialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          <Stack>
-            <Typography fontWeight={"bold"} variant="h5">
-              Add child criterion
-            </Typography>
-            {selectedParent?.name ? (
-              <Typography variant="caption">
-                Parent: {selectedParent.name}
-              </Typography>
-            ) : null}
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            color="info"
-            variant="outlined"
-            label="Child name"
-            value={childInputValue}
-            onChange={(event) => {
-              setChildInputValue(event.target.value);
-              setChildInputError(false);
-            }}
-            onKeyDown={(event) => event.key === "Enter" && handleAddChild()}
-            fullWidth
-            autoFocus
-            error={Boolean(childInputError)}
-            helperText={childInputError}
-            sx={{ mt: 1 }}
-            
-          />
-        </DialogContent>
+      <GlassDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: getCreateIssueSoftTopAuroraDialogPaperSx(theme) }}
+      >
+        <DialogContent sx={{ pt: 2, pb: 1.6 }}>
+          <Stack spacing={2}>
+            <Stack spacing={2.5}>
+              <Stack spacing={0.5}>
+                <Typography fontWeight={900} fontSize={22}>
+                  Add child criterion
+                </Typography>
+                {selectedParent?.name ? (
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    Parent: {selectedParent.name}
+                  </Typography>
+                ) : null}
+              </Stack>
 
-        <DialogActions>
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={() => setOpenDialog(false)}
-            size="small"
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="outlined"
-            color="info"
-            onClick={handleAddChild}
-            disabled={!childInputValue.trim()}
-            size="small"
-          >
-            Add
-          </Button>
-        </DialogActions>
+              <TextField
+                color="info"
+                variant="outlined"
+                label="Child name"
+                value={childInputValue}
+                onChange={(event) => {
+                  setChildInputValue(event.target.value);
+                  setChildInputError(false);
+                }}
+                onKeyDown={(event) => event.key === "Enter" && handleAddChild()}
+                fullWidth
+                autoFocus
+                error={Boolean(childInputError)}
+                helperText={childInputError}
+                sx={getCreateIssueStepInputSx(theme)}
+              />
+            </Stack>
+
+            <Stack direction="row" justifyContent="flex-end" spacing={0.4}>
+              <Button variant="text" color="warning" onClick={() => setOpenDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="text"
+                color="info"
+                onClick={handleAddChild}
+                disabled={!childInputValue.trim()}
+              >
+                Add
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
       </GlassDialog>
+
+      <ConfirmationDialog
+        open={openRemoveCriterionDialog}
+        onClose={handleCancelRemoveCriteria}
+        tone="error"
+        title="Delete criterion?"
+        subtitle={
+          criterionToRemove?.name
+            ? `Are you sure you want to delete "${criterionToRemove.name}"?`
+            : "Are you sure you want to delete this criterion?"
+        }
+        actions={[
+          {
+            id: "cancel-delete-criterion",
+            label: "Cancel",
+            color: "secondary",
+            icon: <CancelOutlinedIcon />,
+            onClick: handleCancelRemoveCriteria,
+          },
+          {
+            id: "confirm-delete-criterion",
+            label: "Delete",
+            color: "error",
+            icon: <DeleteOutlineIcon />,
+            onClick: handleConfirmRemoveCriteria,
+            autoFocus: true,
+          },
+        ]}
+        maxWidth="xs"
+        fullWidth
+      />
     </Stack>
   );
 };

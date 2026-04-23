@@ -61,7 +61,7 @@ export const getActiveIssuesPanelGlassSx = (theme, strength = 0.14) => ({
   ...getActiveIssuesAuroraBg(theme, 0.16),
   ...getActiveIssuesPanelBorder(),
   borderBottom: "2px solid rgba(155, 192, 197, 0.25)",
-  
+
 });
 /**
  * Devuelve el fondo aurora exacto usado originalmente

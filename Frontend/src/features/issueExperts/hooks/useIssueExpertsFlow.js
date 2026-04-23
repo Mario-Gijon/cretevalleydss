@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { updateIssueExperts } from "../services/issueExperts.service.js";
 
@@ -66,13 +66,13 @@ export const useIssueExpertsFlow = ({
    *
    * @returns {void}
    */
-  const resetExpertsEdition = () => {
+  const resetExpertsEdition = useCallback(() => {
     setIsEditingExperts(false);
     setExpertsToAdd([]);
     setExpertsToRemove([]);
     setOpenAddExpertsDialog(false);
     setOpenAssignDomainsDialog(false);
-  };
+  }, []);
 
   /**
    * Activa o desactiva el modo edición de expertos.

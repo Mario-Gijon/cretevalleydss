@@ -202,25 +202,22 @@
 │   │   │   │   └── GoUpButton.jsx
 │   │   │   ├── LoadingProgress
 │   │   │   │   └── CircularLoading.jsx
-│   │   │   ├── ResponsiveNabvar
-│   │   │   │   ├── navbarUtils.js
-│   │   │   │   └── ResponsiveNavbar.jsx
-│   │   │   ├── Settings
-│   │   │   │   ├── Fields
-│   │   │   │   │   ├── ConfirmDeleteDialog.jsx
-│   │   │   │   │   ├── ConfirmPasswordDialog.jsx
-│   │   │   │   │   ├── DeleteAccountButton.jsx
-│   │   │   │   │   ├── EmailField.jsx
-│   │   │   │   │   ├── NameField.jsx
-│   │   │   │   │   ├── PasswordField.jsx
-│   │   │   │   │   └── UniversityField.jsx
-│   │   │   │   ├── SettingsHeader.jsx
-│   │   │   │   ├── Settings.jsx
+│   │   │   ├── ResponsiveNavbar
+│   │   │   │   ├── components
+│   │   │   │   │   ├── ResponsiveNavbarDesktopNav.jsx
+│   │   │   │   │   ├── ResponsiveNavbarMobileNav.jsx
+│   │   │   │   │   └── ResponsiveNavbarUserMenu.jsx
+│   │   │   │   ├── constants
+│   │   │   │   │   └── ResponsiveNavbar.constants.js
+│   │   │   │   ├── ResponsiveNavbar.jsx
+│   │   │   │   ├── shared
+│   │   │   │   │   └── ResponsiveNavbar.shared.jsx
 │   │   │   │   └── utils
-│   │   │   │       └── validationUtils.js
+│   │   │   │       └── ResponsiveNavbar.utils.js
 │   │   │   ├── SnackbarAlert
 │   │   │   │   └── SnackbarAlert.jsx
 │   │   │   └── StyledComponents
+│   │   │       ├── ConfirmationDialog.jsx
 │   │   │       ├── GlassDialog.jsx
 │   │   │       ├── GlassPaper.jsx
 │   │   │       └── GradientTabs.jsx
@@ -294,6 +291,45 @@
 │   │   │   │   └── utils
 │   │   │   │       ├── activeIssues.filters.js
 │   │   │   │       └── activeIssues.meta.js
+│   │   │   ├── admin
+│   │   │   │   ├── components
+│   │   │   │   │   ├── AdminEmptySectionPanel.jsx
+│   │   │   │   │   ├── AdminHome.jsx
+│   │   │   │   │   ├── AdminSectionShell.jsx
+│   │   │   │   │   ├── AdminTag.jsx
+│   │   │   │   │   └── AdminView.jsx
+│   │   │   │   ├── sections
+│   │   │   │   │   ├── adminExperts
+│   │   │   │   │   │   ├── AdminExpertsSection.jsx
+│   │   │   │   │   │   ├── adminExperts.utils.js
+│   │   │   │   │   │   ├── components
+│   │   │   │   │   │   │   ├── AdminRolePill.jsx
+│   │   │   │   │   │   │   └── AdminStatusPill.jsx
+│   │   │   │   │   │   └── hooks
+│   │   │   │   │   │       └── useAdminExpertsSection.js
+│   │   │   │   │   ├── adminIssues
+│   │   │   │   │   │   ├── AdminIssuesSection.jsx
+│   │   │   │   │   │   ├── adminIssues.utils.js
+│   │   │   │   │   │   ├── components
+│   │   │   │   │   │   │   ├── AdminAddExpertsPickerDialog.jsx
+│   │   │   │   │   │   │   ├── AdminInfoRow.jsx
+│   │   │   │   │   │   │   ├── AdminMetaChip.jsx
+│   │   │   │   │   │   │   ├── AdminReadOnlyAxCMatrix.jsx
+│   │   │   │   │   │   │   ├── AdminReadOnlyPairwise.jsx
+│   │   │   │   │   │   │   ├── AdminReadOnlyWeights.jsx
+│   │   │   │   │   │   │   └── AdminStatCard.jsx
+│   │   │   │   │   │   └── hooks
+│   │   │   │   │   │       └── useAdminIssuesSection.js
+│   │   │   │   │   ├── adminLogs
+│   │   │   │   │   │   └── AdminLogsSection.jsx
+│   │   │   │   │   ├── adminModels
+│   │   │   │   │   │   └── AdminModelsSection.jsx
+│   │   │   │   │   └── adminReports
+│   │   │   │   │       └── AdminReportsSection.jsx
+│   │   │   │   ├── styles
+│   │   │   │   │   └── admin.styles.js
+│   │   │   │   └── utils
+│   │   │   │       └── adminSections.jsx
 │   │   │   ├── auth
 │   │   │   │   ├── components
 │   │   │   │   │   ├── AuthLayout.jsx
@@ -430,22 +466,46 @@
 │   │   │   │   └── utils
 │   │   │   │       ├── issueExperts.groups.js
 │   │   │   │       └── issueExperts.search.js
-│   │   │   └── issueWeightEvaluation
+│   │   │   ├── issueWeightEvaluation
+│   │   │   │   ├── components
+│   │   │   │   │   └── IssueWeightEvaluationDialogs.jsx
+│   │   │   │   ├── dialogs
+│   │   │   │   │   ├── bwm
+│   │   │   │   │   │   └── BwmWeightsEvaluationDialog.jsx
+│   │   │   │   │   └── manual
+│   │   │   │   │       └── ManualWeightsEvaluationDialog.jsx
+│   │   │   │   ├── registry
+│   │   │   │   │   └── weightEvaluation.registry.js
+│   │   │   │   ├── services
+│   │   │   │   │   └── weightEvaluation.service.js
+│   │   │   │   ├── styles
+│   │   │   │   │   └── weightEvaluationDialog.styles.js
+│   │   │   │   └── utils
+│   │   │   │       └── leafCriteria.utils.js
+│   │   │   ├── notifications
+│   │   │   │   ├── components
+│   │   │   │   │   ├── NotificationsDrawer.jsx
+│   │   │   │   │   └── NotificationsMenuItemIcon.jsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useNotificationsPanel.js
+│   │   │   │   └── utils
+│   │   │   │       └── notifications.utils.js
+│   │   │   └── settings
 │   │   │       ├── components
-│   │   │       │   └── IssueWeightEvaluationDialogs.jsx
-│   │   │       ├── dialogs
-│   │   │       │   ├── bwm
-│   │   │       │   │   └── BwmWeightsEvaluationDialog.jsx
-│   │   │       │   └── manual
-│   │   │       │       └── ManualWeightsEvaluationDialog.jsx
-│   │   │       ├── registry
-│   │   │       │   └── weightEvaluation.registry.js
-│   │   │       ├── services
-│   │   │       │   └── weightEvaluation.service.js
-│   │   │       ├── styles
-│   │   │       │   └── weightEvaluationDialog.styles.js
+│   │   │       │   ├── AccountSettings.jsx
+│   │   │       │   ├── fields
+│   │   │       │   │   ├── ConfirmDeleteAccountDialog.jsx
+│   │   │       │   │   ├── ConfirmPasswordDialog.jsx
+│   │   │       │   │   ├── DeleteAccountButton.jsx
+│   │   │       │   │   ├── EmailField.jsx
+│   │   │       │   │   ├── NameField.jsx
+│   │   │       │   │   ├── PasswordField.jsx
+│   │   │       │   │   └── UniversityField.jsx
+│   │   │       │   └── SettingsHeader.jsx
+│   │   │       ├── hooks
+│   │   │       │   └── useAccountSettings.js
 │   │   │       └── utils
-│   │   │           └── leafCriteria.utils.js
+│   │   │           └── validationUtils.js
 │   │   ├── hooks
 │   │   ├── main.jsx
 │   │   ├── pages
@@ -454,13 +514,7 @@
 │   │   │       │   └── ActiveIssuesPage.jsx
 │   │   │       ├── admin
 │   │   │       │   ├── AdminPage.jsx
-│   │   │       │   ├── AdminRoute.jsx
-│   │   │       │   └── sections
-│   │   │       │       ├── ExpertsSection.jsx
-│   │   │       │       ├── IssuesSection.jsx
-│   │   │       │       ├── LogsSection.jsx
-│   │   │       │       ├── ModelsSection.jsx
-│   │   │       │       └── ReportsSection.jsx
+│   │   │       │   └── AdminRoute.jsx
 │   │   │       ├── createIssue
 │   │   │       │   └── CreateIssuePage.jsx
 │   │   │       ├── finishedIssues
@@ -493,4 +547,4 @@
         ├── by_language.csv
         └── totals.csv
 
-137 directories, 357 files
+160 directories, 388 files

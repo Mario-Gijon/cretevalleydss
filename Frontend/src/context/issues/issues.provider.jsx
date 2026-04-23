@@ -167,7 +167,7 @@ export const IssuesDataProvider = ({ children }) => {
     };
 
     initializeIssuesData();
-                                                         
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -177,7 +177,7 @@ export const IssuesDataProvider = ({ children }) => {
     }
 
     fetchActiveIssues();
-                                                         
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueCreated]);
 

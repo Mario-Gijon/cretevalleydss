@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Backdrop,
@@ -24,9 +23,8 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useMediaQuery,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -38,228 +36,48 @@ import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-
-import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
-
-import {
-  getAllUsers,
-  createUser,
-  updateUser,
-  deleteUser,
-} from "../../../../services/admin.service";
 import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
 import {
-  emptyForm,
   formatDateTime,
-  normalize,
   pillSx,
   sectionPanelSx,
 } from "./adminExperts.utils";
 import AdminRolePill from "./components/AdminRolePill";
 import AdminStatusPill from "./components/AdminStatusPill";
+import { useAdminExpertsSection } from "./hooks/useAdminExpertsSection";
 
 export default function AdminExpertsSection() {
-  const theme = useTheme();
-  const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
-  const { showSnackbarAlert } = useSnackbarAlertContext();
-
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const [experts, setExperts] = useState([]);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState("create");
-  const [form, setForm] = useState(emptyForm);
-
-  const [confirmDelete, setConfirmDelete] = useState({
-    open: false,
-    expert: null,
-  });
-
-  const fetchExpertsData = async ({ keepLoading = false } = {}) => {
-    try {
-      if (keepLoading) setRefreshing(true);
-      else setLoading(true);
-
-      const res = await getAllUsers({ includeAdmins: true });
-
-      if (!res?.success) {
-        showSnackbarAlert(res?.message || "Error fetching users", "error");
-        setExperts([]);
-        return;
-      }
-
-      setExperts(Array.isArray(res?.data?.users) ? res.data.users : []);
-    } catch (err) {
-      console.error(err);
-      showSnackbarAlert("Unexpected error fetching users", "error");
-      setExperts([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchExpertsData();
-                                                           
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const filteredExperts = useMemo(() => {
-    const q = normalize(search);
-
-    return (experts || []).filter((expert) => {
-      const matchesSearch =
-        !q ||
-        normalize(expert?.name).includes(q) ||
-        normalize(expert?.email).includes(q) ||
-        normalize(expert?.university).includes(q) ||
-        normalize(expert?.role).includes(q) ||
-        normalize(expert?.accountCreation).includes(q);
-
-      const matchesStatus =
-        statusFilter === "all"
-          ? true
-          : statusFilter === "confirmed"
-            ? Boolean(expert?.accountConfirm)
-            : !expert?.accountConfirm;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [experts, search, statusFilter]);
-
-  const openCreate = () => {
-    setFormMode("create");
-    setForm({ ...emptyForm, accountConfirm: true, role: "user" });
-    setFormOpen(true);
-  };
-
-  const openEdit = (expert) => {
-    setFormMode("edit");
-    setForm({
-      id: expert?.id || "",
-      name: expert?.name || "",
-      university: expert?.university || "",
-      email: expert?.email || "",
-      password: "",
-      accountConfirm: Boolean(expert?.accountConfirm),
-      role: expert?.role || "user",
-    });
-    setFormOpen(true);
-  };
-
-  const closeForm = () => {
-    setFormOpen(false);
-    setForm(emptyForm);
-  };
-
-  const onChangeForm = (field) => (e) => {
-    const value = field === "accountConfirm" ? e.target.checked : e.target.value;
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!form.name?.trim()) {
-      showSnackbarAlert("Name is required", "error");
-      return;
-    }
-
-    if (!form.university?.trim()) {
-      showSnackbarAlert("University is required", "error");
-      return;
-    }
-
-    if (!form.email?.trim()) {
-      showSnackbarAlert("Email is required", "error");
-      return;
-    }
-
-    if (formMode === "create" && !form.password?.trim()) {
-      showSnackbarAlert("Password is required", "error");
-      return;
-    }
-
-    setBusy(true);
-
-    try {
-      let res;
-
-      if (formMode === "create") {
-        res = await createUser({
-          name: form.name,
-          university: form.university,
-          email: form.email,
-          password: form.password,
-          accountConfirm: form.accountConfirm,
-          role: form.role,
-        });
-      } else {
-        res = await updateUser({
-          id: form.id,
-          name: form.name,
-          university: form.university,
-          email: form.email,
-          password: form.password,
-          accountConfirm: form.accountConfirm,
-          role: form.role,
-        });
-      }
-
-      if (!res?.success) {
-        showSnackbarAlert(res?.message || "Error saving user", "error");
-        return;
-      }
-
-      showSnackbarAlert(res?.message || "User saved successfully", "success");
-      closeForm();
-      await fetchExpertsData({ keepLoading: true });
-    } catch (err) {
-      console.error(err);
-      showSnackbarAlert("Unexpected error saving user", "error");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const askDelete = (expert) => {
-    setConfirmDelete({
-      open: true,
-      expert,
-    });
-  };
-
-  const handleDelete = async () => {
-    if (!confirmDelete?.expert?.id) return;
-
-    setBusy(true);
-
-    try {
-      const res = await deleteUser(confirmDelete.expert.id);
-
-      if (!res?.success) {
-        showSnackbarAlert(res?.message || "Error deleting user", "error");
-        return;
-      }
-
-      showSnackbarAlert(res?.message || "User deleted successfully", "success");
-      setConfirmDelete({ open: false, expert: null });
-      await fetchExpertsData({ keepLoading: true });
-    } catch (err) {
-      console.error(err);
-      showSnackbarAlert("Unexpected error deleting user", "error");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const {
+    theme,
+    isMdDown,
+    loading,
+    refreshing,
+    busy,
+    search,
+    statusFilter,
+    formOpen,
+    formMode,
+    form,
+    confirmDelete,
+    fetchExpertsData,
+    filteredExperts,
+    openCreate,
+    openEdit,
+    closeForm,
+    onChangeForm,
+    handleSave,
+    askDelete,
+    handleDelete,
+    setSearch,
+    setStatusFilter,
+    setForm,
+    setConfirmDelete,
+  } = useAdminExpertsSection();
 
   if (loading) {
     return <CircularLoading color="secondary" size={44} height="28vh" />;
@@ -812,54 +630,34 @@ export default function AdminExpertsSection() {
         </Box>
       </GlassDialog>
 
-      <GlassDialog
+      <ConfirmationDialog
         open={confirmDelete.open}
         onClose={() => setConfirmDelete({ open: false, expert: null })}
+        tone="error"
+        title="Delete user"
+        subtitle="This action can affect active and finished issues."
+        actions={[
+          {
+            id: "cancel-delete-admin-user",
+            label: "Cancel",
+            color: "secondary",
+            variant: "outlined",
+            icon: <CancelOutlinedIcon />,
+            onClick: () => setConfirmDelete({ open: false, expert: null }),
+          },
+          {
+            id: "confirm-delete-admin-user",
+            label: "Delete user",
+            color: "error",
+            variant: "outlined",
+            icon: <DeleteOutlineIcon />,
+            onClick: handleDelete,
+          },
+        ]}
         maxWidth="xs"
         fullWidth
       >
-        <Box
-          sx={{
-            position: "relative",
-            overflow: "hidden",
-            ...getActiveIssuesAuroraBg(theme, 0.14),
-            "&:after": {
-              content: '""',
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background: `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.10)}, transparent 55%)`,
-              opacity: 0.18,
-            },
-          }}
-        >
-          <Box sx={{ p: 2.1, position: "relative", zIndex: 1 }}>
-            <Stack direction="row" spacing={1.1} alignItems="center">
-              <Avatar
-                sx={{
-                  width: 42,
-                  height: 42,
-                  bgcolor: alpha(theme.palette.error.main, 0.12),
-                  color: "error.main",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                }}
-              >
-                <WarningAmberRoundedIcon />
-              </Avatar>
-
-              <Stack spacing={0.1}>
-                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
-                  Delete user
-                </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                  This action can affect active and finished issues.
-                </Typography>
-              </Stack>
-            </Stack>
-          </Box>
-        </Box>
-
-        <Box sx={{ p: 2.1 }}>
+        <Box sx={{ pt: 0.5 }}>
           <Stack spacing={1.2}>
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
               You are about to delete:
@@ -915,34 +713,8 @@ export default function AdminExpertsSection() {
               The user account will be removed in cascade.
             </Typography>
           </Stack>
-
-          <Divider sx={{ opacity: 0.12, my: 2 }} />
-
-          <Stack
-            direction={{ xs: "column-reverse", sm: "row" }}
-            spacing={1}
-            justifyContent="flex-end"
-          >
-            <Button
-              onClick={() => setConfirmDelete({ open: false, expert: null })}
-              color="info"
-              variant="outlined"
-              startIcon={<CancelOutlinedIcon />}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              onClick={handleDelete}
-              color="error"
-              variant="outlined"
-              startIcon={<DeleteOutlineIcon />}
-            >
-              Delete user
-            </Button>
-          </Stack>
         </Box>
-      </GlassDialog>
+      </ConfirmationDialog>
     </>
   );
 }

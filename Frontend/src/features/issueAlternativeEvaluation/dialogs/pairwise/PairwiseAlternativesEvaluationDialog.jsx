@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Stack,
   Button,
@@ -37,6 +37,76 @@ import {
   saveAlternativeEvaluationDraft,
   submitAlternativeEvaluations,
 } from "../../services/alternativeEvaluation.service.js";
+
+const getFirstDomainFromMatrix = (matrixRows = []) => {
+  for (const row of matrixRows) {
+    for (const [key, cell] of Object.entries(row || {})) {
+      if (key !== "id" && cell?.domain) {
+        return cell.domain;
+      }
+    }
+  }
+
+  return null;
+};
+
+const buildEmptyPairwiseCell = (domain) => ({
+  value: "",
+  domain: domain || null,
+});
+
+const buildDiagonalPairwiseCell = (domain) => {
+  if (!domain) {
+    return {
+      value: "",
+      domain: null,
+      isNeutralFallback: true,
+    };
+  }
+
+  if (domain.type === "numeric") {
+    const min = Number(domain.range?.min ?? 0);
+    const max = Number(domain.range?.max ?? 1);
+    const step = Number(domain.range?.step);
+    const midpoint = (min + max) / 2;
+    const normalizedStep = Number.isFinite(step) && step > 0 ? step : null;
+
+    const neutralValue = normalizedStep
+      ? Math.round(
+        Math.min(
+          max,
+          Math.max(
+            min,
+            min + Math.round((midpoint - min) / normalizedStep) * normalizedStep
+          )
+        ) * 100
+      ) / 100
+      : Math.round(midpoint * 100) / 100;
+
+    return {
+      value: neutralValue,
+      domain,
+      isNeutralFallback: false,
+    };
+  }
+
+  if (domain.type === "linguistic") {
+    const labels = domain.labels || [];
+    const middleLabel = labels[Math.floor(labels.length / 2)]?.label || "";
+
+    return {
+      value: middleLabel,
+      domain,
+      isNeutralFallback: false,
+    };
+  }
+
+  return {
+    value: "",
+    domain,
+    isNeutralFallback: true,
+  };
+};
 
 /**
  * Diálogo de evaluación por pares entre alternativas.
@@ -89,77 +159,7 @@ const PairwiseAlternativesEvaluationDialog = ({
 
   const criterionId = currentCriterion?.name;
 
-  const getFirstDomainFromMatrix = (matrixRows = []) => {
-    for (const row of matrixRows) {
-      for (const [key, cell] of Object.entries(row || {})) {
-        if (key !== "id" && cell?.domain) {
-          return cell.domain;
-        }
-      }
-    }
-
-    return null;
-  };
-
-  const buildEmptyPairwiseCell = (domain) => ({
-    value: "",
-    domain: domain || null,
-  });
-
-  const buildDiagonalPairwiseCell = (domain) => {
-    if (!domain) {
-      return {
-        value: "",
-        domain: null,
-        isNeutralFallback: true,
-      };
-    }
-
-    if (domain.type === "numeric") {
-      const min = Number(domain.range?.min ?? 0);
-      const max = Number(domain.range?.max ?? 1);
-      const step = Number(domain.range?.step);
-      const midpoint = (min + max) / 2;
-      const normalizedStep = Number.isFinite(step) && step > 0 ? step : null;
-
-      const neutralValue = normalizedStep
-        ? Math.round(
-          Math.min(
-            max,
-            Math.max(
-              min,
-              min + Math.round((midpoint - min) / normalizedStep) * normalizedStep
-            )
-          ) * 100
-        ) / 100
-        : Math.round(midpoint * 100) / 100;
-
-      return {
-        value: neutralValue,
-        domain,
-        isNeutralFallback: false,
-      };
-    }
-
-    if (domain.type === "linguistic") {
-      const labels = domain.labels || [];
-      const middleLabel = labels[Math.floor(labels.length / 2)]?.label || "";
-
-      return {
-        value: middleLabel,
-        domain,
-        isNeutralFallback: false,
-      };
-    }
-
-    return {
-      value: "",
-      domain,
-      isNeutralFallback: true,
-    };
-  };
-
-  const mergeEvaluations = (fetchedEvaluations = {}) => {
+  const mergeEvaluations = useCallback((fetchedEvaluations = {}) => {
     const merged = {};
     const alternatives = selectedIssue?.alternatives || [];
 
@@ -199,7 +199,7 @@ const PairwiseAlternativesEvaluationDialog = ({
     });
 
     return merged;
-  };
+  }, [leafCriteria, selectedIssue?.alternatives]);
 
   useEffect(() => {
     if (!isRatingAlternatives || !selectedIssue?.id) {
@@ -237,8 +237,8 @@ const PairwiseAlternativesEvaluationDialog = ({
     };
 
     fetchCurrentEvaluations();
-                                                           
-  }, [isRatingAlternatives, selectedIssue]);
+
+  }, [isRatingAlternatives, selectedIssue?.id, mergeEvaluations]);
 
   const handleChangeCriterion = (index) => {
     setCurrentCriterionIndex(index);

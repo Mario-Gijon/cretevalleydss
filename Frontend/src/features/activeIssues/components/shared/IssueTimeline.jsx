@@ -21,7 +21,6 @@ export const IssueTimeline = ({ creationDate, closureDate }) => {
 
   return (
     <Box sx={{ width: "100%", mt: 1 }}>
-      {            }
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
         <Typography variant="caption" color="text.secondary">
           {creation.format("DD MMM")}
@@ -33,7 +32,6 @@ export const IssueTimeline = ({ creationDate, closureDate }) => {
         )}
       </Box>
 
-      {           }
       {closure ? (
         <LinearProgress
           variant="determinate"
@@ -54,7 +52,6 @@ export const IssueTimeline = ({ creationDate, closureDate }) => {
         </Typography>
       )}
 
-      {           }
       {closure && (
         <Box sx={{ textAlign: "center", mt: 0.5 }}>
           <Typography variant="caption" color="text.secondary">

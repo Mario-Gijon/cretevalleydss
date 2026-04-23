@@ -3,7 +3,7 @@ import { Box, Container, Divider, Stack, SvgIcon, Typography } from "@mui/materi
 import { useColorScheme } from "@mui/material/styles";
 
 import { GoUpButton } from "../../components/GoUpButton/GoUpButton";
-import { ResponsiveNavbar } from "../../components/ResponsiveNabvar/ResponsiveNavbar";
+import { ResponsiveNavbar } from "../../components/ResponsiveNavbar/ResponsiveNavbar";
 import { IssuesDataProvider } from "../../context/issues/issues.provider";
 
 import UELogoDarkSVG from "../../assets/eu_dark.svg?react";

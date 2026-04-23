@@ -7,7 +7,7 @@ import { handleNumberInput } from "../../../utils/handleTwoDecimals";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 
 export const ModelParameters = ({ selectedModel, allData, paramValues, setParamValues, defaultModelParams, setDefaultModelParams, handleDefaultChange, weightingMode, setWeightingMode, bwmData, setBwmData }) => {
-  
+
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
     return getLeafCriteria(allData.criteria);

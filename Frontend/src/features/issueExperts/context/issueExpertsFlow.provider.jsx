@@ -33,11 +33,11 @@ const IssueExpertsFlowProvider = ({
     refresh,
     setBusy,
   });
+  const { resetExpertsEdition } = flow;
 
   useEffect(() => {
-    flow.resetExpertsEdition();
-                                                         
-  }, [selectedIssue?.id]);
+    resetExpertsEdition();
+  }, [selectedIssue?.id, resetExpertsEdition]);
 
   const value = useMemo(() => {
     return {

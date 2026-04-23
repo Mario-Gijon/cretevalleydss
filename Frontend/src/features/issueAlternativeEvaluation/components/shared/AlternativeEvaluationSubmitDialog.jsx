@@ -1,15 +1,7 @@
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
-  Button,
-} from "@mui/material";
-
-import CloseIcon from "@mui/icons-material/Close";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 
 /**
  * Confirmación para enviar evaluaciones.
@@ -26,35 +18,34 @@ const AlternativeEvaluationSubmitDialog = ({
   onSubmit,
 }) => {
   return (
-    <GlassDialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontWeight: 950 }}>Submit evaluations?</DialogTitle>
-
-      <DialogContent>
-        <DialogContentText sx={{ color: "text.secondary" }}>
-          You won&apos;t be able to modify them.
-        </DialogContentText>
-      </DialogContent>
-
-      <DialogActions sx={{ gap: 1 }}>
-        <Button
-          variant="outlined"
-          color="success"
-          onClick={onSubmit}
-          startIcon={<CheckCircleOutlineIcon />}
-        >
-          Submit
-        </Button>
-
-        <Button
-          variant="outlined"
-          color="warning"
-          onClick={onClose}
-          startIcon={<CloseIcon />}
-        >
-          Cancel
-        </Button>
-      </DialogActions>
-    </GlassDialog>
+    <ConfirmationDialog
+      open={open}
+      onClose={onClose}
+      tone="success"
+      title="Submit evaluations?"
+      subtitle="You won't be able to modify them."
+      actions={[
+        {
+          id: "cancel-submit-alternative-evaluation",
+          label: "Cancel",
+          color: "info",
+          variant: "text",
+          icon: <CancelOutlinedIcon />,
+          onClick: onClose,
+        },
+        {
+          id: "submit-alternative-evaluation",
+          label: "Submit",
+          color: "success",
+          variant: "text",
+          icon: <CheckCircleOutlineIcon />,
+          autoFocus: true,
+          onClick: onSubmit,
+        },
+      ]}
+      maxWidth="xs"
+      fullWidth
+    />
   );
 };
 

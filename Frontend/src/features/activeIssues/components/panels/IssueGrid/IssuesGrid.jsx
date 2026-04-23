@@ -25,4 +25,4 @@ const IssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
   );
 };
 
-export default IssuesGrid; 
+export default IssuesGrid;

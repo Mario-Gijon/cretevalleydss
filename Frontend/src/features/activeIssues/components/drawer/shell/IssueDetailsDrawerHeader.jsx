@@ -10,7 +10,7 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import { stageLabel } from "../../../utils/activeIssues.meta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 import ActiveIssuesTinyStat from "../../shared/ActiveIssuesTinyStat";
-import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.parts";
+import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.styles";
 
 /**
  * Cabecera principal del drawer de detalles del issue.

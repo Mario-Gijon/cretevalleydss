@@ -1,6 +1,7 @@
-import { Stack, Typography, Box } from "@mui/material";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
 /**
  * Diálogo de confirmación para eliminar un issue finalizado.
@@ -19,53 +20,31 @@ const FinishedIssueRemoveDialog = ({
   onConfirm,
 }) => {
   return (
-    <GlassDialog
+    <ConfirmationDialog
       open={open}
       onClose={onClose}
-      PaperProps={{ elevation: 0 }}
+      tone="error"
+      title="Remove issue"
+      subtitle="Are you sure you want to remove this issue? Other users will still be able to see it."
+      actions={[
+        {
+          id: "cancel-remove-finished-issue",
+          label: "Cancel",
+          color: "secondary",
+          icon: <CancelOutlinedIcon />,
+          onClick: onClose,
+        },
+        {
+          id: "confirm-remove-finished-issue",
+          label: removeLoading ? "Removing..." : "Remove",
+          color: "error",
+          icon: <DeleteOutlineIcon />,
+          loading: removeLoading,
+          onClick: onConfirm,
+        },
+      ]}
       maxWidth="xs"
-    >
-      <Box sx={{ p: 2.25 }}>
-        <Typography variant="h6" sx={{ fontWeight: 980 }}>
-          Are you sure you want to remove this issue?
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
-          Other users will still be able to see it.
-        </Typography>
-
-        <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "flex-end" }}>
-          <Box
-            component="button"
-            style={{
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "transparent",
-              borderRadius: 12,
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-            onClick={onClose}
-          >
-            Cancel
-          </Box>
-
-          <Box
-            component="button"
-            style={{
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "transparent",
-              borderRadius: 12,
-              padding: "8px 12px",
-              cursor: "pointer",
-              opacity: removeLoading ? 0.7 : 1,
-            }}
-            onClick={onConfirm}
-            disabled={removeLoading}
-          >
-            {removeLoading ? "Removing..." : "Remove"}
-          </Box>
-        </Stack>
-      </Box>
-    </GlassDialog>
+    />
   );
 };
 

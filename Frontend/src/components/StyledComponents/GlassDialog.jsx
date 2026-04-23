@@ -7,14 +7,14 @@ const GlassDialogPaper = styled(Paper)(() => ({
   boxShadow: "0 8px 24px rgba(40, 86, 122, 0.12)",
   backdropFilter: "blur(25px)",
   WebkitBackdropFilter: "blur(25px)",
-                                                  
+
 }));
 
 export const GlassDialog = (props) => {
   return (
     <Dialog
       {...props}
-      PaperComponent={GlassDialogPaper}                                  
+      PaperComponent={GlassDialogPaper}
       sx={{
         backdropFilter: "blur(5px)",
         WebkitBackdropFilter: "blur(5px)",

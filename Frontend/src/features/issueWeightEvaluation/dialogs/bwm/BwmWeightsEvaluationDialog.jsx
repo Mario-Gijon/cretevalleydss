@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Stack,
-  DialogTitle,
   DialogContent,
   DialogActions,
   Divider,
@@ -11,7 +10,6 @@ import {
   MenuItem,
   Button,
   Backdrop,
-  DialogContentText,
   Avatar,
   Box,
 } from "@mui/material";
@@ -25,8 +23,10 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -552,74 +552,74 @@ const BwmWeightsEvaluationDialog = ({
         )}
       </GlassDialog>
 
-      <GlassDialog
+      <ConfirmationDialog
         open={openSaveDialog}
         onClose={() => setOpenSaveDialog(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 950 }}>Save your progress?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: "text.secondary" }}>
-            You have unsaved changes. You can save them as a draft or exit without
-            saving.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1 }}>
-          <Button
-            variant="outlined"
-            color="info"
-            onClick={handleSaveWeights}
-            startIcon={<SaveOutlinedIcon />}
-          >
-            Save draft
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => {
+        tone="warning"
+        title="Save your progress?"
+        subtitle="You have unsaved changes. You can save them as a draft or exit without saving."
+        actions={[
+          {
+            id: "cancel-save-bwm-weights",
+            label: "Cancel",
+            color: "secondary",
+            variant: "outlined",
+            icon: <CancelOutlinedIcon />,
+            onClick: () => setOpenSaveDialog(false),
+          },
+          {
+            id: "save-bwm-weights-draft",
+            label: "Save draft",
+            color: "info",
+            variant: "outlined",
+            icon: <SaveOutlinedIcon />,
+            onClick: handleSaveWeights,
+          },
+          {
+            id: "exit-bwm-weights",
+            label: "Exit",
+            color: "error",
+            variant: "outlined",
+            icon: <ExitToAppOutlinedIcon />,
+            onClick: () => {
               setOpenSaveDialog(false);
               setIsRatingWeights(false);
               handleClearAllWeights();
-            }}
-            startIcon={<ExitToAppOutlinedIcon />}
-          >
-            Exit
-          </Button>
-        </DialogActions>
-      </GlassDialog>
-
-      <GlassDialog
-        open={openSendDialog}
-        onClose={() => setOpenSendDialog(false)}
+            },
+          },
+        ]}
         maxWidth="xs"
         fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 950 }}>Submit your weights?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: "text.secondary" }}>
-            You won&apos;t be able to modify them later.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1 }}>
-          <Button
-            variant="outlined"
-            color="success"
-            onClick={handleSendWeights}
-            startIcon={<CheckCircleOutlineIcon />}
-          >
-            Submit
-          </Button>
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={() => setOpenSendDialog(false)}
-            startIcon={<CloseIcon />}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </GlassDialog>
+      />
+
+      <ConfirmationDialog
+        open={openSendDialog}
+        onClose={() => setOpenSendDialog(false)}
+        tone="warning"
+        title="Submit your weights?"
+        subtitle="You won't be able to modify them later."
+        actions={[
+          {
+            id: "cancel-submit-bwm-weights",
+            label: "Cancel",
+            color: "secondary",
+            variant: "outlined",
+            icon: <CancelOutlinedIcon />,
+            onClick: () => setOpenSendDialog(false),
+          },
+          {
+            id: "submit-bwm-weights",
+            label: "Submit",
+            color: "success",
+            variant: "outlined",
+            icon: <CheckCircleOutlineIcon />,
+            autoFocus: true,
+            onClick: handleSendWeights,
+          },
+        ]}
+        maxWidth="xs"
+        fullWidth
+      />
     </>
   );
 };

@@ -88,6 +88,7 @@ const ActiveIssuesOverlays = ({
         title={confirm.title}
         description={confirm.description}
         confirmText={confirm.confirmText}
+        tone={confirm.tone}
         onClose={closeConfirm}
         onConfirm={runConfirm}
       />

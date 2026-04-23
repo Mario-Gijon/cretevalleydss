@@ -85,7 +85,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
   const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
   const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
 
-                                                 
+
   const domainOptions = useMemo(() => {
     const opts = [];
 
@@ -162,12 +162,12 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
       currentValue = String(currentValue);
     }
 
-                                                      
+
     if (isSingle && currentValue === "mixed" && values.length === 1) {
       currentValue = values[0];
     }
 
-                                        
+
     const fallback = supportsNumeric
       ? String(
         globalDomains.find(
@@ -224,7 +224,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     );
   };
 
-                                               
+
   if (supportsLinguistic && !supportsNumeric && domainOptions.length === 0) {
     return (
       <Box sx={{ py: 1.5 }}>
@@ -240,7 +240,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
   return (
     <Stack spacing={1.5} sx={{ width: "100%", minHeight: 0 }}>
-      {                                                       }
       <Stack spacing={0.35}>
         <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
           Global settings
@@ -250,7 +249,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
         </Typography>
       </Stack>
 
-      {            }
       <Stack sx={rowSx}>
         <Typography variant="body2" sx={labelSx}>
           Global
@@ -265,13 +263,11 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
         )}
       </Stack>
 
-      {                                                      }
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={{ xs: 1.2, md: 2.4 }}
         alignItems={{ xs: "stretch", md: "flex-start" }}
       >
-        {                  }
         <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
             Alternatives
@@ -292,7 +288,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                 )}
               </Stack>
 
-              {                                                                                                        }
             </Box>
           ))}
         </Stack>
@@ -303,7 +298,6 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
           sx={{ display: { xs: "none", md: "block" }, borderColor: alpha(theme.palette.common.white, 0.08) }}
         />
 
-        {              }
         <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
             Leaf criteria
@@ -324,13 +318,11 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
                 )}
               </Stack>
 
-              {                                                                                                        }
             </Box>
           ))}
         </Stack>
       </Stack>
 
-      {                                                       }
       <Divider sx={{ pt: 2 }} />
 
       <Stack spacing={0.35} sx={{ pt: 2 }}>

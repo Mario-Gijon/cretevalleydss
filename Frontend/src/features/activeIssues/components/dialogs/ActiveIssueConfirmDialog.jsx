@@ -1,6 +1,24 @@
-import { Box, Stack, Typography } from "@mui/material";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
+
+const TONE_CONFIRM_COLORS = {
+  warning: "warning",
+  success: "success",
+  info: "info",
+  error: "error",
+};
+
+const TONE_CONFIRM_ICONS = {
+  warning: <WarningAmberOutlinedIcon />,
+  success: <CheckCircleOutlineIcon />,
+  info: <InfoOutlinedIcon />,
+  error: <DeleteOutlineIcon />,
+};
 
 /**
  * Diálogo de confirmación reutilizable para acciones
@@ -11,6 +29,7 @@ import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog
  * @param {string} props.title Título del diálogo.
  * @param {string} props.description Descripción mostrada al usuario.
  * @param {string} props.confirmText Texto del botón de confirmación.
+ * @param {string} props.tone Tono visual del diálogo.
  * @param {Function} props.onClose Acción al cerrar el diálogo.
  * @param {Function} props.onConfirm Acción al confirmar.
  * @returns {JSX.Element}
@@ -20,58 +39,38 @@ const ActiveIssueConfirmDialog = ({
   title,
   description,
   confirmText = "Confirm",
+  tone = "warning",
   onClose,
   onConfirm,
 }) => {
+  const confirmTone = TONE_CONFIRM_COLORS[tone] || "info";
+
   return (
-    <GlassDialog
+    <ConfirmationDialog
       open={open}
       onClose={onClose}
-      PaperProps={{ elevation: 0 }}
+      tone={tone}
+      title={title}
+      subtitle={description}
+      actions={[
+        {
+          id: "cancel-active-issue-action",
+          label: "Cancel",
+          color: "secondary",
+          icon: <CancelOutlinedIcon />,
+          onClick: onClose,
+        },
+        {
+          id: "confirm-active-issue-action",
+          label: confirmText,
+          color: confirmTone,
+          icon: TONE_CONFIRM_ICONS[tone] || <InfoOutlinedIcon />,
+          autoFocus: true,
+          onClick: onConfirm,
+        },
+      ]}
       maxWidth="xs"
-    >
-      <Box sx={{ p: 2.25 }}>
-        <Typography variant="h6" sx={{ fontWeight: 980 }}>
-          {title}
-        </Typography>
-
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
-          {description}
-        </Typography>
-
-        <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "flex-end" }}>
-          <Box
-            component="button"
-            type="button"
-            style={{
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "transparent",
-              borderRadius: 12,
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-            onClick={onClose}
-          >
-            Cancel
-          </Box>
-
-          <Box
-            component="button"
-            type="button"
-            style={{
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "transparent",
-              borderRadius: 12,
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </Box>
-        </Stack>
-      </Box>
-    </GlassDialog>
+    />
   );
 };
 
