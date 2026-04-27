@@ -1,8 +1,8 @@
+"""Funciones de apoyo para el modelo de consenso Herrera-Viedma CRP."""
 
-import numpy as np # type: ignore
-import matplotlib.pyplot as plt # type: ignore
-from sklearn.decomposition import PCA # type: ignore
-from sklearn.manifold import MDS # type: ignore
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 
 
 # Calcula el cuantificador lingüístico difuso.
@@ -306,4 +306,3 @@ def get_plots_graphics(preferences, method):
       "expert_points": expert_points,
       "collective_point": collective_point
   }
-

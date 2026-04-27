@@ -1,37 +1,39 @@
+"""Implementación del modelo TOPSIS para ejecución desde la API."""
+
+from typing import Any
+
 import numpy as np
 from pyDecision.algorithm import topsis_method
-from sklearn.manifold import MDS  # ya lo usas en el otro modelo
-from sklearn.decomposition import PCA  # por si quieres cambiar método
-from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
+
 from utils.clean_matrix import clean_matrix
+from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
 
-def run_topsis(matrices, weights, criterion_type):
-    # 1) Matrices de expertos a numpy
+
+def run_topsis(
+    matrices: dict[str, list[list[float]]],
+    weights: list[float],
+    criterion_type: list[str],
+) -> dict[str, Any]:
+    """Ejecuta TOPSIS sobre la matriz colectiva de expertos."""
+
     matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
-
-    # 2) Matriz colectiva (media)
     collective_matrix = np.mean(matrices_np, axis=0)
-
-    # 3) Limpiar (columnas constantes)
     matrix_clean, weights_clean, criteria_clean = clean_matrix(
-        collective_matrix, weights, criterion_type
-    )
-
-    # 4) TOPSIS sobre matriz limpia
-    collective_scores = topsis_method(matrix_clean, weights_clean, criteria_clean).tolist()
-    collective_ranking = np.argsort(collective_scores)[::-1].tolist()
-
-    # 5) Puntos para el scatter (MDS)
-    plots_graphic = get_plots_graphics_from_matrices(
-        matrices_np,
         collective_matrix,
-        method='MDS'   
+        weights,
+        criterion_type,
     )
+
+    collective_scores = topsis_method(matrix_clean, weights_clean, criteria_clean).tolist()
 
     return {
         "collective_matrix": collective_matrix.tolist(),
         "matrix_used": matrix_clean.tolist(),
         "collective_scores": collective_scores,
-        "collective_ranking": collective_ranking,
-        "plots_graphic": plots_graphic
+        "collective_ranking": np.argsort(collective_scores)[::-1].tolist(),
+        "plots_graphic": get_plots_graphics_from_matrices(
+            matrices_np,
+            collective_matrix,
+            method="MDS",
+        ),
     }

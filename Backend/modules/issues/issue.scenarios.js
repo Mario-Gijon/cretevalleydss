@@ -21,7 +21,6 @@ import {
 } from "../../modules/issues/issue.ordering.js";
 import { normalizeParams } from "../../services/modelApi/modelParamNormalizer.js";
 import {
-  AppError,
   createBadRequestError,
   createForbiddenError,
   createNotFoundError,
@@ -29,6 +28,10 @@ import {
 import { sameId, toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
+import {
+  createModelApiRequestError,
+  unwrapModelApiResponse,
+} from "../../services/modelApi/modelResponse.js";
 
                      
 import axios from "axios";
@@ -923,25 +926,10 @@ const executeScenarioModelOrThrow = async ({
       );
     }
   } catch (error) {
-    const statusCode = error?.response?.status || 500;
-    const axiosMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      error?.message ||
-      "Error creating scenario";
-
-    throw new AppError(axiosMessage, {
-      statusCode,
-      code: statusCode >= 500 ? "INTERNAL_ERROR" : "BAD_REQUEST",
-      cause: error,
-    });
+    throw createModelApiRequestError(error, "Error creating scenario");
   }
 
-  const { success, message, results } = response.data || {};
-
-  if (!success) {
-    throw createBadRequestError(message || "Model execution failed");
-  }
+  const results = unwrapModelApiResponse(response);
 
   return {
     modelKey,

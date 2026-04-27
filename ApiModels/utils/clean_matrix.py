@@ -1,17 +1,31 @@
+"""Utilidades para filtrar columnas no informativas en matrices de decisión."""
+
+from typing import Any
+
 import numpy as np
 
-def clean_matrix(matrix, weights, criterion_type):
-  """
-  Elimina columnas constantes (todo 0, todo 1, o todo igual).
-  Ajusta pesos y tipo de criterio en consecuencia.
-  """
-  matrix = np.array(matrix, dtype=float)
-  weights = np.array(weights, dtype=float)
-  criterion_type = np.array(criterion_type)
 
-  # Seleccionamos columnas que tengan variabilidad (ptp = max - min)
-  keep_cols = (np.ptp(matrix, axis=0) != 0)
-  if not np.any(keep_cols):
-      keep_cols[:] = True
+def clean_matrix(
+    matrix: Any,
+    weights: Any,
+    criterion_type: Any,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Elimina columnas constantes y ajusta pesos/tipos en el mismo índice.
 
-  return matrix[:, keep_cols], weights[keep_cols], criterion_type[keep_cols]
+    Si todas las columnas son constantes, conserva todas para mantener
+    compatibilidad con el comportamiento histórico de los modelos.
+    """
+
+    matrix_np = np.array(matrix, dtype=float)
+    weights_np = np.array(weights, dtype=float)
+    criterion_type_np = np.array(criterion_type)
+
+    keep_cols = np.ptp(matrix_np, axis=0) != 0
+    if not np.any(keep_cols):
+        keep_cols[:] = True
+
+    return (
+        matrix_np[:, keep_cols],
+        weights_np[keep_cols],
+        criterion_type_np[keep_cols],
+    )

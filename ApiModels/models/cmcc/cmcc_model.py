@@ -1,17 +1,20 @@
+"""Implementación del modelo CMCC (Consensus with Minimum Cost of Changes)."""
+
+from typing import Any
 
 import pulp as pl
 
 def run_cmcc(
-    o,
-    c,
-    omega,
-    w,
-    eps,
-    mu0,
+    o: list[float],
+    c: list[float],
+    omega: list[float],
+    w: list[float],
+    eps: float,
+    mu0: float,
     lower_bound: float = 0.0,
     upper_bound: float = 1.0,
     msg: bool = False,
-):
+) -> dict[str, Any]:
     """
     Ejecuta el modelo CMCC sobre un vector de opiniones de expertos.
 
@@ -28,7 +31,7 @@ def run_cmcc(
     Devuelve:
       dict con:
         - success (bool)
-        - msg (str)
+        - message (str)
         - o_bar (list[float])         -> opiniones ajustadas por experto
         - g (float)                   -> opinión colectiva
         - consensus_level (float)     -> kappa
@@ -40,7 +43,7 @@ def run_cmcc(
         if not (len(c) == m and len(omega) == m and len(w) == m):
             return {
                 "success": False,
-                "msg": "Length mismatch among o, c, omega, w",
+                "message": "Length mismatch among o, c, omega, w",
             }
 
         # 1) Definir problema LP
@@ -93,7 +96,7 @@ def run_cmcc(
         if status != "Optimal":
             return {
                 "success": False,
-                "msg": f"Solver ended with status {status}",
+                "message": f"Solver ended with status {status}",
                 "o_bar": o_bar_vals,
                 "g": g_val,
                 "consensus_level": kappa_val,
@@ -102,15 +105,15 @@ def run_cmcc(
 
         return {
             "success": True,
-            "msg": "CMCC solved optimally",
+            "message": "CMCC solved optimally",
             "o_bar": o_bar_vals,           # <- aquí tienes los pesos ajustados por experto
             "g": g_val,                    # <- opinión colectiva
             "consensus_level": kappa_val,  # <- nivel de consenso alcanzado
             "objective": obj_val,
         }
 
-    except Exception as e:
+    except Exception as error:
         return {
             "success": False,
-            "msg": f"Exception in run_cmcc: {str(e)}",
+            "message": f"Exception in run_cmcc: {error}",
         }

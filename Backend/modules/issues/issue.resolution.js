@@ -27,6 +27,10 @@ import {
 import { normalizeParams } from "../../services/modelApi/modelParamNormalizer.js";
 import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
 import {
+  createModelApiRequestError,
+  unwrapModelApiResponse,
+} from "../../services/modelApi/modelResponse.js";
+import {
   createBadRequestError,
   createForbiddenError,
   createInternalError,
@@ -389,23 +393,24 @@ export const resolveDirectIssueFlow = async ({
   const criterionTypes = buildCriterionTypes(criteria);
   const normalizedModelParams = normalizeParams(issue.modelParameters);
 
-  const response = await httpClient.post(
-    `${apiModelsBaseUrl}/${modelKey}`,
-    {
-      matrices,
-      modelParameters: normalizedModelParams,
-      criterionTypes,
-    },
-    {
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-
-  const { success, message, results } = response.data || {};
-
-  if (!success) {
-    throw createBadRequestError(message || "Model execution failed");
+  let response;
+  try {
+    response = await httpClient.post(
+      `${apiModelsBaseUrl}/${modelKey}`,
+      {
+        matrices,
+        modelParameters: normalizedModelParams,
+        criterionTypes,
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    throw createModelApiRequestError(error);
   }
+
+  const results = unwrapModelApiResponse(response);
 
   const currentPhase = await getNextConsensusPhase(issue._id);
 
@@ -541,23 +546,24 @@ export const resolvePairwiseIssueFlow = async ({
 
   const normalizedModelParams = normalizeParams(issue.modelParameters);
 
-  const response = await httpClient.post(
-    `${apiModelsBaseUrl}/${modelKey}`,
-    {
-      matrices,
-      consensusThreshold: issue.consensusThreshold,
-      modelParameters: normalizedModelParams,
-    },
-    {
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-
-  const { success, message, results } = response.data || {};
-
-  if (!success) {
-    throw createBadRequestError(message || "Model execution failed");
+  let response;
+  try {
+    response = await httpClient.post(
+      `${apiModelsBaseUrl}/${modelKey}`,
+      {
+        matrices,
+        consensusThreshold: issue.consensusThreshold,
+        modelParameters: normalizedModelParams,
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    throw createModelApiRequestError(error);
   }
+
+  const results = unwrapModelApiResponse(response);
 
   if (modelKey !== "herrera_viedma_crp") {
     throw createInternalError(

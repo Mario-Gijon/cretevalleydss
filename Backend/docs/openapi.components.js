@@ -12,12 +12,12 @@
  *       type: object
  *       required:
  *         - success
- *         - msg
+ *         - message
  *       properties:
  *         success:
  *           type: boolean
  *           example: true
- *         msg:
+ *         message:
  *           type: string
  *           example: Operation completed successfully
  *
@@ -25,12 +25,12 @@
  *       type: object
  *       required:
  *         - success
- *         - msg
+ *         - message
  *       properties:
  *         success:
  *           type: boolean
  *           example: false
- *         msg:
+ *         message:
  *           type: string
  *           example: Internal server error
  *
@@ -38,12 +38,12 @@
  *       type: object
  *       required:
  *         - success
- *         - msg
+ *         - message
  *       properties:
  *         success:
  *           type: boolean
  *           example: false
- *         msg:
+ *         message:
  *           type: string
  *           example: Token expired
  *         code:
@@ -121,7 +121,7 @@
  *       type: object
  *       required:
  *         - success
- *         - msg
+ *         - message
  *         - token
  *         - expiresIn
  *         - role
@@ -130,7 +130,7 @@
  *         success:
  *           type: boolean
  *           example: true
- *         msg:
+ *         message:
  *           type: string
  *           example: Login successful
  *         token:
@@ -279,13 +279,13 @@
  *       type: object
  *       required:
  *         - success
- *         - msg
+ *         - message
  *         - data
  *       properties:
  *         success:
  *           type: boolean
  *           example: true
- *         msg:
+ *         message:
  *           type: string
  *           example: Domain created successfully
  *         data:

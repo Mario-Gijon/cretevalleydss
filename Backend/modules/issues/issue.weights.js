@@ -21,6 +21,10 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId } from "../../utils/common/ids.js";
+import {
+  createModelApiRequestError,
+  unwrapModelApiResponse,
+} from "../../services/modelApi/modelResponse.js";
 
 /**
  * @typedef {Object} WeightStageSyncResult
@@ -644,16 +648,17 @@ export const computeBwmCollectiveWeightsFlow = async ({
     throw createBadRequestError("Incomplete BWM data from experts");
   }
 
-  const response = await httpClient.post(`${apiModelsBaseUrl}/bwm`, {
-    experts_data: expertsData,
-    eps_penalty: 1,
-  });
-
-  const { success, message, results } = response.data || {};
-
-  if (!success) {
-    throw createBadRequestError(message || "Model execution failed");
+  let response;
+  try {
+    response = await httpClient.post(`${apiModelsBaseUrl}/bwm`, {
+      experts_data: expertsData,
+      eps_penalty: 1,
+    });
+  } catch (error) {
+    throw createModelApiRequestError(error);
   }
+
+  const results = unwrapModelApiResponse(response);
 
   const weights = results?.weights || [];
 
