@@ -12,9 +12,9 @@ import {
 } from "../modules/issues/issue.evaluationStructure.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import {
-  computeBwmCollectiveWeightsFlow,
-  computeManualCollectiveWeightsFlow,
-} from "../modules/issues/issue.weights.js";
+  computeBwmWeights,
+  computeManualWeights,
+} from "../modules/issues/weightEvaluations/index.js";
 import {
   resolveDirectIssueFlow,
   resolvePairwiseIssueFlow,
@@ -550,11 +550,11 @@ export const computeIssueWeightsAdmin = async (req, res) => {
 
   const result =
     issue.weightingMode === "consensus"
-      ? await computeManualCollectiveWeightsFlow({
+      ? await computeManualWeights({
           issueId,
           userId: creatorUserId,
         })
-      : await computeBwmCollectiveWeightsFlow({
+      : await computeBwmWeights({
           issueId,
           userId: creatorUserId,
           apiModelsBaseUrl:

@@ -40,32 +40,79 @@ No legacy boolean fallback is supported for flow selection.
 
 ## Evaluation, weighting, and resolution flows
 
-Alternative evaluations (`modules/issues/issue.evaluations.js`):
+Alternative evaluations are implemented under `modules/issues/alternativeEvaluations/`
+with a single controller-facing service in
+`modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`.
 
-- draft save: direct and pairwise handlers,
-- read payload: direct and pairwise handlers,
-- submit flow: direct and pairwise handlers.
+Service public API:
 
-Alternative evaluation dispatch (central registry):
+- `getAlternativeEvaluations({ issueId, userId })`
+- `saveAlternativeEvaluationDraft({ issueId, userId, body })`
+- `submitAlternativeEvaluations({ issueId, userId, body })`
 
-- constants: `modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js`
-- handlers: `alternativeEvaluation.direct.js`, `alternativeEvaluation.pairwiseAlternatives.js`
-- dispatch map: `alternativeEvaluation.dispatch.js`
-- controller entrypoint: `saveEvaluations`, `getEvaluations`, `submitEvaluations`
-  resolve issue `evaluationStructure` and execute the mapped handlers.
+Alternative structure modules:
 
-Weighting (`modules/issues/issue.weights.js`):
+- constants: `alternativeEvaluation.constants.js`
+- shared helpers: `alternativeEvaluation.shared.js`
+- initial evaluation docs: `alternativeEvaluation.initialDocs.js`
+- operations by structure:
+  - `alternativeEvaluation.direct.js`
+  - `alternativeEvaluation.pairwiseAlternatives.js`
+- structure selection by `evaluationStructure` is internal to `alternativeEvaluation.service.js`.
 
-- manual and BWM draft/read/submit/compute flows,
-- collective compute transitions issue stage to `alternativeEvaluation` when applicable.
+Built-in alternative operations are:
 
-Weight evaluation dispatch (central registry):
+- `read`
+- `saveDraft`
+- `submit`
 
-- constants: `modules/issues/weightEvaluations/weightEvaluation.constants.js`
-- handlers: `weightEvaluation.manual.js`, `weightEvaluation.bwm.js`
-- dispatch map: `weightEvaluation.dispatch.js`
-- current route families remain unchanged (`/weights/manual/*`, `/weights/bwm/*`)
-  while controller orchestration uses the mapped handlers internally.
+Controller path:
+
+- `saveEvaluations`, `getEvaluations`, `submitEvaluations`
+  call the service and return the standard HTTP contract response.
+
+Weight evaluations are implemented under `modules/issues/weightEvaluations/`
+with a single controller-facing entrypoint in
+`modules/issues/weightEvaluations/index.js`.
+
+Service public API:
+
+- `getManualWeightEvaluation({ issueId, userId })`
+- `saveManualWeightDraft({ issueId, userId, body })`
+- `submitManualWeights({ issueId, userId, body })`
+- `computeManualWeights({ issueId, userId })`
+- `getBwmWeightEvaluation({ issueId, userId })`
+- `saveBwmWeightDraft({ issueId, userId, body })`
+- `submitBwmWeights({ issueId, userId, body })`
+- `computeBwmWeights({ issueId, userId })`
+
+Weight structure modules:
+
+- constants: `weightEvaluation.constants.js`
+- family implementations:
+  - `weightEvaluation.manual.js` (`manual`, `consensus`)
+  - `weightEvaluation.bwm.js` (`bwm`, `consensusBwm`, `simulatedConsensusBwm`)
+- family selection by `weightingMode` is handled by the route family and
+  domain modules (`weightEvaluation.manual.js` and `weightEvaluation.bwm.js`).
+
+Built-in weight operations are:
+
+- `read`
+- `saveDraft`
+- `submit`
+- `compute`
+
+Current route families stay unchanged:
+
+- `/weights/manual/*`
+- `/weights/bwm/*`
+
+Definitions:
+
+- `saveDraft`: save partial expert input without final completion.
+- `submit`: final expert submission that can update participation completion flags.
+- `compute`: collective/admin operation that calculates final criteria weights
+  and can advance the issue stage.
 
 Resolution (`modules/issues/issue.resolution.js`):
 

@@ -28,10 +28,17 @@ Supported values:
 Flow selection sources:
 
 - Backend: `resolveEvaluationStructure(...)` in `Backend/modules/issues/issue.evaluationStructure.js`
-- Alternative evaluation dispatch map:
-  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`
-  via `getAlternativeEvaluationHandler(...)`
+- Alternative evaluation service:
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`
+  via `getAlternativeEvaluations(...)`, `saveAlternativeEvaluationDraft(...)`,
+  `submitAlternativeEvaluations(...)`
 - Frontend resolver: `Frontend/src/features/issueAlternativeEvaluation/utils/evaluationStructure.js`
+
+Operation semantics:
+
+- `read`: returns current persisted draft/final payload for the expert.
+- `saveDraft`: persists partial input without marking participation as completed.
+- `submit`: validates final input and updates participation completion state.
 
 ### `direct` structure
 
@@ -39,11 +46,12 @@ Collection and storage:
 
 - Initial docs: `buildInitialEvaluationDocs(...)` creates `Evaluation` rows with `comparedAlternative: null`.
 - Draft/save/submit/read implementation: `saveDirectEvaluationDrafts(...)`,
-  `getDirectEvaluationPayload(...)`, `submitDirectEvaluationFlow(...)` in
-  `Backend/modules/issues/issue.evaluations.js`.
+  `getDirectEvaluationPayload(...)`, `submitDirectEvaluations(...)` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.direct.js`.
 - Registration point: `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.direct.js`.
-- Dispatch registration key: `direct` in
-  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`.
+- Structure registration key: `direct` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`.
+- Flow operations exposed by the direct module: `read`, `saveDraft`, `submit`.
 - Submit validation: `validateFinalEvaluations(...)` in `issue.validation.js`.
 
 Execution conversion:
@@ -57,12 +65,13 @@ Collection and storage:
 
 - Initial docs: `buildInitialEvaluationDocs(...)` with pairwise combinations (`alternative` + `comparedAlternative`).
 - Draft/save/submit/read implementation: `savePairwiseEvaluationDrafts(...)`,
-  `getPairwiseEvaluationPayload(...)`, `submitPairwiseEvaluationFlow(...)` in
-  `Backend/modules/issues/issue.evaluations.js`.
+  `getPairwiseEvaluationPayload(...)`, `submitPairwiseEvaluations(...)` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.pairwiseAlternatives.js`.
 - Registration point:
   `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.pairwiseAlternatives.js`.
-- Dispatch registration key: `pairwiseAlternatives` in
-  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`.
+- Structure registration key: `pairwiseAlternatives` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`.
+- Flow operations exposed by the pairwise module: `read`, `saveDraft`, `submit`.
 - Submit validation: `validateFinalPairwiseEvaluations(...)` in `issue.validation.js`.
 
 Execution conversion:
@@ -88,19 +97,30 @@ Defined `weightingMode` enum in `Backend/models/Issues.js`:
 
 Backend implementation:
 
-- Initial weight docs: `buildInitialCriteriaWeightEvaluationDocs(...)` in `issue.evaluationStructure.js`.
-- Manual flows in `issue.weights.js`:
-  `getManualWeightsPayload`, `saveManualWeightsDraftFlow`,
-  `submitManualWeightsFlow`, `computeManualCollectiveWeightsFlow`.
-- BWM flows in `issue.weights.js`:
-  `getBwmWeightsPayload`, `saveBwmWeightsDraftFlow`,
-  `submitBwmWeightsFlow`, `computeBwmCollectiveWeightsFlow`.
-- Weighting dispatch map:
-  `Backend/modules/issues/weightEvaluations/weightEvaluation.dispatch.js`
-  via `getWeightEvaluationHandler(...)`.
-- Mode registrations:
-  - manual family: `weightEvaluation.manual.js`
-  - BWM family: `weightEvaluation.bwm.js`
+- Initial weight docs:
+  `buildInitialCriteriaWeightEvaluationDocs(...)` in
+  `Backend/modules/issues/weightEvaluations/weightEvaluation.initialDocs.js`.
+- Controller entrypoint:
+  `Backend/modules/issues/weightEvaluations/index.js`
+  via:
+  - `getManualWeightEvaluation(...)`
+  - `saveManualWeightDraft(...)`
+  - `submitManualWeights(...)`
+  - `computeManualWeights(...)`
+  - `getBwmWeightEvaluation(...)`
+  - `saveBwmWeightDraft(...)`
+  - `submitBwmWeights(...)`
+  - `computeBwmWeights(...)`
+- Family implementations:
+  - manual family: `weightEvaluation.manual.js` (`manual`, `consensus`)
+  - BWM family: `weightEvaluation.bwm.js` (`bwm`, `consensusBwm`, `simulatedConsensusBwm`)
+- Shared helpers:
+  - `weightEvaluation.shared.js` (context loading, stage sync, shared normalizers)
+- Weight operation semantics:
+  - `read`: returns current persisted draft/final weight payload.
+  - `saveDraft`: stores partial expert input.
+  - `submit`: final expert submission that updates participation completion.
+  - `compute`: collective/admin computation that can advance issue stage.
 - Stage transitions:
   - issue creation stage selection: `resolveInitialIssueStage(...)`
   - completion sync: `syncIssueStageAfterWeightsCompletion(...)`
@@ -148,16 +168,18 @@ Review/change these files:
   - `evaluationStructure` enum persisted per issue.
 - `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js`
   - add/confirm structure key.
-- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`
-  - register structure handlers in the central map.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`
+  - register structure flow operations in the internal structure map.
 - `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.<structure>.js`
-  - expose `getPayload`, `saveDraft`, `submit`.
+  - expose `read`, `saveDraft`, `submit`.
 - `Backend/modules/issues/issue.evaluationStructure.js`
-  - `resolveEvaluationStructure(...)` and initial evaluation doc builder.
+  - `resolveEvaluationStructure(...)` validation.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.initialDocs.js`
+  - initial `Evaluation` doc builder for direct/pairwise structures.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.shared.js`
+  - shared read/save context helpers (participation, snapshots, criteria/alternative maps).
 - `Backend/modules/issues/issue.creation.js`
   - issue creation assignment and initial doc generation.
-- `Backend/modules/issues/issue.evaluations.js`
-  - draft/read/submit flow and bulk operation builders.
 - `Backend/modules/issues/issue.validation.js`
   - final payload validation rules.
 - `Backend/modules/issues/issue.scenarios.js`
@@ -180,17 +202,17 @@ Review/change these files:
   - add/validate new `weightingMode` value.
 - `Backend/modules/issues/weightEvaluations/weightEvaluation.constants.js`
   - add/confirm mode constant.
-- `Backend/modules/issues/weightEvaluations/weightEvaluation.dispatch.js`
-  - register mode handlers in the central map.
+- `Backend/modules/issues/weightEvaluations/index.js`
+  - export the controller-facing functions for manual and BWM families.
 - `Backend/modules/issues/weightEvaluations/weightEvaluation.<mode-family>.js`
-  - expose `getPayload`, `saveDraft`, `submit`, `compute`.
-- `Backend/modules/issues/issue.evaluationStructure.js`
-  - include mode in weighting sets and initial `CriteriaWeightEvaluation` doc shape.
+  - implement family-specific functions:
+    `get*`, `save*Draft`, `submit*`, `compute*`.
+- `Backend/modules/issues/weightEvaluations/weightEvaluation.initialDocs.js`
+  - include weighting-mode decisions and initial `CriteriaWeightEvaluation` doc shape.
+- `Backend/modules/issues/weightEvaluations/weightEvaluation.shared.js`
+  - shared context and completion helpers.
 - `Backend/modules/issues/issue.creation.js`
   - ensure creation stage and initial docs are correct.
-- `Backend/modules/issues/issue.weights.js`
-  - add draft/read/submit/compute flow.
-  - ensure `Participation.weightsCompleted` and stage sync logic remain correct.
 - `Backend/modules/issues/issue.validation.js`
   - add final validation rules.
 - `Backend/controllers/issue.controller.js` and `Backend/routes/issue.route.js`
@@ -199,7 +221,7 @@ Review/change these files:
 ApiModels integration:
 
 - Only needed if weighting compute depends on external execution.
-- Current example: `computeBwmCollectiveWeightsFlow(...)` calls ApiModels `/bwm`.
+- Current example: `computeBwmWeights(...)` calls ApiModels `/bwm`.
 
 Consensus interaction:
 
@@ -243,14 +265,13 @@ If multiple models share the same new structure:
 Current state:
 
 - Frontend already uses registries for alternative evaluation and weighting dialogs.
-- Backend now centralizes read/draft/submit (alternatives) and
-  read/draft/submit/compute (weights) through dispatch maps:
-  - `alternativeEvaluation.dispatch.js`
-  - `weightEvaluation.dispatch.js`
+- Backend now centralizes read/draft/submit (alternatives) through
+  `alternativeEvaluation.service.js`, and read/draft/submit/compute (weights)
+  through `weightEvaluations/index.js` with manual/BWM modules.
 
 Recommended future refactor (not current behavior):
 
-- Evaluation-structure registry (draft/read/submit handlers),
+- Evaluation-structure registry (draft/read/submit operations),
 - Payload-builder registry (Backend -> ApiModels),
 - Validator registry,
 - Result-adapter registry (ApiModels outputs -> persisted/Frontend payload),
@@ -263,7 +284,9 @@ Expected checklist:
 1. Add enum value in `Issue` and `IssueModel` schemas.
 2. Extend `EVALUATION_STRUCTURES` and resolver validation.
 3. Add initial evaluation doc generation strategy.
-4. Add draft/read/submit handlers and payload format in `issue.evaluations.js`.
+4. Add draft/read/submit handlers and payload format in
+   `alternativeEvaluation.<structure>.js`, then register the structure in
+   `alternativeEvaluation.service.js`.
 5. Add validation rules in `issue.validation.js`.
 6. Add matrix/payload builder for resolution/scenarios in `issue.scenarios.js`.
 7. Add resolver output adapter in `issue.resolution.js`.
@@ -310,6 +333,6 @@ Expected checklist:
 - Forgetting Backend output adapter and finished-issue rendering.
 - Forgetting scenario compatibility.
 - Forcing an incompatible structure into existing `direct`/`pairwiseAlternatives` adapters.
-- Adding new structures/modes by scattering `if`/`switch` blocks instead of registering them in the central dispatch maps first.
+- Adding new structures/modes by scattering `if`/`switch` blocks instead of registering them in the service/family integration points first.
 - Reintroducing legacy boolean flags for structure selection.
 - Breaking the API contract (`success`, `message`, `data`, `error`) or returning `msg`/`results`.

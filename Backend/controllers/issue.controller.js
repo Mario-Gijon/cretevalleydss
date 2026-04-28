@@ -13,18 +13,34 @@ import {
   getVisibleActiveIssueIdsForUser,
 } from "../modules/issues/issue.queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
-import { createConflictError } from "../utils/common/errors.js";
+import {
+  createBadRequestError,
+  createConflictError,
+  createNotFoundError,
+} from "../utils/common/errors.js";
 import { sameId, toIdString } from "../utils/common/ids.js";
-import { endSessionSafely } from "../utils/common/mongoose.js";
+import {
+  endSessionSafely,
+  isValidObjectIdLike,
+} from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import {
-  resolveIssueEvaluationStructureOrThrow,
-  resolveIssueHandlerOrThrow,
-} from "../modules/issues/issue.dispatch.js";
-import { getAlternativeEvaluationHandler } from "../modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js";
-import { getWeightEvaluationHandler } from "../modules/issues/weightEvaluations/weightEvaluation.dispatch.js";
-import { WEIGHTING_MODES } from "../modules/issues/weightEvaluations/weightEvaluation.constants.js";
+  getAlternativeEvaluations,
+  saveAlternativeEvaluationDraft,
+  submitAlternativeEvaluations,
+} from "../modules/issues/alternativeEvaluations/index.js";
+import {
+  computeBwmWeights as computeBwmWeightsService,
+  computeManualWeights as computeManualWeightsService,
+  getBwmWeightEvaluation as getBwmWeightEvaluationService,
+  getManualWeightEvaluation as getManualWeightEvaluationService,
+  saveBwmWeightDraft as saveBwmWeightDraftService,
+  saveManualWeightDraft as saveManualWeightDraftService,
+  submitBwmWeights as submitBwmWeightsService,
+  submitManualWeights as submitManualWeightsService,
+} from "../modules/issues/weightEvaluations/index.js";
 import { EVALUATION_STRUCTURES } from "../modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js";
+import { resolveEvaluationStructure } from "../modules/issues/issue.evaluationStructure.js";
 
           
 import {
@@ -72,21 +88,24 @@ import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
 
-const MANUAL_WEIGHT_EVALUATION_HANDLERS = getWeightEvaluationHandler(
-  WEIGHTING_MODES.MANUAL
-);
-const BWM_WEIGHT_EVALUATION_HANDLERS = getWeightEvaluationHandler(
-  WEIGHTING_MODES.BWM
-);
+const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
 
-const resolveAlternativeEvaluationHandlersByIssueOrThrow = async (issueId) => {
-  const evaluationStructure =
-    await resolveIssueEvaluationStructureOrThrow(issueId);
+  const issue = await Issue.findById(issueId)
+    .select("_id evaluationStructure")
+    .lean();
 
-  return {
-    evaluationStructure,
-    handlers: getAlternativeEvaluationHandler(evaluationStructure),
-  };
+  if (!issue) {
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
+  }
+
+  return resolveEvaluationStructure(issue);
 };
 
 /**
@@ -533,73 +552,6 @@ export const removeNotificationById = async (req, res) => {
 };
 
 /**
- * Guarda borradores de evaluaciones pairwise del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const savePairwiseEvaluations = async (req, res) => {
-  const { id, evaluations } = req.body;
-  const { saveDraft } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-  );
-
-  await saveDraft({
-    issueId: id,
-    userId: req.uid,
-    evaluations,
-  });
-
-  return sendSuccess(res, "Evaluations saved successfully");
-};
-
-/**
- * Obtiene las evaluaciones pairwise del experto actual para un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getPairwiseEvaluations = async (req, res) => {
-  const { id } = req.body;
-  const { getPayload } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-  );
-
-  const { evaluations, collectiveEvaluations } = await getPayload({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, "Evaluations fetched successfully", {
-    evaluations,
-    collectiveEvaluations,
-  });
-};
-
-/**
- * Valida y envía las evaluaciones pairwise del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const submitPairwiseEvaluations = async (req, res) => {
-  const { submit } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-  );
-
-  const result = await submit({
-    issueId: req.body?.id,
-    userId: req.uid,
-    evaluations: req.body?.evaluations,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
  * Resuelve un issue con evaluación pairwise y gestiona el flujo de consenso si aplica.
  *
  * @param {Object} req Request de Express.
@@ -711,73 +663,6 @@ export const leaveIssue = async (req, res) => {
 };
 
 /**
- * Guarda borradores de evaluaciones directas del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const saveDirectEvaluations = async (req, res) => {
-  const { id, evaluations } = req.body;
-  const { saveDraft } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.DIRECT
-  );
-
-  await saveDraft({
-    issueId: id,
-    userId: req.uid,
-    evaluations,
-  });
-
-  return sendSuccess(res, "Evaluations saved successfully");
-};
-
-/**
- * Obtiene las evaluaciones directas del experto actual para un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getDirectEvaluations = async (req, res) => {
-  const { id } = req.body;
-  const { getPayload } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.DIRECT
-  );
-
-  const { evaluations, collectiveEvaluations } = await getPayload({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, "Evaluations fetched successfully", {
-    evaluations,
-    collectiveEvaluations,
-  });
-};
-
-/**
- * Valida y envía las evaluaciones directas del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const submitDirectEvaluations = async (req, res) => {
-  const { submit } = getAlternativeEvaluationHandler(
-    EVALUATION_STRUCTURES.DIRECT
-  );
-
-  const result = await submit({
-    issueId: req.body?.id,
-    userId: req.uid,
-    evaluations: req.body?.evaluations,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
  * Resuelve un issue con evaluación directa y gestiona el flujo de consenso si aplica.
  *
  * @param {Object} req Request de Express.
@@ -826,10 +711,10 @@ export const getFinishedIssueInfo = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveBwmWeights = async (req, res) => {
-  const result = await BWM_WEIGHT_EVALUATION_HANDLERS.saveDraft({
+  const result = await saveBwmWeightDraftService({
     issueId: req.body?.id,
     userId: req.uid,
-    bwmData: req.body?.bwmData,
+    body: req.body,
   });
 
   return sendSuccess(res, result.message);
@@ -843,7 +728,7 @@ export const saveBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getBwmWeights = async (req, res) => {
-  const result = await BWM_WEIGHT_EVALUATION_HANDLERS.getPayload({
+  const result = await getBwmWeightEvaluationService({
     issueId: req.body?.id,
     userId: req.uid,
   });
@@ -861,10 +746,10 @@ export const getBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendBwmWeights = async (req, res) => {
-  const result = await BWM_WEIGHT_EVALUATION_HANDLERS.submit({
+  const result = await submitBwmWeightsService({
     issueId: req.body?.id,
     userId: req.uid,
-    bwmData: req.body?.bwmData,
+    body: req.body,
   });
 
   return sendSuccess(res, result.message);
@@ -880,11 +765,9 @@ export const sendBwmWeights = async (req, res) => {
 export const computeWeights = async (req, res) => {
   const { id } = req.body;
 
-  const result = await BWM_WEIGHT_EVALUATION_HANDLERS.compute({
+  const result = await computeBwmWeightsService({
     issueId: id,
     userId: req.uid,
-    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-    httpClient: axios,
   });
 
   return sendSuccess(res, result.message, {
@@ -902,7 +785,7 @@ export const computeWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveManualWeights = async (req, res) => {
-  const result = await MANUAL_WEIGHT_EVALUATION_HANDLERS.saveDraft({
+  const result = await saveManualWeightDraftService({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -919,7 +802,7 @@ export const saveManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getManualWeights = async (req, res) => {
-  const result = await MANUAL_WEIGHT_EVALUATION_HANDLERS.getPayload({
+  const result = await getManualWeightEvaluationService({
     issueId: req.body?.id,
     userId: req.uid,
   });
@@ -937,7 +820,7 @@ export const getManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendManualWeights = async (req, res) => {
-  const result = await MANUAL_WEIGHT_EVALUATION_HANDLERS.submit({
+  const result = await submitManualWeightsService({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -956,7 +839,7 @@ export const sendManualWeights = async (req, res) => {
 export const computeManualWeights = async (req, res) => {
   const { id } = req.body;
 
-  const result = await MANUAL_WEIGHT_EVALUATION_HANDLERS.compute({
+  const result = await computeManualWeightsService({
     issueId: id,
     userId: req.uid,
   });
@@ -1059,16 +942,12 @@ export const removeScenario = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveEvaluations = async (req, res) => {
-  const { id: issueId, evaluations } = req.body;
+  const { id: issueId } = req.body;
 
-  const { handlers } = await resolveAlternativeEvaluationHandlersByIssueOrThrow(
-    issueId
-  );
-
-  await handlers.saveDraft({
+  await saveAlternativeEvaluationDraft({
     issueId,
     userId: req.uid,
-    evaluations,
+    body: req.body,
   });
 
   return sendSuccess(res, "Evaluations saved successfully");
@@ -1084,19 +963,12 @@ export const saveEvaluations = async (req, res) => {
 export const getEvaluations = async (req, res) => {
   const { id: issueId } = req.body;
 
-  const { handlers } = await resolveAlternativeEvaluationHandlersByIssueOrThrow(
-    issueId
-  );
-
-  const { evaluations, collectiveEvaluations } = await handlers.getPayload({
+  const data = await getAlternativeEvaluations({
     issueId,
     userId: req.uid,
   });
 
-  return sendSuccess(res, "Evaluations fetched successfully", {
-    evaluations,
-    collectiveEvaluations,
-  });
+  return sendSuccess(res, "Evaluations fetched successfully", data);
 };
 
 /**
@@ -1107,16 +979,12 @@ export const getEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const submitEvaluations = async (req, res) => {
-  const { id: issueId, evaluations } = req.body;
+  const { id: issueId } = req.body;
 
-  const { handlers } = await resolveAlternativeEvaluationHandlersByIssueOrThrow(
-    issueId
-  );
-
-  const result = await handlers.submit({
+  const result = await submitAlternativeEvaluations({
     issueId,
     userId: req.uid,
-    evaluations,
+    body: req.body,
   });
 
   return sendSuccess(res, result.message);
@@ -1130,15 +998,39 @@ export const submitEvaluations = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const resolveIssue = async (req, res) => {
-  const { id } = req.body;
+  const { id: issueId, forceFinalize = false } = req.body;
 
-  const { handler } = await resolveIssueHandlerOrThrow({
-    issueId: id,
-    handlers: {
-      direct: resolveDirectIssue,
-      pairwise: resolvePairwiseIssue,
-    },
+  const evaluationStructure =
+    await resolveIssueEvaluationStructureOrThrow(issueId);
+
+  const resolutionFlowByEvaluationStructure = {
+    [EVALUATION_STRUCTURES.DIRECT]: resolveDirectIssueFlow,
+    [EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: resolvePairwiseIssueFlow,
+  };
+
+  const resolutionFlow =
+    resolutionFlowByEvaluationStructure[evaluationStructure];
+
+  if (!resolutionFlow) {
+    throw createBadRequestError(
+      `Unsupported evaluation structure: ${String(evaluationStructure)}`,
+      {
+        code: "UNSUPPORTED_EVALUATION_STRUCTURE",
+        field: "evaluationStructure",
+      }
+    );
+  }
+
+  const result = await resolutionFlow({
+    issueId,
+    userId: req.uid,
+    forceFinalize: Boolean(forceFinalize),
+    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
   });
 
-  return handler(req, res);
+  return sendSuccess(res, result.message, {
+    finished: result.finished,
+    rankedAlternatives: result.rankedAlternatives ?? null,
+  });
 };

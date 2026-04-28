@@ -8,10 +8,10 @@ import { User } from "../../models/Users.js";
 
           
 import {
-  buildInitialCriteriaWeightEvaluationDocs,
-  buildInitialEvaluationDocs,
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
+import { buildInitialEvaluationDocs } from "./alternativeEvaluations/alternativeEvaluation.initialDocs.js";
+import { buildInitialCriteriaWeightEvaluationDocs } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { mapIssueStageToExitStage, registerUserExit } from "./issue.lifecycle.js";
 import { getDefaultIssueSnapshot, getNextConsensusPhase } from "./issue.queries.js";
 

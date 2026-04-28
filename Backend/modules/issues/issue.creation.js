@@ -12,12 +12,14 @@ import { User } from "../../models/Users.js";
 
           
 import {
-  buildInitialCriteriaWeightEvaluationDocs,
-  buildInitialEvaluationDocs,
   resolveEvaluationStructure,
-  resolveInitialIssueStage,
 } from "./issue.evaluationStructure.js";
-import { normalizeSingleWeight } from "./issue.weights.js";
+import { buildInitialEvaluationDocs } from "./alternativeEvaluations/alternativeEvaluation.initialDocs.js";
+import {
+  buildInitialCriteriaWeightEvaluationDocs,
+  resolveInitialIssueStage,
+} from "./weightEvaluations/weightEvaluation.initialDocs.js";
+import { normalizeSingleWeight } from "./weightEvaluations/weightEvaluation.shared.js";
 import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
 
         
