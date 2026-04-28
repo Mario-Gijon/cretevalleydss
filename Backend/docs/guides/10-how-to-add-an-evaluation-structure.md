@@ -102,21 +102,6 @@ Current limitation:
 
 - Weighting variants `bwm`, `consensusBwm`, `simulatedConsensusBwm` currently share the same BWM data collection endpoints and core flow. To verify in code: consensus-specific differentiation for those variants before extending them.
 
-## 4. Decision checklist before adding a structure
-
-- Is the new structure for alternatives or criteria weights?
-- Is input per expert, per criterion, per alternative, or per cell?
-- Is UI shape matrix/table/ranking/list/pairwise?
-- Does it require numeric, linguistic, or mixed domains?
-- Does it require per-cell validation rules?
-- Does it need draft save + draft read + submit symmetry?
-- Does it interact with consensus phases?
-- Does it change issue stage transitions?
-- Does it change ApiModels payload shape?
-- Does it require new resolver output adapters?
-- Does it affect scenarios?
-- Does it affect finished issue rendering?
-
 ## 5. Backend changes for a new alternative evaluation structure
 
 Review/change these files:
