@@ -22,6 +22,8 @@ These guides describe runtime architecture, API behavior, domain workflows, mode
 6. [06 Model Catalog and ApiModels](./guides/06-model-catalog-and-apimodels.md)
 7. [07 API Reference](./guides/07-api-reference.md)
 8. [08 Development, Testing, and Maintenance](./guides/08-development-testing-and-maintenance.md)
+9. [09 How to Add a Decision Model](./guides/09-how-to-add-a-decision-model.md)
+10. [10 How to Add an Evaluation Structure](./guides/10-how-to-add-an-evaluation-structure.md)
 
 ## Generated artifacts
 
