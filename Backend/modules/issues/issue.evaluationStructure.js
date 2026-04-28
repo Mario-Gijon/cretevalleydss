@@ -1,18 +1,15 @@
 import { normalizeString } from "../../utils/common/strings.js";
 import { toIdString } from "../../utils/common/ids.js";
+import { EVALUATION_STRUCTURES } from "./alternativeEvaluations/alternativeEvaluation.constants.js";
+import { WEIGHTING_MODES } from "./weightEvaluations/weightEvaluation.constants.js";
 
-const WEIGHTING_MODES_WITH_OWN_DOCS = new Set([
-  "manual",
-  "consensus",
-  "bwm",
-  "consensusbwm",
-  "simulatedconsensusbwm",
-]);
+export { EVALUATION_STRUCTURES };
 
-export const EVALUATION_STRUCTURES = {
-  DIRECT: "direct",
-  PAIRWISE_ALTERNATIVES: "pairwiseAlternatives",
-};
+const WEIGHTING_MODES_WITH_OWN_DOCS = new Set(
+  Object.values(WEIGHTING_MODES).map((mode) =>
+    String(mode || "").trim().toLowerCase()
+  )
+);
 
 const SUPPORTED_EVALUATION_STRUCTURES = new Set(
   Object.values(EVALUATION_STRUCTURES)

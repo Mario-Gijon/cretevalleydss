@@ -17,6 +17,7 @@ __pycache__/
 .DS_Store
 .vscode/
 *~
+.codex
 
 # Ignorar build and push de docker
 build_and_push.sh

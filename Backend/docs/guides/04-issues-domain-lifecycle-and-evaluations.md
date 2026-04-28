@@ -46,10 +46,26 @@ Alternative evaluations (`modules/issues/issue.evaluations.js`):
 - read payload: direct and pairwise handlers,
 - submit flow: direct and pairwise handlers.
 
+Alternative evaluation dispatch (central registry):
+
+- constants: `modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js`
+- handlers: `alternativeEvaluation.direct.js`, `alternativeEvaluation.pairwiseAlternatives.js`
+- dispatch map: `alternativeEvaluation.dispatch.js`
+- controller entrypoint: `saveEvaluations`, `getEvaluations`, `submitEvaluations`
+  resolve issue `evaluationStructure` and execute the mapped handlers.
+
 Weighting (`modules/issues/issue.weights.js`):
 
 - manual and BWM draft/read/submit/compute flows,
 - collective compute transitions issue stage to `alternativeEvaluation` when applicable.
+
+Weight evaluation dispatch (central registry):
+
+- constants: `modules/issues/weightEvaluations/weightEvaluation.constants.js`
+- handlers: `weightEvaluation.manual.js`, `weightEvaluation.bwm.js`
+- dispatch map: `weightEvaluation.dispatch.js`
+- current route families remain unchanged (`/weights/manual/*`, `/weights/bwm/*`)
+  while controller orchestration uses the mapped handlers internally.
 
 Resolution (`modules/issues/issue.resolution.js`):
 

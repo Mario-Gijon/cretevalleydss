@@ -28,7 +28,9 @@ Supported values:
 Flow selection sources:
 
 - Backend: `resolveEvaluationStructure(...)` in `Backend/modules/issues/issue.evaluationStructure.js`
-- Runtime dispatch: `Backend/modules/issues/issue.dispatch.js`
+- Alternative evaluation dispatch map:
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`
+  via `getAlternativeEvaluationHandler(...)`
 - Frontend resolver: `Frontend/src/features/issueAlternativeEvaluation/utils/evaluationStructure.js`
 
 ### `direct` structure
@@ -36,8 +38,12 @@ Flow selection sources:
 Collection and storage:
 
 - Initial docs: `buildInitialEvaluationDocs(...)` creates `Evaluation` rows with `comparedAlternative: null`.
-- Draft save: `saveDirectEvaluationDrafts(...)` with `buildDirectEvaluationBulkOperations(...)`.
-- Read payload: `getDirectEvaluationPayload(...)`.
+- Draft/save/submit/read implementation: `saveDirectEvaluationDrafts(...)`,
+  `getDirectEvaluationPayload(...)`, `submitDirectEvaluationFlow(...)` in
+  `Backend/modules/issues/issue.evaluations.js`.
+- Registration point: `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.direct.js`.
+- Dispatch registration key: `direct` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`.
 - Submit validation: `validateFinalEvaluations(...)` in `issue.validation.js`.
 
 Execution conversion:
@@ -50,8 +56,13 @@ Execution conversion:
 Collection and storage:
 
 - Initial docs: `buildInitialEvaluationDocs(...)` with pairwise combinations (`alternative` + `comparedAlternative`).
-- Draft save: `savePairwiseEvaluationDrafts(...)` with `buildPairwiseEvaluationBulkOperations(...)`.
-- Read payload: `getPairwiseEvaluationPayload(...)`.
+- Draft/save/submit/read implementation: `savePairwiseEvaluationDrafts(...)`,
+  `getPairwiseEvaluationPayload(...)`, `submitPairwiseEvaluationFlow(...)` in
+  `Backend/modules/issues/issue.evaluations.js`.
+- Registration point:
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.pairwiseAlternatives.js`.
+- Dispatch registration key: `pairwiseAlternatives` in
+  `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`.
 - Submit validation: `validateFinalPairwiseEvaluations(...)` in `issue.validation.js`.
 
 Execution conversion:
@@ -78,8 +89,18 @@ Defined `weightingMode` enum in `Backend/models/Issues.js`:
 Backend implementation:
 
 - Initial weight docs: `buildInitialCriteriaWeightEvaluationDocs(...)` in `issue.evaluationStructure.js`.
-- Manual flows: `getManualWeightsPayload`, `saveManualWeightsDraftFlow`, `submitManualWeightsFlow`, `computeManualCollectiveWeightsFlow` in `issue.weights.js`.
-- BWM flows: `getBwmWeightsPayload`, `saveBwmWeightsDraftFlow`, `submitBwmWeightsFlow`, `computeBwmCollectiveWeightsFlow` in `issue.weights.js`.
+- Manual flows in `issue.weights.js`:
+  `getManualWeightsPayload`, `saveManualWeightsDraftFlow`,
+  `submitManualWeightsFlow`, `computeManualCollectiveWeightsFlow`.
+- BWM flows in `issue.weights.js`:
+  `getBwmWeightsPayload`, `saveBwmWeightsDraftFlow`,
+  `submitBwmWeightsFlow`, `computeBwmCollectiveWeightsFlow`.
+- Weighting dispatch map:
+  `Backend/modules/issues/weightEvaluations/weightEvaluation.dispatch.js`
+  via `getWeightEvaluationHandler(...)`.
+- Mode registrations:
+  - manual family: `weightEvaluation.manual.js`
+  - BWM family: `weightEvaluation.bwm.js`
 - Stage transitions:
   - issue creation stage selection: `resolveInitialIssueStage(...)`
   - completion sync: `syncIssueStageAfterWeightsCompletion(...)`
@@ -102,6 +123,21 @@ Current limitation:
 
 - Weighting variants `bwm`, `consensusBwm`, `simulatedConsensusBwm` currently share the same BWM data collection endpoints and core flow. To verify in code: consensus-specific differentiation for those variants before extending them.
 
+## 4. Decision checklist before adding a structure
+
+- Is this for alternatives or criteria weights?
+- Is input per expert, per criterion, per alternative, or per cell?
+- Is UI shape matrix/table/ranking/list/pairwise?
+- Does it require numeric, linguistic, or mixed domains?
+- Does it require per-cell validation rules?
+- Does it need draft save + draft read + submit symmetry?
+- Does it interact with consensus phases?
+- Does it change issue stage transitions?
+- Does it change ApiModels payload shape?
+- Does it require new resolver output adapters?
+- Does it affect scenarios?
+- Does it affect finished issue rendering?
+
 ## 5. Backend changes for a new alternative evaluation structure
 
 Review/change these files:
@@ -110,12 +146,16 @@ Review/change these files:
   - `evaluationStructure` enum for model metadata.
 - `Backend/models/Issues.js`
   - `evaluationStructure` enum persisted per issue.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js`
+  - add/confirm structure key.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.dispatch.js`
+  - register structure handlers in the central map.
+- `Backend/modules/issues/alternativeEvaluations/alternativeEvaluation.<structure>.js`
+  - expose `getPayload`, `saveDraft`, `submit`.
 - `Backend/modules/issues/issue.evaluationStructure.js`
-  - `EVALUATION_STRUCTURES`, `resolveEvaluationStructure(...)`, and initial evaluation doc builder.
+  - `resolveEvaluationStructure(...)` and initial evaluation doc builder.
 - `Backend/modules/issues/issue.creation.js`
   - issue creation assignment and initial doc generation.
-- `Backend/modules/issues/issue.dispatch.js`
-  - structure -> handler dispatch mapping.
 - `Backend/modules/issues/issue.evaluations.js`
   - draft/read/submit flow and bulk operation builders.
 - `Backend/modules/issues/issue.validation.js`
@@ -138,6 +178,12 @@ Review/change these files:
 
 - `Backend/models/Issues.js`
   - add/validate new `weightingMode` value.
+- `Backend/modules/issues/weightEvaluations/weightEvaluation.constants.js`
+  - add/confirm mode constant.
+- `Backend/modules/issues/weightEvaluations/weightEvaluation.dispatch.js`
+  - register mode handlers in the central map.
+- `Backend/modules/issues/weightEvaluations/weightEvaluation.<mode-family>.js`
+  - expose `getPayload`, `saveDraft`, `submit`, `compute`.
 - `Backend/modules/issues/issue.evaluationStructure.js`
   - include mode in weighting sets and initial `CriteriaWeightEvaluation` doc shape.
 - `Backend/modules/issues/issue.creation.js`
@@ -197,7 +243,10 @@ If multiple models share the same new structure:
 Current state:
 
 - Frontend already uses registries for alternative evaluation and weighting dialogs.
-- Backend still relies mostly on switch/branch logic for structure-specific behavior.
+- Backend now centralizes read/draft/submit (alternatives) and
+  read/draft/submit/compute (weights) through dispatch maps:
+  - `alternativeEvaluation.dispatch.js`
+  - `weightEvaluation.dispatch.js`
 
 Recommended future refactor (not current behavior):
 
@@ -261,5 +310,6 @@ Expected checklist:
 - Forgetting Backend output adapter and finished-issue rendering.
 - Forgetting scenario compatibility.
 - Forcing an incompatible structure into existing `direct`/`pairwiseAlternatives` adapters.
+- Adding new structures/modes by scattering `if`/`switch` blocks instead of registering them in the central dispatch maps first.
 - Reintroducing legacy boolean flags for structure selection.
 - Breaking the API contract (`success`, `message`, `data`, `error`) or returning `msg`/`results`.

@@ -76,7 +76,11 @@ export const resolveIssueHandlerOrThrow = async ({ issueId, handlers }) => {
 
   if (!handler) {
     throw createBadRequestError(
-      `Unsupported evaluation structure '${evaluationStructure}'`
+      `Unsupported evaluation structure: ${String(evaluationStructure)}`,
+      {
+        code: "UNSUPPORTED_EVALUATION_STRUCTURE",
+        field: "evaluationStructure",
+      }
     );
   }
 
