@@ -90,9 +90,6 @@ const buildAvailableModelsPayload = ({
       name: modelDoc.name,
       isConsensus: Boolean(modelDoc.isConsensus),
       evaluationStructure: modelEvaluationStructure,
-      isPairwise:
-        modelEvaluationStructure ===
-        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
       isMultiCriteria: Boolean(modelDoc.isMultiCriteria),
       smallDescription: modelDoc.smallDescription,
       moreInfoUrl: modelDoc.moreInfoUrl,
@@ -100,7 +97,6 @@ const buildAvailableModelsPayload = ({
       defaultsResolved,
       compatibility: {
         evaluationStructure: sameEvaluationStructure,
-        pairwise: sameEvaluationStructure,
         domain: domainType
           ? Boolean(modelDoc.supportedDomains?.[domainType]?.enabled)
           : true,
@@ -128,9 +124,6 @@ const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
       targetModelName: scenario.targetModelName || "",
       domainType: scenario.domainType ?? null,
       evaluationStructure: scenarioEvaluationStructure,
-      isPairwise:
-        scenarioEvaluationStructure ===
-        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
       status: scenario.status || "done",
       createdAt: scenario.createdAt || null,
       createdBy: scenario.createdBy
@@ -164,8 +157,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     });
   }
 
-  const issueEvaluationStructure =
-    issue.evaluationStructure || resolveEvaluationStructure(issue.model);
+  const issueEvaluationStructure = resolveEvaluationStructure(issue);
 
   const [
     summary,
@@ -258,9 +250,6 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     targetModelName: baseModel?.name || "",
     domainType,
     evaluationStructure: issueEvaluationStructure,
-    isPairwise:
-      issueEvaluationStructure ===
-      EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
     status: "done",
     createdAt: latestConsensus?.timestamp || null,
     createdBy: null,

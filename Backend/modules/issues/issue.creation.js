@@ -14,7 +14,6 @@ import { User } from "../../models/Users.js";
 import {
   buildInitialCriteriaWeightEvaluationDocs,
   buildInitialEvaluationDocs,
-  EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
   resolveInitialIssueStage,
 } from "./issue.evaluationStructure.js";
@@ -439,8 +438,7 @@ const buildIssueEvaluationDocsWithSnapshots = ({
     experts: expertUsers,
     leafCriteria,
     alternatives: createdAlternatives,
-    isPairwise:
-      modelEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+    evaluationStructure: modelEvaluationStructure,
     consensusPhase: null,
     includeReciprocal: true,
   });

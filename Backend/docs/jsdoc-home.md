@@ -1,29 +1,17 @@
-# Crete Valley DSS Backend Code Reference
+# Crete Valley DSS Backend JSDoc
 
-This site contains the generated JSDoc reference for the backend codebase.
+This generated documentation contains the JSDoc reference for the backend source code.
 
-## Scope
+For the maintainable backend guides, see:
 
-The JSDoc reference focuses on the internal implementation of the backend:
+- `docs/README.md`
+- `docs/guides/01-backend-overview.md`
+- `docs/guides/02-architecture-and-runtime.md`
+- `docs/guides/03-api-contract-auth-and-errors.md`
+- `docs/guides/04-issues-domain-lifecycle-and-evaluations.md`
+- `docs/guides/05-database-models.md`
+- `docs/guides/06-model-catalog-and-apimodels.md`
+- `docs/guides/07-api-reference.md`
+- `docs/guides/08-development-testing-and-maintenance.md`
 
-- controllers
-- modules
-- models
-- middlewares
-- services
-- shared utilities
-- application bootstrap
-
-## How to read this documentation
-
-Use this documentation as the technical reference for the codebase structure and responsibilities.
-
-For architectural explanations and backend-level guides, refer to the Markdown documents under `docs/` in the repository.
-
-For HTTP endpoints, request/response contracts and authentication flows, use the OpenAPI documentation generated separately from route annotations.
-
-## Recommended usage
-
-- Use **JSDoc** to understand internal code responsibilities and module boundaries.
-- Use **OpenAPI / Swagger UI / Redoc** to explore the HTTP API.
-- Use the Markdown files in `docs/` for architecture, data model and lifecycle explanations.
+The generated JSDoc output is intended as a code reference. The source code remains the final source of truth.

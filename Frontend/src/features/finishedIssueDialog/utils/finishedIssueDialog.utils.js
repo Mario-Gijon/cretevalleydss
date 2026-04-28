@@ -1,6 +1,5 @@
 import { extractLeafCriteria } from "../../issueAlternativeEvaluation/utils/leafCriteria.utils";
 import {
-  ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES,
   resolveIssueAlternativeEvaluationStructure,
 } from "../../issueAlternativeEvaluation/utils/evaluationStructure";
 
@@ -269,7 +268,7 @@ export const getLeafCriteriaNamesFallback = (summaryCriteria) => {
 };
 
 const getEvaluationCompatibilityFlag = (model) => {
-  return model?.compatibility?.evaluationStructure ?? model?.compatibility?.pairwise;
+  return model?.compatibility?.evaluationStructure;
 };
 
 /**
@@ -584,9 +583,6 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     targetModelName: scenario?.targetModelName,
     evaluationStructure:
       scenarioEvaluationStructure || out?.summary?.evaluationStructure,
-    isPairwise:
-      scenarioEvaluationStructure ===
-      ISSUE_ALTERNATIVE_EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||

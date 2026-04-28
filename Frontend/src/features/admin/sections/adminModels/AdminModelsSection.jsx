@@ -1,6 +1,6 @@
 
-import AdminEmptySectionPanel from "../../components/AdminEmptySectionPanel";
+import ModelManifestSyncPanel from "./ModelManifestSyncPanel";
 
 export default function AdminModelsSection() {
-  return <AdminEmptySectionPanel />;
+  return <ModelManifestSyncPanel />;
 }

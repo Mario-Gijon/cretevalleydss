@@ -231,7 +231,9 @@ export const summarizeIssueStats = (issues = []) => {
   const active = issues.filter((issue) => issue?.active).length;
   const finished = issues.filter((issue) => !issue?.active).length;
   const consensus = issues.filter((issue) => issue?.isConsensus).length;
-  const pairwise = issues.filter((issue) => issue?.model?.isPairwise).length;
+  const pairwise = issues.filter(
+    (issue) => issue?.evaluationStructure === "pairwiseAlternatives"
+  ).length;
 
   return { total, active, finished, consensus, pairwise };
 };

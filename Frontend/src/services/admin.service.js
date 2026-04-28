@@ -1,5 +1,11 @@
 import { authFetch } from "../utils/authFetch";
-import { API, buildQuery, jsonRequest, safeJson } from "./service.utils.js";
+import {
+  API,
+  buildQuery,
+  jsonRequest,
+  requestJson,
+  safeJson,
+} from "./service.utils.js";
 
 /**
  * Ejecuta una petición autenticada del módulo admin y devuelve el payload JSON.
@@ -306,3 +312,68 @@ export const removeIssueAdminAction = async (issueId) => {
     "Error removing issue as admin:"
   );
 };
+
+/**
+ * Obtiene el catálogo persistido de modelos desde MongoDB.
+ *
+ * @returns {Promise<object>}
+ */
+export const getAdminModelCatalog = async () =>
+  requestJson(
+    `${API}/admin/models/catalog`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error fetching model catalog.",
+    }
+  );
+
+/**
+ * Actualiza si un modelo aparece en el flujo Create Issue.
+ *
+ * @param {string} modelId Id del modelo.
+ * @param {boolean} publicInIssueCatalog Nueva visibilidad.
+ * @returns {Promise<object>}
+ */
+export const updateModelCatalogVisibility = async (
+  modelId,
+  publicInIssueCatalog
+) =>
+  requestJson(
+    `${API}/admin/models/${modelId}/catalog-visibility`,
+    jsonRequest("PATCH", { publicInIssueCatalog }),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error updating model catalog visibility.",
+    }
+  );
+
+/**
+ * Ejecuta el dry-run del manifest de modelos desde el panel admin.
+ *
+ * @returns {Promise<object>}
+ */
+export const getModelManifestDryRun = async () =>
+  requestJson(
+    `${API}/admin/models/manifest/dry-run`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error running model manifest dry-run.",
+    }
+  );
+
+/**
+ * Sincroniza manualmente el manifest de modelos con confirmación explícita.
+ *
+ * @returns {Promise<object>}
+ */
+export const syncModelManifest = async () =>
+  requestJson(
+    `${API}/admin/models/manifest/sync`,
+    jsonRequest("POST", { confirm: true }),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error synchronizing model manifest.",
+    }
+  );

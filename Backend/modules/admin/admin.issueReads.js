@@ -104,19 +104,19 @@ const buildCriteriaTreeAdmin = (criteriaDocs = []) => {
  * @param {object} params Parámetros de entrada.
  * @param {number} params.alternativesCount Número de alternativas.
  * @param {number} params.leafCriteriaCount Número de criterios hoja.
- * @param {boolean} params.isPairwise Indica si la estructura es pairwise.
+ * @param {string} params.evaluationStructure Estructura de evaluación del issue.
  * @returns {number}
  */
 const countExpectedEvaluationCellsPerExpert = ({
   alternativesCount,
   leafCriteriaCount,
-  isPairwise,
+  evaluationStructure,
 }) => {
   if (!alternativesCount || !leafCriteriaCount) {
     return 0;
   }
 
-  if (isPairwise) {
+  if (evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
     return (
       alternativesCount *
       leafCriteriaCount *
@@ -259,7 +259,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name isPairwise evaluationStructure isConsensus isMultiCriteria parameters supportedDomains"
+      "name evaluationStructure isConsensus isMultiCriteria parameters supportedDomains"
     )
     .lean();
 
@@ -314,7 +314,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .select(
-        "_id name targetModel targetModelName domainType evaluationStructure isPairwise status createdAt createdBy"
+        "_id name targetModel targetModelName domainType evaluationStructure status createdAt createdBy"
       )
       .populate("createdBy", "name email")
       .lean(),
@@ -344,17 +344,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   ]);
 
   const issueEvaluationStructure = resolveEvaluationStructure(issue);
-  const issueIsPairwise =
-    issueEvaluationStructure ===
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
-
   const alternativesCount = orderedAlternatives.length;
   const leafCriteriaCount = orderedLeafCriteria.length;
 
   const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
     alternativesCount,
     leafCriteriaCount,
-    isPairwise: issueIsPairwise,
+    evaluationStructure: issueEvaluationStructure,
   });
 
   const criteriaTree = buildCriteriaTreeAdmin(allCriteria);
@@ -536,7 +532,6 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         ? {
             id: toIdString(issue.model._id),
             name: issue.model.name,
-            isPairwise: issueIsPairwise,
             isConsensus: Boolean(issue.model.isConsensus),
             isMultiCriteria: Boolean(issue.model.isMultiCriteria),
             supportedDomains: issue.model.supportedDomains || {},
@@ -569,9 +564,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         targetModelId: toIdString(scenario.targetModel),
         targetModelName: scenario.targetModelName || "",
         domainType: scenario.domainType || null,
-        isPairwise:
-          resolveEvaluationStructure(scenario) ===
-          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+        evaluationStructure: resolveEvaluationStructure(scenario),
         status: scenario.status || "done",
         createdAt: scenario.createdAt || null,
         createdBy: scenario.createdBy
@@ -713,7 +706,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name isPairwise evaluationStructure")
+    .populate("model", "name evaluationStructure")
     .lean();
 
   if (!issue) {
@@ -786,14 +779,11 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   ]);
 
   const evaluationStructure = resolveEvaluationStructure(issue);
-  const isPairwise =
-    evaluationStructure ===
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
 
   const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
     alternativesCount: alternatives.length,
     leafCriteriaCount: leafCriteria.length,
-    isPairwise,
+    evaluationStructure,
   });
 
   const evaluationMap = new Map(
@@ -879,7 +869,6 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       weightingMode: issue.weightingMode,
       active: Boolean(issue.active),
       evaluationStructure,
-      isPairwise,
       model: issue.model
         ? {
             id: toIdString(issue.model._id),
@@ -1021,7 +1010,7 @@ export const getIssueExpertEvaluationsPayload = async ({
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name isPairwise evaluationStructure")
+    .populate("model", "name evaluationStructure")
     .lean();
 
   if (!issue) {
@@ -1067,11 +1056,11 @@ export const getIssueExpertEvaluationsPayload = async ({
   ]);
 
   const evaluationStructure = resolveEvaluationStructure(issue);
-  const isPairwise =
+  const usesPairwiseAlternatives =
     evaluationStructure ===
     EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
 
-  if (isPairwise) {
+  if (usesPairwiseAlternatives) {
     const evaluationDocs = await Evaluation.find({
       issue: issueId,
       expert: expertId,
@@ -1162,7 +1151,6 @@ export const getIssueExpertEvaluationsPayload = async ({
         weightingMode: issue.weightingMode,
         active: Boolean(issue.active),
         evaluationStructure,
-        isPairwise: true,
       },
       expert: buildAdminExpertIdentityPayload(expert, expertId),
       participation: buildAdminExpertParticipationPayload(participation),
@@ -1170,7 +1158,8 @@ export const getIssueExpertEvaluationsPayload = async ({
         expectedCells: countExpectedEvaluationCellsPerExpert({
           alternativesCount: orderedAlternatives.length,
           leafCriteriaCount: orderedLeafCriteria.length,
-          isPairwise: true,
+          evaluationStructure:
+            EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
         }),
         filledCells,
         lastEvaluationAt,
@@ -1243,7 +1232,6 @@ export const getIssueExpertEvaluationsPayload = async ({
       weightingMode: issue.weightingMode,
       active: Boolean(issue.active),
       evaluationStructure,
-      isPairwise: false,
     },
     expert: buildAdminExpertIdentityPayload(expert, expertId),
     participation: buildAdminExpertParticipationPayload(participation),
@@ -1251,7 +1239,7 @@ export const getIssueExpertEvaluationsPayload = async ({
       expectedCells: countExpectedEvaluationCellsPerExpert({
         alternativesCount: orderedAlternatives.length,
         leafCriteriaCount: orderedLeafCriteria.length,
-        isPairwise: false,
+        evaluationStructure: EVALUATION_STRUCTURES.DIRECT,
       }),
       filledCells,
       lastEvaluationAt,
@@ -1294,7 +1282,7 @@ export const getIssueExpertWeightsPayload = async ({
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name isPairwise evaluationStructure")
+    .populate("model", "name evaluationStructure")
     .lean();
 
   if (!issue) {
@@ -1390,9 +1378,6 @@ export const getIssueExpertWeightsPayload = async ({
         ? {
             id: toIdString(issue.model._id),
             name: issue.model.name,
-            isPairwise:
-              resolveEvaluationStructure(issue) ===
-              EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
           }
         : null,
     },
@@ -1537,7 +1522,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name isPairwise evaluationStructure isConsensus isMultiCriteria"
+      "name evaluationStructure isConsensus isMultiCriteria"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -1729,12 +1714,7 @@ export const getAdminIssuesListPayload = async ({
         lastEvaluationAt: null,
       };
 
-      const evaluationStructure =
-        issue.evaluationStructure || resolveEvaluationStructure(issue.model);
-
-      const isPairwise =
-        evaluationStructure ===
-        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
+      const evaluationStructure = resolveEvaluationStructure(issue);
 
       const modelEvaluationStructure = issue.model
         ? resolveEvaluationStructure(issue.model)
@@ -1743,7 +1723,7 @@ export const getAdminIssuesListPayload = async ({
       const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
         alternativesCount: totalAlternatives,
         leafCriteriaCount: totalLeafCriteria,
-        isPairwise,
+        evaluationStructure,
       });
 
       return {
@@ -1760,7 +1740,6 @@ export const getAdminIssuesListPayload = async ({
         creationDate: issue.creationDate || null,
         closureDate: issue.closureDate || null,
         evaluationStructure,
-        isPairwise,
         admin: issue.admin
           ? {
               id: toIdString(issue.admin._id),
@@ -1775,9 +1754,6 @@ export const getAdminIssuesListPayload = async ({
               id: toIdString(issue.model._id),
               name: issue.model.name,
               evaluationStructure: modelEvaluationStructure,
-              isPairwise:
-                modelEvaluationStructure ===
-                EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
               isConsensus: Boolean(issue.model.isConsensus),
               isMultiCriteria: Boolean(issue.model.isMultiCriteria),
             }

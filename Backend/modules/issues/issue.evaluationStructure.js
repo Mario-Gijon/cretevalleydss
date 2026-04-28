@@ -14,23 +14,33 @@ export const EVALUATION_STRUCTURES = {
   PAIRWISE_ALTERNATIVES: "pairwiseAlternatives",
 };
 
+const SUPPORTED_EVALUATION_STRUCTURES = new Set(
+  Object.values(EVALUATION_STRUCTURES)
+);
+
 /**
- * Resuelve la estructura de evaluación de un documento, manteniendo compatibilidad
- * con el campo antiguo isPairwise.
+ * Resuelve la estructura de evaluación desde `evaluationStructure`.
+ *
+ * Si el campo no viene informado, devuelve `direct` por compatibilidad segura.
+ * Si viene informado con un valor no soportado, lanza error explícito.
  *
  * @param {Object|null|undefined} doc Documento a inspeccionar.
  * @returns {string}
  */
 export const resolveEvaluationStructure = (doc) => {
-  if (doc?.evaluationStructure) {
-    return doc.evaluationStructure;
+  const evaluationStructure = doc?.evaluationStructure;
+
+  if (!evaluationStructure) {
+    return EVALUATION_STRUCTURES.DIRECT;
   }
 
-  if (doc?.isPairwise === true) {
-    return EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
+  if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
+    throw new Error(
+      `Unsupported evaluationStructure '${String(evaluationStructure)}'`
+    );
   }
 
-  return EVALUATION_STRUCTURES.DIRECT;
+  return evaluationStructure;
 };
 
 /**
@@ -154,7 +164,7 @@ export const buildInitialEvaluationDocs = ({
   experts = [],
   leafCriteria = [],
   alternatives = [],
-  isPairwise = false,
+  evaluationStructure = EVALUATION_STRUCTURES.DIRECT,
   consensusPhase = 1,
   includeReciprocal = false,
 }) => {
@@ -162,6 +172,9 @@ export const buildInitialEvaluationDocs = ({
   const expertIds = getEntityIds(experts);
   const criterionIds = getEntityIds(leafCriteria);
   const alternativeIds = getEntityIds(alternatives);
+  const resolvedEvaluationStructure = resolveEvaluationStructure({
+    evaluationStructure,
+  });
 
   if (!issue || !expertIds.length || !criterionIds.length || !alternativeIds.length) {
     return [];
@@ -169,7 +182,7 @@ export const buildInitialEvaluationDocs = ({
 
   const docs = [];
 
-  if (isPairwise) {
+  if (resolvedEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
     const alternativePairs = buildAlternativeComparisonPairs(alternatives, {
       includeReciprocal,
     });

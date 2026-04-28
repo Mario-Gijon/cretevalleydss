@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
          
 import { Issue } from "../models/Issues.js";
+import { IssueModel } from "../models/IssueModels.js";
 
           
 import {
@@ -35,6 +36,8 @@ import {
   reassignIssueAdminFlow,
   updateUserAdminFlow,
 } from "../modules/admin/admin.users.js";
+import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
+import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 
         
 import {
@@ -113,6 +116,54 @@ const throwIfDuplicateEmailError = (error) => {
 };
 
 /**
+ * Normaliza un IssueModel persistido para el catálogo admin.
+ *
+ * @param {Object} model Documento IssueModel en modo lean.
+ * @returns {Object}
+ */
+const mapIssueModelCatalogItem = (model = {}) => {
+  const id = toIdString(model._id);
+
+  return {
+    _id: id,
+    id,
+    name: model.name,
+    apiModelKey: model.apiModelKey || null,
+    modelRole: model.modelRole || "issueModel",
+    modelStatus: model.modelStatus || "available",
+    publicInIssueCatalog: model.publicInIssueCatalog !== false,
+    supportsScenarios: model.supportsScenarios !== false,
+    apiEndpoint: model.apiEndpoint || null,
+    manifestSync: model.manifestSync || null,
+    isConsensus: model.isConsensus,
+    isMultiCriteria: model.isMultiCriteria,
+    evaluationStructure: model.evaluationStructure,
+    parameters: Array.isArray(model.parameters) ? model.parameters : [],
+    supportedDomains: model.supportedDomains || null,
+    smallDescription: model.smallDescription,
+    extendDescription: model.extendDescription,
+    moreInfoUrl: model.moreInfoUrl,
+  };
+};
+
+/**
+ * Devuelve la prioridad de ordenación del catálogo admin.
+ *
+ * @param {Object} model Modelo normalizado.
+ * @returns {number}
+ */
+const getModelCatalogSortRank = (model = {}) => {
+  const publicIssueModel = model.publicInIssueCatalog !== false;
+  const status = String(model.modelStatus || "").toLowerCase();
+  const staleOrUnavailable = status === "stale" || status === "unavailable";
+
+  if (publicIssueModel && !staleOrUnavailable) return 0;
+  if (publicIssueModel) return 1;
+
+  return 2;
+};
+
+/**
  * Obtiene todos los usuarios visibles desde el panel de administración.
  *
  * @param {Object} req Request de Express.
@@ -127,6 +178,120 @@ export const getAllUsersAdmin = async (req, res) => {
   });
 
   return sendSuccess(res, "Users fetched successfully", data);
+};
+
+/**
+ * Obtiene el catálogo persistido de modelos desde MongoDB.
+ *
+ * @param {Object} _req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
+ */
+export const getModelCatalogAdmin = async (_req, res) => {
+  const models = (await IssueModel.find().select("-__v").lean())
+    .map(mapIssueModelCatalogItem)
+    .sort((left, right) => {
+      const rankDifference =
+        getModelCatalogSortRank(left) - getModelCatalogSortRank(right);
+
+      if (rankDifference !== 0) return rankDifference;
+
+      return String(left.name || "").localeCompare(String(right.name || ""));
+    });
+
+  return sendSuccess(res, "Model catalog retrieved successfully", {
+    models,
+  });
+};
+
+/**
+ * Actualiza la visibilidad de un modelo en el flujo Create Issue.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
+ */
+export const updateModelCatalogVisibilityAdmin = async (req, res) => {
+  const { id } = req.params || {};
+  const { publicInIssueCatalog } = req.body || {};
+
+  if (!id || !isValidObjectIdLike(id)) {
+    throw createBadRequestError("Valid model id is required", {
+      field: "id",
+    });
+  }
+
+  if (typeof publicInIssueCatalog !== "boolean") {
+    throw createBadRequestError("publicInIssueCatalog must be boolean", {
+      field: "publicInIssueCatalog",
+    });
+  }
+
+  const model = await IssueModel.findByIdAndUpdate(
+    id,
+    { $set: { publicInIssueCatalog } },
+    { new: true, runValidators: true }
+  )
+    .select("-__v")
+    .lean();
+
+  if (!model) {
+    throw createNotFoundError("Model not found", {
+      field: "id",
+    });
+  }
+
+  return sendSuccess(
+    res,
+    "Model catalog visibility updated successfully",
+    {
+      model: mapIssueModelCatalogItem(model),
+    }
+  );
+};
+
+/**
+ * Ejecuta una comparación read-only entre el manifest de ApiModels y IssueModel.
+ *
+ * @param {Object} _req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
+ */
+export const getModelManifestDryRunAdmin = async (_req, res) => {
+  const report = await runModelManifestDryRun();
+
+  return sendSuccess(
+    res,
+    "Model manifest dry-run completed successfully",
+    report
+  );
+};
+
+/**
+ * Sincroniza modelos públicos del manifest de ApiModels con IssueModel.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<Object>}
+ */
+export const syncModelManifestAdmin = async (req, res) => {
+  if (req.body?.confirm !== true) {
+    throw createBadRequestError(
+      "Model manifest synchronization requires explicit confirmation",
+      {
+        code: "CONFIRMATION_REQUIRED",
+        field: "confirm",
+      }
+    );
+  }
+
+  const report = await syncModelManifestToIssueModels();
+
+  return sendSuccess(
+    res,
+    "Model manifest synchronized successfully",
+    report
+  );
 };
 
 /**

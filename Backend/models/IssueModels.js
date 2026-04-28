@@ -11,6 +11,13 @@ import { Schema, model } from "mongoose";
  * @typedef {Object} IssueModelDocument
  * @property {*} _id Identificador del documento.
  * @property {string} name Nombre del modelo.
+ * @property {string} [apiModelKey] Clave estable del modelo en ApiModels.
+ * @property {string} [modelRole] Rol declarado en el manifest.
+ * @property {string} [modelStatus] Estado declarado en el manifest.
+ * @property {boolean} [publicInIssueCatalog] Indica si aparece en el catálogo público de issues.
+ * @property {boolean} [supportsScenarios] Indica si soporta escenarios.
+ * @property {Object} [apiEndpoint] Endpoint publicado por ApiModels.
+ * @property {Object} [manifestSync] Metadatos de sincronización con el manifest.
  * @property {boolean} isConsensus Indica si el modelo soporta consenso.
  * @property {boolean} isMultiCriteria Indica si el modelo es multicriterio.
  * @property {string} smallDescription Descripción breve.
@@ -178,6 +185,7 @@ parameterSchema.path("default").validate(
  *
  * Campos principales:
  * - `name`: nombre del modelo.
+ * - `apiModelKey`: clave estable del modelo en ApiModels.
  * - `isConsensus`: indica si el modelo está orientado a procesos con consenso.
  * - `isMultiCriteria`: indica si el modelo trabaja con múltiples criterios.
  * - `smallDescription`: descripción breve del modelo.
@@ -204,6 +212,70 @@ const issueModelSchema = new Schema({
     type: String,
     required: true,
     trim: true,
+  },
+  apiModelKey: {
+    type: String,
+    trim: true,
+    index: true,
+  },
+  modelRole: {
+    type: String,
+    enum: ["issueModel", "weightingService", "utilityModel"],
+    default: "issueModel",
+  },
+  modelStatus: {
+    type: String,
+    enum: [
+      "available",
+      "experimental",
+      "pendingIntegration",
+      "deprecated",
+      "stale",
+      "unavailable",
+    ],
+    default: "available",
+  },
+  publicInIssueCatalog: {
+    type: Boolean,
+    default: true,
+  },
+  supportsScenarios: {
+    type: Boolean,
+    default: true,
+  },
+  apiEndpoint: {
+    method: {
+      type: String,
+      trim: true,
+    },
+    path: {
+      type: String,
+      trim: true,
+    },
+    operationId: {
+      type: String,
+      trim: true,
+    },
+  },
+  manifestSync: {
+    source: {
+      type: String,
+      trim: true,
+    },
+    manifestVersion: {
+      type: String,
+      trim: true,
+    },
+    apiVersion: {
+      type: String,
+      trim: true,
+    },
+    lastSyncedAt: {
+      type: Date,
+    },
+    lastSeenAt: {
+      type: Date,
+    },
   },
   isConsensus: {
     type: Boolean,

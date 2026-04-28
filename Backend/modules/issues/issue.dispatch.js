@@ -48,7 +48,7 @@ export const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
   }
 
   const issue = await Issue.findById(issueId)
-    .select("_id evaluationStructure isPairwise")
+    .select("_id evaluationStructure")
     .lean();
 
   if (!issue) {

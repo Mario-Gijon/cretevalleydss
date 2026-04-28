@@ -91,7 +91,32 @@ import mongoose from "mongoose";
  * @returns {Promise<void>}
  */
 export const modelsInfo = async (req, res) => {
-  const models = await IssueModel.find().select("-__v").lean();
+  const models = await IssueModel.find({
+    $and: [
+      {
+        $or: [
+          { publicInIssueCatalog: { $exists: false } },
+          { publicInIssueCatalog: { $ne: false } },
+        ],
+      },
+      {
+        $or: [
+          { modelRole: { $exists: false } },
+          { modelRole: null },
+          { modelRole: "issueModel" },
+        ],
+      },
+      {
+        $or: [
+          { modelStatus: { $exists: false } },
+          { modelStatus: null },
+          { modelStatus: { $nin: ["unavailable", "stale"] } },
+        ],
+      },
+    ],
+  })
+    .select("-__v")
+    .lean();
 
   return sendSuccess(res, "Models fetched successfully", models);
 };

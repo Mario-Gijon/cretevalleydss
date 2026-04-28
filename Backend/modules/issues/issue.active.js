@@ -3,7 +3,6 @@ import { orderDocsByIdList } from "../../modules/issues/issue.ordering.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
 
 import {
-  EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
 
@@ -488,8 +487,7 @@ export const buildActiveIssueView = ({
   dayjsLib,
 }) => {
   const issueId = toIdString(issue._id);
-  const evaluationStructure =
-    issue.evaluationStructure || resolveEvaluationStructure(issue.model);
+  const evaluationStructure = resolveEvaluationStructure(issue);
 
   const isValidUserId =
     Boolean(userId) &&
@@ -737,9 +735,6 @@ export const buildActiveIssueView = ({
       description: issue.description,
       model: issue.model,
       evaluationStructure,
-      isPairwise:
-        evaluationStructure ===
-        EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
       isConsensus: Boolean(issue.isConsensus),
       currentStage: stage,
       weightingMode: issue.weightingMode,

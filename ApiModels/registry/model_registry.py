@@ -344,3 +344,348 @@ MODEL_REGISTRY: tuple[ModelRouteRegistration, ...] = (
         },
     ),
 )
+
+
+_ADMIN_PRESERVED_FIELDS = [
+    "smallDescription",
+    "extendDescription",
+    "moreInfoUrl",
+]
+
+_ISSUE_MODEL_TECHNICAL_FIELDS = [
+    "parameters",
+    "evaluationStructure",
+    "supportedDomains",
+    "isConsensus",
+    "isMultiCriteria",
+]
+
+_CRITERION_TYPES = {
+    "canonical": ["max", "min"],
+    "aliases": {
+        "benefit": "max",
+        "cost": "min",
+    },
+}
+
+_SYNC_AS_ISSUE_MODEL = {
+    "safeToCreateIssueModel": True,
+    "safeTechnicalFields": _ISSUE_MODEL_TECHNICAL_FIELDS,
+    "preserveAdminFields": _ADMIN_PRESERVED_FIELDS,
+}
+
+_DO_NOT_SYNC_AS_ISSUE_MODEL = {
+    "safeToCreateIssueModel": False,
+    "safeTechnicalFields": [],
+    "preserveAdminFields": _ADMIN_PRESERVED_FIELDS,
+}
+
+_NUMERIC_0_1_DOMAIN = {
+    "numeric": {
+        "enabled": True,
+        "range": {
+            "min": 0,
+            "max": 1,
+        },
+    },
+    "linguistic": {
+        "enabled": False,
+        "minLabels": None,
+        "maxLabels": None,
+        "oddOnly": False,
+    },
+}
+
+_FUZZY_TOPSIS_DOMAIN = {
+    "numeric": {
+        "enabled": False,
+        "range": {
+            "min": None,
+            "max": None,
+        },
+    },
+    "linguistic": {
+        "enabled": True,
+        "minLabels": 3,
+        "maxLabels": 9,
+        "oddOnly": True,
+    },
+}
+
+_WEIGHTS_PARAMETER = {
+    "name": "weights",
+    "type": "array",
+    "default": None,
+    "restrictions": {
+        "min": 0,
+        "max": 1,
+        "step": None,
+        "length": "matchCriteria",
+        "sum": 1,
+        "allowed": None,
+    },
+}
+
+_FUZZY_WEIGHTS_PARAMETER = {
+    "name": "weights",
+    "type": "fuzzyArray",
+    "default": None,
+    "restrictions": {
+        "min": 0,
+        "max": 1,
+        "step": None,
+        "length": "matchCriteria",
+        "sum": None,
+        "allowed": None,
+    },
+}
+
+
+MODEL_MANIFEST_METADATA: dict[str, dict[str, Any]] = {
+    "topsis": {
+        "displayName": "TOPSIS",
+        "aliases": ["TOPSIS"],
+        "role": "issueModel",
+        "status": "available",
+        "publicInIssueCatalog": True,
+        "evaluationStructure": "direct",
+        "isConsensus": False,
+        "isMultiCriteria": True,
+        "inputKind": "directCrispMatrix",
+        "outputKind": "ranking",
+        "supportsScenarios": True,
+        "parameters": [_WEIGHTS_PARAMETER],
+        "criterionTypes": _CRITERION_TYPES,
+        "supportedDomains": _NUMERIC_0_1_DOMAIN,
+        "moreInfoUrl": None,
+        "sync": _SYNC_AS_ISSUE_MODEL,
+    },
+    "aras": {
+        "displayName": "ARAS",
+        "aliases": ["ARAS"],
+        "role": "issueModel",
+        "status": "available",
+        "publicInIssueCatalog": True,
+        "evaluationStructure": "direct",
+        "isConsensus": False,
+        "isMultiCriteria": True,
+        "inputKind": "directCrispMatrix",
+        "outputKind": "ranking",
+        "supportsScenarios": True,
+        "parameters": [_WEIGHTS_PARAMETER],
+        "criterionTypes": _CRITERION_TYPES,
+        "supportedDomains": _NUMERIC_0_1_DOMAIN,
+        "moreInfoUrl": None,
+        "sync": _SYNC_AS_ISSUE_MODEL,
+    },
+    "borda": {
+        "displayName": "BORDA",
+        "aliases": ["BORDA"],
+        "role": "issueModel",
+        "status": "available",
+        "publicInIssueCatalog": True,
+        "evaluationStructure": "direct",
+        "isConsensus": False,
+        "isMultiCriteria": True,
+        "inputKind": "directCrispMatrix",
+        "outputKind": "ranking",
+        "supportsScenarios": True,
+        "parameters": [],
+        "criterionTypes": _CRITERION_TYPES,
+        "supportedDomains": _NUMERIC_0_1_DOMAIN,
+        "moreInfoUrl": None,
+        "sync": _SYNC_AS_ISSUE_MODEL,
+    },
+    "fuzzy_topsis": {
+        "displayName": "Fuzzy TOPSIS",
+        "aliases": ["FUZZY TOPSIS", "Fuzzy TOPSIS"],
+        "role": "issueModel",
+        "status": "available",
+        "publicInIssueCatalog": True,
+        "evaluationStructure": "direct",
+        "isConsensus": False,
+        "isMultiCriteria": True,
+        "inputKind": "directFuzzyMatrix",
+        "outputKind": "ranking",
+        "supportsScenarios": True,
+        "parameters": [_FUZZY_WEIGHTS_PARAMETER],
+        "criterionTypes": _CRITERION_TYPES,
+        "supportedDomains": _FUZZY_TOPSIS_DOMAIN,
+        "moreInfoUrl": None,
+        "sync": _SYNC_AS_ISSUE_MODEL,
+    },
+    "herrera_viedma_crp": {
+        "displayName": "Herrera Viedma CRP",
+        "aliases": ["Herrera Viedma CRP", "HERRERA-VIEDMA CRP", "CRP"],
+        "role": "issueModel",
+        "status": "available",
+        "publicInIssueCatalog": True,
+        "evaluationStructure": "pairwiseAlternatives",
+        "isConsensus": True,
+        "isMultiCriteria": False,
+        "inputKind": "pairwisePreferenceMatrix",
+        "outputKind": "consensusRanking",
+        "supportsScenarios": True,
+        "parameters": [
+            {
+                "name": "ag_lq",
+                "type": "array",
+                "default": [0.3, 0.8],
+                "restrictions": {
+                    "min": 0,
+                    "max": 1,
+                    "step": None,
+                    "length": 2,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "name": "ex_lq",
+                "type": "array",
+                "default": [0.5, 1],
+                "restrictions": {
+                    "min": 0,
+                    "max": 1,
+                    "step": None,
+                    "length": 2,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "name": "b",
+                "type": "number",
+                "default": 1,
+                "restrictions": {
+                    "min": None,
+                    "max": None,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": [0.5, 0.7, 0.9, 1],
+                },
+            },
+            {
+                "name": "beta",
+                "type": "number",
+                "default": 0.8,
+                "restrictions": {
+                    "min": 0,
+                    "max": 1,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+        ],
+        "criterionTypes": None,
+        "supportedDomains": _NUMERIC_0_1_DOMAIN,
+        "moreInfoUrl": None,
+        "sync": _SYNC_AS_ISSUE_MODEL,
+    },
+    "bwm": {
+        "displayName": "BWM",
+        "aliases": ["BWM", "Best Worst Method"],
+        "role": "weightingService",
+        "status": "available",
+        "publicInIssueCatalog": False,
+        "evaluationStructure": None,
+        "isConsensus": False,
+        "isMultiCriteria": True,
+        "inputKind": "bwmExpertComparisons",
+        "outputKind": "weights",
+        "supportsScenarios": False,
+        "parameters": [
+            {
+                "name": "eps_penalty",
+                "type": "number",
+                "default": 1,
+                "restrictions": {
+                    "min": None,
+                    "max": None,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            }
+        ],
+        "criterionTypes": None,
+        "supportedDomains": None,
+        "moreInfoUrl": None,
+        "sync": _DO_NOT_SYNC_AS_ISSUE_MODEL,
+    },
+    "cmcc": {
+        "displayName": "CMCC",
+        "aliases": ["CMCC"],
+        "role": "utilityModel",
+        "status": "pendingIntegration",
+        "publicInIssueCatalog": False,
+        "evaluationStructure": None,
+        "isConsensus": True,
+        "isMultiCriteria": None,
+        "inputKind": "cmccOpinionVector",
+        "outputKind": "adjustedConsensusOpinions",
+        "supportsScenarios": False,
+        "parameters": [
+            {
+                "name": "eps",
+                "type": "number",
+                "default": None,
+                "restrictions": {
+                    "min": None,
+                    "max": None,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "name": "mu0",
+                "type": "number",
+                "default": None,
+                "restrictions": {
+                    "min": 0,
+                    "max": 1,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "name": "lower_bound",
+                "type": "number",
+                "default": 0,
+                "restrictions": {
+                    "min": None,
+                    "max": None,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "name": "upper_bound",
+                "type": "number",
+                "default": 1,
+                "restrictions": {
+                    "min": None,
+                    "max": None,
+                    "step": None,
+                    "length": None,
+                    "sum": None,
+                    "allowed": None,
+                },
+            },
+        ],
+        "criterionTypes": None,
+        "supportedDomains": None,
+        "moreInfoUrl": None,
+        "sync": _DO_NOT_SYNC_AS_ISSUE_MODEL,
+    },
+}

@@ -16,6 +16,10 @@ import {
   computeIssueWeightsAdmin,
   resolveIssueAdmin,
   removeIssueAdmin,
+  getModelCatalogAdmin,
+  updateModelCatalogVisibilityAdmin,
+  getModelManifestDryRunAdmin,
+  syncModelManifestAdmin,
 } from "../controllers/admin.controller.js";
 
 import { requireToken } from "../middlewares/requireToken.js";
@@ -171,6 +175,220 @@ router
   .route("/experts")
   .get(requireToken, requireAdmin, asyncHandler(getAllUsersAdmin))
   .post(requireToken, requireAdmin, asyncHandler(createUserAdmin));
+
+/**
+ * @openapi
+ * /admin/models/catalog:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Obtiene el catálogo persistido de modelos desde MongoDB
+ *     description: |
+ *       Devuelve los documentos IssueModel persistidos en MongoDB para el
+ *       panel de administración. No consulta ApiModels ni escribe cambios.
+ *       Requiere access token válido y rol admin.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Catálogo obtenido correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Model catalog retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     models:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         additionalProperties: true
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Usuario autenticado sin permisos de administrador
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get(
+  "/models/catalog",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getModelCatalogAdmin)
+);
+
+/**
+ * @openapi
+ * /admin/models/{id}/catalog-visibility:
+ *   patch:
+ *     tags:
+ *       - Admin
+ *     summary: Actualiza la visibilidad de un modelo en Create Issue
+ *     description: |
+ *       Cambia únicamente publicInIssueCatalog para controlar si un modelo
+ *       aparece al crear nuevos issues. No modifica metadatos técnicos,
+ *       campos editoriales ni issues existentes.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - publicInIssueCatalog
+ *             properties:
+ *               publicInIssueCatalog:
+ *                 type: boolean
+ *                 example: false
+ *     responses:
+ *       200:
+ *         description: Visibilidad actualizada correctamente
+ *       400:
+ *         description: Id inválido o publicInIssueCatalog no booleano
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Usuario autenticado sin permisos de administrador
+ *       404:
+ *         description: Modelo no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.patch(
+  "/models/:id/catalog-visibility",
+  requireToken,
+  requireAdmin,
+  asyncHandler(updateModelCatalogVisibilityAdmin)
+);
+
+/**
+ * @openapi
+ * /admin/models/manifest/dry-run:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Compara el manifest de ApiModels con IssueModel sin escribir
+ *     description: |
+ *       Ejecuta una comprobación read-only entre GET /models/manifest de
+ *       ApiModels y los documentos IssueModel actuales en MongoDB.
+ *       Requiere access token válido y rol admin.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dry-run completado correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Model manifest dry-run completed successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Usuario autenticado sin permisos de administrador
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get(
+  "/models/manifest/dry-run",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getModelManifestDryRunAdmin)
+);
+
+/**
+ * @openapi
+ * /admin/models/manifest/sync:
+ *   post:
+ *     tags:
+ *       - Admin
+ *     summary: Sincroniza el manifest de ApiModels con IssueModel
+ *     description: |
+ *       Sincroniza modelos públicos y seguros del manifest de ApiModels con
+ *       MongoDB. Requiere confirmación explícita y rol admin.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - confirm
+ *             properties:
+ *               confirm:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Sincronización completada correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *                 - data
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Model manifest synchronized successfully
+ *                 data:
+ *                   type: object
+ *                   additionalProperties: true
+ *       400:
+ *         description: Falta confirmación explícita
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Usuario autenticado sin permisos de administrador
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.post(
+  "/models/manifest/sync",
+  requireToken,
+  requireAdmin,
+  asyncHandler(syncModelManifestAdmin)
+);
 
 /**
  * @openapi

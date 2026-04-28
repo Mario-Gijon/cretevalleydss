@@ -27,7 +27,10 @@ import {
 } from "../../utils/common/errors.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
-import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
+import {
+  buildModelEndpointUrl,
+  getModelEndpointKey,
+} from "../../services/modelApi/modelCatalog.js";
 import {
   createModelApiRequestError,
   unwrapModelApiResponse,
@@ -590,8 +593,6 @@ const buildScenarioPayload = (scenarioDoc) => {
   return {
     ...scenarioDoc,
     evaluationStructure,
-    isPairwise:
-      evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
   };
 };
 
@@ -705,8 +706,7 @@ const getCreateScenarioContext = async ({
     throw createBadRequestError("No accepted experts found");
   }
 
-  const issueEvaluationStructure =
-    issue.evaluationStructure || resolveEvaluationStructure(issue.model);
+  const issueEvaluationStructure = resolveEvaluationStructure(issue);
 
   const targetEvaluationStructure = resolveEvaluationStructure(targetModel);
 
@@ -870,7 +870,7 @@ const resolveScenarioMatricesOrThrow = async ({
  * Ejecuta el modelo objetivo para crear un escenario.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.targetModelName Nombre del modelo objetivo.
+ * @param {Object} params.targetModel Modelo objetivo.
  * @param {Object} params.matricesUsed Matrices de entrada.
  * @param {Object} params.normalizedParams Parámetros normalizados.
  * @param {string[]} params.criterionTypes Tipos de criterio.
@@ -878,29 +878,29 @@ const resolveScenarioMatricesOrThrow = async ({
  * @returns {Promise<ScenarioExecutionResult>}
  */
 const executeScenarioModelOrThrow = async ({
-  targetModelName,
+  targetModel,
   matricesUsed,
   normalizedParams,
   criterionTypes,
   consensusThresholdUsed,
 }) => {
-  const modelKey = getModelEndpointKey(targetModelName);
-
-  if (!modelKey) {
-    throw createBadRequestError(
-      `No API endpoint defined for target model ${targetModelName}`
-    );
-  }
-
+  const modelKey = getModelEndpointKey(targetModel);
   const apimodelsUrl =
     process.env.ORIGIN_APIMODELS || "http://localhost:7000";
+  const modelEndpointUrl = buildModelEndpointUrl(apimodelsUrl, targetModel);
+
+  if (!modelKey || !modelEndpointUrl) {
+    throw createBadRequestError(
+      `No API endpoint defined for target model ${targetModel?.name}`
+    );
+  }
 
   let response;
 
   try {
     if (modelKey === "herrera_viedma_crp") {
       response = await axios.post(
-        `${apimodelsUrl}/${modelKey}`,
+        modelEndpointUrl,
         {
           matrices: matricesUsed,
           consensusThreshold: consensusThresholdUsed,
@@ -912,7 +912,7 @@ const executeScenarioModelOrThrow = async ({
       );
     } else {
       response = await axios.post(
-        `${apimodelsUrl}/${modelKey}`,
+        modelEndpointUrl,
         {
           matrices: matricesUsed,
           modelParameters: normalizedParams,
@@ -1106,7 +1106,7 @@ export const createIssueScenarioFlow = async ({
   });
 
   const { modelKey, results } = await executeScenarioModelOrThrow({
-    targetModelName: context.targetModel.name,
+    targetModel: context.targetModel,
     matricesUsed,
     normalizedParams: context.normalizedParams,
     criterionTypes: context.criterionTypes,

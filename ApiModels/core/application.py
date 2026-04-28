@@ -4,6 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
+from api.routers.model_manifest import router as model_manifest_router
 from api.routers.models import router as models_router
 
 
@@ -67,6 +68,7 @@ def create_application() -> FastAPI:
         )
 
     app.include_router(models_router)
+    app.include_router(model_manifest_router)
 
     def custom_openapi():
         if app.openapi_schema:

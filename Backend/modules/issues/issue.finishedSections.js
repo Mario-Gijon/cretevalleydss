@@ -5,6 +5,7 @@ import { Participation } from "../../models/Participations.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Consensus } from "../../models/Consensus.js";
 import { buildIssueCriteriaTree } from "../../modules/issues/issue.active.js";
+import { resolveEvaluationStructure } from "./issue.evaluationStructure.js";
 import { createNotFoundError } from "../../utils/common/errors.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
@@ -147,7 +148,7 @@ export const createSummarySection = async (issueId) => {
     alternatives: alternatives.map((alternative) => alternative.name).sort(),
     creationDate: issue.creationDate ?? null,
     closureDate: issue.closureDate ?? null,
-    isPairwise: issue.model.isPairwise,
+    evaluationStructure: resolveEvaluationStructure(issue),
     consensusInfo: issue.isConsensus
       ? {
           maximumPhases: issue.consensusMaxPhases,

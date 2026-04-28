@@ -25,7 +25,10 @@ import {
   getOrderedLeafCriteriaDb,
 } from "../../modules/issues/issue.ordering.js";
 import { normalizeParams } from "../../services/modelApi/modelParamNormalizer.js";
-import { getModelEndpointKey } from "../../services/modelApi/modelCatalog.js";
+import {
+  buildModelEndpointUrl,
+  getModelEndpointKey,
+} from "../../services/modelApi/modelCatalog.js";
 import {
   createModelApiRequestError,
   unwrapModelApiResponse,
@@ -37,34 +40,6 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId } from "../../utils/common/ids.js";
-
-/**
- * Resuelve la clave del endpoint del servicio de modelos para un nombre de modelo.
- *
- * @param {string} modelName Nombre del modelo.
- * @returns {string | null}
- */
-const resolveModelEndpointKey = (modelName) => {
-  const sharedResolver = getModelEndpointKey(modelName);
-  if (sharedResolver) {
-    return sharedResolver;
-  }
-
-  switch (String(modelName || "").trim().toUpperCase()) {
-    case "TOPSIS":
-      return "topsis";
-    case "FUZZY TOPSIS":
-      return "fuzzy_topsis";
-    case "BORDA":
-      return "borda";
-    case "ARAS":
-      return "aras";
-    case "HERRERA-VIEDMA CRP":
-      return "herrera_viedma_crp";
-    default:
-      return null;
-  }
-};
 
 /**
  * Construye el array de tipos de criterio compatible con los modelos directos.
@@ -383,8 +358,10 @@ export const resolveDirectIssueFlow = async ({
     participations,
   });
 
-  const modelKey = resolveModelEndpointKey(model.name);
-  if (!modelKey) {
+  const modelKey = getModelEndpointKey(model);
+  const modelEndpointUrl = buildModelEndpointUrl(apiModelsBaseUrl, model);
+
+  if (!modelKey || !modelEndpointUrl) {
     throw createBadRequestError(
       `No API endpoint defined for model ${model.name}`
     );
@@ -396,7 +373,7 @@ export const resolveDirectIssueFlow = async ({
   let response;
   try {
     response = await httpClient.post(
-      `${apiModelsBaseUrl}/${modelKey}`,
+      modelEndpointUrl,
       {
         matrices,
         modelParameters: normalizedModelParams,
@@ -523,8 +500,10 @@ export const resolvePairwiseIssueFlow = async ({
         "This issue must be resolved with the direct resolver",
     });
 
-  const modelKey = resolveModelEndpointKey(model.name);
-  if (!modelKey) {
+  const modelKey = getModelEndpointKey(model);
+  const modelEndpointUrl = buildModelEndpointUrl(apiModelsBaseUrl, model);
+
+  if (!modelKey || !modelEndpointUrl) {
     throw createBadRequestError(
       `No API endpoint defined for model ${model.name}`
     );
@@ -549,7 +528,7 @@ export const resolvePairwiseIssueFlow = async ({
   let response;
   try {
     response = await httpClient.post(
-      `${apiModelsBaseUrl}/${modelKey}`,
+      modelEndpointUrl,
       {
         matrices,
         consensusThreshold: issue.consensusThreshold,

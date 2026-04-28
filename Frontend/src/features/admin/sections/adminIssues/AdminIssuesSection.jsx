@@ -1397,7 +1397,7 @@ export default function AdminIssuesSection() {
                         </Typography>
                       </Stack>
 
-                      {expertEvaluations?.issue?.isPairwise ? (
+                      {expertEvaluations?.issue?.evaluationStructure === "pairwiseAlternatives" ? (
                         <AdminReadOnlyPairwise data={expertEvaluations} />
                       ) : (
                         <AdminReadOnlyAxCMatrix data={expertEvaluations} />

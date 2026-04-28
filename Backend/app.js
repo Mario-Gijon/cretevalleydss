@@ -2,8 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
-import swaggerUi from "swagger-ui-express";
-import swaggerJSDoc from "swagger-jsdoc";
+import { fileURLToPath } from "url";
 
 import authRouter from "./routes/auth.route.js";
 import issueRouter from "./routes/issue.route.js";
@@ -18,6 +17,8 @@ import { errorHandler } from "./middlewares/errorHandler.js";
  */
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Construye la lista de orígenes permitidos para CORS.
@@ -56,44 +57,10 @@ const validateCorsOrigin = (origin, callback) => {
   return callback(new Error(`Not allowed by CORS: ${origin}`));
 };
 
-const swaggerOptions = {
-  failOnErrors: false,
-  definition: {
-    openapi: "3.0.3",
-    info: {
-      title: "Crete Valley DSS Backend API",
-      version: "1.0.0",
-      description:
-        "HTTP API for the Crete Valley DSS backend. Generated from route annotations and shared OpenAPI components.",
-    },
-    servers: [
-      {
-        url:
-          process.env.OPENAPI_SERVER_URL ||
-          `http://localhost:${process.env.PORT || 6000}/api`,
-        description: "Configured API server",
-      },
-    ],
-    tags: [
-      {
-        name: "Auth",
-        description: "Authentication, account, profile and session endpoints.",
-      },
-      {
-        name: "Issues",
-        description:
-          "Issue lifecycle, evaluations, notifications, expression domains and scenarios.",
-      },
-      {
-        name: "Admin",
-        description: "Administrative endpoints for experts, issues and panel operations.",
-      },
-    ],
-  },
-  apis: ["./openapi.components.js", "./routes/*.js", "./routes/**/*.js"],
-};
-
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
+const generatedDocsPath = path.join(__dirname, "docs", "generated");
+const openApiJsonPath = path.join(__dirname, "openapi", "openapi.json");
+const redocHtmlPath = path.join(generatedDocsPath, "api-reference.html");
+const jsdocDirPath = path.join(generatedDocsPath, "jsdoc");
 
 app.use(
   cors({
@@ -106,17 +73,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.get("/api/openapi.json", (_req, res) => {
-  return res.json(swaggerSpec);
+  return res.sendFile(openApiJsonPath);
 });
 
-app.use(
-  "/api/docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    customSiteTitle: "Crete Valley DSS API Docs",
-  })
-);
+app.get("/api/docs", (_req, res) => {
+  return res.sendFile(redocHtmlPath);
+});
+
+app.use("/api/docs/jsdoc", express.static(jsdocDirPath));
 
 app.use("/api/auth", authRouter);
 app.use("/api/issues", issueRouter);
@@ -132,7 +96,7 @@ app.use("/api", (_req, res) => {
   });
 });
 
-const distPath = path.join(process.cwd(), "dist");
+const distPath = path.join(__dirname, "dist");
 
 app.use(express.static(distPath));
 
