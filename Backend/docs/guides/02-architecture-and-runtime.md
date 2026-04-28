@@ -40,7 +40,3 @@
 - `GET /api/openapi.json` serves `Backend/openapi/openapi.json`.
 - `GET /api/docs` serves `Backend/docs/generated/api-reference.html`.
 - `GET /api/docs/jsdoc` serves static files from `Backend/docs/generated/jsdoc/`.
-
-## Current limitations
-
-- Legacy `jobs/autoCloseIssues.js` imports controller functions that are not exported by the current controller module and is not wired into runtime startup.

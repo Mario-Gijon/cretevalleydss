@@ -61,8 +61,3 @@ Error envelope:
 
 `services/modelApi/modelResponse.js` normalizes upstream responses and failures.
 Model execution can return HTTP `200` with `success: false` in body; this is converted into typed errors for consistent API behavior.
-
-## Current limitations
-
-- Fallback unknown `/api/*` route in `app.js` returns a minimal 404 payload that is not fully normalized to the canonical error envelope.
-- Email templates currently generate confirmation links with `/auth/accountConfirm/:token` and `/auth/confirmEmailChange/:token`, while backend routes are `/api/auth/account/confirm/:token` and `/api/auth/email-change/confirm/:token`.

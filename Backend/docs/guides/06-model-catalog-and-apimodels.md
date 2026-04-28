@@ -49,7 +49,3 @@ Main integration modules are in `services/modelApi/`:
 - response normalization for model execution.
 
 Execution compatibility includes handling HTTP `200` with `success: false` as an operational error path.
-
-## Current limitation
-
-Legacy name-based endpoint-key fallback in `modelCatalog.js` is static; new models should rely on persisted `apiModelKey` and `apiEndpoint` to avoid ambiguity.

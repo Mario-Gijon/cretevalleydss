@@ -70,7 +70,3 @@ Resolution (`modules/issues/issue.resolution.js`):
 - `leaveActiveIssueFlow`: participant exit in active issues.
 - `hideFinishedIssueForUserFlow`: user-level hide of finished issues.
 - `ExitUserIssue` stores hide/exit history with phase/stage context.
-
-## Current limitation
-
-Pairwise resolution currently has a model-specific output adapter for Herrera-Viedma CRP. Adding another `pairwiseAlternatives` issue model requires adding a corresponding backend result adapter so the ApiModels response can be normalized and persisted safely.
