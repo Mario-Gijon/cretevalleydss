@@ -1,16 +1,16 @@
-import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
-import { Participation } from "../../../models/Participations.js";
+import { CriteriaWeightEvaluation } from "../../../../models/CriteriaWeightEvaluation.js";
+import { Participation } from "../../../../models/Participations.js";
 
-import { getOrderedLeafCriteriaDb } from "../issue.ordering.js";
+import { getOrderedLeafCriteriaDb } from "../../issue.ordering.js";
 
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError } from "../../../../utils/common/errors.js";
 
 import {
   getCollectiveWeightsContextOrThrow,
   getWeightEvaluationContextOrThrow,
   markParticipationWeightsCompleted,
   syncIssueStageAfterWeightsCompletion,
-} from "./weightEvaluation.shared.js";
+} from "../weightEvaluation.shared.js";
 
 const MANUAL_WEIGHTS_SUM_TOLERANCE = 0.001;
 
@@ -36,16 +36,26 @@ export const buildOrderedManualWeights = (raw, leafDocs) =>
   );
 
 /**
- * Obtiene el payload raw de pesos manuales desde las variantes aceptadas.
+ * Obtiene el payload de pesos manuales desde el contrato canónico.
  *
  * @param {Object} body Cuerpo de la petición.
  * @returns {Object}
  */
-export const getRawManualWeightsPayload = (body) =>
-  body?.manualWeights ||
-  body?.weights?.manualWeights ||
-  body?.weights ||
-  {};
+export const getManualWeightsPayloadOrThrow = (body) => {
+  const manualWeights = body?.manualWeights;
+
+  if (
+    !manualWeights ||
+    typeof manualWeights !== "object" ||
+    Array.isArray(manualWeights)
+  ) {
+    throw createBadRequestError("manualWeights is required", {
+      field: "manualWeights",
+    });
+  }
+
+  return manualWeights;
+};
 
 /**
  * Convierte unos pesos manuales persistidos al formato esperado por el frontend.
@@ -130,25 +140,30 @@ const validateSubmittedManualWeightsOrThrow = ({
  * Guarda una evaluación de pesos manuales para un experto.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del experto.
  * @param {Object.<string, number|null>} params.manualWeights Pesos manuales ordenados.
  * @param {boolean} params.completed Indica si la evaluación queda enviada.
  * @returns {Promise<void>}
  */
 const upsertManualWeightsEvaluation = async ({
-  issueId,
+  issue,
   userId,
   manualWeights,
   completed,
 }) => {
+  const issueId = issue._id;
+
   await CriteriaWeightEvaluation.updateOne(
     { issue: issueId, expert: userId },
     {
       $set: {
         issue: issueId,
         expert: userId,
-        manualWeights,
+        weightingMode: issue.weightingMode,
+        input: {
+          manualWeights,
+        },
         completed,
         consensusPhase: 1,
       },
@@ -161,24 +176,24 @@ const upsertManualWeightsEvaluation = async ({
  * Obtiene los pesos manuales guardados del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del experto.
  * @returns {Promise<Object>}
  */
-export const getManualWeightEvaluation = async ({ issueId, userId }) => {
-  const { issue, criterionNames } = await getWeightEvaluationContextOrThrow({
-    issueId,
+export const getManualWeightEvaluation = async ({ issue, userId }) => {
+  const { issueId, criterionNames } = await getWeightEvaluationContextOrThrow({
+    issue,
     userId,
   });
 
   const evaluation = await CriteriaWeightEvaluation.findOne({
-    issue: issue._id,
+    issue: issueId,
     expert: userId,
   }).lean();
 
   return {
     manualWeights: buildManualWeightsResponse({
-      manualWeights: evaluation?.manualWeights || {},
+      manualWeights: evaluation?.input?.manualWeights || {},
       criterionNames,
     }),
   };
@@ -188,26 +203,26 @@ export const getManualWeightEvaluation = async ({ issueId, userId }) => {
  * Guarda un borrador de pesos manuales para el experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del experto.
  * @param {Object} params.body Cuerpo recibido en la request.
  * @returns {Promise<Object>}
  */
 export const saveManualWeightDraft = async ({
-  issueId,
+  issue,
   userId,
   body,
 }) => {
-  const { issue, leafDocs } = await getWeightEvaluationContextOrThrow({
-    issueId,
+  const { leafDocs } = await getWeightEvaluationContextOrThrow({
+    issue,
     userId,
   });
 
-  const raw = getRawManualWeightsPayload(body);
+  const raw = getManualWeightsPayloadOrThrow(body);
   const manualWeights = buildOrderedManualWeights(raw, leafDocs);
 
   await upsertManualWeightsEvaluation({
-    issueId: issue._id,
+    issue,
     userId,
     manualWeights,
     completed: false,
@@ -222,23 +237,23 @@ export const saveManualWeightDraft = async ({
  * Valida y envía los pesos manuales del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del experto.
  * @param {Object} params.body Cuerpo recibido en la request.
  * @returns {Promise<Object>}
  */
 export const submitManualWeights = async ({
-  issueId,
+  issue,
   userId,
   body,
 }) => {
-  const { issue, leafDocs, criterionNames } =
+  const { issueId, leafDocs, criterionNames } =
     await getWeightEvaluationContextOrThrow({
-      issueId,
+      issue,
       userId,
     });
 
-  const raw = getRawManualWeightsPayload(body);
+  const raw = getManualWeightsPayloadOrThrow(body);
   const manualWeights = buildOrderedManualWeights(raw, leafDocs);
 
   validateSubmittedManualWeightsOrThrow({
@@ -247,14 +262,14 @@ export const submitManualWeights = async ({
   });
 
   await upsertManualWeightsEvaluation({
-    issueId: issue._id,
+    issue,
     userId,
     manualWeights,
     completed: true,
   });
 
   await markParticipationWeightsCompleted({
-    issueId: issue._id,
+    issueId,
     userId,
   });
 
@@ -288,7 +303,7 @@ export const computeNormalizedCollectiveManualWeights = ({
     const values = [];
 
     for (const evaluation of evaluations) {
-      const value = evaluation.manualWeights?.[criterionName];
+      const value = evaluation.input?.manualWeights?.[criterionName];
       if (value !== undefined && value !== null && value !== "") {
         values.push(Number(value));
       }
@@ -315,22 +330,22 @@ export const computeNormalizedCollectiveManualWeights = ({
  * Calcula pesos manuales colectivos y actualiza el issue.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del usuario actual.
  * @returns {Promise<Object>}
  */
 export const computeManualWeights = async ({
-  issueId,
+  issue,
   userId,
 }) => {
-  const issue = await getCollectiveWeightsContextOrThrow({
-    issueId,
+  const issueDoc = await getCollectiveWeightsContextOrThrow({
+    issue,
     userId,
     requireConsensusMode: true,
   });
 
   const participations = await Participation.find({
-    issue: issue._id,
+    issue: issueDoc._id,
     invitationStatus: "accepted",
   });
 
@@ -345,8 +360,8 @@ export const computeManualWeights = async ({
   }
 
   const criteria = await getOrderedLeafCriteriaDb({
-    issueId: issue._id,
-    issueDoc: issue,
+    issueId: issueDoc._id,
+    issueDoc,
     select: "_id name",
     lean: true,
   });
@@ -354,7 +369,7 @@ export const computeManualWeights = async ({
   const criterionNames = criteria.map((criterion) => criterion.name);
 
   const evaluations = await CriteriaWeightEvaluation.find({
-    issue: issue._id,
+    issue: issueDoc._id,
     completed: true,
   });
 
@@ -369,18 +384,25 @@ export const computeManualWeights = async ({
     criterionNames,
   });
 
-  issue.modelParameters = {
-    ...(issue.modelParameters || {}),
+  issueDoc.modelParameters = {
+    ...(issueDoc.modelParameters || {}),
     weights: normalizedWeights,
   };
 
-  issue.currentStage = "alternativeEvaluation";
-  await issue.save();
+  issueDoc.currentStage = "alternativeEvaluation";
+  await issueDoc.save();
 
   return {
     finished: true,
     message: "Criteria weights computed",
-    weights: issue.modelParameters.weights,
+    weights: issueDoc.modelParameters.weights,
     criteriaOrder: criterionNames,
   };
 };
+
+export const manualWeightEvaluations = Object.freeze({
+  read: getManualWeightEvaluation,
+  saveDraft: saveManualWeightDraft,
+  submit: submitManualWeights,
+  compute: computeManualWeights,
+});

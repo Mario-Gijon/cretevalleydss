@@ -2,7 +2,6 @@ import { Alternative } from "../../../models/Alternatives.js";
 import { Consensus } from "../../../models/Consensus.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
-import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import {
   createBadRequestError,
@@ -10,28 +9,12 @@ import {
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
 import {
   getAcceptedParticipation,
   getDefaultIssueSnapshot,
   getNextConsensusPhase,
 } from "../issue.queries.js";
-import { resolveEvaluationStructure } from "../issue.evaluationStructure.js";
-
-/**
- * Valida que el id de issue sea válido.
- *
- * @param {string} issueId Id del issue.
- * @returns {void}
- */
-export const validateIssueIdOrThrow = (issueId) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-};
 
 /**
  * Crea un error estándar de validación para payloads de evaluaciones.
@@ -73,43 +56,33 @@ const buildNameIdMap = (docs = []) =>
  * Carga y valida el contexto base necesario para guardar evaluaciones.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
- * @param {string} params.expectedStructure Estructura esperada del issue.
- * @param {string} params.invalidStructureMessage Mensaje de error si la estructura no coincide.
  * @param {boolean} [params.requireDefaultSnapshot=false] Indica si debe existir un snapshot por defecto.
- * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const getEvaluationSaveContext = async ({
-  issueId,
+  issue,
   userId,
-  expectedStructure,
-  invalidStructureMessage,
   requireDefaultSnapshot = false,
-  issue = null,
 }) => {
-  const issueDoc = issue || (await Issue.findById(issueId).lean());
+  const issueDoc = issue;
+  const issueId = toIdString(issueDoc?._id);
 
-  if (!issueDoc) {
-    throw createNotFoundError("Issue not found", {
+  if (!issueId) {
+    throw createBadRequestError("Valid issue id is required", {
       field: "issueId",
     });
   }
 
-  const evaluationStructure = resolveEvaluationStructure(issueDoc);
-  if (evaluationStructure !== expectedStructure) {
-    throw createBadRequestError(invalidStructureMessage);
-  }
-
   const [participation, alternatives, criteria, currentPhase, defaultSnapshot] =
     await Promise.all([
-      getAcceptedParticipation(issueDoc._id, userId),
-      Alternative.find({ issue: issueDoc._id }).sort({ name: 1 }).lean(),
-      Criterion.find({ issue: issueDoc._id }).select("_id name").lean(),
-      getNextConsensusPhase(issueDoc._id),
+      getAcceptedParticipation(issueId, userId),
+      Alternative.find({ issue: issueId }).sort({ name: 1 }).lean(),
+      Criterion.find({ issue: issueId }).select("_id name").lean(),
+      getNextConsensusPhase(issueId),
       requireDefaultSnapshot
-        ? getDefaultIssueSnapshot(issueDoc._id)
+        ? getDefaultIssueSnapshot(issueId)
         : Promise.resolve(null),
     ]);
 
@@ -125,6 +98,7 @@ export const getEvaluationSaveContext = async ({
 
   return {
     issue: issueDoc,
+    issueId,
     currentPhase,
     defaultSnapshot,
     alternativeMap: buildNameIdMap(alternatives),
@@ -170,36 +144,26 @@ export const ensureIssueSnapshotIdsExist = async ({
  * Carga y valida el contexto base necesario para leer evaluaciones.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
- * @param {string} params.expectedStructure Estructura esperada del issue.
- * @param {string} params.invalidStructureMessage Mensaje si la estructura no coincide.
- * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const getEvaluationReadContext = async ({
-  issueId,
+  issue,
   userId,
-  expectedStructure,
-  invalidStructureMessage,
-  issue = null,
 }) => {
-  const issueDoc = issue || (await Issue.findById(issueId).lean());
+  const issueDoc = issue;
+  const issueId = toIdString(issueDoc?._id);
 
-  if (!issueDoc) {
-    throw createNotFoundError("Issue not found", {
+  if (!issueId) {
+    throw createBadRequestError("Valid issue id is required", {
       field: "issueId",
     });
   }
 
-  const evaluationStructure = resolveEvaluationStructure(issueDoc);
-  if (evaluationStructure !== expectedStructure) {
-    throw createBadRequestError(invalidStructureMessage);
-  }
-
   const [participation, latestConsensus] = await Promise.all([
-    getAcceptedParticipation(issueDoc._id, userId),
-    Consensus.findOne({ issue: issueDoc._id }).sort({ phase: -1 }).lean(),
+    getAcceptedParticipation(issueId, userId),
+    Consensus.findOne({ issue: issueId }).sort({ phase: -1 }).lean(),
   ]);
 
   if (!participation) {
@@ -208,6 +172,7 @@ export const getEvaluationReadContext = async ({
 
   return {
     issue: issueDoc,
+    issueId,
     latestConsensus,
   };
 };

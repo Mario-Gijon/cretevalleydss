@@ -1,4 +1,3 @@
-import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 
 import {
@@ -13,7 +12,6 @@ import {
 import {
   createBadRequestError,
   createForbiddenError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId } from "../../../utils/common/ids.js";
 
@@ -27,6 +25,7 @@ import { sameId } from "../../../utils/common/ids.js";
 /**
  * @typedef {Object} WeightContextResult
  * @property {Object} issue Documento del issue.
+ * @property {string} issueId Id normalizado del issue.
  * @property {Object} participation Participación aceptada del usuario actual.
  * @property {Array<Object>} leafDocs Criterios hoja ordenados.
  * @property {string[]} criterionNames Nombres de criterios hoja en orden canónico.
@@ -84,44 +83,43 @@ export const toNullableIntMap = (obj) =>
  * Obtiene el contexto base de pesos para un experto dentro de un issue.
  *
  * Valida:
- * - existencia del issue
+ * - id de issue válido
  * - que el usuario siga siendo participante aceptado
  * - orden canónico de criterios hoja
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del usuario actual.
  * @returns {Promise<WeightContextResult>}
  */
 export const getWeightEvaluationContextOrThrow = async ({
-  issueId,
+  issue,
   userId,
 }) => {
+  const issueDoc = issue;
+  const issueId = issueDoc?._id;
+
   if (!issueId) {
     throw createBadRequestError("Issue id is required");
   }
 
-  const issue = await Issue.findById(issueId);
-  if (!issue) {
-    throw createNotFoundError("Issue not found");
-  }
-
-  const participation = await getAcceptedParticipation(issue._id, userId);
+  const participation = await getAcceptedParticipation(issueId, userId);
   if (!participation) {
     throw createForbiddenError("You are no longer a participant in this issue");
   }
 
-  await ensureIssueOrdersDb({ issueId: issue._id });
+  await ensureIssueOrdersDb({ issueId });
 
   const leafDocs = await getOrderedLeafCriteriaDb({
-    issueId: issue._id,
-    issueDoc: issue,
+    issueId,
+    issueDoc,
     select: "_id name",
     lean: true,
   });
 
   return {
-    issue,
+    issue: issueDoc,
+    issueId,
     participation,
     leafDocs,
     criterionNames: leafDocs.map((criterion) => criterion.name),
@@ -181,33 +179,34 @@ export const syncIssueStageAfterWeightsCompletion = async (issue) => {
  * Obtiene el contexto base para computar pesos colectivos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string|Object} params.userId Id del usuario actual.
  * @param {boolean} [params.requireConsensusMode=false] Indica si debe validarse el modo consensus.
  * @returns {Promise<Object>}
  */
 export const getCollectiveWeightsContextOrThrow = async ({
-  issueId,
+  issue,
   userId,
   requireConsensusMode = false,
 }) => {
-  const issue = await Issue.findById(issueId);
+  const issueDoc = issue;
+  const issueId = issueDoc?._id;
 
-  if (!issue) {
-    throw createNotFoundError("Issue not found");
+  if (!issueId) {
+    throw createBadRequestError("Issue id is required");
   }
 
-  if (!sameId(issue.admin, userId)) {
+  if (!sameId(issueDoc.admin, userId)) {
     throw createForbiddenError("Unauthorized: only admin can compute weights");
   }
 
-  if (requireConsensusMode && issue.weightingMode !== "consensus") {
+  if (requireConsensusMode && issueDoc.weightingMode !== "consensus") {
     throw createBadRequestError(
       "This issue is not using manual consensus weighting mode"
     );
   }
 
-  await ensureIssueOrdersDb({ issueId: issue._id });
+  await ensureIssueOrdersDb({ issueId });
 
-  return issue;
+  return issueDoc;
 };

@@ -12,7 +12,54 @@ import {
 } from "./issue.ordering.js";
 
         
+import {
+  createBadRequestError,
+  createNotFoundError,
+} from "../../utils/common/errors.js";
 import { toIdString, uniqueIdStrings } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
+
+/**
+ * Valida que el id de issue sea válido.
+ *
+ * @param {string} issueId Id del issue.
+ * @returns {void}
+ */
+export const validateIssueIdOrThrow = (issueId) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
+};
+
+/**
+ * Carga un issue por id y lanza error si no existe.
+ *
+ * @param {string} issueId Id del issue.
+ * @param {object} [options={}] Opciones de carga.
+ * @param {string} [options.select] Proyección mongoose.
+ * @returns {Promise<Object>}
+ */
+export const getIssueByIdOrThrow = async (issueId, options = {}) => {
+  validateIssueIdOrThrow(issueId);
+
+  let query = Issue.findById(issueId);
+
+  if (options.select) {
+    query = query.select(options.select);
+  }
+
+  const issue = await query.lean();
+
+  if (!issue) {
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
+  }
+
+  return issue;
+};
 
 /**
  * @typedef {Object} WeightCompletionStats

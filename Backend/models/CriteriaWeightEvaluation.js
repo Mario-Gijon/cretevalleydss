@@ -12,11 +12,8 @@ import { Schema, model } from "mongoose";
  * @property {*} _id Identificador del documento.
  * @property {*} issue Issue asociado.
  * @property {*} expert Usuario experto que emite la evaluación.
- * @property {string} bestCriterion Mejor criterio seleccionado en BWM.
- * @property {string} worstCriterion Peor criterio seleccionado en BWM.
- * @property {*} bestToOthers Comparaciones del mejor criterio frente al resto.
- * @property {*} othersToWorst Comparaciones del resto frente al peor criterio.
- * @property {*} manualWeights Pesos manuales persistidos.
+ * @property {string} weightingMode Modo de ponderación usado en esta evaluación.
+ * @property {*} input Entrada específica del método según weightingMode.
  * @property {number} consensusPhase Fase de consenso asociada.
  * @property {boolean} completed Indica si la evaluación está completada.
  */
@@ -25,26 +22,24 @@ import { Schema, model } from "mongoose";
 /**
  * Evaluación de pesos de criterios emitida por un experto para un issue.
  *
- * Soporta tanto el flujo basado en BWM como la introducción manual de pesos.
  * El documento guarda la entrada individual del experto para una fase concreta
- * del proceso.
+ * del proceso, usando un campo genérico `input` para almacenar el payload
+ * específico de cada familia de ponderación.
  *
  * Relaciones:
  * - `issue` -> issue al que pertenece la evaluación de pesos.
  * - `expert` -> usuario experto que emite la evaluación.
  *
  * Campos principales:
- * - `bestCriterion`: criterio marcado como mejor en BWM.
- * - `worstCriterion`: criterio marcado como peor en BWM.
- * - `bestToOthers`: comparaciones del mejor criterio frente al resto.
- * - `othersToWorst`: comparaciones del resto frente al peor criterio.
- * - `manualWeights`: pesos introducidos manualmente.
+ * - `weightingMode`: modo de ponderación de este documento.
+ * - `input`: payload de entrada específico del método.
  * - `consensusPhase`: fase de consenso a la que pertenece la evaluación.
  * - `completed`: indica si el experto ha completado esta fase.
  *
  * Notas de dominio:
  * - Se mantienen campos flexibles `Mixed` porque la estructura exacta
- *   puede variar según la forma de entrada y el número de criterios hoja.
+ *   de `input` puede variar según el método de ponderación y el número de
+ *   criterios hoja.
  */
 
 /**
@@ -64,23 +59,11 @@ const criteriaWeightEvaluationSchema = new Schema({
     ref: "User",
     required: true,
   },
-  bestCriterion: {
+  weightingMode: {
     type: String,
-    default: "",
+    required: true,
   },
-  worstCriterion: {
-    type: String,
-    default: "",
-  },
-  bestToOthers: {
-    type: Schema.Types.Mixed,
-    default: {},
-  },
-  othersToWorst: {
-    type: Schema.Types.Mixed,
-    default: {},
-  },
-  manualWeights: {
+  input: {
     type: Schema.Types.Mixed,
     default: {},
   },

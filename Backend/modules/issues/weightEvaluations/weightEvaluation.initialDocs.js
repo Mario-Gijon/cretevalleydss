@@ -123,13 +123,20 @@ export const buildInitialCriteriaWeightEvaluationDocs = ({
     normalizedWeightingMode === "consensus"
   ) {
     for (const expert of expertIds) {
-      docs.push({
+      const baseDoc = {
         issue,
         expert,
         completed,
         consensusPhase,
         weightingMode: normalizedWeightingMode,
-        manualWeights: buildNullObjectFromIds(criterionIds),
+        input: {},
+      };
+
+      docs.push({
+        ...baseDoc,
+        input: {
+          manualWeights: buildNullObjectFromIds(criterionIds),
+        },
       });
     }
 
@@ -142,16 +149,25 @@ export const buildInitialCriteriaWeightEvaluationDocs = ({
     normalizedWeightingMode === "simulatedconsensusbwm"
   ) {
     for (const expert of expertIds) {
-      docs.push({
+      const baseDoc = {
         issue,
         expert,
         completed,
         consensusPhase,
         weightingMode: normalizedWeightingMode,
-        bestCriterion: null,
-        worstCriterion: null,
-        bestToOthers: buildNullObjectFromIds(criterionIds),
-        othersToWorst: buildNullObjectFromIds(criterionIds),
+        input: {},
+      };
+
+      docs.push({
+        ...baseDoc,
+        input: {
+          bwmData: {
+            bestCriterion: null,
+            worstCriterion: null,
+            bestToOthers: buildNullObjectFromIds(criterionIds),
+            othersToWorst: buildNullObjectFromIds(criterionIds),
+          },
+        },
       });
     }
   }

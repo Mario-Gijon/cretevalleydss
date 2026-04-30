@@ -12,7 +12,7 @@ import { User } from "../../models/Users.js";
 
           
 import {
-  resolveEvaluationStructure,
+  validateEvaluationStructureOrThrow,
 } from "./issue.evaluationStructure.js";
 import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import {
@@ -195,7 +195,9 @@ const loadCreateIssueActorsAndModel = async ({
     adminEmail: normalizeEmail(admin.email),
     expertUsers,
     expertByEmail,
-    modelEvaluationStructure: resolveEvaluationStructure(existingModel),
+    modelEvaluationStructure: validateEvaluationStructureOrThrow(
+      existingModel.evaluationStructure
+    ),
   };
 };
 

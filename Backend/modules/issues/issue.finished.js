@@ -32,7 +32,6 @@ import {
 } from "./issue.scenarios.js";
 import {
   EVALUATION_STRUCTURES,
-  resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
 
 /**
@@ -81,7 +80,7 @@ const buildAvailableModelsPayload = ({
       leafCount,
     });
 
-    const modelEvaluationStructure = resolveEvaluationStructure(modelDoc);
+    const modelEvaluationStructure = modelDoc.evaluationStructure;
     const sameEvaluationStructure =
       modelEvaluationStructure === issueEvaluationStructure;
 
@@ -113,7 +112,7 @@ const buildAvailableModelsPayload = ({
  */
 const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
   (scenarioDocs || []).map((scenario) => {
-    const scenarioEvaluationStructure = resolveEvaluationStructure(scenario);
+    const scenarioEvaluationStructure = scenario.evaluationStructure;
 
     return {
       id: toIdString(scenario._id),
@@ -157,7 +156,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     });
   }
 
-  const issueEvaluationStructure = resolveEvaluationStructure(issue);
+  const issueEvaluationStructure = issue.evaluationStructure;
 
   const [
     summary,

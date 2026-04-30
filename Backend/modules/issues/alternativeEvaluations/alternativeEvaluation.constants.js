@@ -8,10 +8,3 @@ export const EVALUATION_STRUCTURES = Object.freeze({
   DIRECT: "direct",
   PAIRWISE_ALTERNATIVES: "pairwiseAlternatives",
 });
-
-/**
- * Lista de estructuras de evaluación soportadas.
- */
-export const SUPPORTED_ALTERNATIVE_EVALUATION_STRUCTURES = Object.freeze(
-  Object.values(EVALUATION_STRUCTURES)
-);

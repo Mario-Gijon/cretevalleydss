@@ -8,16 +8,14 @@ import { IssueModel } from "../models/IssueModels.js";
           
 import {
   EVALUATION_STRUCTURES,
-  resolveEvaluationStructure,
 } from "../modules/issues/issue.evaluationStructure.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import {
-  computeBwmWeights,
-  computeManualWeights,
+  computeWeights as computeWeightsService,
 } from "../modules/issues/weightEvaluations/index.js";
 import {
-  resolveDirectIssueFlow,
-  resolvePairwiseIssueFlow,
+  resolveDirectIssue,
+  resolvePairwiseIssue,
 } from "../modules/issues/issue.resolution.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/issue.lifecycle.js";
 
@@ -544,23 +542,14 @@ export const editIssueExpertsAdmin = async (req, res) => {
 export const computeIssueWeightsAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
 
-  const { issue, creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
   });
 
-  const result =
-    issue.weightingMode === "consensus"
-      ? await computeManualWeights({
-          issueId,
-          userId: creatorUserId,
-        })
-      : await computeBwmWeights({
-          issueId,
-          userId: creatorUserId,
-          apiModelsBaseUrl:
-            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-          httpClient: axios,
-        });
+  const result = await computeWeightsService({
+    issueId,
+    userId: creatorUserId,
+  });
 
   return sendSuccess(
     res,
@@ -588,11 +577,11 @@ export const resolveIssueAdmin = async (req, res) => {
     issueId,
   });
 
-  const evaluationStructure = resolveEvaluationStructure(issue);
+  const evaluationStructure = issue.evaluationStructure;
 
   const result =
     evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-      ? await resolvePairwiseIssueFlow({
+      ? await resolvePairwiseIssue({
           issueId,
           userId: creatorUserId,
           forceFinalize,
@@ -600,7 +589,7 @@ export const resolveIssueAdmin = async (req, res) => {
             process.env.ORIGIN_APIMODELS || "http://localhost:7000",
           httpClient: axios,
         })
-      : await resolveDirectIssueFlow({
+      : await resolveDirectIssue({
           issueId,
           userId: creatorUserId,
           forceFinalize,

@@ -1,23 +1,14 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
-import { directAlternativeEvaluations } from "./direct/index.js";
-import { pairwiseAlternativeEvaluations } from "./pairwiseAlternatives/index.js";
+import { ALTERNATIVE_EVALUATION_OPERATIONS_BY_STRUCTURE } from "./alternativeEvaluation.structures.js";
 
-export const ALTERNATIVE_EVALUATION_STRUCTURES_BY_KEY = Object.freeze({
-  [directAlternativeEvaluations.key]: directAlternativeEvaluations,
-  [pairwiseAlternativeEvaluations.key]: pairwiseAlternativeEvaluations,
-});
-
-export const getAlternativeEvaluationStructure = (evaluationStructure) => {
-  return ALTERNATIVE_EVALUATION_STRUCTURES_BY_KEY[evaluationStructure] || null;
-};
-
-export const getAlternativeEvaluationStructureOrThrow = (
+export const getEvaluationStructureOperationsOrThrow = (
   evaluationStructure
 ) => {
-  const structure = getAlternativeEvaluationStructure(evaluationStructure);
+  const operations =
+    ALTERNATIVE_EVALUATION_OPERATIONS_BY_STRUCTURE[evaluationStructure];
 
-  if (!structure) {
+  if (!operations) {
     throw createBadRequestError(
       `Unsupported evaluation structure: ${String(evaluationStructure)}`,
       {
@@ -27,5 +18,5 @@ export const getAlternativeEvaluationStructureOrThrow = (
     );
   }
 
-  return structure;
+  return operations;
 };

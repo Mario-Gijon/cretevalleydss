@@ -21,7 +21,6 @@ import {
 } from "../issues/issue.ordering.js";
 import {
   EVALUATION_STRUCTURES,
-  resolveEvaluationStructure,
 } from "../issues/issue.evaluationStructure.js";
 
         
@@ -343,7 +342,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     CriteriaWeightEvaluation.find({ issue: issueId }).lean(),
   ]);
 
-  const issueEvaluationStructure = resolveEvaluationStructure(issue);
+  const issueEvaluationStructure = issue.evaluationStructure;
   const alternativesCount = orderedAlternatives.length;
   const leafCriteriaCount = orderedLeafCriteria.length;
 
@@ -564,7 +563,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         targetModelId: toIdString(scenario.targetModel),
         targetModelName: scenario.targetModelName || "",
         domainType: scenario.domainType || null,
-        evaluationStructure: resolveEvaluationStructure(scenario),
+        evaluationStructure: scenario.evaluationStructure,
         status: scenario.status || "done",
         createdAt: scenario.createdAt || null,
         createdBy: scenario.createdBy
@@ -778,7 +777,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
     CriteriaWeightEvaluation.find({ issue: issueId }).lean(),
   ]);
 
-  const evaluationStructure = resolveEvaluationStructure(issue);
+  const evaluationStructure = issue.evaluationStructure;
 
   const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
     alternativesCount: alternatives.length,
@@ -1055,7 +1054,7 @@ export const getIssueExpertEvaluationsPayload = async ({
     }),
   ]);
 
-  const evaluationStructure = resolveEvaluationStructure(issue);
+  const evaluationStructure = issue.evaluationStructure;
   const usesPairwiseAlternatives =
     evaluationStructure ===
     EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
@@ -1337,14 +1336,15 @@ export const getIssueExpertWeightsPayload = async ({
       : null;
 
   const manualWeights = weightDoc
-    ? orderObjectByKeys(weightDoc.manualWeights || {}, leafNames)
+    ? orderObjectByKeys(weightDoc.input?.manualWeights || {}, leafNames)
     : orderObjectByKeys({}, leafNames);
 
+  const weightBwmData = weightDoc?.input?.bwmData || {};
   const bwm = {
-    bestCriterion: weightDoc?.bestCriterion || "",
-    worstCriterion: weightDoc?.worstCriterion || "",
-    bestToOthers: orderObjectByKeys(weightDoc?.bestToOthers || {}, leafNames),
-    othersToWorst: orderObjectByKeys(weightDoc?.othersToWorst || {}, leafNames),
+    bestCriterion: weightBwmData.bestCriterion || "",
+    worstCriterion: weightBwmData.worstCriterion || "",
+    bestToOthers: orderObjectByKeys(weightBwmData.bestToOthers || {}, leafNames),
+    othersToWorst: orderObjectByKeys(weightBwmData.othersToWorst || {}, leafNames),
   };
 
   let kind = "unknown";
@@ -1373,7 +1373,7 @@ export const getIssueExpertWeightsPayload = async ({
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
       active: Boolean(issue.active),
-      evaluationStructure: resolveEvaluationStructure(issue),
+      evaluationStructure: issue.evaluationStructure,
       model: issue.model
         ? {
             id: toIdString(issue.model._id),
@@ -1714,10 +1714,10 @@ export const getAdminIssuesListPayload = async ({
         lastEvaluationAt: null,
       };
 
-      const evaluationStructure = resolveEvaluationStructure(issue);
+      const evaluationStructure = issue.evaluationStructure;
 
       const modelEvaluationStructure = issue.model
-        ? resolveEvaluationStructure(issue.model)
+        ? issue.model.evaluationStructure
         : null;
 
       const expectedPerExpert = countExpectedEvaluationCellsPerExpert({

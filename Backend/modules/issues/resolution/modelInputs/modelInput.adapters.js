@@ -1,4 +1,4 @@
-import { createInternalError } from "../../../utils/common/errors.js";
+import { createInternalError } from "../../../../utils/common/errors.js";
 
 const buildDirectPayload = ({ matrices, modelParameters, criterionTypes }) => ({
   matrices,

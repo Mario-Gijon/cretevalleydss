@@ -10,8 +10,9 @@ import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
           
 import {
   EVALUATION_STRUCTURES,
-  resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
+import { buildDirectResolutionData } from "./alternativeEvaluations/direct/direct.resolutionData.js";
+import { buildPairwiseAlternativesResolutionData } from "./alternativeEvaluations/pairwiseAlternatives/pairwiseAlternatives.resolutionData.js";
 
         
 import {
@@ -311,95 +312,18 @@ export const validateWeightsForTargetModel = ({
  * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
  * @returns {Promise<ScenarioMatricesResult>}
  */
-export const buildScenarioDirectMatrices = async ({
+export const buildScenarioDirectMatrices = ({
   issueId,
   alternatives,
   criteria,
   participations,
-}) => {
-  const expertIds = participations
-    .map((participation) => participation.expert?._id)
-    .map(toIdString)
-    .filter(Boolean);
-
-  const evaluationDocs = await Evaluation.find({
-    issue: issueId,
-    expert: { $in: expertIds },
-    comparedAlternative: null,
-  })
-    .select("expert alternative criterion value expressionDomain")
-    .populate("expressionDomain", "type linguisticLabels numericRange name")
-    .lean();
-
-  const evaluationMap = new Map();
-  const snapshotSet = new Set();
-
-  for (const evaluation of evaluationDocs) {
-    const key = `${toIdString(evaluation.expert)}_${toIdString(
-      evaluation.alternative
-    )}_${toIdString(evaluation.criterion)}`;
-
-    evaluationMap.set(key, evaluation);
-
-    if (evaluation.expressionDomain?._id) {
-      snapshotSet.add(toIdString(evaluation.expressionDomain._id));
-    }
-  }
-
-  const matricesUsed = {};
-
-  for (const participation of participations) {
-    const expertEmail = participation.expert.email;
-    const expertId = toIdString(participation.expert._id);
-
-    const matrixForExpert = [];
-
-    for (const alternative of alternatives) {
-      const row = [];
-
-      for (const criterion of criteria) {
-        const key = `${expertId}_${toIdString(alternative._id)}_${toIdString(
-          criterion._id
-        )}`;
-        const evaluation = evaluationMap.get(key);
-
-        let value = evaluation?.value ?? null;
-
-        if (
-          value != null &&
-          evaluation?.expressionDomain?.type === "numeric" &&
-          typeof value === "string"
-        ) {
-          const numericValue = Number(value);
-          value = Number.isFinite(numericValue) ? numericValue : value;
-        }
-
-        if (
-          value != null &&
-          evaluation?.expressionDomain?.type === "linguistic"
-        ) {
-          const labelDefinition =
-            evaluation.expressionDomain.linguisticLabels?.find(
-              (label) => label.label === value
-            );
-
-          value = labelDefinition ? labelDefinition.values : null;
-        }
-
-        row.push(value);
-      }
-
-      matrixForExpert.push(row);
-    }
-
-    matricesUsed[expertEmail] = matrixForExpert;
-  }
-
-  return {
-    matricesUsed,
-    snapshotIdsUsed: Array.from(snapshotSet).filter(Boolean),
-  };
-};
+}) =>
+  buildDirectResolutionData({
+    issueId,
+    alternatives,
+    criteria,
+    participations,
+  });
 
 /**
  * Construye matrices pairwise para escenarios preservando la lógica actual.
@@ -411,96 +335,18 @@ export const buildScenarioDirectMatrices = async ({
  * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
  * @returns {Promise<ScenarioMatricesResult>}
  */
-export const buildScenarioPairwiseMatrices = async ({
+export const buildScenarioPairwiseMatrices = ({
   issueId,
   alternatives,
   criteria,
   participations,
-}) => {
-  const expertIds = participations
-    .map((participation) => participation.expert?._id)
-    .map(toIdString)
-    .filter(Boolean);
-
-  const evaluationDocs = await Evaluation.find({
-    issue: issueId,
-    expert: { $in: expertIds },
-    comparedAlternative: { $ne: null },
-  })
-    .select("expert alternative comparedAlternative criterion value expressionDomain")
-    .populate("expressionDomain", "type")
-    .lean();
-
-  const snapshotSet = new Set();
-
-  for (const evaluation of evaluationDocs) {
-    if (evaluation.expressionDomain?._id) {
-      snapshotSet.add(toIdString(evaluation.expressionDomain._id));
-    }
-  }
-
-  const alternativeIndexMap = new Map(
-    alternatives.map((alternative, index) => [toIdString(alternative._id), index])
-  );
-
-  const criterionNameById = new Map(
-    criteria.map((criterion) => [toIdString(criterion._id), criterion.name])
-  );
-
-  const participationByExpertId = new Map(
-    participations
-      .map((participation) => [toIdString(participation.expert?._id), participation])
-      .filter(([expertId]) => Boolean(expertId))
-  );
-
-  const matricesUsed = {};
-
-  for (const participation of participations) {
-    matricesUsed[participation.expert.email] = {};
-
-    for (const criterion of criteria) {
-      const size = alternatives.length;
-
-      matricesUsed[participation.expert.email][criterion.name] = Array.from(
-        { length: size },
-        (_, rowIndex) =>
-          Array.from({ length: size }, (_, colIndex) =>
-            rowIndex === colIndex ? 0.5 : null
-          )
-      );
-    }
-  }
-
-  for (const evaluation of evaluationDocs) {
-    const participation = participationByExpertId.get(toIdString(evaluation.expert));
-    if (!participation) continue;
-
-    const criterionName = criterionNameById.get(toIdString(evaluation.criterion));
-    if (!criterionName) continue;
-
-    const rowIndex = alternativeIndexMap.get(toIdString(evaluation.alternative));
-    const colIndex = alternativeIndexMap.get(
-      toIdString(evaluation.comparedAlternative)
-    );
-
-    if (rowIndex == null || colIndex == null) continue;
-
-    let value = evaluation.value ?? null;
-
-    if (value != null && typeof value === "string") {
-      const numericValue = Number(value);
-      value = Number.isFinite(numericValue) ? numericValue : value;
-    }
-
-    matricesUsed[participation.expert.email][criterionName][rowIndex][colIndex] =
-      value;
-  }
-
-  return {
-    matricesUsed,
-    snapshotIdsUsed: Array.from(snapshotSet).filter(Boolean),
-  };
-};
+}) =>
+  buildPairwiseAlternativesResolutionData({
+    issueId,
+    alternatives,
+    criteria,
+    participations,
+  });
 
 /**
  * Construye el array de tipos de criterio compatible con modelos directos.
@@ -588,7 +434,7 @@ const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
  * @returns {Object}
  */
 const buildScenarioPayload = (scenarioDoc) => {
-  const evaluationStructure = resolveEvaluationStructure(scenarioDoc);
+  const evaluationStructure = scenarioDoc.evaluationStructure;
 
   return {
     ...scenarioDoc,
@@ -706,9 +552,9 @@ const getCreateScenarioContext = async ({
     throw createBadRequestError("No accepted experts found");
   }
 
-  const issueEvaluationStructure = resolveEvaluationStructure(issue);
+  const issueEvaluationStructure = issue.evaluationStructure;
 
-  const targetEvaluationStructure = resolveEvaluationStructure(targetModel);
+  const targetEvaluationStructure = targetModel.evaluationStructure;
 
   if (targetEvaluationStructure !== issueEvaluationStructure) {
     throw createBadRequestError(

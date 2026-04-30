@@ -5,11 +5,6 @@ import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
-
-          
-import {
-  resolveEvaluationStructure,
-} from "./issue.evaluationStructure.js";
 import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import { buildInitialCriteriaWeightEvaluationDocs } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { mapIssueStageToExitStage, registerUserExit } from "./issue.lifecycle.js";
@@ -127,7 +122,7 @@ const getEditExpertsContext = async ({ issueId, userId }) => {
     currentPhase,
     stageForLog: mapIssueStageToExitStage(issue.currentStage),
     defaultSnapshot,
-    evaluationStructure: resolveEvaluationStructure(issue),
+    evaluationStructure: issue.evaluationStructure,
     weightsStageIsOpen:
       issue.currentStage === "criteriaWeighting" ||
       issue.currentStage === "weightsFinished",

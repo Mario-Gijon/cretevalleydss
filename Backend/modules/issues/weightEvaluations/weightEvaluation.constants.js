@@ -11,10 +11,3 @@ export const WEIGHTING_MODES = Object.freeze({
   CONSENSUS_BWM: "consensusBwm",
   SIMULATED_CONSENSUS_BWM: "simulatedConsensusBwm",
 });
-
-/**
- * Lista de modos de pesos soportados.
- */
-export const SUPPORTED_WEIGHTING_MODES = Object.freeze(
-  Object.values(WEIGHTING_MODES)
-);

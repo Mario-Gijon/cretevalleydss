@@ -2,10 +2,6 @@
 import { orderDocsByIdList } from "../../modules/issues/issue.ordering.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
 
-import {
-  resolveEvaluationStructure,
-} from "./issue.evaluationStructure.js";
-
 /**
  * @typedef {Object} ActiveTasksByType
  * @property {unknown[]} resolveIssue
@@ -487,7 +483,7 @@ export const buildActiveIssueView = ({
   dayjsLib,
 }) => {
   const issueId = toIdString(issue._id);
-  const evaluationStructure = resolveEvaluationStructure(issue);
+  const evaluationStructure = issue.evaluationStructure;
 
   const isValidUserId =
     Boolean(userId) &&

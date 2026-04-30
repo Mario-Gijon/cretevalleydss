@@ -25,14 +25,10 @@ import {
   submitAlternativeEvaluations,
 } from "../modules/issues/alternativeEvaluations/index.js";
 import {
-  computeBwmWeights as computeBwmWeightsService,
-  computeManualWeights as computeManualWeightsService,
-  getBwmWeightEvaluation as getBwmWeightEvaluationService,
-  getManualWeightEvaluation as getManualWeightEvaluationService,
-  saveBwmWeightDraft as saveBwmWeightDraftService,
-  saveManualWeightDraft as saveManualWeightDraftService,
-  submitBwmWeights as submitBwmWeightsService,
-  submitManualWeights as submitManualWeightsService,
+  computeWeights as computeWeightsService,
+  getWeightEvaluation,
+  saveWeightDraft,
+  submitWeights,
 } from "../modules/issues/weightEvaluations/index.js";
 
           
@@ -52,7 +48,7 @@ import {
   removeIssueScenarioFlow,
 } from "../modules/issues/issue.scenarios.js";
 import {
-  resolveIssueFlow,
+  resolveIssue as resolveIssueService,
 } from "../modules/issues/issue.resolution.js";
 import {
   deleteActiveIssueAsAdmin,
@@ -635,7 +631,7 @@ export const getFinishedIssueInfo = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveBwmWeights = async (req, res) => {
-  const result = await saveBwmWeightDraftService({
+  const result = await saveWeightDraft({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -652,7 +648,7 @@ export const saveBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getBwmWeights = async (req, res) => {
-  const result = await getBwmWeightEvaluationService({
+  const result = await getWeightEvaluation({
     issueId: req.body?.id,
     userId: req.uid,
   });
@@ -670,7 +666,7 @@ export const getBwmWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendBwmWeights = async (req, res) => {
-  const result = await submitBwmWeightsService({
+  const result = await submitWeights({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -689,7 +685,7 @@ export const sendBwmWeights = async (req, res) => {
 export const computeWeights = async (req, res) => {
   const { id } = req.body;
 
-  const result = await computeBwmWeightsService({
+  const result = await computeWeightsService({
     issueId: id,
     userId: req.uid,
   });
@@ -709,7 +705,7 @@ export const computeWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const saveManualWeights = async (req, res) => {
-  const result = await saveManualWeightDraftService({
+  const result = await saveWeightDraft({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -726,7 +722,7 @@ export const saveManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const getManualWeights = async (req, res) => {
-  const result = await getManualWeightEvaluationService({
+  const result = await getWeightEvaluation({
     issueId: req.body?.id,
     userId: req.uid,
   });
@@ -744,7 +740,7 @@ export const getManualWeights = async (req, res) => {
  * @returns {Promise<void>}
  */
 export const sendManualWeights = async (req, res) => {
-  const result = await submitManualWeightsService({
+  const result = await submitWeights({
     issueId: req.body?.id,
     userId: req.uid,
     body: req.body,
@@ -763,7 +759,7 @@ export const sendManualWeights = async (req, res) => {
 export const computeManualWeights = async (req, res) => {
   const { id } = req.body;
 
-  const result = await computeManualWeightsService({
+  const result = await computeWeightsService({
     issueId: id,
     userId: req.uid,
   });
@@ -924,7 +920,7 @@ export const submitEvaluations = async (req, res) => {
 export const resolveIssue = async (req, res) => {
   const { id: issueId, forceFinalize = false } = req.body;
 
-  const result = await resolveIssueFlow({
+  const result = await resolveIssueService({
     issueId,
     userId: req.uid,
     forceFinalize: Boolean(forceFinalize),

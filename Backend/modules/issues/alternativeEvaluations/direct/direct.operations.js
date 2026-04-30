@@ -5,7 +5,6 @@ import { toIdString } from "../../../../utils/common/ids.js";
 
 import { formatExpressionDomainForClient } from "../../issue.mappers.js";
 
-import { EVALUATION_STRUCTURES } from "../alternativeEvaluation.constants.js";
 import {
   ensureIssueSnapshotIdsExist,
   getEvaluationReadContext,
@@ -89,33 +88,27 @@ export const buildDirectEvaluationSaveBulkOperations = ({
  * Guarda borradores de evaluaciones directas.
  *
  * @param {object} params Parámetros de entrada.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
  * @param {Object} params.body Body HTTP completo.
- * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const saveDirectEvaluationDrafts = async ({
-  issueId: inputIssueId,
+  issue,
   userId,
   body,
-  issue = null,
 }) => {
-  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
   const evaluations = body?.evaluations;
 
-  const { issue: issueDoc, currentPhase, alternativeMap, criterionMap } =
+  const { issueId, currentPhase, alternativeMap, criterionMap } =
     await getEvaluationSaveContext({
-      issueId,
       userId,
-      expectedStructure: EVALUATION_STRUCTURES.DIRECT,
-      invalidStructureMessage:
-        "This issue uses pairwise alternative evaluation",
       issue,
     });
 
   const { bulkOperations, snapshotIds } = buildDirectEvaluationSaveBulkOperations({
     userId,
-    issueId: toIdString(issueDoc._id),
+    issueId,
     currentPhase,
     evaluations,
     alternativeMap,
@@ -123,7 +116,7 @@ export const saveDirectEvaluationDrafts = async ({
   });
 
   await ensureIssueSnapshotIdsExist({
-    issueId: toIdString(issueDoc._id),
+    issueId,
     snapshotIds,
   });
 
@@ -138,23 +131,21 @@ export const saveDirectEvaluationDrafts = async ({
  * Valida y envía las evaluaciones directas del experto actual.
  *
  * @param {object} params Parámetros de entrada.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
  * @param {Object} params.body Body HTTP completo.
- * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const submitDirectEvaluations = async ({
-  issueId: inputIssueId,
+  issue,
   userId,
   body,
-  issue = null,
 }) => {
   const evaluations = body?.evaluations;
-  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
+  const issueId = toIdString(issue._id);
   validateDirectEvaluationsOrThrow(evaluations);
 
   await saveDirectEvaluationDrafts({
-    issueId,
     userId,
     body,
     issue,
@@ -174,22 +165,16 @@ export const submitDirectEvaluations = async ({
  * Obtiene el payload de evaluaciones directas del experto actual.
  *
  * @param {object} params Parámetros de entrada.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
- * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const getDirectEvaluationPayload = async ({
-  issueId: inputIssueId,
+  issue,
   userId,
-  issue = null,
 }) => {
-  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
   const { issue: issueDoc, latestConsensus } = await getEvaluationReadContext({
-    issueId,
     userId,
-    expectedStructure: EVALUATION_STRUCTURES.DIRECT,
-    invalidStructureMessage:
-      "This issue uses pairwise alternative evaluation",
     issue,
   });
 

@@ -7,19 +7,17 @@ const SUPPORTED_EVALUATION_STRUCTURES = new Set(
 );
 
 /**
- * Resuelve la estructura de evaluación desde `evaluationStructure`.
+ * Valida la estructura de evaluación.
  *
- * Si el campo no viene informado, devuelve `direct` por compatibilidad segura.
+ * Si el campo no viene informado, lanza error explícito.
  * Si viene informado con un valor no soportado, lanza error explícito.
  *
- * @param {Object|null|undefined} doc Documento a inspeccionar.
+ * @param {string|null|undefined} evaluationStructure Estructura de evaluación.
  * @returns {string}
  */
-export const resolveEvaluationStructure = (doc) => {
-  const evaluationStructure = doc?.evaluationStructure;
-
+export const validateEvaluationStructureOrThrow = (evaluationStructure) => {
   if (!evaluationStructure) {
-    return EVALUATION_STRUCTURES.DIRECT;
+    throw new Error("evaluationStructure is required");
   }
 
   if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {

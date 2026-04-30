@@ -1,5 +1,3 @@
-import { EVALUATION_STRUCTURES } from "../alternativeEvaluation.constants.js";
-
 import {
   buildDirectResolutionInput,
   getDirectEvaluationPayload,
@@ -7,12 +5,13 @@ import {
   submitDirectEvaluations,
 } from "./direct.operations.js";
 import { buildInitialDirectEvaluations } from "./direct.initial.js";
+import { buildDirectResolutionData } from "./direct.resolutionData.js";
 
 export const directAlternativeEvaluations = Object.freeze({
-  key: EVALUATION_STRUCTURES.DIRECT,
   read: getDirectEvaluationPayload,
   saveDraft: saveDirectEvaluationDrafts,
   submit: submitDirectEvaluations,
   buildInitial: buildInitialDirectEvaluations,
   buildResolutionInput: buildDirectResolutionInput,
+  buildResolutionData: buildDirectResolutionData,
 });
