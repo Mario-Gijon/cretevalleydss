@@ -573,6 +573,11 @@ const deepClone = (value) =>
 export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
   const details = scenario?.outputs?.details || {};
+  const scenarioOutputs = scenario?.outputs || null;
+  const scenarioRawOutput =
+    scenarioOutputs?.rawResults ??
+    scenarioOutputs?.details?.modelExecution?.rawOutput ??
+    null;
   const collectiveEvaluations = scenario?.outputs?.collectiveEvaluations || null;
   const scenarioEvaluationStructure = resolveIssueAlternativeEvaluationStructure(scenario);
 
@@ -606,6 +611,15 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     ? details.rankedAlternatives
     : [];
   out.alternativesRankings = [{ ranking }];
+  out.consensusDetails = details;
+  out.modelExecution =
+    details?.modelExecution ||
+    (scenarioRawOutput !== null && scenarioRawOutput !== undefined
+      ? { rawOutput: scenarioRawOutput }
+      : null);
+  out.selectedScenario = {
+    outputs: scenarioOutputs,
+  };
 
   const scatterPlot = details?.plotsGraphic;
   if (scatterPlot?.expert_points && scatterPlot?.collective_point) {

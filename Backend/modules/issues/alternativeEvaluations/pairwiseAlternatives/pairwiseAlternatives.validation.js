@@ -60,7 +60,7 @@ const validatePairwiseEvaluations = (evaluations) => {
         const inverseCell = inverseRow?.[row.id];
         const inverseValue = getEvaluationCellValue(inverseCell);
 
-        const inverseDomain = getCellDomain(inverseCell);
+        const inverseDomain = getEvaluationCellDomain(inverseCell);
         const inverseLocationLabel = `[${altCol}, ${row.id}]`;
 
         if (isEmptyEvaluationValue(inverseValue)) {

@@ -4,9 +4,11 @@ import { getFinishedIssueDialogGridAreas } from "../../styles/finishedIssueDialo
 import SummarySection from "../sections/SummarySection";
 import RankingSection from "../sections/RankingSection";
 import AnalysisSection from "../sections/AnalysisSection";
+import ModelSpecificOutputSection from "../sections/ModelSpecificOutputSection";
 import ModelsSection from "../sections/ModelsSection";
 import GraphsSection from "../sections/GraphsSection";
 import RatingsSection from "../sections/RatingsSection";
+import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 
 /**
  * Layout grid del contenido del dialogo de issue finalizado.
@@ -16,13 +18,22 @@ import RatingsSection from "../sections/RatingsSection";
  * @returns {JSX.Element}
  */
 const FinishedIssueDialogLayout = ({ isMdUp }) => {
+  const { modelSpecificOutputSection } = useFinishedIssueDialogContext();
+  const hasModelSpecificOutput = Boolean(modelSpecificOutputSection?.hasOutput);
+  const rawOutput = modelSpecificOutputSection?.rawOutput ?? null;
+  const rawOutputPretty = modelSpecificOutputSection?.rawOutputPretty ?? "";
+  const modelExecution = modelSpecificOutputSection?.modelExecution ?? null;
+
   return (
     <Box
       sx={{
         display: "grid",
         gap: 2,
         gridTemplateColumns: isMdUp ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-        gridTemplateAreas: getFinishedIssueDialogGridAreas(isMdUp),
+        gridTemplateAreas: getFinishedIssueDialogGridAreas(
+          isMdUp,
+          hasModelSpecificOutput
+        ),
         alignItems: "stretch",
       }}
     >
@@ -37,6 +48,16 @@ const FinishedIssueDialogLayout = ({ isMdUp }) => {
       <Box sx={{ gridArea: "analysis", minWidth: 0 }}>
         <AnalysisSection />
       </Box>
+
+      {hasModelSpecificOutput ? (
+        <Box sx={{ gridArea: "modelSpecificOutput", minWidth: 0 }}>
+          <ModelSpecificOutputSection
+            rawOutput={rawOutput}
+            rawOutputPretty={rawOutputPretty}
+            modelExecution={modelExecution}
+          />
+        </Box>
+      ) : null}
 
       <Box sx={{ gridArea: "models", minWidth: 0 }}>
         <ModelsSection />

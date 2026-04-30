@@ -34,6 +34,56 @@ const unwrap = (response) =>
     ? response.data
     : response;
 
+const isPlainObject = (value) =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const hasModelSpecificOutput = (value) => {
+  if (value === null || value === undefined) return false;
+  if (isPlainObject(value)) return Object.keys(value).length > 0;
+  return true;
+};
+
+const formatExecutedAt = (value) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString();
+};
+
+const firstDefinedValue = (values = []) => {
+  for (const value of values) {
+    if (value !== null && value !== undefined) return value;
+  }
+  return null;
+};
+
+const resolveModelSpecificOutput = ({ viewIssue, currentPhaseIndex }) => {
+  const modelExecution = firstDefinedValue([
+    viewIssue?.modelExecution,
+    viewIssue?.consensusDetails?.modelExecution,
+    viewIssue?.selectedScenario?.outputs?.details?.modelExecution,
+    viewIssue?.consensus?.[currentPhaseIndex]?.details?.modelExecution,
+  ]);
+
+  const rawOutput = firstDefinedValue([
+    viewIssue?.modelExecution?.rawOutput,
+    viewIssue?.consensusDetails?.modelExecution?.rawOutput,
+    viewIssue?.selectedScenario?.outputs?.rawResults,
+    viewIssue?.selectedScenario?.outputs?.details?.modelExecution?.rawOutput,
+    viewIssue?.consensus?.[currentPhaseIndex]?.details?.modelExecution?.rawOutput,
+    modelExecution?.rawOutput,
+  ]);
+
+  return {
+    rawOutput,
+    modelExecution:
+      modelExecution ||
+      (rawOutput !== null && rawOutput !== undefined ? { rawOutput } : null),
+  };
+};
+
 /**
  * Hook principal del dialogo de detalle de finished issue.
  *
@@ -657,6 +707,24 @@ export const useFinishedIssueDialogView = ({
 
   const selectedRunLabel = selectedRunKey === "base" ? "Base" : getRunLabel(selectedRunMeta);
 
+  const { rawOutput, modelExecution } = resolveModelSpecificOutput({
+    viewIssue,
+    currentPhaseIndex,
+  });
+  const rawOutputExists = hasModelSpecificOutput(rawOutput);
+
+  const modelExecutionMeta = modelExecution
+    ? {
+        modelName: modelExecution?.modelName ?? null,
+        modelKey: modelExecution?.modelKey ?? null,
+        inputKind: modelExecution?.inputKind ?? null,
+        outputKind: modelExecution?.outputKind ?? null,
+        executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
+      }
+    : null;
+
+  const rawOutputPretty = rawOutputExists ? safeJsonStringify(rawOutput) : "";
+
   return {
     dialog: {
       loadingInfo,
@@ -699,6 +767,12 @@ export const useFinishedIssueDialogView = ({
     },
     analysisSection: {
       viewIssue,
+    },
+    modelSpecificOutputSection: {
+      rawOutput: rawOutputExists ? rawOutput : null,
+      rawOutputPretty,
+      modelExecution: modelExecutionMeta,
+      hasOutput: rawOutputExists,
     },
     modelsSection: {
       selectedRunKey,

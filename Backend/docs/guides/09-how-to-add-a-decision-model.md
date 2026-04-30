@@ -5,224 +5,183 @@
 Adding a model in Crete Valley DSS is a cross-application flow:
 
 1. Implement and register the model in ApiModels.
-2. Publish its metadata through ApiModels Model Manifest (`GET /models/manifest`).
+2. Publish metadata through ApiModels Model Manifest (`GET /models/manifest`).
 3. Run Backend dry-run/sync to compare and persist model governance data in Mongo `IssueModel`.
 4. Control public visibility from Backend Admin catalog (`publicInIssueCatalog`).
 5. Frontend reads model catalog from Backend only (`GET /api/issues/models`).
-6. Issue creation stores the selected model and its `evaluationStructure`.
-7. Issue resolution calls ApiModels through Backend services and persists normalized outputs.
+6. Issue creation stores selected model metadata in the issue lifecycle.
+7. Issue resolution calls ApiModels and persists normalized + raw outputs.
 
 Main ownership:
 
-- ApiModels publishes capabilities and executable endpoints.
-- Backend governs availability and editorial metadata in `IssueModel`.
-- Frontend never calls ApiModels directly for issue creation/resolution.
+- ApiModels publishes executable capabilities and technical contract metadata.
+- Backend governs availability/editorial state and runtime persistence.
+- Frontend does not call ApiModels directly for issue creation/resolution.
 
-## 2. Decision checklist
+## 2. Model contract dimensions (must stay decoupled)
+
+A decision model is described by independent dimensions:
+
+- `evaluationStructure`: how evaluations are captured/persisted (`direct`, `pairwiseAlternatives`, future values).
+- `inputKind`: ApiModels request payload family (`directCrispMatrix`, `directFuzzyMatrix`, `pairwisePreferenceMatrix`, etc.).
+- `outputKind`: normalized output family used by backend application flows (`ranking`, `consensusRanking`, etc.).
+- `isConsensus`: whether issue resolution follows consensus rounds.
+
+Do not hardcode assumptions such as:
+
+- `direct` implies non-consensus,
+- `pairwiseAlternatives` implies consensus,
+- one `evaluationStructure` implies one `outputKind`.
+
+## 3. Decision checklist
 
 Before adding anything, answer:
 
 - Is this a selectable issue model (`issueModel`) or an auxiliary service?
-- Is it a weighting service (`weightingService`)?
-- Is it a utility/internal service (`utilityModel`)?
-- Does it use an existing `evaluationStructure` (`direct` or `pairwiseAlternatives`)?
-- Does it require a new `evaluationStructure`?
-- Does it require consensus rounds?
+- Can it reuse an existing `evaluationStructure`?
+- Does it require a new `inputKind` adapter?
+- Does it require a new `outputKind` adapter?
+- Is consensus enabled (`isConsensus`) for this model behavior?
 - Does it support scenarios?
-- What exact request payload does it need?
-- What exact response `data` shape does it return?
-- Can current Backend resolution mappers persist that output?
-- Can current Frontend finished-issue UI render that output?
+- Which fields are required by normalized application workflows?
+- Which additional fields are research-specific and should remain in raw output only?
 
-## 3. ApiModels changes (real files)
+## 4. ApiModels changes (real files)
 
 Current ApiModels implementation is registry-based:
 
-- Model execution logic: `ApiModels/models/*` (existing handlers import files such as `models/topsis/topsis_model.py`, `models/herrera_viedma_crp/herrera_viedma_crp_model.py`).
-- Request schemas and validation: `ApiModels/schemas/model_requests.py`.
-- Execution handlers and contract responses: `ApiModels/services/model_handlers.py`.
-- Route registry and manifest metadata: `ApiModels/registry/model_registry.py`.
-- Runtime model endpoints from registry: `ApiModels/api/routers/models.py`.
-- Manifest endpoint: `ApiModels/api/routers/model_manifest.py`.
-- Manifest builder: `ApiModels/services/model_manifest_service.py`.
-- Manifest schema: `ApiModels/schemas/model_manifest.py`.
+- model logic: `ApiModels/models/*`
+- request schemas: `ApiModels/schemas/model_requests.py`
+- execution handlers: `ApiModels/services/model_handlers.py`
+- route registry + manifest metadata: `ApiModels/registry/model_registry.py`
+- runtime model routes: `ApiModels/api/routers/models.py`
+- manifest endpoint: `ApiModels/api/routers/model_manifest.py`
+- manifest builder/schema:
+  - `ApiModels/services/model_manifest_service.py`
+  - `ApiModels/schemas/model_manifest.py`
 
-Typical implementation sequence:
+Typical sequence:
 
-1. Add model algorithm implementation under `ApiModels/models/`.
-2. Add request schema in `schemas/model_requests.py` (including `json_schema_extra` example).
-3. Add handler in `services/model_handlers.py`.
-4. Register route in `MODEL_REGISTRY` with response examples.
-5. Add manifest metadata in `MODEL_MANIFEST_METADATA`.
+1. Add algorithm implementation.
+2. Add/adjust request schema.
+3. Add/adjust handler.
+4. Register route in `MODEL_REGISTRY`.
+5. Add metadata in `MODEL_MANIFEST_METADATA`.
 
-Execution contract note:
+## 5. Manifest metadata and Backend mapping
 
-- ApiModels handlers may return HTTP `200` with `success: false` for operational compatibility.
-- Backend correctly treats that as an error via `unwrapModelApiResponse(...)` in `Backend/services/modelApi/modelResponse.js`.
+Key mapping into `IssueModel` includes:
 
-## 4. Manifest metadata and roles
+- identity/governance: `key`, `role`, `status`, `publicInIssueCatalog`
+- execution metadata: `endpoint`
+- capabilities:
+  - `evaluationStructure`
+  - `inputKind`
+  - `outputKind`
+  - `supportsScenarios`
+  - `isConsensus`
+  - `isMultiCriteria`
+  - `supportedDomains`
+- `criterionTypes`
+- `parameters`
 
-Manifest fields and Backend mapping:
+Admin-preserved fields on existing models remain editorial:
 
-- `key` -> `IssueModel.apiModelKey`
-- `role` -> `IssueModel.modelRole`
-- `status` -> `IssueModel.modelStatus`
-- `publicInIssueCatalog` -> `IssueModel.publicInIssueCatalog` (local admin override preserved on existing models)
-- `sync.safeToCreateIssueModel` -> sync creation gate
-- `capabilities.evaluationStructure` -> `IssueModel.evaluationStructure`
-- `capabilities.isConsensus` -> `IssueModel.isConsensus`
-- `capabilities.isMultiCriteria` -> `IssueModel.isMultiCriteria`
-- `capabilities.supportedDomains` -> `IssueModel.supportedDomains`
-- `capabilities.supportsScenarios` -> `IssueModel.supportsScenarios`
-- `parameters` -> `IssueModel.parameters`
-- `endpoint` -> `IssueModel.apiEndpoint`
+- `smallDescription`
+- `extendDescription`
+- `moreInfoUrl`
 
-Role expectations:
-
-- `issueModel`: selectable model for issue creation/resolution.
-- `weightingService`: auxiliary weighting engine.
-- `utilityModel`: auxiliary internal utility.
-
-Important rule:
-
-- BWM (`role=weightingService`) and CMCC (`role=utilityModel`) are auxiliary services and must not become selectable issue models unless intentionally redesigned as such.
-- Set `publicInIssueCatalog: true` only for models that are truly ready for Create Issue and issue resolution/display flows.
-
-## 5. Backend sync and catalog integration
+## 6. Backend sync and catalog integration
 
 Core Backend files:
 
-- Manifest fetch/validation: `Backend/services/modelApi/modelManifestClient.js`
-- Dry-run report (no writes): `Backend/services/modelApi/modelManifestDryRun.js`
-- Sync writer: `Backend/services/modelApi/modelManifestSync.js`
-- Admin controllers:
-  - `getModelCatalogAdmin`
-  - `getModelManifestDryRunAdmin`
-  - `syncModelManifestAdmin`
-  - `updateModelCatalogVisibilityAdmin`
-  in `Backend/controllers/admin.controller.js`
-- Admin routes in `Backend/routes/admin.route.js`:
-  - `GET /api/admin/models/catalog`
-  - `GET /api/admin/models/manifest/dry-run`
-  - `POST /api/admin/models/manifest/sync`
-  - `PATCH /api/admin/models/:id/catalog-visibility`
+- manifest client: `Backend/services/modelApi/modelManifestClient.js`
+- dry-run report: `Backend/services/modelApi/modelManifestDryRun.js`
+- sync writer: `Backend/services/modelApi/modelManifestSync.js`
+- admin endpoints: `Backend/controllers/admin.controller.js` + `Backend/routes/admin.route.js`
 
-Governance rules enforced by current code:
+Governance rules:
 
-- Dry-run is read-only.
-- Sync requires `confirm: true`.
-- Sync does not delete `IssueModel` documents.
-- Sync can mark manifest-managed unmatched models as `stale`.
-- Sync updates technical fields but does not overwrite editorial fields on existing models.
-- Sync preserves local admin catalog visibility for existing models.
-- Sync skips entries that are non-public, unsafe, or non-`issueModel` role.
-- Sync does not create BWM/CMCC as `IssueModel`.
+- dry-run is read-only,
+- sync requires `confirm: true`,
+- sync does not delete models,
+- sync does not overwrite editorial fields,
+- sync preserves local admin visibility on existing models,
+- sync excludes non-`issueModel` entries from selectable model creation (for example BWM/CMCC).
 
-Current limitation:
+## 7. Backend resolution integration and raw output persistence
 
-- Model catalog orchestration is currently handled directly in controller + services; there is no dedicated `modules/admin/*` model-catalog flow module yet.
+Resolution orchestration is in `Backend/modules/issues/issue.resolution.js`.
 
-## 6. Backend issue-resolution integration
+Backend should:
 
-When no Backend change is needed:
+- normalize common fields required by the app,
+- persist full unwrapped ApiModels payload in:
+  - `Consensus.details.modelExecution.rawOutput`
 
-- The model uses an existing structure (`direct` or `pairwiseAlternatives`).
-- Existing payload builders already match model input requirements.
-- Existing output adapters already map model `data` into consensus + finished issue payloads.
+This supports research models that return extra fields (for example diagnostics, intervals, warnings, internal matrices, explanations) without introducing database fields per metric.
 
-Key files:
+Add dedicated adapters/UI only when a field becomes part of application workflow.
 
-- Resolution orchestration: `Backend/modules/issues/issue.resolution.js`
-- Scenario simulation path: `Backend/modules/issues/issue.scenarios.js`
-- Endpoint resolution: `Backend/services/modelApi/modelCatalog.js`
-- Upstream response handling: `Backend/services/modelApi/modelResponse.js`
+## 8. Reuse-first extension rules
 
-When Backend change is needed:
+When adding a model:
 
-- New input payload shape (resolution/scenario call payload).
-- New output shape (rankings, collective scores/evaluations, graphics, etc.).
-- New consensus behavior.
-- New scenario behavior or constraints.
-- New `evaluationStructure`.
+- Do not create a new `evaluationStructure` unless capture/persistence behavior is actually different.
+- Reuse existing `evaluationStructure` when expert-input shape is the same.
+- Add/reuse `inputKind` adapters when ApiModels payload family differs.
+- Add/reuse `outputKind` adapters when normalized application output family differs.
+- Preserve additional model-specific fields in `rawOutput`.
+- Introduce model-specific adapters only when generic `inputKind`/`outputKind` adapters are insufficient.
 
-Current limitation:
+## 9. Reference examples
 
-- Pairwise resolution output adapter is specialized for `herrera_viedma_crp` in `resolvePairwiseIssueFlow(...)`.
-- New pairwise models require explicit adapter work in:
-  - `buildPairwiseResolutionArtifacts(...)` in `issue.resolution.js`
-  - `buildScenarioOutputs(...)` in `issue.scenarios.js`
+- TOPSIS:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directCrispMatrix`
+  - `outputKind`: `ranking`
+  - `isConsensus`: `false`
 
-## 7. Frontend integration notes
+- Fuzzy TOPSIS:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directFuzzyMatrix`
+  - `outputKind`: `ranking`
+  - `isConsensus`: `false`
 
-Cross-app checklist (Frontend consumes Backend only):
+- Herrera-Viedma CRP:
+  - `evaluationStructure`: `pairwiseAlternatives`
+  - `inputKind`: `pairwisePreferenceMatrix`
+  - `outputKind`: `consensusRanking`
+  - `isConsensus`: `true`
 
-- Create Issue model catalog:
-  - `Frontend/src/services/issue.service.js` (`getModelsInfo`)
-  - `Frontend/src/features/createIssue/steps/ModelStep.jsx`
-- Admin model governance UI:
-  - `Frontend/src/services/admin.service.js`
-- Alternative evaluation UI compatibility by `evaluationStructure`:
-  - `Frontend/src/features/issueAlternativeEvaluation/registry/alternativeEvaluation.registry.js`
-- Finished issue ratings rendering:
-  - `Frontend/src/features/finishedIssueDialog/utils/finishedIssueRatings.ui.jsx`
-  - `Frontend/src/features/finishedIssueDialog/hooks/useFinishedIssueDialogView.js`
-- Scenario UI and payload projection:
-  - `Frontend/src/features/finishedIssueDialog/utils/finishedIssueDialog.utils.js`
+- Future direct consensus model:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directCrispMatrix`
+  - `outputKind`: `consensusRanking`
+  - `isConsensus`: `true`
 
-## 8. Example path: adding a normal direct model
+## 10. Frontend note (no implementation in this guide)
 
-1. Implement model logic and request schema in ApiModels.
-2. Add ApiModels handler and register route in `MODEL_REGISTRY`.
-3. Add manifest metadata as:
-   - `role: "issueModel"`
-   - `publicInIssueCatalog: true`
-   - `evaluationStructure: "direct"`
-   - safe sync metadata enabled.
-4. Verify ApiModels endpoint and `GET /models/manifest`.
-5. Run Backend dry-run (`GET /api/admin/models/manifest/dry-run`).
-6. Run Backend sync (`POST /api/admin/models/manifest/sync` with `confirm: true`).
-7. Confirm `IssueModel` exists with expected metadata.
-8. Confirm Admin visibility and Create Issue availability.
-9. Resolve a real issue and verify finished issue payload/rendering.
+Intended behavior:
 
-If model returns the same output family used by current direct adapters (`collective_ranking`, `collective_scores`, `collective_matrix`, optional `plots_graphic`), resolution integration is usually straightforward.
+- normal users consume normalized ranking/scores/consensus sections,
+- expert users may inspect a generic "Model-specific output" section that renders `rawOutput` as JSON.
 
-## 9. Example path: adding a pairwise model
-
-Setting `evaluationStructure: "pairwiseAlternatives"` is necessary but not sufficient.
-
-You must also ensure:
-
-- Backend can build correct pairwise execution payload (`buildScenarioPairwiseMatrices(...)` + resolver payload).
-- Backend can normalize model output into persisted consensus/finished issue sections.
-- Frontend pairwise finished-rating views can consume resulting payload.
-
-Current limitation:
-
-- `resolvePairwiseIssueFlow(...)` throws internal error for non-`herrera_viedma_crp` pairwise outputs.
-- Add a model-specific or generic pairwise adapter before making the model public/selectable.
-
-## 10. Manual validation checklist
+## 11. Manual validation checklist
 
 - ApiModels endpoint executes with expected request/response.
-- `GET /models/manifest` includes the new model with correct metadata.
+- `GET /models/manifest` includes expected metadata.
 - Backend dry-run reports expected match/create/update behavior.
-- Sync creates/updates the correct `IssueModel`.
-- Admin catalog shows expected metadata.
-- Create Issue shows/hides model according to `publicInIssueCatalog`.
-- Issue creation works with the model.
-- Evaluation draft/read/submit flows work.
-- Resolution works and persists expected consensus/output artifacts.
-- Finished issue view renders ranking and evaluations correctly.
-- Scenario creation and scenario detail work when `supportsScenarios` is true.
+- Backend sync persists expected `IssueModel` metadata.
+- Admin visibility behaves as expected.
+- Create Issue shows/hides model according to backend catalog state.
+- Resolution persists normalized outputs and `modelExecution.rawOutput`.
+- Finished issue payload remains compatible with existing frontend flows.
 
-## 11. Common mistakes
+## 12. Common mistakes
 
-- Marking an auxiliary service as selectable `issueModel`.
-- Setting `publicInIssueCatalog: true` before Backend/Frontend can resolve/render outputs.
-- Forgetting output adapter changes for new response shapes.
-- Forgetting manifest metadata updates (`role`, `evaluationStructure`, `supportedDomains`, `sync`).
-- Overwriting editorial fields during sync logic.
-- Relying on legacy name matching instead of stable `apiModelKey` and `apiEndpoint`.
-- Changing the HTTP response contract.
-- Returning `msg` or `results` fields instead of the standard contract.
+- Creating a new `evaluationStructure` for model-specific metrics only.
+- Coupling consensus behavior to `evaluationStructure`.
+- Assuming `outputKind` includes every research field.
+- Dropping raw model-specific fields instead of preserving them in `rawOutput`.
+- Publishing a model before backend adapters can normalize required workflow fields.

@@ -254,13 +254,24 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     createdAt: latestConsensus?.timestamp || null,
     createdBy: null,
     preview: latestConsensus?.details?.rankedAlternatives || null,
+    outputs: {
+      details: latestConsensus?.details || {},
+      collectiveEvaluations: latestConsensus?.collectiveEvaluations || {},
+      rawResults:
+        latestConsensus?.details?.modelExecution?.rawOutput ?? null,
+    },
   };
+
+  const consensusDetails = latestConsensus?.details || {};
+  const modelExecution = consensusDetails?.modelExecution || null;
 
   return {
     summary,
     alternativesRankings,
     expertsRatings,
     analyticalGraphs,
+    consensusDetails,
+    modelExecution,
     scenarios: [baseScenario, ...scenarios],
     modelParams: {
       leafCriteria,

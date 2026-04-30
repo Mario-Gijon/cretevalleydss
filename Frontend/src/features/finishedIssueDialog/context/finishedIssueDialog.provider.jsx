@@ -28,7 +28,6 @@ export const FinishedIssueDialogProvider = ({
   });
 
   const value = {
-    selectedIssue,
     openFinishedIssueDialog,
     handleCloseFinishedIssueDialog,
     setOpenRemoveConfirmDialog,

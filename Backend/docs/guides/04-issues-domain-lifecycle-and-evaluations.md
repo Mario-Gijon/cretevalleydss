@@ -29,51 +29,74 @@ Participation lifecycle:
 - invitation status: `pending`, `accepted`, `declined`
 - progress flags: `weightsCompleted`, `evaluationCompleted`
 
-## Evaluation structure selection
+## Model contract dimensions used by issue resolution
 
-Evaluation flow selection is based only on `evaluationStructure`:
+The backend separates model behavior into independent concepts:
 
-- `direct`
-- `pairwiseAlternatives`
+- `evaluationStructure`: how alternative evaluations are captured, validated, persisted, read, saved, and submitted.
+- `inputKind`: request payload family expected by ApiModels.
+- `outputKind`: normalized output family interpreted by backend application flows.
+- `isConsensus`: whether the issue follows the consensus cycle.
 
-No legacy boolean fallback is supported for flow selection.
+These concepts are not aliases of each other.
 
-## Evaluation, weighting, and resolution flows
+Examples:
 
-Alternative evaluations are implemented under `modules/issues/alternativeEvaluations/`
-with a single controller-facing service in
-`modules/issues/alternativeEvaluations/alternativeEvaluation.service.js`.
+- TOPSIS:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directCrispMatrix`
+  - `outputKind`: `ranking`
+  - `isConsensus`: `false`
+- Fuzzy TOPSIS:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directFuzzyMatrix`
+  - `outputKind`: `ranking`
+  - `isConsensus`: `false`
+- Herrera-Viedma CRP:
+  - `evaluationStructure`: `pairwiseAlternatives`
+  - `inputKind`: `pairwisePreferenceMatrix`
+  - `outputKind`: `consensusRanking`
+  - `isConsensus`: `true`
+- Future direct consensus model:
+  - `evaluationStructure`: `direct`
+  - `inputKind`: `directCrispMatrix`
+  - `outputKind`: `consensusRanking`
+  - `isConsensus`: `true`
+
+## Alternative evaluation flow (vertical slices)
+
+Alternative evaluations are implemented under `modules/issues/alternativeEvaluations/` with:
+
+- public entrypoint: `index.js`
+- controller-facing orchestration: `alternativeEvaluation.service.js`
+- structure registry: `alternativeEvaluation.registry.js`
+- shared helpers: `alternativeEvaluation.shared.js`
+- structure slices:
+  - `direct/`
+  - `pairwiseAlternatives/`
 
 Service public API:
 
 - `getAlternativeEvaluations({ issueId, userId })`
 - `saveAlternativeEvaluationDraft({ issueId, userId, body })`
 - `submitAlternativeEvaluations({ issueId, userId, body })`
+- `buildInitialAlternativeEvaluationDocs(...)`
 
-Alternative structure modules:
-
-- constants: `alternativeEvaluation.constants.js`
-- shared helpers: `alternativeEvaluation.shared.js`
-- initial evaluation docs: `alternativeEvaluation.initialDocs.js`
-- operations by structure:
-  - `alternativeEvaluation.direct.js`
-  - `alternativeEvaluation.pairwiseAlternatives.js`
-- structure selection by `evaluationStructure` is internal to `alternativeEvaluation.service.js`.
-
-Built-in alternative operations are:
+Each structure owns:
 
 - `read`
 - `saveDraft`
 - `submit`
+- `buildInitial`
+- `buildResolutionInput`
 
 Controller path:
 
-- `saveEvaluations`, `getEvaluations`, `submitEvaluations`
-  call the service and return the standard HTTP contract response.
+- `saveEvaluations`, `getEvaluations`, `submitEvaluations` call the service and return the standard HTTP contract response.
 
-Weight evaluations are implemented under `modules/issues/weightEvaluations/`
-with a single controller-facing entrypoint in
-`modules/issues/weightEvaluations/index.js`.
+## Weight evaluations
+
+Weight evaluations are implemented under `modules/issues/weightEvaluations/` with a single controller-facing entrypoint in `modules/issues/weightEvaluations/index.js`.
 
 Service public API:
 
@@ -86,40 +109,20 @@ Service public API:
 - `submitBwmWeights({ issueId, userId, body })`
 - `computeBwmWeights({ issueId, userId })`
 
-Weight structure modules:
+## Resolution, normalized outputs, and raw model output
 
-- constants: `weightEvaluation.constants.js`
-- family implementations:
-  - `weightEvaluation.manual.js` (`manual`, `consensus`)
-  - `weightEvaluation.bwm.js` (`bwm`, `consensusBwm`, `simulatedConsensusBwm`)
-- family selection by `weightingMode` is handled by the route family and
-  domain modules (`weightEvaluation.manual.js` and `weightEvaluation.bwm.js`).
+Resolution orchestration is implemented in `modules/issues/issue.resolution.js`:
 
-Built-in weight operations are:
+- `resolveIssueFlow(...)` dispatches by `evaluationStructure`.
+- `resolveDirectIssueFlow(...)` and `resolvePairwiseIssueFlow(...)` execute model calls and persist consensus artifacts.
 
-- `read`
-- `saveDraft`
-- `submit`
-- `compute`
+Persistence model:
 
-Current route families stay unchanged:
+- backend keeps normalized fields for application workflows (ranking/scores/collective evaluations/consensus state),
+- backend also persists full model-specific output at:
+  - `Consensus.details.modelExecution.rawOutput`
 
-- `/weights/manual/*`
-- `/weights/bwm/*`
-
-Definitions:
-
-- `saveDraft`: save partial expert input without final completion.
-- `submit`: final expert submission that can update participation completion flags.
-- `compute`: collective/admin operation that calculates final criteria weights
-  and can advance the issue stage.
-
-Resolution (`modules/issues/issue.resolution.js`):
-
-- direct and pairwise resolution handlers,
-- consensus phase persistence,
-- round continuation or finalization,
-- optional `forceFinalize` support.
+`rawOutput` stores the unwrapped ApiModels payload (`data` after contract unwrapping). This preserves research fields (for example diagnostics, intervals, warnings, internal matrices, explanations) without requiring schema changes per metric.
 
 ## Expression domains and snapshots
 

@@ -12,6 +12,16 @@ These guides describe runtime architecture, API behavior, domain workflows, mode
 - `modules/`, `services/`, `utils/common/`
 - `models/`
 
+## Core model-contract terms
+
+The backend treats these dimensions as independent:
+
+- `evaluationStructure`: how expert evaluations are captured, validated, stored, read, saved, and submitted.
+- `inputKind`: ApiModels request payload family expected by a decision model.
+- `outputKind`: normalized result family interpreted by backend application flows.
+- `isConsensus`: whether an issue/model runs the consensus cycle.
+- `Consensus.details.modelExecution.rawOutput`: full unwrapped ApiModels payload persisted for research inspection.
+
 ## Guides
 
 1. [01 Backend Overview](./guides/01-backend-overview.md)

@@ -38,3 +38,15 @@ The Crete Valley DSS backend provides the API for:
 - consensus artifacts: `Consensus`,
 - expression-domain snapshots: `IssueExpressionDomain`,
 - simulations: `IssueScenario`.
+
+## Model contract dimensions
+
+The issue-resolution architecture separates model behavior into independent dimensions:
+
+- `evaluationStructure`: evaluation capture/persistence behavior (`direct`, `pairwiseAlternatives`, future structures).
+- `inputKind`: ApiModels request payload family (for example `directCrispMatrix`, `directFuzzyMatrix`, `pairwisePreferenceMatrix`).
+- `outputKind`: normalized result family interpreted by backend resolution flows (for example `ranking`, `consensusRanking`).
+- `isConsensus`: whether the issue enters the consensus-cycle logic.
+
+These dimensions are intentionally decoupled.  
+For example, a direct model can be consensus or non-consensus, and pairwise is not automatically synonymous with consensus.
