@@ -18,6 +18,8 @@ import {
   buildScenarioDirectMatrices,
   buildScenarioPairwiseMatrices,
 } from "./issue.scenarios.js";
+import { buildModelInputPayload } from "./modelInputs/modelInput.adapters.js";
+import { normalizeModelOutput } from "./modelOutputs/modelOutput.adapters.js";
 
         
 import {
@@ -130,31 +132,6 @@ const countNullsDeep = (value) => {
   }
 
   return 0;
-};
-
-/**
- * Convierte los expert_points de plots_graphic a un mapa indexado por email.
- *
- * @param {Array<Object>} participations Participaciones aceptadas.
- * @param {Object | null | undefined} plotsGraphic Gráfico bruto del modelo.
- * @returns {Object | null}
- */
-const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
-  if (!plotsGraphic?.expert_points || !Array.isArray(plotsGraphic.expert_points)) {
-    return null;
-  }
-
-  const expertPointsMap = {};
-
-  participations.forEach((participation, index) => {
-    expertPointsMap[participation.expert.email] =
-      plotsGraphic.expert_points[index] ?? null;
-  });
-
-  return {
-    expert_points: expertPointsMap,
-    collective_point: plotsGraphic.collective_point ?? null,
-  };
 };
 
 /**
@@ -300,38 +277,17 @@ const buildDirectResolutionArtifacts = ({
   modelParameters,
   rawOutput,
 }) => {
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
-
-  const rankedAlternatives = (results.collective_ranking || []).map(
-    (index) => alternativeNames[index]
-  );
-
-  const rankedWithScores = (results.collective_ranking || []).map((index) => ({
-    name: alternativeNames[index],
-    score: results.collective_scores?.[index] ?? null,
-  }));
-
-  const collectiveScoresByName = {};
-  (results.collective_scores || []).forEach((score, index) => {
-    collectiveScoresByName[alternativeNames[index]] = score;
-  });
-
-  const collectiveEvaluations = {};
-  (results.collective_matrix || []).forEach((row, alternativeIndex) => {
-    const alternativeName = alternativeNames[alternativeIndex];
-    collectiveEvaluations[alternativeName] = {};
-
-    row.forEach((value, criterionIndex) => {
-      const criterionName = criteria[criterionIndex]?.name;
-      if (!criterionName) return;
-      collectiveEvaluations[alternativeName][criterionName] = { value };
-    });
-  });
-
-  const plotsGraphicWithEmails = buildPlotsGraphicWithEmails(
+  const normalizedOutput = normalizeModelOutput({
+    outputKind: model?.outputKind,
+    rawOutput: results,
+    alternatives,
+    criteria,
     participations,
-    results?.plots_graphic
-  );
+    issue,
+    model,
+    resolutionMode: "direct",
+  });
+
   const modelExecution = buildModelExecutionDetails({
     model,
     modelKey,
@@ -340,20 +296,20 @@ const buildDirectResolutionArtifacts = ({
   });
 
   return {
-    rankedAlternatives,
-    rankedWithScores,
-    collectiveEvaluations,
+    rankedAlternatives: normalizedOutput.rankedAlternatives,
+    rankedWithScores: normalizedOutput.rankedWithScores,
+    collectiveEvaluations: normalizedOutput.collectiveEvaluations,
     consensusDetails: {
-      rankedAlternatives: rankedWithScores,
+      rankedAlternatives: normalizedOutput.rankedWithScores,
       matrices,
-      collective_scores: collectiveScoresByName,
-      collective_ranking: rankedAlternatives,
-      ...(plotsGraphicWithEmails
-        ? { plotsGraphic: plotsGraphicWithEmails }
+      collective_scores: normalizedOutput.collectiveScoresByName,
+      collective_ranking: normalizedOutput.collectiveRanking,
+      ...(normalizedOutput.plotsGraphic
+        ? { plotsGraphic: normalizedOutput.plotsGraphic }
         : {}),
       modelExecution,
     },
-    consensusLevel: issue.isConsensus ? results.cm ?? 0 : null,
+    consensusLevel: normalizedOutput.consensusLevel,
   };
 };
 
@@ -383,17 +339,17 @@ const buildPairwiseResolutionArtifacts = ({
   modelParameters,
   rawOutput,
 }) => {
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
-
-  const rankedWithScores = (results.alternatives_rankings || []).map((index) => ({
-    name: alternativeNames[index],
-    score: results.collective_scores?.[index] ?? null,
-  }));
-
-  const plotsGraphicWithEmails = buildPlotsGraphicWithEmails(
+  const normalizedOutput = normalizeModelOutput({
+    outputKind: model?.outputKind,
+    rawOutput: results,
+    alternatives,
+    criteria,
     participations,
-    results?.plots_graphic
-  );
+    issue: null,
+    model,
+    resolutionMode: "pairwise",
+  });
+
   const modelExecution = buildModelExecutionDetails({
     model,
     modelKey,
@@ -401,44 +357,20 @@ const buildPairwiseResolutionArtifacts = ({
     rawOutput,
   });
 
-  const transformedCollectiveEvaluations = {};
-
-  for (const criterion of criteria) {
-    const matrix = results.collective_evaluations?.[criterion.name];
-    if (!matrix) continue;
-
-    transformedCollectiveEvaluations[criterion.name] = matrix.map(
-      (row, rowIndex) => {
-        const formattedRow = { id: alternatives[rowIndex]?.name };
-
-        row.forEach((value, colIndex) => {
-          formattedRow[alternatives[colIndex]?.name] = value;
-        });
-
-        return formattedRow;
-      }
-    );
-  }
-
   return {
-    rankedWithScores,
-    collectiveEvaluations: transformedCollectiveEvaluations,
+    rankedWithScores: normalizedOutput.rankedWithScores,
+    collectiveEvaluations: normalizedOutput.collectiveEvaluations,
     consensusDetails: {
-      rankedAlternatives: rankedWithScores,
+      rankedAlternatives: normalizedOutput.rankedWithScores,
       matrices,
-      collective_scores: Object.fromEntries(
-        alternativeNames.map((name, index) => [
-          name,
-          results.collective_scores?.[index] ?? null,
-        ])
-      ),
-      collective_ranking: rankedWithScores.map((item) => item.name),
-      ...(plotsGraphicWithEmails
-        ? { plotsGraphic: plotsGraphicWithEmails }
+      collective_scores: normalizedOutput.collectiveScoresByName,
+      collective_ranking: normalizedOutput.collectiveRanking,
+      ...(normalizedOutput.plotsGraphic
+        ? { plotsGraphic: normalizedOutput.plotsGraphic }
         : {}),
       modelExecution,
     },
-    consensusLevel: results.cm ?? 0,
+    consensusLevel: normalizedOutput.consensusLevel,
   };
 };
 
@@ -487,16 +419,20 @@ export const resolveDirectIssueFlow = async ({
 
   const criterionTypes = buildCriterionTypes(criteria);
   const normalizedModelParams = normalizeParams(issue.modelParameters);
+  const modelInputPayload = buildModelInputPayload({
+    inputKind: model?.inputKind,
+    resolverMode: "direct",
+    matrices,
+    modelParameters: normalizedModelParams,
+    criterionTypes,
+    consensusThreshold: issue.consensusThreshold,
+  });
 
   let response;
   try {
     response = await httpClient.post(
       modelEndpointUrl,
-      {
-        matrices,
-        modelParameters: normalizedModelParams,
-        criterionTypes,
-      },
+      modelInputPayload,
       {
         headers: { "Content-Type": "application/json" },
       }
@@ -646,16 +582,20 @@ export const resolvePairwiseIssueFlow = async ({
   }
 
   const normalizedModelParams = normalizeParams(issue.modelParameters);
+  const modelInputPayload = buildModelInputPayload({
+    inputKind: model?.inputKind,
+    resolverMode: "pairwise",
+    matrices,
+    modelParameters: normalizedModelParams,
+    criterionTypes: null,
+    consensusThreshold: issue.consensusThreshold,
+  });
 
   let response;
   try {
     response = await httpClient.post(
       modelEndpointUrl,
-      {
-        matrices,
-        consensusThreshold: issue.consensusThreshold,
-        modelParameters: normalizedModelParams,
-      },
+      modelInputPayload,
       {
         headers: { "Content-Type": "application/json" },
       }
