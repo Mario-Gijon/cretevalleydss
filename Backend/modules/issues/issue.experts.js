@@ -10,7 +10,7 @@ import { User } from "../../models/Users.js";
 import {
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
-import { buildInitialEvaluationDocs } from "./alternativeEvaluations/alternativeEvaluation.initialDocs.js";
+import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import { buildInitialCriteriaWeightEvaluationDocs } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { mapIssueStageToExitStage, registerUserExit } from "./issue.lifecycle.js";
 import { getDefaultIssueSnapshot, getNextConsensusPhase } from "./issue.queries.js";
@@ -156,7 +156,7 @@ const buildInitialExpertEvaluationDocs = ({
   defaultSnapshot,
   currentPhase,
 }) => {
-  const baseDocs = buildInitialEvaluationDocs({
+  const baseDocs = buildInitialAlternativeEvaluationDocs({
     issueId,
     experts: [expertUser],
     leafCriteria,

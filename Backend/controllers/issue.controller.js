@@ -14,15 +14,10 @@ import {
 } from "../modules/issues/issue.queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
 import {
-  createBadRequestError,
   createConflictError,
-  createNotFoundError,
 } from "../utils/common/errors.js";
 import { sameId, toIdString } from "../utils/common/ids.js";
-import {
-  endSessionSafely,
-  isValidObjectIdLike,
-} from "../utils/common/mongoose.js";
+import { endSessionSafely } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import {
   getAlternativeEvaluations,
@@ -39,8 +34,6 @@ import {
   submitBwmWeights as submitBwmWeightsService,
   submitManualWeights as submitManualWeightsService,
 } from "../modules/issues/weightEvaluations/index.js";
-import { EVALUATION_STRUCTURES } from "../modules/issues/alternativeEvaluations/alternativeEvaluation.constants.js";
-import { resolveEvaluationStructure } from "../modules/issues/issue.evaluationStructure.js";
 
           
 import {
@@ -59,8 +52,7 @@ import {
   removeIssueScenarioFlow,
 } from "../modules/issues/issue.scenarios.js";
 import {
-  resolveDirectIssueFlow,
-  resolvePairwiseIssueFlow,
+  resolveIssueFlow,
 } from "../modules/issues/issue.resolution.js";
 import {
   deleteActiveIssueAsAdmin,
@@ -87,26 +79,6 @@ import { createIssueFlow } from "../modules/issues/issue.creation.js";
 import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
-
-const resolveIssueEvaluationStructureOrThrow = async (issueId) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-
-  const issue = await Issue.findById(issueId)
-    .select("_id evaluationStructure")
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
-
-  return resolveEvaluationStructure(issue);
-};
 
 /**
  * Obtiene la información de modelos disponibles.
@@ -552,30 +524,6 @@ export const removeNotificationById = async (req, res) => {
 };
 
 /**
- * Resuelve un issue con evaluación pairwise y gestiona el flujo de consenso si aplica.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const resolvePairwiseIssue = async (req, res) => {
-  const { id, forceFinalize = false } = req.body;
-
-  const result = await resolvePairwiseIssueFlow({
-    issueId: id,
-    userId: req.uid,
-    forceFinalize: Boolean(forceFinalize),
-    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-    httpClient: axios,
-  });
-
-  return sendSuccess(res, result.message, {
-    finished: result.finished,
-    rankedAlternatives: result.rankedAlternatives ?? null,
-  });
-};
-
-/**
  * Oculta un issue finalizado para el usuario actual y elimina sus datos
  * si todos los usuarios con visibilidad ya lo han ocultado.
  *
@@ -660,30 +608,6 @@ export const leaveIssue = async (req, res) => {
   } finally {
     await endSessionSafely(session);
   }
-};
-
-/**
- * Resuelve un issue con evaluación directa y gestiona el flujo de consenso si aplica.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const resolveDirectIssue = async (req, res) => {
-  const { id, forceFinalize = false } = req.body;
-
-  const result = await resolveDirectIssueFlow({
-    issueId: id,
-    userId: req.uid,
-    forceFinalize: Boolean(forceFinalize),
-    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-    httpClient: axios,
-  });
-
-  return sendSuccess(res, result.message, {
-    finished: result.finished,
-    rankedAlternatives: result.rankedAlternatives ?? null,
-  });
 };
 
 /**
@@ -1000,28 +924,7 @@ export const submitEvaluations = async (req, res) => {
 export const resolveIssue = async (req, res) => {
   const { id: issueId, forceFinalize = false } = req.body;
 
-  const evaluationStructure =
-    await resolveIssueEvaluationStructureOrThrow(issueId);
-
-  const resolutionFlowByEvaluationStructure = {
-    [EVALUATION_STRUCTURES.DIRECT]: resolveDirectIssueFlow,
-    [EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: resolvePairwiseIssueFlow,
-  };
-
-  const resolutionFlow =
-    resolutionFlowByEvaluationStructure[evaluationStructure];
-
-  if (!resolutionFlow) {
-    throw createBadRequestError(
-      `Unsupported evaluation structure: ${String(evaluationStructure)}`,
-      {
-        code: "UNSUPPORTED_EVALUATION_STRUCTURE",
-        field: "evaluationStructure",
-      }
-    );
-  }
-
-  const result = await resolutionFlow({
+  const result = await resolveIssueFlow({
     issueId,
     userId: req.uid,
     forceFinalize: Boolean(forceFinalize),

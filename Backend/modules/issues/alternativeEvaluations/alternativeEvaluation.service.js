@@ -1,27 +1,14 @@
 import { Issue } from "../../../models/Issues.js";
-import {
-  createBadRequestError,
-  createNotFoundError,
-} from "../../../utils/common/errors.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+import { createNotFoundError } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 import { resolveEvaluationStructure } from "../issue.evaluationStructure.js";
 
 import { EVALUATION_STRUCTURES } from "./alternativeEvaluation.constants.js";
-import { directAlternativeEvaluations } from "./alternativeEvaluation.direct.js";
-import { pairwiseAlternativeEvaluations } from "./alternativeEvaluation.pairwiseAlternatives.js";
-
-const ALTERNATIVE_EVALUATION_OPERATIONS_BY_STRUCTURE = Object.freeze({
-  [EVALUATION_STRUCTURES.DIRECT]: directAlternativeEvaluations,
-  [EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]:
-    pairwiseAlternativeEvaluations,
-});
+import { getAlternativeEvaluationStructureOrThrow } from "./alternativeEvaluation.registry.js";
+import { validateIssueIdOrThrow } from "./alternativeEvaluation.shared.js";
 
 const resolveAlternativeEvaluationContextOrThrow = async (issueId) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
+  validateIssueIdOrThrow(issueId);
 
   const issue = await Issue.findById(issueId)
     .select("_id evaluationStructure")
@@ -34,33 +21,23 @@ const resolveAlternativeEvaluationContextOrThrow = async (issueId) => {
   }
 
   const evaluationStructure = resolveEvaluationStructure(issue);
-  const operations =
-    ALTERNATIVE_EVALUATION_OPERATIONS_BY_STRUCTURE[evaluationStructure];
-
-  if (!operations) {
-    throw createBadRequestError(
-      `Unsupported evaluation structure: ${String(evaluationStructure)}`,
-      {
-        code: "UNSUPPORTED_EVALUATION_STRUCTURE",
-        field: "evaluationStructure",
-      }
-    );
-  }
+  const structure = getAlternativeEvaluationStructureOrThrow(
+    evaluationStructure
+  );
 
   return {
     issue,
-    operations,
+    structure,
   };
 };
 
 export const getAlternativeEvaluations = async ({ issueId, userId }) => {
-  const { issue, operations } =
+  const { issue, structure } =
     await resolveAlternativeEvaluationContextOrThrow(issueId);
 
-  return operations.read({
-    issueId,
-    userId,
+  return structure.read({
     issue,
+    userId,
   });
 };
 
@@ -69,14 +46,13 @@ export const saveAlternativeEvaluationDraft = async ({
   userId,
   body,
 }) => {
-  const { issue, operations } =
+  const { issue, structure } =
     await resolveAlternativeEvaluationContextOrThrow(issueId);
 
-  return operations.saveDraft({
-    issueId,
-    userId,
-    evaluations: body?.evaluations,
+  return structure.saveDraft({
     issue,
+    userId,
+    body,
   });
 };
 
@@ -85,13 +61,44 @@ export const submitAlternativeEvaluations = async ({
   userId,
   body,
 }) => {
-  const { issue, operations } =
+  const { issue, structure } =
     await resolveAlternativeEvaluationContextOrThrow(issueId);
 
-  return operations.submit({
-    issueId,
-    userId,
-    evaluations: body?.evaluations,
+  return structure.submit({
     issue,
+    userId,
+    body,
+  });
+};
+
+export const buildInitialAlternativeEvaluationDocs = ({
+  issueId,
+  experts = [],
+  leafCriteria = [],
+  alternatives = [],
+  evaluationStructure = EVALUATION_STRUCTURES.DIRECT,
+  consensusPhase = 1,
+  includeReciprocal = false,
+}) => {
+  const issue = toIdString(issueId);
+
+  if (!issue) {
+    return [];
+  }
+
+  const resolvedEvaluationStructure = resolveEvaluationStructure({
+    evaluationStructure,
+  });
+  const structure = getAlternativeEvaluationStructureOrThrow(
+    resolvedEvaluationStructure
+  );
+
+  return structure.buildInitial({
+    issueId: issue,
+    experts,
+    leafCriteria,
+    alternatives,
+    consensusPhase,
+    includeReciprocal,
   });
 };

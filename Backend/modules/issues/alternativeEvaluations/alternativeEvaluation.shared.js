@@ -10,6 +10,7 @@ import {
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
 import {
   getAcceptedParticipation,
@@ -17,6 +18,43 @@ import {
   getNextConsensusPhase,
 } from "../issue.queries.js";
 import { resolveEvaluationStructure } from "../issue.evaluationStructure.js";
+
+/**
+ * Valida que el id de issue sea válido.
+ *
+ * @param {string} issueId Id del issue.
+ * @returns {void}
+ */
+export const validateIssueIdOrThrow = (issueId) => {
+  if (!issueId || !isValidObjectIdLike(issueId)) {
+    throw createBadRequestError("Valid issue id is required", {
+      field: "issueId",
+    });
+  }
+};
+
+/**
+ * Crea un error estándar de validación para payloads de evaluaciones.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {Object} params.validation Resultado de validación.
+ * @param {string} [params.fallbackMessage="Invalid evaluations"] Mensaje por defecto.
+ * @param {Object|null} [params.details=null] Detalles del error por estructura.
+ * @returns {Error}
+ */
+export const createEvaluationValidationError = ({
+  validation,
+  fallbackMessage = "Invalid evaluations",
+  details = null,
+}) => {
+  return createBadRequestError(
+    validation?.error?.message || fallbackMessage,
+    {
+      field: "evaluations",
+      details,
+    }
+  );
+};
 
 /**
  * Construye un mapa nombre -> id a partir de una colección de documentos.
@@ -199,4 +237,78 @@ export const markParticipationEvaluationCompletedOrThrow = async ({
   if (!participation) {
     throw createNotFoundError("Participation not found");
   }
+};
+
+const hasMoreThanTwoDecimals = (value) => {
+  const numericValue = Number(value);
+  return numericValue !== Math.round(numericValue * 100) / 100;
+};
+
+const isStepAligned = ({ value, min, step }) => {
+  if (!Number.isFinite(step) || step <= 0) return true;
+
+  const stepsFromMin = (value - min) / step;
+  return Math.abs(stepsFromMin - Math.round(stepsFromMin)) < 1e-9;
+};
+
+export const validateEvaluationCellByDomain = ({ value, domain, locationLabel }) => {
+  if (domain?.type === "numeric") {
+    const min = domain.range?.min ?? 0;
+    const max = domain.range?.max ?? 1;
+    const step = Number(domain?.range?.step);
+    const numericValue = parseFloat(value);
+
+    if (isNaN(numericValue) || numericValue < min || numericValue > max) {
+      return {
+        valid: false,
+        message: `Invalid value for ${locationLabel}. Must be between ${min} and ${max}.`,
+      };
+    }
+
+    if (hasMoreThanTwoDecimals(numericValue)) {
+      return {
+        valid: false,
+        message: `Value for ${locationLabel} must have at most two decimals.`,
+      };
+    }
+
+    if (!isStepAligned({ value: numericValue, min, step })) {
+      return {
+        valid: false,
+        message: `Value for ${locationLabel} must follow step ${step}.`,
+      };
+    }
+  }
+
+  if (domain?.type === "linguistic") {
+    const validLabels = domain.labels?.map((label) => label.label) || [];
+
+    if (!validLabels.includes(value)) {
+      return {
+        valid: false,
+        message: `Invalid label for ${locationLabel}. Must be one of: ${validLabels.join(", ")}.`,
+      };
+    }
+  }
+
+  return { valid: true };
+};
+
+export const getEvaluationCellDomain = (cell) => {
+  if (cell && typeof cell === "object" && "domain" in cell) {
+    return cell.domain;
+  }
+
+  return null;
+};
+
+export const isEmptyEvaluationValue = (value) =>
+  value === "" || value === null || value === undefined;
+
+export const getEvaluationCellValue = (cell) => {
+  if (cell && typeof cell === "object" && "value" in cell) {
+    return cell.value;
+  }
+
+  return cell;
 };

@@ -1,4 +1,5 @@
 export {
+  buildInitialAlternativeEvaluationDocs,
   getAlternativeEvaluations,
   saveAlternativeEvaluationDraft,
   submitAlternativeEvaluations,

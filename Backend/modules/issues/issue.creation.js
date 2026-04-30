@@ -14,7 +14,7 @@ import { User } from "../../models/Users.js";
 import {
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
-import { buildInitialEvaluationDocs } from "./alternativeEvaluations/alternativeEvaluation.initialDocs.js";
+import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import {
   buildInitialCriteriaWeightEvaluationDocs,
   resolveInitialIssueStage,
@@ -435,7 +435,7 @@ const buildIssueEvaluationDocsWithSnapshots = ({
   sourceDomainByEvaluationKey,
   snapshotMap,
 }) => {
-  const baseEvaluationDocs = buildInitialEvaluationDocs({
+  const baseEvaluationDocs = buildInitialAlternativeEvaluationDocs({
     issueId,
     experts: expertUsers,
     leafCriteria,

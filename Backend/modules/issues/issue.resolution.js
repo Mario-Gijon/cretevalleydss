@@ -12,6 +12,7 @@ import {
   EVALUATION_STRUCTURES,
   resolveEvaluationStructure,
 } from "./issue.evaluationStructure.js";
+import { validateIssueIdOrThrow } from "./alternativeEvaluations/alternativeEvaluation.shared.js";
 import { getNextConsensusPhase } from "./issue.queries.js";
 import {
   buildScenarioDirectMatrices,
@@ -40,6 +41,65 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId } from "../../utils/common/ids.js";
+
+/**
+ * Resuelve un issue delegando según su estructura de evaluación configurada.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.userId Id del usuario actual.
+ * @param {boolean} [params.forceFinalize=false] Fuerza la finalización.
+ * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
+ * @param {Object} params.httpClient Cliente HTTP.
+ * @returns {Promise<Object>}
+ */
+export const resolveIssueFlow = async ({
+  issueId,
+  userId,
+  forceFinalize = false,
+  apiModelsBaseUrl,
+  httpClient,
+}) => {
+  validateIssueIdOrThrow(issueId);
+
+  const issue = await Issue.findById(issueId)
+    .select("_id evaluationStructure")
+    .lean();
+
+  if (!issue) {
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
+  }
+
+  const evaluationStructure = resolveEvaluationStructure(issue);
+
+  const resolutionFlowByEvaluationStructure = {
+    [EVALUATION_STRUCTURES.DIRECT]: resolveDirectIssueFlow,
+    [EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES]: resolvePairwiseIssueFlow,
+  };
+
+  const resolutionFlow =
+    resolutionFlowByEvaluationStructure[evaluationStructure];
+
+  if (!resolutionFlow) {
+    throw createBadRequestError(
+      `Unsupported evaluation structure: ${String(evaluationStructure)}`,
+      {
+        code: "UNSUPPORTED_EVALUATION_STRUCTURE",
+        field: "evaluationStructure",
+      }
+    );
+  }
+
+  return resolutionFlow({
+    issueId,
+    userId,
+    forceFinalize,
+    apiModelsBaseUrl,
+    httpClient,
+  });
+};
 
 /**
  * Construye el array de tipos de criterio compatible con los modelos directos.
@@ -94,6 +154,34 @@ const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
   return {
     expert_points: expertPointsMap,
     collective_point: plotsGraphic.collective_point ?? null,
+  };
+};
+
+/**
+ * Construye metadatos de ejecución del modelo para persistencia de salida cruda.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @param {Object} params.model Modelo del issue.
+ * @param {string|null} params.modelKey Clave del endpoint resuelto.
+ * @param {Object} params.modelParameters Parámetros efectivos enviados al modelo.
+ * @param {Object} params.rawOutput Payload crudo devuelto por ApiModels (ya desempaquetado).
+ * @returns {Object}
+ */
+const buildModelExecutionDetails = ({
+  model,
+  modelKey,
+  modelParameters,
+  rawOutput,
+}) => {
+  return {
+    modelKey: modelKey ?? null,
+    modelName: model?.name ?? null,
+    inputKind: model?.inputKind ?? null,
+    outputKind: model?.outputKind ?? null,
+    apiEndpoint: model?.apiEndpoint?.path ?? null,
+    modelParameters: modelParameters ?? null,
+    executedAt: new Date(),
+    rawOutput,
   };
 };
 
@@ -194,6 +282,10 @@ const getResolutionContext = async ({
  * @param {Object} params.matrices Matrices por experto.
  * @param {Array<Object>} params.participations Participaciones aceptadas.
  * @param {Object} params.issue Issue actual.
+ * @param {Object} params.model Modelo del issue.
+ * @param {string|null} params.modelKey Clave del endpoint resuelto.
+ * @param {Object} params.modelParameters Parámetros efectivos enviados al modelo.
+ * @param {Object} params.rawOutput Payload crudo devuelto por ApiModels.
  * @returns {Object}
  */
 const buildDirectResolutionArtifacts = ({
@@ -203,6 +295,10 @@ const buildDirectResolutionArtifacts = ({
   matrices,
   participations,
   issue,
+  model,
+  modelKey,
+  modelParameters,
+  rawOutput,
 }) => {
   const alternativeNames = alternatives.map((alternative) => alternative.name);
 
@@ -236,6 +332,12 @@ const buildDirectResolutionArtifacts = ({
     participations,
     results?.plots_graphic
   );
+  const modelExecution = buildModelExecutionDetails({
+    model,
+    modelKey,
+    modelParameters,
+    rawOutput,
+  });
 
   return {
     rankedAlternatives,
@@ -249,6 +351,7 @@ const buildDirectResolutionArtifacts = ({
       ...(plotsGraphicWithEmails
         ? { plotsGraphic: plotsGraphicWithEmails }
         : {}),
+      modelExecution,
     },
     consensusLevel: issue.isConsensus ? results.cm ?? 0 : null,
   };
@@ -263,6 +366,10 @@ const buildDirectResolutionArtifacts = ({
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
  * @param {Object} params.matrices Matrices por experto y criterio.
  * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @param {Object} params.model Modelo del issue.
+ * @param {string|null} params.modelKey Clave del endpoint resuelto.
+ * @param {Object} params.modelParameters Parámetros efectivos enviados al modelo.
+ * @param {Object} params.rawOutput Payload crudo devuelto por ApiModels.
  * @returns {Object}
  */
 const buildPairwiseResolutionArtifacts = ({
@@ -271,6 +378,10 @@ const buildPairwiseResolutionArtifacts = ({
   criteria,
   matrices,
   participations,
+  model,
+  modelKey,
+  modelParameters,
+  rawOutput,
 }) => {
   const alternativeNames = alternatives.map((alternative) => alternative.name);
 
@@ -283,6 +394,12 @@ const buildPairwiseResolutionArtifacts = ({
     participations,
     results?.plots_graphic
   );
+  const modelExecution = buildModelExecutionDetails({
+    model,
+    modelKey,
+    modelParameters,
+    rawOutput,
+  });
 
   const transformedCollectiveEvaluations = {};
 
@@ -319,6 +436,7 @@ const buildPairwiseResolutionArtifacts = ({
       ...(plotsGraphicWithEmails
         ? { plotsGraphic: plotsGraphicWithEmails }
         : {}),
+      modelExecution,
     },
     consensusLevel: results.cm ?? 0,
   };
@@ -404,6 +522,10 @@ export const resolveDirectIssueFlow = async ({
     matrices,
     participations,
     issue,
+    model,
+    modelKey,
+    modelParameters: normalizedModelParams,
+    rawOutput: results,
   });
 
   const consensus = new Consensus({
@@ -563,6 +685,10 @@ export const resolvePairwiseIssueFlow = async ({
     criteria,
     matrices,
     participations,
+    model,
+    modelKey,
+    modelParameters: normalizedModelParams,
+    rawOutput: results,
   });
 
   const consensus = new Consensus({

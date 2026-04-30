@@ -1,19 +1,18 @@
-import { Alternative } from "../../../models/Alternatives.js";
-import { Criterion } from "../../../models/Criteria.js";
-import { Evaluation } from "../../../models/Evaluations.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
-import { toIdString } from "../../../utils/common/ids.js";
+import { Alternative } from "../../../../models/Alternatives.js";
+import { Criterion } from "../../../../models/Criteria.js";
+import { Evaluation } from "../../../../models/Evaluations.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 
-import { formatExpressionDomainForClient } from "../issue.mappers.js";
-import { validateFinalEvaluations } from "../issue.validation.js";
+import { formatExpressionDomainForClient } from "../../issue.mappers.js";
 
-import { EVALUATION_STRUCTURES } from "./alternativeEvaluation.constants.js";
+import { EVALUATION_STRUCTURES } from "../alternativeEvaluation.constants.js";
 import {
   ensureIssueSnapshotIdsExist,
   getEvaluationReadContext,
   getEvaluationSaveContext,
   markParticipationEvaluationCompletedOrThrow,
-} from "./alternativeEvaluation.shared.js";
+} from "../alternativeEvaluation.shared.js";
+import { validateDirectEvaluationsOrThrow } from "./direct.validation.js";
 
 /**
  * Construye las operaciones bulk para guardar evaluaciones directas.
@@ -27,7 +26,7 @@ import {
  * @param {Map<string, string>} params.criterionMap Mapa de criterios por nombre.
  * @returns {Object}
  */
-export const buildDirectEvaluationBulkOperations = ({
+export const buildDirectEvaluationSaveBulkOperations = ({
   userId,
   issueId,
   currentPhase,
@@ -90,18 +89,20 @@ export const buildDirectEvaluationBulkOperations = ({
  * Guarda borradores de evaluaciones directas.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.evaluations Evaluaciones directas recibidas.
+ * @param {Object} params.body Body HTTP completo.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const saveDirectEvaluationDrafts = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
-  evaluations,
+  body,
   issue = null,
 }) => {
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
+  const evaluations = body?.evaluations;
+
   const { issue: issueDoc, currentPhase, alternativeMap, criterionMap } =
     await getEvaluationSaveContext({
       issueId,
@@ -112,7 +113,7 @@ export const saveDirectEvaluationDrafts = async ({
       issue,
     });
 
-  const { bulkOperations, snapshotIds } = buildDirectEvaluationBulkOperations({
+  const { bulkOperations, snapshotIds } = buildDirectEvaluationSaveBulkOperations({
     userId,
     issueId: toIdString(issueDoc._id),
     currentPhase,
@@ -134,49 +135,28 @@ export const saveDirectEvaluationDrafts = async ({
 };
 
 /**
- * Construye un error de validación para evaluaciones directas.
- *
- * @param {Object} validation Resultado de validación.
- * @returns {Error}
- */
-const buildDirectEvaluationValidationError = (validation) =>
-  createBadRequestError(
-    validation?.error?.message || "Invalid direct evaluations",
-    {
-      field: "evaluations",
-      details: {
-        alternative: validation?.error?.alternative ?? null,
-        criterion: validation?.error?.criterion ?? null,
-      },
-    }
-  );
-
-/**
  * Valida y envía las evaluaciones directas del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.evaluations Evaluaciones directas recibidas.
+ * @param {Object} params.body Body HTTP completo.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const submitDirectEvaluations = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
-  evaluations,
+  body,
   issue = null,
 }) => {
-  const validation = validateFinalEvaluations(evaluations);
-
-  if (!validation.valid) {
-    throw buildDirectEvaluationValidationError(validation);
-  }
+  const evaluations = body?.evaluations;
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
+  validateDirectEvaluationsOrThrow(evaluations);
 
   await saveDirectEvaluationDrafts({
     issueId,
     userId,
-    evaluations,
+    body,
     issue,
   });
 
@@ -194,16 +174,16 @@ export const submitDirectEvaluations = async ({
  * Obtiene el payload de evaluaciones directas del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const getDirectEvaluationPayload = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
   issue = null,
 }) => {
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
   const { issue: issueDoc, latestConsensus } = await getEvaluationReadContext({
     issueId,
     userId,
@@ -267,10 +247,11 @@ export const getDirectEvaluationPayload = async ({
 };
 
 /**
- * Operaciones de evaluación alternativa directa.
+ * Construye el input para la resolución directa.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @returns {Promise<object>}
  */
-export const directAlternativeEvaluations = Object.freeze({
-  read: getDirectEvaluationPayload,
-  saveDraft: saveDirectEvaluationDrafts,
-  submit: submitDirectEvaluations,
-});
+export const buildDirectResolutionInput = async (params) => {
+  return params;
+};

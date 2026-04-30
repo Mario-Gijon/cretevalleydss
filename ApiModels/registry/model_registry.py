@@ -355,7 +355,11 @@ _ADMIN_PRESERVED_FIELDS = [
 _ISSUE_MODEL_TECHNICAL_FIELDS = [
     "parameters",
     "evaluationStructure",
+    "inputKind",
+    "outputKind",
+    "criterionTypes",
     "supportedDomains",
+    "supportsScenarios",
     "isConsensus",
     "isMultiCriteria",
 ]

@@ -1,7 +1,4 @@
-import { toIdString } from "../../../utils/common/ids.js";
-import { resolveEvaluationStructure } from "../issue.evaluationStructure.js";
-
-import { EVALUATION_STRUCTURES } from "./alternativeEvaluation.constants.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 
 /**
  * Extrae una lista de ids normalizados desde una colección.
@@ -47,17 +44,16 @@ export const buildAlternativeComparisonPairs = (
 };
 
 /**
- * Construye los documentos iniciales de Evaluation para un issue.
+ * Construye los documentos iniciales de Evaluation para estructura pairwise.
  *
  * @param {Object} params Datos necesarios para construir las evaluaciones.
  * @returns {Array<Object>}
  */
-export const buildInitialEvaluationDocs = ({
+export const buildInitialPairwiseEvaluations = ({
   issueId,
   experts = [],
   leafCriteria = [],
   alternatives = [],
-  evaluationStructure = EVALUATION_STRUCTURES.DIRECT,
   consensusPhase = 1,
   includeReciprocal = false,
 }) => {
@@ -65,49 +61,25 @@ export const buildInitialEvaluationDocs = ({
   const expertIds = getEntityIds(experts);
   const criterionIds = getEntityIds(leafCriteria);
   const alternativeIds = getEntityIds(alternatives);
-  const resolvedEvaluationStructure = resolveEvaluationStructure({
-    evaluationStructure,
-  });
 
   if (!issue || !expertIds.length || !criterionIds.length || !alternativeIds.length) {
     return [];
   }
 
+  const alternativePairs = buildAlternativeComparisonPairs(alternatives, {
+    includeReciprocal,
+  });
   const docs = [];
-
-  if (resolvedEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES) {
-    const alternativePairs = buildAlternativeComparisonPairs(alternatives, {
-      includeReciprocal,
-    });
-
-    for (const expert of expertIds) {
-      for (const criterion of criterionIds) {
-        for (const pair of alternativePairs) {
-          docs.push({
-            issue,
-            expert,
-            criterion,
-            alternative: pair.alternative,
-            comparedAlternative: pair.comparedAlternative,
-            completed: false,
-            consensusPhase,
-          });
-        }
-      }
-    }
-
-    return docs;
-  }
 
   for (const expert of expertIds) {
     for (const criterion of criterionIds) {
-      for (const alternative of alternativeIds) {
+      for (const pair of alternativePairs) {
         docs.push({
           issue,
           expert,
           criterion,
-          alternative,
-          comparedAlternative: null,
+          alternative: pair.alternative,
+          comparedAlternative: pair.comparedAlternative,
           completed: false,
           consensusPhase,
         });

@@ -1,17 +1,17 @@
-import { Evaluation } from "../../../models/Evaluations.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
-import { toIdString } from "../../../utils/common/ids.js";
+import { Evaluation } from "../../../../models/Evaluations.js";
+import { createBadRequestError } from "../../../../utils/common/errors.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 
-import { formatPairwiseEvaluationsByCriterion } from "../issue.mappers.js";
-import { validateFinalPairwiseEvaluations } from "../issue.validation.js";
+import { formatPairwiseEvaluationsByCriterion } from "../../issue.mappers.js";
 
-import { EVALUATION_STRUCTURES } from "./alternativeEvaluation.constants.js";
+import { EVALUATION_STRUCTURES } from "../alternativeEvaluation.constants.js";
 import {
   ensureIssueSnapshotIdsExist,
   getEvaluationReadContext,
   getEvaluationSaveContext,
   markParticipationEvaluationCompletedOrThrow,
-} from "./alternativeEvaluation.shared.js";
+} from "../alternativeEvaluation.shared.js";
+import { validatePairwiseEvaluationsOrThrow } from "./pairwiseAlternatives.validation.js";
 
 /**
  * Construye las operaciones bulk para guardar evaluaciones pairwise.
@@ -26,7 +26,7 @@ import {
  * @param {string} params.defaultSnapshotId Snapshot por defecto del issue.
  * @returns {Object}
  */
-export const buildPairwiseEvaluationBulkOperations = ({
+const buildDirectEvaluationSaveBulkOperations = ({
   userId,
   issueId,
   currentPhase,
@@ -118,18 +118,20 @@ export const buildPairwiseEvaluationBulkOperations = ({
  * Guarda borradores de evaluaciones pairwise.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.evaluations Evaluaciones pairwise recibidas.
+ * @param {Object} params.body Body HTTP completo.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const savePairwiseEvaluationDrafts = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
-  evaluations,
+  body,
   issue = null,
 }) => {
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
+  const evaluations = body?.evaluations;
+
   const {
     issue: issueDoc,
     currentPhase,
@@ -154,7 +156,7 @@ export const savePairwiseEvaluationDrafts = async ({
   }
 
   const { bulkOperations, snapshotIds } =
-    buildPairwiseEvaluationBulkOperations({
+    buildDirectEvaluationSaveBulkOperations({
       userId,
       issueId: toIdString(issueDoc._id),
       currentPhase,
@@ -177,50 +179,28 @@ export const savePairwiseEvaluationDrafts = async ({
 };
 
 /**
- * Construye un error de validación para evaluaciones pairwise.
- *
- * @param {Object} validation Resultado de validación.
- * @returns {Error}
- */
-const buildPairwiseEvaluationValidationError = (validation) =>
-  createBadRequestError(
-    validation?.error?.message || "Invalid pairwise evaluations",
-    {
-      field: "evaluations",
-      details: {
-        criterion: validation?.error?.criterion ?? null,
-        row: validation?.error?.row ?? null,
-        col: validation?.error?.col ?? null,
-      },
-    }
-  );
-
-/**
  * Valida y envía las evaluaciones pairwise del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.evaluations Evaluaciones pairwise recibidas.
+ * @param {Object} params.body Body HTTP completo.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const submitPairwiseEvaluations = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
-  evaluations,
+  body,
   issue = null,
 }) => {
-  const validation = validateFinalPairwiseEvaluations(evaluations);
-
-  if (!validation.valid) {
-    throw buildPairwiseEvaluationValidationError(validation);
-  }
+  const evaluations = body?.evaluations;
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
+  validatePairwiseEvaluationsOrThrow(evaluations);
 
   await savePairwiseEvaluationDrafts({
     issueId,
     userId,
-    evaluations,
+    body,
     issue,
   });
 
@@ -238,16 +218,16 @@ export const submitPairwiseEvaluations = async ({
  * Obtiene el payload de evaluaciones pairwise del experto actual.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
  * @param {Object|null} [params.issue=null] Issue precargado para evitar recarga por id.
  * @returns {Promise<Object>}
  */
 export const getPairwiseEvaluationPayload = async ({
-  issueId,
+  issueId: inputIssueId,
   userId,
   issue = null,
 }) => {
+  const issueId = toIdString(issue?._id) || toIdString(inputIssueId) || inputIssueId;
   const { issue: issueDoc, latestConsensus } = await getEvaluationReadContext({
     issueId,
     userId,
@@ -282,10 +262,11 @@ export const getPairwiseEvaluationPayload = async ({
 };
 
 /**
- * Operaciones de evaluación alternativa pairwise.
+ * Construye el input para la resolución pairwise.
+ *
+ * @param {object} params Parámetros de entrada.
+ * @returns {Promise<object>}
  */
-export const pairwiseAlternativeEvaluations = Object.freeze({
-  read: getPairwiseEvaluationPayload,
-  saveDraft: savePairwiseEvaluationDrafts,
-  submit: submitPairwiseEvaluations,
-});
+export const buildPairwiseResolutionInput = async (params) => {
+  return params;
+};

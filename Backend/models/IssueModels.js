@@ -25,6 +25,9 @@ import { Schema, model } from "mongoose";
  * @property {string} moreInfoUrl Enlace externo de referencia.
  * @property {Array<Object>} parameters Parámetros configurables.
  * @property {string} evaluationStructure Estructura de evaluación exigida.
+ * @property {string | null} [inputKind] Tipo de payload de entrada publicado por ApiModels.
+ * @property {string | null} [outputKind] Tipo de salida/resultado publicado por ApiModels.
+ * @property {Object} [criterionTypes] Vocabulario de tipos de criterio y aliases publicados por ApiModels.
  * @property {Object} supportedDomains Dominios de expresión soportados.
  */
 
@@ -193,6 +196,9 @@ parameterSchema.path("default").validate(
  * - `moreInfoUrl`: enlace informativo externo.
  * - `parameters`: parámetros configurables del modelo.
  * - `evaluationStructure`: estructura de evaluación exigida por el modelo.
+ * - `inputKind`: clase de payload de entrada esperada por ApiModels.
+ * - `outputKind`: clase de resultado devuelta por ApiModels.
+ * - `criterionTypes`: vocabulario canónico y aliases de tipos de criterio.
  * - `supportedDomains`: capacidades del modelo respecto a dominios numéricos
  *   y lingüísticos.
  *
@@ -305,6 +311,27 @@ const issueModelSchema = new Schema({
     type: String,
     enum: ["direct", "pairwiseAlternatives"],
     required: true,
+  },
+  inputKind: {
+    type: String,
+    trim: true,
+    default: null,
+  },
+  outputKind: {
+    type: String,
+    trim: true,
+    default: null,
+  },
+  criterionTypes: {
+    canonical: {
+      type: [String],
+      default: [],
+    },
+    aliases: {
+      type: Map,
+      of: String,
+      default: undefined,
+    },
   },
   supportedDomains: {
     numeric: {

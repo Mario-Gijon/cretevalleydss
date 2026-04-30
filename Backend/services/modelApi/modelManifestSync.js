@@ -17,6 +17,9 @@ const TECHNICAL_UPDATE_FIELDS = [
   "isConsensus",
   "isMultiCriteria",
   "evaluationStructure",
+  "inputKind",
+  "outputKind",
+  "criterionTypes",
   "parameters",
   "supportedDomains",
 ];
@@ -126,6 +129,36 @@ const normalizeSupportedDomains = (supportedDomains) => {
   };
 };
 
+const normalizeCriterionTypes = (criterionTypes) => {
+  if (!criterionTypes || typeof criterionTypes !== "object") {
+    return null;
+  }
+
+  const canonical = Array.isArray(criterionTypes.canonical)
+    ? criterionTypes.canonical
+    : [];
+  const aliases = criterionTypes.aliases;
+
+  if (!aliases || typeof aliases !== "object") {
+    return {
+      canonical,
+      aliases: undefined,
+    };
+  }
+
+  if (aliases instanceof Map) {
+    return {
+      canonical,
+      aliases: Object.fromEntries(aliases.entries()),
+    };
+  }
+
+  return {
+    canonical,
+    aliases,
+  };
+};
+
 const normalizeEndpoint = (endpoint) => {
   if (!endpoint || typeof endpoint !== "object") {
     return undefined;
@@ -201,6 +234,10 @@ const normalizeComparableFieldValue = (field, value) => {
 
   if (field === "supportedDomains") {
     return normalizeSupportedDomains(plainValue);
+  }
+
+  if (field === "criterionTypes") {
+    return normalizeCriterionTypes(plainValue);
   }
 
   return plainValue ?? null;
@@ -285,6 +322,9 @@ const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
     isConsensus: capabilities.isConsensus,
     isMultiCriteria: capabilities.isMultiCriteria,
     evaluationStructure: capabilities.evaluationStructure,
+    inputKind: capabilities.inputKind ?? null,
+    outputKind: capabilities.outputKind ?? null,
+    criterionTypes: normalizeCriterionTypes(manifestModel.criterionTypes),
     parameters: normalizeParameters(manifestModel.parameters),
     supportedDomains: normalizeSupportedDomains(capabilities.supportedDomains),
     manifestSync: {
@@ -469,6 +509,9 @@ const createIssueModelFromManifest = async ({
       "isConsensus",
       "isMultiCriteria",
       "evaluationStructure",
+      "inputKind",
+      "outputKind",
+      "criterionTypes",
       "parameters",
       "supportedDomains",
       "manifestSync",
