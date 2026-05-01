@@ -4,6 +4,7 @@ import { Criterion } from "../../models/Criteria.js";
 import { Participation } from "../../models/Participations.js";
 import { Evaluation } from "../../models/Evaluations.js";
 import { Consensus } from "../../models/Consensus.js";
+import { denormalizeCanonicalValueForDomainOrThrow } from "./expressionDomains/expressionDomain.transforms.js";
 import { buildIssueCriteriaTree } from "../../modules/issues/issue.active.js";
 import { createNotFoundError } from "../../utils/common/errors.js";
 
@@ -202,7 +203,9 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
 
   const [consensusPhasesRaw, allEvaluations, criteria, alternatives] = await Promise.all([
     Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean(),
-    Evaluation.find({ issue: issueId }).populate("expert"),
+    Evaluation.find({ issue: issueId })
+      .populate("expert")
+      .populate("expressionDomain"),
     Criterion.find({ issue: issueId }).lean(),
     Alternative.find({ issue: issueId }).lean(),
   ]);
@@ -225,6 +228,7 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     const hasFilter = participants && participants.size > 0;
     const phaseNumber = phaseDoc.phase;
     const expertEvaluations = {};
+    const domainByExpertCell = {};
 
     for (const [, evaluations] of evaluationsByExpert.entries()) {
       const expertEmail = evaluations?.[0]?.expert?.email;
@@ -306,7 +310,7 @@ export const createExpertsRatingsSection = async (issueId) => {
 
   const [consensusPhasesRaw, allEvaluations, criteria, alternatives] = await Promise.all([
     Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean(),
-    Evaluation.find({ issue: issueId }).populate("expert"),
+    Evaluation.find({ issue: issueId }).populate("expert").populate("expressionDomain"),
     Criterion.find({ issue: issueId }).lean(),
     Alternative.find({ issue: issueId }).lean(),
   ]);
@@ -322,6 +326,7 @@ export const createExpertsRatingsSection = async (issueId) => {
     const hasFilter = participants && participants.size > 0;
     const phaseNumber = phaseDoc.phase;
     const expertEvaluations = {};
+    const domainByExpertCell = {};
 
     for (const [, evaluations] of evaluationsByExpert.entries()) {
       const expertEmail = evaluations?.[0]?.expert?.email;
@@ -359,6 +364,11 @@ export const createExpertsRatingsSection = async (issueId) => {
           if (value === undefined) continue;
 
           criteriaValues[criterion.name] = value;
+          if (!domainByExpertCell[expertEmail]) {
+            domainByExpertCell[expertEmail] = {};
+          }
+          domainByExpertCell[expertEmail][`${alternative.name}::${criterion.name}`] =
+            evaluation.expressionDomain || null;
           hasAnyValue = true;
         }
 
@@ -373,12 +383,84 @@ export const createExpertsRatingsSection = async (issueId) => {
     }
 
     const collectiveEvaluations = phaseDoc?.collectiveEvaluations;
+    let collectiveEvaluationsLocalizedByExpert = null;
+
+    if (collectiveEvaluations && Object.keys(collectiveEvaluations).length) {
+      collectiveEvaluationsLocalizedByExpert = {};
+
+      for (const expertEmail of Object.keys(expertEvaluations)) {
+        const localizedByAlternative = {};
+
+        for (const [alternativeName, byCriterion] of Object.entries(
+          collectiveEvaluations || {}
+        )) {
+          localizedByAlternative[alternativeName] = {};
+
+          for (const [criterionName, payload] of Object.entries(byCriterion || {})) {
+            const canonicalValue = payload?.value ?? null;
+            const domainSnapshot =
+              domainByExpertCell?.[expertEmail]?.[
+                `${alternativeName}::${criterionName}`
+              ] || null;
+
+            let localizedValue = canonicalValue;
+            let localizedLabel = null;
+
+            if (
+              domainSnapshot &&
+              canonicalValue !== null &&
+              canonicalValue !== undefined
+            ) {
+              try {
+                const localized = denormalizeCanonicalValueForDomainOrThrow({
+                  canonicalValue,
+                  domainSnapshot,
+                  context: {
+                    issueId: issueId?.toString?.() || String(issueId),
+                    expertId: expertEmail,
+                  },
+                });
+
+                localizedValue = localized?.localizedValue ?? canonicalValue;
+                localizedLabel = localized?.localizedLabel ?? null;
+              } catch (error) {
+                localizedValue = canonicalValue;
+                localizedLabel = null;
+              }
+            }
+
+            const displayValue =
+              localizedLabel ??
+              (localizedValue !== undefined && localizedValue !== null
+                ? localizedValue
+                : canonicalValue);
+
+            localizedByAlternative[alternativeName][criterionName] = {
+              value: canonicalValue,
+              localizedValue,
+              localizedLabel,
+              displayValue,
+              expressionDomain: domainSnapshot
+                ? {
+                    id: domainSnapshot._id,
+                    name: domainSnapshot.name,
+                    type: domainSnapshot.type,
+                  }
+                : null,
+            };
+          }
+        }
+
+        collectiveEvaluationsLocalizedByExpert[expertEmail] = localizedByAlternative;
+      }
+    }
 
     consensusData[phaseNumber] = {
       collectiveEvaluations:
         collectiveEvaluations && Object.keys(collectiveEvaluations).length
           ? collectiveEvaluations
           : null,
+      collectiveEvaluationsLocalizedByExpert,
       expertEvaluations,
     };
   }

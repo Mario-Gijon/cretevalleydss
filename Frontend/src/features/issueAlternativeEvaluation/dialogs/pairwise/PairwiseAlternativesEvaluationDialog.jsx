@@ -213,7 +213,10 @@ const PairwiseAlternativesEvaluationDialog = ({
         const response = await getAlternativeEvaluationDraft(selectedIssue.id);
 
         const evaluationsPayload = response?.data?.evaluations ?? null;
-        const collectivePayload = response?.data?.collectiveEvaluations ?? null;
+        const collectivePayload =
+          response?.data?.collectiveEvaluationsLocalized ??
+          response?.data?.collectiveEvaluations ??
+          null;
 
         if (response.success && evaluationsPayload) {
           setCollectiveEvaluations(collectivePayload);

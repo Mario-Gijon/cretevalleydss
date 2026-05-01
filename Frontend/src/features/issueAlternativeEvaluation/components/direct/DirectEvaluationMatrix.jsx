@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
-import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
+import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
 /**
  * Matriz de evaluación directa alternativa x criterio.
@@ -63,6 +63,54 @@ const DirectEvaluationMatrix = ({
   const getValue = (cell) =>
     cell && typeof cell === "object" ? cell.value : cell;
 
+  const getCollectiveDisplayValue = (cell) => {
+    if (cell == null) return null;
+    if (typeof cell !== "object") return cell;
+    if (cell.localizedLabel != null && cell.localizedLabel !== "") {
+      return cell.localizedLabel;
+    }
+    if (cell.localizedValue != null && cell.localizedValue !== "") {
+      return cell.localizedValue;
+    }
+    if (cell.value != null && cell.value !== "") {
+      return cell.value;
+    }
+    return null;
+  };
+
+  const formatDisplayValue = (value) => {
+    if (Array.isArray(value)) {
+      return `[${value.join(", ")}]`;
+    }
+
+    return value;
+  };
+
+  const hasCollectiveValue = (value) =>
+    value !== null && value !== undefined && value !== "";
+
+  const renderCollectiveChip = (collectiveValue) => {
+    if (!hasCollectiveValue(collectiveValue)) {
+      return null;
+    }
+
+    return (
+      <Chip
+        label={formatDisplayValue(collectiveValue)}
+        variant="outlined"
+        size="small"
+        sx={{
+          ml: 1,
+          fontSize: "0.75rem",
+          height: 20,
+          pointerEvents: "none",
+          flexShrink: 0,
+        }}
+        color="info"
+      />
+    );
+  };
+
   const columns = [
     {
       field: "id",
@@ -85,6 +133,9 @@ const DirectEvaluationMatrix = ({
         const rowId = params.row.id;
         const critName = params.field;
         const cell = evaluations?.[rowId]?.[critName];
+        const collectiveValue = getCollectiveDisplayValue(
+          collectiveEvaluations?.[rowId]?.[critName]
+        );
 
         if (cell == null) {
           return "";
@@ -95,65 +146,59 @@ const DirectEvaluationMatrix = ({
 
         if (typeof value === "number") {
           const userValue = value;
-          const collectiveValue = parseFloat(
-            collectiveEvaluations?.[rowId]?.[critName]?.value
-          );
-
           return (
             <Stack
               direction="row"
               justifyContent="space-between"
               alignItems="center"
+              sx={{ width: "100%" }}
             >
               {userValue !== null && userValue !== "" ? userValue : ""}
-              {!isNaN(collectiveValue) && (
-                <Chip
-                  label={collectiveValue}
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    ml: 1,
-                    fontSize: "0.75rem",
-                    height: 20,
-                    pointerEvents: "none",
-                  }}
-                  color="info"
-                />
-              )}
+              {renderCollectiveChip(collectiveValue)}
             </Stack>
           );
         }
 
         if (domain?.type === "linguistic") {
           return (
-            <Select
-              size="small"
-              fullWidth
-              color="secondary"
-              value={value || ""}
-              onChange={(event) => {
-                const newValue = event.target.value;
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Select
+                  size="small"
+                  fullWidth
+                  color="secondary"
+                  value={value || ""}
+                  onChange={(event) => {
+                    const newValue = event.target.value;
 
-                setEvaluations((prev) => ({
-                  ...prev,
-                  [rowId]: {
-                    ...(prev[rowId] || {}),
-                    [critName]: { value: newValue, domain },
-                  },
-                }));
-              }}
-              sx={{ minWidth: 120 }}
-            >
-              {(domain.labels || []).map((label, index) => (
-                <MenuItem key={index} value={label.label}>
-                  {label.label}
-                </MenuItem>
-              ))}
-            </Select>
+                    setEvaluations((prev) => ({
+                      ...prev,
+                      [rowId]: {
+                        ...(prev[rowId] || {}),
+                        [critName]: { value: newValue, domain },
+                      },
+                    }));
+                  }}
+                  sx={{ minWidth: 120 }}
+                >
+                  {(domain.labels || []).map((label, index) => (
+                    <MenuItem key={index} value={label.label}>
+                      {label.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </Box>
+              {renderCollectiveChip(collectiveValue)}
+            </Stack>
           );
         }
 
-        return <span>{value ?? ""}</span>;
+        return (
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
+            <span>{formatDisplayValue(value ?? "")}</span>
+            {renderCollectiveChip(collectiveValue)}
+          </Stack>
+        );
       },
     })),
   ];

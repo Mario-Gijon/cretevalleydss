@@ -45,6 +45,41 @@ const SUPPORTED_OUTPUT_KINDS = new Set([
   "consensusRanking",
 ]);
 
+const SUPPORTED_PARAMETER_TYPES = new Set([
+  "number",
+  "integer",
+  "boolean",
+  "string",
+  "enum",
+  "array",
+  "interval",
+  "tuple",
+  "fuzzyNumber",
+  "fuzzyArray",
+]);
+
+const SUPPORTED_PARAMETER_RESTRICTIONS = new Set([
+  "min",
+  "max",
+  "allowed",
+  "length",
+  "itemType",
+  "tupleLength",
+  "sum",
+  "normalize",
+  "ordered",
+]);
+
+const SUPPORTED_ORDERED_RULES = new Set([
+  "strictIncreasing",
+  "nonDecreasing",
+]);
+
+const SUPPORTED_DYNAMIC_LENGTHS = new Set([
+  "matchCriteria",
+  "matchAlternatives",
+]);
+
 const toIdString = (value) => {
   if (value === null || value === undefined) {
     return null;
@@ -64,19 +99,31 @@ const normalizeNonEmptyString = (value) => {
 
 const normalizeParameter = (parameter = {}) => {
   const restrictions = parameter?.restrictions || {};
+  const key = normalizeNonEmptyString(parameter?.key) || normalizeNonEmptyString(parameter?.name);
 
   return {
-    name: parameter?.name ?? null,
+    key: key ?? null,
+    name: key ?? null,
+    label: normalizeNonEmptyString(parameter?.label) ?? null,
+    description: normalizeNonEmptyString(parameter?.description) ?? null,
     type: parameter?.type ?? null,
+    required: parameter?.required === true,
     default: parameter?.default ?? null,
     restrictions: {
       min: restrictions.min ?? null,
       max: restrictions.max ?? null,
-      step: restrictions.step ?? null,
-      length: restrictions.length ?? null,
-      sum: restrictions.sum ?? null,
       allowed: restrictions.allowed ?? null,
+      length: restrictions.length ?? null,
+      itemType: restrictions.itemType ?? null,
+      tupleLength: restrictions.tupleLength ?? null,
+      sum: restrictions.sum ?? null,
+      normalize: restrictions.normalize === true,
+      ordered: restrictions.ordered ?? null,
     },
+    ui:
+      parameter?.ui && typeof parameter.ui === "object"
+        ? { ...parameter.ui }
+        : null,
   };
 };
 
@@ -338,6 +385,64 @@ const validateSyncableManifestModel = (manifestModel) => {
   if (!capabilities.supportedDomains) {
     missingFields.push("capabilities.supportedDomains");
   }
+
+  const parameters = Array.isArray(manifestModel?.parameters)
+    ? manifestModel.parameters
+    : [];
+  const seenKeys = new Set();
+  parameters.forEach((parameter, index) => {
+    const parameterPath = `parameters[${index}]`;
+    const key =
+      normalizeNonEmptyString(parameter?.key) ||
+      normalizeNonEmptyString(parameter?.name);
+    const type = normalizeNonEmptyString(parameter?.type);
+    const restrictions =
+      parameter?.restrictions && typeof parameter.restrictions === "object"
+        ? parameter.restrictions
+        : {};
+
+    if (!key) {
+      missingFields.push(`${parameterPath}.key`);
+      return;
+    }
+
+    if (seenKeys.has(key)) {
+      missingFields.push(`${parameterPath}.key (duplicate: ${key})`);
+    }
+    seenKeys.add(key);
+
+    if (!type || !SUPPORTED_PARAMETER_TYPES.has(type)) {
+      missingFields.push(`${parameterPath}.type (unsupported: ${type || "unknown"})`);
+    }
+
+    Object.keys(restrictions).forEach((restrictionKey) => {
+      if (!SUPPORTED_PARAMETER_RESTRICTIONS.has(restrictionKey)) {
+        missingFields.push(
+          `${parameterPath}.restrictions.${restrictionKey} (unsupported)`
+        );
+      }
+    });
+
+    if (
+      restrictions.length !== undefined &&
+      restrictions.length !== null &&
+      !(Number.isInteger(restrictions.length) || SUPPORTED_DYNAMIC_LENGTHS.has(restrictions.length))
+    ) {
+      missingFields.push(`${parameterPath}.restrictions.length (invalid)`);
+    }
+
+    if (
+      restrictions.ordered !== undefined &&
+      restrictions.ordered !== null &&
+      !SUPPORTED_ORDERED_RULES.has(restrictions.ordered)
+    ) {
+      missingFields.push(`${parameterPath}.restrictions.ordered (invalid)`);
+    }
+
+    if (type === "enum" && (!Array.isArray(restrictions.allowed) || restrictions.allowed.length === 0)) {
+      missingFields.push(`${parameterPath}.restrictions.allowed (required for enum)`);
+    }
+  });
 
   return missingFields;
 };

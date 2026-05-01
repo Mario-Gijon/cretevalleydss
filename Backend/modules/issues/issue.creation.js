@@ -26,6 +26,7 @@ import {
 } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { normalizeSingleWeight } from "./weightEvaluations/weightEvaluation.shared.js";
 import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
+import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "./modelParameters/modelParameters.validation.js";
 
         
 import { compareNameId } from "../../modules/issues/issue.ordering.js";
@@ -314,6 +315,34 @@ const getValueType = (value) => {
   return typeof value;
 };
 
+const SUPPORTED_PARAMETER_TYPES = new Set([
+  "number",
+  "integer",
+  "boolean",
+  "string",
+  "enum",
+  "array",
+  "interval",
+  "tuple",
+  "fuzzyNumber",
+  "fuzzyArray",
+]);
+
+const SUPPORTED_PARAMETER_ORDERED_RULES = new Set([
+  "strictIncreasing",
+  "nonDecreasing",
+]);
+
+const resolveParameterKey = (parameter) => {
+  return (
+    normalizeNonEmptyString(parameter?.key) ||
+    normalizeNonEmptyString(parameter?.name)
+  );
+};
+
+const isMissingParameterValue = (value) =>
+  value === undefined || value === null || value === "";
+
 const valuesAreEqual = (left, right) => {
   if (typeof left === "number" && typeof right === "number") {
     return Object.is(left, right);
@@ -363,6 +392,10 @@ const resolveExpectedArrayLength = (parameter, leafCriteriaCount) => {
     return leafCriteriaCount;
   }
 
+  if (configuredLength === "matchAlternatives") {
+    return null;
+  }
+
   if (typeof configuredLength === "number" && Number.isInteger(configuredLength)) {
     return configuredLength;
   }
@@ -372,6 +405,44 @@ const resolveExpectedArrayLength = (parameter, leafCriteriaCount) => {
   }
 
   return null;
+};
+
+const isWithinRange = (value, restrictions = {}) => {
+  if (typeof restrictions.min === "number" && value < restrictions.min) {
+    return false;
+  }
+
+  if (typeof restrictions.max === "number" && value > restrictions.max) {
+    return false;
+  }
+
+  return true;
+};
+
+const validateOrderedRule = (values, orderedRule) => {
+  if (!orderedRule || values.length < 2) {
+    return true;
+  }
+
+  if (orderedRule === "strictIncreasing") {
+    for (let index = 1; index < values.length; index += 1) {
+      if (!(values[index - 1] < values[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (orderedRule === "nonDecreasing") {
+    for (let index = 1; index < values.length; index += 1) {
+      if (!(values[index - 1] <= values[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
 };
 
 const countLeafCriteriaNodes = (nodes) => {
@@ -393,7 +464,7 @@ const modelRequiresCriterionWeights = (model) => {
   const parameters = Array.isArray(model?.parameters) ? model.parameters : [];
 
   return parameters.some((parameter) => {
-    const parameterName = normalizeNonEmptyString(parameter?.name);
+    const parameterName = resolveParameterKey(parameter);
     const parameterType = normalizeNonEmptyString(parameter?.type);
     const lengthRestriction = parameter?.restrictions?.length;
 
@@ -411,7 +482,7 @@ const isCriterionWeightsParameter = ({ parameterName, parameter, restrictions })
   }
 
   return (
-    parameter?.type === "array" &&
+    normalizeNonEmptyString(parameter?.type) === "array" &&
     restrictions?.length === "matchCriteria"
   );
 };
@@ -458,7 +529,7 @@ const validateAndNormalizeModelParametersOrThrow = ({
 
   const parameterByName = new Map();
   for (const parameter of modelParameters) {
-    const parameterName = normalizeNonEmptyString(parameter?.name);
+    const parameterName = resolveParameterKey(parameter);
     if (parameterName) {
       parameterByName.set(parameterName, parameter);
     }
@@ -496,28 +567,45 @@ const validateAndNormalizeModelParametersOrThrow = ({
 
   for (const [parameterName, parameter] of parameterByName.entries()) {
     const parameterType = normalizeNonEmptyString(parameter?.type);
+    const normalizedParameterType = parameterType;
     const restrictions = parameter?.restrictions || {};
+    const isRequired = parameter?.required === true;
     const hasProvidedValue = hasOwn(rawParamValues, parameterName);
     const defaultValue = parameter?.default;
     let value = hasProvidedValue ? rawParamValues[parameterName] : undefined;
 
-    if (value === undefined || value === null) {
+    if (isMissingParameterValue(value)) {
       if (defaultValue !== undefined) {
         value = defaultValue;
+      } else if (isRequired) {
+        addError({
+          parameter: parameterName,
+          message: "is required",
+          value,
+        });
       } else if (hasProvidedValue) {
         addError({
           parameter: parameterName,
-          message: "cannot be null or undefined",
+          message: "cannot be empty",
           value,
         });
       }
 
-      if (value === undefined || value === null) {
+      if (isMissingParameterValue(value)) {
         continue;
       }
     }
 
-    if (parameterType === "number" || parameterType === "integer") {
+    if (!SUPPORTED_PARAMETER_TYPES.has(String(parameterType || ""))) {
+      addError({
+        parameter: parameterName,
+        message: `uses unsupported type '${String(parameterType || "unknown")}'`,
+        value,
+      });
+      continue;
+    }
+
+    if (normalizedParameterType === "number" || normalizedParameterType === "integer") {
       const normalizedNumber = normalizeNumberValue(value);
 
       if (normalizedNumber === null) {
@@ -530,7 +618,7 @@ const validateAndNormalizeModelParametersOrThrow = ({
       }
 
       if (
-        parameterType === "integer" &&
+        normalizedParameterType === "integer" &&
         !Number.isInteger(normalizedNumber)
       ) {
         addError({
@@ -541,25 +629,10 @@ const validateAndNormalizeModelParametersOrThrow = ({
         continue;
       }
 
-      if (
-        typeof restrictions.min === "number" &&
-        normalizedNumber < restrictions.min
-      ) {
+      if (!isWithinRange(normalizedNumber, restrictions)) {
         addError({
           parameter: parameterName,
-          message: `must be greater than or equal to ${restrictions.min}`,
-          value,
-        });
-        continue;
-      }
-
-      if (
-        typeof restrictions.max === "number" &&
-        normalizedNumber > restrictions.max
-      ) {
-        addError({
-          parameter: parameterName,
-          message: `must be less than or equal to ${restrictions.max}`,
+          message: `must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
           value,
         });
         continue;
@@ -578,7 +651,21 @@ const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (parameterType === "string") {
+    if (normalizedParameterType === "enum") {
+      if (!isAllowedValue(value, restrictions.allowed)) {
+        addError({
+          parameter: parameterName,
+          message: "must be one of the allowed enum values",
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = value;
+      continue;
+    }
+
+    if (normalizedParameterType === "string") {
       if (typeof value !== "string") {
         addError({
           parameter: parameterName,
@@ -602,7 +689,7 @@ const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (parameterType === "boolean") {
+    if (normalizedParameterType === "boolean") {
       let normalizedBoolean = null;
 
       if (typeof value === "boolean") {
@@ -635,7 +722,175 @@ const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (parameterType === "array") {
+    if (normalizedParameterType === "interval") {
+      if (!Array.isArray(value) || value.length !== 2) {
+        addError({
+          parameter: parameterName,
+          message: "must be an array of exactly 2 numeric values",
+          value,
+        });
+        continue;
+      }
+
+      const normalizedInterval = value.map((item) => normalizeNumberValue(item));
+      if (normalizedInterval.some((item) => item === null)) {
+        addError({
+          parameter: parameterName,
+          message: "must contain finite numeric values",
+          value,
+        });
+        continue;
+      }
+
+      if (normalizedInterval.some((item) => !isWithinRange(item, restrictions))) {
+        addError({
+          parameter: parameterName,
+          message: `must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
+          value,
+        });
+        continue;
+      }
+
+      if (
+        restrictions.ordered &&
+        !validateOrderedRule(normalizedInterval, restrictions.ordered)
+      ) {
+        addError({
+          parameter: parameterName,
+          message: `must satisfy ordered rule '${restrictions.ordered}'`,
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedInterval;
+      continue;
+    }
+
+    if (normalizedParameterType === "tuple" || normalizedParameterType === "fuzzyNumber") {
+      if (!Array.isArray(value)) {
+        addError({
+          parameter: parameterName,
+          message: "must be an array",
+          value,
+        });
+        continue;
+      }
+
+      const expectedTupleLength =
+        normalizedParameterType === "fuzzyNumber"
+          ? 3
+          : typeof restrictions.tupleLength === "number"
+            ? restrictions.tupleLength
+            : typeof restrictions.length === "number"
+              ? restrictions.length
+              : null;
+
+      if (expectedTupleLength !== null && value.length !== expectedTupleLength) {
+        addError({
+          parameter: parameterName,
+          message: `must contain exactly ${expectedTupleLength} values`,
+          value,
+        });
+        continue;
+      }
+
+      const tupleItemType =
+        normalizedParameterType === "fuzzyNumber"
+          ? "number"
+          : normalizeNonEmptyString(restrictions.itemType) || "number";
+      const normalizedTuple = [];
+      let tupleHasError = false;
+
+      value.forEach((item, index) => {
+        if (tupleItemType === "number" || tupleItemType === "integer") {
+          const normalizedNumber = normalizeNumberValue(item);
+          if (
+            normalizedNumber === null ||
+            (tupleItemType === "integer" && !Number.isInteger(normalizedNumber))
+          ) {
+            tupleHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a ${tupleItemType}`,
+              value: item,
+            });
+            return;
+          }
+
+          if (!isWithinRange(normalizedNumber, restrictions)) {
+            tupleHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
+              value: item,
+            });
+            return;
+          }
+
+          normalizedTuple.push(normalizedNumber);
+          return;
+        }
+
+        if (tupleItemType === "string") {
+          if (typeof item !== "string") {
+            tupleHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a string`,
+              value: item,
+            });
+            return;
+          }
+          normalizedTuple.push(item.trim());
+          return;
+        }
+
+        if (tupleItemType === "boolean") {
+          if (typeof item !== "boolean") {
+            tupleHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a boolean`,
+              value: item,
+            });
+            return;
+          }
+          normalizedTuple.push(item);
+          return;
+        }
+
+        tupleHasError = true;
+        addError({
+          parameter: parameterName,
+          message: `[${index}] uses unsupported tuple itemType '${tupleItemType}'`,
+          value: item,
+        });
+      });
+
+      if (tupleHasError) {
+        continue;
+      }
+
+      const tupleOrderedRule =
+        normalizedParameterType === "fuzzyNumber"
+          ? normalizeNonEmptyString(restrictions.ordered) || "nonDecreasing"
+          : normalizeNonEmptyString(restrictions.ordered);
+
+      if (tupleOrderedRule && !validateOrderedRule(normalizedTuple, tupleOrderedRule)) {
+        addError({
+          parameter: parameterName,
+          message: `must satisfy ordered rule '${tupleOrderedRule}'`,
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedTuple;
+      continue;
+    }
+
+    if (normalizedParameterType === "array") {
       if (!Array.isArray(value)) {
         addError({
           parameter: parameterName,
@@ -661,47 +916,123 @@ const validateAndNormalizeModelParametersOrThrow = ({
 
       const normalizedArray = [];
       let arrayHasError = false;
+      const itemType = normalizeNonEmptyString(restrictions.itemType) || "number";
 
       value.forEach((item, index) => {
-        const normalizedNumber = normalizeNumberValue(item);
+        if (itemType === "number" || itemType === "integer") {
+          const normalizedNumber = normalizeNumberValue(item);
 
-        if (normalizedNumber === null) {
-          arrayHasError = true;
-          addError({
-            parameter: parameterName,
-            message: `[${index}] must be a finite number`,
-            value: item,
-          });
+          if (
+            normalizedNumber === null ||
+            (itemType === "integer" && !Number.isInteger(normalizedNumber))
+          ) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a ${itemType}`,
+              value: item,
+            });
+            return;
+          }
+
+          if (!isWithinRange(normalizedNumber, restrictions)) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
+              value: item,
+            });
+            return;
+          }
+
+          normalizedArray.push(normalizedNumber);
           return;
         }
 
-        if (
-          typeof restrictions.min === "number" &&
-          normalizedNumber < restrictions.min
-        ) {
-          arrayHasError = true;
-          addError({
-            parameter: parameterName,
-            message: `[${index}] must be greater than or equal to ${restrictions.min}`,
-            value: item,
-          });
+        if (itemType === "boolean") {
+          if (typeof item !== "boolean") {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a boolean`,
+              value: item,
+            });
+            return;
+          }
+          normalizedArray.push(item);
           return;
         }
 
-        if (
-          typeof restrictions.max === "number" &&
-          normalizedNumber > restrictions.max
-        ) {
-          arrayHasError = true;
-          addError({
-            parameter: parameterName,
-            message: `[${index}] must be less than or equal to ${restrictions.max}`,
-            value: item,
-          });
+        if (itemType === "string") {
+          if (typeof item !== "string") {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a string`,
+              value: item,
+            });
+            return;
+          }
+          normalizedArray.push(item.trim());
           return;
         }
 
-        normalizedArray.push(normalizedNumber);
+        if (itemType === "fuzzyNumber") {
+          if (!Array.isArray(item) || item.length !== 3) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must be a fuzzy tuple [l,m,u]`,
+              value: item,
+            });
+            return;
+          }
+
+          const normalizedTriangle = item.map((tupleItem) =>
+            normalizeNumberValue(tupleItem)
+          );
+          if (normalizedTriangle.some((tupleItem) => tupleItem === null)) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must contain finite numeric tuple values`,
+              value: item,
+            });
+            return;
+          }
+
+          if (normalizedTriangle.some((tupleItem) => !isWithinRange(tupleItem, restrictions))) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] contains values outside allowed min/max`,
+              value: item,
+            });
+            return;
+          }
+
+          const orderedRule =
+            normalizeNonEmptyString(restrictions.ordered) || "nonDecreasing";
+          if (!validateOrderedRule(normalizedTriangle, orderedRule)) {
+            arrayHasError = true;
+            addError({
+              parameter: parameterName,
+              message: `[${index}] must satisfy ordered rule '${orderedRule}'`,
+              value: item,
+            });
+            return;
+          }
+
+          normalizedArray.push(normalizedTriangle);
+          return;
+        }
+
+        arrayHasError = true;
+        addError({
+          parameter: parameterName,
+          message: `uses unsupported itemType '${itemType}'`,
+          value: item,
+        });
       });
 
       if (arrayHasError) {
@@ -743,6 +1074,35 @@ const validateAndNormalizeModelParametersOrThrow = ({
         continue;
       }
 
+      if (restrictions.normalize === true && normalizedArray.length > 0) {
+        const numericValues = normalizedArray.every(
+          (item) => typeof item === "number" && Number.isFinite(item)
+        );
+        if (!numericValues) {
+          addError({
+            parameter: parameterName,
+            message: "normalize=true requires numeric array values",
+            value,
+          });
+          continue;
+        }
+
+        const total = normalizedArray.reduce((sum, item) => sum + item, 0);
+        if (total <= 0) {
+          addError({
+            parameter: parameterName,
+            message: "normalize=true requires sum greater than 0",
+            value,
+          });
+          continue;
+        }
+
+        normalizedModelParameters[parameterName] = normalizedArray.map(
+          (item) => item / total
+        );
+        continue;
+      }
+
       if (
         typeof restrictions.sum === "number" &&
         Math.abs(
@@ -758,10 +1118,13 @@ const validateAndNormalizeModelParametersOrThrow = ({
         continue;
       }
 
-      if (normalizedArray.length === 2 && normalizedArray[0] >= normalizedArray[1]) {
+      if (
+        restrictions.ordered &&
+        !validateOrderedRule(normalizedArray, restrictions.ordered)
+      ) {
         addError({
           parameter: parameterName,
-          message: "must be strictly increasing when length is 2",
+          message: `must satisfy ordered rule '${restrictions.ordered}'`,
           value,
         });
         continue;
@@ -780,7 +1143,7 @@ const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (parameterType === "fuzzyArray") {
+    if (normalizedParameterType === "fuzzyArray") {
       if (!Array.isArray(value)) {
         addError({
           parameter: parameterName,
@@ -856,14 +1219,13 @@ const validateAndNormalizeModelParametersOrThrow = ({
           return;
         }
 
-        if (
-          normalizedTriangle[0] > normalizedTriangle[1] ||
-          normalizedTriangle[1] > normalizedTriangle[2]
-        ) {
+        const orderedRule =
+          normalizeNonEmptyString(restrictions.ordered) || "nonDecreasing";
+        if (!validateOrderedRule(normalizedTriangle, orderedRule)) {
           fuzzyArrayHasError = true;
           addError({
             parameter: parameterName,
-            message: `[${index}] must satisfy l <= m <= u`,
+            message: `[${index}] must satisfy ordered rule '${orderedRule}'`,
             value: triangle,
           });
           return;
@@ -879,12 +1241,6 @@ const validateAndNormalizeModelParametersOrThrow = ({
       normalizedModelParameters[parameterName] = normalizedFuzzyArray;
       continue;
     }
-
-    addError({
-      parameter: parameterName,
-      message: `uses unsupported type '${String(parameterType || "unknown")}'`,
-      value,
-    });
   }
 
   if (parameterErrors.length > 0) {
@@ -1021,6 +1377,7 @@ const loadCreateIssueActorsAndModel = async ({
   weightingMode,
   paramValues,
   criteriaNodes,
+  alternativesCount,
   uniqueExpertEmails,
   session,
 }) => {
@@ -1049,10 +1406,11 @@ const loadCreateIssueActorsAndModel = async ({
     lifecycleKind: modelLifecycleKind,
   });
 
-  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
+  const normalizedModelParameters = validateAndNormalizeModelParametersSharedOrThrow({
     model: existingModel,
     paramValues,
     criteriaNodes,
+    alternativesCount,
   });
 
   const requiresCriterionWeights = modelRequiresCriterionWeights(existingModel);
@@ -1449,6 +1807,7 @@ export const createIssueFlow = async ({
     weightingMode: input.weightingMode,
     paramValues: input.paramValues,
     criteriaNodes: input.criteria,
+    alternativesCount: input.uniqueAlternativeNames.length,
     uniqueExpertEmails: input.uniqueExpertEmails,
     session,
   });

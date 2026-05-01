@@ -17,9 +17,16 @@ const FINISHED_ISSUE_RATINGS_UI = {
         selectedExpert
       ] || {},
 
-    getCollectiveEvaluations: ({ viewIssue, currentPhaseIndex, showCollective }) =>
+    getCollectiveEvaluations: ({
+      viewIssue,
+      currentPhaseIndex,
+      showCollective,
+      selectedExpert,
+    }) =>
       showCollective
         ? viewIssue?.expertsRatings?.[currentPhaseIndex + 1]
+            ?.collectiveEvaluationsLocalizedByExpert?.[selectedExpert] ||
+          viewIssue?.expertsRatings?.[currentPhaseIndex + 1]
             ?.collectiveEvaluations || {}
         : {},
 

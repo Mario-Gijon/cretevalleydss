@@ -246,8 +246,53 @@ const normalizeRankingOutput = ({
     collectiveScores
   );
 
+  const collectiveMatrix = rawOutput?.collective_matrix;
+  if (collectiveMatrix != null) {
+    if (!Array.isArray(collectiveMatrix)) {
+      throwInvalidModelOutputField({
+        outputKind,
+        model,
+        field: "collective_matrix",
+        message: "must be an array of alternative rows",
+        value: collectiveMatrix,
+      });
+    }
+
+    if (collectiveMatrix.length !== alternativeNames.length) {
+      throwInvalidModelOutputField({
+        outputKind,
+        model,
+        field: "collective_matrix",
+        message: `must contain exactly ${alternativeNames.length} rows`,
+        value: collectiveMatrix,
+      });
+    }
+
+    collectiveMatrix.forEach((row, alternativeIndex) => {
+      if (!Array.isArray(row)) {
+        throwInvalidModelOutputField({
+          outputKind,
+          model,
+          field: `collective_matrix[${alternativeIndex}]`,
+          message: "must be an array of criterion values",
+          value: row,
+        });
+      }
+
+      if (row.length !== (criteria || []).length) {
+        throwInvalidModelOutputField({
+          outputKind,
+          model,
+          field: `collective_matrix[${alternativeIndex}]`,
+          message: `must contain exactly ${(criteria || []).length} criterion values`,
+          value: row,
+        });
+      }
+    });
+  }
+
   const collectiveEvaluations = {};
-  (rawOutput?.collective_matrix || []).forEach((row, alternativeIndex) => {
+  (collectiveMatrix || []).forEach((row, alternativeIndex) => {
     const alternativeName = alternativeNames[alternativeIndex];
     collectiveEvaluations[alternativeName] = {};
 

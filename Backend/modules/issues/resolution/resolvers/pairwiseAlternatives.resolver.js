@@ -85,6 +85,7 @@ export const resolvePairwiseIssue = async ({
     criteria,
     participations,
     currentPhase,
+    inputKind: model?.inputKind,
   });
 
   const nullCount = countNullsDeep(matrices);

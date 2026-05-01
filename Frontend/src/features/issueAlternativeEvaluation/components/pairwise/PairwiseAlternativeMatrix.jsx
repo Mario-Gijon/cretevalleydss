@@ -28,6 +28,27 @@ const getCellNumericValue = (cell) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const getCollectiveDisplayValue = (cell) => {
+  if (cell == null) return null;
+  if (typeof cell !== "object" || Array.isArray(cell)) {
+    return cell;
+  }
+
+  if (cell.localizedLabel != null && cell.localizedLabel !== "") {
+    return cell.localizedLabel;
+  }
+
+  if (cell.localizedValue != null && cell.localizedValue !== "") {
+    return cell.localizedValue;
+  }
+
+  if (cell.value != null && cell.value !== "") {
+    return cell.value;
+  }
+
+  return null;
+};
+
 const getCellDomain = (cell) => {
   if (cell && typeof cell === "object" && "domain" in cell) {
     return cell.domain || null;
@@ -191,7 +212,7 @@ const PairwiseAlternativeMatrix = ({
         const collectiveRow = collectiveEvaluations.find(
           (row) => row.id === rowId
         );
-        const collectiveValue = getCellNumericValue(collectiveRow?.[altCol]);
+        const collectiveValue = getCollectiveDisplayValue(collectiveRow?.[altCol]);
 
         const isDiagonal = rowId === altCol;
 
@@ -203,7 +224,7 @@ const PairwiseAlternativeMatrix = ({
           >
             {isDiagonal ? "Neutral" : userValue == null ? "" : userValue}
 
-            {collectiveValue != null && !isDiagonal && (
+            {collectiveValue != null && collectiveValue !== "" && !isDiagonal && (
               <Chip
                 label={collectiveValue}
                 variant="outlined"

@@ -1,5 +1,6 @@
 import { Evaluation } from "../../../../models/Evaluations.js";
 import { toIdString } from "../../../../utils/common/ids.js";
+import { normalizeEvaluationValueForInputOrThrow } from "../../expressionDomains/expressionDomain.transforms.js";
 
 /**
  * Construye datos de resolución para estructura pairwiseAlternatives a partir de evaluaciones.
@@ -18,6 +19,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
   criteria,
   participations,
   currentPhase,
+  inputKind = "pairwisePreferenceMatrix",
 }) => {
   const expertIds = participations
     .map((participation) => participation.expert?._id)
@@ -31,7 +33,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
     consensusPhase: currentPhase,
   })
     .select("expert alternative comparedAlternative criterion value expressionDomain")
-    .populate("expressionDomain", "type")
+    .populate("expressionDomain", "type linguisticLabels numericRange name")
     .lean();
 
   const snapshotSet = new Set();
@@ -88,12 +90,21 @@ export const buildPairwiseAlternativesResolutionData = async ({
 
     if (rowIndex == null || colIndex == null) continue;
 
-    let value = evaluation.value ?? null;
-
-    if (value != null && typeof value === "string") {
-      const numericValue = Number(value);
-      value = Number.isFinite(numericValue) ? numericValue : value;
-    }
+    const value =
+      evaluation?.value == null
+        ? null
+        : normalizeEvaluationValueForInputOrThrow({
+            value: evaluation.value,
+            domainSnapshot: evaluation?.expressionDomain,
+            inputKind,
+            context: {
+              issueId,
+              expertId: toIdString(evaluation.expert),
+              alternativeId: toIdString(evaluation.alternative),
+              criterionId: toIdString(evaluation.criterion),
+              comparedAlternativeId: toIdString(evaluation.comparedAlternative),
+            },
+          });
 
     matricesUsed[participation.expert.email][criterionName][rowIndex][colIndex] =
       value;

@@ -76,6 +76,7 @@ export const resolveDirectIssue = async ({
     criteria,
     participations,
     currentPhase,
+    inputKind: model?.inputKind,
   });
 
   const modelKey = getModelEndpointKey(model);

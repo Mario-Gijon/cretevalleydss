@@ -4,6 +4,7 @@ import { Evaluation } from "../../../../models/Evaluations.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 import { formatExpressionDomainForClient } from "../../issue.mappers.js";
+import { denormalizeCanonicalValueForDomainOrThrow } from "../../expressionDomains/expressionDomain.transforms.js";
 
 import {
   ensureIssueSnapshotIdsExist,
@@ -227,9 +228,68 @@ export const getDirectEvaluationPayload = async ({
     }
   }
 
+  const collectiveEvaluations = latestConsensus?.collectiveEvaluations || null;
+  let collectiveEvaluationsLocalized = null;
+
+  if (collectiveEvaluations && typeof collectiveEvaluations === "object") {
+    collectiveEvaluationsLocalized = {};
+
+    for (const [alternativeName, byCriterion] of Object.entries(collectiveEvaluations)) {
+      collectiveEvaluationsLocalized[alternativeName] = {};
+
+      for (const [criterionName, payload] of Object.entries(byCriterion || {})) {
+        const alternative = alternatives.find((item) => item.name === alternativeName);
+        const criterion = criteria.find((item) => item.name === criterionName);
+
+        const evaluationKey =
+          alternative && criterion
+            ? `${toIdString(alternative._id)}_${toIdString(criterion._id)}`
+            : null;
+        const evaluation = evaluationKey ? evaluationMap.get(evaluationKey) : null;
+        const domainSnapshot = evaluation?.expressionDomain || null;
+        const canonicalValue = payload?.value ?? null;
+
+        let localized = {
+          canonicalValue,
+          localizedValue: canonicalValue,
+          localizedLabel: null,
+        };
+
+        if (domainSnapshot && canonicalValue !== null && canonicalValue !== undefined) {
+          try {
+            localized = denormalizeCanonicalValueForDomainOrThrow({
+              canonicalValue,
+              domainSnapshot,
+              context: {
+                issueId: toIdString(issueDoc?._id),
+                expertId: toIdString(userId),
+                alternativeId: toIdString(alternative?._id),
+                criterionId: toIdString(criterion?._id),
+              },
+            });
+          } catch (error) {
+            localized = {
+              canonicalValue,
+              localizedValue: canonicalValue,
+              localizedLabel: null,
+            };
+          }
+        }
+
+        collectiveEvaluationsLocalized[alternativeName][criterionName] = {
+          value: canonicalValue,
+          localizedValue: localized.localizedValue,
+          localizedLabel: localized.localizedLabel,
+          domain: formatExpressionDomainForClient(domainSnapshot),
+        };
+      }
+    }
+  }
+
   return {
     evaluations: evaluationsByAlternative,
-    collectiveEvaluations: latestConsensus?.collectiveEvaluations || null,
+    collectiveEvaluations,
+    collectiveEvaluationsLocalized,
   };
 };
 

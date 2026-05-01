@@ -120,26 +120,63 @@ function validateParameterDefault(value) {
  *
  * Tipos soportados:
  * - `number`
+ * - `integer`
+ * - `boolean`
+ * - `string`
+ * - `enum`
  * - `array`
+ * - `interval`
+ * - `tuple`
+ * - `fuzzyNumber`
  * - `fuzzyArray`
  *
  * Restricciones soportadas:
  * - `min`, `max`, `step`
- * - `length`
- * - `sum`
+ * - `length`, `itemType`, `tupleLength`
+ * - `sum`, `normalize`, `ordered`
  * - `allowed`
  */
 const parameterSchema = new Schema(
   {
+    key: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     name: {
       type: String,
       required: true,
       trim: true,
     },
+    label: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     type: {
       type: String,
-      enum: ["number", "array", "fuzzyArray"],
+      enum: [
+        "number",
+        "integer",
+        "boolean",
+        "string",
+        "enum",
+        "array",
+        "interval",
+        "tuple",
+        "fuzzyNumber",
+        "fuzzyArray",
+      ],
       required: true,
+    },
+    required: {
+      type: Boolean,
+      default: false,
     },
     default: {
       type: Schema.Types.Mixed,
@@ -161,14 +198,36 @@ const parameterSchema = new Schema(
         type: Schema.Types.Mixed,
         default: null,
       },
+      itemType: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      tupleLength: {
+        type: Number,
+        default: null,
+      },
       sum: {
         type: Number,
+        default: null,
+      },
+      normalize: {
+        type: Boolean,
+        default: false,
+      },
+      ordered: {
+        type: String,
+        trim: true,
         default: null,
       },
       allowed: {
         type: [Schema.Types.Mixed],
         default: null,
       },
+    },
+    ui: {
+      type: Schema.Types.Mixed,
+      default: null,
     },
   },
   {

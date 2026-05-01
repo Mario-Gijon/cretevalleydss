@@ -3,6 +3,9 @@ import { createBadRequestError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 import { formatPairwiseEvaluationsByCriterion } from "../../issue.mappers.js";
+import {
+  denormalizeCanonicalValueForDomainOrThrow,
+} from "../../expressionDomains/expressionDomain.transforms.js";
 
 import {
   ensureIssueSnapshotIdsExist,
@@ -241,10 +244,100 @@ export const getPairwiseEvaluationPayload = async ({
     .lean();
 
   const formattedEvaluations = formatPairwiseEvaluationsByCriterion(evaluations);
+  const collectiveEvaluations = latestConsensus?.collectiveEvaluations || null;
+  let collectiveEvaluationsLocalized = null;
+
+  if (collectiveEvaluations && typeof collectiveEvaluations === "object") {
+    const domainByCell = new Map();
+
+    for (const evaluation of evaluations) {
+      const criterionName = evaluation?.criterion?.name;
+      const alternativeName = evaluation?.alternative?.name;
+      const comparedAlternativeName = evaluation?.comparedAlternative?.name;
+
+      if (!criterionName || !alternativeName || !comparedAlternativeName) {
+        continue;
+      }
+
+      domainByCell.set(
+        `${criterionName}::${alternativeName}::${comparedAlternativeName}`,
+        evaluation.expressionDomain || null
+      );
+    }
+
+    collectiveEvaluationsLocalized = {};
+
+    for (const [criterionName, rows] of Object.entries(collectiveEvaluations)) {
+      if (!Array.isArray(rows)) {
+        collectiveEvaluationsLocalized[criterionName] = rows;
+        continue;
+      }
+
+      collectiveEvaluationsLocalized[criterionName] = rows.map((row) => {
+        const localizedRow = { id: row?.id };
+
+        for (const [columnName, canonicalValue] of Object.entries(row || {})) {
+          if (columnName === "id") {
+            continue;
+          }
+
+          const domainSnapshot =
+            domainByCell.get(`${criterionName}::${row?.id}::${columnName}`) || null;
+
+          let localized = {
+            canonicalValue,
+            localizedValue: canonicalValue,
+            localizedLabel: null,
+          };
+
+          if (domainSnapshot && canonicalValue !== null && canonicalValue !== undefined) {
+            try {
+              localized = denormalizeCanonicalValueForDomainOrThrow({
+                canonicalValue,
+                domainSnapshot,
+                context: {
+                  issueId: toIdString(issueDoc?._id),
+                  expertId: toIdString(userId),
+                },
+              });
+            } catch (error) {
+              localized = {
+                canonicalValue,
+                localizedValue: canonicalValue,
+                localizedLabel: null,
+              };
+            }
+          }
+
+          localizedRow[columnName] = {
+            value: canonicalValue,
+            localizedValue: localized.localizedValue,
+            localizedLabel: localized.localizedLabel,
+            domain: domainSnapshot
+              ? {
+                  id: domainSnapshot._id,
+                  name: domainSnapshot.name,
+                  type: domainSnapshot.type,
+                  ...(domainSnapshot.type === "numeric" && {
+                    range: domainSnapshot.numericRange || null,
+                  }),
+                  ...(domainSnapshot.type === "linguistic" && {
+                    labels: domainSnapshot.linguisticLabels || [],
+                  }),
+                }
+              : null,
+          };
+        }
+
+        return localizedRow;
+      });
+    }
+  }
 
   return {
     evaluations: formattedEvaluations,
-    collectiveEvaluations: latestConsensus?.collectiveEvaluations || null,
+    collectiveEvaluations,
+    collectiveEvaluationsLocalized,
   };
 };
 

@@ -20,7 +20,6 @@ import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../../modules/issues/issue.ordering.js";
-import { normalizeParams } from "../../services/modelApi/modelParamNormalizer.js";
 import {
   createBadRequestError,
   createForbiddenError,
@@ -38,6 +37,7 @@ import {
 } from "../../services/modelApi/modelResponse.js";
 import { buildModelInputPayload } from "./resolution/modelInputs/modelInput.adapters.js";
 import { normalizeModelOutput } from "./resolution/modelOutputs/modelOutput.adapters.js";
+import { validateAndNormalizeModelParametersOrThrow } from "./modelParameters/modelParameters.validation.js";
 
                      
 import axios from "axios";
@@ -163,6 +163,31 @@ export const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
   return merged;
 };
 
+const getModelParameterKeys = (modelDoc) => {
+  return new Set(
+    (modelDoc?.parameters || [])
+      .map((parameter) =>
+        normalizeNonEmptyString(parameter?.key) ||
+        normalizeNonEmptyString(parameter?.name)
+      )
+      .filter(Boolean)
+  );
+};
+
+const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
+  if (paramOverrides == null) {
+    return {};
+  }
+
+  if (typeof paramOverrides !== "object" || Array.isArray(paramOverrides)) {
+    throw createBadRequestError("paramOverrides must be an object", {
+      field: "paramOverrides",
+    });
+  }
+
+  return paramOverrides;
+};
+
 /**
  * Resuelve weights como array a partir de paramsUsed y criterios ordenados.
  *
@@ -229,82 +254,6 @@ export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
 };
 
 /**
- * Valida los pesos usados por un modelo destino.
- *
- * @param {object} params Datos de entrada.
- * @param {Object} params.targetModel Modelo destino.
- * @param {Object} params.paramsUsed Parámetros usados.
- * @param {number} params.criteriaLen Número de criterios hoja.
- * @returns {void}
- */
-export const validateWeightsForTargetModel = ({
-  targetModel,
-  paramsUsed,
-  criteriaLen,
-}) => {
-  const weightsParam = (targetModel?.parameters || []).find(
-    (parameter) => parameter?.name === "weights"
-  );
-
-  if (!weightsParam) return;
-
-  const weights = paramsUsed?.weights;
-
-  if (weights == null) {
-    throw createBadRequestError(
-      "Target model requires 'weights' but none were provided."
-    );
-  }
-
-  if (!Array.isArray(weights)) {
-    throw createBadRequestError("'weights' must be an array.");
-  }
-
-  if (weights.length !== criteriaLen) {
-    throw createBadRequestError(
-      `'weights' length must match number of leaf criteria (${criteriaLen}).`
-    );
-  }
-
-  if (weightsParam.type === "array") {
-    const isValid = weights.every(
-      (value) => typeof value === "number" && Number.isFinite(value)
-    );
-
-    if (!isValid) {
-      throw createBadRequestError(
-        "Target model expects crisp numeric weights (array of numbers)."
-      );
-    }
-
-    return;
-  }
-
-  if (weightsParam.type === "fuzzyArray") {
-    const isValid = weights.every((value) => {
-      if (Array.isArray(value)) {
-        return (
-          value.length === 3 &&
-          value.every((n) => typeof n === "number" && Number.isFinite(n))
-        );
-      }
-
-      if (value && typeof value === "object") {
-        return true;
-      }
-
-      return false;
-    });
-
-    if (!isValid) {
-      throw createBadRequestError(
-        "Target model expects fuzzy weights (each weight must be [l,m,u] or an object)."
-      );
-    }
-  }
-};
-
-/**
  * Construye matrices directas para escenarios preservando la lógica actual.
  *
  * @param {object} params Parámetros de entrada.
@@ -321,6 +270,7 @@ export const buildScenarioDirectMatrices = ({
   criteria,
   participations,
   currentPhase,
+  inputKind,
 }) =>
   buildDirectResolutionData({
     issueId,
@@ -328,6 +278,7 @@ export const buildScenarioDirectMatrices = ({
     criteria,
     participations,
     currentPhase,
+    inputKind,
   });
 
 /**
@@ -347,6 +298,7 @@ export const buildScenarioPairwiseMatrices = ({
   criteria,
   participations,
   currentPhase,
+  inputKind,
 }) =>
   buildPairwiseAlternativesResolutionData({
     issueId,
@@ -354,6 +306,7 @@ export const buildScenarioPairwiseMatrices = ({
     criteria,
     participations,
     currentPhase,
+    inputKind,
   });
 
 /**
@@ -713,27 +666,33 @@ const getCreateScenarioContext = async ({
     }
   }
 
-  const paramsUsed = {
-    ...(issue.modelParameters || {}),
-    ...(paramOverrides && typeof paramOverrides === "object"
-      ? paramOverrides
-      : {}),
+  const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
+  const targetParameterKeys = getModelParameterKeys(targetModel);
+  const baseIssueParameters = Object.fromEntries(
+    Object.entries(issue.modelParameters || {}).filter(([key]) =>
+      targetParameterKeys.has(key)
+    )
+  );
+  const rawScenarioParams = {
+    ...baseIssueParameters,
+    ...normalizedOverrides,
   };
+  const normalizedScenarioParameters =
+    validateAndNormalizeModelParametersOrThrow({
+      model: targetModel,
+      paramValues: rawScenarioParams,
+      criteriaNodes: criteria,
+      alternativesCount: alternatives.length,
+    });
 
   const resolvedWeights = resolveScenarioWeightsArray({
-    paramsUsed,
+    paramsUsed: normalizedScenarioParameters,
     criteria,
   });
 
   if (resolvedWeights) {
-    paramsUsed.weights = resolvedWeights;
+    normalizedScenarioParameters.weights = resolvedWeights;
   }
-
-  validateWeightsForTargetModel({
-    targetModel,
-    paramsUsed,
-    criteriaLen: criteria.length,
-  });
 
   return {
     issue,
@@ -749,8 +708,8 @@ const getCreateScenarioContext = async ({
     targetEvaluationStructure,
     criterionTypes: buildCriterionTypes(criteria),
     domainType,
-    paramsUsed,
-    normalizedParams: normalizeParams(paramsUsed),
+    paramsUsed: normalizedScenarioParameters,
+    normalizedParams: normalizedScenarioParameters,
     expertsOrder: participations.map(
       (participation) => participation.expert.email
     ),
@@ -779,6 +738,7 @@ const resolveScenarioMatricesOrThrow = async ({
   criteria,
   participations,
   evaluationPhase,
+  targetInputKind,
 }) => {
   if (issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT) {
     const directResult = await buildScenarioDirectMatrices({
@@ -787,6 +747,7 @@ const resolveScenarioMatricesOrThrow = async ({
       criteria,
       participations,
       currentPhase: evaluationPhase,
+      inputKind: targetInputKind,
     });
 
     const nullCount = countPendingDirectValues(directResult.matricesUsed);
@@ -806,6 +767,7 @@ const resolveScenarioMatricesOrThrow = async ({
     criteria,
     participations,
     currentPhase: evaluationPhase,
+    inputKind: targetInputKind,
   });
 
   const nullCount = countPendingPairwiseValues(pairwiseResult.matricesUsed);
@@ -971,6 +933,7 @@ export const createIssueScenarioFlow = async ({
     criteria: context.criteria,
     participations: context.participations,
     evaluationPhase: context.evaluationPhase,
+    targetInputKind: context.targetRuntimeModel?.inputKind,
   });
 
   const { results } = await executeScenarioModelOrThrow({

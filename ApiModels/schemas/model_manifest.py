@@ -8,21 +8,28 @@ class ModelParameterRestrictions(BaseModel):
 
     min: float | int | None = None
     max: float | int | None = None
-    step: float | int | None = None
     length: int | str | None = None
+    itemType: str | None = None
+    tupleLength: int | None = None
     sum: float | int | None = None
+    normalize: bool | None = None
+    ordered: str | None = None
     allowed: list[Any] | None = None
 
 
 class ModelParameter(BaseModel):
     """Parámetro técnico configurable o documentado por un modelo."""
 
-    name: str
+    key: str
+    label: str | None = None
+    description: str | None = None
     type: str
+    required: bool = False
     default: Any | None = None
     restrictions: ModelParameterRestrictions = Field(
         default_factory=ModelParameterRestrictions
     )
+    ui: dict[str, Any] | None = None
 
 
 class SupportedDomainInfo(BaseModel):

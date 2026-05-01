@@ -1,5 +1,6 @@
 import { Evaluation } from "../../../../models/Evaluations.js";
 import { toIdString } from "../../../../utils/common/ids.js";
+import { normalizeEvaluationValueForInputOrThrow } from "../../expressionDomains/expressionDomain.transforms.js";
 
 /**
  * Construye datos de resolución para estructura directa a partir de evaluaciones.
@@ -18,6 +19,7 @@ export const buildDirectResolutionData = async ({
   criteria,
   participations,
   currentPhase,
+  inputKind = "directCrispMatrix",
 }) => {
   const expertIds = participations
     .map((participation) => participation.expert?._id)
@@ -66,28 +68,20 @@ export const buildDirectResolutionData = async ({
         )}`;
         const evaluation = evaluationMap.get(key);
 
-        let value = evaluation?.value ?? null;
-
-        if (
-          value != null &&
-          evaluation?.expressionDomain?.type === "numeric" &&
-          typeof value === "string"
-        ) {
-          const numericValue = Number(value);
-          value = Number.isFinite(numericValue) ? numericValue : value;
-        }
-
-        if (
-          value != null &&
-          evaluation?.expressionDomain?.type === "linguistic"
-        ) {
-          const labelDefinition =
-            evaluation.expressionDomain.linguisticLabels?.find(
-              (label) => label.label === value
-            );
-
-          value = labelDefinition ? labelDefinition.values : null;
-        }
+        const value =
+          evaluation?.value == null
+            ? null
+            : normalizeEvaluationValueForInputOrThrow({
+                value: evaluation.value,
+                domainSnapshot: evaluation?.expressionDomain,
+                inputKind,
+                context: {
+                  issueId,
+                  expertId,
+                  alternativeId: toIdString(alternative._id),
+                  criterionId: toIdString(criterion._id),
+                },
+              });
 
         row.push(value);
       }
