@@ -1366,7 +1366,7 @@ const buildIssueEvaluationDocsWithSnapshots = ({
     leafCriteria,
     alternatives: createdAlternatives,
     evaluationStructure: modelEvaluationStructure,
-    consensusPhase: null,
+    consensusPhase: 1,
     includeReciprocal: true,
   });
 
@@ -1395,7 +1395,7 @@ const buildIssueEvaluationDocsWithSnapshots = ({
       value: null,
       timestamp: null,
       history: [],
-      consensusPhase: null,
+      consensusPhase: 1,
     };
   });
 };

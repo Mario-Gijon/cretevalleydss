@@ -143,7 +143,7 @@ export const useFinishedIssueDialogView = ({
   const [addLoading, setAddLoading] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
 
-  const [selectedModelName, setSelectedModelName] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState("");
   const [scenarioParamValues, setScenarioParamValues] = useState({});
 
   const [modelsCatalog, setModelsCatalog] = useState([]);
@@ -217,7 +217,7 @@ export const useFinishedIssueDialogView = ({
         setOpenExpertsList(false);
         setOpenParamsViewer(false);
 
-        setSelectedModelName("");
+        setSelectedModelId("");
         setScenarioParamValues({});
         setScenarioName("");
         setParamsJson("{}");
@@ -458,15 +458,25 @@ export const useFinishedIssueDialogView = ({
   const totalExperts = participated.length + notAccepted.length;
 
   const getRunId = (run) => run?._id || run?.id || run?.scenarioId || run?.runId;
-  const getRunLabel = (run) =>
-    run?.name || run?.scenarioName || run?.targetModelName || run?.modelName || "Model run";
+  const getRunLabel = (run) => {
+    const customName = run?.name || run?.scenarioName;
+    if (customName) return customName;
+
+    const modelName = run?.targetModelName || run?.modelName || "Model run";
+    const versionLabel =
+      typeof run?.targetVersionLabel === "string"
+        ? run.targetVersionLabel.trim()
+        : "";
+
+    return versionLabel ? `${modelName} · ${versionLabel}` : modelName;
+  };
 
   const useSchemaAdd = Boolean(Array.isArray(availableModels) && availableModels.length);
 
   const selectedModelFromSchema = useMemo(() => {
     if (!useSchemaAdd) return null;
-    return availableModels.find((model) => model?.name === selectedModelName) || null;
-  }, [useSchemaAdd, availableModels, selectedModelName]);
+    return availableModels.find((model) => model?.id === selectedModelId) || null;
+  }, [useSchemaAdd, availableModels, selectedModelId]);
 
   const openAddDialog = async () => {
     setAddOpen(true);
@@ -493,7 +503,7 @@ export const useFinishedIssueDialogView = ({
   const closeAddDialog = () => {
     setAddOpen(false);
     setScenarioName("");
-    setSelectedModelName("");
+    setSelectedModelId("");
     setScenarioParamValues({});
     setParamsJson("{}");
   };
@@ -514,7 +524,7 @@ export const useFinishedIssueDialogView = ({
   const handleAddModelRun = async () => {
     if (!selectedIssue?.id) return;
 
-    if (!selectedModelName) {
+    if (!selectedModelId) {
       setToast({
         open: true,
         severity: "warning",
@@ -572,7 +582,7 @@ export const useFinishedIssueDialogView = ({
       const response = await createIssueScenario({
         issueId: selectedIssue.id,
         scenarioName: scenarioName?.trim() || undefined,
-        targetModelName: selectedModelName,
+        targetModelId: selectedModelId,
         paramOverrides: modelParameters,
       });
 
@@ -820,8 +830,8 @@ export const useFinishedIssueDialogView = ({
         handleAddModelRun,
         scenarioName,
         setScenarioName,
-        selectedModelName,
-        setSelectedModelName,
+        selectedModelId,
+        setSelectedModelId,
         useSchemaAdd,
         availableModels,
         modelsCatalog,

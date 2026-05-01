@@ -492,7 +492,6 @@ export const getIssueScenarioById = async (scenarioId) =>
 export const createIssueScenario = async ({
   issueId,
   scenarioName,
-  targetModelName,
   targetModelId,
   paramOverrides,
 }) => {
@@ -502,7 +501,6 @@ export const createIssueScenario = async ({
     `/issues/${normalizedIssueId}/scenarios`,
     jsonRequest("POST", {
       scenarioName,
-      targetModelName,
       targetModelId,
       paramOverrides,
     }),

@@ -121,6 +121,7 @@ const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
         ? toIdString(scenario.targetModel)
         : null,
       targetModelName: scenario.targetModelName || "",
+      targetVersionLabel: scenario.targetVersionLabel || "",
       domainType: scenario.domainType ?? null,
       evaluationStructure: scenarioEvaluationStructure,
       status: scenario.status || "done",
@@ -191,7 +192,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     IssueScenario.find({ issue: issue._id })
       .sort({ createdAt: -1 })
       .select(
-        "_id name targetModel targetModelName domainType evaluationStructure status createdAt createdBy"
+        "_id name targetModel targetModelName targetVersionLabel domainType evaluationStructure status createdAt createdBy"
       )
       .populate("createdBy", "email name")
       .lean(),

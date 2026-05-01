@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Box,
@@ -51,7 +51,14 @@ const DirectAlternativesEvaluationDialog = ({
   const [openSubmitEvaluationsDialog, setOpenSubmitEvaluationsDialog] = useState(false);
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [collectiveEvaluations, setCollectiveEvaluations] = useState(null);
+  const [pendingSubmitEvaluations, setPendingSubmitEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
+  const matrixRef = useRef(null);
+  const evaluationsRef = useRef(evaluations);
+
+  useEffect(() => {
+    evaluationsRef.current = evaluations;
+  }, [evaluations]);
 
   const leafCriteriaNames = useMemo(
     () => extractLeafCriteria(selectedIssue?.criteria || []).map((criterion) => criterion.name),
@@ -60,6 +67,23 @@ const DirectAlternativesEvaluationDialog = ({
 
   const getDomain = (cell) =>
     cell && typeof cell === "object" && cell.domain ? cell.domain : null;
+
+  const flushPendingGridEdit = async () => {
+    if (matrixRef.current?.flushPendingEdits) {
+      await matrixRef.current.flushPendingEdits();
+    }
+
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+
+  const getAuthoritativeEvaluations = async () => {
+    await flushPendingGridEdit();
+    return evaluationsRef.current;
+  };
 
   useEffect(() => {
     if (!isRatingAlternatives || !selectedIssue?.id) {
@@ -148,12 +172,14 @@ const DirectAlternativesEvaluationDialog = ({
 
   const handleCloseDialog = () => {
     setOpenCloseDialog(false);
+    setPendingSubmitEvaluations(null);
     setIsRatingAlternatives(false);
   };
 
   const handleConfirmChanges = () => {
     if (JSON.stringify(evaluations) === initialEvaluations) {
       setOpenCloseDialog(false);
+      setPendingSubmitEvaluations(null);
       setIsRatingAlternatives(false);
       return;
     }
@@ -162,7 +188,9 @@ const DirectAlternativesEvaluationDialog = ({
   };
 
   const handleOpenSubmitEvaluationsDialog = async () => {
-    const validation = validateDirectEvaluations(evaluations, {
+    const nextEvaluations = await getAuthoritativeEvaluations();
+
+    const validation = validateDirectEvaluations(nextEvaluations, {
       leafCriteria: leafCriteriaNames,
       allowEmpty: false,
     });
@@ -176,11 +204,14 @@ const DirectAlternativesEvaluationDialog = ({
       return;
     }
 
+    setPendingSubmitEvaluations(nextEvaluations);
     setOpenSubmitEvaluationsDialog(true);
   };
 
   const handleSaveEvaluations = async () => {
-    const validation = validateDirectEvaluations(evaluations, {
+    const nextEvaluations = await getAuthoritativeEvaluations();
+
+    const validation = validateDirectEvaluations(nextEvaluations, {
       leafCriteria: leafCriteriaNames,
       allowEmpty: true,
     });
@@ -199,7 +230,7 @@ const DirectAlternativesEvaluationDialog = ({
 
     const evaluationSaved = await saveAlternativeEvaluationDraft(
       selectedIssue.id,
-      evaluations
+      nextEvaluations
     );
 
     if (evaluationSaved.success) {
@@ -218,7 +249,8 @@ const DirectAlternativesEvaluationDialog = ({
     setOpenSubmitEvaluationsDialog(false);
     setLoading(true);
 
-    const response = await submitAlternativeEvaluations(selectedIssue, evaluations);
+    const nextEvaluations = pendingSubmitEvaluations ?? (await getAuthoritativeEvaluations());
+    const response = await submitAlternativeEvaluations(selectedIssue, nextEvaluations);
 
     if (response.success) {
       showSnackbarAlert(response?.message || "Evaluations submitted successfully", "success");
@@ -231,6 +263,7 @@ const DirectAlternativesEvaluationDialog = ({
     }
 
     setLoading(false);
+    setPendingSubmitEvaluations(null);
   };
 
   return (
@@ -279,6 +312,7 @@ const DirectAlternativesEvaluationDialog = ({
         >
           {selectedIssue && !loading && (
             <DirectEvaluationMatrix
+              ref={matrixRef}
               alternatives={selectedIssue.alternatives}
               criteria={leafCriteriaNames.slice().sort()}
               evaluations={evaluations}

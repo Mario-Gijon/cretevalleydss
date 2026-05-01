@@ -1,4 +1,5 @@
-import { DataGrid } from "@mui/x-data-grid";
+import { forwardRef, useImperativeHandle } from "react";
+import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 
 /**
@@ -20,8 +21,9 @@ const DirectEvaluationMatrix = ({
   setEvaluations,
   collectiveEvaluations,
   permitEdit = true,
-}) => {
+}, ref) => {
   const theme = useTheme();
+  const apiRef = useGridApiRef();
 
   const getNumericRange = (domain) => {
     const min = Number(domain?.range?.min);
@@ -236,8 +238,38 @@ const DirectEvaluationMatrix = ({
     return row;
   });
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      flushPendingEdits: async () => {
+        const cellModesModel = apiRef.current?.state?.cellModesModel || {};
+        const editCells = [];
+
+        for (const [rowId, fields] of Object.entries(cellModesModel)) {
+          for (const [field, config] of Object.entries(fields || {})) {
+            if (config?.mode === "edit") {
+              editCells.push({ id: rowId, field });
+            }
+          }
+        }
+
+        editCells.forEach(({ id, field }) => {
+          try {
+            apiRef.current.stopCellEditMode({ id, field });
+          } catch (error) {
+            // noop: if the cell is no longer editable/active, we can continue.
+          }
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      },
+    }),
+    [apiRef]
+  );
+
   return (
     <DataGrid
+      apiRef={apiRef}
       rows={rows}
       columns={columns}
       disableColumnMenu
@@ -284,4 +316,4 @@ const DirectEvaluationMatrix = ({
   );
 };
 
-export default DirectEvaluationMatrix;
+export default forwardRef(DirectEvaluationMatrix);

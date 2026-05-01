@@ -69,19 +69,20 @@ const ModelsSectionAddDialog = () => {
           <FormControl size="small" fullWidth>
             <InputLabel color="info">Model</InputLabel>
             <Select
-              value={addDialog.selectedModelName}
+              value={addDialog.selectedModelId}
               label="Model"
               color="info"
-              onChange={(event) => addDialog.setSelectedModelName(event.target.value)}
+              onChange={(event) => addDialog.setSelectedModelId(event.target.value)}
             >
               {addDialog.useSchemaAdd
                 ? addDialog.availableModels.map((model) => {
                     const disabled = !isModelCompatible(model);
                     const reason = getCompatReason(model, addDialog.domainType);
                     const label = model?.name || "—";
+                    const modelId = model?.id || "";
 
                     return (
-                      <MenuItem key={label} value={label} disabled={disabled}>
+                      <MenuItem key={modelId || label} value={modelId} disabled={disabled}>
                         <Stack
                           direction="row"
                           spacing={1}
@@ -118,9 +119,10 @@ const ModelsSectionAddDialog = () => {
                   })
                 : (addDialog.modelsCatalog || []).map((model) => {
                     const name = model.name || model.model || model.id;
+                    const modelId = model.id || name;
 
                     return (
-                      <MenuItem key={name} value={name}>
+                      <MenuItem key={modelId} value={modelId}>
                         {model.label || name}
                       </MenuItem>
                     );

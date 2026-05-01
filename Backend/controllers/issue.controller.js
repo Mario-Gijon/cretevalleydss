@@ -781,7 +781,6 @@ export const computeManualWeights = async (req, res) => {
 export const createIssueScenario = async (req, res) => {
   const {
     issueId,
-    targetModelName,
     targetModelId,
     scenarioName = "",
     paramOverrides = {},
@@ -790,7 +789,6 @@ export const createIssueScenario = async (req, res) => {
   const { scenarioId } = await createIssueScenarioFlow({
     userId: req.uid,
     issueId,
-    targetModelName,
     targetModelId,
     scenarioName,
     paramOverrides,

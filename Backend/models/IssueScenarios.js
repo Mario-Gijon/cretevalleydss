@@ -3,6 +3,7 @@
  */
 
 import { Schema, model } from "mongoose";
+import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 
 /**
@@ -92,6 +93,62 @@ const issueScenarioSchema = new Schema(
     targetModelName: {
       type: String,
       required: true,
+    },
+    targetApiModelKey: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetApiEndpoint: {
+      method: {
+        type: String,
+        trim: true,
+      },
+      path: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      operationId: {
+        type: String,
+        trim: true,
+      },
+    },
+    targetInputKind: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetOutputKind: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetEvaluationStructure: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetLifecycleKind: {
+      type: String,
+      required: true,
+      enum: Object.values(LIFECYCLE_KINDS),
+      trim: true,
+    },
+    targetModelFamilyKey: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetModelVersion: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    targetVersionLabel: {
+      type: String,
+      required: true,
+      trim: true,
     },
 
     domainType: {

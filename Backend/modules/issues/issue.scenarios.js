@@ -36,6 +36,8 @@ import {
   createModelApiRequestError,
   unwrapModelApiResponse,
 } from "../../services/modelApi/modelResponse.js";
+import { buildModelInputPayload } from "./resolution/modelInputs/modelInput.adapters.js";
+import { normalizeModelOutput } from "./resolution/modelOutputs/modelOutput.adapters.js";
 
                      
 import axios from "axios";
@@ -48,7 +50,7 @@ import axios from "axios";
 
 /**
  * @typedef {Object} ScenarioExecutionResult
- * @property {string} modelKey Clave del endpoint del modelo.
+ * @property {string} apiModelKey Clave del endpoint del modelo.
  * @property {Object} results Resultado bruto devuelto por el modelo.
  */
 
@@ -310,6 +312,7 @@ export const validateWeightsForTargetModel = ({
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
  * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
+ * @param {number} params.currentPhase Fase de consenso 1-based a consultar.
  * @returns {Promise<ScenarioMatricesResult>}
  */
 export const buildScenarioDirectMatrices = ({
@@ -317,12 +320,14 @@ export const buildScenarioDirectMatrices = ({
   alternatives,
   criteria,
   participations,
+  currentPhase,
 }) =>
   buildDirectResolutionData({
     issueId,
     alternatives,
     criteria,
     participations,
+    currentPhase,
   });
 
 /**
@@ -333,6 +338,7 @@ export const buildScenarioDirectMatrices = ({
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
  * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
+ * @param {number} params.currentPhase Fase de consenso 1-based a consultar.
  * @returns {Promise<ScenarioMatricesResult>}
  */
 export const buildScenarioPairwiseMatrices = ({
@@ -340,12 +346,14 @@ export const buildScenarioPairwiseMatrices = ({
   alternatives,
   criteria,
   participations,
+  currentPhase,
 }) =>
   buildPairwiseAlternativesResolutionData({
     issueId,
     alternatives,
     criteria,
     participations,
+    currentPhase,
   });
 
 /**
@@ -409,24 +417,6 @@ const countPendingPairwiseValues = (matricesUsed) => {
  * @param {Object|null|undefined} plotsGraphic Gráfico bruto del modelo.
  * @returns {Object|null}
  */
-const buildPlotsGraphicWithEmails = (participations, plotsGraphic) => {
-  if (!plotsGraphic?.expert_points || !Array.isArray(plotsGraphic.expert_points)) {
-    return null;
-  }
-
-  const expertPointsMap = {};
-
-  participations.forEach((participation, index) => {
-    expertPointsMap[participation.expert.email] =
-      plotsGraphic.expert_points[index] ?? null;
-  });
-
-  return {
-    expert_points: expertPointsMap,
-    collective_point: plotsGraphic.collective_point ?? null,
-  };
-};
-
 /**
  * Construye el payload de un escenario para listados o detalle.
  *
@@ -442,44 +432,152 @@ const buildScenarioPayload = (scenarioDoc) => {
   };
 };
 
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeEndpointPath = (value) => {
+  const normalizedPath = normalizeNonEmptyString(value);
+  if (!normalizedPath) return null;
+
+  const clean = normalizedPath.replace(/^\/+|\/+$/g, "");
+  return clean ? `/${clean}` : null;
+};
+
+const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
+  const targetApiModelKey = normalizeNonEmptyString(targetModel?.apiModelKey);
+  const endpointPath = normalizeEndpointPath(targetModel?.apiEndpoint?.path);
+  const targetInputKind = normalizeNonEmptyString(targetModel?.inputKind);
+  const targetOutputKind = normalizeNonEmptyString(targetModel?.outputKind);
+  const targetEvaluationStructure = normalizeNonEmptyString(
+    targetModel?.evaluationStructure
+  );
+  const targetLifecycleKind = normalizeNonEmptyString(targetModel?.lifecycleKind);
+  const targetModelFamilyKey = normalizeNonEmptyString(targetModel?.modelFamilyKey);
+  const targetModelVersion = normalizeNonEmptyString(targetModel?.modelVersion);
+  const targetVersionLabel = normalizeNonEmptyString(targetModel?.versionLabel);
+
+  const missingFields = [];
+
+  if (!targetApiModelKey) missingFields.push("apiModelKey");
+  if (!endpointPath) missingFields.push("apiEndpoint.path");
+  if (!targetInputKind) missingFields.push("inputKind");
+  if (!targetOutputKind) missingFields.push("outputKind");
+  if (!targetEvaluationStructure) missingFields.push("evaluationStructure");
+  if (!targetLifecycleKind) missingFields.push("lifecycleKind");
+  if (!targetModelFamilyKey) missingFields.push("modelFamilyKey");
+  if (!targetModelVersion) missingFields.push("modelVersion");
+  if (!targetVersionLabel) missingFields.push("versionLabel");
+
+  if (missingFields.length > 0) {
+    throw createBadRequestError(
+      "Target model runtime metadata is invalid for scenario execution",
+      {
+        field: "targetModelId",
+        details: {
+          missingFields,
+          targetModelId: toIdString(targetModel?._id),
+        },
+      }
+    );
+  }
+
+  return {
+    targetApiModelKey,
+    targetApiEndpoint: {
+      method: normalizeNonEmptyString(targetModel?.apiEndpoint?.method) ?? null,
+      path: endpointPath,
+      operationId:
+        normalizeNonEmptyString(targetModel?.apiEndpoint?.operationId) ?? null,
+    },
+    targetInputKind,
+    targetOutputKind,
+    targetEvaluationStructure,
+    targetLifecycleKind,
+    targetModelFamilyKey,
+    targetModelVersion,
+    targetVersionLabel,
+  };
+};
+
+const buildTargetRuntimeModelFromSnapshot = ({
+  targetModelName,
+  targetRuntimeSnapshot,
+}) => ({
+  name: targetModelName || "unknown",
+  apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
+  apiEndpoint: { ...targetRuntimeSnapshot.targetApiEndpoint },
+  inputKind: targetRuntimeSnapshot.targetInputKind,
+  outputKind: targetRuntimeSnapshot.targetOutputKind,
+  evaluationStructure: targetRuntimeSnapshot.targetEvaluationStructure,
+  lifecycleKind: targetRuntimeSnapshot.targetLifecycleKind,
+  modelFamilyKey: targetRuntimeSnapshot.targetModelFamilyKey,
+  modelVersion: targetRuntimeSnapshot.targetModelVersion,
+  versionLabel: targetRuntimeSnapshot.targetVersionLabel,
+});
+
 /**
  * Obtiene el modelo objetivo para una simulación.
  *
  * @param {object} params Parámetros de entrada.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
- * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
  * @returns {Promise<Object>}
  */
 const getTargetScenarioModelOrThrow = async ({
   targetModelId,
-  targetModelName,
 }) => {
   const cleanTargetModelId = String(targetModelId || "").trim();
-  const cleanTargetModelName = String(targetModelName || "").trim();
 
-  if (!cleanTargetModelId && !cleanTargetModelName) {
-    throw createBadRequestError("Target model is required", {
-      field: "targetModel",
+  if (!cleanTargetModelId) {
+    throw createBadRequestError("targetModelId is required", {
+      field: "targetModelId",
     });
   }
 
-  let targetModel = null;
-
-  if (cleanTargetModelId) {
-    targetModel = await IssueModel.findById(cleanTargetModelId);
+  if (!isValidObjectIdLike(cleanTargetModelId)) {
+    throw createBadRequestError("targetModelId must be a valid id", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
   }
 
-  if (!targetModel && cleanTargetModelName) {
-    targetModel = await IssueModel.findOne({ name: cleanTargetModelName });
-  }
+  const targetModel = await IssueModel.findById(cleanTargetModelId);
 
   if (!targetModel) {
-    throw createNotFoundError("Target model not found", {
-      field: "targetModel",
+    throw createBadRequestError("Target model not found", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
     });
   }
 
   return targetModel;
+};
+
+const resolveScenarioEvaluationPhaseOrThrow = ({ issue, consensusCount }) => {
+  const phase = Number(issue?.consensusPhase);
+
+  if (!Number.isInteger(phase) || phase < 1) {
+    throw createBadRequestError("Issue consensusPhase is invalid", {
+      field: "consensusPhase",
+      details: {
+        consensusPhase: issue?.consensusPhase ?? null,
+      },
+    });
+  }
+
+  if (Boolean(issue?.isConsensus) && Number(consensusCount) > 1) {
+    throw createBadRequestError(
+      "Simulation disabled: consensus issues with more than 1 saved phase are not supported yet."
+    );
+  }
+
+  return phase;
 };
 
 /**
@@ -489,7 +587,6 @@ const getTargetScenarioModelOrThrow = async ({
  * @param {string} params.issueId Id del issue.
  * @param {string} params.userId Id del usuario actual.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
- * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
  * @param {Object} params.paramOverrides Overrides de parámetros.
  * @returns {Promise<Object>}
  */
@@ -497,7 +594,6 @@ const getCreateScenarioContext = async ({
   issueId,
   userId,
   targetModelId,
-  targetModelName,
   paramOverrides,
 }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
@@ -523,7 +619,6 @@ const getCreateScenarioContext = async ({
     await Promise.all([
       getTargetScenarioModelOrThrow({
         targetModelId,
-        targetModelName,
       }),
       Consensus.countDocuments({ issue: issue._id }),
       Participation.countDocuments({
@@ -536,11 +631,10 @@ const getCreateScenarioContext = async ({
       }).populate("expert", "email"),
     ]);
 
-  if (issue.isConsensus && consensusCount > 1) {
-    throw createBadRequestError(
-      "Simulation disabled: consensus issues with more than 1 saved phase are not supported yet."
-    );
-  }
+  const evaluationPhase = resolveScenarioEvaluationPhaseOrThrow({
+    issue,
+    consensusCount,
+  });
 
   if (pendingInvitations > 0) {
     throw createBadRequestError(
@@ -554,7 +648,10 @@ const getCreateScenarioContext = async ({
 
   const issueEvaluationStructure = issue.evaluationStructure;
 
-  const targetEvaluationStructure = targetModel.evaluationStructure;
+  const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(
+    targetModel
+  );
+  const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
 
   if (targetEvaluationStructure !== issueEvaluationStructure) {
     throw createBadRequestError(
@@ -641,6 +738,10 @@ const getCreateScenarioContext = async ({
   return {
     issue,
     targetModel,
+    targetRuntimeModel: buildTargetRuntimeModelFromSnapshot({
+      targetModelName: targetModel.name,
+      targetRuntimeSnapshot,
+    }),
     participations,
     alternatives,
     criteria,
@@ -654,6 +755,8 @@ const getCreateScenarioContext = async ({
       (participation) => participation.expert.email
     ),
     consensusThresholdUsed: 1,
+    evaluationPhase,
+    targetRuntimeSnapshot,
   };
 };
 
@@ -666,6 +769,7 @@ const getCreateScenarioContext = async ({
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
  * @param {Array<Object>} params.participations Participaciones aceptadas.
+ * @param {number} params.evaluationPhase Fase 1-based usada para leer evaluaciones.
  * @returns {Promise<ScenarioMatricesResult>}
  */
 const resolveScenarioMatricesOrThrow = async ({
@@ -674,6 +778,7 @@ const resolveScenarioMatricesOrThrow = async ({
   alternatives,
   criteria,
   participations,
+  evaluationPhase,
 }) => {
   if (issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT) {
     const directResult = await buildScenarioDirectMatrices({
@@ -681,6 +786,7 @@ const resolveScenarioMatricesOrThrow = async ({
       alternatives,
       criteria,
       participations,
+      currentPhase: evaluationPhase,
     });
 
     const nullCount = countPendingDirectValues(directResult.matricesUsed);
@@ -699,6 +805,7 @@ const resolveScenarioMatricesOrThrow = async ({
     alternatives,
     criteria,
     participations,
+    currentPhase: evaluationPhase,
   });
 
   const nullCount = countPendingPairwiseValues(pairwiseResult.matricesUsed);
@@ -716,7 +823,7 @@ const resolveScenarioMatricesOrThrow = async ({
  * Ejecuta el modelo objetivo para crear un escenario.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Object} params.targetModel Modelo objetivo.
+ * @param {Object} params.targetRuntimeModel Snapshot runtime del modelo objetivo.
  * @param {Object} params.matricesUsed Matrices de entrada.
  * @param {Object} params.normalizedParams Parámetros normalizados.
  * @param {string[]} params.criterionTypes Tipos de criterio.
@@ -724,53 +831,41 @@ const resolveScenarioMatricesOrThrow = async ({
  * @returns {Promise<ScenarioExecutionResult>}
  */
 const executeScenarioModelOrThrow = async ({
-  targetModel,
+  targetRuntimeModel,
   matricesUsed,
   normalizedParams,
   criterionTypes,
   consensusThresholdUsed,
 }) => {
-  const modelKey = getModelEndpointKey(targetModel);
+  const apiModelKey = getModelEndpointKey(targetRuntimeModel);
   const apimodelsUrl =
     process.env.ORIGIN_APIMODELS || "http://localhost:7000";
-  const modelEndpointUrl = buildModelEndpointUrl(apimodelsUrl, targetModel);
+  const modelEndpointUrl = buildModelEndpointUrl(apimodelsUrl, targetRuntimeModel);
 
-  if (!modelKey || !modelEndpointUrl) {
+  if (!apiModelKey || !modelEndpointUrl) {
     throw createBadRequestError(
-      `No API endpoint defined for target model ${targetModel?.name}`
+      `No API endpoint defined for target model ${targetRuntimeModel?.name}`
     );
   }
+
+  const modelInputPayload = buildModelInputPayload({
+    inputKind: targetRuntimeModel?.inputKind,
+    matrices: matricesUsed,
+    modelParameters: normalizedParams,
+    criterionTypes,
+    consensusThreshold: consensusThresholdUsed,
+  });
 
   let response;
 
   try {
-    if (modelKey === "herrera_viedma_crp") {
-      response = await axios.post(
+    response = await axios.post(
         modelEndpointUrl,
-        {
-          matrices: matricesUsed,
-          consensusThreshold: consensusThresholdUsed,
-          modelParameters: normalizedParams,
-        },
+        modelInputPayload,
         {
           headers: { "Content-Type": "application/json" },
         }
       );
-    } else {
-      response = await axios.post(
-        modelEndpointUrl,
-        {
-          matrices: matricesUsed,
-          modelParameters: normalizedParams,
-          criterionTypes,
-          criterion_type: criterionTypes,
-          criterion_types: criterionTypes,
-        },
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
   } catch (error) {
     throw createModelApiRequestError(error, "Error creating scenario");
   }
@@ -778,7 +873,7 @@ const executeScenarioModelOrThrow = async ({
   const results = unwrapModelApiResponse(response);
 
   return {
-    modelKey,
+    apiModelKey,
     results,
   };
 };
@@ -787,7 +882,7 @@ const executeScenarioModelOrThrow = async ({
  * Construye los outputs persistibles del escenario a partir del resultado del modelo.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.modelKey Clave del endpoint del modelo.
+ * @param {Object} params.targetRuntimeModel Snapshot runtime del modelo objetivo.
  * @param {Object} params.results Resultado bruto.
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
@@ -796,121 +891,50 @@ const executeScenarioModelOrThrow = async ({
  * @returns {ScenarioOutputs}
  */
 const buildScenarioOutputs = ({
-  modelKey,
+  targetRuntimeModel,
   results,
   alternatives,
   criteria,
   participations,
   matricesUsed,
+  modelParameters,
+  issue,
 }) => {
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
-
-  if (modelKey === "herrera_viedma_crp") {
-    const {
-      alternatives_rankings,
-      cm,
-      collective_evaluations,
-      plots_graphic,
-      collective_scores,
-    } = results || {};
-
-    const rankedWithScores = (alternatives_rankings || []).map((index) => ({
-      name: alternativeNames[index],
-      score: collective_scores?.[index] ?? null,
-    }));
-
-    const transformedCollectiveEvaluations = {};
-
-    for (const criterion of criteria) {
-      const matrix = collective_evaluations?.[criterion.name];
-      if (!matrix) continue;
-
-      transformedCollectiveEvaluations[criterion.name] = matrix.map(
-        (row, rowIndex) => {
-          const formattedRow = { id: alternatives[rowIndex].name };
-
-          row.forEach((value, colIndex) => {
-            formattedRow[alternatives[colIndex].name] = value;
-          });
-
-          return formattedRow;
-        }
-      );
-    }
-
-    const plotsGraphicWithEmails = buildPlotsGraphicWithEmails(
-      participations,
-      plots_graphic
-    );
-
-    return {
-      collectiveEvaluations: transformedCollectiveEvaluations,
-      details: {
-        rankedAlternatives: rankedWithScores,
-        matrices: matricesUsed,
-        level: cm ?? null,
-        collective_scores: Object.fromEntries(
-          alternativeNames.map((name, index) => [
-            name,
-            collective_scores?.[index] ?? null,
-          ])
-        ),
-        collective_ranking: rankedWithScores.map((item) => item.name),
-        ...(plotsGraphicWithEmails
-          ? { plotsGraphic: plotsGraphicWithEmails }
-          : {}),
-      },
-    };
-  }
-
-  const rankingIndexes = results?.collective_ranking || [];
-  const collectiveScores = results?.collective_scores || [];
-  const collectiveMatrix = results?.collective_matrix || [];
-
-  const rankedAlternatives = rankingIndexes.map(
-    (index) => alternativeNames[index]
-  );
-
-  const rankedWithScores = rankingIndexes.map((index) => ({
-    name: alternativeNames[index],
-    score: collectiveScores?.[index] ?? null,
-  }));
-
-  const collectiveScoresByName = {};
-  alternativeNames.forEach((name, index) => {
-    collectiveScoresByName[name] = collectiveScores?.[index] ?? null;
-  });
-
-  const formattedCollectiveEvaluations = {};
-  collectiveMatrix.forEach((row, alternativeIndex) => {
-    const alternativeName = alternativeNames[alternativeIndex];
-    formattedCollectiveEvaluations[alternativeName] = {};
-
-    row.forEach((value, criterionIndex) => {
-      const criterionName = criteria[criterionIndex]?.name;
-      if (criterionName) {
-        formattedCollectiveEvaluations[alternativeName][criterionName] = {
-          value,
-        };
-      }
-    });
-  });
-
-  const plotsGraphicWithEmails = buildPlotsGraphicWithEmails(
+  const normalizedOutput = normalizeModelOutput({
+    outputKind: targetRuntimeModel?.outputKind,
+    rawOutput: results,
+    alternatives,
+    criteria,
     participations,
-    results?.plots_graphic
-  );
+    issue,
+    model: targetRuntimeModel,
+  });
 
   return {
-    collectiveEvaluations: formattedCollectiveEvaluations,
+    collectiveEvaluations: normalizedOutput.collectiveEvaluations,
     details: {
-      rankedAlternatives: rankedWithScores,
+      rankedAlternatives: normalizedOutput.rankedWithScores,
       matrices: matricesUsed,
-      collective_scores: collectiveScoresByName,
-      collective_ranking: rankedAlternatives,
-      ...(plotsGraphicWithEmails
-        ? { plotsGraphic: plotsGraphicWithEmails }
+      collective_scores: normalizedOutput.collectiveScoresByName,
+      collective_ranking: normalizedOutput.collectiveRanking,
+      ...(normalizedOutput.consensusLevel != null
+        ? { level: normalizedOutput.consensusLevel }
         : {}),
+      ...(normalizedOutput.plotsGraphic
+        ? { plotsGraphic: normalizedOutput.plotsGraphic }
+        : {}),
+      modelExecution: {
+        apiModelKey: targetRuntimeModel?.apiModelKey ?? null,
+        modelKey: targetRuntimeModel?.apiModelKey ?? null,
+        modelName: targetRuntimeModel?.name ?? null,
+        inputKind: targetRuntimeModel?.inputKind ?? null,
+        outputKind: targetRuntimeModel?.outputKind ?? null,
+        apiEndpoint: targetRuntimeModel?.apiEndpoint ?? null,
+        apiEndpointPath: targetRuntimeModel?.apiEndpoint?.path ?? null,
+        modelParameters: modelParameters ?? null,
+        executedAt: new Date(),
+        rawOutput: results,
+      },
     },
   };
 };
@@ -921,7 +945,6 @@ const buildScenarioOutputs = ({
  * @param {object} params Parámetros de entrada.
  * @param {string} params.userId Id del usuario actual.
  * @param {string} params.issueId Id del issue.
- * @param {string | null | undefined} params.targetModelName Nombre del modelo objetivo.
  * @param {string | null | undefined} params.targetModelId Id del modelo objetivo.
  * @param {string} [params.scenarioName=""] Nombre opcional del escenario.
  * @param {Object} [params.paramOverrides={}] Overrides de parámetros.
@@ -930,7 +953,6 @@ const buildScenarioOutputs = ({
 export const createIssueScenarioFlow = async ({
   userId,
   issueId,
-  targetModelName,
   targetModelId,
   scenarioName = "",
   paramOverrides = {},
@@ -939,7 +961,6 @@ export const createIssueScenarioFlow = async ({
     issueId,
     userId,
     targetModelId,
-    targetModelName,
     paramOverrides,
   });
 
@@ -949,10 +970,11 @@ export const createIssueScenarioFlow = async ({
     alternatives: context.alternatives,
     criteria: context.criteria,
     participations: context.participations,
+    evaluationPhase: context.evaluationPhase,
   });
 
-  const { modelKey, results } = await executeScenarioModelOrThrow({
-    targetModel: context.targetModel,
+  const { results } = await executeScenarioModelOrThrow({
+    targetRuntimeModel: context.targetRuntimeModel,
     matricesUsed,
     normalizedParams: context.normalizedParams,
     criterionTypes: context.criterionTypes,
@@ -960,12 +982,16 @@ export const createIssueScenarioFlow = async ({
   });
 
   const { details, collectiveEvaluations } = buildScenarioOutputs({
-    modelKey,
+    targetRuntimeModel: context.targetRuntimeModel,
     results,
     alternatives: context.alternatives,
     criteria: context.criteria,
     participations: context.participations,
     matricesUsed,
+    modelParameters: context.normalizedParams,
+    issue: {
+      isConsensus: context.targetRuntimeModel?.outputKind === "consensusRanking",
+    },
   });
 
   const scenario = await IssueScenario.create({
@@ -974,6 +1000,16 @@ export const createIssueScenarioFlow = async ({
     name: String(scenarioName || "").trim(),
     targetModel: context.targetModel._id,
     targetModelName: context.targetModel.name,
+    targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
+    targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
+    targetInputKind: context.targetRuntimeSnapshot.targetInputKind,
+    targetOutputKind: context.targetRuntimeSnapshot.targetOutputKind,
+    targetEvaluationStructure:
+      context.targetRuntimeSnapshot.targetEvaluationStructure,
+    targetLifecycleKind: context.targetRuntimeSnapshot.targetLifecycleKind,
+    targetModelFamilyKey: context.targetRuntimeSnapshot.targetModelFamilyKey,
+    targetModelVersion: context.targetRuntimeSnapshot.targetModelVersion,
+    targetVersionLabel: context.targetRuntimeSnapshot.targetVersionLabel,
     domainType: context.domainType,
     evaluationStructure: context.targetEvaluationStructure,
     status: "done",
@@ -987,7 +1023,7 @@ export const createIssueScenarioFlow = async ({
           : context.criterionTypes,
     },
     inputs: {
-      consensusPhaseUsed: 1,
+      consensusPhaseUsed: context.evaluationPhase,
       expertsOrder: context.expertsOrder,
       alternatives: context.alternatives.map((alternative) => ({
         id: alternative._id,
@@ -1031,7 +1067,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModelName domainType evaluationStructure status createdAt createdBy"
+      "_id name targetModelName targetVersionLabel domainType evaluationStructure status createdAt createdBy"
     )
     .populate("createdBy", "email name")
     .lean();
