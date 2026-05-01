@@ -14,6 +14,8 @@ import {
   removeNotificationById,
   getAllFinishedIssues,
   getFinishedIssueInfo,
+  getIssueResultsAnalysis,
+  getSavedIssueResultsAnalysis,
   removeFinishedIssue,
   editExperts,
   leaveIssue,
@@ -640,6 +642,17 @@ router
   .route("/finished/:id")
   .get(mapParamsToBody({ id: "id" }), asyncHandler(getFinishedIssueInfo))
   .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeFinishedIssue));
+
+router
+  .route("/:id/results-analysis")
+  .get(
+    mapParamsToBody({ id: "id" }),
+    asyncHandler(getSavedIssueResultsAnalysis)
+  )
+  .post(
+    mapParamsToBody({ id: "id" }),
+    asyncHandler(getIssueResultsAnalysis)
+  );
 
 /**
  * @openapi

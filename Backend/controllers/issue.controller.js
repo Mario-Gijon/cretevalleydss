@@ -68,6 +68,10 @@ import {
   removeNotificationForUserFlow,
 } from "../modules/issues/issue.notifications.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/issue.finished.js";
+import {
+  generateIssueResultsAnalysisFlow,
+  getSavedIssueResultsAnalysisFlow,
+} from "../modules/issues/analysis/index.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import { createIssueFlow } from "../modules/issues/issue.creation.js";
 
@@ -621,6 +625,54 @@ export const getFinishedIssueInfo = async (req, res) => {
   });
 
   return sendSuccess(res, "Issue info sent", issueInfo);
+};
+
+/**
+ * Genera un análisis de resultados para un issue finalizado.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<void>}
+ */
+export const getIssueResultsAnalysis = async (req, res) => {
+  const { id } = req.body;
+
+  const analysis = await generateIssueResultsAnalysisFlow({
+    issueId: id,
+    userId: req.uid,
+  });
+
+  return sendSuccess(
+    res,
+    "Results analysis generated successfully.",
+    analysis
+  );
+};
+
+/**
+ * Obtiene el último análisis de resultados persistido de un issue finalizado.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<void>}
+ */
+export const getSavedIssueResultsAnalysis = async (req, res) => {
+  const { id } = req.body;
+
+  const analysis = await getSavedIssueResultsAnalysisFlow({
+    issueId: id,
+    userId: req.uid,
+  });
+
+  if (!analysis) {
+    return sendSuccess(
+      res,
+      "No results analysis has been generated yet.",
+      null
+    );
+  }
+
+  return sendSuccess(res, "Results analysis fetched successfully.", analysis);
 };
 
 /**
