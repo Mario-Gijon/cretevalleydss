@@ -12,8 +12,13 @@ import { User } from "../../models/Users.js";
 
           
 import {
+  EVALUATION_STRUCTURES,
   validateEvaluationStructureOrThrow,
 } from "./issue.evaluationStructure.js";
+import {
+  LIFECYCLE_KINDS,
+  isSupportedLifecycleKind,
+} from "./issue.lifecycleKind.js";
 import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import {
   buildInitialCriteriaWeightEvaluationDocs,
@@ -31,6 +36,7 @@ import {
   normalizeString,
 } from "../../utils/common/strings.js";
 import { toIdString } from "../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import {
   createBadRequestError,
   createConflictError,
@@ -39,6 +45,857 @@ import {
 
                      
 import dayjs from "dayjs";
+
+const SUPPORTED_EVALUATION_STRUCTURES = new Set(
+  Object.values(EVALUATION_STRUCTURES)
+);
+
+const SUPPORTED_INPUT_KINDS = new Set([
+  "directCrispMatrix",
+  "directFuzzyMatrix",
+  "pairwisePreferenceMatrix",
+]);
+
+const SUPPORTED_OUTPUT_KINDS = new Set([
+  "ranking",
+  "consensusRanking",
+]);
+
+const CONSENSUS_OUTPUT_KIND = "consensusRanking";
+const SINGLE_PASS_OUTPUT_KIND = "ranking";
+
+const hasOwn = (value, key) =>
+  Object.prototype.hasOwnProperty.call(value || {}, key);
+
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeEndpointPath = (value) => {
+  const path = normalizeNonEmptyString(value);
+  if (!path) {
+    return null;
+  }
+
+  const normalizedPath = path.replace(/^\/+|\/+$/g, "");
+  return normalizedPath ? `/${normalizedPath}` : null;
+};
+
+const normalizeApiModelKey = (value) => {
+  const key = normalizeNonEmptyString(value);
+  if (!key) {
+    return null;
+  }
+
+  const normalizedKey = key.replace(/^\/+|\/+$/g, "");
+  return normalizedKey || null;
+};
+
+const validateIssueModelRuntimeConfigOrThrow = (model) => {
+  const modelName = normalizeNonEmptyString(model?.name) || "unknown";
+  const runtimeErrors = [];
+
+  const apiModelKey = normalizeApiModelKey(model?.apiModelKey);
+  if (!apiModelKey) {
+    runtimeErrors.push({
+      field: "apiModelKey",
+      message: "must be a non-empty string",
+      value: model?.apiModelKey,
+    });
+  }
+
+  const endpointPath = normalizeEndpointPath(model?.apiEndpoint?.path);
+  if (!endpointPath) {
+    runtimeErrors.push({
+      field: "apiEndpoint.path",
+      message: "must be a non-empty string",
+      value: model?.apiEndpoint?.path,
+    });
+  }
+
+  const evaluationStructure = normalizeNonEmptyString(model?.evaluationStructure);
+  if (!evaluationStructure) {
+    runtimeErrors.push({
+      field: "evaluationStructure",
+      message: "is required",
+      value: model?.evaluationStructure,
+    });
+  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
+    runtimeErrors.push({
+      field: "evaluationStructure",
+      message: `is unsupported: ${evaluationStructure}`,
+      value: model?.evaluationStructure,
+    });
+  }
+
+  const lifecycleKind = normalizeNonEmptyString(model?.lifecycleKind);
+  if (!lifecycleKind) {
+    runtimeErrors.push({
+      field: "lifecycleKind",
+      message: "is required",
+      value: model?.lifecycleKind,
+    });
+  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
+    runtimeErrors.push({
+      field: "lifecycleKind",
+      message: `is unsupported: ${lifecycleKind}`,
+      value: model?.lifecycleKind,
+    });
+  }
+
+  const inputKind = normalizeNonEmptyString(model?.inputKind);
+  if (!inputKind) {
+    runtimeErrors.push({
+      field: "inputKind",
+      message: "is required",
+      value: model?.inputKind,
+    });
+  } else if (!SUPPORTED_INPUT_KINDS.has(inputKind)) {
+    runtimeErrors.push({
+      field: "inputKind",
+      message: `is unsupported: ${inputKind}`,
+      value: model?.inputKind,
+    });
+  }
+
+  const outputKind = normalizeNonEmptyString(model?.outputKind);
+  if (!outputKind) {
+    runtimeErrors.push({
+      field: "outputKind",
+      message: "is required",
+      value: model?.outputKind,
+    });
+  } else if (!SUPPORTED_OUTPUT_KINDS.has(outputKind)) {
+    runtimeErrors.push({
+      field: "outputKind",
+      message: `is unsupported: ${outputKind}`,
+      value: model?.outputKind,
+    });
+  }
+
+  if (typeof model?.isConsensus !== "boolean") {
+    runtimeErrors.push({
+      field: "isConsensus",
+      message: "must be a boolean",
+      value: model?.isConsensus,
+    });
+  }
+
+  const modelFamilyKey = normalizeNonEmptyString(model?.modelFamilyKey);
+  if (!modelFamilyKey) {
+    runtimeErrors.push({
+      field: "modelFamilyKey",
+      message: "must be a non-empty string",
+      value: model?.modelFamilyKey,
+    });
+  }
+
+  const modelVersion = normalizeNonEmptyString(model?.modelVersion);
+  if (!modelVersion) {
+    runtimeErrors.push({
+      field: "modelVersion",
+      message: "must be a non-empty string",
+      value: model?.modelVersion,
+    });
+  }
+
+  const versionLabel = normalizeNonEmptyString(model?.versionLabel);
+  if (!versionLabel) {
+    runtimeErrors.push({
+      field: "versionLabel",
+      message: "must be a non-empty string",
+      value: model?.versionLabel,
+    });
+  }
+
+  if (runtimeErrors.length > 0) {
+    const firstError = runtimeErrors[0];
+    const fieldSummary = runtimeErrors
+      .map((error) => `${error.field} ${error.message}`)
+      .join(", ");
+
+    throw createBadRequestError(
+      `Selected model '${modelName}' is missing required runtime configuration: ${fieldSummary}`,
+      {
+        field: `selectedModel.${firstError.field}`,
+        details: {
+          model: modelName,
+          missingOrInvalidFields: runtimeErrors,
+        },
+      }
+    );
+  }
+
+  return {
+    apiModelKey,
+    apiEndpoint: {
+      method: normalizeNonEmptyString(model?.apiEndpoint?.method) || null,
+      path: endpointPath,
+      operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
+    },
+    inputKind,
+    outputKind,
+    evaluationStructure: validateEvaluationStructureOrThrow(evaluationStructure),
+    lifecycleKind,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+  };
+};
+
+const validateIssueConsensusCompatibilityOrThrow = ({
+  requestedWithConsensus,
+  model,
+  lifecycleKind,
+}) => {
+  const modelName = normalizeNonEmptyString(model?.name) || "unknown";
+  const modelIsConsensus = model?.isConsensus;
+  const outputKind = normalizeNonEmptyString(model?.outputKind);
+  const normalizedLifecycleKind = normalizeNonEmptyString(lifecycleKind);
+  const incompatibilities = [];
+
+  if (requestedWithConsensus !== modelIsConsensus) {
+    incompatibilities.push(
+      `withConsensus (${requestedWithConsensus}) must match model.isConsensus (${modelIsConsensus})`
+    );
+  }
+
+  if (modelIsConsensus) {
+    if (normalizedLifecycleKind !== LIFECYCLE_KINDS.THRESHOLD_CONSENSUS) {
+      incompatibilities.push(
+        `consensus model requires lifecycleKind '${LIFECYCLE_KINDS.THRESHOLD_CONSENSUS}'`
+      );
+    }
+
+    if (outputKind !== CONSENSUS_OUTPUT_KIND) {
+      incompatibilities.push(
+        `consensus model requires outputKind '${CONSENSUS_OUTPUT_KIND}'`
+      );
+    }
+  } else {
+    if (normalizedLifecycleKind !== LIFECYCLE_KINDS.SINGLE_PASS) {
+      incompatibilities.push(
+        `non-consensus model requires lifecycleKind '${LIFECYCLE_KINDS.SINGLE_PASS}'`
+      );
+    }
+
+    if (outputKind !== SINGLE_PASS_OUTPUT_KIND) {
+      incompatibilities.push(
+        `non-consensus model requires outputKind '${SINGLE_PASS_OUTPUT_KIND}'`
+      );
+    }
+  }
+
+  if (incompatibilities.length > 0) {
+    throw createBadRequestError(
+      `Requested consensus mode is incompatible with selected model '${modelName}': ${incompatibilities.join(", ")}`,
+      {
+        field: "withConsensus",
+        details: {
+          requestedWithConsensus,
+          modelIsConsensus,
+          outputKind: outputKind ?? null,
+          lifecycleKind: normalizedLifecycleKind ?? null,
+          incompatibilities,
+        },
+      }
+    );
+  }
+};
+
+const getValueType = (value) => {
+  if (Array.isArray(value)) return "array";
+  if (value === null) return "null";
+  return typeof value;
+};
+
+const valuesAreEqual = (left, right) => {
+  if (typeof left === "number" && typeof right === "number") {
+    return Object.is(left, right);
+  }
+
+  return JSON.stringify(left) === JSON.stringify(right);
+};
+
+const isAllowedValue = (value, allowed) => {
+  if (!Array.isArray(allowed) || allowed.length === 0) {
+    return true;
+  }
+
+  if (Array.isArray(value)) {
+    return value.every((item) =>
+      allowed.some((allowedItem) => valuesAreEqual(item, allowedItem))
+    );
+  }
+
+  return allowed.some((allowedItem) => valuesAreEqual(value, allowedItem));
+};
+
+const normalizeNumberValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const resolveExpectedArrayLength = (parameter, leafCriteriaCount) => {
+  const configuredLength = parameter?.restrictions?.length;
+
+  if (configuredLength === "matchCriteria") {
+    return leafCriteriaCount;
+  }
+
+  if (typeof configuredLength === "number" && Number.isInteger(configuredLength)) {
+    return configuredLength;
+  }
+
+  if (Array.isArray(parameter?.default)) {
+    return parameter.default.length;
+  }
+
+  return null;
+};
+
+const countLeafCriteriaNodes = (nodes) => {
+  if (!Array.isArray(nodes)) {
+    return 0;
+  }
+
+  return nodes.reduce((count, node) => {
+    const children = Array.isArray(node?.children) ? node.children : [];
+    if (children.length === 0) {
+      return count + 1;
+    }
+
+    return count + countLeafCriteriaNodes(children);
+  }, 0);
+};
+
+const modelRequiresCriterionWeights = (model) => {
+  const parameters = Array.isArray(model?.parameters) ? model.parameters : [];
+
+  return parameters.some((parameter) => {
+    const parameterName = normalizeNonEmptyString(parameter?.name);
+    const parameterType = normalizeNonEmptyString(parameter?.type);
+    const lengthRestriction = parameter?.restrictions?.length;
+
+    return (
+      parameterName === "weights" &&
+      parameterType === "array" &&
+      lengthRestriction === "matchCriteria"
+    );
+  });
+};
+
+const isCriterionWeightsParameter = ({ parameterName, parameter, restrictions }) => {
+  if (parameterName !== "weights") {
+    return false;
+  }
+
+  return (
+    parameter?.type === "array" &&
+    restrictions?.length === "matchCriteria"
+  );
+};
+
+const buildInvalidParameterError = ({
+  modelName,
+  parameterErrors,
+}) => {
+  const firstError = parameterErrors[0];
+  const summary = parameterErrors
+    .map((error) => `${error.parameter} ${error.message}`)
+    .join(", ");
+
+  throw createBadRequestError(
+    `Invalid model parameters for model '${modelName}': ${summary}`,
+    {
+      field: `paramValues.${firstError.parameter}`,
+      details: {
+        model: modelName,
+        invalidParameters: parameterErrors,
+      },
+    }
+  );
+};
+
+const validateAndNormalizeModelParametersOrThrow = ({
+  model,
+  paramValues,
+  criteriaNodes,
+}) => {
+  const modelName = normalizeNonEmptyString(model?.name) || "unknown";
+  const modelParameters = Array.isArray(model?.parameters) ? model.parameters : [];
+  const leafCriteriaCount = countLeafCriteriaNodes(criteriaNodes);
+  const rawParamValues =
+    paramValues && typeof paramValues === "object" && !Array.isArray(paramValues)
+      ? paramValues
+      : null;
+
+  if (!rawParamValues) {
+    throw createBadRequestError("paramValues must be an object", {
+      field: "paramValues",
+    });
+  }
+
+  const parameterByName = new Map();
+  for (const parameter of modelParameters) {
+    const parameterName = normalizeNonEmptyString(parameter?.name);
+    if (parameterName) {
+      parameterByName.set(parameterName, parameter);
+    }
+  }
+
+  const unknownParameters = Object.keys(rawParamValues).filter(
+    (parameterName) => !parameterByName.has(parameterName)
+  );
+
+  if (unknownParameters.length > 0) {
+    throw createBadRequestError(
+      `Unknown model parameters for model '${modelName}': ${unknownParameters.join(", ")}`,
+      {
+        field: `paramValues.${unknownParameters[0]}`,
+        details: {
+          model: modelName,
+          unknownParameters,
+          allowedParameters: Array.from(parameterByName.keys()),
+        },
+      }
+    );
+  }
+
+  const normalizedModelParameters = {};
+  const parameterErrors = [];
+
+  const addError = ({ parameter, message, value }) => {
+    parameterErrors.push({
+      parameter,
+      message,
+      receivedType: getValueType(value),
+      receivedValue: value ?? null,
+    });
+  };
+
+  for (const [parameterName, parameter] of parameterByName.entries()) {
+    const parameterType = normalizeNonEmptyString(parameter?.type);
+    const restrictions = parameter?.restrictions || {};
+    const hasProvidedValue = hasOwn(rawParamValues, parameterName);
+    const defaultValue = parameter?.default;
+    let value = hasProvidedValue ? rawParamValues[parameterName] : undefined;
+
+    if (value === undefined || value === null) {
+      if (defaultValue !== undefined) {
+        value = defaultValue;
+      } else if (hasProvidedValue) {
+        addError({
+          parameter: parameterName,
+          message: "cannot be null or undefined",
+          value,
+        });
+      }
+
+      if (value === undefined || value === null) {
+        continue;
+      }
+    }
+
+    if (parameterType === "number" || parameterType === "integer") {
+      const normalizedNumber = normalizeNumberValue(value);
+
+      if (normalizedNumber === null) {
+        addError({
+          parameter: parameterName,
+          message: "must be a finite number",
+          value,
+        });
+        continue;
+      }
+
+      if (
+        parameterType === "integer" &&
+        !Number.isInteger(normalizedNumber)
+      ) {
+        addError({
+          parameter: parameterName,
+          message: "must be an integer",
+          value,
+        });
+        continue;
+      }
+
+      if (
+        typeof restrictions.min === "number" &&
+        normalizedNumber < restrictions.min
+      ) {
+        addError({
+          parameter: parameterName,
+          message: `must be greater than or equal to ${restrictions.min}`,
+          value,
+        });
+        continue;
+      }
+
+      if (
+        typeof restrictions.max === "number" &&
+        normalizedNumber > restrictions.max
+      ) {
+        addError({
+          parameter: parameterName,
+          message: `must be less than or equal to ${restrictions.max}`,
+          value,
+        });
+        continue;
+      }
+
+      if (!isAllowedValue(normalizedNumber, restrictions.allowed)) {
+        addError({
+          parameter: parameterName,
+          message: "contains a value outside allowed options",
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedNumber;
+      continue;
+    }
+
+    if (parameterType === "string") {
+      if (typeof value !== "string") {
+        addError({
+          parameter: parameterName,
+          message: "must be a string",
+          value,
+        });
+        continue;
+      }
+
+      const normalizedString = value.trim();
+      if (!isAllowedValue(normalizedString, restrictions.allowed)) {
+        addError({
+          parameter: parameterName,
+          message: "contains a value outside allowed options",
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedString;
+      continue;
+    }
+
+    if (parameterType === "boolean") {
+      let normalizedBoolean = null;
+
+      if (typeof value === "boolean") {
+        normalizedBoolean = value;
+      } else if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === "true") normalizedBoolean = true;
+        if (normalized === "false") normalizedBoolean = false;
+      }
+
+      if (normalizedBoolean === null) {
+        addError({
+          parameter: parameterName,
+          message: "must be a boolean",
+          value,
+        });
+        continue;
+      }
+
+      if (!isAllowedValue(normalizedBoolean, restrictions.allowed)) {
+        addError({
+          parameter: parameterName,
+          message: "contains a value outside allowed options",
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedBoolean;
+      continue;
+    }
+
+    if (parameterType === "array") {
+      if (!Array.isArray(value)) {
+        addError({
+          parameter: parameterName,
+          message: "must be an array",
+          value,
+        });
+        continue;
+      }
+
+      const expectedLength = resolveExpectedArrayLength(
+        parameter,
+        leafCriteriaCount
+      );
+
+      if (expectedLength !== null && value.length !== expectedLength) {
+        addError({
+          parameter: parameterName,
+          message: `must contain exactly ${expectedLength} values`,
+          value,
+        });
+        continue;
+      }
+
+      const normalizedArray = [];
+      let arrayHasError = false;
+
+      value.forEach((item, index) => {
+        const normalizedNumber = normalizeNumberValue(item);
+
+        if (normalizedNumber === null) {
+          arrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must be a finite number`,
+            value: item,
+          });
+          return;
+        }
+
+        if (
+          typeof restrictions.min === "number" &&
+          normalizedNumber < restrictions.min
+        ) {
+          arrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must be greater than or equal to ${restrictions.min}`,
+            value: item,
+          });
+          return;
+        }
+
+        if (
+          typeof restrictions.max === "number" &&
+          normalizedNumber > restrictions.max
+        ) {
+          arrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must be less than or equal to ${restrictions.max}`,
+            value: item,
+          });
+          return;
+        }
+
+        normalizedArray.push(normalizedNumber);
+      });
+
+      if (arrayHasError) {
+        continue;
+      }
+
+      const isCriterionWeights = isCriterionWeightsParameter({
+        parameterName,
+        parameter,
+        restrictions,
+      });
+
+      if (isCriterionWeights) {
+        const hasNegative = normalizedArray.some((item) => item < 0);
+        if (hasNegative) {
+          addError({
+            parameter: parameterName,
+            message: "must contain only values greater than or equal to 0",
+            value,
+          });
+          continue;
+        }
+
+        const totalWeight = normalizedArray.reduce((sum, item) => sum + item, 0);
+        if (totalWeight <= 0) {
+          addError({
+            parameter: parameterName,
+            message: "must contain at least one value greater than 0",
+            value,
+          });
+          continue;
+        }
+
+        const normalizedWeights = normalizedArray.map(
+          (item) => item / totalWeight
+        );
+
+        normalizedModelParameters[parameterName] = normalizedWeights;
+        continue;
+      }
+
+      if (
+        typeof restrictions.sum === "number" &&
+        Math.abs(
+          normalizedArray.reduce((sum, item) => sum + item, 0) -
+            restrictions.sum
+        ) > 1e-6
+      ) {
+        addError({
+          parameter: parameterName,
+          message: `must sum to ${restrictions.sum}`,
+          value,
+        });
+        continue;
+      }
+
+      if (normalizedArray.length === 2 && normalizedArray[0] >= normalizedArray[1]) {
+        addError({
+          parameter: parameterName,
+          message: "must be strictly increasing when length is 2",
+          value,
+        });
+        continue;
+      }
+
+      if (!isAllowedValue(normalizedArray, restrictions.allowed)) {
+        addError({
+          parameter: parameterName,
+          message: "contains values outside allowed options",
+          value,
+        });
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedArray;
+      continue;
+    }
+
+    if (parameterType === "fuzzyArray") {
+      if (!Array.isArray(value)) {
+        addError({
+          parameter: parameterName,
+          message: "must be an array of fuzzy triples",
+          value,
+        });
+        continue;
+      }
+
+      const expectedLength = resolveExpectedArrayLength(
+        parameter,
+        leafCriteriaCount
+      );
+
+      if (expectedLength !== null && value.length !== expectedLength) {
+        addError({
+          parameter: parameterName,
+          message: `must contain exactly ${expectedLength} fuzzy values`,
+          value,
+        });
+        continue;
+      }
+
+      const normalizedFuzzyArray = [];
+      let fuzzyArrayHasError = false;
+
+      value.forEach((triangle, index) => {
+        if (!Array.isArray(triangle) || triangle.length !== 3) {
+          fuzzyArrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must be an array [l,m,u]`,
+            value: triangle,
+          });
+          return;
+        }
+
+        const normalizedTriangle = triangle.map((item) => normalizeNumberValue(item));
+
+        if (normalizedTriangle.some((item) => item === null)) {
+          fuzzyArrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must contain finite numeric values`,
+            value: triangle,
+          });
+          return;
+        }
+
+        if (
+          typeof restrictions.min === "number" &&
+          normalizedTriangle.some((item) => item < restrictions.min)
+        ) {
+          fuzzyArrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] contains values below min ${restrictions.min}`,
+            value: triangle,
+          });
+          return;
+        }
+
+        if (
+          typeof restrictions.max === "number" &&
+          normalizedTriangle.some((item) => item > restrictions.max)
+        ) {
+          fuzzyArrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] contains values above max ${restrictions.max}`,
+            value: triangle,
+          });
+          return;
+        }
+
+        if (
+          normalizedTriangle[0] > normalizedTriangle[1] ||
+          normalizedTriangle[1] > normalizedTriangle[2]
+        ) {
+          fuzzyArrayHasError = true;
+          addError({
+            parameter: parameterName,
+            message: `[${index}] must satisfy l <= m <= u`,
+            value: triangle,
+          });
+          return;
+        }
+
+        normalizedFuzzyArray.push(normalizedTriangle);
+      });
+
+      if (fuzzyArrayHasError) {
+        continue;
+      }
+
+      normalizedModelParameters[parameterName] = normalizedFuzzyArray;
+      continue;
+    }
+
+    addError({
+      parameter: parameterName,
+      message: `uses unsupported type '${String(parameterType || "unknown")}'`,
+      value,
+    });
+  }
+
+  if (parameterErrors.length > 0) {
+    buildInvalidParameterError({
+      modelName,
+      parameterErrors,
+    });
+  }
+
+  return normalizedModelParameters;
+};
 
 /**
  * Normaliza y valida la entrada base para crear un issue.
@@ -51,7 +908,7 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
 
   const issueName = normalizeString(issueInfo.issueName);
   const issueDescription = normalizeOptionalString(issueInfo.issueDescription);
-  const selectedModelName = normalizeString(issueInfo.selectedModel?.name);
+  const selectedModelId = normalizeString(issueInfo.selectedModelId);
   const alternatives = Array.isArray(issueInfo.alternatives)
     ? issueInfo.alternatives
     : [];
@@ -73,9 +930,15 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  if (!selectedModelName) {
-    throw createBadRequestError("Model is required", {
-      field: "selectedModel",
+  if (!selectedModelId) {
+    throw createBadRequestError("selectedModelId is required", {
+      field: "selectedModelId",
+    });
+  }
+
+  if (!isValidObjectIdLike(selectedModelId)) {
+    throw createBadRequestError("Valid selectedModelId is required", {
+      field: "selectedModelId",
     });
   }
 
@@ -123,7 +986,7 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
   return {
     issueName,
     issueDescription,
-    selectedModelName,
+    selectedModelId,
     uniqueAlternativeNames,
     withConsensus,
     criteria,
@@ -142,25 +1005,78 @@ const normalizeCreateIssueInput = (rawIssueInfo) => {
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.adminUserId Id del admin actual.
- * @param {string} params.selectedModelName Nombre del modelo elegido.
+ * @param {string} params.selectedModelId Id del modelo elegido.
+ * @param {boolean} params.requestedWithConsensus Indicador withConsensus recibido en la petición.
+ * @param {string} params.weightingMode Modo de ponderación solicitado.
+ * @param {Object} params.paramValues Parámetros del modelo recibidos en la petición.
+ * @param {Array<Object>} params.criteriaNodes Criterios recibidos en la petición.
  * @param {string[]} params.uniqueExpertEmails Correos únicos de expertos.
  * @param {Object} params.session Sesión de mongoose.
  * @returns {Promise<Object>}
  */
 const loadCreateIssueActorsAndModel = async ({
   adminUserId,
-  selectedModelName,
+  selectedModelId,
+  requestedWithConsensus,
+  weightingMode,
+  paramValues,
+  criteriaNodes,
   uniqueExpertEmails,
   session,
 }) => {
-  const existingModel = await IssueModel.findOne({ name: selectedModelName }).session(
-    session
-  );
+  const existingModel = await IssueModel.findById(selectedModelId).session(session);
 
   if (!existingModel) {
     throw createBadRequestError("Model does not exist", {
-      field: "selectedModel",
+      field: "selectedModelId",
     });
+  }
+
+  const {
+    apiModelKey,
+    apiEndpoint,
+    inputKind,
+    outputKind,
+    evaluationStructure: modelEvaluationStructure,
+    lifecycleKind: modelLifecycleKind,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+  } = validateIssueModelRuntimeConfigOrThrow(existingModel);
+  validateIssueConsensusCompatibilityOrThrow({
+    requestedWithConsensus,
+    model: existingModel,
+    lifecycleKind: modelLifecycleKind,
+  });
+
+  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
+    model: existingModel,
+    paramValues,
+    criteriaNodes,
+  });
+
+  const requiresCriterionWeights = modelRequiresCriterionWeights(existingModel);
+  const leafCriteriaCount = countLeafCriteriaNodes(criteriaNodes);
+  const normalizedWeightingMode = normalizeNonEmptyString(weightingMode);
+  const hasNormalizedWeights = Array.isArray(normalizedModelParameters?.weights);
+
+  if (
+    normalizedWeightingMode === "manual" &&
+    requiresCriterionWeights &&
+    leafCriteriaCount > 1 &&
+    !hasNormalizedWeights
+  ) {
+    throw createBadRequestError(
+      "Manual weighting mode requires valid model parameter 'weights'",
+      {
+        field: "paramValues.weights",
+        details: {
+          weightingMode: normalizedWeightingMode,
+          requiredByModel: true,
+          leafCriteriaCount,
+        },
+      }
+    );
   }
 
   const admin = await User.findById(adminUserId).session(session);
@@ -195,9 +1111,16 @@ const loadCreateIssueActorsAndModel = async ({
     adminEmail: normalizeEmail(admin.email),
     expertUsers,
     expertByEmail,
-    modelEvaluationStructure: validateEvaluationStructureOrThrow(
-      existingModel.evaluationStructure
-    ),
+    modelEvaluationStructure,
+    modelLifecycleKind,
+    apiModelKey,
+    apiEndpoint,
+    inputKind,
+    outputKind,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+    normalizedModelParameters,
   };
 };
 
@@ -510,9 +1433,22 @@ export const createIssueFlow = async ({
     expertUsers,
     expertByEmail,
     modelEvaluationStructure,
+    modelLifecycleKind,
+    apiModelKey,
+    apiEndpoint,
+    inputKind,
+    outputKind,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+    normalizedModelParameters,
   } = await loadCreateIssueActorsAndModel({
     adminUserId,
-    selectedModelName: input.selectedModelName,
+    selectedModelId: input.selectedModelId,
+    requestedWithConsensus: input.withConsensus,
+    weightingMode: input.weightingMode,
+    paramValues: input.paramValues,
+    criteriaNodes: input.criteria,
     uniqueExpertEmails: input.uniqueExpertEmails,
     session,
   });
@@ -520,7 +1456,16 @@ export const createIssueFlow = async ({
   const issue = new Issue({
     admin: adminUserId,
     model: model._id,
+    apiModelKey,
+    apiEndpoint,
+    inputKind,
+    outputKind,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
     evaluationStructure: modelEvaluationStructure,
+    lifecycleKind: modelLifecycleKind,
+    consensusPhase: 1,
     isConsensus: input.withConsensus,
     name: input.issueName,
     description: input.issueDescription,
@@ -535,7 +1480,7 @@ export const createIssueFlow = async ({
       consensusMaxPhases: input.consensusMaxPhases,
       consensusThreshold: input.consensusThreshold,
     }),
-    modelParameters: { ...input.paramValues },
+    modelParameters: normalizedModelParameters,
   });
 
   await issue.save({ session });
@@ -576,6 +1521,7 @@ export const createIssueFlow = async ({
     leafCriteriaCount: leafCriteria.length,
     weightingMode: input.weightingMode,
   });
+  const isCriteriaWeightingRequired = issue.currentStage === "criteriaWeighting";
 
   if (isSingleLeafCriterion) {
     const previousParams = issue.modelParameters || {};
@@ -604,7 +1550,7 @@ export const createIssueFlow = async ({
       expert: expertUser._id,
       invitationStatus: isAdminExpert ? "accepted" : "pending",
       evaluationCompleted: false,
-      weightsCompleted: isSingleLeafCriterion,
+      weightsCompleted: !isCriteriaWeightingRequired,
       entryPhase: null,
       entryStage: null,
       joinedAt: new Date(),

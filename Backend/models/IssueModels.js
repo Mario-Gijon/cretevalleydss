@@ -3,6 +3,7 @@
  */
 
 import { Schema, model } from "mongoose";
+import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 
 /**
@@ -25,6 +26,7 @@ import { Schema, model } from "mongoose";
  * @property {string} moreInfoUrl Enlace externo de referencia.
  * @property {Array<Object>} parameters Parámetros configurables.
  * @property {string} evaluationStructure Estructura de evaluación exigida.
+ * @property {string | null} [lifecycleKind] Tipo de ciclo de vida de resolución.
  * @property {string | null} [inputKind] Tipo de payload de entrada publicado por ApiModels.
  * @property {string | null} [outputKind] Tipo de salida/resultado publicado por ApiModels.
  * @property {Object} [criterionTypes] Vocabulario de tipos de criterio y aliases publicados por ApiModels.
@@ -224,6 +226,21 @@ const issueModelSchema = new Schema({
     trim: true,
     index: true,
   },
+  modelFamilyKey: {
+    type: String,
+    trim: true,
+    required: true,
+  },
+  modelVersion: {
+    type: String,
+    trim: true,
+    required: true,
+  },
+  versionLabel: {
+    type: String,
+    trim: true,
+    required: true,
+  },
   modelRole: {
     type: String,
     enum: ["issueModel", "weightingService", "utilityModel"],
@@ -311,6 +328,11 @@ const issueModelSchema = new Schema({
     type: String,
     enum: ["direct", "pairwiseAlternatives"],
     required: true,
+  },
+  lifecycleKind: {
+    type: String,
+    trim: true,
+    enum: Object.values(LIFECYCLE_KINDS),
   },
   inputKind: {
     type: String,

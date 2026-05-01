@@ -6,16 +6,12 @@ import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 
           
-import {
-  EVALUATION_STRUCTURES,
-} from "../modules/issues/issue.evaluationStructure.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import {
   computeWeights as computeWeightsService,
 } from "../modules/issues/weightEvaluations/index.js";
 import {
-  resolveDirectIssue,
-  resolvePairwiseIssue,
+  resolveIssue as resolveIssueService,
 } from "../modules/issues/issue.resolution.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/issue.lifecycle.js";
 
@@ -573,30 +569,18 @@ export const resolveIssueAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
   const forceFinalize = Boolean(req.body?.forceFinalize);
 
-  const { issue, creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
   });
 
-  const evaluationStructure = issue.evaluationStructure;
-
-  const result =
-    evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-      ? await resolvePairwiseIssue({
-          issueId,
-          userId: creatorUserId,
-          forceFinalize,
-          apiModelsBaseUrl:
-            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-          httpClient: axios,
-        })
-      : await resolveDirectIssue({
-          issueId,
-          userId: creatorUserId,
-          forceFinalize,
-          apiModelsBaseUrl:
-            process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-          httpClient: axios,
-        });
+  const result = await resolveIssueService({
+    issueId,
+    userId: creatorUserId,
+    forceFinalize,
+    apiModelsBaseUrl:
+      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
 
   return sendSuccess(
     res,

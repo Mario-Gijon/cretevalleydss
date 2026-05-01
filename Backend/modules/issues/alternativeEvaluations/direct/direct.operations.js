@@ -63,6 +63,7 @@ export const buildDirectEvaluationSaveBulkOperations = ({
             alternative: alternativeId,
             criterion: criterionId,
             comparedAlternative: null,
+            consensusPhase: currentPhase,
           },
           update: {
             $set: {
@@ -173,7 +174,7 @@ export const getDirectEvaluationPayload = async ({
   issue,
   userId,
 }) => {
-  const { issue: issueDoc, latestConsensus } = await getEvaluationReadContext({
+  const { issue: issueDoc, latestConsensus, currentPhase } = await getEvaluationReadContext({
     userId,
     issue,
   });
@@ -185,6 +186,7 @@ export const getDirectEvaluationPayload = async ({
       issue: issueDoc._id,
       expert: userId,
       comparedAlternative: null,
+      consensusPhase: currentPhase,
     })
       .populate("alternative")
       .populate("criterion")

@@ -9,6 +9,7 @@ import { toIdString } from "../../../../utils/common/ids.js";
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
  * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
+ * @param {number} params.currentPhase Fase de consenso actual (1-based).
  * @returns {Promise<{matricesUsed: Object, snapshotIdsUsed: string[]}>}
  */
 export const buildPairwiseAlternativesResolutionData = async ({
@@ -16,6 +17,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
   alternatives,
   criteria,
   participations,
+  currentPhase,
 }) => {
   const expertIds = participations
     .map((participation) => participation.expert?._id)
@@ -26,6 +28,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
     issue: issueId,
     expert: { $in: expertIds },
     comparedAlternative: { $ne: null },
+    consensusPhase: currentPhase,
   })
     .select("expert alternative comparedAlternative criterion value expressionDomain")
     .populate("expressionDomain", "type")

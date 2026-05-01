@@ -772,6 +772,12 @@ export const buildActiveIssueView = ({
         totalAccepted,
       },
       finalWeights: finalWeightsMap,
+      consensusHistory: Array.isArray(issue?.consensusHistory)
+        ? issue.consensusHistory
+        : [],
+      consensusRounds: Array.isArray(issue?.consensusHistory)
+        ? issue.consensusHistory
+        : [],
       modelParameters: responseModelParameters,
       myParticipation: myParticipation
         ? {

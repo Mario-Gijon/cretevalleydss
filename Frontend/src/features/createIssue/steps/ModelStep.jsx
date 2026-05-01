@@ -114,7 +114,7 @@ export const ModelStep = () => {
 
       <Grid container spacing={1.5} sx={{ width: "100%" }}>
         {filteredModels.map((model) => {
-          const selected = selectedModel?.name === model?.name;
+          const selected = selectedModel?._id === model?._id;
 
           return (
             <Grid key={model._id || model.name} item size={{ xs: 12, sm: 6, lg: 4 }}>

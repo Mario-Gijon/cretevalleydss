@@ -3,6 +3,7 @@
  */
 
 import { Schema, model } from "mongoose";
+import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 import { Alternative } from "./Alternatives.js";
 import { Consensus } from "./Consensus.js";
@@ -32,6 +33,7 @@ import { Participation } from "./Participations.js";
  * @property {Array<*>} alternativeOrder Orden persistido de alternativas.
  * @property {Array<*>} leafCriteriaOrder Orden persistido de criterios hoja.
  * @property {string} evaluationStructure Estructura de evaluación.
+ * @property {string|null} lifecycleKind Tipo de ciclo de vida de resolución.
  */
 
 
@@ -86,6 +88,51 @@ const issueSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "IssueModel",
       required: true,
+    },
+    apiModelKey: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    apiEndpoint: {
+      method: {
+        type: String,
+        trim: true,
+      },
+      path: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      operationId: {
+        type: String,
+        trim: true,
+      },
+    },
+    inputKind: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    outputKind: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    modelFamilyKey: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    modelVersion: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    versionLabel: {
+      type: String,
+      required: true,
+      trim: true,
     },
     name: {
       type: String,
@@ -161,6 +208,38 @@ const issueSchema = new Schema(
       type: String,
       enum: ["direct", "pairwiseAlternatives"],
       required: true,
+    },
+    lifecycleKind: {
+      type: String,
+      enum: Object.values(LIFECYCLE_KINDS),
+    },
+    consensusPhase: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    consensusHistory: {
+      type: [
+        {
+          phase: { type: Number, required: true },
+          computedAt: { type: Date, required: true },
+          consensusLevel: { type: Number, default: null },
+          rankedAlternatives: { type: [String], default: [] },
+          rankedWithScores: { type: [Schema.Types.Mixed], default: [] },
+          collectiveEvaluations: { type: Schema.Types.Mixed, default: null },
+          feedback: { type: Schema.Types.Mixed, default: null },
+          recommendations: { type: Schema.Types.Mixed, default: null },
+          modelExecution: {
+            apiModelKey: { type: String, default: null },
+            apiEndpoint: { type: Schema.Types.Mixed, default: null },
+            inputKind: { type: String, default: null },
+            outputKind: { type: String, default: null },
+            rawOutput: { type: Schema.Types.Mixed, default: null },
+            executedAt: { type: Date, default: null },
+          },
+        },
+      ],
+      default: [],
     },
   },
   {

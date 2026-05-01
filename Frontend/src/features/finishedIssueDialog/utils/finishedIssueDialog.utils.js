@@ -92,6 +92,29 @@ export const safeJsonStringify = (value) => {
  * @returns {number}
  */
 export const getLastPhaseIndex = (issueInfo) => {
+  const phaseFromRounds = (rounds = []) => {
+    const phases = rounds
+      .map((round) => Number(round?.phase))
+      .filter((phase) => Number.isInteger(phase) && phase > 0);
+    if (phases.length === 0) return null;
+    return Math.max(...phases);
+  };
+
+  const historyPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
+  );
+  if (historyPhase) return historyPhase - 1;
+
+  const roundsPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
+  );
+  if (roundsPhase) return roundsPhase - 1;
+
+  const consensusPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
+  );
+  if (consensusPhase) return consensusPhase - 1;
+
   const keys = Object.keys(issueInfo?.expertsRatings || {})
     .map((key) => parseInt(key, 10))
     .filter((key) => !Number.isNaN(key));
@@ -107,6 +130,29 @@ export const getLastPhaseIndex = (issueInfo) => {
  * @returns {number}
  */
 export const getRoundsCount = (issueInfo) => {
+  const phaseFromRounds = (rounds = []) => {
+    const phases = rounds
+      .map((round) => Number(round?.phase))
+      .filter((phase) => Number.isInteger(phase) && phase > 0);
+    if (phases.length === 0) return null;
+    return Math.max(...phases);
+  };
+
+  const historyPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
+  );
+  if (historyPhase) return historyPhase;
+
+  const roundsPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
+  );
+  if (roundsPhase) return roundsPhase;
+
+  const consensusPhase = phaseFromRounds(
+    Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
+  );
+  if (consensusPhase) return consensusPhase;
+
   const fromConsensus = issueInfo?.summary?.consensusInfo?.consensusReachedPhase;
   if (typeof fromConsensus === "number" && fromConsensus > 0) return fromConsensus;
 

@@ -51,6 +51,9 @@ def _build_manifest_entry(registration) -> ModelManifestEntry:
 
     return ModelManifestEntry(
         key=registration.name,
+        modelFamilyKey=metadata["modelFamilyKey"],
+        modelVersion=metadata["modelVersion"],
+        versionLabel=metadata["versionLabel"],
         displayName=metadata["displayName"],
         aliases=metadata["aliases"],
         role=metadata["role"],
@@ -68,6 +71,7 @@ def _build_manifest_entry(registration) -> ModelManifestEntry:
         ),
         capabilities=ModelCapabilities(
             evaluationStructure=metadata.get("evaluationStructure"),
+            lifecycleKind=metadata.get("lifecycleKind"),
             isConsensus=metadata.get("isConsensus"),
             isMultiCriteria=metadata.get("isMultiCriteria"),
             inputKind=metadata["inputKind"],

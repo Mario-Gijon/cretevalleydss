@@ -1,5 +1,4 @@
          
-import { Consensus } from "../../models/Consensus.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
@@ -44,13 +43,15 @@ export const validateIssueIdOrThrow = (issueId) => {
 export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   validateIssueIdOrThrow(issueId);
 
+  const { select, lean = true } = options;
+
   let query = Issue.findById(issueId);
 
-  if (options.select) {
-    query = query.select(options.select);
+  if (select) {
+    query = query.select(select);
   }
 
-  const issue = await query.lean();
+  const issue = lean ? await query.lean() : await query;
 
   if (!issue) {
     throw createNotFoundError("Issue not found", {
@@ -86,11 +87,19 @@ export const getIssueByIdOrThrow = async (issueId, options = {}) => {
  * @returns {Promise<number>}
  */
 export const getNextConsensusPhase = async (issueId) => {
-  const latestConsensus = await Consensus.findOne({ issue: issueId })
-    .sort({ phase: -1 })
-    .lean();
+  const issue = await Issue.findById(issueId).select("consensusPhase").lean();
+  const phase = Number(issue?.consensusPhase);
 
-  return latestConsensus ? latestConsensus.phase + 1 : 1;
+  if (!Number.isInteger(phase) || phase < 1) {
+    throw createBadRequestError("Issue consensusPhase is invalid", {
+      field: "consensusPhase",
+      details: {
+        consensusPhase: issue?.consensusPhase ?? null,
+      },
+    });
+  }
+
+  return phase;
 };
 
 /**

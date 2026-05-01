@@ -1,5 +1,7 @@
 import { IssueModel } from "../../models/IssueModels.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
+import { EVALUATION_STRUCTURES } from "../../modules/issues/issue.evaluationStructure.js";
+import { isSupportedLifecycleKind } from "../../modules/issues/issue.lifecycleKind.js";
 
 const MANIFEST_SYNC_SOURCE = "ApiModels";
 const EDITORIAL_FALLBACKS = {
@@ -10,6 +12,9 @@ const EDITORIAL_FALLBACKS = {
 
 const TECHNICAL_UPDATE_FIELDS = [
   "apiModelKey",
+  "modelFamilyKey",
+  "modelVersion",
+  "versionLabel",
   "modelRole",
   "modelStatus",
   "supportsScenarios",
@@ -17,12 +22,28 @@ const TECHNICAL_UPDATE_FIELDS = [
   "isConsensus",
   "isMultiCriteria",
   "evaluationStructure",
+  "lifecycleKind",
   "inputKind",
   "outputKind",
   "criterionTypes",
   "parameters",
   "supportedDomains",
 ];
+
+const SUPPORTED_EVALUATION_STRUCTURES = new Set(
+  Object.values(EVALUATION_STRUCTURES)
+);
+
+const SUPPORTED_INPUT_KINDS = new Set([
+  "directCrispMatrix",
+  "directFuzzyMatrix",
+  "pairwisePreferenceMatrix",
+]);
+
+const SUPPORTED_OUTPUT_KINDS = new Set([
+  "ranking",
+  "consensusRanking",
+]);
 
 const toIdString = (value) => {
   if (value === null || value === undefined) {
@@ -32,44 +53,13 @@ const toIdString = (value) => {
   return String(value);
 };
 
-const normalizeModelIdentity = (value) => {
-  return String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
-};
-
-const compactIdentity = (value) => normalizeModelIdentity(value).replace(/\s/g, "");
-
-const uniqueIdentityTokens = (values) => {
-  const seen = new Set();
-  const tokens = [];
-
-  for (const value of values) {
-    const normalized = normalizeModelIdentity(value);
-
-    if (!normalized || seen.has(normalized)) {
-      continue;
-    }
-
-    seen.add(normalized);
-    tokens.push({
-      raw: String(value),
-      normalized,
-      compact: normalized.replace(/\s/g, ""),
-    });
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") {
+    return null;
   }
 
-  return tokens;
-};
-
-const getManifestIdentityTokens = (manifestModel) => {
-  return uniqueIdentityTokens([
-    manifestModel?.displayName,
-    ...(Array.isArray(manifestModel?.aliases) ? manifestModel.aliases : []),
-    manifestModel?.key,
-  ]);
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 };
 
 const normalizeParameter = (parameter = {}) => {
@@ -164,10 +154,12 @@ const normalizeEndpoint = (endpoint) => {
     return undefined;
   }
 
-  const rawPath = String(endpoint.path || "").trim();
-  const path = rawPath
-    ? `/${rawPath.replace(/^\/+/, "")}`
-    : undefined;
+  const rawPath = normalizeNonEmptyString(endpoint.path);
+  const path = rawPath ? `/${rawPath.replace(/^\/+/, "")}` : undefined;
+
+  if (!path) {
+    return undefined;
+  }
 
   return {
     method: String(endpoint.method || "").trim() || undefined,
@@ -255,8 +247,6 @@ const buildMongoEntries = (issueModels) => {
     model,
     matched: false,
     apiModelKey: String(model.apiModelKey || "").trim(),
-    normalized: normalizeModelIdentity(model.name),
-    compact: compactIdentity(model.name),
   }));
 };
 
@@ -291,11 +281,54 @@ const validateSyncableManifestModel = (manifestModel) => {
   const missingFields = [];
   const capabilities = manifestModel?.capabilities || {};
 
-  if (!manifestModel?.key) missingFields.push("key");
-  if (!manifestModel?.displayName) missingFields.push("displayName");
-  if (!capabilities.evaluationStructure) {
+  const manifestKey = normalizeNonEmptyString(manifestModel?.key);
+  const displayName = normalizeNonEmptyString(manifestModel?.displayName);
+  const endpointPath = normalizeNonEmptyString(manifestModel?.endpoint?.path);
+  const evaluationStructure = normalizeNonEmptyString(
+    capabilities.evaluationStructure
+  );
+  const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
+  const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
+  const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
+  const lifecycleKind = normalizeNonEmptyString(capabilities.lifecycleKind);
+  const inputKind = normalizeNonEmptyString(capabilities.inputKind);
+  const outputKind = normalizeNonEmptyString(capabilities.outputKind);
+
+  if (!manifestKey) missingFields.push("key");
+  if (!displayName) missingFields.push("displayName");
+  if (!endpointPath) missingFields.push("endpoint.path");
+  if (!modelFamilyKey) missingFields.push("modelFamilyKey");
+  if (!modelVersion) missingFields.push("modelVersion");
+  if (!versionLabel) missingFields.push("versionLabel");
+
+  if (!evaluationStructure) {
     missingFields.push("capabilities.evaluationStructure");
+  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
+    missingFields.push(
+      `capabilities.evaluationStructure (unsupported: ${evaluationStructure})`
+    );
   }
+
+  if (!lifecycleKind) {
+    missingFields.push("capabilities.lifecycleKind");
+  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
+    missingFields.push(
+      `capabilities.lifecycleKind (unsupported: ${lifecycleKind})`
+    );
+  }
+
+  if (!inputKind) {
+    missingFields.push("capabilities.inputKind");
+  } else if (!SUPPORTED_INPUT_KINDS.has(inputKind)) {
+    missingFields.push(`capabilities.inputKind (unsupported: ${inputKind})`);
+  }
+
+  if (!outputKind) {
+    missingFields.push("capabilities.outputKind");
+  } else if (!SUPPORTED_OUTPUT_KINDS.has(outputKind)) {
+    missingFields.push(`capabilities.outputKind (unsupported: ${outputKind})`);
+  }
+
   if (typeof capabilities.isConsensus !== "boolean") {
     missingFields.push("capabilities.isConsensus");
   }
@@ -311,9 +344,22 @@ const validateSyncableManifestModel = (manifestModel) => {
 
 const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
   const capabilities = manifestModel.capabilities || {};
+  const apiModelKey = normalizeNonEmptyString(manifestModel.key);
+  const modelFamilyKey = normalizeNonEmptyString(manifestModel.modelFamilyKey);
+  const modelVersion = normalizeNonEmptyString(manifestModel.modelVersion);
+  const versionLabel = normalizeNonEmptyString(manifestModel.versionLabel);
+  const evaluationStructure = normalizeNonEmptyString(
+    capabilities.evaluationStructure
+  );
+  const lifecycleKind = normalizeNonEmptyString(capabilities.lifecycleKind);
+  const inputKind = normalizeNonEmptyString(capabilities.inputKind);
+  const outputKind = normalizeNonEmptyString(capabilities.outputKind);
 
   return {
-    apiModelKey: manifestModel.key,
+    apiModelKey,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
     modelRole: manifestModel.role,
     modelStatus: manifestModel.status,
     publicInIssueCatalog: manifestModel.publicInIssueCatalog === true,
@@ -321,9 +367,10 @@ const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
     apiEndpoint: normalizeEndpoint(manifestModel.endpoint),
     isConsensus: capabilities.isConsensus,
     isMultiCriteria: capabilities.isMultiCriteria,
-    evaluationStructure: capabilities.evaluationStructure,
-    inputKind: capabilities.inputKind ?? null,
-    outputKind: capabilities.outputKind ?? null,
+    evaluationStructure,
+    lifecycleKind,
+    inputKind,
+    outputKind,
     criterionTypes: normalizeCriterionTypes(manifestModel.criterionTypes),
     parameters: normalizeParameters(manifestModel.parameters),
     supportedDomains: normalizeSupportedDomains(capabilities.supportedDomains),
@@ -368,21 +415,6 @@ const findByApiModelKey = (manifestModel, mongoEntries) => {
   return mongoEntries.filter((entry) => entry.apiModelKey === key);
 };
 
-const findByManifestIdentity = (manifestModel, mongoEntries) => {
-  const tokens = getManifestIdentityTokens(manifestModel);
-
-  return mongoEntries.filter((entry) => {
-    if (entry.apiModelKey) {
-      return false;
-    }
-
-    return tokens.some(
-      (token) =>
-        entry.normalized === token.normalized || entry.compact === token.compact
-    );
-  });
-};
-
 const findMongoMatch = (manifestModel, mongoEntries) => {
   const keyMatches = findByApiModelKey(manifestModel, mongoEntries);
 
@@ -399,24 +431,6 @@ const findMongoMatch = (manifestModel, mongoEntries) => {
       status: "matched",
       entry: keyMatches[0],
       matchedBy: "apiModelKey",
-    };
-  }
-
-  const nameMatches = findByManifestIdentity(manifestModel, mongoEntries);
-
-  if (nameMatches.length > 1) {
-    return {
-      status: "ambiguous",
-      reason: `Multiple IssueModels match aliases for ${manifestModel.key}`,
-      candidates: nameMatches,
-    };
-  }
-
-  if (nameMatches.length === 1) {
-    return {
-      status: "matched",
-      entry: nameMatches[0],
-      matchedBy: "nameOrAlias",
     };
   }
 
@@ -501,6 +515,9 @@ const createIssueModelFromManifest = async ({
     createdFields: [
       "name",
       "apiModelKey",
+      "modelFamilyKey",
+      "modelVersion",
+      "versionLabel",
       "modelRole",
       "modelStatus",
       "publicInIssueCatalog",
@@ -509,6 +526,7 @@ const createIssueModelFromManifest = async ({
       "isConsensus",
       "isMultiCriteria",
       "evaluationStructure",
+      "lifecycleKind",
       "inputKind",
       "outputKind",
       "criterionTypes",
@@ -627,7 +645,8 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
     const missingFields = validateSyncableManifestModel(manifestModel);
 
     if (missingFields.length > 0) {
-      const reason = "Manifest model is missing required IssueModel fields";
+      const reason =
+        "Manifest model is missing or has invalid required technical fields";
       skipped.push({
         ...buildSkippedManifestModel(manifestModel, reason),
         missingFields,
@@ -638,12 +657,12 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
       continue;
     }
 
-    syncableKeys.add(manifestModel.key);
     const payload = buildTechnicalPayload({
       manifest,
       manifestModel,
       now,
     });
+    syncableKeys.add(payload.apiModelKey);
     const match = findMongoMatch(manifestModel, mongoEntries);
 
     if (match.status === "ambiguous") {

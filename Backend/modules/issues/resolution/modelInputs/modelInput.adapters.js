@@ -27,7 +27,6 @@ const INPUT_PAYLOAD_BUILDERS_BY_KIND = {
  *
  * @param {object} params Parámetros de entrada.
  * @param {string|null|undefined} params.inputKind Tipo de input esperado por ApiModels.
- * @param {"direct"|"pairwise"|null} [params.resolverMode=null] Modo del resolver actual.
  * @param {Object} params.matrices Matrices de evaluaciones.
  * @param {Object} params.modelParameters Parámetros efectivos del modelo.
  * @param {string[]} [params.criterionTypes] Tipos de criterio para modelos directos.
@@ -36,13 +35,16 @@ const INPUT_PAYLOAD_BUILDERS_BY_KIND = {
  */
 export const buildModelInputPayload = ({
   inputKind,
-  resolverMode = null,
   matrices,
   modelParameters,
   criterionTypes,
   consensusThreshold,
 }) => {
   const normalizedInputKind = String(inputKind || "").trim();
+
+  if (!normalizedInputKind) {
+    throw createInternalError("Model input kind is required");
+  }
 
   const buildByInputKind = INPUT_PAYLOAD_BUILDERS_BY_KIND[normalizedInputKind];
   if (buildByInputKind) {
@@ -51,22 +53,6 @@ export const buildModelInputPayload = ({
       modelParameters,
       criterionTypes,
       consensusThreshold,
-    });
-  }
-
-  if (resolverMode === "direct") {
-    return buildDirectPayload({
-      matrices,
-      modelParameters,
-      criterionTypes,
-    });
-  }
-
-  if (resolverMode === "pairwise") {
-    return buildPairwisePayload({
-      matrices,
-      consensusThreshold,
-      modelParameters,
     });
   }
 

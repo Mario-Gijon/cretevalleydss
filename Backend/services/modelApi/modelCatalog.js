@@ -1,14 +1,4 @@
-const MODEL_ENDPOINT_KEYS = {
-  TOPSIS: "topsis",
-  "FUZZY TOPSIS": "fuzzy_topsis",
-  BORDA: "borda",
-  ARAS: "aras",
-  "HERRERA-VIEDMA CRP": "herrera_viedma_crp",
-  "HERRERA VIEDMA CRP": "herrera_viedma_crp",
-  CRP: "herrera_viedma_crp",
-};
-
-const MODEL_ENDPOINT_KEY_VALUES = new Set(Object.values(MODEL_ENDPOINT_KEYS));
+import { createBadRequestError } from "../../utils/common/errors.js";
 
 const trimSlashes = (value) => String(value || "").trim().replace(/^\/+|\/+$/g, "");
 
@@ -20,9 +10,39 @@ const ensureLeadingSlash = (value) => {
 
 const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
 
-const getModelName = (modelOrName = "") => {
-  if (modelOrName && typeof modelOrName === "object") {
-    return modelOrName.name || "";
+const getModelDisplayName = (model) => String(model?.name || "unknown");
+const getValueType = (value) => {
+  if (Array.isArray(value)) return "array";
+  if (value === null) return "null";
+  return typeof value;
+};
+
+const throwInvalidEndpointConfig = ({ model, field, message, value }) => {
+  throw createBadRequestError(
+    `Invalid API endpoint configuration for model ${getModelDisplayName(model)}: ${field} ${message}`,
+    {
+      field: `model.${field}`,
+      details: {
+        model: getModelDisplayName(model),
+        requiredField: field,
+        message,
+        receivedType: getValueType(value),
+      },
+    }
+  );
+};
+
+const requireModelDocument = (modelOrName) => {
+  if (!modelOrName || typeof modelOrName !== "object") {
+    throw createBadRequestError(
+      "Model endpoint resolution requires explicit model configuration",
+      {
+        field: "model",
+        details: {
+          requiredFields: ["apiModelKey", "apiEndpoint.path"],
+        },
+      }
+    );
   }
 
   return modelOrName;
@@ -31,63 +51,78 @@ const getModelName = (modelOrName = "") => {
 /**
  * Obtiene la clave de endpoint asociada a un modelo.
  *
- * @param {string|Object} [modelOrName=""] Nombre o documento del modelo.
- * @returns {string|null}
+ * @param {Object} [modelOrName={}] Documento del modelo.
+ * @returns {string}
  */
-export const getModelEndpointKey = (modelOrName = "") => {
-  if (modelOrName && typeof modelOrName === "object") {
-    const apiModelKey = trimSlashes(modelOrName.apiModelKey);
+export const getModelEndpointKey = (modelOrName = {}) => {
+  const model = requireModelDocument(modelOrName);
+  const rawApiModelKey = model.apiModelKey;
 
-    if (apiModelKey) {
-      return apiModelKey;
-    }
+  if (typeof rawApiModelKey !== "string") {
+    throwInvalidEndpointConfig({
+      model,
+      field: "apiModelKey",
+      message: "must be a non-empty string",
+      value: rawApiModelKey,
+    });
   }
 
-  const cleanName = String(getModelName(modelOrName)).trim();
-  const cleanKey = cleanName.toLowerCase();
+  const apiModelKey = trimSlashes(rawApiModelKey);
 
-  if (MODEL_ENDPOINT_KEY_VALUES.has(cleanKey)) {
-    return cleanKey;
+  if (!apiModelKey) {
+    throwInvalidEndpointConfig({
+      model,
+      field: "apiModelKey",
+      message: "must be a non-empty string",
+      value: rawApiModelKey,
+    });
   }
 
-  const normalizedName = cleanName.toUpperCase();
-
-  return MODEL_ENDPOINT_KEYS[normalizedName] ?? null;
+  return apiModelKey;
 };
 
 /**
  * Obtiene la ruta del endpoint de ApiModels para un modelo.
  *
- * @param {string|Object} [modelOrName=""] Nombre o documento del modelo.
- * @returns {string|null}
+ * @param {Object} [modelOrName={}] Documento del modelo.
+ * @returns {string}
  */
-export const getModelEndpointPath = (modelOrName = "") => {
-  if (modelOrName && typeof modelOrName === "object") {
-    const manifestPath = ensureLeadingSlash(modelOrName.apiEndpoint?.path);
+export const getModelEndpointPath = (modelOrName = {}) => {
+  const model = requireModelDocument(modelOrName);
+  const rawEndpointPath = model.apiEndpoint?.path;
 
-    if (manifestPath) {
-      return manifestPath;
-    }
+  if (typeof rawEndpointPath !== "string") {
+    throwInvalidEndpointConfig({
+      model,
+      field: "apiEndpoint.path",
+      message: "must be a non-empty string",
+      value: rawEndpointPath,
+    });
   }
 
-  const modelKey = getModelEndpointKey(modelOrName);
+  const endpointPath = ensureLeadingSlash(rawEndpointPath);
 
-  return modelKey ? `/${modelKey}` : null;
+  if (!endpointPath) {
+    throwInvalidEndpointConfig({
+      model,
+      field: "apiEndpoint.path",
+      message: "must be a non-empty string",
+      value: rawEndpointPath,
+    });
+  }
+
+  return endpointPath;
 };
 
 /**
  * Construye una URL completa de ApiModels para un modelo.
  *
  * @param {string} apiModelsBaseUrl Base URL de ApiModels.
- * @param {string|Object} modelOrName Nombre o documento del modelo.
- * @returns {string|null}
+ * @param {Object} modelOrName Documento del modelo.
+ * @returns {string}
  */
-export const buildModelEndpointUrl = (apiModelsBaseUrl, modelOrName = "") => {
+export const buildModelEndpointUrl = (apiModelsBaseUrl, modelOrName = {}) => {
   const endpointPath = getModelEndpointPath(modelOrName);
-
-  if (!endpointPath) {
-    return null;
-  }
 
   return `${normalizeBaseUrl(apiModelsBaseUrl)}${endpointPath}`;
 };

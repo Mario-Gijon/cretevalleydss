@@ -301,7 +301,11 @@ export const useCreateIssueFlow = () => {
 
     setLoading(true);
 
-    const result = await createIssue(allData);
+    const { selectedModel: _selectedModel, ...issueInfoPayload } = allData;
+    const result = await createIssue({
+      ...issueInfoPayload,
+      selectedModelId: selectedModel?._id || null,
+    });
 
     if (result.success) {
       setIssueCreated(result);

@@ -60,19 +60,31 @@ const firstDefinedValue = (values = []) => {
 };
 
 const resolveModelSpecificOutput = ({ viewIssue, currentPhaseIndex }) => {
+  const selectedPhase = Number(currentPhaseIndex) + 1;
+  const findByPhase = (entries = []) =>
+    entries.find((entry) => Number(entry?.phase) === selectedPhase) || null;
+
+  const selectedRound =
+    findByPhase(Array.isArray(viewIssue?.consensusHistory) ? viewIssue.consensusHistory : []) ||
+    findByPhase(Array.isArray(viewIssue?.consensusRounds) ? viewIssue.consensusRounds : []) ||
+    findByPhase(Array.isArray(viewIssue?.consensus) ? viewIssue.consensus : []);
+
+  const selectedRoundModelExecution =
+    selectedRound?.modelExecution || selectedRound?.details?.modelExecution || null;
+
   const modelExecution = firstDefinedValue([
+    selectedRoundModelExecution,
     viewIssue?.modelExecution,
     viewIssue?.consensusDetails?.modelExecution,
     viewIssue?.selectedScenario?.outputs?.details?.modelExecution,
-    viewIssue?.consensus?.[currentPhaseIndex]?.details?.modelExecution,
   ]);
 
   const rawOutput = firstDefinedValue([
+    selectedRoundModelExecution?.rawOutput,
     viewIssue?.modelExecution?.rawOutput,
     viewIssue?.consensusDetails?.modelExecution?.rawOutput,
     viewIssue?.selectedScenario?.outputs?.rawResults,
     viewIssue?.selectedScenario?.outputs?.details?.modelExecution?.rawOutput,
-    viewIssue?.consensus?.[currentPhaseIndex]?.details?.modelExecution?.rawOutput,
     modelExecution?.rawOutput,
   ]);
 
@@ -294,6 +306,7 @@ export const useFinishedIssueDialogView = ({
 
   const viewIssue =
     selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+  const selectedPhase = currentPhaseIndex + 1;
 
   const baseModelParamsBlock = issue?.modelParams || null;
   const availableModelsRaw = baseModelParamsBlock?.availableModels;
@@ -420,7 +433,12 @@ export const useFinishedIssueDialogView = ({
     ]
   );
 
-  const ranking = viewIssue?.alternativesRankings?.[currentPhaseIndex]?.ranking ?? [];
+  const ranking =
+    (Array.isArray(viewIssue?.alternativesRankings)
+      ? viewIssue.alternativesRankings.find(
+          (entry) => Number(entry?.phase) === Number(selectedPhase)
+        )
+      : null)?.ranking ?? [];
   const lastIndex = ranking.length - 1;
 
   const formatScore = (number) =>

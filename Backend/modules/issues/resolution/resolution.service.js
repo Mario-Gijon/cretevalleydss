@@ -1,9 +1,18 @@
-import { Issue } from "../../../models/Issues.js";
-
-import { validateIssueIdOrThrow } from "../issue.queries.js";
+import { getIssueByIdOrThrow } from "../issue.queries.js";
 import { getResolutionResolverOrThrow } from "./resolution.registry.js";
 
-import { createNotFoundError } from "../../../utils/common/errors.js";
+const resolveResolutionContextOrThrow = async (issueId) => {
+  const issue = await getIssueByIdOrThrow(issueId, {
+    lean: false,
+  });
+
+  const resolver = getResolutionResolverOrThrow(issue.evaluationStructure);
+
+  return {
+    issue,
+    resolver,
+  };
+};
 
 /**
  * Resuelve un issue delegando según su estructura de evaluación configurada.
@@ -23,23 +32,10 @@ export const resolveIssue = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  validateIssueIdOrThrow(issueId);
-
-  const issue = await Issue.findById(issueId)
-    .select("_id evaluationStructure")
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
-
-  const evaluationStructure = issue.evaluationStructure;
-  const resolver = getResolutionResolverOrThrow(evaluationStructure);
+  const { issue, resolver } = await resolveResolutionContextOrThrow(issueId);
 
   return resolver({
-    issueId,
+    issue,
     userId,
     forceFinalize,
     apiModelsBaseUrl,

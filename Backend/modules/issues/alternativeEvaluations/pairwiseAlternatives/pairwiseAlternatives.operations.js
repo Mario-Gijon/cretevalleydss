@@ -91,6 +91,7 @@ const buildPairwiseEvaluationSaveBulkOperations = ({
               alternative: alternativeId,
               comparedAlternative: comparedAlternativeId,
               criterion: criterionId,
+              consensusPhase: currentPhase,
             },
             update: {
               $set: {
@@ -217,7 +218,7 @@ export const getPairwiseEvaluationPayload = async ({
   issue,
   userId,
 }) => {
-  const { issue: issueDoc, latestConsensus } = await getEvaluationReadContext({
+  const { issue: issueDoc, latestConsensus, currentPhase } = await getEvaluationReadContext({
     userId,
     issue,
   });
@@ -225,6 +226,7 @@ export const getPairwiseEvaluationPayload = async ({
   const evaluations = await Evaluation.find({
     issue: issueDoc._id,
     expert: userId,
+    consensusPhase: currentPhase,
   })
     .populate("alternative")
     .populate("comparedAlternative")

@@ -161,9 +161,10 @@ export const getEvaluationReadContext = async ({
     });
   }
 
-  const [participation, latestConsensus] = await Promise.all([
+  const [participation, latestConsensus, currentPhase] = await Promise.all([
     getAcceptedParticipation(issueId, userId),
     Consensus.findOne({ issue: issueId }).sort({ phase: -1 }).lean(),
+    getNextConsensusPhase(issueId),
   ]);
 
   if (!participation) {
@@ -174,6 +175,7 @@ export const getEvaluationReadContext = async ({
     issue: issueDoc,
     issueId,
     latestConsensus,
+    currentPhase,
   };
 };
 

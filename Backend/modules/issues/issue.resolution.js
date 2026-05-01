@@ -1,5 +1,1 @@
-export {
-  resolveIssue,
-  resolveDirectIssue,
-  resolvePairwiseIssue,
-} from "./resolution/index.js";
+export { resolveIssue } from "./resolution/index.js";

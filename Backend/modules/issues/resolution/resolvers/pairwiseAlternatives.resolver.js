@@ -1,13 +1,11 @@
-import { Evaluation } from "../../../../models/Evaluations.js";
-
-import {
-  EVALUATION_STRUCTURES,
-} from "../../issue.evaluationStructure.js";
 import { getEvaluationStructureOperationsOrThrow } from "../../alternativeEvaluations/alternativeEvaluation.registry.js";
 import { getNextConsensusPhase } from "../../issue.queries.js";
 import { buildModelInputPayload } from "../modelInputs/modelInput.adapters.js";
-import { buildPairwiseResolutionResult } from "../resolution.results.js";
-import { handlePairwiseResolutionLifecycle } from "../resolution.lifecycle.js";
+import { buildResolutionResult } from "../resolution.results.js";
+import {
+  handleResolutionLifecycle,
+  getLifecyclePolicyOrThrow,
+} from "../resolution.lifecycle.js";
 import { saveResolutionConsensus } from "../resolution.consensus.js";
 import { countNullsDeep } from "../resolution.shared.js";
 import { getResolutionContext } from "../resolution.context.js";
@@ -25,21 +23,24 @@ import {
   createInternalError,
 } from "../../../../utils/common/errors.js";
 
-const getBuildResolutionDataOrThrow = (structure) => {
-  if (typeof structure?.buildResolutionData !== "function") {
+const getBuildResolutionDataOrThrow = ({
+  operations,
+  evaluationStructure,
+}) => {
+  if (typeof operations?.buildResolutionData !== "function") {
     throw createInternalError(
-      `Resolution data builder is not implemented for evaluation structure ${String(structure?.key)}`
+      `Resolution data builder is not implemented for evaluation structure ${String(evaluationStructure)}`
     );
   }
 
-  return structure.buildResolutionData;
+  return operations.buildResolutionData;
 };
 
 /**
  * Resuelve un issue de evaluación pairwise.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
+ * @param {Object} params.issue Issue cargado.
  * @param {string} params.userId Id del usuario actual.
  * @param {boolean} [params.forceFinalize=false] Fuerza la finalización.
  * @param {string} params.apiModelsBaseUrl Base URL del servicio de modelos.
@@ -47,26 +48,27 @@ const getBuildResolutionDataOrThrow = (structure) => {
  * @returns {Promise<Object>}
  */
 export const resolvePairwiseIssue = async ({
-  issueId,
+  issue,
   userId,
   forceFinalize = false,
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  const { issue, model, participations, alternatives, criteria } =
+  const { issueId, model, participations, alternatives, criteria } =
     await getResolutionContext({
-      issueId,
+      issue,
       userId,
-      expectedStructure: EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
-      invalidStructureMessage:
-        "This issue must be resolved with the direct resolver",
     });
 
-  const pairwiseStructure = getEvaluationStructureOperationsOrThrow(
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+  const evaluationOperations = getEvaluationStructureOperationsOrThrow(
+    issue.evaluationStructure
   );
-  const buildResolutionData =
-    getBuildResolutionDataOrThrow(pairwiseStructure);
+  const buildResolutionData = getBuildResolutionDataOrThrow({
+    operations: evaluationOperations,
+    evaluationStructure: issue.evaluationStructure,
+  });
+
+  const currentPhase = await getNextConsensusPhase(issue._id);
 
   const modelKey = getModelEndpointKey(model);
   const modelEndpointUrl = buildModelEndpointUrl(apiModelsBaseUrl, model);
@@ -78,10 +80,11 @@ export const resolvePairwiseIssue = async ({
   }
 
   const { matricesUsed: matrices } = await buildResolutionData({
-    issueId: issue._id,
+    issueId,
     alternatives,
     criteria,
     participations,
+    currentPhase,
   });
 
   const nullCount = countNullsDeep(matrices);
@@ -94,7 +97,6 @@ export const resolvePairwiseIssue = async ({
   const normalizedModelParams = normalizeParams(issue.modelParameters);
   const modelInputPayload = buildModelInputPayload({
     inputKind: model?.inputKind,
-    resolverMode: "pairwise",
     matrices,
     modelParameters: normalizedModelParams,
     criterionTypes: null,
@@ -116,25 +118,18 @@ export const resolvePairwiseIssue = async ({
 
   const results = unwrapModelApiResponse(response);
 
-  if (modelKey !== "herrera_viedma_crp") {
-    throw createInternalError(
-      `Pairwise resolver output is not implemented for model ${model.name}`
-    );
-  }
-
-  const currentPhase = await getNextConsensusPhase(issue._id);
-
   const {
     rankedWithScores,
     collectiveEvaluations,
     consensusDetails,
     consensusLevel,
-  } = buildPairwiseResolutionResult({
+  } = buildResolutionResult({
     results,
     alternatives,
     criteria,
     matrices,
     participations,
+    issue,
     model,
     modelKey,
     modelParameters: normalizedModelParams,
@@ -147,39 +142,17 @@ export const resolvePairwiseIssue = async ({
     consensusLevel,
     consensusDetails,
     collectiveEvaluations,
+    rankedWithScores,
   });
 
-  const evaluationDocs = await Evaluation.find({
-    issue: issue._id,
-    expert: { $in: participations.map((participation) => participation.expert._id) },
-    criterion: { $in: criteria.map((criterion) => criterion._id) },
-    comparedAlternative: { $ne: null },
-  });
+  const lifecyclePolicy = getLifecyclePolicyOrThrow(issue?.lifecycleKind);
 
-  const now = new Date();
-
-  for (const evaluation of evaluationDocs) {
-    if (evaluation.consensusPhase !== null) {
-      evaluation.history.push({
-        phase: evaluation.consensusPhase,
-        value: evaluation.value,
-        timestamp: evaluation.timestamp,
-      });
-    }
-
-    evaluation.consensusPhase = currentPhase + 1;
-    evaluation.timestamp = now;
-  }
-
-  if (evaluationDocs.length > 0) {
-    await Promise.all(evaluationDocs.map((evaluation) => evaluation.save()));
-  }
-
-  return handlePairwiseResolutionLifecycle({
+  return handleResolutionLifecycle({
     issue,
     forceFinalize,
     currentPhase,
     consensusLevel,
-    rankedWithScores,
+    rankedAlternatives: rankedWithScores,
+    lifecyclePolicy,
   });
 };

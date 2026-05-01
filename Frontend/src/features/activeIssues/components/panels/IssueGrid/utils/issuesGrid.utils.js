@@ -211,6 +211,10 @@ export const mapIssueServerStatusToStepKey = (issue) => {
   if (key === "resolveIssue" || key === "waitingAdmin") return "readyResolve";
 
   if (key === "waitingExperts" || key === "pendingInvitations") {
+    if (issue?.currentStage === "alternativeEvaluation") {
+      return "alternativeEvaluation";
+    }
+
     return detectIssueDirectWeights(issue)
       ? "weightsAssigned"
       : "criteriaWeighting";
@@ -283,6 +287,8 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
   }
 
   return detectIssueDirectWeights(issue)
-    ? "weightsAssigned"
+    ? stage === "alternativeEvaluation"
+      ? "alternativeEvaluation"
+      : "weightsAssigned"
     : "criteriaWeighting";
 };

@@ -69,6 +69,7 @@ class ModelCapabilities(BaseModel):
     """Capacidades técnicas necesarias para integración con Backend."""
 
     evaluationStructure: str | None = None
+    lifecycleKind: str | None = None
     isConsensus: bool | None = None
     isMultiCriteria: bool | None = None
     inputKind: str
@@ -106,6 +107,9 @@ class ModelManifestEntry(BaseModel):
     """Entrada individual del manifest técnico de modelos."""
 
     key: str
+    modelFamilyKey: str
+    modelVersion: str
+    versionLabel: str
     displayName: str
     aliases: list[str] = Field(default_factory=list)
     role: str

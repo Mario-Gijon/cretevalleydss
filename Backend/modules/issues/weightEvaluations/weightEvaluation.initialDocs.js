@@ -4,9 +4,12 @@ import { toIdString } from "../../../utils/common/ids.js";
 import { WEIGHTING_MODES } from "./weightEvaluation.constants.js";
 
 const WEIGHTING_MODES_WITH_OWN_DOCS = new Set(
-  Object.values(WEIGHTING_MODES).map((mode) =>
-    String(mode || "").trim().toLowerCase()
-  )
+  [
+    WEIGHTING_MODES.CONSENSUS,
+    WEIGHTING_MODES.BWM,
+    WEIGHTING_MODES.CONSENSUS_BWM,
+    WEIGHTING_MODES.SIMULATED_CONSENSUS_BWM,
+  ].map((mode) => String(mode || "").trim().toLowerCase())
 );
 
 /**
@@ -118,10 +121,7 @@ export const buildInitialCriteriaWeightEvaluationDocs = ({
 
   const docs = [];
 
-  if (
-    normalizedWeightingMode === "manual" ||
-    normalizedWeightingMode === "consensus"
-  ) {
+  if (normalizedWeightingMode === "consensus") {
     for (const expert of expertIds) {
       const baseDoc = {
         issue,
