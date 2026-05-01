@@ -17,6 +17,7 @@ def _build_response(
     data: Any | None = None,
     error: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Build the standard API envelope used by analysis endpoints."""
     response: dict[str, Any] = {
         "success": success,
         "message": message,
@@ -28,10 +29,12 @@ def _build_response(
 
 
 def _success(message: str, data: Any) -> dict[str, Any]:
+    """Build a successful analysis response payload."""
     return _build_response(success=True, message=message, data=data)
 
 
 def _error(message: str, code: str = "ANALYSIS_INTERNAL_ERROR", details: Any | None = None) -> JSONResponse:
+    """Build a non-throwing error response that preserves the API contract."""
     return JSONResponse(
         status_code=200,
         content={
@@ -56,6 +59,7 @@ def _error(message: str, code: str = "ANALYSIS_INTERNAL_ERROR", details: Any | N
     operation_id="analyzeDecisionResults",
 )
 async def analyze_results(payload: AnalysisContext):
+    """Generate deterministic results analysis from a resolved DSS context payload."""
     try:
         data = analyze_results_context(payload.model_dump())
         return _success("Results analysis generated successfully", data)

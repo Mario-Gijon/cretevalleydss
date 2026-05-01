@@ -677,6 +677,13 @@ export const getSavedIssueResultsAnalysis = async (req, res) => {
   return sendSuccess(res, "Results analysis fetched successfully.", analysis);
 };
 
+/**
+ * Genera o regenera el análisis persistido para un escenario de un issue finalizado.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getScenarioResultsAnalysis = async (req, res) => {
   const { id, scenarioId } = req.body;
 
@@ -693,6 +700,13 @@ export const getScenarioResultsAnalysis = async (req, res) => {
   );
 };
 
+/**
+ * Obtiene el último análisis persistido para un escenario de un issue finalizado.
+ *
+ * @param {Object} req Request de Express.
+ * @param {Object} res Response de Express.
+ * @returns {Promise<void>}
+ */
 export const getSavedScenarioResultsAnalysis = async (req, res) => {
   const { id, scenarioId } = req.body;
 

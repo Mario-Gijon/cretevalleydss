@@ -70,6 +70,12 @@ def _dedupe_sections(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def analyze_results_context(context: dict[str, Any]) -> dict[str, Any]:
+    """Build a deterministic analysis report from a resolved decision context.
+
+    The service combines common ranking/criteria/expert/consensus analyzers,
+    structure-specific diagnostics, and optional model interpretation notes.
+    It keeps response shape stable for persistence and frontend rendering.
+    """
     ranking_analysis = analyze_ranking(context)
 
     winner = ranking_analysis.get("winner")

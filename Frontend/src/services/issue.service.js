@@ -294,6 +294,13 @@ export const regenerateIssueResultsAnalysis = async (issueOrId) => {
   );
 };
 
+/**
+ * Obtiene el último análisis de resultados guardado para un escenario.
+ *
+ * @param {*} issueOrId Id del issue o issue completo.
+ * @param {string} scenarioId Id del escenario.
+ * @returns {Promise<object>}
+ */
 export const getScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
   const issueId = getIssueId(issueOrId);
 
@@ -304,6 +311,13 @@ export const getScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
   );
 };
 
+/**
+ * Genera o regenera el análisis de resultados de un escenario.
+ *
+ * @param {*} issueOrId Id del issue o issue completo.
+ * @param {string} scenarioId Id del escenario.
+ * @returns {Promise<object>}
+ */
 export const regenerateScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
   const issueId = getIssueId(issueOrId);
 

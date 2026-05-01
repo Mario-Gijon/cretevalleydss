@@ -13,6 +13,16 @@ import { toIdString } from "../../../utils/common/ids.js";
 
 const ANALYSIS_VERSION = "1.0";
 
+/**
+ * Resuelve la fase 1-based usada para etiquetar un análisis persistido.
+ *
+ * Prioriza la fase efectiva del contexto de análisis y, si no existe,
+ * utiliza la fase actual del issue.
+ *
+ * @param {Object} analysisContext Contexto de análisis construido.
+ * @param {Object} issue Documento de issue.
+ * @returns {number}
+ */
 const resolvePhaseFromContext = (analysisContext, issue) => {
   const phaseFromContext = Number(analysisContext?.evaluations?.phaseUsed);
   if (Number.isInteger(phaseFromContext) && phaseFromContext > 0) {
@@ -37,6 +47,12 @@ const buildModelSnapshot = (analysisContext) => ({
   versionLabel: analysisContext?.model?.versionLabel ?? null,
 });
 
+/**
+ * Convierte un documento persistido a DTO público estable para frontend.
+ *
+ * @param {Object|null} doc Documento de análisis persistido.
+ * @returns {Object|null}
+ */
 const toResultsAnalysisDto = (doc) => {
   if (!doc) return null;
 
@@ -59,6 +75,12 @@ const toResultsAnalysisDto = (doc) => {
   };
 };
 
+/**
+ * Persiste un análisis completado asociado a issue base o escenario.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 const saveCompletedResultsAnalysis = async ({
   issue,
   scenarioId = null,
@@ -94,6 +116,12 @@ const saveCompletedResultsAnalysis = async ({
   return created;
 };
 
+/**
+ * Persiste un intento fallido de análisis para trazabilidad operacional.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 const saveFailedResultsAnalysis = async ({
   issue,
   scenarioId = null,
@@ -164,6 +192,15 @@ const getCompletedAnalysisByIssueSourcePhase = async ({
     .sort({ generatedAt: -1 })
     .lean();
 
+/**
+ * Construye contexto, invoca ApiModels y persiste el resultado.
+ *
+ * El flujo respeta controles de acceso cuando `enforceAccess` es true y
+ * permite guardas de duplicado por fase para generación automática.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 const buildAndPersistResultsAnalysis = async ({
   issueId,
   scenarioId = null,
@@ -326,6 +363,14 @@ const persistFailedResultsAnalysisWithMinimalContext = async ({
   }
 };
 
+/**
+ * Genera o regenera análisis de resultados para un issue finalizado.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @param {string} params.issueId Id del issue.
+ * @param {string} params.userId Id del usuario solicitante.
+ * @returns {Promise} DTO del análisis persistido.
+ */
 export const generateIssueResultsAnalysisFlow = async ({ issueId, userId }) => {
   const hasPreviousCompleted = await getLatestCompletedIssueResultsAnalysis({
     issueId,
@@ -345,6 +390,15 @@ export const generateIssueResultsAnalysisFlow = async ({ issueId, userId }) => {
   return dto;
 };
 
+/**
+ * Recupera el último análisis persistido para un issue finalizado.
+ *
+ * Prioriza el último análisis `completed`; si no existe, devuelve el último
+ * registro disponible para ese issue.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 export const getSavedIssueResultsAnalysisFlow = async ({ issueId, userId }) => {
   const visibleFinishedIssueIds = await getUserFinishedIssueIds(userId, {
     excludeHidden: true,
@@ -370,6 +424,12 @@ export const getSavedIssueResultsAnalysisFlow = async ({ issueId, userId }) => {
   return toResultsAnalysisDto(latest);
 };
 
+/**
+ * Genera o regenera análisis de resultados para un escenario.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise} DTO del análisis persistido.
+ */
 export const generateScenarioResultsAnalysisFlow = async ({
   issueId,
   scenarioId,
@@ -394,6 +454,15 @@ export const generateScenarioResultsAnalysisFlow = async ({
   return dto;
 };
 
+/**
+ * Recupera el último análisis persistido para un escenario concreto.
+ *
+ * Prioriza el último análisis `completed`; si no existe, devuelve el último
+ * registro disponible para el par issue+scenario.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 export const getSavedScenarioResultsAnalysisFlow = async ({
   issueId,
   scenarioId,
@@ -424,6 +493,15 @@ export const getSavedScenarioResultsAnalysisFlow = async ({
   return toResultsAnalysisDto(latest);
 };
 
+/**
+ * Ejecuta generación automática post-resolución en modo best-effort.
+ *
+ * Nunca lanza error al flujo de resolución: captura fallos, registra y
+ * persiste estado `failed` cuando hay contexto mínimo disponible.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Promise}
+ */
 export const tryGenerateResultsAnalysisAfterResolutionFlow = async ({
   issueId,
   userId,
@@ -481,6 +559,12 @@ export const tryGenerateResultsAnalysisAfterResolutionFlow = async ({
   }
 };
 
+/**
+ * Programa generación automática sin bloquear la respuesta de resolución.
+ *
+ * @param {Object} params Parámetros de entrada.
+ * @returns {Object}
+ */
 export const scheduleResultsAnalysisAfterResolutionFlow = ({
   issueId,
   userId,

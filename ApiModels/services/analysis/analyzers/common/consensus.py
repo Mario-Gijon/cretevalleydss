@@ -132,6 +132,7 @@ def _build_series_from_entries(
 
 
 def _extract_consensus_series(context: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Extract an ordered numeric consensus series from available context sources."""
     used_fields: list[str] = []
     missing_fields: list[str] = []
 
@@ -191,6 +192,11 @@ def _extract_consensus_series(context: dict[str, Any]) -> tuple[list[dict[str, A
 
 
 def analyze_consensus(context: dict[str, Any]) -> dict[str, Any]:
+    """Compute consensus trend diagnostics for consensus-oriented models.
+
+    The analyzer is resilient to partial context and degrades gracefully when
+    rounds or consensus values are missing.
+    """
     used_fields: list[str] = []
     missing_fields: list[str] = []
 
@@ -281,4 +287,3 @@ def analyze_consensus(context: dict[str, Any]) -> dict[str, Any]:
         "used_fields": sorted(set(used_fields)),
         "missing_fields": sorted(set(missing_fields)),
     }
-

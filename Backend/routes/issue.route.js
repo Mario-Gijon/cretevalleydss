@@ -645,6 +645,56 @@ router
   .get(mapParamsToBody({ id: "id" }), asyncHandler(getFinishedIssueInfo))
   .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeFinishedIssue));
 
+/**
+ * @openapi
+ * /issues/{id}/results-analysis:
+ *   get:
+ *     tags:
+ *       - Issues
+ *     summary: Obtiene el último análisis de resultados persistido para un issue finalizado
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Análisis recuperado correctamente o null si no existe
+ *       400:
+ *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Sin permisos sobre el issue finalizado
+ *       404:
+ *         description: Issue no encontrado
+ *   post:
+ *     tags:
+ *       - Issues
+ *     summary: Genera o regenera el análisis de resultados para un issue finalizado
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Análisis generado y persistido correctamente
+ *       400:
+ *         description: Issue no finalizado o solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Sin permisos sobre el issue finalizado
+ *       404:
+ *         description: Issue no encontrado
+ */
 router
   .route("/:id/results-analysis")
   .get(
@@ -656,6 +706,66 @@ router
     asyncHandler(getIssueResultsAnalysis)
   );
 
+/**
+ * @openapi
+ * /issues/{id}/scenarios/{scenarioId}/results-analysis:
+ *   get:
+ *     tags:
+ *       - Issues
+ *     summary: Obtiene el último análisis persistido para un escenario de issue finalizado
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: scenarioId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Análisis de escenario recuperado o null si no existe
+ *       400:
+ *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Sin permisos sobre el issue finalizado
+ *       404:
+ *         description: Escenario o issue no encontrado
+ *   post:
+ *     tags:
+ *       - Issues
+ *     summary: Genera o regenera el análisis de resultados para un escenario
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: scenarioId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Análisis de escenario generado y persistido correctamente
+ *       400:
+ *         description: Solicitud inválida
+ *       401:
+ *         description: Access token ausente, expirado o inválido
+ *       403:
+ *         description: Sin permisos sobre el issue finalizado
+ *       404:
+ *         description: Escenario o issue no encontrado
+ */
 router
   .route("/:id/scenarios/:scenarioId/results-analysis")
   .get(
