@@ -1,4 +1,5 @@
 import { getIssueByIdOrThrow } from "../issue.queries.js";
+import { scheduleResultsAnalysisAfterResolutionFlow } from "../analysis/index.js";
 import { getResolutionResolverOrThrow } from "./resolution.registry.js";
 
 const resolveResolutionContextOrThrow = async (issueId) => {
@@ -34,11 +35,25 @@ export const resolveIssue = async ({
 }) => {
   const { issue, resolver } = await resolveResolutionContextOrThrow(issueId);
 
-  return resolver({
+  const result = await resolver({
     issue,
     userId,
     forceFinalize,
     apiModelsBaseUrl,
     httpClient,
   });
+
+  if (result?.finished === true) {
+    const autoAnalysis = scheduleResultsAnalysisAfterResolutionFlow({
+      issueId,
+      userId,
+    });
+
+    return {
+      ...result,
+      resultsAnalysis: autoAnalysis,
+    };
+  }
+
+  return result;
 };

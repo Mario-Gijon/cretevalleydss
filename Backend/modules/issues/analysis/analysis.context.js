@@ -131,6 +131,178 @@ const buildFinalResultFromRound = ({ latestRound, latestConsensusDoc, warnings }
   };
 };
 
+const buildScoresByAlternativeFromMap = (scoresByAlternative) => {
+  if (!scoresByAlternative || typeof scoresByAlternative !== "object") {
+    return {};
+  }
+
+  const normalized = {};
+  for (const [name, score] of Object.entries(scoresByAlternative)) {
+    const normalizedName = normalizeNonEmptyString(name);
+    const normalizedScore = toNumberOrNull(score);
+    if (!normalizedName || normalizedScore === null) continue;
+    normalized[normalizedName] = normalizedScore;
+  }
+
+  return normalized;
+};
+
+const buildRankingFromRawScenarioOutput = ({ rawOutput, alternatives }) => {
+  const rankingIndexes = Array.isArray(rawOutput?.collective_ranking)
+    ? rawOutput.collective_ranking
+    : [];
+  const collectiveScores = Array.isArray(rawOutput?.collective_scores)
+    ? rawOutput.collective_scores
+    : [];
+
+  if (!rankingIndexes.length || !Array.isArray(alternatives) || !alternatives.length) {
+    return {
+      ranking: [],
+      rankedWithScores: [],
+      scoresByAlternative: {},
+    };
+  }
+
+  const ranking = [];
+  const rankedWithScores = [];
+  const scoresByAlternative = {};
+
+  for (const rankingIndex of rankingIndexes) {
+    const index = Number(rankingIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= alternatives.length) {
+      continue;
+    }
+
+    const alternativeName = normalizeNonEmptyString(alternatives[index]?.name);
+    if (!alternativeName) continue;
+
+    ranking.push(alternativeName);
+    const score = toNumberOrNull(collectiveScores[index]);
+    rankedWithScores.push({
+      name: alternativeName,
+      score,
+    });
+    if (score !== null) {
+      scoresByAlternative[alternativeName] = score;
+    }
+  }
+
+  return {
+    ranking,
+    rankedWithScores,
+    scoresByAlternative,
+  };
+};
+
+const normalizeScenarioResultOrThrow = ({ scenarioDoc, alternatives }) => {
+  const details = scenarioDoc?.outputs?.details || {};
+  const outputs = scenarioDoc?.outputs || {};
+  const rawOutput =
+    outputs?.rawResults ||
+    details?.modelExecution?.rawOutput ||
+    {};
+
+  const rankedWithScoresFromDetails = Array.isArray(details?.rankedWithScores)
+    ? details.rankedWithScores
+    : [];
+  const rankedAlternativesFromDetails = Array.isArray(details?.rankedAlternatives)
+    ? details.rankedAlternatives
+    : [];
+  const rankedWithScoresFromOutputs = Array.isArray(outputs?.rankedWithScores)
+    ? outputs.rankedWithScores
+    : [];
+  const rankedWithScoresFromResult = Array.isArray(scenarioDoc?.result?.rankedWithScores)
+    ? scenarioDoc.result.rankedWithScores
+    : [];
+
+  let rankedWithScores =
+    rankedWithScoresFromDetails.length
+      ? rankedWithScoresFromDetails
+      : rankedWithScoresFromOutputs.length
+        ? rankedWithScoresFromOutputs
+        : rankedWithScoresFromResult.length
+          ? rankedWithScoresFromResult
+          : [];
+
+  let ranking = [];
+
+  if (rankedWithScores.length) {
+    ranking = rankedWithScores
+      .map((row) => normalizeNonEmptyString(row?.name))
+      .filter(Boolean);
+  } else if (rankedAlternativesFromDetails.length) {
+    const hasObjectRows = rankedAlternativesFromDetails.every(
+      (row) => row && typeof row === "object" && normalizeNonEmptyString(row?.name)
+    );
+    if (hasObjectRows) {
+      rankedWithScores = rankedAlternativesFromDetails;
+      ranking = rankedAlternativesFromDetails
+        .map((row) => normalizeNonEmptyString(row?.name))
+        .filter(Boolean);
+    } else {
+      ranking = rankedAlternativesFromDetails
+        .map((name) => normalizeNonEmptyString(name))
+        .filter(Boolean);
+      rankedWithScores = ranking.map((name) => ({ name, score: null }));
+    }
+  } else {
+    const rankingFromOutputs = Array.isArray(outputs?.ranking)
+      ? outputs.ranking
+      : Array.isArray(scenarioDoc?.result?.ranking)
+        ? scenarioDoc.result.ranking
+        : Array.isArray(details?.ranking)
+          ? details.ranking
+          : [];
+    ranking = rankingFromOutputs
+      .map((name) => normalizeNonEmptyString(name))
+      .filter(Boolean);
+    if (ranking.length) {
+      rankedWithScores = ranking.map((name) => ({ name, score: null }));
+    }
+  }
+
+  let scoresByAlternative = buildScoresByAlternative(rankedWithScores);
+  if (!Object.keys(scoresByAlternative).length) {
+    scoresByAlternative = buildScoresByAlternativeFromMap(
+      details?.scoresByAlternative ||
+      outputs?.scoresByAlternative ||
+      scenarioDoc?.result?.scoresByAlternative
+    );
+  }
+
+  if (!ranking.length) {
+    const fallback = buildRankingFromRawScenarioOutput({
+      rawOutput,
+      alternatives,
+    });
+    ranking = fallback.ranking;
+    rankedWithScores = fallback.rankedWithScores;
+    scoresByAlternative = fallback.scoresByAlternative;
+  }
+
+  if (!ranking.length) {
+    throw createBadRequestError("Scenario result does not contain ranking output.", {
+      field: "scenarioId",
+      details: {
+        scenarioId: toIdString(scenarioDoc?._id),
+      },
+    });
+  }
+
+  return {
+    ranking,
+    rankedWithScores,
+    scoresByAlternative,
+    collectiveEvaluations: outputs?.collectiveEvaluations || {},
+    collectiveEvaluationsLocalized: {},
+    collectiveEvaluationsLocalizedByExpert: {},
+    rawOutput: rawOutput && typeof rawOutput === "object" ? rawOutput : {},
+    modelExecution:
+      details?.modelExecution ||
+      (rawOutput && Object.keys(rawOutput).length ? { rawOutput } : {}),
+  };
+};
+
 const getSubmittedValueForPhase = (evaluation, phaseNumber, isConsensus) => {
   if (isConsensus) {
     const historyEntry = evaluation.history?.find(
@@ -525,6 +697,49 @@ export const getAuthorizedResolvedIssueForAnalysisOrThrow = async ({
   return issue;
 };
 
+export const getAuthorizedScenarioForAnalysisOrThrow = async ({
+  issueId,
+  scenarioId,
+  userId,
+  visibleFinishedIssueIds,
+}) => {
+  const issue = await getAuthorizedResolvedIssueForAnalysisOrThrow({
+    issueId,
+    userId,
+    visibleFinishedIssueIds,
+  });
+
+  if (!scenarioId || !isValidObjectIdLike(scenarioId)) {
+    throw createBadRequestError("Valid scenario id is required", {
+      field: "scenarioId",
+    });
+  }
+
+  const scenario = await IssueScenario.findById(scenarioId)
+    .select(
+      "_id issue name status targetModel targetModelName targetApiModelKey targetApiEndpoint targetInputKind targetOutputKind targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs"
+    )
+    .lean();
+
+  if (!scenario) {
+    throw createNotFoundError("Scenario not found", {
+      field: "scenarioId",
+    });
+  }
+
+  if (toIdString(scenario.issue) !== toIdString(issue._id)) {
+    throw createBadRequestError("Scenario does not belong to the requested issue.", {
+      field: "scenarioId",
+      details: {
+        scenarioId: toIdString(scenario._id),
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  return { issue, scenario };
+};
+
 /**
  * Construye el AnalysisContext para un issue finalizado.
  *
@@ -725,6 +940,194 @@ export const buildIssueResultsAnalysisContext = async ({
       maxPhases: issue.consensusMaxPhases ?? null,
       finalLevel:
         latestRound?.consensusLevel ?? latestConsensusDoc?.level ?? null,
+      docs: consensusHistoryDocs || [],
+    },
+    scenarios: buildScenariosContext(scenarioDocs, warnings),
+    warnings,
+  };
+
+  return analysisContext;
+};
+
+export const buildScenarioResultsAnalysisContext = async ({
+  issueId,
+  scenarioId,
+  userId,
+  visibleFinishedIssueIds,
+}) => {
+  const { issue, scenario } = await getAuthorizedScenarioForAnalysisOrThrow({
+    issueId,
+    scenarioId,
+    userId,
+    visibleFinishedIssueIds,
+  });
+
+  await ensureIssueOrdersDb({ issueId: issue._id });
+
+  const [alternatives, leafCriteria, allCriteria, participations, evaluationDocs, latestConsensusDoc, consensusHistoryDocs, scenarioDocs] =
+    await Promise.all([
+      getOrderedAlternativesDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name description",
+        lean: true,
+      }),
+      getOrderedLeafCriteriaDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name type isLeaf parentCriterion",
+        lean: true,
+      }),
+      Criterion.find({ issue: issue._id })
+        .select("_id name type isLeaf parentCriterion")
+        .lean(),
+      Participation.find({
+        issue: issue._id,
+        invitationStatus: "accepted",
+      })
+        .populate("expert", "email name")
+        .lean(),
+      Evaluation.find({ issue: issue._id })
+        .select(
+          "expert alternative comparedAlternative criterion value history consensusPhase timestamp expressionDomain"
+        )
+        .populate("expert", "email name")
+        .populate("expressionDomain", "name type numericRange linguisticLabels")
+        .lean(),
+      Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
+      Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),
+      IssueScenario.find({ issue: issue._id })
+        .sort({ createdAt: -1 })
+        .select("_id name status createdAt targetModel targetModelName targetApiModelKey targetApiEndpoint targetInputKind targetOutputKind targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs")
+        .lean(),
+    ]);
+
+  const warnings = [];
+
+  const orderedCriteriaForTree = orderDocsByIdList(allCriteria || [], issue.leafCriteriaOrder, {
+    getId: (criterion) => toIdString(criterion._id),
+    getName: (criterion) => criterion?.name,
+  });
+
+  const { criteriaTree } = buildIssueCriteriaTree(orderedCriteriaForTree, issue);
+
+  const phaseUsed = Number.isInteger(Number(scenario?.inputs?.consensusPhaseUsed))
+    ? Number(scenario.inputs.consensusPhaseUsed)
+    : 1;
+
+  const result = normalizeScenarioResultOrThrow({
+    scenarioDoc: scenario,
+    alternatives,
+  });
+
+  let evaluationsContext = {
+    rawByExpert: {},
+    canonicalByExpert: {},
+    localizedByExpert: {},
+    expressionDomainsByCell: {},
+  };
+
+  if (issue.evaluationStructure === "direct") {
+    evaluationsContext = buildDirectEvaluationsContext({
+      evaluations: evaluationDocs,
+      phaseUsed,
+      issue: {
+        ...issue,
+        inputKind: scenario?.targetInputKind || issue?.inputKind,
+      },
+      alternatives,
+      criteria: leafCriteria,
+      warnings,
+    });
+  } else if (issue.evaluationStructure === "pairwiseAlternatives") {
+    evaluationsContext = buildPairwiseEvaluationsContext({
+      evaluations: evaluationDocs,
+      phaseUsed,
+      issue: {
+        ...issue,
+        inputKind: scenario?.targetInputKind || issue?.inputKind,
+      },
+      alternatives,
+      criteria: leafCriteria,
+      warnings,
+    });
+  } else {
+    warnings.push({
+      code: "UNSUPPORTED_EVALUATION_STRUCTURE_FOR_DETAILED_ANALYSIS",
+      message: `Evaluation structure '${issue.evaluationStructure || "unknown"}' is not supported for detailed context generation.`,
+    });
+  }
+
+  const scenarioParams =
+    scenario?.config?.normalizedModelParameters ||
+    scenario?.config?.modelParameters ||
+    scenario?.normalizedModelParameters ||
+    scenario?.modelParameters ||
+    scenario?.paramOverrides ||
+    {};
+
+  const analysisContext = {
+    contextVersion: CONTEXT_VERSION,
+    issue: {
+      id: toIdString(issue._id),
+      name: issue.name,
+      description: issue.description,
+      createdAt: toIsoOrNull(issue.createdAt),
+      closedAt: toIsoOrNull(issue.closureDate || issue.updatedAt),
+      isConsensus: Boolean(issue.isConsensus),
+      consensusPhase: Number(issue.consensusPhase || 1),
+      consensusThreshold: issue.consensusThreshold ?? null,
+      consensusMaxPhases: issue.consensusMaxPhases ?? null,
+      scenarioId: toIdString(scenario._id),
+      scenarioName: scenario?.name || null,
+    },
+    model: {
+      issueModelId: toIdString(scenario?.targetModel),
+      apiModelKey: scenario?.targetApiModelKey || null,
+      apiEndpoint: scenario?.targetApiEndpoint || null,
+      evaluationStructure: scenario?.targetEvaluationStructure || issue.evaluationStructure || null,
+      inputKind: scenario?.targetInputKind || null,
+      outputKind: scenario?.targetOutputKind || null,
+      lifecycleKind: scenario?.targetLifecycleKind || null,
+      modelFamilyKey: scenario?.targetModelFamilyKey || null,
+      modelVersion: scenario?.targetModelVersion || null,
+      versionLabel: scenario?.targetVersionLabel || null,
+      modelParameters: scenarioParams,
+      displayName: scenario?.targetModelName || null,
+    },
+    problem: {
+      alternatives: alternatives.map((alternative) => ({
+        id: toIdString(alternative._id),
+        name: alternative.name,
+        description: alternative.description || null,
+      })),
+      criteriaTree: (criteriaTree || []).map(mapCriteriaTreeToContextShape),
+      leafCriteria: leafCriteria.map((criterion, index) => ({
+        id: toIdString(criterion._id),
+        name: criterion.name,
+        type: criterion.type,
+        weight: Array.isArray(scenarioParams?.weights)
+          ? toNumberOrNull(scenarioParams.weights[index])
+          : null,
+      })),
+      weights: Array.isArray(scenarioParams?.weights) ? scenarioParams.weights : [],
+    },
+    experts: buildExpertsContext(participations),
+    evaluations: {
+      phaseUsed,
+      rawByExpert: evaluationsContext.rawByExpert,
+      canonicalByExpert: evaluationsContext.canonicalByExpert,
+      localizedByExpert: evaluationsContext.localizedByExpert,
+      expressionDomainsByCell: evaluationsContext.expressionDomainsByCell,
+    },
+    result,
+    consensus: {
+      history: Array.isArray(issue.consensusHistory) ? issue.consensusHistory : [],
+      latest: latestConsensusDoc || {},
+      phaseSource: "scenario.inputs.consensusPhaseUsed",
+      threshold: issue.consensusThreshold ?? null,
+      maxPhases: issue.consensusMaxPhases ?? null,
+      finalLevel: latestConsensusDoc?.level ?? null,
       docs: consensusHistoryDocs || [],
     },
     scenarios: buildScenariosContext(scenarioDocs, warnings),

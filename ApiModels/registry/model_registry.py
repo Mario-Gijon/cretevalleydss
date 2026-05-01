@@ -423,9 +423,10 @@ _FUZZY_TOPSIS_DOMAIN = {
 _WEIGHTS_PARAMETER = {
     "key": "weights",
     "label": "Criteria weights",
+    "description": "Relative importance assigned to each leaf criterion.",
     "required": True,
     "type": "array",
-    "default": None,
+    "default": "equal",
     "restrictions": {
         "min": 0,
         "max": 1,
@@ -435,6 +436,10 @@ _WEIGHTS_PARAMETER = {
         "normalize": True,
         "ordered": None,
         "allowed": None,
+    },
+    "ui": {
+        "component": "criteriaWeights",
+        "showCriterionNames": True,
     },
 }
 

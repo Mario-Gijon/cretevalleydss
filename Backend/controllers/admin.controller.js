@@ -588,6 +588,7 @@ export const resolveIssueAdmin = async (req, res) => {
     {
       finished: result.finished,
       rankedAlternatives: result.rankedAlternatives || null,
+      resultsAnalysis: result.resultsAnalysis ?? null,
     },
   );
 };

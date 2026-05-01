@@ -97,9 +97,12 @@ const ensureLen = (arr, len, filler = null) => {
  */
 export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const resolved = {};
+  const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
 
   for (const parameter of modelDoc?.parameters || []) {
-    const { name, type, default: defaultValue } = parameter;
+    const { type, default: defaultValue } = parameter;
+    const name = normalizeNonEmptyString(parameter?.key) || normalizeNonEmptyString(parameter?.name);
+    if (!name) continue;
 
     if (type === "number") {
       resolved[name] = defaultValue ?? null;
@@ -116,6 +119,15 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
           (Array.isArray(defaultValue) ? defaultValue.length : 2);
 
       const base = Array.isArray(defaultValue) ? defaultValue : [];
+      const isCriteriaWeights =
+        name === "weights" && parameter?.restrictions?.length === "matchCriteria";
+
+      if (isCriteriaWeights && typeof defaultValue === "string" && defaultValue.trim().toLowerCase() === "equal" && safeLeafCount > 0) {
+        const equalWeights = Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount);
+        resolved[name] = ensureLen(equalWeights, length, null);
+        continue;
+      }
+
       resolved[name] = ensureLen(base, length, null);
       continue;
     }

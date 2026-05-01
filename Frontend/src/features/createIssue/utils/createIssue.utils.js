@@ -271,10 +271,19 @@ export const setDefaults = (allData) => {
   const newValues = {};
 
   allData.selectedModel.parameters.forEach((param) => {
-    const { name, type, restrictions, default: defaultValue } = param;
+    const { type, restrictions, default: defaultValue } = param;
+    const paramKey = param?.key || param?.name;
+    if (!paramKey) return;
 
     if (type === "number") {
-      newValues[name] = defaultValue ?? "";
+      newValues[paramKey] = defaultValue ?? "";
+    }
+
+    if (type === "interval") {
+      const intervalDefault = Array.isArray(defaultValue)
+        ? defaultValue
+        : [restrictions?.min ?? "", restrictions?.max ?? ""];
+      newValues[paramKey] = intervalDefault;
     }
 
     if (type === "array") {
@@ -297,7 +306,7 @@ export const setDefaults = (allData) => {
         values = defaultValue ?? Array(length).fill("");
       }
 
-      newValues[name] = values;
+      newValues[paramKey] = values;
     }
 
     if (type === "fuzzyArray") {
@@ -322,7 +331,7 @@ export const setDefaults = (allData) => {
         values = defaultValue ?? Array(length).fill([0, 0, 0]);
       }
 
-      newValues[name] = values;
+      newValues[paramKey] = values;
     }
   });
 
@@ -341,14 +350,16 @@ export const updateParamValues = (prev, selectedModel, criteria) => {
   const newValues = { ...prev };
 
   selectedModel?.parameters.forEach((param) => {
-    const { name, type, restrictions } = param;
+    const { type, restrictions } = param;
+    const paramKey = param?.key || param?.name;
+    if (!paramKey) return;
 
     if (type === "array" && restrictions?.length === "matchCriteria") {
       const length = criteria.length;
       const equalWeight = 1 / length;
 
-      if (!Array.isArray(newValues[name]) || newValues[name].length !== length) {
-        newValues[name] = Array(length).fill(equalWeight);
+      if (!Array.isArray(newValues[paramKey]) || newValues[paramKey].length !== length) {
+        newValues[paramKey] = Array(length).fill(equalWeight);
       }
     }
 
@@ -358,11 +369,11 @@ export const updateParamValues = (prev, selectedModel, criteria) => {
       const delta = 0.05;
 
       if (
-        !Array.isArray(newValues[name]) ||
-        newValues[name].length !== length ||
-        newValues[name].some((t) => !Array.isArray(t) || t.length !== 3)
+        !Array.isArray(newValues[paramKey]) ||
+        newValues[paramKey].length !== length ||
+        newValues[paramKey].some((t) => !Array.isArray(t) || t.length !== 3)
       ) {
-        newValues[name] = Array(length)
+        newValues[paramKey] = Array(length)
           .fill(null)
           .map(() => [
             Math.max(0, +(equalWeight - delta).toFixed(2)),

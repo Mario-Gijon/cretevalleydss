@@ -70,7 +70,9 @@ import {
 import { getFinishedIssueInfoPayload } from "../modules/issues/issue.finished.js";
 import {
   generateIssueResultsAnalysisFlow,
+  generateScenarioResultsAnalysisFlow,
   getSavedIssueResultsAnalysisFlow,
+  getSavedScenarioResultsAnalysisFlow,
 } from "../modules/issues/analysis/index.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
 import { createIssueFlow } from "../modules/issues/issue.creation.js";
@@ -675,6 +677,42 @@ export const getSavedIssueResultsAnalysis = async (req, res) => {
   return sendSuccess(res, "Results analysis fetched successfully.", analysis);
 };
 
+export const getScenarioResultsAnalysis = async (req, res) => {
+  const { id, scenarioId } = req.body;
+
+  const analysis = await generateScenarioResultsAnalysisFlow({
+    issueId: id,
+    scenarioId,
+    userId: req.uid,
+  });
+
+  return sendSuccess(
+    res,
+    "Scenario results analysis generated successfully.",
+    analysis
+  );
+};
+
+export const getSavedScenarioResultsAnalysis = async (req, res) => {
+  const { id, scenarioId } = req.body;
+
+  const analysis = await getSavedScenarioResultsAnalysisFlow({
+    issueId: id,
+    scenarioId,
+    userId: req.uid,
+  });
+
+  if (!analysis) {
+    return sendSuccess(
+      res,
+      "No results analysis has been generated for this scenario yet.",
+      null
+    );
+  }
+
+  return sendSuccess(res, "Scenario results analysis fetched successfully.", analysis);
+};
+
 /**
  * Guarda borradores de pesos BWM del experto actual.
  *
@@ -981,5 +1019,6 @@ export const resolveIssue = async (req, res) => {
   return sendSuccess(res, result.message, {
     finished: result.finished,
     rankedAlternatives: result.rankedAlternatives ?? null,
+    resultsAnalysis: result.resultsAnalysis ?? null,
   });
 };

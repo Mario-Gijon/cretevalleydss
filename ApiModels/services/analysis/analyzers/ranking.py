@@ -129,6 +129,7 @@ def analyze_ranking(context: dict[str, Any]) -> dict[str, Any]:
     score_gap: float | None = None
     normalized_gap: float | None = None
     close_decision = False
+    tied_scores = False
     confidence_level = "unknown"
     confidence_reason = "Insufficient ranking data"
 
@@ -136,28 +137,34 @@ def analyze_ranking(context: dict[str, Any]) -> dict[str, Any]:
         score_gap = winner_score - runner_up_score
         if score_gap < 0:
             score_gap = abs(score_gap)
+        tied_scores = score_gap <= 1e-12
 
         score_values = list(scores_by_alternative.values())
         score_range = max(score_values) - min(score_values) if len(score_values) >= 2 else 0.0
         denominator = score_range if score_range > 0 else max(abs(winner_score), 1.0)
         normalized_gap = score_gap / denominator if denominator else None
 
-        if normalized_gap is not None and normalized_gap >= 0.15:
+        if tied_scores:
+            confidence_level = "low"
+            close_decision = True
+            confidence_reason = "The top alternatives are tied in score."
+        elif normalized_gap is not None and normalized_gap >= 0.15:
             confidence_level = "high"
-            confidence_reason = "Winner has a clear score advantage"
+            confidence_reason = "The leading alternative has a clear score advantage over the runner-up."
         elif normalized_gap is not None and normalized_gap >= 0.05:
             confidence_level = "medium"
-            confidence_reason = "Winner has a moderate score advantage"
+            confidence_reason = "The leading alternative has a moderate score advantage."
         else:
             confidence_level = "low"
             close_decision = True
-            confidence_reason = "Winner and runner-up scores are close"
+            confidence_reason = "The top alternatives are close in score."
 
     ranking_strength = {
         "winner": winner,
         "runnerUp": runner_up,
         "scoreGap": score_gap,
         "normalizedScoreGap": normalized_gap,
+        "tiedScores": tied_scores,
         "ranking": ranking,
         "scoresByAlternative": scores_by_alternative,
     }

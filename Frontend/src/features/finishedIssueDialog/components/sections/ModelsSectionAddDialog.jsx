@@ -20,7 +20,6 @@ import ModelsSectionParametersForm from "./ModelsSectionParametersForm";
 import { Pill } from "../shared/FinishedIssueDialogPrimitives";
 import { getFinishedIssueDialogAuroraBg } from "../../styles/finishedIssueDialog.styles";
 import {
-  filterOutWeightsParams,
   getCompatReason,
   isModelCompatible,
 } from "../../utils/finishedIssueDialog.utils";
@@ -140,7 +139,8 @@ const ModelsSectionAddDialog = () => {
               />
 
               {addDialog.selectedModelFromSchema &&
-              filterOutWeightsParams(addDialog.selectedModelFromSchema.parameters)?.length ? (
+              Array.isArray(addDialog.selectedModelFromSchema.parameters) &&
+              addDialog.selectedModelFromSchema.parameters.length ? (
                 <Box
                   sx={{
                     mt: 1,
@@ -166,7 +166,7 @@ const ModelsSectionAddDialog = () => {
                 fullWidth
                 multiline
                 minRows={6}
-                placeholder={`{\n  "alpha": 0.5,\n  "maxIter": 200\n}\n// don't include "weights"`}
+                placeholder={`{\n  "alpha": 0.5,\n  "maxIter": 200,\n  "weights": [0.5, 0.5]\n}`}
               />
 
               {addDialog.modelsLoading ? (

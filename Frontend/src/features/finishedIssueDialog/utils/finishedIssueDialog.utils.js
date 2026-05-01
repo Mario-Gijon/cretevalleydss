@@ -189,7 +189,8 @@ export const stripWeights = (obj) => {
  */
 export const stripWeightsDeep = (value) => stripWeights(value);
 
-const filterOutWeightsParam = (param) => Boolean(param) && param?.name !== WEIGHTS_KEY;
+const filterOutWeightsParam = (param) =>
+  Boolean(param) && (param?.key || param?.name) !== WEIGHTS_KEY;
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -226,7 +227,6 @@ export const buildPseudoParametersFromValues = (values) => {
   const source = values && typeof values === "object" ? values : {};
 
   return Object.keys(source)
-    .filter((key) => key !== WEIGHTS_KEY)
     .sort()
     .map((name) => {
       const value = source[name];
@@ -364,9 +364,20 @@ export const buildParamsResolved = ({ model, leafCount }) => {
   if (model?.defaultsResolved) return stripWeightsDeep(model.defaultsResolved);
 
   const out = {};
+  const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
+  const equalWeights = safeLeafCount > 0
+    ? Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount)
+    : [];
 
-  for (const param of filterOutWeightsParams(model?.parameters || [])) {
-    if (param.type === "number") out[param.name] = param.default ?? "";
+  const baseIssueWeights = Array.isArray(model?.baseIssueWeights)
+    ? model.baseIssueWeights
+    : null;
+
+  for (const param of model?.parameters || []) {
+    const key = param?.key || param?.name;
+    if (!key) continue;
+
+    if (param.type === "number") out[key] = param.default ?? "";
 
     if (param.type === "array") {
       const len =
@@ -374,7 +385,21 @@ export const buildParamsResolved = ({ model, leafCount }) => {
           ? leafCount
           : param?.restrictions?.length ?? 2;
       const base = Array.isArray(param.default) ? param.default : [];
-      out[param.name] = ensureArrayLen(base, Number(len) || 2, "");
+      const count = Number(len) || 2;
+      const isWeightsByCriteria =
+        key === WEIGHTS_KEY && param?.restrictions?.length === "matchCriteria";
+
+      if (isWeightsByCriteria && Array.isArray(baseIssueWeights) && baseIssueWeights.length === count) {
+        out[key] = ensureArrayLen(baseIssueWeights, count, "");
+        continue;
+      }
+
+      if (isWeightsByCriteria && param?.default === "equal" && count > 0) {
+        out[key] = ensureArrayLen(equalWeights, count, "");
+        continue;
+      }
+
+      out[key] = ensureArrayLen(base, count, "");
     }
 
     if (param.type === "fuzzyArray") {
@@ -387,7 +412,7 @@ export const buildParamsResolved = ({ model, leafCount }) => {
       const filled = ensureArrayLen(base, count, ["", "", ""]).map((triple) =>
         Array.isArray(triple) && triple.length === 3 ? triple : ["", "", ""]
       );
-      out[param.name] = filled;
+      out[key] = filled;
     }
   }
 
@@ -403,8 +428,9 @@ export const buildParamsResolved = ({ model, leafCount }) => {
 export const cleanParamsForSend = ({ model, values, leafCount }) => {
   const out = {};
 
-  for (const param of filterOutWeightsParams(model?.parameters || [])) {
-    const name = param.name;
+  for (const param of model?.parameters || []) {
+    const name = param?.key || param?.name;
+    if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
     const def = param.default;
@@ -482,8 +508,9 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  * @returns {{ok: boolean, msg?: string}}
  */
 export const validateParams = ({ model, values, leafCount }) => {
-  for (const param of filterOutWeightsParams(model?.parameters || [])) {
-    const name = param.name;
+  for (const param of model?.parameters || []) {
+    const name = param?.key || param?.name;
+    if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
     const value = values?.[name];
@@ -538,8 +565,13 @@ export const validateParams = ({ model, values, leafCount }) => {
       }
 
       const numbers = arr.map((item) => Number(item));
-      if (restrictions.sum != null) {
-        const sum = numbers.reduce((acc, item) => acc + item, 0);
+      const sum = numbers.reduce((acc, item) => acc + item, 0);
+
+      if (restrictions.normalize === true) {
+        if (sum <= 0) {
+          return { ok: false, msg: `Parameter '${name}' must contain at least one value greater than 0.` };
+        }
+      } else if (restrictions.sum != null) {
         const epsilon = 1e-6;
         if (Math.abs(sum - restrictions.sum) > epsilon) {
           return { ok: false, msg: `Parameter '${name}' sum must be ${restrictions.sum}.` };
@@ -609,6 +641,91 @@ const deepClone = (value) =>
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 
+const toScoreOrNull = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildRankingFromRawOutput = ({ rawOutput, alternativesByIndex }) => {
+  const rankingIndexes = Array.isArray(rawOutput?.collective_ranking)
+    ? rawOutput.collective_ranking
+    : [];
+  const scores = Array.isArray(rawOutput?.collective_scores)
+    ? rawOutput.collective_scores
+    : [];
+
+  if (!rankingIndexes.length || !Array.isArray(alternativesByIndex) || !alternativesByIndex.length) {
+    return [];
+  }
+
+  return rankingIndexes
+    .map((rankIndex) => {
+      const index = Number(rankIndex);
+      if (!Number.isInteger(index) || index < 0 || index >= alternativesByIndex.length) {
+        return null;
+      }
+
+      const alternative = alternativesByIndex[index];
+      if (!alternative?.name) return null;
+
+      return {
+        name: alternative.name,
+        score: toScoreOrNull(scores[index]),
+      };
+    })
+    .filter(Boolean);
+};
+
+const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesByIndex }) => {
+  const fromRankedWithScores = Array.isArray(details?.rankedWithScores)
+    ? details.rankedWithScores
+    : [];
+  if (fromRankedWithScores.length) return fromRankedWithScores;
+
+  const fromRankedAlternatives = Array.isArray(details?.rankedAlternatives)
+    ? details.rankedAlternatives
+    : [];
+  if (fromRankedAlternatives.length) {
+    const objectShape = fromRankedAlternatives.every(
+      (item) => item && typeof item === "object" && item.name
+    );
+    if (objectShape) return fromRankedAlternatives;
+    return fromRankedAlternatives
+      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
+      .filter(Boolean);
+  }
+
+  const scenarioRanking = scenario?.outputs?.ranking || scenario?.result?.ranking;
+  if (Array.isArray(scenarioRanking) && scenarioRanking.length) {
+    return scenarioRanking
+      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
+      .filter(Boolean);
+  }
+
+  const scenarioRankedWithScores =
+    scenario?.outputs?.rankedWithScores || scenario?.result?.rankedWithScores;
+  if (Array.isArray(scenarioRankedWithScores) && scenarioRankedWithScores.length) {
+    return scenarioRankedWithScores;
+  }
+
+  const scoresByAlternative =
+    details?.scoresByAlternative ||
+    scenario?.outputs?.scoresByAlternative ||
+    scenario?.result?.scoresByAlternative ||
+    null;
+  const rankingByName =
+    details?.ranking || scenario?.outputs?.ranking || scenario?.result?.ranking || null;
+  if (Array.isArray(rankingByName) && rankingByName.length && scoresByAlternative && typeof scoresByAlternative === "object") {
+    return rankingByName
+      .map((name) => (typeof name === "string" && name.trim()
+        ? { name: name.trim(), score: toScoreOrNull(scoresByAlternative[name]) }
+        : null))
+      .filter(Boolean);
+  }
+
+  return buildRankingFromRawOutput({ rawOutput, alternativesByIndex });
+};
+
 /**
  * Proyecta un escenario de simulacion sobre la estructura base del issue.
  *
@@ -626,6 +743,15 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     null;
   const collectiveEvaluations = scenario?.outputs?.collectiveEvaluations || null;
   const scenarioEvaluationStructure = resolveIssueAlternativeEvaluationStructure(scenario);
+  const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
+    ? out.summary.alternatives
+    : [];
+  const normalizedRanking = normalizeScenarioRanking({
+    scenario,
+    details,
+    rawOutput: scenarioRawOutput,
+    alternativesByIndex,
+  });
 
   out.summary = {
     ...(out.summary || {}),
@@ -653,10 +779,10 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       out.modelParams.base?.paramsResolved,
   };
 
-  const ranking = Array.isArray(details?.rankedAlternatives)
-    ? details.rankedAlternatives
-    : [];
-  out.alternativesRankings = [{ ranking }];
+  out.alternativesRankings = [{ phase: 1, ranking: normalizedRanking }];
+  out.consensus = [];
+  out.consensusHistory = [];
+  out.consensusRounds = [];
   out.consensusDetails = details;
   out.modelExecution =
     details?.modelExecution ||
@@ -664,6 +790,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       ? { rawOutput: scenarioRawOutput }
       : null);
   out.selectedScenario = {
+    config: scenario?.config || null,
     outputs: scenarioOutputs,
   };
 

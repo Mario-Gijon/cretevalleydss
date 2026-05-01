@@ -13,13 +13,19 @@ import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog
 const RankingSection = () => {
   const theme = useTheme();
   const { rankingSection } = useFinishedIssueDialogContext();
-  const { viewIssue, ranking, lastIndex, formatScore } = rankingSection;
+  const { viewIssue, ranking, lastIndex, formatScore, isScenarioSelected } = rankingSection;
 
   return (
     <SectionCard title="Results ranking" icon={<AssignmentTurnedInIcon fontSize="small" />}>
       {!viewIssue?.alternativesRankings ? (
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
           Ranking not available.
+        </Typography>
+      ) : ranking.length === 0 ? (
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+          {isScenarioSelected
+            ? "No ranking output is available for this scenario."
+            : "Ranking not available."}
         </Typography>
       ) : (
         <List sx={{ width: "100%" }} disablePadding>

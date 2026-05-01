@@ -173,21 +173,24 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
       { }
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap={"wrap"}>
         {selectedModel.parameters.map((param) => {
-          const { name, type, restrictions, default: defaultValue } = param;
+          const { type, restrictions, default: defaultValue } = param;
+          const paramKey = param?.key || param?.name;
+          const paramLabel = param?.label || paramKey || "Parameter";
+          if (!paramKey) return null;
 
 
           if (type === "number" && restrictions?.allowed) {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
-                <Typography variant="body1">{name}:</Typography>
+                <Typography variant="body1">{paramLabel}:</Typography>
                 <TextField
                   select
                   size="small"
-                  value={paramValues[name] ?? defaultValue ?? ""}
+                  value={paramValues[paramKey] ?? defaultValue ?? ""}
                   onChange={(e) => {
                     setParamValues((prev) => ({
                       ...prev,
-                      [name]: handleNumberInput(e.target.value),
+                      [paramKey]: handleNumberInput(e.target.value),
                     }));
                     if (defaultModelParams) setDefaultModelParams(false);
                   }}
@@ -208,15 +211,15 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
           if (type === "number") {
             return (
               <Stack key={param._id} direction="row" spacing={1} alignItems="center">
-                <Typography variant="body1">{name}:</Typography>
+                <Typography variant="body1">{paramLabel}:</Typography>
                 <TextField
                   type="number"
                   size="small"
-                  value={paramValues[name] ?? defaultValue ?? ""}
+                  value={paramValues[paramKey] ?? defaultValue ?? ""}
                   onChange={(e) => {
                     setParamValues((prev) => ({
                       ...prev,
-                      [name]: handleNumberInput(e.target.value),
+                      [paramKey]: handleNumberInput(e.target.value),
                     }));
                     if (defaultModelParams) setDefaultModelParams(false);
                   }}
@@ -231,6 +234,148 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             );
           }
 
+          if (type === "integer") {
+            return (
+              <Stack key={param._id} direction="row" spacing={1} alignItems="center">
+                <Typography variant="body1">{paramLabel}:</Typography>
+                <TextField
+                  type="number"
+                  size="small"
+                  value={paramValues[paramKey] ?? defaultValue ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const parsed = raw === "" ? "" : Math.trunc(Number(raw));
+                    setParamValues((prev) => ({
+                      ...prev,
+                      [paramKey]: Number.isFinite(parsed) ? parsed : "",
+                    }));
+                    if (defaultModelParams) setDefaultModelParams(false);
+                  }}
+                  inputProps={{
+                    min: restrictions?.min ?? undefined,
+                    max: restrictions?.max ?? undefined,
+                    step: 1,
+                  }}
+                  sx={{ maxWidth: 100 }}
+                />
+              </Stack>
+            );
+          }
+
+          if (type === "boolean") {
+            return (
+              <Stack key={param._id} direction="row" spacing={1} alignItems="center">
+                <Typography variant="body1">{paramLabel}:</Typography>
+                <TextField
+                  select
+                  size="small"
+                  value={paramValues[paramKey] ?? defaultValue ?? ""}
+                  onChange={(e) => {
+                    setParamValues((prev) => ({
+                      ...prev,
+                      [paramKey]: e.target.value,
+                    }));
+                    if (defaultModelParams) setDefaultModelParams(false);
+                  }}
+                  sx={{ minWidth: 100 }}
+                >
+                  <MenuItem value={true}>True</MenuItem>
+                  <MenuItem value={false}>False</MenuItem>
+                </TextField>
+              </Stack>
+            );
+          }
+
+          if (type === "string" || type === "enum") {
+            const allowed = Array.isArray(restrictions?.allowed) ? restrictions.allowed : [];
+            if (allowed.length) {
+              return (
+                <Stack key={param._id} direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body1">{paramLabel}:</Typography>
+                  <TextField
+                    select
+                    size="small"
+                    value={paramValues[paramKey] ?? defaultValue ?? ""}
+                    onChange={(e) => {
+                      setParamValues((prev) => ({
+                        ...prev,
+                        [paramKey]: e.target.value,
+                      }));
+                      if (defaultModelParams) setDefaultModelParams(false);
+                    }}
+                    sx={{ minWidth: 140 }}
+                  >
+                    {allowed.map((val) => (
+                      <MenuItem key={val} value={val}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+              );
+            }
+
+            return (
+              <Stack key={param._id} direction="row" spacing={1} alignItems="center">
+                <Typography variant="body1">{paramLabel}:</Typography>
+                <TextField
+                  size="small"
+                  value={paramValues[paramKey] ?? defaultValue ?? ""}
+                  onChange={(e) => {
+                    setParamValues((prev) => ({
+                      ...prev,
+                      [paramKey]: e.target.value,
+                    }));
+                    if (defaultModelParams) setDefaultModelParams(false);
+                  }}
+                  sx={{ minWidth: 180 }}
+                />
+              </Stack>
+            );
+          }
+
+          if (type === "interval") {
+            const currentValues = ensureLength(
+              paramValues[paramKey] ?? defaultValue ?? [],
+              2,
+              ""
+            );
+
+            return (
+              <Stack key={param._id} spacing={1} direction={"row"} alignItems={"center"}>
+                <Typography variant="body1">{paramLabel}:</Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="h5">[</Typography>
+                  {currentValues.map((val, i) => (
+                    <TextField
+                      color="info"
+                      key={i}
+                      type="number"
+                      size="small"
+                      value={val}
+                      onChange={(e) => {
+                        const newValues = [...currentValues];
+                        newValues[i] = handleNumberInput(e.target.value);
+                        setParamValues((prev) => ({
+                          ...prev,
+                          [paramKey]: newValues,
+                        }));
+                        if (defaultModelParams) setDefaultModelParams(false);
+                      }}
+                      inputProps={{
+                        min: restrictions?.min ?? 0,
+                        max: restrictions?.max ?? 1,
+                        step: 0.1,
+                      }}
+                      sx={{ width: 80 }}
+                    />
+                  ))}
+                  <Typography variant="h5">]</Typography>
+                </Stack>
+              </Stack>
+            );
+          }
+
 
           if (type === "array") {
             const length =
@@ -239,7 +384,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                 : restrictions?.length || 2;
 
             const currentValues = ensureLength(
-              paramValues[name] ?? defaultValue ?? [],
+              paramValues[paramKey] ?? defaultValue ?? [],
               length,
               ""
             );
@@ -254,7 +399,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             if (isInterval) {
               return (
                 <Stack key={param._id} spacing={1} direction={"row"} alignItems={"center"}>
-                  <Typography variant="body1">{name}:</Typography>
+                  <Typography variant="body1">{paramLabel}:</Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="h5">[</Typography>
                     {currentValues.map((val, i) => (
@@ -269,7 +414,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                           newValues[i] = handleNumberInput(e.target.value);
                           setParamValues((prev) => ({
                             ...prev,
-                            [name]: newValues,
+                            [paramKey]: newValues,
                           }));
                           if (defaultModelParams) setDefaultModelParams(false);
                         }}
@@ -291,9 +436,9 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
             return (
               <Stack key={param._id} spacing={1} alignItems={"flex-start"}>
                 <Stack pb={1} direction={"row"} spacing={2} alignItems={"center"}>
-                  <Typography variant="body1">{name}:</Typography>
+                  <Typography variant="body1">{paramLabel}:</Typography>
 
-                  {name === "weights" && (
+                  {paramKey === "weights" && (
                     leafCriteria.length >= 2 && (
                       <ButtonGroup color="secondary" size="small">
                         <Button
@@ -358,7 +503,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                           onChange={(e) => {
                             const newValues = [...currentValues];
                             newValues[i] = handleNumberInput(e.target.value);
-                            setParamValues((prev) => ({ ...prev, [name]: newValues }));
+                            setParamValues((prev) => ({ ...prev, [paramKey]: newValues }));
                             if (defaultModelParams) setDefaultModelParams(false);
                           }}
                           inputProps={{ min: 0, max: 1, step: 0.1 }}
@@ -396,15 +541,15 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                 : restrictions?.length || 1;
 
             const currentValues =
-              (paramValues[name] &&
-                Array.isArray(paramValues[name]) &&
-                paramValues[name].length === length
-                ? paramValues[name]
+              (paramValues[paramKey] &&
+                Array.isArray(paramValues[paramKey]) &&
+                paramValues[paramKey].length === length
+                ? paramValues[paramKey]
                 : Array.from({ length }, () => ["", "", ""]));
 
             return (
               <Stack key={param._id} spacing={1}>
-                <Typography variant="body1">{name}:</Typography>
+                <Typography variant="body1">{paramLabel}:</Typography>
                 <Stack direction="row" flexWrap="wrap" gap={2}>
                   {currentValues.map((triple, i) => (
                     <Stack key={i} spacing={0.5} alignItems="center">
@@ -428,7 +573,7 @@ export const ModelParameters = ({ selectedModel, allData, paramValues, setParamV
                               );
                               setParamValues((prev) => ({
                                 ...prev,
-                                [name]: newTriples,
+                                [paramKey]: newTriples,
                               }));
                               if (defaultModelParams) setDefaultModelParams(false);
                             }}

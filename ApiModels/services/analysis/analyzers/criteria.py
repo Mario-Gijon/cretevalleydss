@@ -81,6 +81,20 @@ def analyze_criteria(context: dict[str, Any], winner: str | None, runner_up: str
         key=lambda item: item["weight"],
         reverse=True,
     )[:3]
+    weights = list(criterion_weights.values())
+    weight_dominance = {
+        "allEqualByWeight": False,
+        "maxWeight": None,
+        "minWeight": None,
+    }
+    if weights:
+        max_weight = max(weights)
+        min_weight = min(weights)
+        weight_dominance = {
+            "allEqualByWeight": abs(max_weight - min_weight) <= 1e-9,
+            "maxWeight": max_weight,
+            "minWeight": min_weight,
+        }
 
     collective = result.get("collectiveEvaluations") or {}
     if collective:
@@ -136,6 +150,7 @@ def analyze_criteria(context: dict[str, Any], winner: str | None, runner_up: str
             "topWeightedCriteria": top_weighted,
             "winnerStrengthCriteria": winner_strengths,
             "fuzzyCentroidApproximationUsed": fuzzy_approximated,
+            "weightDominance": weight_dominance,
         },
         "used_fields": used_fields,
         "missing_fields": missing_fields,

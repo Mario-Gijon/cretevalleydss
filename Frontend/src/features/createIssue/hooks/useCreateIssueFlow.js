@@ -125,19 +125,23 @@ export const useCreateIssueFlow = () => {
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
       const defaults = selectedModel.parameters.reduce((accumulator, parameter) => {
-        accumulator[parameter.name] = parameter.default;
+        const paramKey = parameter?.key || parameter?.name;
+        if (!paramKey) return accumulator;
+        accumulator[paramKey] = parameter.default;
         return accumulator;
       }, {});
 
       selectedModel.parameters.forEach((parameter) => {
-        const { name, type, restrictions } = parameter;
+        const { type, restrictions } = parameter;
+        const paramKey = parameter?.key || parameter?.name;
+        if (!paramKey) return;
 
         if (type === "array" && restrictions?.length === "matchCriteria") {
           const length = getLeafCriteria(criteria).length || 1;
           const equalWeight = 1 / length;
 
-          if (!Array.isArray(defaults[name]) || defaults[name].length !== length) {
-            defaults[name] = Array(length).fill(equalWeight);
+          if (!Array.isArray(defaults[paramKey]) || defaults[paramKey].length !== length) {
+            defaults[paramKey] = Array(length).fill(equalWeight);
           }
         }
       });

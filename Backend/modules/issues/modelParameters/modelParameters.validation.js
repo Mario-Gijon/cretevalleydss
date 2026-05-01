@@ -167,6 +167,35 @@ const isCriterionWeightsParameter = ({ parameterName, parameter, restrictions })
   );
 };
 
+const resolveCriteriaWeightsDefault = ({
+  value,
+  parameterName,
+  parameter,
+  restrictions,
+  leafCriteriaCount,
+}) => {
+  const isCriterionWeights = isCriterionWeightsParameter({
+    parameterName,
+    parameter,
+    restrictions,
+  });
+
+  if (!isCriterionWeights) {
+    return value;
+  }
+
+  if (
+    typeof value === "string" &&
+    value.trim().toLowerCase() === "equal" &&
+    Number.isInteger(leafCriteriaCount) &&
+    leafCriteriaCount > 0
+  ) {
+    return Array.from({ length: leafCriteriaCount }, () => 1);
+  }
+
+  return value;
+};
+
 const buildInvalidParameterError = ({ modelName, parameterErrors }) => {
   const firstError = parameterErrors[0];
   const summary = parameterErrors
@@ -280,6 +309,14 @@ export const validateAndNormalizeModelParametersOrThrow = ({
         continue;
       }
     }
+
+    value = resolveCriteriaWeightsDefault({
+      value,
+      parameterName,
+      parameter,
+      restrictions,
+      leafCriteriaCount,
+    });
 
     if (!SUPPORTED_PARAMETER_TYPES.has(String(parameterType || ""))) {
       addError({

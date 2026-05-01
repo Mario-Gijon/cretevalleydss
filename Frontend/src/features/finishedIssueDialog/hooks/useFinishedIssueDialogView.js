@@ -3,9 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createIssueScenario,
   getFinishedIssueInfo,
+  getIssueResultsAnalysis,
+  getScenarioResultsAnalysis,
   getIssueScenarioById,
   getIssueScenarios,
   getModelsInfo,
+  regenerateIssueResultsAnalysis,
+  regenerateScenarioResultsAnalysis,
   removeIssueScenario,
 } from "../../../services/issue.service";
 import { resolveIssueAlternativeEvaluationStructure } from "../../issueAlternativeEvaluation/utils/evaluationStructure";
@@ -22,12 +26,10 @@ import {
   getRoundsCount,
   hasSingleLeafCriterion,
   isModelCompatible,
-  omitWeightsFromModel,
   safeJsonStringify,
-  stripWeights,
-  stripWeightsDeep,
   validateParams,
 } from "../utils/finishedIssueDialog.utils";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const unwrap = (response) =>
   response && typeof response === "object" && "data" in response
@@ -109,6 +111,7 @@ export const useFinishedIssueDialogView = ({
   selectedIssue,
   openFinishedIssueDialog,
 }) => {
+  const { showSnackbarAlert } = useSnackbarAlertContext();
   const scatterPlotRef = useRef(null);
   const consensusLevelChartRef = useRef(null);
   const resetZoom = (chartRef) => chartRef?.current?.resetZoom?.();
@@ -155,6 +158,10 @@ export const useFinishedIssueDialogView = ({
     severity: "success",
     msg: "",
   });
+  const [savedAnalysis, setSavedAnalysis] = useState(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
 
   const [selectedExpert, setSelectedExpert] = useState("");
   const [selectedCriterion, setSelectedCriterion] = useState("");
@@ -184,6 +191,8 @@ export const useFinishedIssueDialogView = ({
     const run = async () => {
       setLoadingInfo(true);
       setRunsLoading(true);
+      setSavedAnalysis(null);
+      setAnalysisError("");
 
       try {
         const [baseResp, runsResp] = await Promise.all([
@@ -221,6 +230,7 @@ export const useFinishedIssueDialogView = ({
         setScenarioParamValues({});
         setScenarioName("");
         setParamsJson("{}");
+
       } catch {
         if (cancelled || openTokenRef.current !== token) return;
         setIssue({});
@@ -228,6 +238,7 @@ export const useFinishedIssueDialogView = ({
         setSelectedRunKey("base");
         setRunCache({});
         setCurrentPhaseIndex(0);
+        setSavedAnalysis(null);
       } finally {
         // eslint-disable-next-line no-unsafe-finally
         if (cancelled || openTokenRef.current !== token) return;
@@ -242,6 +253,80 @@ export const useFinishedIssueDialogView = ({
       cancelled = true;
     };
   }, [selectedIssue?.id, openFinishedIssueDialog]);
+
+  useEffect(() => {
+    const issueId = selectedIssue?.id;
+    if (!issueId || !openFinishedIssueDialog) return;
+
+    let cancelled = false;
+    const activeRun = selectedRunKey;
+    const scenarioId = activeRun !== "base" ? activeRun : null;
+
+    const loadAnalysis = async () => {
+      setLoadingAnalysis(true);
+      setSavedAnalysis(null);
+      setAnalysisError("");
+
+      try {
+        const response = scenarioId
+          ? await getScenarioResultsAnalysis(issueId, scenarioId)
+          : await getIssueResultsAnalysis(issueId);
+
+        if (cancelled) return;
+        setSavedAnalysis(unwrap(response) || null);
+      } catch (error) {
+        if (cancelled) return;
+        const message = scenarioId
+          ? "Could not load scenario results analysis."
+          : "Could not load results analysis.";
+        setSavedAnalysis(null);
+        setAnalysisError(error?.response?.data?.message || message);
+      } finally {
+        // eslint-disable-next-line no-unsafe-finally
+        if (cancelled) return;
+        setLoadingAnalysis(false);
+      }
+    };
+
+    loadAnalysis();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIssue?.id, selectedRunKey, openFinishedIssueDialog]);
+
+  const handleGenerateOrRegenerateAnalysis = async () => {
+    if (!selectedIssue?.id) return;
+
+    try {
+      setGeneratingAnalysis(true);
+      setAnalysisError("");
+      const scenarioId = selectedRunKey !== "base" ? selectedRunKey : null;
+
+      const response = scenarioId
+        ? await regenerateScenarioResultsAnalysis(selectedIssue.id, scenarioId)
+        : await regenerateIssueResultsAnalysis(selectedIssue.id);
+      const generated = unwrap(response);
+
+      setSavedAnalysis(generated || null);
+      showSnackbarAlert(
+        scenarioId
+          ? "Scenario results analysis generated successfully."
+          : "Results analysis generated successfully.",
+        "success"
+      );
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        (selectedRunKey !== "base"
+          ? "Could not generate scenario results analysis."
+          : "Could not generate results analysis.");
+      setAnalysisError(msg);
+      showSnackbarAlert(msg, "error");
+    } finally {
+      setGeneratingAnalysis(false);
+    }
+  };
 
   const ensureRunLoaded = async (runKey) => {
     if (!runKey || runKey === "base") return null;
@@ -288,8 +373,8 @@ export const useFinishedIssueDialogView = ({
       return;
     }
 
-    const info = await ensureRunLoaded(runKey);
-    setCurrentPhaseIndex(info ? getLastPhaseIndex(info) : 0);
+    await ensureRunLoaded(runKey);
+    setCurrentPhaseIndex(0);
   };
 
   useEffect(() => {
@@ -301,21 +386,31 @@ export const useFinishedIssueDialogView = ({
     }
 
     const info = runCache[selectedRunKey];
-    if (info) setCurrentPhaseIndex(getLastPhaseIndex(info));
+    if (info) setCurrentPhaseIndex(0);
   }, [selectedRunKey, issue, runCache, openFinishedIssueDialog]);
 
   const viewIssue =
     selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+  const isScenarioSelected = selectedRunKey !== "base";
   const selectedPhase = currentPhaseIndex + 1;
 
   const baseModelParamsBlock = issue?.modelParams || null;
   const availableModelsRaw = baseModelParamsBlock?.availableModels;
+  const baseIssueWeights = useMemo(() => {
+    const weightsFromSaved = issue?.modelParams?.base?.paramsSaved?.weights;
+    if (Array.isArray(weightsFromSaved)) return weightsFromSaved;
+    const weightsFromResolved = issue?.modelParams?.base?.paramsResolved?.weights;
+    if (Array.isArray(weightsFromResolved)) return weightsFromResolved;
+    return [];
+  }, [issue]);
+
   const availableModels = useMemo(
     () =>
-      (Array.isArray(availableModelsRaw) ? availableModelsRaw : []).map(
-        omitWeightsFromModel
-      ),
-    [availableModelsRaw]
+      (Array.isArray(availableModelsRaw) ? availableModelsRaw : []).map((model) => ({
+        ...model,
+        baseIssueWeights,
+      })),
+    [availableModelsRaw, baseIssueWeights]
   );
 
   const domainType = baseModelParamsBlock?.domainType || null;
@@ -558,8 +653,6 @@ export const useFinishedIssueDialogView = ({
         values: scenarioParamValues,
         leafCount,
       });
-
-      modelParameters = stripWeights(modelParameters);
     } else {
       let parsedParams = {};
       try {
@@ -573,7 +666,7 @@ export const useFinishedIssueDialogView = ({
         return;
       }
 
-      modelParameters = stripWeights(parsedParams);
+      modelParameters = parsedParams;
     }
 
     try {
@@ -669,15 +762,17 @@ export const useFinishedIssueDialogView = ({
     "—";
 
   const selectedModelParamsViewRaw =
-    viewIssue?.modelParams?.base?.paramsSaved ||
     viewIssue?.modelParams?.base?.paramsResolved ||
+    viewIssue?.modelParams?.base?.paramsSaved ||
+    viewIssue?.selectedScenario?.config?.normalizedModelParameters ||
+    viewIssue?.selectedScenario?.config?.modelParameters ||
     viewIssue?.summary?.modelParameters ||
     viewIssue?.summary?.parameters ||
     viewIssue?.summary?.params ||
     viewIssue?.summary?.modelParams ||
     null;
 
-  const selectedModelParamsView = stripWeightsDeep(selectedModelParamsViewRaw || {});
+  const selectedModelParamsView = selectedModelParamsViewRaw || {};
   const paramsPretty = safeJsonStringify(selectedModelParamsView);
 
   const baseModelName = issue?.modelParams?.base?.modelName || "—";
@@ -686,11 +781,10 @@ export const useFinishedIssueDialogView = ({
     availableModels.find((model) => (model?.name || model?.modelName) === baseModelName) ||
     null;
 
-  const baseResolved = stripWeightsDeep(
+  const baseResolved =
     issue?.modelParams?.base?.paramsResolved ||
-      issue?.modelParams?.base?.paramsSaved ||
-      {}
-  );
+    issue?.modelParams?.base?.paramsSaved ||
+    {};
 
   const baseSchemaParams = filterOutWeightsParams(
     baseModelSchemaFromCatalog?.parameters || issue?.modelParams?.base?.parameters || []
@@ -707,26 +801,30 @@ export const useFinishedIssueDialogView = ({
     viewIssue?.summary?.model ||
     "—";
 
-  const selectedResolved = stripWeightsDeep(
+  const selectedResolved =
     viewIssue?.modelParams?.base?.paramsResolved ||
-      viewIssue?.modelParams?.base?.paramsSaved ||
-      {}
-  );
+    viewIssue?.modelParams?.base?.paramsSaved ||
+    viewIssue?.selectedScenario?.config?.normalizedModelParameters ||
+    viewIssue?.selectedScenario?.config?.modelParameters ||
+    {};
 
   const selectedModelSchemaFromCatalog =
     availableModels.find(
       (model) => (model?.name || model?.modelName) === selectedRunModelName
     ) || null;
 
-  const selectedSchemaParams = filterOutWeightsParams(
+  const selectedSchemaParams =
     selectedModelSchemaFromCatalog?.parameters ||
-      viewIssue?.modelParams?.base?.parameters ||
-      []
-  );
+    viewIssue?.modelParams?.base?.parameters ||
+    [];
 
   const selectedParamsForViewer = selectedSchemaParams?.length
     ? selectedSchemaParams
     : buildPseudoParametersFromValues(selectedResolved);
+  const summaryParamsForViewer =
+    selectedRunKey === "base" ? baseParamsForViewer : selectedParamsForViewer;
+  const summaryResolvedParams =
+    selectedRunKey === "base" ? baseResolved : selectedResolved;
 
   const selectedRunMeta = useMemo(
     () => runs.find((run) => getRunId(run) === selectedRunKey) || null,
@@ -773,6 +871,9 @@ export const useFinishedIssueDialogView = ({
       selectedModelNameView,
       selectedModelParamsView,
       paramsPretty,
+      summaryParamsForViewer,
+      summaryResolvedParams,
+      leafNames,
       openDescriptionList,
       setOpenDescriptionList,
       openCriteriaList,
@@ -792,9 +893,16 @@ export const useFinishedIssueDialogView = ({
       ranking,
       lastIndex,
       formatScore,
+      isScenarioSelected,
     },
     analysisSection: {
       viewIssue,
+      savedAnalysis,
+      loadingAnalysis,
+      generatingAnalysis,
+      analysisError,
+      handleGenerateOrRegenerateAnalysis,
+      isScenarioSelected,
     },
     modelSpecificOutputSection: {
       rawOutput: rawOutputExists ? rawOutput : null,

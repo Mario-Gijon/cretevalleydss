@@ -8,6 +8,17 @@ const issueResultsAnalysisSchema = new Schema(
       required: true,
       index: true,
     },
+    scenario: {
+      type: Schema.Types.ObjectId,
+      ref: "IssueScenario",
+      default: null,
+      index: true,
+    },
+    analysisTarget: {
+      type: String,
+      enum: ["issue", "scenario"],
+      default: "issue",
+    },
     phase: {
       type: Number,
       default: null,
@@ -72,8 +83,9 @@ const issueResultsAnalysisSchema = new Schema(
   }
 );
 
-issueResultsAnalysisSchema.index({ issue: 1, generatedAt: -1 });
-issueResultsAnalysisSchema.index({ issue: 1, phase: 1, status: 1 });
+issueResultsAnalysisSchema.index({ issue: 1, scenario: 1, generatedAt: -1 });
+issueResultsAnalysisSchema.index({ issue: 1, scenario: 1, status: 1, generatedAt: -1 });
+issueResultsAnalysisSchema.index({ issue: 1, scenario: 1, phase: 1, status: 1 });
 
 export const IssueResultsAnalysis = model(
   "IssueResultsAnalysis",

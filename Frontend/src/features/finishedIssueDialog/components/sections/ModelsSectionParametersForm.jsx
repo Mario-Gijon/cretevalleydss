@@ -6,7 +6,6 @@ import { Pill } from "../shared/FinishedIssueDialogPrimitives";
 import {
   clamp,
   ensureArrayLen,
-  filterOutWeightsParams,
   toNumberOrEmpty,
 } from "../../utils/finishedIssueDialog.utils";
 
@@ -28,7 +27,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
     );
   }
 
-  const params = filterOutWeightsParams(model.parameters);
+  const params = Array.isArray(model?.parameters) ? model.parameters : [];
   if (!Array.isArray(params) || params.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -111,18 +110,21 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
   return (
     <Stack spacing={2}>
       {params.map((param) => {
-        const { name, type, restrictions = {}, default: defaultValue } = param;
+        const { type, restrictions = {}, default: defaultValue } = param;
+        const paramKey = param?.key || param?.name;
+        const paramLabel = param?.label || paramKey;
+        if (!paramKey) return null;
 
         if (
           type === "number" &&
           Array.isArray(restrictions.allowed) &&
           restrictions.allowed.length
         ) {
-          const current = values?.[name] ?? defaultValue ?? "";
+          const current = values?.[paramKey] ?? defaultValue ?? "";
 
           return (
             <Stack
-              key={param._id || name}
+              key={param._id || paramKey}
               direction="row"
               spacing={1}
               alignItems="center"
@@ -132,7 +134,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 variant="body2"
                 sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}
               >
-                {name}
+                {paramLabel}
               </Typography>
 
               <TextField
@@ -140,9 +142,9 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 size="small"
                 color="info"
                 value={current}
-                onChange={(event) =>
-                  onChangeNumber(name, event.target.value, restrictions)
-                }
+                  onChange={(event) =>
+                    onChangeNumber(paramKey, event.target.value, restrictions)
+                  }
                 sx={{ minWidth: 160 }}
               >
                 {restrictions.allowed.map((value) => (
@@ -160,11 +162,11 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
         }
 
         if (type === "number") {
-          const current = values?.[name] ?? defaultValue ?? "";
+          const current = values?.[paramKey] ?? defaultValue ?? "";
 
           return (
             <Stack
-              key={param._id || name}
+              key={param._id || paramKey}
               direction="row"
               spacing={1}
               alignItems="center"
@@ -174,7 +176,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 variant="body2"
                 sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}
               >
-                {name}
+                {paramLabel}
               </Typography>
 
               <TextField
@@ -182,9 +184,9 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 size="small"
                 color="info"
                 value={current}
-                onChange={(event) =>
-                  onChangeNumber(name, event.target.value, restrictions)
-                }
+                  onChange={(event) =>
+                    onChangeNumber(paramKey, event.target.value, restrictions)
+                  }
                 inputProps={{
                   min: restrictions.min ?? undefined,
                   max: restrictions.max ?? undefined,
@@ -202,6 +204,11 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
           );
         }
 
+        const isCriteriaWeights =
+          paramKey === "weights" &&
+          (param?.ui?.component === "criteriaWeights" ||
+            restrictions.length === "matchCriteria");
+
         if (type === "array") {
           const length =
             restrictions.length === "matchCriteria"
@@ -213,8 +220,8 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                   : 2;
 
           const currentValues = ensureArrayLen(
-            Array.isArray(values?.[name])
-              ? values[name]
+            Array.isArray(values?.[paramKey])
+              ? values[paramKey]
               : Array.isArray(defaultValue)
                 ? defaultValue
                 : [],
@@ -229,10 +236,24 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
             restrictions.min != null &&
             restrictions.max != null;
 
-          const sum = restrictions.sum != null ? sumFor(name) : null;
+          const sum = restrictions.sum != null || restrictions.normalize === true
+            ? sumFor(paramKey)
+            : null;
+          const normalizedPreview =
+            isCriteriaWeights && Array.isArray(currentValues)
+              ? (() => {
+                  const numericValues = currentValues
+                    .map((item) => Number(item))
+                    .filter((item) => Number.isFinite(item));
+                  if (numericValues.length !== currentValues.length) return null;
+                  const total = numericValues.reduce((acc, item) => acc + item, 0);
+                  if (total <= 0) return null;
+                  return numericValues.map((item) => item / total);
+                })()
+              : null;
 
           return (
-            <Box key={param._id || name}>
+            <Box key={param._id || paramKey}>
               <Stack
                 direction="row"
                 spacing={1}
@@ -244,20 +265,26 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                   variant="body2"
                   sx={{ fontWeight: 950, color: "text.secondary", minWidth: 130 }}
                 >
-                  {name}
+                  {paramLabel}
                 </Typography>
 
-                {restrictions.sum != null ? (
+                {(restrictions.sum != null || restrictions.normalize === true) ? (
                   <Pill
                     tone={
-                      sum != null && Math.abs(sum - restrictions.sum) < 1e-6
+                      restrictions.sum != null &&
+                      sum != null &&
+                      Math.abs(sum - restrictions.sum) < 1e-6
                         ? "success"
+                        : restrictions.normalize === true && sum != null && sum > 0
+                          ? "success"
                         : "warning"
                     }
                   >
                     {sum == null
-                      ? `sum: ${restrictions.sum}`
-                      : `sum: ${sum.toFixed(4)} / ${restrictions.sum}`}
+                      ? (restrictions.sum != null ? `sum: ${restrictions.sum}` : "sum > 0")
+                      : (restrictions.sum != null
+                        ? `sum: ${sum.toFixed(4)} / ${restrictions.sum}`
+                        : `sum: ${sum.toFixed(4)}`)}
                   </Pill>
                 ) : null}
 
@@ -272,7 +299,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ pl: 0.25 }}>
                   {leafNames.map((criterionName, index) => (
                     <Stack
-                      key={`${name}-${criterionName}-${index}`}
+                      key={`${paramKey}-${criterionName}-${index}`}
                       spacing={0.5}
                       alignItems="flex-start"
                       sx={{ minWidth: 180 }}
@@ -285,8 +312,8 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                         size="small"
                         color="info"
                         value={currentValues[index] ?? ""}
-                        onChange={(event) =>
-                          onChangeArrayItem(name, index, event.target.value, restrictions)
+                          onChange={(event) =>
+                            onChangeArrayItem(paramKey, index, event.target.value, restrictions)
                         }
                         inputProps={{
                           min: restrictions.min ?? undefined,
@@ -297,6 +324,18 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                       />
                     </Stack>
                   ))}
+                  {isCriteriaWeights ? (
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                      Weights represent the relative importance of each criterion. They will be normalized automatically.
+                    </Typography>
+                  ) : null}
+                  {isCriteriaWeights && normalizedPreview ? (
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                      Normalized: {leafNames
+                        .map((leafName, index) => `${leafName} ${normalizedPreview[index]?.toFixed(2) ?? "0.00"}`)
+                        .join(", ")}
+                    </Typography>
+                  ) : null}
                 </Stack>
               ) : (
                 <Stack
@@ -311,13 +350,13 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                   </Typography>
                   {currentValues.map((val, index) => (
                     <TextField
-                      key={`${name}-${index}`}
+                      key={`${paramKey}-${index}`}
                       type="number"
                       size="small"
                       color="info"
                       value={val ?? ""}
                       onChange={(event) =>
-                        onChangeArrayItem(name, index, event.target.value, restrictions)
+                        onChangeArrayItem(paramKey, index, event.target.value, restrictions)
                       }
                       inputProps={{
                         min: restrictions.min ?? undefined,
@@ -349,12 +388,12 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
           const count = Number(length) || 1;
 
           const currentValues =
-            Array.isArray(values?.[name]) && values[name].length === count
-              ? values[name]
+            Array.isArray(values?.[paramKey]) && values[paramKey].length === count
+              ? values[paramKey]
               : Array.from({ length: count }, () => ["", "", ""]);
 
           return (
-            <Box key={param._id || name}>
+            <Box key={param._id || paramKey}>
               <Typography
                 variant="body2"
                 sx={{
@@ -364,13 +403,13 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                   minWidth: 130,
                 }}
               >
-                {name}
+                  {paramLabel}
               </Typography>
 
               <Stack direction="row" flexWrap="wrap" gap={2} sx={{ pl: 0.25 }}>
                 {currentValues.map((triple, index) => (
                   <Box
-                    key={`${name}-${index}`}
+                    key={`${paramKey}-${index}`}
                     sx={{
                       p: 1.2,
                       borderRadius: 4,
@@ -388,7 +427,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                     <Stack direction="row" spacing={1} sx={{ mt: 0.8 }}>
                       {["l", "m", "u"].map((label, position) => (
                         <TextField
-                          key={`${name}-${index}-${label}`}
+                          key={`${paramKey}-${index}-${label}`}
                           type="number"
                           size="small"
                           color="info"
@@ -396,7 +435,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                           value={Array.isArray(triple) ? triple[position] ?? "" : ""}
                           onChange={(event) =>
                             onChangeFuzzy(
-                              name,
+                              paramKey,
                               index,
                               position,
                               event.target.value,

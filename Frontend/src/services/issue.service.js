@@ -263,6 +263,58 @@ export const getFinishedIssueInfo = async (issueOrId) => {
 };
 
 /**
+ * Obtiene el último análisis de resultados guardado para un issue.
+ *
+ * @param {*} issueOrId Id o issue completo.
+ * @returns {Promise<object>}
+ */
+export const getIssueResultsAnalysis = async (issueOrId) => {
+  const issueId = getIssueId(issueOrId);
+
+  return requestWithAuth(
+    `/issues/${issueId}/results-analysis`,
+    { method: "GET" },
+    "Error fetching results analysis."
+  );
+};
+
+/**
+ * Genera/regenera el análisis de resultados para un issue.
+ *
+ * @param {*} issueOrId Id o issue completo.
+ * @returns {Promise<object>}
+ */
+export const regenerateIssueResultsAnalysis = async (issueOrId) => {
+  const issueId = getIssueId(issueOrId);
+
+  return requestWithAuth(
+    `/issues/${issueId}/results-analysis`,
+    { method: "POST" },
+    "Error generating results analysis."
+  );
+};
+
+export const getScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
+  const issueId = getIssueId(issueOrId);
+
+  return requestWithAuth(
+    `/issues/${issueId}/scenarios/${scenarioId}/results-analysis`,
+    { method: "GET" },
+    "Error fetching scenario results analysis."
+  );
+};
+
+export const regenerateScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
+  const issueId = getIssueId(issueOrId);
+
+  return requestWithAuth(
+    `/issues/${issueId}/scenarios/${scenarioId}/results-analysis`,
+    { method: "POST" },
+    "Error generating scenario results analysis."
+  );
+};
+
+/**
  * Oculta o elimina un issue finalizado para el usuario actual.
  *
  * @param {*} issueOrId Id o issue completo.

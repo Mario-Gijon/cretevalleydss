@@ -16,6 +16,8 @@ import {
   getFinishedIssueInfo,
   getIssueResultsAnalysis,
   getSavedIssueResultsAnalysis,
+  getScenarioResultsAnalysis,
+  getSavedScenarioResultsAnalysis,
   removeFinishedIssue,
   editExperts,
   leaveIssue,
@@ -652,6 +654,17 @@ router
   .post(
     mapParamsToBody({ id: "id" }),
     asyncHandler(getIssueResultsAnalysis)
+  );
+
+router
+  .route("/:id/scenarios/:scenarioId/results-analysis")
+  .get(
+    mapParamsToBody({ id: "id", scenarioId: "scenarioId" }),
+    asyncHandler(getSavedScenarioResultsAnalysis)
+  )
+  .post(
+    mapParamsToBody({ id: "id", scenarioId: "scenarioId" }),
+    asyncHandler(getScenarioResultsAnalysis)
   );
 
 /**
