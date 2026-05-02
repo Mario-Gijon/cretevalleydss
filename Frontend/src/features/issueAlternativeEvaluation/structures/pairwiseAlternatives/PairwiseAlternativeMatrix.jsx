@@ -164,11 +164,16 @@ const PairwiseAlternativeMatrix = ({
 }) => {
   const theme = useTheme();
 
-  const sortedAlternatives = [...alternatives].sort((a, b) =>
+  const evaluationRows = Array.isArray(evaluations) ? evaluations : [];
+  const collectiveRows = Array.isArray(collectiveEvaluations)
+    ? collectiveEvaluations
+    : [];
+
+  const sortedAlternatives = [...(alternatives || [])].sort((a, b) =>
     a.localeCompare(b)
   );
 
-  const sortedEvaluations = [...(evaluations || [])].sort((a, b) =>
+  const sortedEvaluations = [...evaluationRows].sort((a, b) =>
     a.id.localeCompare(b.id)
   );
 
@@ -209,9 +214,7 @@ const PairwiseAlternativeMatrix = ({
         const cell = params.row?.[altCol];
         const userValue = getCellNumericValue(cell);
 
-        const collectiveRow = collectiveEvaluations.find(
-          (row) => row.id === rowId
-        );
+        const collectiveRow = collectiveRows.find((row) => row.id === rowId);
         const collectiveValue = getCollectiveDisplayValue(collectiveRow?.[altCol]);
 
         const isDiagonal = rowId === altCol;
