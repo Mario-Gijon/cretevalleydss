@@ -302,7 +302,7 @@ const DirectEvaluationMatrix = ({
           try {
             apiRef.current.stopCellEditMode({ id, field });
           } catch (error) {
-            // noop: if the cell is no longer editable/active, we can continue.
+            console.log(error)
           }
         });
 

@@ -4,9 +4,16 @@ import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluationStructureAlert";
 
 /**
- * Seccion Ratings del dialogo de issue finalizado.
+ * Ratings section of the finished issue dialog.
+ *
+ * Manages:
+ * - Expert selector
+ * - Criterion selector (if applicable)
+ * - Show collective toggle
+ * - Renders the registered Matrix component for the evaluation structure
  *
  * @returns {JSX.Element}
  */
@@ -22,7 +29,6 @@ const RatingsSection = () => {
     setSelectedExpert,
     selectedCriterion,
     setSelectedCriterion,
-    ratingsUi,
     expertList,
     criterionList,
     showCriterionSelector,
@@ -31,7 +37,21 @@ const RatingsSection = () => {
     evaluations,
     collectiveEvaluations,
     leafNames,
+    Matrix,
+    unsupportedEvaluationStructure,
   } = ratingsSection;
+
+  if (unsupportedEvaluationStructure) {
+    return (
+      <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
+        <UnsupportedEvaluationStructureAlert />
+      </SectionCard>
+    );
+  }
+
+  if (!Matrix) {
+    return null;
+  }
 
   return (
     <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
@@ -52,12 +72,8 @@ const RatingsSection = () => {
                 const value = event.target.value;
                 setSelectedExpert(value);
 
-                const newCriteria = ratingsUi.getCriterionList({
-                  viewIssue,
-                  currentPhaseIndex,
-                  selectedExpert: value,
-                });
-
+                // Reset criterion when expert changes
+                const newCriteria = criterionList;
                 setSelectedCriterion(newCriteria[0] || "");
               }}
             >
@@ -111,14 +127,14 @@ const RatingsSection = () => {
 
         <Divider sx={{ opacity: 0.14 }} />
 
-        {ratingsUi.render({
-          viewIssue,
-          evaluations,
-          collectiveEvaluations,
-          selectedExpert,
-          selectedCriterion,
-          leafNames,
-        })}
+        <Matrix
+          alternatives={viewIssue?.summary?.alternatives || []}
+          criteria={leafNames || []}
+          evaluations={evaluations}
+          setEvaluations={() => {}}
+          collectiveEvaluations={collectiveEvaluations || {}}
+          permitEdit={false}
+        />
       </Stack>
     </SectionCard>
   );

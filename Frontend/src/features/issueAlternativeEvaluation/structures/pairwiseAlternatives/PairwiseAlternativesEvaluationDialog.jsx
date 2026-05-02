@@ -20,93 +20,33 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
-import PairwiseAlternativeMatrix from "../../components/pairwise/PairwiseAlternativeMatrix.jsx";
-import AlternativeEvaluationSaveDialog from "../../components/shared/AlternativeEvaluationSaveDialog.jsx";
-import AlternativeEvaluationSubmitDialog from "../../components/shared/AlternativeEvaluationSubmitDialog.jsx";
-import AlternativeEvaluationDialogShell from "../../components/shared/AlternativeEvaluationDialogShell.jsx";
-import { extractLeafCriteria } from "../../utils/leafCriteria.utils.js";
-import { validatePairwiseEvaluations } from "../../utils/pairwiseEvaluation.validation.js";
+import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix.jsx";
+import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog.jsx";
+import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog.jsx";
+import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell.jsx";
+import { extractLeafCriteria } from "../../shared/leafCriteria.utils.js";
+import { validatePairwiseEvaluations } from "./pairwiseAlternatives.validation.js";
 import {
   sectionSx,
   pillTabsSx,
   metaChipSx,
   softIconBtnSx,
-} from "../../styles/alternativeEvaluationDialog.styles.js";
+} from "../../shared/alternativeEvaluationDialog.styles.js";
 import {
-  getAlternativeEvaluationDraft,
-  saveAlternativeEvaluationDraft,
-  submitAlternativeEvaluations,
-} from "../../services/alternativeEvaluation.service.js";
-
-const getFirstDomainFromMatrix = (matrixRows = []) => {
-  for (const row of matrixRows) {
-    for (const [key, cell] of Object.entries(row || {})) {
-      if (key !== "id" && cell?.domain) {
-        return cell.domain;
-      }
-    }
-  }
-
-  return null;
-};
-
-const buildEmptyPairwiseCell = (domain) => ({
-  value: "",
-  domain: domain || null,
-});
-
-const buildDiagonalPairwiseCell = (domain) => {
-  if (!domain) {
-    return {
-      value: "",
-      domain: null,
-      isNeutralFallback: true,
-    };
-  }
-
-  if (domain.type === "numeric") {
-    const min = Number(domain.range?.min ?? 0);
-    const max = Number(domain.range?.max ?? 1);
-    const step = Number(domain.range?.step);
-    const midpoint = (min + max) / 2;
-    const normalizedStep = Number.isFinite(step) && step > 0 ? step : null;
-
-    const neutralValue = normalizedStep
-      ? Math.round(
-        Math.min(
-          max,
-          Math.max(
-            min,
-            min + Math.round((midpoint - min) / normalizedStep) * normalizedStep
-          )
-        ) * 100
-      ) / 100
-      : Math.round(midpoint * 100) / 100;
-
-    return {
-      value: neutralValue,
-      domain,
-      isNeutralFallback: false,
-    };
-  }
-
-  if (domain.type === "linguistic") {
-    const labels = domain.labels || [];
-    const middleLabel = labels[Math.floor(labels.length / 2)]?.label || "";
-
-    return {
-      value: middleLabel,
-      domain,
-      isNeutralFallback: false,
-    };
-  }
-
-  return {
-    value: "",
-    domain,
-    isNeutralFallback: true,
-  };
-};
+  getEvaluations,
+  saveEvaluations,
+  submitEvaluations,
+} from "../../../../services/issue.service.js";
+import {
+  buildClearedPairwiseEvaluations,
+  buildPairwiseEvaluationsMatrix,
+  buildPairwiseSavePayload,
+  buildPairwiseSubmitPayload,
+} from "./pairwiseAlternatives.mapper.js";
+import {
+  extractPairwiseCollectiveEvaluations,
+  extractPairwiseDraftEvaluations,
+} from "./pairwiseAlternatives.response.js";
 
 /**
  * Diálogo de evaluación por pares entre alternativas.
@@ -160,45 +100,11 @@ const PairwiseAlternativesEvaluationDialog = ({
   const criterionId = currentCriterion?.name;
 
   const mergeEvaluations = useCallback((fetchedEvaluations = {}) => {
-    const merged = {};
-    const alternatives = selectedIssue?.alternatives || [];
-
-    leafCriteria.forEach((criterion) => {
-      const criterionName = criterion.name;
-      const existingMatrix = fetchedEvaluations?.[criterionName] || [];
-      const criterionDomain = getFirstDomainFromMatrix(existingMatrix);
-
-      merged[criterionName] = alternatives.map((alternativeRow) => ({
-        id: alternativeRow,
-        ...Object.fromEntries(
-          alternatives.map((alternativeColumn) => {
-            if (alternativeRow === alternativeColumn) {
-              const existingRow = existingMatrix.find(
-                (row) => row.id === alternativeRow
-              );
-              const existingCell = existingRow?.[alternativeColumn];
-
-              return [
-                alternativeColumn,
-                existingCell || buildDiagonalPairwiseCell(criterionDomain),
-              ];
-            }
-
-            const existingRow = existingMatrix.find(
-              (row) => row.id === alternativeRow
-            );
-            const existingCell = existingRow?.[alternativeColumn];
-
-            return [
-              alternativeColumn,
-              existingCell || buildEmptyPairwiseCell(criterionDomain),
-            ];
-          })
-        ),
-      }));
+    return buildPairwiseEvaluationsMatrix({
+      alternatives: selectedIssue?.alternatives || [],
+      leafCriteria,
+      fetchedEvaluations,
     });
-
-    return merged;
   }, [leafCriteria, selectedIssue?.alternatives]);
 
   useEffect(() => {
@@ -210,13 +116,10 @@ const PairwiseAlternativesEvaluationDialog = ({
       setLoading(true);
 
       try {
-        const response = await getAlternativeEvaluationDraft(selectedIssue.id);
+        const response = await getEvaluations(selectedIssue.id);
 
-        const evaluationsPayload = response?.data?.evaluations ?? null;
-        const collectivePayload =
-          response?.data?.collectiveEvaluationsLocalized ??
-          response?.data?.collectiveEvaluations ??
-          null;
+        const evaluationsPayload = extractPairwiseDraftEvaluations(response);
+        const collectivePayload = extractPairwiseCollectiveEvaluations(response);
 
         if (response.success && evaluationsPayload) {
           setCollectiveEvaluations(collectivePayload);
@@ -259,38 +162,10 @@ const PairwiseAlternativesEvaluationDialog = ({
   };
 
   const handleClearAllEvaluations = () => {
-    const clearedMatrices = {};
-    const alternatives = selectedIssue?.alternatives || [];
-
-    leafCriteria.forEach((criterion) => {
-      const criterionName = criterion.name;
-      const existingMatrix = evaluations?.[criterionName] || [];
-      const criterionDomain = getFirstDomainFromMatrix(existingMatrix);
-
-      clearedMatrices[criterionName] = alternatives.map((alternativeRow) => {
-        const previousRow =
-          existingMatrix.find((row) => row.id === alternativeRow) || {
-            id: alternativeRow,
-          };
-
-        const row = { id: alternativeRow };
-
-        alternatives.forEach((alternativeColumn) => {
-          const previousCell = previousRow?.[alternativeColumn];
-          const cellDomain = previousCell?.domain || criterionDomain || null;
-
-          if (alternativeRow === alternativeColumn) {
-            row[alternativeColumn] =
-              previousCell && previousCell.domain
-                ? buildDiagonalPairwiseCell(previousCell.domain)
-                : buildDiagonalPairwiseCell(cellDomain);
-          } else {
-            row[alternativeColumn] = buildEmptyPairwiseCell(cellDomain);
-          }
-        });
-
-        return row;
-      });
+    const clearedMatrices = buildClearedPairwiseEvaluations({
+      alternatives: selectedIssue?.alternatives || [],
+      leafCriteria,
+      evaluations,
     });
 
     setEvaluations(clearedMatrices);
@@ -340,10 +215,11 @@ const PairwiseAlternativesEvaluationDialog = ({
 
     setLoading(true);
     setOpenCloseDialog(false);
+    const payload = buildPairwiseSavePayload({ evaluations });
 
-    const evaluationSaved = await saveAlternativeEvaluationDraft(
+    const evaluationSaved = await saveEvaluations(
       selectedIssue.id,
-      evaluations
+      payload
     );
 
     if (evaluationSaved.success) {
@@ -390,10 +266,11 @@ const PairwiseAlternativesEvaluationDialog = ({
   const handleSubmitEvaluations = async () => {
     setOpenSubmitEvaluationsDialog(false);
     setLoading(true);
+    const payload = buildPairwiseSubmitPayload({ evaluations });
 
-    const response = await submitAlternativeEvaluations(
+    const response = await submitEvaluations(
       selectedIssue,
-      evaluations
+      payload
     );
 
     if (response.success) {

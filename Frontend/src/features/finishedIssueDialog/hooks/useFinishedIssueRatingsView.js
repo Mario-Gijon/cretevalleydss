@@ -1,0 +1,180 @@
+import { useEffect, useMemo, useState } from "react";
+import { getAlternativeEvaluationStructureEntry } from "../../issueAlternativeEvaluation/alternativeEvaluation.registry.js";
+import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueEvaluationStructure.js";
+
+/**
+ * Hook for managing finished issue ratings state and data extraction.
+ *
+ * Owns:
+ * - selectedExpert state
+ * - selectedCriterion state
+ * - showCollective state
+ * - expertList derivation from finished issue DTO
+ * - criterionList derivation from finished issue DTO
+ * - evaluations extraction for the Matrix
+ * - collectiveEvaluations extraction for the Matrix
+ * - Matrix component lookup from registry
+ * - Unsupported structure state if Matrix is missing
+ *
+ * Does NOT own:
+ * - Evaluation dialog logic (that belongs to active evaluation flow)
+ * - Active/editable evaluation state (that belongs to issue.controller)
+ * - Expert/criterion display in RatingsSection (selector logic belongs to RatingsSection)
+ *
+ * @param {Object} params - Hook parameters.
+ * @param {Object|null} params.viewIssue - Active finished issue view.
+ * @param {number} params.currentPhaseIndex - Current consensus phase index.
+ * @param {string[]} params.leafNames - Leaf criterion names for criterion list derivation.
+ * @param {boolean} params.hasSingleCriterion - Whether the issue has only one criterion.
+ * @returns {Object} Ratings view model.
+ */
+export const useFinishedIssueRatingsView = ({
+  viewIssue,
+  currentPhaseIndex,
+  leafNames,
+  hasSingleCriterion,
+}) => {
+  const [selectedExpert, setSelectedExpert] = useState("");
+  const [selectedCriterion, setSelectedCriterion] = useState("");
+  const [showCollective, setShowCollective] = useState(false);
+
+  const evaluationStructure = useMemo(
+    () => resolveFinishedIssueEvaluationStructure(viewIssue),
+    [viewIssue]
+  );
+
+  const entry = useMemo(
+    () => getAlternativeEvaluationStructureEntry(evaluationStructure),
+    [evaluationStructure]
+  );
+
+  const Matrix = entry?.Matrix || null;
+  const unsupportedEvaluationStructure = !Matrix;
+
+  const phaseRatings = useMemo(
+    () => viewIssue?.expertsRatings?.[currentPhaseIndex + 1],
+    [viewIssue, currentPhaseIndex]
+  );
+
+  const expertList = useMemo(
+    () =>
+      Object.keys(phaseRatings?.expertEvaluations || {}).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [phaseRatings]
+  );
+
+  const criterionList = useMemo(() => {
+    if (!selectedExpert || !phaseRatings?.expertEvaluations?.[selectedExpert]) {
+      return [];
+    }
+
+    const selected = phaseRatings.expertEvaluations[selectedExpert];
+
+    if (!selected || Array.isArray(selected) || typeof selected !== "object") {
+      return [];
+    }
+
+    if (Array.isArray(leafNames) && leafNames.length) {
+      return leafNames.filter((name) => Array.isArray(selected[name]));
+    }
+
+    return Object.keys(selected).filter((key) => Array.isArray(selected[key]));
+  }, [selectedExpert, phaseRatings, leafNames]);
+
+  const showCriterionSelector = useMemo(
+    () => criterionList.length > 1 && !hasSingleCriterion,
+    [criterionList, hasSingleCriterion]
+  );
+
+  const activeCriterion = useMemo(
+    () => selectedCriterion || criterionList[0] || "",
+    [selectedCriterion, criterionList]
+  );
+
+  useEffect(() => {
+    if (!selectedExpert || !expertList.includes(selectedExpert)) {
+      const newExpert = expertList[0] || "";
+      setSelectedExpert(newExpert);
+      setSelectedCriterion("");
+    }
+  }, [expertList, selectedExpert]);
+
+  useEffect(() => {
+    if (showCriterionSelector) {
+      if (!selectedCriterion || !criterionList.includes(selectedCriterion)) {
+        const newCriterion = criterionList[0] || "";
+        setSelectedCriterion(newCriterion);
+      }
+    } else {
+      setSelectedCriterion("");
+    }
+  }, [criterionList, selectedCriterion, showCriterionSelector]);
+
+  const evaluations = useMemo(() => {
+    if (!selectedExpert || !phaseRatings?.expertEvaluations?.[selectedExpert]) {
+      return null;
+    }
+
+    const selected = phaseRatings.expertEvaluations[selectedExpert];
+
+    if (
+      activeCriterion &&
+      selected &&
+      typeof selected === "object" &&
+      !Array.isArray(selected) &&
+      Array.isArray(selected[activeCriterion])
+    ) {
+      return selected[activeCriterion] || null;
+    }
+
+    return selected || null;
+  }, [selectedExpert, activeCriterion, phaseRatings]);
+
+  const collectiveEvaluations = useMemo(() => {
+    if (!phaseRatings || !showCollective) {
+      return null;
+    }
+
+    const collective =
+      (selectedExpert &&
+        phaseRatings.collectiveEvaluationsLocalizedByExpert?.[selectedExpert]) ||
+      phaseRatings.collectiveEvaluations;
+
+    if (!collective) {
+      return null;
+    }
+
+    if (
+      activeCriterion &&
+      typeof collective === "object" &&
+      !Array.isArray(collective) &&
+      Array.isArray(collective[activeCriterion])
+    ) {
+      return collective[activeCriterion] || null;
+    }
+
+    return collective || null;
+  }, [showCollective, selectedExpert, activeCriterion, phaseRatings]);
+
+  useEffect(() => {
+    setShowCollective(false);
+  }, [viewIssue, currentPhaseIndex]);
+
+  return {
+    evaluationStructure,
+    Matrix,
+    selectedExpert,
+    setSelectedExpert,
+    selectedCriterion,
+    setSelectedCriterion,
+    expertList,
+    criterionList,
+    showCriterionSelector,
+    showCollective,
+    setShowCollective,
+    evaluations,
+    collectiveEvaluations,
+    unsupportedEvaluationStructure,
+  };
+};

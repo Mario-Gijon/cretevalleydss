@@ -12,8 +12,7 @@ import {
   regenerateScenarioResultsAnalysis,
   removeIssueScenario,
 } from "../../../services/issue.service";
-import { resolveIssueAlternativeEvaluationStructure } from "../../issueAlternativeEvaluation/utils/evaluationStructure";
-import { getFinishedIssueRatingsUi } from "../utils/finishedIssueRatings.ui";
+import { useFinishedIssueRatingsView } from "./useFinishedIssueRatingsView.js";
 import {
   applyScenarioToIssueInfo,
   buildParamsResolved,
@@ -135,8 +134,6 @@ export const useFinishedIssueDialogView = ({
   const handleNext = () => setActiveStep((prev) => Math.min(1, prev + 1));
   const handleBack = () => setActiveStep((prev) => Math.max(0, prev - 1));
 
-  const [showCollective, setShowCollective] = useState(false);
-
   const [runsLoading, setRunsLoading] = useState(false);
   const [runs, setRuns] = useState([]);
   const [selectedRunKey, setSelectedRunKey] = useState("base");
@@ -162,9 +159,6 @@ export const useFinishedIssueDialogView = ({
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
-
-  const [selectedExpert, setSelectedExpert] = useState("");
-  const [selectedCriterion, setSelectedCriterion] = useState("");
 
   useEffect(() => {
     baseIssueRef.current = issue;
@@ -218,7 +212,6 @@ export const useFinishedIssueDialogView = ({
         setCurrentPhaseIndex(index);
 
         setActiveStep(0);
-        setShowCollective(false);
         setOpenDescriptionList(false);
         setOpenCriteriaList(false);
         setOpenAlternativesList(false);
@@ -366,7 +359,6 @@ export const useFinishedIssueDialogView = ({
   const handleSelectRun = async (runKey) => {
     setSelectedRunKey(runKey);
     setActiveStep(0);
-    setShowCollective(false);
 
     if (runKey === "base") {
       setCurrentPhaseIndex(getLastPhaseIndex(issue || {}));
@@ -389,9 +381,6 @@ export const useFinishedIssueDialogView = ({
     if (info) setCurrentPhaseIndex(0);
   }, [selectedRunKey, issue, runCache, openFinishedIssueDialog]);
 
-  const viewIssue =
-    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
-  const isScenarioSelected = selectedRunKey !== "base";
   const selectedPhase = currentPhaseIndex + 1;
 
   const baseModelParamsBlock = issue?.modelParams || null;
@@ -424,15 +413,9 @@ export const useFinishedIssueDialogView = ({
     return getLeafCriteriaNamesFallback(issue?.summary?.criteria || []);
   }, [baseModelParamsBlock, issue?.summary?.criteria]);
 
-  const evaluationStructure = useMemo(
-    () => resolveIssueAlternativeEvaluationStructure(viewIssue || issue),
-    [viewIssue, issue]
-  );
-
-  const ratingsUi = useMemo(
-    () => getFinishedIssueRatingsUi(evaluationStructure),
-    [evaluationStructure]
-  );
+  const viewIssue =
+    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+  const isScenarioSelected = selectedRunKey !== "base";
 
   const hasSingleCriterion = useMemo(
     () => hasSingleLeafCriterion(viewIssue || issue),
@@ -442,97 +425,18 @@ export const useFinishedIssueDialogView = ({
   const roundsCount = getRoundsCount(viewIssue || {});
   const showRounds = Boolean(viewIssue?.summary?.consensusInfo && roundsCount > 1);
 
-  useEffect(() => {
-    const experts = ratingsUi.getExpertList({
-      viewIssue,
-      currentPhaseIndex,
-    });
-
-    const newExpert = experts[0] || "";
-    setSelectedExpert(newExpert);
-
-    const criteria = ratingsUi.getCriterionList({
-      viewIssue,
-      currentPhaseIndex,
-      selectedExpert: newExpert,
-    });
-
-    setSelectedCriterion(criteria[0] || "");
-  }, [viewIssue, currentPhaseIndex, ratingsUi]);
-
-  const expertList = useMemo(
-    () =>
-      ratingsUi.getExpertList({
-        viewIssue,
-        currentPhaseIndex,
-      }),
-    [viewIssue, currentPhaseIndex, ratingsUi]
-  );
-
-  const criterionList = useMemo(
-    () =>
-      ratingsUi.getCriterionList({
-        viewIssue,
-        currentPhaseIndex,
-        selectedExpert,
-      }),
-    [viewIssue, currentPhaseIndex, selectedExpert, ratingsUi]
-  );
-
-  const showCriterionSelector = useMemo(
-    () =>
-      ratingsUi.showCriterionSelector({
-        hasSingleCriterion,
-        criterionList,
-        viewIssue,
-        currentPhaseIndex,
-        selectedExpert,
-      }),
-    [
-      hasSingleCriterion,
-      criterionList,
-      viewIssue,
-      currentPhaseIndex,
-      selectedExpert,
-      ratingsUi,
-    ]
-  );
-
-  const evaluations = useMemo(
-    () =>
-      ratingsUi.getEvaluations({
-        viewIssue,
-        currentPhaseIndex,
-        selectedExpert,
-        selectedCriterion,
-      }),
-    [viewIssue, currentPhaseIndex, selectedExpert, selectedCriterion, ratingsUi]
-  );
-
-  const collectiveEvaluations = useMemo(
-    () =>
-      ratingsUi.getCollectiveEvaluations({
-        viewIssue,
-        currentPhaseIndex,
-        selectedExpert,
-        selectedCriterion,
-        showCollective,
-      }),
-    [
-      viewIssue,
-      currentPhaseIndex,
-      selectedExpert,
-      selectedCriterion,
-      showCollective,
-      ratingsUi,
-    ]
-  );
+  const ratingsView = useFinishedIssueRatingsView({
+    viewIssue,
+    currentPhaseIndex,
+    leafNames,
+    hasSingleCriterion,
+  });
 
   const ranking =
     (Array.isArray(viewIssue?.alternativesRankings)
       ? viewIssue.alternativesRankings.find(
-          (entry) => Number(entry?.phase) === Number(selectedPhase)
-        )
+        (entry) => Number(entry?.phase) === Number(selectedPhase)
+      )
       : null)?.ranking ?? [];
   const lastIndex = ranking.length - 1;
 
@@ -545,7 +449,6 @@ export const useFinishedIssueDialogView = ({
   const handleChangePhase = (index) => {
     setCurrentPhaseIndex(index);
     setActiveStep(0);
-    setShowCollective(false);
   };
 
   const participated = viewIssue?.summary?.experts?.participated || [];
@@ -841,12 +744,12 @@ export const useFinishedIssueDialogView = ({
 
   const modelExecutionMeta = modelExecution
     ? {
-        modelName: modelExecution?.modelName ?? null,
-        modelKey: modelExecution?.modelKey ?? null,
-        inputKind: modelExecution?.inputKind ?? null,
-        outputKind: modelExecution?.outputKind ?? null,
-        executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
-      }
+      modelName: modelExecution?.modelName ?? null,
+      modelKey: modelExecution?.modelKey ?? null,
+      inputKind: modelExecution?.inputKind ?? null,
+      outputKind: modelExecution?.outputKind ?? null,
+      executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
+    }
     : null;
 
   const rawOutputPretty = rawOutputExists ? safeJsonStringify(rawOutput) : "";
@@ -966,21 +869,9 @@ export const useFinishedIssueDialogView = ({
     ratingsSection: {
       viewIssue,
       currentPhaseIndex,
-      selectedExpert,
-      setSelectedExpert,
-      selectedCriterion,
-      setSelectedCriterion,
-      ratingsUi,
-      expertList,
-      criterionList,
-      showCriterionSelector,
-      showCollective,
-      setShowCollective,
-      evaluations,
-      collectiveEvaluations,
       leafNames,
       hasSingleCriterion,
-      evaluationStructure,
+      ...ratingsView,
     },
     roundsNavigation: {
       showRounds,

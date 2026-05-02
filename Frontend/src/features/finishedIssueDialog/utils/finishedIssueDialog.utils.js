@@ -1,7 +1,4 @@
-import { extractLeafCriteria } from "../../issueAlternativeEvaluation/utils/leafCriteria.utils";
-import {
-  resolveIssueAlternativeEvaluationStructure,
-} from "../../issueAlternativeEvaluation/utils/evaluationStructure";
+import { extractLeafCriteria } from "../../issueAlternativeEvaluation/shared/leafCriteria.utils";
 
 const WEIGHTS_KEY = "weights";
 
@@ -742,7 +739,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     scenarioOutputs?.details?.modelExecution?.rawOutput ??
     null;
   const collectiveEvaluations = scenario?.outputs?.collectiveEvaluations || null;
-  const scenarioEvaluationStructure = resolveIssueAlternativeEvaluationStructure(scenario);
+  const scenarioEvaluationStructure = scenario?.targetEvaluationStructure || scenario?.evaluationStructure || null;
   const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
     ? out.summary.alternatives
     : [];

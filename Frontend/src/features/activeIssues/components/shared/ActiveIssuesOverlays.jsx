@@ -4,7 +4,7 @@ import { CircularLoading } from "../../../../components/LoadingProgress/Circular
 import IssueDetailsDrawer from "../drawer/shell/IssueDetailsDrawer";
 import ActiveIssueConfirmDialog from "../dialogs/ActiveIssueConfirmDialog";
 import IssueExpertsDialogs from "../../../issueExperts/components/IssueExpertsDialogs.jsx";
-import IssueAlternativeEvaluationDialogs from "../../../issueAlternativeEvaluation/components/IssueAlternativeEvaluationDialogs.jsx";
+import EvaluationDialogHost from "../../../issueAlternativeEvaluation/components/EvaluationDialogHost.jsx";
 import IssueWeightEvaluationDialogs from "../../../issueWeightEvaluation/components/IssueWeightEvaluationDialogs.jsx";
 
 /**
@@ -69,10 +69,10 @@ const ActiveIssuesOverlays = ({
         setIsRatingWeights={setIsRatingWeights}
       />
 
-      <IssueAlternativeEvaluationDialogs
-        selectedIssue={selectedIssue}
-        isRatingAlternatives={isRatingAlternatives}
-        setIsRatingAlternatives={setIsRatingAlternatives}
+      <EvaluationDialogHost
+        issue={selectedIssue}
+        isOpen={isRatingAlternatives}
+        setIsOpen={setIsRatingAlternatives}
         setOpenIssueDialog={setDrawerOpen}
       />
 

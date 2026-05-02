@@ -12,18 +12,28 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
-import DirectEvaluationMatrix from "../../components/direct/DirectEvaluationMatrix.jsx";
-import AlternativeEvaluationSaveDialog from "../../components/shared/AlternativeEvaluationSaveDialog.jsx";
-import AlternativeEvaluationSubmitDialog from "../../components/shared/AlternativeEvaluationSubmitDialog.jsx";
-import AlternativeEvaluationDialogShell from "../../components/shared/AlternativeEvaluationDialogShell.jsx";
-import { extractLeafCriteria } from "../../utils/leafCriteria.utils.js";
-import { validateDirectEvaluations } from "../../utils/directEvaluation.validation.js";
-import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles.js";
+import DirectEvaluationMatrix from "./DirectEvaluationMatrix.jsx";
+import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog.jsx";
+import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog.jsx";
+import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell.jsx";
+import { extractLeafCriteria } from "../../shared/leafCriteria.utils.js";
+import { validateDirectEvaluations } from "./directEvaluation.validation.js";
+import { sectionSx } from "../../shared/alternativeEvaluationDialog.styles.js";
 import {
-  getAlternativeEvaluationDraft,
-  saveAlternativeEvaluationDraft,
-  submitAlternativeEvaluations,
-} from "../../services/alternativeEvaluation.service.js";
+  getEvaluations,
+  saveEvaluations,
+  submitEvaluations,
+} from "../../../../services/issue.service.js";
+import {
+  buildClearedDirectEvaluations,
+  buildDirectEvaluationsMatrix,
+  buildDirectSavePayload,
+  buildDirectSubmitPayload,
+} from "./directEvaluation.mapper.js";
+import {
+  extractDirectCollectiveEvaluations,
+  extractDirectDraftEvaluations,
+} from "./directEvaluation.response.js";
 
 /**
  * Diálogo de evaluación directa de alternativas.
@@ -65,9 +75,6 @@ const DirectAlternativesEvaluationDialog = ({
     [selectedIssue]
   );
 
-  const getDomain = (cell) =>
-    cell && typeof cell === "object" && cell.domain ? cell.domain : null;
-
   const flushPendingGridEdit = async () => {
     if (matrixRef.current?.flushPendingEdits) {
       await matrixRef.current.flushPendingEdits();
@@ -94,28 +101,37 @@ const DirectAlternativesEvaluationDialog = ({
       setLoading(true);
 
       try {
-        const response = await getAlternativeEvaluationDraft(selectedIssue.id);
+        const response = await getEvaluations(selectedIssue.id);
 
-        const evaluationsPayload = response?.data?.evaluations ?? null;
-        const collectivePayload =
-          response?.data?.collectiveEvaluationsLocalized ??
-          response?.data?.collectiveEvaluations ??
-          null;
+        const evaluationsPayload = extractDirectDraftEvaluations(response);
+        const collectivePayload = extractDirectCollectiveEvaluations(response);
 
         if (response.success && evaluationsPayload) {
           setCollectiveEvaluations(collectivePayload);
 
-          const merged = mergeEvaluations(evaluationsPayload);
+          const merged = buildDirectEvaluationsMatrix({
+            alternatives: selectedIssue?.alternatives || [],
+            leafCriteria: leafCriteriaNames,
+            fetchedEvaluations: evaluationsPayload,
+          });
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         } else {
-          const merged = mergeEvaluations({});
+          const merged = buildDirectEvaluationsMatrix({
+            alternatives: selectedIssue?.alternatives || [],
+            leafCriteria: leafCriteriaNames,
+            fetchedEvaluations: {},
+          });
           setEvaluations(merged);
           setInitialEvaluations(JSON.stringify(merged));
         }
       } catch (error) {
         console.error("Error fetching evaluations:", error);
-        const merged = mergeEvaluations({});
+        const merged = buildDirectEvaluationsMatrix({
+          alternatives: selectedIssue?.alternatives || [],
+          leafCriteria: leafCriteriaNames,
+          fetchedEvaluations: {},
+        });
         setEvaluations(merged);
         setInitialEvaluations(JSON.stringify(merged));
       } finally {
@@ -125,48 +141,13 @@ const DirectAlternativesEvaluationDialog = ({
 
     fetchCurrentEvaluations();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRatingAlternatives, selectedIssue]);
-
-  const mergeEvaluations = (fetchedEvaluations = {}) => {
-    const merged = {};
-    const alternatives = selectedIssue?.alternatives || [];
-    const leafCriteria = extractLeafCriteria(selectedIssue?.criteria || []);
-
-    alternatives.forEach((alternative) => {
-      merged[alternative] = {};
-
-      leafCriteria.forEach((criterion) => {
-        const criterionName = criterion.name;
-        merged[alternative][criterionName] =
-          fetchedEvaluations?.[alternative]?.[criterionName] ?? {
-            value: "",
-            domain: null,
-          };
-      });
-    });
-
-    return merged;
-  };
+  }, [isRatingAlternatives, selectedIssue, leafCriteriaNames]);
 
   const handleClearAllEvaluations = () => {
-    const alternatives = selectedIssue?.alternatives || [];
-    const criteria = leafCriteriaNames;
-
-    const cleared = {};
-
-    alternatives.forEach((alternative) => {
-      cleared[alternative] = {};
-
-      criteria.forEach((criterion) => {
-        const previousCell = evaluations?.[alternative]?.[criterion];
-        const domain = getDomain(previousCell);
-
-        cleared[alternative][criterion] = {
-          value: "",
-          domain,
-        };
-      });
+    const cleared = buildClearedDirectEvaluations({
+      alternatives: selectedIssue?.alternatives || [],
+      criteria: leafCriteriaNames,
+      evaluations,
     });
 
     setEvaluations(cleared);
@@ -230,10 +211,11 @@ const DirectAlternativesEvaluationDialog = ({
 
     setLoading(true);
     setOpenCloseDialog(false);
+    const payload = buildDirectSavePayload({ evaluations: nextEvaluations });
 
-    const evaluationSaved = await saveAlternativeEvaluationDraft(
+    const evaluationSaved = await saveEvaluations(
       selectedIssue.id,
-      nextEvaluations
+      payload
     );
 
     if (evaluationSaved.success) {
@@ -253,7 +235,8 @@ const DirectAlternativesEvaluationDialog = ({
     setLoading(true);
 
     const nextEvaluations = pendingSubmitEvaluations ?? (await getAuthoritativeEvaluations());
-    const response = await submitAlternativeEvaluations(selectedIssue, nextEvaluations);
+    const payload = buildDirectSubmitPayload({ evaluations: nextEvaluations });
+    const response = await submitEvaluations(selectedIssue, payload);
 
     if (response.success) {
       showSnackbarAlert(response?.message || "Evaluations submitted successfully", "success");

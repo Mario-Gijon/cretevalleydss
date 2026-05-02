@@ -18,7 +18,7 @@ import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog
 import {
   auroraBg,
   softIconBtnSx,
-} from "../../styles/alternativeEvaluationDialog.styles.js";
+} from "../alternativeEvaluationDialog.styles.js";
 
 /**
  * Shell compartido para los diálogos de evaluación de alternativas.
