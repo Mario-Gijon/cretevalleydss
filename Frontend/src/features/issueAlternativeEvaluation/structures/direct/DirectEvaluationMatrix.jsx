@@ -277,7 +277,7 @@ const DirectEvaluationMatrix = ({
 
     criteria.forEach((criterion) => {
       row[criterion] =
-        evaluations[alternative]?.[criterion] ?? { value: "", domain: null };
+        evaluations?.[alternative]?.[criterion] ?? { value: "", domain: null };
     });
 
     return row;

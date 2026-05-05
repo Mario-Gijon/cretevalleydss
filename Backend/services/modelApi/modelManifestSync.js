@@ -30,6 +30,17 @@ const TECHNICAL_UPDATE_FIELDS = [
   "supportedDomains",
 ];
 
+const CATALOG_UPDATE_FIELDS = [
+  "smallDescription",
+  "extendDescription",
+  "moreInfoUrl",
+];
+
+const SYNC_UPDATE_FIELDS = [
+  ...TECHNICAL_UPDATE_FIELDS,
+  ...CATALOG_UPDATE_FIELDS,
+];
+
 const SUPPORTED_EVALUATION_STRUCTURES = new Set(
   Object.values(EVALUATION_STRUCTURES)
 );
@@ -86,6 +97,54 @@ const toIdString = (value) => {
   }
 
   return String(value);
+};
+
+const getCatalogText = (manifestModel, field) => {
+  const catalog = manifestModel?.catalog || {};
+  const documentation = manifestModel?.documentation || {};
+
+  if (field === "smallDescription") {
+    return (
+      normalizeNonEmptyString(catalog.smallDescription) ||
+      normalizeNonEmptyString(documentation.summary) ||
+      EDITORIAL_FALLBACKS.smallDescription
+    );
+  }
+
+  if (field === "extendDescription") {
+    return (
+      normalizeNonEmptyString(catalog.extendDescription) ||
+      normalizeNonEmptyString(documentation.description) ||
+      normalizeNonEmptyString(catalog.smallDescription) ||
+      normalizeNonEmptyString(documentation.summary) ||
+      EDITORIAL_FALLBACKS.extendDescription
+    );
+  }
+
+  if (field === "moreInfoUrl") {
+    return (
+      normalizeNonEmptyString(catalog.moreInfoUrl) ||
+      normalizeNonEmptyString(documentation.moreInfoUrl) ||
+      null
+    );
+  }
+
+  return null;
+};
+
+const buildCatalogPayload = (manifestModel) => {
+  const payload = {
+    smallDescription: getCatalogText(manifestModel, "smallDescription"),
+    extendDescription: getCatalogText(manifestModel, "extendDescription"),
+  };
+
+  const moreInfoUrl = getCatalogText(manifestModel, "moreInfoUrl");
+
+  if (moreInfoUrl) {
+    payload.moreInfoUrl = moreInfoUrl;
+  }
+
+  return payload;
 };
 
 const normalizeNonEmptyString = (value) => {
@@ -148,20 +207,20 @@ const normalizeSupportedDomains = (supportedDomains) => {
   return {
     numeric: numeric
       ? {
-          enabled: Boolean(numeric.enabled),
-          range: {
-            min: numeric.range?.min ?? null,
-            max: numeric.range?.max ?? null,
-          },
-        }
+        enabled: Boolean(numeric.enabled),
+        range: {
+          min: numeric.range?.min ?? null,
+          max: numeric.range?.max ?? null,
+        },
+      }
       : null,
     linguistic: linguistic
       ? {
-          enabled: Boolean(linguistic.enabled),
-          minLabels: linguistic.minLabels ?? null,
-          maxLabels: linguistic.maxLabels ?? null,
-          oddOnly: Boolean(linguistic.oddOnly),
-        }
+        enabled: Boolean(linguistic.enabled),
+        minLabels: linguistic.minLabels ?? null,
+        maxLabels: linguistic.maxLabels ?? null,
+        oddOnly: Boolean(linguistic.oddOnly),
+      }
       : null,
   };
 };
@@ -479,6 +538,7 @@ const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
     criterionTypes: normalizeCriterionTypes(manifestModel.criterionTypes),
     parameters: normalizeParameters(manifestModel.parameters),
     supportedDomains: normalizeSupportedDomains(capabilities.supportedDomains),
+    ...buildCatalogPayload(manifestModel),
     manifestSync: {
       source: MANIFEST_SYNC_SOURCE,
       manifestVersion: manifest.manifestVersion,
@@ -486,27 +546,6 @@ const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
       lastSyncedAt: now,
       lastSeenAt: now,
     },
-  };
-};
-
-const buildEditorialFieldsForCreate = (manifestModel, warnings) => {
-  const documentation = manifestModel?.documentation || {};
-  const moreInfoUrl = String(documentation.moreInfoUrl || "").trim();
-
-  if (!moreInfoUrl) {
-    warnings.push(
-      `Model ${manifestModel.key} imported with fallback moreInfoUrl; manual review required.`
-    );
-  }
-
-  return {
-    smallDescription:
-      String(documentation.summary || "").trim() ||
-      EDITORIAL_FALLBACKS.smallDescription,
-    extendDescription:
-      String(documentation.description || "").trim() ||
-      EDITORIAL_FALLBACKS.extendDescription,
-    moreInfoUrl: moreInfoUrl || EDITORIAL_FALLBACKS.moreInfoUrl,
   };
 };
 
@@ -544,9 +583,11 @@ const findMongoMatch = (manifestModel, mongoEntries) => {
   };
 };
 
-const getChangedTechnicalFields = (model, payload) => {
-  return TECHNICAL_UPDATE_FIELDS.filter(
-    (field) => !isValueEqual(field, model[field], payload[field])
+const getChangedSyncFields = (model, payload) => {
+  return SYNC_UPDATE_FIELDS.filter(
+    (field) =>
+      Object.prototype.hasOwnProperty.call(payload, field) &&
+      !isValueEqual(field, model[field], payload[field])
   );
 };
 
@@ -559,7 +600,7 @@ const buildExistingModelUpdatePayload = (payload) => {
 
 const updateExistingModel = async ({ entry, payload, manifestModel }) => {
   const updatePayload = buildExistingModelUpdatePayload(payload);
-  const updatedFields = getChangedTechnicalFields(entry.model, updatePayload);
+  const updatedFields = getChangedSyncFields(entry.model, updatePayload);
 
   entry.matched = true;
 
@@ -610,7 +651,9 @@ const createIssueModelFromManifest = async ({
   const createdModel = await IssueModel.create({
     name: manifestModel.displayName,
     ...payload,
-    ...buildEditorialFieldsForCreate(manifestModel, warnings),
+    moreInfoUrl:
+      payload.moreInfoUrl ||
+      EDITORIAL_FALLBACKS.moreInfoUrl,
   });
 
   return {

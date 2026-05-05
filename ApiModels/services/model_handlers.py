@@ -1,5 +1,6 @@
 from typing import Any
 
+
 from fastapi.responses import JSONResponse
 
 from models.aras.aras_model import run_aras
@@ -9,6 +10,7 @@ from models.cmcc.cmcc_model import run_cmcc
 from models.fuzzy_topsis.fuzzy_topsis_model import run_fuzzy_topsis
 from models.herrera_viedma_crp.herrera_viedma_crp_model import run_herrera_viedma
 from models.topsis.topsis_model import run_topsis
+from models.marcos.marcos_model import run_marcos
 from schemas.model_requests import (
     ArasRequest,
     BordaRequest,
@@ -16,6 +18,7 @@ from schemas.model_requests import (
     CmccRequest,
     FuzzyTopsisRequest,
     HerreraViedmaRequest,
+    MarcosRequest,
     TopsisRequest,
 )
 
@@ -70,7 +73,7 @@ def _error(
 
 
 def execute_herrera_viedma(payload: HerreraViedmaRequest) -> dict[str, Any] | JSONResponse:
-    """Ejecuta Herrera-Viedma CRP con el mismo flujo del endpoint legado."""
+    """Ejecuta Herrera-Viedma CRP."""
 
     try:
         model_parameters = payload.modelParameters
@@ -154,6 +157,21 @@ def execute_fuzzy_topsis(payload: FuzzyTopsisRequest) -> dict[str, Any] | JSONRe
         return _success("Fuzzy TOPSIS executed successfully", results)
     except Exception as error:
         return _error(f"Error executing Fuzzy TOPSIS: {error}", code="INTERNAL_ERROR")
+      
+      
+def execute_marcos(payload: MarcosRequest) -> dict[str, Any] | JSONResponse:
+    """Ejecuta MARCOS."""
+
+    try:
+        results = run_marcos(
+            payload.matrices,
+            weights=payload.modelParameters.weights,
+            criterion_type=payload.criterionTypes,
+        )
+
+        return _success("MARCOS executed successfully", results)
+    except Exception as error:
+        return _error(f"Error executing MARCOS: {error}", code="INTERNAL_ERROR")
 
 
 def execute_bwm(payload: BwmRequest) -> dict[str, Any] | JSONResponse:

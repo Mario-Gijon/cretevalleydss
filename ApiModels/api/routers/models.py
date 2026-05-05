@@ -1,26 +1,26 @@
 from fastapi import APIRouter
 
-from registry.model_registry import MODEL_REGISTRY, ModelRouteRegistration
+from registry.model_definitions import MODEL_DEFINITIONS, ModelDefinition
 from schemas.common import ModelExecutionResponse
 
 router = APIRouter(tags=["Decision Models"])
 
 
-def _build_model_endpoint(registration: ModelRouteRegistration):
-    """Genera un endpoint FastAPI a partir del registro de un modelo."""
+def _build_model_endpoint(model: ModelDefinition):
+    """Genera un endpoint FastAPI a partir de la definición de un modelo."""
 
-    request_model = registration.request_model
+    request_model = model.request_model
 
     async def endpoint(payload: request_model):  # type: ignore[valid-type]
-        return registration.handler(payload)
+        return model.handler(payload)
 
-    endpoint.__name__ = f"{registration.name}_endpoint"
-    endpoint.__doc__ = registration.description
+    endpoint.__name__ = f"{model.key}_endpoint"
+    endpoint.__doc__ = model.description
 
     return endpoint
 
 
-def _build_responses(registration: ModelRouteRegistration) -> dict[int, dict[str, object]]:
+def _build_responses(model: ModelDefinition) -> dict[int, dict[str, object]]:
     """Construye metadata de respuestas OpenAPI para un endpoint de modelo."""
 
     return {
@@ -31,7 +31,7 @@ def _build_responses(registration: ModelRouteRegistration) -> dict[int, dict[str
             ),
             "content": {
                 "application/json": {
-                    "examples": registration.response_examples,
+                    "examples": model.response_examples,
                 }
             },
         },
@@ -55,16 +55,16 @@ def _build_responses(registration: ModelRouteRegistration) -> dict[int, dict[str
     }
 
 
-for model_registration in MODEL_REGISTRY:
+for model_definition in MODEL_DEFINITIONS:
     router.add_api_route(
-        model_registration.path,
-        _build_model_endpoint(model_registration),
+        model_definition.path,
+        _build_model_endpoint(model_definition),
         methods=["POST"],
         response_model=ModelExecutionResponse,
         response_model_exclude_none=True,
-        summary=model_registration.summary,
-        description=model_registration.description,
-        operation_id=model_registration.operation_id,
-        name=model_registration.name,
-        responses=_build_responses(model_registration),
+        summary=model_definition.summary,
+        description=model_definition.description,
+        operation_id=model_definition.operation_id,
+        name=model_definition.key,
+        responses=_build_responses(model_definition),
     )

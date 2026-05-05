@@ -1,20 +1,20 @@
-"""Implementación del modelo TOPSIS para ejecución desde la API."""
+"""Implementación del modelo MARCOS para ejecución desde la API."""
 
 from typing import Any
 
 import numpy as np
-from pyDecision.algorithm import topsis_method
+from pyDecision.algorithm import marcos_method
 
 from utils.clean_matrix import clean_matrix
 from utils.get_plots_graphics_from_matrices import get_plots_graphics_from_matrices
 
 
-def run_topsis(
+def run_marcos(
     matrices: dict[str, list[list[float]]],
     weights: list[float],
     criterion_type: list[str],
 ) -> dict[str, Any]:
-    """Ejecuta TOPSIS sobre la matriz colectiva de expertos."""
+    """Ejecuta MARCOS sobre la matriz colectiva de expertos."""
 
     matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
     collective_matrix = np.mean(matrices_np, axis=0)
@@ -24,7 +24,7 @@ def run_topsis(
         criterion_type,
     )
 
-    collective_scores = topsis_method(
+    collective_scores = marcos_method(
         matrix_clean,
         weights_clean,
         criteria_clean,

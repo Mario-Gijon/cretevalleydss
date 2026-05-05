@@ -20,11 +20,14 @@ const TECHNICAL_FIELDS = [
   "role",
   "status",
   "supportsScenarios",
+  "smallDescription",
+  "extendDescription",
+  "moreInfoUrl",
 ];
 
 const LOCAL_CONFIGURATION_FIELDS = ["publicInIssueCatalog"];
 
-const PRESERVED_EDITORIAL_FIELDS = [
+const CATALOG_SYNC_FIELDS = [
   "smallDescription",
   "extendDescription",
   "moreInfoUrl",
@@ -151,20 +154,20 @@ const normalizeSupportedDomains = (supportedDomains) => {
   return {
     numeric: numeric
       ? {
-          enabled: Boolean(numeric.enabled),
-          range: {
-            min: numeric.range?.min ?? null,
-            max: numeric.range?.max ?? null,
-          },
-        }
+        enabled: Boolean(numeric.enabled),
+        range: {
+          min: numeric.range?.min ?? null,
+          max: numeric.range?.max ?? null,
+        },
+      }
       : null,
     linguistic: linguistic
       ? {
-          enabled: Boolean(linguistic.enabled),
-          minLabels: linguistic.minLabels ?? null,
-          maxLabels: linguistic.maxLabels ?? null,
-          oddOnly: Boolean(linguistic.oddOnly),
-        }
+        enabled: Boolean(linguistic.enabled),
+        minLabels: linguistic.minLabels ?? null,
+        maxLabels: linguistic.maxLabels ?? null,
+        oddOnly: Boolean(linguistic.oddOnly),
+      }
       : null,
   };
 };
@@ -370,6 +373,32 @@ const getManifestTechnicalValue = (manifestModel, field) => {
 
   if (field === "inputKind" || field === "outputKind") {
     return manifestModel?.capabilities?.[field] ?? null;
+  }
+
+  if (field === "smallDescription") {
+    return (
+      normalizeNonEmptyString(manifestModel?.catalog?.smallDescription) ||
+      normalizeNonEmptyString(manifestModel?.documentation?.summary) ||
+      null
+    );
+  }
+
+  if (field === "extendDescription") {
+    return (
+      normalizeNonEmptyString(manifestModel?.catalog?.extendDescription) ||
+      normalizeNonEmptyString(manifestModel?.documentation?.description) ||
+      normalizeNonEmptyString(manifestModel?.catalog?.smallDescription) ||
+      normalizeNonEmptyString(manifestModel?.documentation?.summary) ||
+      null
+    );
+  }
+
+  if (field === "moreInfoUrl") {
+    return (
+      normalizeNonEmptyString(manifestModel?.catalog?.moreInfoUrl) ||
+      normalizeNonEmptyString(manifestModel?.documentation?.moreInfoUrl) ||
+      null
+    );
   }
 
   if (
@@ -847,7 +876,7 @@ export const buildModelManifestDryRunReport = ({
     modelRows,
     warnings,
     recommendations,
-    preservedEditorialFields: PRESERVED_EDITORIAL_FIELDS,
+    syncedCatalogFields: CATALOG_SYNC_FIELDS,
   };
 };
 

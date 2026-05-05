@@ -17,11 +17,15 @@ def _extract_crisp_matrix_shape(
 
     for expert_id, matrix in matrices.items():
         if not matrix:
-            raise ValueError(f"{field_name}.{expert_id} must contain at least one alternative")
+            raise ValueError(
+                f"{field_name}.{expert_id} must contain at least one alternative"
+            )
 
         criteria_count = len(matrix[0])
         if criteria_count == 0:
-            raise ValueError(f"{field_name}.{expert_id} must contain at least one criterion")
+            raise ValueError(
+                f"{field_name}.{expert_id} must contain at least one criterion"
+            )
 
         for row in matrix:
             if len(row) != criteria_count:
@@ -35,7 +39,10 @@ def _extract_crisp_matrix_shape(
             expected_criteria = criteria_count
             continue
 
-        if alternatives_count != expected_alternatives or criteria_count != expected_criteria:
+        if (
+            alternatives_count != expected_alternatives
+            or criteria_count != expected_criteria
+        ):
             raise ValueError(
                 f"All expert matrices in {field_name} must share the same shape"
             )
@@ -56,15 +63,21 @@ def _extract_fuzzy_matrix_shape(
 
     for expert_id, matrix in matrices.items():
         if not matrix:
-            raise ValueError(f"matrices.{expert_id} must contain at least one alternative")
+            raise ValueError(
+                f"matrices.{expert_id} must contain at least one alternative"
+            )
 
         criteria_count = len(matrix[0])
         if criteria_count == 0:
-            raise ValueError(f"matrices.{expert_id} must contain at least one criterion")
+            raise ValueError(
+                f"matrices.{expert_id} must contain at least one criterion"
+            )
 
         for row in matrix:
             if len(row) != criteria_count:
-                raise ValueError(f"matrices.{expert_id} rows must have the same number of criteria")
+                raise ValueError(
+                    f"matrices.{expert_id} rows must have the same number of criteria"
+                )
             for triple in row:
                 if len(triple) != 3:
                     raise ValueError(
@@ -77,8 +90,13 @@ def _extract_fuzzy_matrix_shape(
             expected_criteria = criteria_count
             continue
 
-        if alternatives_count != expected_alternatives or criteria_count != expected_criteria:
-            raise ValueError("All expert matrices in matrices must share the same shape")
+        if (
+            alternatives_count != expected_alternatives
+            or criteria_count != expected_criteria
+        ):
+            raise ValueError(
+                "All expert matrices in matrices must share the same shape"
+            )
 
     return expected_alternatives or 0, expected_criteria or 0
 
@@ -93,7 +111,9 @@ def _extract_herrera_shape(
 
     first_expert_payload = next(iter(matrices.values()))
     if not first_expert_payload:
-        raise ValueError("Each expert payload must include at least one criterion matrix")
+        raise ValueError(
+            "Each expert payload must include at least one criterion matrix"
+        )
 
     criterion_name = next(iter(first_expert_payload.keys()))
     expected_alternatives: int | None = None
@@ -239,7 +259,7 @@ class HerreraViedmaRequest(RequestSchema):
         description="Matrices de preferencia por experto y criterio.",
     )
     consensusThreshold: float = Field(
-        default=1,
+        default=0.7,
         description="Umbral mínimo de consenso solicitado por cliente.",
     )
     modelParameters: HerreraViedmaModelParameters = Field(
@@ -251,10 +271,16 @@ class HerreraViedmaRequest(RequestSchema):
     def validate_semantics(self):
         _extract_herrera_shape(self.matrices)
 
-        if self.modelParameters.ag_lq is not None and len(self.modelParameters.ag_lq) != 2:
+        if (
+            self.modelParameters.ag_lq is not None
+            and len(self.modelParameters.ag_lq) != 2
+        ):
             raise ValueError("modelParameters.ag_lq must contain exactly 2 values")
 
-        if self.modelParameters.ex_lq is not None and len(self.modelParameters.ex_lq) != 2:
+        if (
+            self.modelParameters.ex_lq is not None
+            and len(self.modelParameters.ex_lq) != 2
+        ):
             raise ValueError("modelParameters.ex_lq must contain exactly 2 values")
 
         return self
@@ -473,6 +499,74 @@ class FuzzyTopsisRequest(RequestSchema):
                 raise ValueError(
                     f"modelParameters.weights[{index}] must be a triplet [l, m, u]"
                 )
+
+        return self
+
+
+class MarcosModelParameters(RequestSchema):
+    """Parámetros del modelo MARCOS."""
+
+    weights: list[float] = Field(
+        ...,
+        description="Peso por criterio.",
+    )
+
+
+class MarcosRequest(RequestSchema):
+    """Entrada del endpoint `/marcos`."""
+
+    model_config = ConfigDict(
+        extra="ignore",
+        json_schema_extra={
+            "example": {
+                "matrices": {
+                    "expert_1": [
+                        [250, 16, 12, 5],
+                        [200, 16, 8, 3],
+                        [300, 32, 16, 4],
+                        [275, 32, 8, 4],
+                        [225, 16, 16, 2],
+                    ],
+                    "expert_2": [
+                        [260, 16, 12, 5],
+                        [210, 16, 8, 3],
+                        [290, 32, 16, 4],
+                        [270, 32, 8, 4],
+                        [230, 16, 16, 2],
+                    ],
+                },
+                "criterionTypes": ["min", "max", "max", "max"],
+                "modelParameters": {"weights": [0.1, 0.4, 0.2, 0.3]},
+            }
+        },
+    )
+
+    matrices: dict[str, list[list[float]]] = Field(
+        ...,
+        description="Matriz de evaluación por experto.",
+    )
+    criterionTypes: list[str] = Field(
+        ...,
+        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+    )
+    modelParameters: MarcosModelParameters = Field(
+        ...,
+        description="Parámetros del modelo MARCOS.",
+    )
+
+    @model_validator(mode="after")
+    def validate_semantics(self):
+        _, criteria_count = _extract_crisp_matrix_shape(self.matrices)
+
+        if len(self.criterionTypes) != criteria_count:
+            raise ValueError(
+                "criterionTypes length must match the number of criteria in matrices"
+            )
+
+        if len(self.modelParameters.weights) != criteria_count:
+            raise ValueError(
+                "modelParameters.weights length must match the number of criteria in matrices"
+            )
 
         return self
 
