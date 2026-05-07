@@ -1,4 +1,23 @@
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
+import {
+  countLeafCriteriaNodes,
+  isCriterionWeightsParameter,
+  normalizeNonEmptyString,
+  resolveExpectedArrayLength,
+  resolveParameterKey,
+} from "./modelParameter.metadata.js";
+import {
+  isMissingParameterValue,
+  resolveCriteriaWeightsDefault,
+  resolvePerCriterionScalarValue,
+} from "./modelParameter.defaults.js";
+import {
+  getValueType,
+  isAllowedValue,
+  isWithinRange,
+  normalizeNumberValue,
+  validateOrderedRule,
+} from "./modelParameter.normalization.js";
 
 const SUPPORTED_PARAMETER_TYPES = new Set([
   "number",
@@ -12,189 +31,6 @@ const SUPPORTED_PARAMETER_TYPES = new Set([
   "fuzzyNumber",
   "fuzzyArray",
 ]);
-
-const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-const resolveParameterKey = (parameter) => {
-  return (
-    normalizeNonEmptyString(parameter?.key) ||
-    normalizeNonEmptyString(parameter?.name)
-  );
-};
-
-const isMissingParameterValue = (value) =>
-  value === undefined || value === null || value === "";
-
-const getValueType = (value) => {
-  if (Array.isArray(value)) return "array";
-  if (value === null) return "null";
-  return typeof value;
-};
-
-const valuesAreEqual = (left, right) => {
-  if (typeof left === "number" && typeof right === "number") {
-    return Object.is(left, right);
-  }
-
-  return JSON.stringify(left) === JSON.stringify(right);
-};
-
-const isAllowedValue = (value, allowed) => {
-  if (!Array.isArray(allowed) || allowed.length === 0) {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.every((item) =>
-      allowed.some((allowedItem) => valuesAreEqual(item, allowedItem))
-    );
-  }
-
-  return allowed.some((allowedItem) => valuesAreEqual(value, allowedItem));
-};
-
-const normalizeNumberValue = (value) => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const normalized = value.trim();
-    if (!normalized) {
-      return null;
-    }
-
-    const parsed = Number(normalized);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-};
-
-const countLeafCriteriaNodes = (nodes) => {
-  if (!Array.isArray(nodes)) {
-    return 0;
-  }
-
-  return nodes.reduce((count, node) => {
-    const children = Array.isArray(node?.children) ? node.children : [];
-    if (children.length === 0) {
-      return count + 1;
-    }
-
-    return count + countLeafCriteriaNodes(children);
-  }, 0);
-};
-
-const resolveExpectedArrayLength = ({
-  parameter,
-  leafCriteriaCount,
-  alternativesCount,
-}) => {
-  const configuredLength = parameter?.restrictions?.length;
-
-  if (configuredLength === "matchCriteria") {
-    return leafCriteriaCount;
-  }
-
-  if (configuredLength === "matchAlternatives") {
-    return alternativesCount;
-  }
-
-  if (typeof configuredLength === "number" && Number.isInteger(configuredLength)) {
-    return configuredLength;
-  }
-
-  if (Array.isArray(parameter?.default)) {
-    return parameter.default.length;
-  }
-
-  return null;
-};
-
-const isWithinRange = (value, restrictions = {}) => {
-  if (typeof restrictions.min === "number" && value < restrictions.min) {
-    return false;
-  }
-
-  if (typeof restrictions.max === "number" && value > restrictions.max) {
-    return false;
-  }
-
-  return true;
-};
-
-const validateOrderedRule = (values, orderedRule) => {
-  if (!orderedRule || values.length < 2) {
-    return true;
-  }
-
-  if (orderedRule === "strictIncreasing") {
-    for (let index = 1; index < values.length; index += 1) {
-      if (!(values[index - 1] < values[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (orderedRule === "nonDecreasing") {
-    for (let index = 1; index < values.length; index += 1) {
-      if (!(values[index - 1] <= values[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  return false;
-};
-
-const isCriterionWeightsParameter = ({ parameterName, parameter, restrictions }) => {
-  if (parameterName !== "weights") {
-    return false;
-  }
-
-  return (
-    normalizeNonEmptyString(parameter?.type) === "array" &&
-    restrictions?.length === "matchCriteria"
-  );
-};
-
-const resolveCriteriaWeightsDefault = ({
-  value,
-  parameterName,
-  parameter,
-  restrictions,
-  leafCriteriaCount,
-}) => {
-  const isCriterionWeights = isCriterionWeightsParameter({
-    parameterName,
-    parameter,
-    restrictions,
-  });
-
-  if (!isCriterionWeights) {
-    return value;
-  }
-
-  if (
-    typeof value === "string" &&
-    value.trim().toLowerCase() === "equal" &&
-    Number.isInteger(leafCriteriaCount) &&
-    leafCriteriaCount > 0
-  ) {
-    return Array.from({ length: leafCriteriaCount }, () => 1);
-  }
-
-  return value;
-};
 
 const buildInvalidParameterError = ({ modelName, parameterErrors }) => {
   const firstError = parameterErrors[0];
@@ -312,9 +148,13 @@ export const validateAndNormalizeModelParametersOrThrow = ({
 
     value = resolveCriteriaWeightsDefault({
       value,
-      parameterName,
       parameter,
-      restrictions,
+      leafCriteriaCount,
+    });
+
+    value = resolvePerCriterionScalarValue({
+      value,
+      parameter,
       leafCriteriaCount,
     });
 
@@ -604,9 +444,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       if (arrayHasError) continue;
 
       const isCriterionWeights = isCriterionWeightsParameter({
-        parameterName,
         parameter,
-        restrictions,
       });
 
       if (isCriterionWeights) {
@@ -620,7 +458,20 @@ export const validateAndNormalizeModelParametersOrThrow = ({
           addError({ parameter: parameterName, message: "must contain at least one value greater than 0", value });
           continue;
         }
-        normalizedModelParameters[parameterName] = normalizedArray.map((item) => item / totalWeight);
+
+        if (
+          typeof restrictions.sum === "number" &&
+          Math.abs(totalWeight - restrictions.sum) > 1e-6
+        ) {
+          addError({
+            parameter: parameterName,
+            message: `must sum to ${restrictions.sum}`,
+            value,
+          });
+          continue;
+        }
+
+        normalizedModelParameters[parameterName] = normalizedArray;
         continue;
       }
 

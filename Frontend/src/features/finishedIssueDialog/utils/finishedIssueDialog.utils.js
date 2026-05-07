@@ -1,6 +1,9 @@
 import { extractLeafCriteria } from "../../issueAlternativeEvaluation/shared/leafCriteria.utils";
-
-const WEIGHTS_KEY = "weights";
+import {
+  isCriteriaWeightsParameter,
+  resolveLeafLengthForParameter,
+  resolveParameterKey,
+} from "../../modelParameters";
 
 const countLeafCriteria = (nodes) => {
   if (!Array.isArray(nodes) || nodes.length === 0) return 0;
@@ -187,7 +190,7 @@ export const stripWeights = (obj) => {
 export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
-  Boolean(param) && (param?.key || param?.name) !== WEIGHTS_KEY;
+  Boolean(param) && !isCriteriaWeightsParameter(param);
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -371,20 +374,16 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     : null;
 
   for (const param of model?.parameters || []) {
-    const key = param?.key || param?.name;
+    const key = resolveParameterKey(param);
     if (!key) continue;
 
     if (param.type === "number") out[key] = param.default ?? "";
 
     if (param.type === "array") {
-      const len =
-        param?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : param?.restrictions?.length ?? 2;
+      const len = resolveLeafLengthForParameter(param, leafCount) ?? param?.restrictions?.length ?? 2;
       const base = Array.isArray(param.default) ? param.default : [];
       const count = Number(len) || 2;
-      const isWeightsByCriteria =
-        key === WEIGHTS_KEY && param?.restrictions?.length === "matchCriteria";
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
 
       if (isWeightsByCriteria && Array.isArray(baseIssueWeights) && baseIssueWeights.length === count) {
         out[key] = ensureArrayLen(baseIssueWeights, count, "");
@@ -400,10 +399,7 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     }
 
     if (param.type === "fuzzyArray") {
-      const len =
-        param?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : param?.restrictions?.length ?? 1;
+      const len = resolveLeafLengthForParameter(param, leafCount) ?? param?.restrictions?.length ?? 1;
       const count = Number(len) || 1;
       const base = Array.isArray(param.default) ? param.default : [];
       const filled = ensureArrayLen(base, count, ["", "", ""]).map((triple) =>
@@ -426,7 +422,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
   const out = {};
 
   for (const param of model?.parameters || []) {
-    const name = param?.key || param?.name;
+    const name = resolveParameterKey(param);
     if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
@@ -450,10 +446,9 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
 
     if (type === "array") {
       const len =
-        restrictions.length === "matchCriteria"
-          ? leafCount
-          : (typeof restrictions.length === "number" ? restrictions.length : null) ??
-            (Array.isArray(def) ? def.length : 2);
+        resolveLeafLengthForParameter(param, leafCount) ??
+        (typeof restrictions.length === "number" ? restrictions.length : null) ??
+        (Array.isArray(def) ? def.length : 2);
 
       const arr = ensureArrayLen(values?.[name] ?? def ?? [], Number(len) || 2, "");
       const parsed = arr.map((item) => (item === "" || item == null ? null : Number(item)));
@@ -467,10 +462,9 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
 
     if (type === "fuzzyArray") {
       const len =
-        restrictions.length === "matchCriteria"
-          ? leafCount
-          : (typeof restrictions.length === "number" ? restrictions.length : null) ??
-            (Array.isArray(def) ? def.length : 1);
+        resolveLeafLengthForParameter(param, leafCount) ??
+        (typeof restrictions.length === "number" ? restrictions.length : null) ??
+        (Array.isArray(def) ? def.length : 1);
 
       const triples = ensureArrayLen(
         values?.[name] ?? def ?? [],
@@ -506,7 +500,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  */
 export const validateParams = ({ model, values, leafCount }) => {
   for (const param of model?.parameters || []) {
-    const name = param?.key || param?.name;
+    const name = resolveParameterKey(param);
     if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
@@ -539,10 +533,9 @@ export const validateParams = ({ model, values, leafCount }) => {
 
     if (type === "array") {
       const len =
-        restrictions.length === "matchCriteria"
-          ? leafCount
-          : (typeof restrictions.length === "number" ? restrictions.length : null) ??
-            (Array.isArray(param.default) ? param.default.length : 2);
+        resolveLeafLengthForParameter(param, leafCount) ??
+        (typeof restrictions.length === "number" ? restrictions.length : null) ??
+        (Array.isArray(param.default) ? param.default.length : 2);
 
       const arr = ensureArrayLen(
         Array.isArray(value)
@@ -575,7 +568,11 @@ export const validateParams = ({ model, values, leafCount }) => {
         }
       }
 
-      if (Number(len) === 2 && !restrictions.sum && restrictions.length !== "matchCriteria") {
+      if (
+        Number(len) === 2 &&
+        !restrictions.sum &&
+        resolveLeafLengthForParameter(param, leafCount) == null
+      ) {
         if (numbers[0] >= numbers[1]) {
           return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
         }
@@ -586,10 +583,9 @@ export const validateParams = ({ model, values, leafCount }) => {
 
     if (type === "fuzzyArray") {
       const len =
-        restrictions.length === "matchCriteria"
-          ? leafCount
-          : (typeof restrictions.length === "number" ? restrictions.length : null) ??
-            (Array.isArray(param.default) ? param.default.length : 1);
+        resolveLeafLengthForParameter(param, leafCount) ??
+        (typeof restrictions.length === "number" ? restrictions.length : null) ??
+        (Array.isArray(param.default) ? param.default.length : 1);
 
       const triples = ensureArrayLen(
         Array.isArray(value)

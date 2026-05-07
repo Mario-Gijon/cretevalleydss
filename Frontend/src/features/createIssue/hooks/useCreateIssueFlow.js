@@ -5,7 +5,14 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
+  isCriteriaWeightsParameter,
+  resolveLeafLengthForParameter,
+  resolveParameterKey,
+  validateCriteriaWeightsParameterValue,
+} from "../../modelParameters";
+import {
   readStoredCreateIssueData,
+  setDefaults,
   steps,
   updateParamValues,
   validateIssueDescription,
@@ -22,6 +29,28 @@ import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbar
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
 dayjs.extend(utc);
+
+const isDeepEqual = (left, right) => {
+  if (left === right) return true;
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false;
+    return left.every((item, index) => isDeepEqual(item, right[index]));
+  }
+  if (
+    left &&
+    right &&
+    typeof left === "object" &&
+    typeof right === "object" &&
+    !Array.isArray(left) &&
+    !Array.isArray(right)
+  ) {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) return false;
+    return leftKeys.every((key) => isDeepEqual(left[key], right[key]));
+  }
+  return false;
+};
 
 /**
  * Gestiona el estado y reglas del flujo createIssue.
@@ -65,6 +94,7 @@ export const useCreateIssueFlow = () => {
   );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
+  const [hasAttemptedCreateIssue, setHasAttemptedCreateIssue] = useState(false);
   const [domainAssignments, setDomainAssignments] = useState(
     storedData.domainAssignments || {}
   );
@@ -124,29 +154,14 @@ export const useCreateIssueFlow = () => {
 
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
-      const defaults = selectedModel.parameters.reduce((accumulator, parameter) => {
-        const paramKey = parameter?.key || parameter?.name;
-        if (!paramKey) return accumulator;
-        accumulator[paramKey] = parameter.default;
-        return accumulator;
-      }, {});
-
-      selectedModel.parameters.forEach((parameter) => {
-        const { type, restrictions } = parameter;
-        const paramKey = parameter?.key || parameter?.name;
-        if (!paramKey) return;
-
-        if (type === "array" && restrictions?.length === "matchCriteria") {
-          const length = getLeafCriteria(criteria).length || 1;
-          const equalWeight = 1 / length;
-
-          if (!Array.isArray(defaults[paramKey]) || defaults[paramKey].length !== length) {
-            defaults[paramKey] = Array(length).fill(equalWeight);
-          }
-        }
-      });
-
-      setParamValues(defaults);
+      setParamValues(
+        setDefaults({
+          selectedModel,
+          criteria: getLeafCriteria(criteria),
+        })
+      );
+      setDefaultModelParams(true);
+      setHasAttemptedCreateIssue(false);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,10 +197,41 @@ export const useCreateIssueFlow = () => {
   }, [criteria, selectedModel]);
 
   useEffect(() => {
+    if (!selectedModel?.parameters) {
+      if (defaultModelParams !== true) setDefaultModelParams(true);
+      return;
+    }
+
+    const leafCriteria = getLeafCriteria(criteria);
+    const defaults = setDefaults({
+      selectedModel,
+      criteria: leafCriteria,
+    });
+
+    const parameterKeys = (selectedModel.parameters || [])
+      .map((parameter) => resolveParameterKey(parameter))
+      .filter(Boolean);
+
+    const isOnDefault = parameterKeys.every((key) =>
+      isDeepEqual(paramValues?.[key], defaults?.[key])
+    );
+
+    if (isOnDefault !== defaultModelParams) {
+      setDefaultModelParams(isOnDefault);
+    }
+  }, [criteria, defaultModelParams, paramValues, selectedModel]);
+
+  useEffect(() => {
     if (weightingMode !== "bwm") {
       setBwmData({ best: "", worst: "", bestToOthers: {}, othersToWorst: {} });
     }
   }, [weightingMode]);
+
+  useEffect(() => {
+    if (hasAttemptedCreateIssue) {
+      setHasAttemptedCreateIssue(false);
+    }
+  }, [hasAttemptedCreateIssue, paramValues]);
 
   /**
    * Valida y actualiza el nombre del issue.
@@ -283,6 +329,7 @@ export const useCreateIssueFlow = () => {
    * @returns {Promise<void>}
    */
   const handleComplete = async () => {
+    setHasAttemptedCreateIssue(true);
     handleClosureDateError();
 
     if (closureDateError) return;
@@ -301,6 +348,33 @@ export const useCreateIssueFlow = () => {
         "error"
       );
       return;
+    }
+
+    const leafCriteria = getLeafCriteria(criteria);
+    const criteriaWeightsParameter = (selectedModel?.parameters || []).find((parameter) =>
+      isCriteriaWeightsParameter(parameter)
+    );
+
+    if (criteriaWeightsParameter) {
+      const paramKey = resolveParameterKey(criteriaWeightsParameter);
+      const weightsValue = allData?.paramValues?.[paramKey];
+      const expectedLength = resolveLeafLengthForParameter(
+        criteriaWeightsParameter,
+        leafCriteria.length
+      );
+
+      if (weightsValue !== undefined && expectedLength !== null) {
+        const validation = validateCriteriaWeightsParameterValue({
+          parameter: criteriaWeightsParameter,
+          value: weightsValue,
+          leafCount: leafCriteria.length,
+        });
+
+        if (!validation.isValid) {
+          showSnackbarAlert(validation.message, "error");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -379,6 +453,7 @@ export const useCreateIssueFlow = () => {
     consensusThreshold,
     paramValues,
     defaultModelParams,
+    hasAttemptedCreateIssue,
     domainAssignments,
     bwmData,
     weightingMode,
@@ -394,6 +469,7 @@ export const useCreateIssueFlow = () => {
     setConsensusThreshold,
     setParamValues,
     setDefaultModelParams,
+    setHasAttemptedCreateIssue,
     setDomainAssignments,
     setBwmData,
     setWeightingMode,

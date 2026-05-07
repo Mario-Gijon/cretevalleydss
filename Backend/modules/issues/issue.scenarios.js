@@ -37,7 +37,7 @@ import {
 } from "../../services/modelApi/modelResponse.js";
 import { buildModelInputPayload } from "./resolution/modelInputs/modelInput.adapters.js";
 import { normalizeModelOutput } from "./resolution/modelOutputs/modelOutput.adapters.js";
-import { validateAndNormalizeModelParametersOrThrow } from "./modelParameters/modelParameters.validation.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
 
                      
 import axios from "axios";
@@ -120,7 +120,7 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
 
       const base = Array.isArray(defaultValue) ? defaultValue : [];
       const isCriteriaWeights =
-        name === "weights" && parameter?.restrictions?.length === "matchCriteria";
+        normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights";
 
       if (isCriteriaWeights && typeof defaultValue === "string" && defaultValue.trim().toLowerCase() === "equal" && safeLeafCount > 0) {
         const equalWeights = Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount);

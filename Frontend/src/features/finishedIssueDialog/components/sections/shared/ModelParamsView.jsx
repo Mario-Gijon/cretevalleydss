@@ -1,10 +1,14 @@
 import { useMemo } from "react";
 import { Box, Stack, Typography, useMediaQuery } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import {
+  isCriteriaWeightsParameter,
+  resolveLeafLengthForParameter,
+  resolveParameterKey,
+} from "../../../../modelParameters";
 
 
-const WEIGHTS_KEY = "weights";
-const normalizeParamKey = (parameter) => parameter?.key || parameter?.name || "";
+const normalizeParamKey = (parameter) => resolveParameterKey(parameter) || "";
 const normalizeParamLabel = (parameter) => parameter?.label || normalizeParamKey(parameter);
 
 const safeJsonStringify = (v) => {
@@ -188,12 +192,17 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
 
 
             if (type === "array") {
+              const expectedLength = resolveLeafLengthForParameter(
+                p,
+                Array.isArray(leafNames) ? leafNames.length : 0
+              );
               const isMatch =
-                p?.restrictions?.length === "matchCriteria" ||
-                (paramKey === WEIGHTS_KEY &&
-                  Array.isArray(leafNames) &&
-                  Array.isArray(v) &&
-                  leafNames.length === v.length);
+                Number.isInteger(expectedLength) &&
+                expectedLength > 0 &&
+                Array.isArray(leafNames) &&
+                Array.isArray(v) &&
+                leafNames.length === v.length;
+              const isCriteriaWeights = isCriteriaWeightsParameter(p);
               const arr = Array.isArray(v) ? v : Array.isArray(p.default) ? p.default : null;
               if (!arr) {
                 return (
@@ -208,7 +217,7 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
 
               if (isMatch && Array.isArray(leafNames) && leafNames.length === arr.length) {
                 return (
-                  <ParamRow key={p._id || paramKey} name={paramKey === WEIGHTS_KEY ? "Criteria weights" : paramLabel}>
+                  <ParamRow key={p._id || paramKey} name={isCriteriaWeights ? "Criteria weights" : paramLabel}>
                     <Box
                       sx={{
                         display: "grid",
@@ -274,7 +283,15 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
                 );
               }
 
-              const isMatch = p?.restrictions?.length === "matchCriteria";
+              const expectedLength = resolveLeafLengthForParameter(
+                p,
+                Array.isArray(leafNames) ? leafNames.length : 0
+              );
+              const isMatch =
+                Number.isInteger(expectedLength) &&
+                expectedLength > 0 &&
+                Array.isArray(leafNames) &&
+                leafNames.length === triples.length;
 
 
               if (isMatch && Array.isArray(leafNames) && leafNames.length === triples.length) {

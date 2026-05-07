@@ -1,4 +1,4 @@
-import { Alert, Backdrop, Box, IconButton, Snackbar, Stack, useMediaQuery } from "@mui/material";
+import { Backdrop, Box, IconButton, Stack, useMediaQuery } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -25,7 +25,6 @@ const FinishedIssueDialogBody = () => {
     handleCloseFinishedIssueDialog,
     dialog,
     roundsNavigation,
-    notifications,
   } = useFinishedIssueDialogContext();
 
   return (
@@ -85,21 +84,6 @@ const FinishedIssueDialogBody = () => {
           ) : null}
         </Box>
       )}
-
-      <Snackbar
-        open={notifications.toast.open}
-        autoHideDuration={3500}
-        onClose={() => notifications.setToast((toast) => ({ ...toast, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          severity={notifications.toast.severity}
-          onClose={() => notifications.setToast((toast) => ({ ...toast, open: false }))}
-          sx={{ borderRadius: 3 }}
-        >
-          {notifications.toast.msg}
-        </Alert>
-      </Snackbar>
     </GlassDialog>
   );
 };

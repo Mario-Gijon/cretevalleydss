@@ -8,6 +8,11 @@ import {
   ensureArrayLen,
   toNumberOrEmpty,
 } from "../../utils/finishedIssueDialog.utils";
+import {
+  isCriteriaWeightsParameter,
+  resolveLeafLengthForParameter,
+  resolveParameterKey,
+} from "../../../modelParameters";
 
 /**
  * Formulario dinamico de parametros para crear un model run.
@@ -111,7 +116,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
     <Stack spacing={2}>
       {params.map((param) => {
         const { type, restrictions = {}, default: defaultValue } = param;
-        const paramKey = param?.key || param?.name;
+        const paramKey = resolveParameterKey(param);
         const paramLabel = param?.label || paramKey;
         if (!paramKey) return null;
 
@@ -204,20 +209,19 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
           );
         }
 
-        const isCriteriaWeights =
-          paramKey === "weights" &&
-          (param?.ui?.component === "criteriaWeights" ||
-            restrictions.length === "matchCriteria");
+        const isCriteriaWeights = isCriteriaWeightsParameter(param);
 
         if (type === "array") {
+          const isPerCriterion =
+            leafCount > 0 &&
+            resolveLeafLengthForParameter(param, leafCount) === leafCount;
           const length =
-            restrictions.length === "matchCriteria"
-              ? leafCount
-              : typeof restrictions.length === "number"
-                ? restrictions.length
-                : Array.isArray(defaultValue)
-                  ? defaultValue.length
-                  : 2;
+            resolveLeafLengthForParameter(param, leafCount) ??
+            (typeof restrictions.length === "number"
+              ? restrictions.length
+              : Array.isArray(defaultValue)
+                ? defaultValue.length
+                : 2);
 
           const currentValues = ensureArrayLen(
             Array.isArray(values?.[paramKey])
@@ -231,7 +235,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
 
           const isInterval =
             Number(length) === 2 &&
-            restrictions.length !== "matchCriteria" &&
+            resolveLeafLengthForParameter(param, leafCount) == null &&
             !restrictions.sum &&
             restrictions.min != null &&
             restrictions.max != null;
@@ -295,7 +299,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                 ) : null}
               </Stack>
 
-              {restrictions.length === "matchCriteria" && leafNames?.length ? (
+              {isPerCriterion && leafNames?.length ? (
                 <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ pl: 0.25 }}>
                   {leafNames.map((criterionName, index) => (
                     <Stack
@@ -376,14 +380,16 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
         }
 
         if (type === "fuzzyArray") {
+          const isPerCriterion =
+            leafCount > 0 &&
+            resolveLeafLengthForParameter(param, leafCount) === leafCount;
           const length =
-            restrictions.length === "matchCriteria"
-              ? leafCount
-              : typeof restrictions.length === "number"
-                ? restrictions.length
-                : Array.isArray(defaultValue)
-                  ? defaultValue.length
-                  : 1;
+            resolveLeafLengthForParameter(param, leafCount) ??
+            (typeof restrictions.length === "number"
+              ? restrictions.length
+              : Array.isArray(defaultValue)
+                ? defaultValue.length
+                : 1);
 
           const count = Number(length) || 1;
 
@@ -419,7 +425,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
                     }}
                   >
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-                      {restrictions.length === "matchCriteria"
+                      {isPerCriterion
                         ? leafNames?.[index] ?? `C${index + 1}`
                         : `#${index + 1}`}
                     </Typography>

@@ -150,11 +150,6 @@ export const useFinishedIssueDialogView = ({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [paramsJson, setParamsJson] = useState("{}");
 
-  const [toast, setToast] = useState({
-    open: false,
-    severity: "success",
-    msg: "",
-  });
   const [savedAnalysis, setSavedAnalysis] = useState(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
@@ -333,11 +328,7 @@ export const useFinishedIssueDialogView = ({
       const scenario = response?.scenario || response || null;
 
       if (!scenario?.outputs?.details) {
-        setToast({
-          open: true,
-          severity: "warning",
-          msg: "Scenario results not available yet.",
-        });
+        showSnackbarAlert("Scenario results not available yet.", "warning");
         return null;
       }
 
@@ -345,11 +336,7 @@ export const useFinishedIssueDialogView = ({
       setRunCache((prev) => ({ ...prev, [runKey]: info }));
       return info;
     } catch {
-      setToast({
-        open: true,
-        severity: "error",
-        msg: "Could not load scenario.",
-      });
+      showSnackbarAlert("Could not load scenario.", "error");
       return null;
     } finally {
       setRunsLoading(false);
@@ -523,11 +510,7 @@ export const useFinishedIssueDialogView = ({
     if (!selectedIssue?.id) return;
 
     if (!selectedModelId) {
-      setToast({
-        open: true,
-        severity: "warning",
-        msg: "Please select a model.",
-      });
+      showSnackbarAlert("Please select a model.", "warning");
       return;
     }
 
@@ -543,11 +526,7 @@ export const useFinishedIssueDialogView = ({
       });
 
       if (!validation.ok) {
-        setToast({
-          open: true,
-          severity: "error",
-          msg: validation.msg || "Invalid parameters.",
-        });
+        showSnackbarAlert(validation.msg || "Invalid parameters.", "error");
         return;
       }
 
@@ -561,11 +540,7 @@ export const useFinishedIssueDialogView = ({
       try {
         parsedParams = paramsJson?.trim() ? JSON.parse(paramsJson) : {};
       } catch {
-        setToast({
-          open: true,
-          severity: "error",
-          msg: "Parameters JSON is not valid.",
-        });
+        showSnackbarAlert("Parameters JSON is not valid.", "error");
         return;
       }
 
@@ -584,7 +559,7 @@ export const useFinishedIssueDialogView = ({
 
       if (!response?.success) {
         const msg = response?.message || "Could not add model.";
-        setToast({ open: true, severity: "error", msg });
+        showSnackbarAlert(msg, "error");
         return;
       }
 
@@ -598,16 +573,12 @@ export const useFinishedIssueDialogView = ({
         setCurrentPhaseIndex(info ? getLastPhaseIndex(info) : 0);
       }
 
-      setToast({
-        open: true,
-        severity: "success",
-        msg: "Model run added.",
-      });
+      showSnackbarAlert("Model run added.", "success");
 
       closeAddDialog();
     } catch (error) {
       const msg = error?.response?.data?.message || "Unexpected error adding model.";
-      setToast({ open: true, severity: "error", msg });
+      showSnackbarAlert(msg, "error");
     } finally {
       setAddLoading(false);
     }
@@ -621,19 +592,11 @@ export const useFinishedIssueDialogView = ({
       const response = await removeIssueScenario(selectedRunKey);
 
       if (!response?.success) {
-        setToast({
-          open: true,
-          severity: "error",
-          msg: response?.message || "Could not remove model.",
-        });
+        showSnackbarAlert(response?.message || "Could not remove model.", "error");
         return;
       }
 
-      setToast({
-        open: true,
-        severity: "success",
-        msg: "Model removed.",
-      });
+      showSnackbarAlert("Model removed.", "success");
 
       const removedKey = selectedRunKey;
       setSelectedRunKey("base");
@@ -645,11 +608,7 @@ export const useFinishedIssueDialogView = ({
 
       await refreshRuns(selectedIssue.id);
     } catch {
-      setToast({
-        open: true,
-        severity: "error",
-        msg: "Unexpected error removing model.",
-      });
+      showSnackbarAlert("Unexpected error removing model.", "error");
     } finally {
       setRunsLoading(false);
     }
@@ -880,10 +839,6 @@ export const useFinishedIssueDialogView = ({
       handleChangePhase,
       handlePreviousRound: () => handleChangePhase(currentPhaseIndex - 1),
       handleNextRound: () => handleChangePhase(currentPhaseIndex + 1),
-    },
-    notifications: {
-      toast,
-      setToast,
     },
     debug: {
       selectedRunMeta,

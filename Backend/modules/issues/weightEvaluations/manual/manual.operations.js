@@ -131,7 +131,7 @@ const validateSubmittedManualWeightsOrThrow = ({
 
   if (Math.abs(sum - 1) > MANUAL_WEIGHTS_SUM_TOLERANCE) {
     throw createBadRequestError(
-      `Manual weights must sum to 1. Current sum: ${sum}`
+      `Manual weights must sum to 1`
     );
   }
 };

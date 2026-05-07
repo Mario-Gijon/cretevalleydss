@@ -1,4 +1,8 @@
 import dayjs from "dayjs";
+import {
+  buildCreateIssueParameterDefaults,
+  updateCreateIssueParameterValues,
+} from "../../modelParameters";
 
 /**
  * Pasos del flujo de creación de issues.
@@ -268,74 +272,10 @@ export const saveEditAlternative = (
  * @returns {object}
  */
 export const setDefaults = (allData) => {
-  const newValues = {};
-
-  allData.selectedModel.parameters.forEach((param) => {
-    const { type, restrictions, default: defaultValue } = param;
-    const paramKey = param?.key || param?.name;
-    if (!paramKey) return;
-
-    if (type === "number") {
-      newValues[paramKey] = defaultValue ?? "";
-    }
-
-    if (type === "interval") {
-      const intervalDefault = Array.isArray(defaultValue)
-        ? defaultValue
-        : [restrictions?.min ?? "", restrictions?.max ?? ""];
-      newValues[paramKey] = intervalDefault;
-    }
-
-    if (type === "array") {
-      const length =
-        restrictions?.length === "matchCriteria"
-          ? allData.criteria.length
-          : restrictions?.length || 2;
-
-      let values;
-
-      if (restrictions?.length === "matchCriteria") {
-        const equalWeight = 1 / length;
-        values = Array(length).fill(equalWeight);
-      } else if (
-        restrictions?.min !== null &&
-        restrictions?.max !== null
-      ) {
-        values = defaultValue ?? [restrictions.min, restrictions.max];
-      } else {
-        values = defaultValue ?? Array(length).fill("");
-      }
-
-      newValues[paramKey] = values;
-    }
-
-    if (type === "fuzzyArray") {
-      const length =
-        restrictions?.length === "matchCriteria"
-          ? allData.criteria.length
-          : restrictions?.length || 1;
-
-      const delta = 0.05;
-      let values;
-
-      if (restrictions?.length === "matchCriteria") {
-        const equalWeight = 1 / length;
-        values = Array(length)
-          .fill(null)
-          .map(() => [
-            Math.max(0, +(equalWeight - delta).toFixed(2)),
-            +equalWeight.toFixed(2),
-            Math.min(1, +(equalWeight + delta).toFixed(2)),
-          ]);
-      } else {
-        values = defaultValue ?? Array(length).fill([0, 0, 0]);
-      }
-
-      newValues[paramKey] = values;
-    }
+  return buildCreateIssueParameterDefaults({
+    selectedModel: allData?.selectedModel,
+    leafCriteria: allData?.criteria || [],
   });
-
-  return newValues;
 };
 
 /**
@@ -347,44 +287,11 @@ export const setDefaults = (allData) => {
  * @returns {object}
  */
 export const updateParamValues = (prev, selectedModel, criteria) => {
-  const newValues = { ...prev };
-
-  selectedModel?.parameters.forEach((param) => {
-    const { type, restrictions } = param;
-    const paramKey = param?.key || param?.name;
-    if (!paramKey) return;
-
-    if (type === "array" && restrictions?.length === "matchCriteria") {
-      const length = criteria.length;
-      const equalWeight = 1 / length;
-
-      if (!Array.isArray(newValues[paramKey]) || newValues[paramKey].length !== length) {
-        newValues[paramKey] = Array(length).fill(equalWeight);
-      }
-    }
-
-    if (type === "fuzzyArray" && restrictions?.length === "matchCriteria") {
-      const length = criteria.length;
-      const equalWeight = 1 / length;
-      const delta = 0.05;
-
-      if (
-        !Array.isArray(newValues[paramKey]) ||
-        newValues[paramKey].length !== length ||
-        newValues[paramKey].some((t) => !Array.isArray(t) || t.length !== 3)
-      ) {
-        newValues[paramKey] = Array(length)
-          .fill(null)
-          .map(() => [
-            Math.max(0, +(equalWeight - delta).toFixed(2)),
-            +equalWeight.toFixed(2),
-            Math.min(1, +(equalWeight + delta).toFixed(2)),
-          ]);
-      }
-    }
+  return updateCreateIssueParameterValues({
+    previous: prev,
+    selectedModel,
+    leafCriteria: criteria,
   });
-
-  return newValues;
 };
 
 /**

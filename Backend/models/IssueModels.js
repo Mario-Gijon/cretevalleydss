@@ -174,6 +174,16 @@ const parameterSchema = new Schema(
       ],
       required: true,
     },
+    scope: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    semanticRole: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     required: {
       type: Boolean,
       default: false,

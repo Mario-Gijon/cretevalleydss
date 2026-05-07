@@ -40,6 +40,7 @@ import {
   setDefaults,
 } from "../utils/createIssue.utils";
 import { groupDomainData } from "../../../utils/domainAssignments.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
 import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
 import {
   getCreateIssueSummaryAccordionSx,
@@ -90,6 +91,8 @@ export const SummaryStep = () => {
     setParamValues,
     defaultModelParams,
     setDefaultModelParams,
+    hasAttemptedCreateIssue,
+    setHasAttemptedCreateIssue,
     bwmData,
     setBwmData,
     weightingMode,
@@ -122,12 +125,14 @@ export const SummaryStep = () => {
   );
 
   const handleDefaultChange = () => {
-    if (!defaultModelParams) {
-      setParamValues(setDefaults(allData));
-      setDefaultModelParams(true);
-    } else {
-      setDefaultModelParams(false);
-    }
+    setParamValues(
+      setDefaults({
+        selectedModel,
+        criteria: getLeafCriteria(criteria),
+      })
+    );
+    setDefaultModelParams(true);
+    setHasAttemptedCreateIssue(false);
   };
 
   if (
@@ -307,6 +312,7 @@ export const SummaryStep = () => {
                 defaultModelParams={defaultModelParams}
                 setDefaultModelParams={setDefaultModelParams}
                 handleDefaultChange={handleDefaultChange}
+                showValidationErrors={hasAttemptedCreateIssue}
                 weightingMode={weightingMode}
                 setWeightingMode={setWeightingMode}
               />

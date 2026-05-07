@@ -54,6 +54,8 @@ _WEIGHTS_PARAMETER = {
     "description": "Relative importance assigned to each leaf criterion.",
     "required": True,
     "type": "array",
+    "scope": "perCriterion",
+    "semanticRole": "criteriaWeights",
     "default": "equal",
     "restrictions": {
         "min": 0,
@@ -61,7 +63,7 @@ _WEIGHTS_PARAMETER = {
         "length": "matchCriteria",
         "itemType": "number",
         "sum": 1,
-        "normalize": True,
+        "normalize": False,
         "ordered": None,
         "allowed": None,
     },
@@ -76,6 +78,8 @@ _FUZZY_WEIGHTS_PARAMETER = {
     "label": "Criteria fuzzy weights",
     "required": True,
     "type": "fuzzyArray",
+    "scope": "perCriterion",
+    "semanticRole": "criteriaWeights",
     "default": None,
     "restrictions": {
         "min": 0,
@@ -88,6 +92,18 @@ _FUZZY_WEIGHTS_PARAMETER = {
         "allowed": None,
     },
 }
+
+
+def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
+    """Normaliza un parámetro al contrato público sin alterar su forma base."""
+
+    normalized = dict(parameter)
+    normalized["scope"] = normalized.get("scope") or "global"
+
+    if normalized.get("semanticRole") is None:
+        normalized.pop("semanticRole", None)
+
+    return normalized
 
 
 def _build_sync(sync_as_issue_model: bool) -> dict[str, Any]:
@@ -131,12 +147,15 @@ def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
     parameters: list[dict[str, Any]] = []
 
     if model.uses_weights:
-        parameters.append(_WEIGHTS_PARAMETER)
+        parameters.append(_normalize_parameter_definition(_WEIGHTS_PARAMETER))
 
     if model.uses_fuzzy_weights:
-        parameters.append(_FUZZY_WEIGHTS_PARAMETER)
+        parameters.append(_normalize_parameter_definition(_FUZZY_WEIGHTS_PARAMETER))
 
-    parameters.extend(model.parameters)
+    parameters.extend(
+        _normalize_parameter_definition(parameter)
+        for parameter in model.parameters
+    )
     return parameters
 
 

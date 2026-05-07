@@ -159,6 +159,7 @@ const normalizeNonEmptyString = (value) => {
 const normalizeParameter = (parameter = {}) => {
   const restrictions = parameter?.restrictions || {};
   const key = normalizeNonEmptyString(parameter?.key) || normalizeNonEmptyString(parameter?.name);
+  const semanticRole = normalizeNonEmptyString(parameter?.semanticRole);
 
   return {
     key: key ?? null,
@@ -166,6 +167,8 @@ const normalizeParameter = (parameter = {}) => {
     label: normalizeNonEmptyString(parameter?.label) ?? null,
     description: normalizeNonEmptyString(parameter?.description) ?? null,
     type: parameter?.type ?? null,
+    scope: normalizeNonEmptyString(parameter?.scope) ?? null,
+    semanticRole: semanticRole ?? null,
     required: parameter?.required === true,
     default: parameter?.default ?? null,
     restrictions: {
