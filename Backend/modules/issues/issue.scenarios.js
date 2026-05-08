@@ -37,7 +37,7 @@ import {
 } from "../../services/modelApi/modelResponse.js";
 import { buildModelInputPayload } from "./resolution/modelInputs/modelInput.adapters.js";
 import { normalizeModelOutput } from "./resolution/modelOutputs/modelOutput.adapters.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "./modelParameters/index.js";
 
                      
 import axios from "axios";
@@ -101,7 +101,7 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
 
   for (const parameter of modelDoc?.parameters || []) {
     const { type, default: defaultValue } = parameter;
-    const name = normalizeNonEmptyString(parameter?.key) || normalizeNonEmptyString(parameter?.name);
+    const name = normalizeNonEmptyString(parameter?.key);
     if (!name) continue;
 
     if (type === "number") {
@@ -110,13 +110,14 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
     }
 
     if (type === "array") {
+      const scope = normalizeNonEmptyString(parameter?.scope);
+      const fixedLength =
+        typeof parameter?.restrictions?.length === "number"
+          ? parameter.restrictions.length
+          : null;
       const length =
-        parameter?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : (typeof parameter?.restrictions?.length === "number"
-            ? parameter.restrictions.length
-            : null) ??
-          (Array.isArray(defaultValue) ? defaultValue.length : 2);
+        (scope === "perCriterion" ? leafCount : fixedLength) ??
+        (Array.isArray(defaultValue) ? defaultValue.length : 2);
 
       const base = Array.isArray(defaultValue) ? defaultValue : [];
       const isCriteriaWeights =
@@ -133,13 +134,14 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
     }
 
     if (type === "fuzzyArray") {
+      const scope = normalizeNonEmptyString(parameter?.scope);
+      const fixedLength =
+        typeof parameter?.restrictions?.length === "number"
+          ? parameter.restrictions.length
+          : null;
       const length =
-        parameter?.restrictions?.length === "matchCriteria"
-          ? leafCount
-          : (typeof parameter?.restrictions?.length === "number"
-            ? parameter.restrictions.length
-            : null) ??
-          (Array.isArray(defaultValue) ? defaultValue.length : 1);
+        (scope === "perCriterion" ? leafCount : fixedLength) ??
+        (Array.isArray(defaultValue) ? defaultValue.length : 1);
 
       const base = Array.isArray(defaultValue) ? defaultValue : [];
       resolved[name] = ensureLen(base, length, [null, null, null]).map(
@@ -179,8 +181,7 @@ const getModelParameterKeys = (modelDoc) => {
   return new Set(
     (modelDoc?.parameters || [])
       .map((parameter) =>
-        normalizeNonEmptyString(parameter?.key) ||
-        normalizeNonEmptyString(parameter?.name)
+        normalizeNonEmptyString(parameter?.key)
       )
       .filter(Boolean)
   );

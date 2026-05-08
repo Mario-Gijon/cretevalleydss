@@ -26,7 +26,7 @@ import {
 } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { normalizeSingleWeight } from "./weightEvaluations/weightEvaluation.shared.js";
 import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
-import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "../modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "./modelParameters/index.js";
 
         
 import { compareNameId } from "../../modules/issues/issue.ordering.js";

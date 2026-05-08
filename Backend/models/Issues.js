@@ -218,29 +218,6 @@ const issueSchema = new Schema(
       required: true,
       min: 1,
     },
-    consensusHistory: {
-      type: [
-        {
-          phase: { type: Number, required: true },
-          computedAt: { type: Date, required: true },
-          consensusLevel: { type: Number, default: null },
-          rankedAlternatives: { type: [String], default: [] },
-          rankedWithScores: { type: [Schema.Types.Mixed], default: [] },
-          collectiveEvaluations: { type: Schema.Types.Mixed, default: null },
-          feedback: { type: Schema.Types.Mixed, default: null },
-          recommendations: { type: Schema.Types.Mixed, default: null },
-          modelExecution: {
-            apiModelKey: { type: String, default: null },
-            apiEndpoint: { type: Schema.Types.Mixed, default: null },
-            inputKind: { type: String, default: null },
-            outputKind: { type: String, default: null },
-            rawOutput: { type: Schema.Types.Mixed, default: null },
-            executedAt: { type: Date, default: null },
-          },
-        },
-      ],
-      default: [],
-    },
   },
   {
     timestamps: true,

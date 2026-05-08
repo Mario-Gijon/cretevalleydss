@@ -272,7 +272,7 @@ export const getAllActiveIssues = async (req, res) => {
         .lean(),
       Alternative.find({ issue: { $in: issueIds } }).lean(),
       Criterion.find({ issue: { $in: issueIds } }).lean(),
-      Consensus.find({ issue: { $in: issueIds } }, "issue phase").lean(),
+      Consensus.find({ issue: { $in: issueIds } }).lean(),
     ]);
 
   const {
@@ -280,6 +280,7 @@ export const getAllActiveIssues = async (req, res) => {
     alternativesMap,
     criteriaMap,
     consensusPhaseCountMap,
+    consensusHistoryByIssue,
   } = buildActiveIssueCollections({
     participations: allParticipations,
     alternatives,
@@ -300,6 +301,7 @@ export const getAllActiveIssues = async (req, res) => {
       issueAlternativeDocs: alternativesMap[issueId] || [],
       issueCriteriaDocs: criteriaMap[issueId] || [],
       savedPhasesCount: consensusPhaseCountMap[issueId] || 0,
+      consensusHistoryRounds: consensusHistoryByIssue[issueId] || [],
       dayjsLib: dayjs,
     });
 

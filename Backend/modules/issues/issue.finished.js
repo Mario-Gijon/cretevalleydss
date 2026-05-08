@@ -1,5 +1,4 @@
          
-import { Consensus } from "../../models/Consensus.js";
 import { Issue } from "../../models/Issues.js";
 import { IssueModel } from "../../models/IssueModels.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
@@ -30,6 +29,10 @@ import {
   buildDefaultsResolved,
   mergeParamsResolved,
 } from "./issue.scenarios.js";
+import {
+  getConsensusRoundsForIssue,
+  buildConsensusHistoryFromDocs,
+} from "./consensus/index.js";
 import {
   EVALUATION_STRUCTURES,
 } from "./issue.evaluationStructure.js";
@@ -168,7 +171,6 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     participations,
     allModels,
     scenarioDocs,
-    latestConsensus,
     consensusDocs,
   ] = await Promise.all([
     createSummarySection(issue._id),
@@ -196,9 +198,9 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
       )
       .populate("createdBy", "email name")
       .lean(),
-    Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
-    Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),
+    getConsensusRoundsForIssue(issue._id),
   ]);
+  const latestConsensus = consensusDocs[consensusDocs.length - 1] || null;
 
   const leafDocs = await getOrderedLeafCriteriaDb({
     issueId: issue._id,
@@ -266,23 +268,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
 
   const consensusDetails = latestConsensus?.details || {};
   const modelExecution = consensusDetails?.modelExecution || null;
-  const consensusHistory = Array.isArray(issue?.consensusHistory)
-    ? issue.consensusHistory
-    : [];
-  const consensusRounds =
-    consensusHistory.length > 0
-      ? consensusHistory
-      : (consensusDocs || []).map((doc) => ({
-          phase: doc?.phase ?? null,
-          computedAt: doc?.timestamp ?? null,
-          consensusLevel: doc?.level ?? null,
-          rankedAlternatives: doc?.details?.rankedAlternatives ?? [],
-          rankedWithScores: doc?.details?.rankedAlternatives ?? [],
-          collectiveEvaluations: doc?.collectiveEvaluations ?? null,
-          feedback: doc?.details?.feedback ?? null,
-          recommendations: doc?.details?.recommendations ?? null,
-          modelExecution: doc?.details?.modelExecution ?? null,
-        }));
+  const consensusRounds = buildConsensusHistoryFromDocs(consensusDocs);
 
   return {
     summary,

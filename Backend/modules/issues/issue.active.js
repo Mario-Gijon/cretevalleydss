@@ -1,6 +1,7 @@
         
 import { orderDocsByIdList } from "../../modules/issues/issue.ordering.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
+import { buildConsensusHistoryFromDocs } from "./consensus/index.js";
 
 /**
  * @typedef {Object} ActiveTasksByType
@@ -433,12 +434,17 @@ export const buildActiveIssueCollections = ({
   criteria,
   consensusPhases,
 }) => {
+  const consensusByIssue = {};
   const consensusPhaseCountMap = (consensusPhases || []).reduce(
     (acc, phaseDoc) => {
       const issueId = toIdString(phaseDoc.issue);
       if (!issueId) return acc;
 
       acc[issueId] = (acc[issueId] || 0) + 1;
+      if (!consensusByIssue[issueId]) {
+        consensusByIssue[issueId] = [];
+      }
+      consensusByIssue[issueId].push(phaseDoc);
       return acc;
     },
     {}
@@ -455,6 +461,12 @@ export const buildActiveIssueCollections = ({
     ),
     criteriaMap: groupByIssueId(criteria || [], (criterion) => criterion.issue),
     consensusPhaseCountMap,
+    consensusHistoryByIssue: Object.fromEntries(
+      Object.entries(consensusByIssue).map(([issueId, docs]) => [
+        issueId,
+        buildConsensusHistoryFromDocs(docs),
+      ])
+    ),
   };
 };
 
@@ -469,6 +481,7 @@ export const buildActiveIssueCollections = ({
  * @param {Array<Object>} params.issueAlternativeDocs Alternativas del issue.
  * @param {Array<Object>} params.issueCriteriaDocs Criterios del issue.
  * @param {number} params.savedPhasesCount Número de fases de consenso ya guardadas.
+ * @param {Array<Object>} [params.consensusHistoryRounds] Historial de consenso desde colección Consensus.
  * @param {Object} params.dayjsLib Instancia de dayjs.
  * @returns {Object}
  */
@@ -480,6 +493,7 @@ export const buildActiveIssueView = ({
   issueAlternativeDocs,
   issueCriteriaDocs,
   savedPhasesCount,
+  consensusHistoryRounds,
   dayjsLib,
 }) => {
   const issueId = toIdString(issue._id);
@@ -722,6 +736,9 @@ export const buildActiveIssueView = ({
     hasAlternativeConsensus,
   });
 
+  const responseConsensusHistory =
+    Array.isArray(consensusHistoryRounds) ? consensusHistoryRounds : [];
+
   return {
     taskItems,
     issueView: {
@@ -772,12 +789,8 @@ export const buildActiveIssueView = ({
         totalAccepted,
       },
       finalWeights: finalWeightsMap,
-      consensusHistory: Array.isArray(issue?.consensusHistory)
-        ? issue.consensusHistory
-        : [],
-      consensusRounds: Array.isArray(issue?.consensusHistory)
-        ? issue.consensusHistory
-        : [],
+      consensusHistory: responseConsensusHistory,
+      consensusRounds: responseConsensusHistory,
       modelParameters: responseModelParameters,
       myParticipation: myParticipation
         ? {

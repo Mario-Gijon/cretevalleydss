@@ -21,6 +21,7 @@ import {
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+import { buildConsensusHistoryFromDocs } from "../consensus/index.js";
 
 const CONTEXT_VERSION = "1.0";
 
@@ -43,17 +44,17 @@ const toIsoOrNull = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const selectLatestRoundFromIssue = (issue) => {
-  const history = Array.isArray(issue?.consensusHistory) ? issue.consensusHistory : [];
-  if (!history.length) {
+const selectLatestRoundFromHistory = (history) => {
+  const safeHistory = Array.isArray(history) ? history : [];
+  if (!safeHistory.length) {
     return null;
   }
 
-  return history.reduce((latest, current) => {
+  return safeHistory.reduce((latest, current) => {
     const latestPhase = Number(latest?.phase) || 0;
     const currentPhase = Number(current?.phase) || 0;
     return currentPhase > latestPhase ? current : latest;
-  }, history[0]);
+  }, safeHistory[0]);
 };
 
 const buildScoresByAlternative = (rankedWithScores = []) => {
@@ -817,7 +818,10 @@ export const buildIssueResultsAnalysisContext = async ({
 
   const { criteriaTree } = buildIssueCriteriaTree(orderedCriteriaForTree, issue);
 
-  const latestRound = selectLatestRoundFromIssue(issue);
+  const resolvedConsensusHistory = buildConsensusHistoryFromDocs(
+    consensusHistoryDocs
+  );
+  const latestRound = selectLatestRoundFromHistory(resolvedConsensusHistory);
   const phaseFromRound = Number(latestRound?.phase);
   const phaseFromConsensus = Number(latestConsensusDoc?.phase);
   const phaseUsed = Number.isInteger(phaseFromRound) && phaseFromRound > 0
@@ -933,7 +937,7 @@ export const buildIssueResultsAnalysisContext = async ({
     },
     result,
     consensus: {
-      history: Array.isArray(issue.consensusHistory) ? issue.consensusHistory : [],
+      history: resolvedConsensusHistory,
       latest: latestRound || latestConsensusDoc || {},
       phaseSource: "issue.consensusPhase",
       threshold: issue.consensusThreshold ?? null,
@@ -1122,7 +1126,7 @@ export const buildScenarioResultsAnalysisContext = async ({
     },
     result,
     consensus: {
-      history: Array.isArray(issue.consensusHistory) ? issue.consensusHistory : [],
+      history: buildConsensusHistoryFromDocs(consensusHistoryDocs),
       latest: latestConsensusDoc || {},
       phaseSource: "scenario.inputs.consensusPhaseUsed",
       threshold: issue.consensusThreshold ?? null,
