@@ -1,81 +1,23 @@
 import { useMemo } from "react";
-import { Box, Stack, Typography, useMediaQuery } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import {
-  isCriteriaWeightsParameter,
-  resolveLeafLengthForParameter,
-  resolveParameterKey,
-} from "../../../../modelParameters";
+import { ModelParameterReadOnlyView } from "../../../../modelParameters/ModelParameterReadOnlyView";
 
-
-const normalizeParamKey = (parameter) => resolveParameterKey(parameter) || "";
+const normalizeParamKey = (parameter) => parameter?.key || "";
 const normalizeParamLabel = (parameter) => parameter?.label || normalizeParamKey(parameter);
 
-const safeJsonStringify = (v) => {
-  try {
-    if (v === null || v === undefined) return "";
-    if (typeof v === "string") {
-      const trimmed = v.trim();
-      if (!trimmed) return "";
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) return JSON.stringify(JSON.parse(trimmed), null, 2);
-      return v;
-    }
-    return JSON.stringify(v, null, 2);
-  } catch {
-    return typeof v === "string" ? v : String(v);
-  }
-};
-
-const InlineArray = ({ arr, max = 14 }) => {
-  const items = Array.isArray(arr) ? arr : [];
-
-  const clipped = items.length > max;
-  const shown = clipped ? items.slice(0, max) : items;
-
-  return (
-    <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" sx={{ rowGap: 0.8 }}>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 950, opacity: 0.75, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-      >
-        [
-      </Typography>
-
-      {shown.map((x, i) => (
-        <Stack key={i} direction="row" spacing={0.75} alignItems="center">
-          <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-            {x == null ? "—" : String(x)}
-          </Typography>
-          {i !== shown.length - 1 ? (
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 950, opacity: 0.55, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-            >
-              ,
-            </Typography>
-          ) : null}
-        </Stack>
-      ))}
-
-      {clipped ? (
-        <Typography variant="body2" sx={{ fontWeight: 900, opacity: 0.65 }}>
-          …(+{items.length - max})
-        </Typography>
-      ) : null}
-
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 950, opacity: 0.75, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-      >
-        ]
-      </Typography>
-    </Stack>
-  );
+const hasRealValue = (value) => {
+  if (value === null || value === undefined || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
 };
 
 const ParamRow = ({ name, children }) => {
+  const theme = useTheme();
+
   return (
-    <Box sx={{ py: 0.85, }}>
+    <Box sx={{ py: 0.85 }}>
       <Stack spacing={0.5}>
         <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
           {name}
@@ -98,33 +40,20 @@ const ParamRow = ({ name, children }) => {
 };
 
 export const ModelParamsView = ({ parameters, values, leafNames }) => {
-  const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-
   const params = useMemo(() => (Array.isArray(parameters) ? parameters : []), [parameters]);
   const has = Array.isArray(params) && params.length;
-  const formatNumber = (value) => {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return String(value);
-    return parsed.toFixed(2);
-  };
-  const getCriterionLabel = (index) => leafNames?.[index] || `Criterion ${index + 1}`;
-  const hasObjectValue = values && typeof values === "object" && !Array.isArray(values);
-  const hasRealValue = (value) => {
-    if (value === null || value === undefined || value === "") return false;
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === "object") return Object.keys(value).length > 0;
-    return true;
-  };
+
   const visibleParams = useMemo(() => {
+    const hasObjectValue = values && typeof values === "object" && !Array.isArray(values);
+
     return params.filter((parameter) => {
       const key = normalizeParamKey(parameter);
       if (!key) return false;
-      const value = hasObjectValue ? values?.[key] : undefined;
+      const currentValue = hasObjectValue ? values?.[key] : undefined;
       const fallback = parameter?.default;
-      return hasRealValue(value) || hasRealValue(fallback);
+      return hasRealValue(currentValue) || hasRealValue(fallback);
     });
-  }, [params, values, hasObjectValue]);
+  }, [params, values]);
 
   return (
     <Stack spacing={1} sx={{ minWidth: 0 }}>
@@ -134,247 +63,20 @@ export const ModelParamsView = ({ parameters, values, leafNames }) => {
         </Typography>
       ) : (
         <Box>
-          {visibleParams.map((p) => {
-            const paramKey = normalizeParamKey(p);
-            if (!paramKey) return null;
-            const paramLabel = normalizeParamLabel(p);
-            const v = values?.[paramKey];
-            const type = p.type;
+          {visibleParams.map((parameter) => {
+            const key = normalizeParamKey(parameter);
+            if (!key) return null;
 
+            const label = normalizeParamLabel(parameter);
+            const value = values?.[key] ?? parameter?.default;
 
-            if (type === "number") {
-              const shown = v ?? p.default ?? "—";
-              return (
-                <ParamRow key={p._id || paramKey} name={paramLabel}>
-                  <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-                    {typeof shown === "number" ? formatNumber(shown) : String(shown)}
-                  </Typography>
-                </ParamRow>
-              );
-            }
-
-            if (type === "integer" || type === "boolean" || type === "string" || type === "enum") {
-              const shown = v ?? p.default ?? "—";
-              return (
-                <ParamRow key={p._id || paramKey} name={paramLabel}>
-                  <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-                    {typeof shown === "number" ? formatNumber(shown) : String(shown)}
-                  </Typography>
-                </ParamRow>
-              );
-            }
-
-            if (type === "interval") {
-              const interval = Array.isArray(v)
-                ? v
-                : Array.isArray(p.default)
-                  ? p.default
-                  : null;
-
-              if (!interval || interval.length < 2) {
-                return (
-                  <ParamRow key={p._id || paramKey} name={paramLabel}>
-                    <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary" }}>
-                      —
-                    </Typography>
-                  </ParamRow>
-                );
-              }
-
-              return (
-                <ParamRow key={p._id || paramKey} name={paramLabel}>
-                  <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-                    {`${formatNumber(interval[0])} – ${formatNumber(interval[1])}`}
-                  </Typography>
-                </ParamRow>
-              );
-            }
-
-
-            if (type === "array") {
-              const expectedLength = resolveLeafLengthForParameter(
-                p,
-                Array.isArray(leafNames) ? leafNames.length : 0
-              );
-              const isMatch =
-                Number.isInteger(expectedLength) &&
-                expectedLength > 0 &&
-                Array.isArray(leafNames) &&
-                Array.isArray(v) &&
-                leafNames.length === v.length;
-              const isCriteriaWeights = isCriteriaWeightsParameter(p);
-              const arr = Array.isArray(v) ? v : Array.isArray(p.default) ? p.default : null;
-              if (!arr) {
-                return (
-                  <ParamRow key={p._id || paramKey} name={paramLabel}>
-                    <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary" }}>
-                      —
-                    </Typography>
-                  </ParamRow>
-                );
-              }
-
-
-              if (isMatch && Array.isArray(leafNames) && leafNames.length === arr.length) {
-                return (
-                  <ParamRow key={p._id || paramKey} name={isCriteriaWeights ? "Criteria weights" : paramLabel}>
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gap: 0.6,
-                        gridTemplateColumns: "1fr",
-                      }}
-                    >
-                      {arr.map((x, i) => (
-                        <Stack
-                          key={i}
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          sx={{
-                            px: 0.25,
-                            py: 0.35,
-                            minWidth: 0,
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "text.secondary",
-                              fontWeight: 950,
-                              minWidth: 0,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={getCriterionLabel(i)}
-                          >
-                            {getCriterionLabel(i)}
-                          </Typography>
-                          <Box sx={{ flex: 1 }} />
-                          <Typography variant="body2" sx={{ fontWeight: 900, color: "text.secondary", px: 0.25 }}>
-                            {x == null ? "—" : formatNumber(x)}
-                          </Typography>
-                        </Stack>
-                      ))}
-                    </Box>
-                  </ParamRow>
-                );
-              }
-
-
-              return (
-                <ParamRow key={p._id || paramKey} name={paramLabel}>
-                  <InlineArray arr={arr} />
-                </ParamRow>
-              );
-            }
-
-
-            if (type === "fuzzyArray") {
-              const triples = Array.isArray(v) ? v : Array.isArray(p.default) ? p.default : null;
-              if (!triples) {
-                return (
-                  <ParamRow key={p._id || paramKey} name={paramLabel}>
-                    <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary" }}>
-                      —
-                    </Typography>
-                  </ParamRow>
-                );
-              }
-
-              const expectedLength = resolveLeafLengthForParameter(
-                p,
-                Array.isArray(leafNames) ? leafNames.length : 0
-              );
-              const isMatch =
-                Number.isInteger(expectedLength) &&
-                expectedLength > 0 &&
-                Array.isArray(leafNames) &&
-                leafNames.length === triples.length;
-
-
-              if (isMatch && Array.isArray(leafNames) && leafNames.length === triples.length) {
-                return (
-                  <ParamRow key={p._id || paramKey} name={paramLabel}>
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gap: 1,
-                        gridTemplateColumns: isMdUp ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-                      }}
-                    >
-                      {triples.map((t, i) => (
-                        <Stack
-                          key={i}
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          sx={{
-                            p: 0.75,
-                            borderRadius: 2.5,
-                            bgcolor: alpha(theme.palette.background.paper, 0.04),
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            minWidth: 0,
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "text.secondary",
-                              fontWeight: 950,
-                              minWidth: 0,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            title={getCriterionLabel(i)}
-                          >
-                            {getCriterionLabel(i)}
-                          </Typography>
-                          <Box sx={{ flex: 1 }} />
-                          <Typography variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-                            {Array.isArray(t) ? `[${t.join(", ")}]` : String(t)}
-                          </Typography>
-                        </Stack>
-                      ))}
-                    </Box>
-                  </ParamRow>
-                );
-              }
-
-
-              return (
-                <ParamRow key={p._id || paramKey} name={paramLabel}>
-                  <Stack direction="row" flexWrap="wrap" gap={1} sx={{ rowGap: 1 }}>
-                    {triples.map((t, i) => (
-                      <Typography key={i} variant="body2" sx={{ fontWeight: 850, color: "text.secondary", px: 0.25 }}>
-                        {`#${i + 1} ${Array.isArray(t) ? `[${t.join(", ")}]` : String(t)}`}
-                      </Typography>
-                    ))}
-                  </Stack>
-                </ParamRow>
-              );
-            }
-
-
-            const pretty = safeJsonStringify(v ?? p.default ?? "");
             return (
-              <ParamRow key={p._id || paramKey} name={paramLabel}>
-                <Box
-                  component="pre"
-                  sx={{
-                    m: 0,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: alpha("#fff", 0.9),
-                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  }}
-                >
-                  {pretty || "—"}
-                </Box>
+              <ParamRow key={parameter?._id || key} name={label}>
+                <ModelParameterReadOnlyView
+                  parameter={parameter}
+                  value={value}
+                  leafNames={leafNames}
+                />
               </ParamRow>
             );
           })}

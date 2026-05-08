@@ -9,9 +9,7 @@ import {
   toNumberOrEmpty,
 } from "../../utils/finishedIssueDialog.utils";
 import {
-  isCriteriaWeightsParameter,
-  resolveLeafLengthForParameter,
-  resolveParameterKey,
+  getParameterExpectedLength,
 } from "../../../modelParameters";
 
 /**
@@ -116,7 +114,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
     <Stack spacing={2}>
       {params.map((param) => {
         const { type, restrictions = {}, default: defaultValue } = param;
-        const paramKey = resolveParameterKey(param);
+        const paramKey = param?.key;
         const paramLabel = param?.label || paramKey;
         if (!paramKey) return null;
 
@@ -209,14 +207,14 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
           );
         }
 
-        const isCriteriaWeights = isCriteriaWeightsParameter(param);
+        const isCriteriaWeights = param?.ui?.component === "criteriaWeights";
 
         if (type === "array") {
           const isPerCriterion =
             leafCount > 0 &&
-            resolveLeafLengthForParameter(param, leafCount) === leafCount;
+            getParameterExpectedLength(param, leafCount) === leafCount;
           const length =
-            resolveLeafLengthForParameter(param, leafCount) ??
+            getParameterExpectedLength(param, leafCount) ??
             (typeof restrictions.length === "number"
               ? restrictions.length
               : Array.isArray(defaultValue)
@@ -235,7 +233,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
 
           const isInterval =
             Number(length) === 2 &&
-            resolveLeafLengthForParameter(param, leafCount) == null &&
+            getParameterExpectedLength(param, leafCount) == null &&
             !restrictions.sum &&
             restrictions.min != null &&
             restrictions.max != null;
@@ -382,9 +380,9 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
         if (type === "fuzzyArray") {
           const isPerCriterion =
             leafCount > 0 &&
-            resolveLeafLengthForParameter(param, leafCount) === leafCount;
+            getParameterExpectedLength(param, leafCount) === leafCount;
           const length =
-            resolveLeafLengthForParameter(param, leafCount) ??
+            getParameterExpectedLength(param, leafCount) ??
             (typeof restrictions.length === "number"
               ? restrictions.length
               : Array.isArray(defaultValue)

@@ -1,9 +1,5 @@
 import { extractLeafCriteria } from "../../issueAlternativeEvaluation/shared/leafCriteria.utils";
-import {
-  isCriteriaWeightsParameter,
-  resolveLeafLengthForParameter,
-  resolveParameterKey,
-} from "../../modelParameters";
+import { getParameterExpectedLength } from "../../modelParameters";
 
 const countLeafCriteria = (nodes) => {
   if (!Array.isArray(nodes) || nodes.length === 0) return 0;
@@ -190,7 +186,7 @@ export const stripWeights = (obj) => {
 export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
-  Boolean(param) && !isCriteriaWeightsParameter(param);
+  Boolean(param) && param?.ui?.component !== "criteriaWeights";
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -374,16 +370,16 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     : null;
 
   for (const param of model?.parameters || []) {
-    const key = resolveParameterKey(param);
+    const key = param?.key;
     if (!key) continue;
 
     if (param.type === "number") out[key] = param.default ?? "";
 
     if (param.type === "array") {
-      const len = resolveLeafLengthForParameter(param, leafCount) ?? param?.restrictions?.length ?? 2;
+      const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 2;
       const base = Array.isArray(param.default) ? param.default : [];
       const count = Number(len) || 2;
-      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
+      const isWeightsByCriteria = param?.ui?.component === "criteriaWeights";
 
       if (isWeightsByCriteria && Array.isArray(baseIssueWeights) && baseIssueWeights.length === count) {
         out[key] = ensureArrayLen(baseIssueWeights, count, "");
@@ -399,7 +395,7 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     }
 
     if (param.type === "fuzzyArray") {
-      const len = resolveLeafLengthForParameter(param, leafCount) ?? param?.restrictions?.length ?? 1;
+      const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 1;
       const count = Number(len) || 1;
       const base = Array.isArray(param.default) ? param.default : [];
       const filled = ensureArrayLen(base, count, ["", "", ""]).map((triple) =>
@@ -422,7 +418,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
   const out = {};
 
   for (const param of model?.parameters || []) {
-    const name = resolveParameterKey(param);
+    const name = param?.key;
     if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
@@ -446,7 +442,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
 
     if (type === "array") {
       const len =
-        resolveLeafLengthForParameter(param, leafCount) ??
+        getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 2);
 
@@ -462,7 +458,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
 
     if (type === "fuzzyArray") {
       const len =
-        resolveLeafLengthForParameter(param, leafCount) ??
+        getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 1);
 
@@ -500,7 +496,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  */
 export const validateParams = ({ model, values, leafCount }) => {
   for (const param of model?.parameters || []) {
-    const name = resolveParameterKey(param);
+    const name = param?.key;
     if (!name) continue;
     const type = param.type;
     const restrictions = param.restrictions || {};
@@ -533,7 +529,7 @@ export const validateParams = ({ model, values, leafCount }) => {
 
     if (type === "array") {
       const len =
-        resolveLeafLengthForParameter(param, leafCount) ??
+        getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 2);
 
@@ -571,7 +567,7 @@ export const validateParams = ({ model, values, leafCount }) => {
       if (
         Number(len) === 2 &&
         !restrictions.sum &&
-        resolveLeafLengthForParameter(param, leafCount) == null
+        getParameterExpectedLength(param, leafCount) == null
       ) {
         if (numbers[0] >= numbers[1]) {
           return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
@@ -583,7 +579,7 @@ export const validateParams = ({ model, values, leafCount }) => {
 
     if (type === "fuzzyArray") {
       const len =
-        resolveLeafLengthForParameter(param, leafCount) ??
+        getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 1);
 

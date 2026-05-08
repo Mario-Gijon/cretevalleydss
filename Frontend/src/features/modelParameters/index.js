@@ -1,11 +1,14 @@
 export {
-  resolveParameterKey,
-  resolveParameterScope,
-  resolveParameterSemanticRole,
-  isCriteriaWeightsParameter,
-  resolveLeafLengthForParameter,
-  resolveRegistryKey,
-} from "./modelParameter.metadata";
+  MODEL_PARAMETER_HANDLER_REGISTRY,
+  MODEL_PARAMETER_ADAPTER_REGISTRY,
+} from "./modelParameter.adapters";
+
+export {
+  getParameterHandlerKey,
+  getParameterExpectedLength,
+  resolveModelParameterHandler,
+  resolveModelParameterAdapter,
+} from "./modelParameter.registry";
 
 export {
   buildEqualWeights,
@@ -14,12 +17,8 @@ export {
 } from "./modelParameter.defaults";
 
 export {
-  MODEL_PARAMETER_FIELD_REGISTRY,
-  resolveModelParameterField,
-} from "./modelParameter.registry";
-
-export {
   CRITERIA_WEIGHTS_SUM_TOLERANCE,
+  validateModelParameterValue,
   validateCriteriaWeightsValue,
   validateCriteriaWeightsParameterValue,
 } from "./modelParameter.validation";

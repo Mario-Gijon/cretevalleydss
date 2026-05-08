@@ -80,7 +80,7 @@ _FUZZY_WEIGHTS_PARAMETER = {
     "type": "fuzzyArray",
     "scope": "perCriterion",
     "semanticRole": "criteriaWeights",
-    "default": None,
+    "default": "equal",
     "restrictions": {
         "min": 0,
         "max": 1,
@@ -90,6 +90,10 @@ _FUZZY_WEIGHTS_PARAMETER = {
         "sum": None,
         "normalize": None,
         "allowed": None,
+    },
+    "ui": {
+        "component": "fuzzyCriteriaWeights",
+        "showCriterionNames": True,
     },
 }
 

@@ -1,6 +1,10 @@
 import { Stack, Typography, TextField } from "@mui/material";
-import { handleNumberInput } from "../../../utils/handleTwoDecimals";
-import { resolveLeafLengthForParameter } from "../modelParameter.metadata";
+import { handleNumberInput } from "../../../../utils/handleTwoDecimals";
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
+};
 
 const ensureLength = (arr, len, filler = "") => {
   const normalized = Array.isArray(arr) ? [...arr] : [];
@@ -21,10 +25,12 @@ export const ArrayParameterField = ({
 }) => {
   const restrictions = parameter?.restrictions || {};
   const defaultValue = parameter?.default;
+  const resolvedLeafLength = getParameterExpectedLength(
+    parameter,
+    leafCriteria.length
+  );
 
-  const length =
-    resolveLeafLengthForParameter(parameter, leafCriteria.length) ??
-    restrictions?.length ?? 2;
+  const length = resolvedLeafLength ?? restrictions?.length ?? 2;
 
   const currentValues = ensureLength(
     paramValues[paramKey] ?? defaultValue ?? [],
@@ -36,7 +42,7 @@ export const ArrayParameterField = ({
     restrictions?.min !== null &&
     restrictions?.max !== null &&
     !restrictions?.sum &&
-    resolveLeafLengthForParameter(parameter, leafCriteria.length) === null;
+    resolvedLeafLength === null;
 
   if (isInterval) {
     return (

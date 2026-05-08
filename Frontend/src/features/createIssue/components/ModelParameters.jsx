@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { resolveParameterKey, resolveModelParameterField } from "../../modelParameters";
+import { resolveModelParameterAdapter } from "../../modelParameters";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 export const ModelParameters = ({
   selectedModel,
@@ -17,12 +18,35 @@ export const ModelParameters = ({
   bwmData,
   setBwmData,
 }) => {
+  const { showSnackbarAlert } = useSnackbarAlertContext();
+  const hasShownUnsupportedRef = useRef(false);
+
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
     return getLeafCriteria(allData.criteria);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(allData?.criteria)]);
+
+  const hasUnsupportedParameters = useMemo(
+    () =>
+      (selectedModel?.parameters || []).some((parameter) => {
+        const { isSupported } = resolveModelParameterAdapter(parameter);
+        return !isSupported;
+      }),
+    [selectedModel?.parameters]
+  );
+
+  useEffect(() => {
+    if (!hasUnsupportedParameters) {
+      hasShownUnsupportedRef.current = false;
+      return;
+    }
+
+    if (hasShownUnsupportedRef.current) return;
+    showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
+    hasShownUnsupportedRef.current = true;
+  }, [hasUnsupportedParameters, showSnackbarAlert]);
 
   return (
     <Stack spacing={2}>
@@ -44,11 +68,12 @@ export const ModelParameters = ({
 
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
         {(selectedModel?.parameters || []).map((parameter, index) => {
-          const paramKey = resolveParameterKey(parameter);
+          const paramKey = parameter?.key;
           if (!paramKey) return null;
 
           const paramLabel = parameter?.label || paramKey || "Parameter";
-          const { FieldComponent, registryKey } = resolveModelParameterField(parameter);
+          const { adapter, registryKey } = resolveModelParameterAdapter(parameter);
+          const FieldComponent = adapter?.FieldComponent || null;
 
           if (!FieldComponent) {
             return (

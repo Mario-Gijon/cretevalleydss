@@ -1,5 +1,5 @@
 import { Stack, Typography, TextField, MenuItem } from "@mui/material";
-import { handleNumberInput } from "../../../utils/handleTwoDecimals";
+import { handleNumberInput } from "../../../../utils/handleTwoDecimals";
 
 export const NumberParameterField = ({
   parameter,
@@ -45,7 +45,7 @@ export const NumberParameterField = ({
     <Stack direction="row" spacing={1} alignItems="center">
       <Typography variant="body1">{paramLabel}:</Typography>
       <TextField
-        type={parameter?.type === "integer" ? "number" : "number"}
+        type="number"
         size="small"
         value={paramValues[paramKey] ?? defaultValue ?? ""}
         onChange={(e) => {

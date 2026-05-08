@@ -1,5 +1,9 @@
 import { Stack, Typography, TextField } from "@mui/material";
-import { resolveLeafLengthForParameter } from "../modelParameter.metadata";
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
+};
 
 const handleFuzzyInput = (value, min = 0, max = 1) => {
   if (value === "") return "";
@@ -23,7 +27,7 @@ export const FuzzyArrayParameterField = ({
 }) => {
   const restrictions = parameter?.restrictions || {};
   const length =
-    resolveLeafLengthForParameter(parameter, leafCriteria.length) ??
+    getParameterExpectedLength(parameter, leafCriteria.length) ??
     restrictions?.length ?? 1;
 
   const currentValues =

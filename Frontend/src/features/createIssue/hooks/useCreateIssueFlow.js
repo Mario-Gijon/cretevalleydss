@@ -5,10 +5,8 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
-  isCriteriaWeightsParameter,
-  resolveLeafLengthForParameter,
-  resolveParameterKey,
-  validateCriteriaWeightsParameterValue,
+  getParameterExpectedLength,
+  validateCriteriaWeightsParameterValue
 } from "../../modelParameters";
 import {
   readStoredCreateIssueData,
@@ -154,12 +152,17 @@ export const useCreateIssueFlow = () => {
 
   useEffect(() => {
     if (selectedModel && selectedModel.parameters) {
-      setParamValues(
-        setDefaults({
-          selectedModel,
-          criteria: getLeafCriteria(criteria),
-        })
-      );
+      try {
+        setParamValues(
+          setDefaults({
+            selectedModel,
+            criteria: getLeafCriteria(criteria),
+          })
+        );
+      } catch {
+        showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
+        return;
+      }
       setDefaultModelParams(true);
       setHasAttemptedCreateIssue(false);
     }
@@ -203,13 +206,18 @@ export const useCreateIssueFlow = () => {
     }
 
     const leafCriteria = getLeafCriteria(criteria);
-    const defaults = setDefaults({
-      selectedModel,
-      criteria: leafCriteria,
-    });
+    let defaults = {};
+    try {
+      defaults = setDefaults({
+        selectedModel,
+        criteria: leafCriteria,
+      });
+    } catch {
+      return;
+    }
 
     const parameterKeys = (selectedModel.parameters || [])
-      .map((parameter) => resolveParameterKey(parameter))
+      .map((parameter) => parameter?.key)
       .filter(Boolean);
 
     const isOnDefault = parameterKeys.every((key) =>
@@ -351,14 +359,14 @@ export const useCreateIssueFlow = () => {
     }
 
     const leafCriteria = getLeafCriteria(criteria);
-    const criteriaWeightsParameter = (selectedModel?.parameters || []).find((parameter) =>
-      isCriteriaWeightsParameter(parameter)
+    const criteriaWeightsParameter = (selectedModel?.parameters || []).find(
+      (parameter) => parameter?.ui?.component === "criteriaWeights"
     );
 
     if (criteriaWeightsParameter) {
-      const paramKey = resolveParameterKey(criteriaWeightsParameter);
+      const paramKey = criteriaWeightsParameter?.key;
       const weightsValue = allData?.paramValues?.[paramKey];
-      const expectedLength = resolveLeafLengthForParameter(
+      const expectedLength = getParameterExpectedLength(
         criteriaWeightsParameter,
         leafCriteria.length
       );

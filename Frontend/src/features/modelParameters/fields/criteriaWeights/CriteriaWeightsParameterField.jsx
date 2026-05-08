@@ -1,8 +1,13 @@
 import { useEffect } from "react";
 import { Stack, Typography, TextField, ButtonGroup, Button, MenuItem } from "@mui/material";
-import { handleNumberInput } from "../../../utils/handleTwoDecimals";
-import { resolveLeafLengthForParameter } from "../modelParameter.metadata";
-import { validateCriteriaWeightsParameterValue } from "../modelParameter.validation";
+import { handleNumberInput } from "../../../../utils/handleTwoDecimals";
+import { validateCriteriaWeightsParameterValue } from "./criteriaWeights.validation";
+
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
+};
 
 const ensureLength = (arr, len, filler = "") => {
   const normalized = Array.isArray(arr) ? [...arr] : [];
@@ -139,7 +144,7 @@ export const CriteriaWeightsParameterField = ({
   const restrictions = parameter?.restrictions || {};
   const defaultValue = parameter?.default;
   const length =
-    resolveLeafLengthForParameter(parameter, leafCriteria.length) ??
+    getParameterExpectedLength(parameter, leafCriteria.length) ??
     restrictions?.length ?? 2;
 
   const currentValues = ensureLength(
