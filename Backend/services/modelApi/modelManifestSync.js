@@ -158,7 +158,7 @@ const normalizeNonEmptyString = (value) => {
 
 const normalizeParameter = (parameter = {}) => {
   const restrictions = parameter?.restrictions || {};
-  const key = normalizeNonEmptyString(parameter?.key) || normalizeNonEmptyString(parameter?.name);
+  const key = normalizeNonEmptyString(parameter?.key);
   const semanticRole = normalizeNonEmptyString(parameter?.semanticRole);
 
   return {
@@ -454,9 +454,7 @@ const validateSyncableManifestModel = (manifestModel) => {
   const seenKeys = new Set();
   parameters.forEach((parameter, index) => {
     const parameterPath = `parameters[${index}]`;
-    const key =
-      normalizeNonEmptyString(parameter?.key) ||
-      normalizeNonEmptyString(parameter?.name);
+    const key = normalizeNonEmptyString(parameter?.key);
     const type = normalizeNonEmptyString(parameter?.type);
     const restrictions =
       parameter?.restrictions && typeof parameter.restrictions === "object"

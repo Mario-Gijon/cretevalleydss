@@ -25,7 +25,7 @@ import {
   resolveInitialIssueStage,
 } from "./weightEvaluations/weightEvaluation.initialDocs.js";
 import { normalizeSingleWeight } from "./weightEvaluations/weightEvaluation.shared.js";
-import { createIssueDomainSnapshots } from "./issue.domainSnapshots.js";
+import { createIssueDomainSnapshots } from "./expressionDomains/issueDomainSnapshots.js";
 import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "./modelParameters/index.js";
 
         
@@ -329,7 +329,7 @@ const modelRequiresCriterionWeights = (model) => {
     const parameterSemanticRole = normalizeNonEmptyString(
       parameter?.semanticRole
     );
-    const parameterScope = normalizeNonEmptyString(parameter?.scope) || "global";
+    const parameterScope = normalizeNonEmptyString(parameter?.scope);
     const parameterType = normalizeNonEmptyString(parameter?.type);
 
     return (

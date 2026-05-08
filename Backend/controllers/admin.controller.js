@@ -12,7 +12,7 @@ import {
 } from "../modules/issues/weightEvaluations/index.js";
 import {
   resolveIssue as resolveIssueService,
-} from "../modules/issues/issue.resolution.js";
+} from "../modules/issues/resolution/index.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/issue.lifecycle.js";
 
 import {

@@ -49,7 +49,7 @@ import {
 } from "../modules/issues/issue.scenarios.js";
 import {
   resolveIssue as resolveIssueService,
-} from "../modules/issues/issue.resolution.js";
+} from "../modules/issues/resolution/index.js";
 import {
   deleteActiveIssueAsAdmin,
   hideFinishedIssueForUserFlow,
@@ -60,14 +60,14 @@ import {
   getExpressionDomainsPayload,
   removeUserExpressionDomain,
   updateUserExpressionDomain,
-} from "../modules/issues/issue.expressionDomains.js";
+} from "../modules/issues/expressionDomains/issueExpressionDomains.js";
 import {
   changeInvitationStatusFlow,
   getNotificationsPayload,
   markAllNotificationsAsReadFlow,
   removeNotificationForUserFlow,
 } from "../modules/issues/issue.notifications.js";
-import { getFinishedIssueInfoPayload } from "../modules/issues/issue.finished.js";
+import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finishedIssue.payload.js";
 import {
   generateIssueResultsAnalysisFlow,
   generateScenarioResultsAnalysisFlow,

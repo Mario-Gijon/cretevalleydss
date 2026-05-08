@@ -1,8 +1,8 @@
          
-import { Issue } from "../../models/Issues.js";
-import { IssueModel } from "../../models/IssueModels.js";
-import { IssueScenario } from "../../models/IssueScenarios.js";
-import { Participation } from "../../models/Participations.js";
+import { Issue } from "../../../models/Issues.js";
+import { IssueModel } from "../../../models/IssueModels.js";
+import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { Participation } from "../../../models/Participations.js";
 
         
 import {
@@ -11,31 +11,31 @@ import {
   createExpertsPairwiseRatingsSection,
   createExpertsRatingsSection,
   createSummarySection,
-} from "../../modules/issues/issue.finishedSections.js";
+} from "./finishedIssue.sections.js";
 import {
   ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
-} from "../../modules/issues/issue.ordering.js";
-import { detectIssueDomainTypeOrThrow } from "./issue.scenarios.js";
+} from "../issue.ordering.js";
+import { detectIssueDomainTypeOrThrow } from "../issue.scenarios.js";
 import {
   createBadRequestError,
   createNotFoundError,
-} from "../../utils/common/errors.js";
-import { toIdString } from "../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
+} from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
+import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
           
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
-} from "./issue.scenarios.js";
+} from "../issue.scenarios.js";
 import {
   getConsensusRoundsForIssue,
   buildConsensusHistoryFromDocs,
-} from "./consensus/index.js";
+} from "../consensus/index.js";
 import {
   EVALUATION_STRUCTURES,
-} from "./issue.evaluationStructure.js";
+} from "../issue.evaluationStructure.js";
 
 /**
  * Detecta el tipo de dominio del issue terminado.

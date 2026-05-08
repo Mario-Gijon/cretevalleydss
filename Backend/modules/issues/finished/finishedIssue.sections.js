@@ -1,12 +1,12 @@
-import { Issue } from "../../models/Issues.js";
-import { Alternative } from "../../models/Alternatives.js";
-import { Criterion } from "../../models/Criteria.js";
-import { Participation } from "../../models/Participations.js";
-import { Evaluation } from "../../models/Evaluations.js";
-import { Consensus } from "../../models/Consensus.js";
-import { denormalizeCanonicalValueForDomainOrThrow } from "./expressionDomains/expressionDomain.transforms.js";
-import { buildIssueCriteriaTree } from "../../modules/issues/issue.active.js";
-import { createNotFoundError } from "../../utils/common/errors.js";
+import { Issue } from "../../../models/Issues.js";
+import { Alternative } from "../../../models/Alternatives.js";
+import { Criterion } from "../../../models/Criteria.js";
+import { Participation } from "../../../models/Participations.js";
+import { Evaluation } from "../../../models/Evaluations.js";
+import { Consensus } from "../../../models/Consensus.js";
+import { denormalizeCanonicalValueForDomainOrThrow } from "../expressionDomains/expressionDomain.transforms.js";
+import { buildIssueCriteriaTree } from "../issue.active.js";
+import { createNotFoundError } from "../../../utils/common/errors.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
   const matrices = phaseDoc?.details?.matrices;
