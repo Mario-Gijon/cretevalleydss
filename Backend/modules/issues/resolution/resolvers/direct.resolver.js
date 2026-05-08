@@ -1,40 +1,11 @@
-import { getEvaluationStructureOperationsOrThrow } from "../../alternativeEvaluations/alternativeEvaluation.registry.js";
 import { getNextConsensusPhase } from "../../issue.queries.js";
-import { buildModelInputPayload } from "../modelInputs/modelInput.adapters.js";
-import { buildResolutionResult } from "../resolution.results.js";
 import {
   handleResolutionLifecycle,
   getLifecyclePolicyOrThrow,
 } from "../resolution.lifecycle.js";
 import { saveResolutionConsensus } from "../resolution.consensus.js";
-import { buildCriterionTypes } from "../resolution.shared.js";
+import { executeResolutionModelPipeline } from "../resolution.execution.js";
 import { getResolutionContext } from "../resolution.context.js";
-import { normalizeParams } from "../../../../services/modelApi/modelParamNormalizer.js";
-import {
-  buildModelEndpointUrl,
-  getModelEndpointKey,
-} from "../../../../services/modelApi/modelCatalog.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../../services/modelApi/modelResponse.js";
-import {
-  createBadRequestError,
-  createInternalError,
-} from "../../../../utils/common/errors.js";
-
-const getBuildResolutionDataOrThrow = ({
-  operations,
-  evaluationStructure,
-}) => {
-  if (typeof operations?.buildResolutionData !== "function") {
-    throw createInternalError(
-      `Resolution data builder is not implemented for evaluation structure ${String(evaluationStructure)}`
-    );
-  }
-
-  return operations.buildResolutionData;
-};
 
 /**
  * Resuelve un issue de evaluación directa.
@@ -60,75 +31,25 @@ export const resolveDirectIssue = async ({
       userId,
     });
 
-  const evaluationOperations = getEvaluationStructureOperationsOrThrow(
-    issue.evaluationStructure
-  );
-  const buildResolutionData = getBuildResolutionDataOrThrow({
-    operations: evaluationOperations,
-    evaluationStructure: issue.evaluationStructure,
-  });
-
   const currentPhase = await getNextConsensusPhase(issue._id);
-
-  const { matricesUsed: matrices } = await buildResolutionData({
-    issueId,
-    alternatives,
-    criteria,
-    participations,
-    currentPhase,
-    inputKind: model?.inputKind,
-  });
-
-  const modelKey = getModelEndpointKey(model);
-  const modelEndpointUrl = buildModelEndpointUrl(apiModelsBaseUrl, model);
-
-  if (!modelKey || !modelEndpointUrl) {
-    throw createBadRequestError(
-      `No API endpoint defined for model ${model.name}`
-    );
-  }
-
-  const criterionTypes = buildCriterionTypes(criteria);
-  const normalizedModelParams = normalizeParams(issue.modelParameters);
-  const modelInputPayload = buildModelInputPayload({
-    inputKind: model?.inputKind,
-    matrices,
-    modelParameters: normalizedModelParams,
-    criterionTypes,
-    consensusThreshold: issue.consensusThreshold,
-  });
-
-  let response;
-  try {
-    response = await httpClient.post(
-      modelEndpointUrl,
-      modelInputPayload,
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    throw createModelApiRequestError(error);
-  }
-
-  const results = unwrapModelApiResponse(response);
 
   const {
     rankedAlternatives,
     collectiveEvaluations,
     consensusDetails,
     consensusLevel,
-  } = buildResolutionResult({
-    results,
+  } = await executeResolutionModelPipeline({
+    issue,
+    issueId,
+    model,
+    evaluationStructure: issue.evaluationStructure,
     alternatives,
     criteria,
-    matrices,
     participations,
-    issue,
-    model,
-    modelKey,
-    modelParameters: normalizedModelParams,
-    rawOutput: results,
+    currentPhase,
+    modelParameters: issue.modelParameters,
+    apiModelsBaseUrl,
+    httpClient,
   });
 
   await saveResolutionConsensus({

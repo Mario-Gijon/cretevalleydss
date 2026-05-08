@@ -28,7 +28,7 @@ import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
-} from "../issue.scenarios.js";
+} from "../scenarios/scenario.params.js";
 import {
   getConsensusRoundsForIssue,
   buildConsensusHistoryFromDocs,

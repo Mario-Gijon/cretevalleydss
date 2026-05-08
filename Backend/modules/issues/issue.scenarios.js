@@ -11,8 +11,6 @@ import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import {
   EVALUATION_STRUCTURES,
 } from "./issue.evaluationStructure.js";
-import { buildDirectResolutionData } from "./alternativeEvaluations/direct/direct.resolutionData.js";
-import { buildPairwiseAlternativesResolutionData } from "./alternativeEvaluations/pairwiseAlternatives/pairwiseAlternatives.resolutionData.js";
 
         
 import {
@@ -25,205 +23,27 @@ import {
   createForbiddenError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
+import {
+  normalizeScenarioParamOverridesOrThrow,
+  resolveScenarioWeightsArray,
+} from "./scenarios/scenario.params.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
-import {
-  buildModelEndpointUrl,
-  getModelEndpointKey,
-} from "../../services/modelApi/modelCatalog.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../services/modelApi/modelResponse.js";
-import { buildModelInputPayload } from "./resolution/modelInputs/modelInput.adapters.js";
-import { normalizeModelOutput } from "./resolution/modelOutputs/modelOutput.adapters.js";
+import { executeResolutionModelPipeline } from "./resolution/resolution.execution.js";
 import { validateAndNormalizeModelParametersOrThrow } from "./modelParameters/index.js";
-
-                     
 import axios from "axios";
 
-/**
- * @typedef {Object} ScenarioMatricesResult
- * @property {Object} matricesUsed Matrices construidas para el escenario.
- * @property {string[]} snapshotIdsUsed Snapshots utilizados.
- */
-
-/**
- * @typedef {Object} ScenarioExecutionResult
- * @property {string} apiModelKey Clave del endpoint del modelo.
- * @property {Object} results Resultado bruto devuelto por el modelo.
- */
-
-/**
- * @typedef {Object} ScenarioOutputs
- * @property {Object} details Detalle persistible del escenario.
- * @property {Object|null} collectiveEvaluations Evaluaciones colectivas derivadas, si existen.
- */
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
 
 /**
  * @typedef {Object} IssueScenarioCreateResult
  * @property {*} scenarioId Id del escenario creado.
  */
 
-/**
- * Ajusta la longitud de un array rellenando o truncando según corresponda.
- *
- * @param {unknown[]} arr Array de entrada.
- * @param {number} len Longitud deseada.
- * @param {unknown} [filler=null] Valor de relleno.
- * @returns {unknown[]}
- */
-const ensureLen = (arr, len, filler = null) => {
-  const normalized = Array.isArray(arr) ? [...arr] : [];
-
-  if (normalized.length < len) {
-    return [...normalized, ...Array(len - normalized.length).fill(filler)];
-  }
-
-  if (normalized.length > len) {
-    return normalized.slice(0, len);
-  }
-
-  return normalized;
-};
-
-/**
- * Resuelve los parámetros por defecto de un modelo según el número de criterios hoja.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.modelDoc Documento del modelo.
- * @param {number} params.leafCount Número de criterios hoja.
- * @returns {Object}
- */
-export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
-  const resolved = {};
-  const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
-
-  for (const parameter of modelDoc?.parameters || []) {
-    const { type, default: defaultValue } = parameter;
-    const name = normalizeNonEmptyString(parameter?.key);
-    if (!name) continue;
-
-    if (type === "number") {
-      resolved[name] = defaultValue ?? null;
-      continue;
-    }
-
-    if (type === "array") {
-      const scope = normalizeNonEmptyString(parameter?.scope);
-      const fixedLength =
-        typeof parameter?.restrictions?.length === "number"
-          ? parameter.restrictions.length
-          : null;
-      const length =
-        (scope === "perCriterion" ? leafCount : fixedLength) ??
-        (Array.isArray(defaultValue) ? defaultValue.length : 2);
-
-      const base = Array.isArray(defaultValue) ? defaultValue : [];
-      const isCriteriaWeights =
-        normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights";
-
-      if (isCriteriaWeights && typeof defaultValue === "string" && defaultValue.trim().toLowerCase() === "equal" && safeLeafCount > 0) {
-        const equalWeights = Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount);
-        resolved[name] = ensureLen(equalWeights, length, null);
-        continue;
-      }
-
-      resolved[name] = ensureLen(base, length, null);
-      continue;
-    }
-
-    if (type === "fuzzyArray") {
-      const scope = normalizeNonEmptyString(parameter?.scope);
-      const fixedLength =
-        typeof parameter?.restrictions?.length === "number"
-          ? parameter.restrictions.length
-          : null;
-      const length =
-        (scope === "perCriterion" ? leafCount : fixedLength) ??
-        (Array.isArray(defaultValue) ? defaultValue.length : 1);
-
-      const base = Array.isArray(defaultValue) ? defaultValue : [];
-      resolved[name] = ensureLen(base, length, [null, null, null]).map(
-        (triangle) =>
-          Array.isArray(triangle) && triangle.length === 3
-            ? triangle
-            : [null, null, null]
-      );
-      continue;
-    }
-
-    resolved[name] = defaultValue ?? null;
-  }
-
-  return resolved;
-};
-
-/**
- * Fusiona parámetros guardados con sus valores resueltos por defecto.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.defaultsResolved Defaults resueltos.
- * @param {Object} params.savedParams Parámetros guardados.
- * @returns {Object}
- */
-export const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
-  const merged = { ...(defaultsResolved || {}) };
-
-  for (const [key, value] of Object.entries(savedParams || {})) {
-    merged[key] = value;
-  }
-
-  return merged;
-};
-
-const getModelParameterKeys = (modelDoc) => {
-  return new Set(
-    (modelDoc?.parameters || [])
-      .map((parameter) =>
-        normalizeNonEmptyString(parameter?.key)
-      )
-      .filter(Boolean)
-  );
-};
-
-const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
-  if (paramOverrides == null) {
-    return {};
-  }
-
-  if (typeof paramOverrides !== "object" || Array.isArray(paramOverrides)) {
-    throw createBadRequestError("paramOverrides must be an object", {
-      field: "paramOverrides",
-    });
-  }
-
-  return paramOverrides;
-};
-
-/**
- * Resuelve weights como array a partir de paramsUsed y criterios ordenados.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.paramsUsed Parámetros usados.
- * @param {Array<Object>} params.criteria Criterios ordenados.
- * @returns {Array<*> | null}
- */
-export const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
-  const weights = paramsUsed?.weights;
-
-  if (Array.isArray(weights)) {
-    return weights;
-  }
-
-  if (weights && typeof weights === "object") {
-    return criteria.map((criterion) =>
-      weights[criterion.name] != null ? weights[criterion.name] : null
-    );
-  }
-
-  return null;
-};
 
 /**
  * Detecta el tipo de dominio usado en un issue a partir de los snapshots utilizados.
@@ -267,123 +87,6 @@ export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
 };
 
 /**
- * Construye matrices directas para escenarios preservando la lógica actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
- * @param {Array<Object>} params.criteria Criterios hoja ordenados.
- * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
- * @param {number} params.currentPhase Fase de consenso 1-based a consultar.
- * @returns {Promise<ScenarioMatricesResult>}
- */
-export const buildScenarioDirectMatrices = ({
-  issueId,
-  alternatives,
-  criteria,
-  participations,
-  currentPhase,
-  inputKind,
-}) =>
-  buildDirectResolutionData({
-    issueId,
-    alternatives,
-    criteria,
-    participations,
-    currentPhase,
-    inputKind,
-  });
-
-/**
- * Construye matrices pairwise para escenarios preservando la lógica actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
- * @param {Array<Object>} params.criteria Criterios hoja ordenados.
- * @param {Array<Object>} params.participations Participaciones aceptadas con expert populado.
- * @param {number} params.currentPhase Fase de consenso 1-based a consultar.
- * @returns {Promise<ScenarioMatricesResult>}
- */
-export const buildScenarioPairwiseMatrices = ({
-  issueId,
-  alternatives,
-  criteria,
-  participations,
-  currentPhase,
-  inputKind,
-}) =>
-  buildPairwiseAlternativesResolutionData({
-    issueId,
-    alternatives,
-    criteria,
-    participations,
-    currentPhase,
-    inputKind,
-  });
-
-/**
- * Construye el array de tipos de criterio compatible con modelos directos.
- *
- * @param {Array<Object>} criteria Criterios hoja ordenados.
- * @returns {string[]}
- */
-const buildCriterionTypes = (criteria) =>
-  criteria.map((criterion) =>
-    criterion.type === "benefit" ? "max" : "min"
-  );
-
-/**
- * Cuenta valores pendientes en matrices directas.
- *
- * @param {Object} matricesUsed Matrices por experto.
- * @returns {number}
- */
-const countPendingDirectValues = (matricesUsed) =>
-  Object.values(matricesUsed).reduce((acc, matrix) => {
-    for (const row of matrix) {
-      for (const value of row) {
-        if (value == null) acc += 1;
-      }
-    }
-    return acc;
-  }, 0);
-
-/**
- * Cuenta valores pendientes en matrices pairwise ignorando la diagonal.
- *
- * @param {Object} matricesUsed Matrices por experto y criterio.
- * @returns {number}
- */
-const countPendingPairwiseValues = (matricesUsed) => {
-  let nullCount = 0;
-
-  for (const expertEmail of Object.keys(matricesUsed || {})) {
-    for (const criterionName of Object.keys(matricesUsed[expertEmail] || {})) {
-      const matrix = matricesUsed[expertEmail][criterionName] || [];
-
-      for (let rowIndex = 0; rowIndex < matrix.length; rowIndex += 1) {
-        for (let colIndex = 0; colIndex < matrix.length; colIndex += 1) {
-          if (rowIndex === colIndex) continue;
-          if (matrix[rowIndex][colIndex] == null) {
-            nullCount += 1;
-          }
-        }
-      }
-    }
-  }
-
-  return nullCount;
-};
-
-/**
- * Convierte plots_graphic.expert_points a un mapa indexado por email.
- *
- * @param {Array<Object>} participations Participaciones aceptadas.
- * @param {Object|null|undefined} plotsGraphic Gráfico bruto del modelo.
- * @returns {Object|null}
- */
-/**
  * Construye el payload de un escenario para listados o detalle.
  *
  * @param {Object} scenarioDoc Documento del escenario.
@@ -396,12 +99,6 @@ const buildScenarioPayload = (scenarioDoc) => {
     ...scenarioDoc,
     evaluationStructure,
   };
-};
-
-const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
 };
 
 const normalizeEndpointPath = (value) => {
@@ -546,6 +243,69 @@ const resolveScenarioEvaluationPhaseOrThrow = ({ issue, consensusCount }) => {
   return phase;
 };
 
+const resolveCriteriaWeightsKind = (modelDoc) => {
+  const parameters = Array.isArray(modelDoc?.parameters) ? modelDoc.parameters : [];
+  const weightsParameter = parameters.find(
+    (parameter) => normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights"
+  );
+
+  const weightsType = normalizeNonEmptyString(weightsParameter?.type);
+  if (weightsType === "fuzzyArray") {
+    return "fuzzy";
+  }
+
+  if (weightsType === "array") {
+    return "crisp";
+  }
+
+  return null;
+};
+
+const validateScenarioModelCompatibilityOrThrow = ({
+  issue,
+  targetModel,
+  targetRuntimeSnapshot,
+}) => {
+  const issueEvaluationStructure = normalizeNonEmptyString(issue?.evaluationStructure);
+  const issueInputKind = normalizeNonEmptyString(issue?.inputKind);
+  const targetEvaluationStructure =
+    targetRuntimeSnapshot?.targetEvaluationStructure ?? null;
+  const targetInputKind = targetRuntimeSnapshot?.targetInputKind ?? null;
+
+  if (targetEvaluationStructure !== issueEvaluationStructure) {
+    throw createBadRequestError(
+      "Incompatible models: evaluation structure does not match this issue input type.",
+      {
+        field: "targetModel",
+      }
+    );
+  }
+
+  if (targetInputKind !== issueInputKind) {
+    throw createBadRequestError(
+      "Incompatible models: target model input kind does not match this issue input kind.",
+      {
+        field: "targetModel",
+      }
+    );
+  }
+
+  const sourceWeightsKind = resolveCriteriaWeightsKind(issue?.model);
+  const targetWeightsKind = resolveCriteriaWeightsKind(targetModel);
+  if (
+    sourceWeightsKind &&
+    targetWeightsKind &&
+    sourceWeightsKind !== targetWeightsKind
+  ) {
+    throw createBadRequestError(
+      "Incompatible models: target model criteria weights kind does not match this issue model.",
+      {
+        field: "targetModel",
+      }
+    );
+  }
+};
+
 /**
  * Carga y valida el contexto necesario para crear un escenario.
  *
@@ -618,15 +378,11 @@ const getCreateScenarioContext = async ({
     targetModel
   );
   const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
-
-  if (targetEvaluationStructure !== issueEvaluationStructure) {
-    throw createBadRequestError(
-      "Incompatible models: evaluation structure does not match this issue input type.",
-      {
-        field: "targetModel",
-      }
-    );
-  }
+  validateScenarioModelCompatibilityOrThrow({
+    issue,
+    targetModel,
+    targetRuntimeSnapshot,
+  });
 
   await ensureIssueOrdersDb({ issueId: issue._id });
 
@@ -719,7 +475,6 @@ const getCreateScenarioContext = async ({
     criteria,
     issueEvaluationStructure,
     targetEvaluationStructure,
-    criterionTypes: buildCriterionTypes(criteria),
     domainType,
     paramsUsed: normalizedScenarioParameters,
     normalizedParams: normalizedScenarioParameters,
@@ -729,188 +484,6 @@ const getCreateScenarioContext = async ({
     consensusThresholdUsed: 1,
     evaluationPhase,
     targetRuntimeSnapshot,
-  };
-};
-
-/**
- * Resuelve las matrices de entrada de una simulación y valida que estén completas.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {string} params.issueEvaluationStructure Estructura de evaluación del issue.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
- * @param {Array<Object>} params.criteria Criterios hoja ordenados.
- * @param {Array<Object>} params.participations Participaciones aceptadas.
- * @param {number} params.evaluationPhase Fase 1-based usada para leer evaluaciones.
- * @returns {Promise<ScenarioMatricesResult>}
- */
-const resolveScenarioMatricesOrThrow = async ({
-  issueId,
-  issueEvaluationStructure,
-  alternatives,
-  criteria,
-  participations,
-  evaluationPhase,
-  targetInputKind,
-}) => {
-  if (issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT) {
-    const directResult = await buildScenarioDirectMatrices({
-      issueId,
-      alternatives,
-      criteria,
-      participations,
-      currentPhase: evaluationPhase,
-      inputKind: targetInputKind,
-    });
-
-    const nullCount = countPendingDirectValues(directResult.matricesUsed);
-
-    if (nullCount > 0) {
-      throw createBadRequestError(
-        "Simulation requires complete evaluations (some values are still null)."
-      );
-    }
-
-    return directResult;
-  }
-
-  const pairwiseResult = await buildScenarioPairwiseMatrices({
-    issueId,
-    alternatives,
-    criteria,
-    participations,
-    currentPhase: evaluationPhase,
-    inputKind: targetInputKind,
-  });
-
-  const nullCount = countPendingPairwiseValues(pairwiseResult.matricesUsed);
-
-  if (nullCount > 0) {
-    throw createBadRequestError(
-      "Simulation requires complete pairwise evaluations (some values are still null)."
-    );
-  }
-
-  return pairwiseResult;
-};
-
-/**
- * Ejecuta el modelo objetivo para crear un escenario.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.targetRuntimeModel Snapshot runtime del modelo objetivo.
- * @param {Object} params.matricesUsed Matrices de entrada.
- * @param {Object} params.normalizedParams Parámetros normalizados.
- * @param {string[]} params.criterionTypes Tipos de criterio.
- * @param {number} params.consensusThresholdUsed Umbral de consenso usado.
- * @returns {Promise<ScenarioExecutionResult>}
- */
-const executeScenarioModelOrThrow = async ({
-  targetRuntimeModel,
-  matricesUsed,
-  normalizedParams,
-  criterionTypes,
-  consensusThresholdUsed,
-}) => {
-  const apiModelKey = getModelEndpointKey(targetRuntimeModel);
-  const apimodelsUrl =
-    process.env.ORIGIN_APIMODELS || "http://localhost:7000";
-  const modelEndpointUrl = buildModelEndpointUrl(apimodelsUrl, targetRuntimeModel);
-
-  if (!apiModelKey || !modelEndpointUrl) {
-    throw createBadRequestError(
-      `No API endpoint defined for target model ${targetRuntimeModel?.name}`
-    );
-  }
-
-  const modelInputPayload = buildModelInputPayload({
-    inputKind: targetRuntimeModel?.inputKind,
-    matrices: matricesUsed,
-    modelParameters: normalizedParams,
-    criterionTypes,
-    consensusThreshold: consensusThresholdUsed,
-  });
-
-  let response;
-
-  try {
-    response = await axios.post(
-        modelEndpointUrl,
-        modelInputPayload,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-  } catch (error) {
-    throw createModelApiRequestError(error, "Error creating scenario");
-  }
-
-  const results = unwrapModelApiResponse(response);
-
-  return {
-    apiModelKey,
-    results,
-  };
-};
-
-/**
- * Construye los outputs persistibles del escenario a partir del resultado del modelo.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.targetRuntimeModel Snapshot runtime del modelo objetivo.
- * @param {Object} params.results Resultado bruto.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
- * @param {Array<Object>} params.criteria Criterios hoja ordenados.
- * @param {Array<Object>} params.participations Participaciones aceptadas.
- * @param {Object} params.matricesUsed Matrices usadas.
- * @returns {ScenarioOutputs}
- */
-const buildScenarioOutputs = ({
-  targetRuntimeModel,
-  results,
-  alternatives,
-  criteria,
-  participations,
-  matricesUsed,
-  modelParameters,
-  issue,
-}) => {
-  const normalizedOutput = normalizeModelOutput({
-    outputKind: targetRuntimeModel?.outputKind,
-    rawOutput: results,
-    alternatives,
-    criteria,
-    participations,
-    issue,
-    model: targetRuntimeModel,
-  });
-
-  return {
-    collectiveEvaluations: normalizedOutput.collectiveEvaluations,
-    details: {
-      rankedAlternatives: normalizedOutput.rankedWithScores,
-      matrices: matricesUsed,
-      collective_scores: normalizedOutput.collectiveScoresByName,
-      collective_ranking: normalizedOutput.collectiveRanking,
-      ...(normalizedOutput.consensusLevel != null
-        ? { level: normalizedOutput.consensusLevel }
-        : {}),
-      ...(normalizedOutput.plotsGraphic
-        ? { plotsGraphic: normalizedOutput.plotsGraphic }
-        : {}),
-      modelExecution: {
-        apiModelKey: targetRuntimeModel?.apiModelKey ?? null,
-        modelKey: targetRuntimeModel?.apiModelKey ?? null,
-        modelName: targetRuntimeModel?.name ?? null,
-        inputKind: targetRuntimeModel?.inputKind ?? null,
-        outputKind: targetRuntimeModel?.outputKind ?? null,
-        apiEndpoint: targetRuntimeModel?.apiEndpoint ?? null,
-        apiEndpointPath: targetRuntimeModel?.apiEndpoint?.path ?? null,
-        modelParameters: modelParameters ?? null,
-        executedAt: new Date(),
-        rawOutput: results,
-      },
-    },
   };
 };
 
@@ -939,36 +512,49 @@ export const createIssueScenarioFlow = async ({
     paramOverrides,
   });
 
-  const { matricesUsed, snapshotIdsUsed } = await resolveScenarioMatricesOrThrow({
-    issueId: context.issue._id,
-    issueEvaluationStructure: context.issueEvaluationStructure,
-    alternatives: context.alternatives,
-    criteria: context.criteria,
-    participations: context.participations,
-    evaluationPhase: context.evaluationPhase,
-    targetInputKind: context.targetRuntimeModel?.inputKind,
-  });
-
-  const { results } = await executeScenarioModelOrThrow({
-    targetRuntimeModel: context.targetRuntimeModel,
+  const {
     matricesUsed,
-    normalizedParams: context.normalizedParams,
-    criterionTypes: context.criterionTypes,
-    consensusThresholdUsed: context.consensusThresholdUsed,
-  });
-
-  const { details, collectiveEvaluations } = buildScenarioOutputs({
-    targetRuntimeModel: context.targetRuntimeModel,
+    snapshotIdsUsed,
     results,
-    alternatives: context.alternatives,
-    criteria: context.criteria,
-    participations: context.participations,
-    matricesUsed,
-    modelParameters: context.normalizedParams,
+    collectiveEvaluations,
+    consensusDetails,
+    consensusLevel,
+  } = await executeResolutionModelPipeline({
     issue: {
       isConsensus: context.targetRuntimeModel?.outputKind === "consensusRanking",
+      consensusThreshold: context.consensusThresholdUsed,
     },
+    issueId: context.issue._id,
+    model: context.targetRuntimeModel,
+    evaluationStructure: context.issueEvaluationStructure,
+    alternatives: context.alternatives,
+    criteria: context.criteria,
+    participations: context.participations,
+    currentPhase: context.evaluationPhase,
+    modelParameters: context.normalizedParams,
+    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+    requireCompleteMatrices: true,
+    incompleteMatricesMessage:
+      context.issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT
+        ? "Simulation requires complete evaluations (some values are still null)."
+        : "Simulation requires complete pairwise evaluations (some values are still null).",
+    requestErrorMessage: "Error creating scenario",
   });
+
+  const details = {
+    ...consensusDetails,
+    ...(consensusLevel != null ? { level: consensusLevel } : {}),
+  };
+  if (details?.modelExecution?.apiModelKey != null) {
+    details.modelExecution.modelKey = details.modelExecution.apiModelKey;
+  }
+  const criterionTypes =
+    context.issueEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
+      ? []
+      : context.criteria.map((criterion) =>
+          criterion.type === "benefit" ? "max" : "min"
+        );
 
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
@@ -992,11 +578,7 @@ export const createIssueScenarioFlow = async ({
     config: {
       modelParameters: context.paramsUsed,
       normalizedModelParameters: context.normalizedParams,
-      criterionTypes:
-        context.issueEvaluationStructure ===
-          EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-          ? []
-          : context.criterionTypes,
+      criterionTypes,
     },
     inputs: {
       consensusPhaseUsed: context.evaluationPhase,

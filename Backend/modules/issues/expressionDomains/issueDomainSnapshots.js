@@ -1,5 +1,5 @@
-import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
-import { toIdString } from "../../utils/common/ids.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+import { toIdString } from "../../../utils/common/ids.js";
 
 /**
  * Crea snapshots de dominios de expresión para un issue y devuelve un mapa
