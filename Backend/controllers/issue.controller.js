@@ -46,7 +46,7 @@ import {
   getIssueScenariosPayload,
   getScenarioByIdPayload,
   removeIssueScenarioFlow,
-} from "../modules/issues/issue.scenarios.js";
+} from "../modules/issues/scenarios/index.js";
 import {
   resolveIssue as resolveIssueService,
 } from "../modules/issues/resolution/index.js";
@@ -75,7 +75,7 @@ import {
   getSavedScenarioResultsAnalysisFlow,
 } from "../modules/issues/analysis/index.js";
 import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
-import { createIssueFlow } from "../modules/issues/issue.creation.js";
+import { createIssueFlow } from "../modules/issues/creation/index.js";
 
                      
 import axios from "axios";

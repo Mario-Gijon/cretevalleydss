@@ -16,7 +16,7 @@ import {
   ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
 } from "../issue.ordering.js";
-import { detectIssueDomainTypeOrThrow } from "../issue.scenarios.js";
+import { detectIssueDomainTypeOrThrow } from "../expressionDomains/issueDomainDetection.js";
 import {
   createBadRequestError,
   createNotFoundError,
