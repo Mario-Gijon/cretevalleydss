@@ -2,21 +2,32 @@ export {
   ACTIVE_STAGE_META,
   ACTIVE_ACTION_META,
   ACTIVE_TASK_ACTION_KEYS,
-  getEmptyTasksByType,
+} from "./activeIssue.meta.js";
+
+export {
   buildIssueCriteriaTree,
-  incrementCounter,
+  decorateCriteriaTree,
+} from "./activeIssue.criteria.js";
+
+export {
   cleanModelParameters,
   detectHasDirectWeights,
   detectHasAlternativeConsensusEnabled,
   buildWorkflowStepsStable,
   buildDeadlineInfo,
-  decorateCriteriaTree,
-  buildActiveIssueCollections,
-  buildActiveIssueView,
+} from "./activeIssue.workflow.js";
+
+export { buildActiveIssueCollections } from "./activeIssue.collections.js";
+
+export { buildActiveIssueView } from "./activeIssue.view.js";
+
+export {
+  getEmptyTasksByType,
+  incrementCounter,
   sortActiveIssues,
   sortActiveTasksByType,
   buildActiveTaskCenter,
   buildActiveFiltersMeta,
   buildActiveIssuesResponseMeta,
   buildEmptyActiveIssuesPayload,
-} from "./activeIssue.flow.js";
+} from "./activeIssue.response.js";
