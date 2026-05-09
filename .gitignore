@@ -18,7 +18,7 @@ __pycache__/
 .vscode/
 *~
 .codex
-clocl-report.sh
+cloc-report.sh
 
 # Ignorar build and push de docker
 build_and_push.sh
