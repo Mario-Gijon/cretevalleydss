@@ -15,7 +15,7 @@ import {
   getFinishedIssueVisibleUserIds,
   mapIssueStageToExitStage,
   registerUserExit,
-} from "../issues/issue.lifecycle.js";
+} from "../issues/lifecycle/index.js";
 
         
 import {

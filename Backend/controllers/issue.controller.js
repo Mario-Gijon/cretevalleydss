@@ -54,7 +54,7 @@ import {
   deleteActiveIssueAsAdmin,
   hideFinishedIssueForUserFlow,
   leaveActiveIssueFlow,
-} from "../modules/issues/issue.lifecycle.js";
+} from "../modules/issues/lifecycle/index.js";
 import {
   createUserExpressionDomain,
   getExpressionDomainsPayload,

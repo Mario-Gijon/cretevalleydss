@@ -7,11 +7,13 @@ import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
 import { buildInitialCriteriaWeightEvaluationDocs } from "./weightEvaluations/weightEvaluation.initialDocs.js";
-import { mapIssueStageToExitStage, registerUserExit } from "./issue.lifecycle.js";
+import {
+  cleanupExpertDraftsOnExit,
+  mapIssueStageToExitStage,
+  registerUserExit,
+} from "./lifecycle/index.js";
 import { getDefaultIssueSnapshot, getNextConsensusPhase } from "./issue.queries.js";
 
-        
-import { cleanupExpertDraftsOnExit } from "../../modules/issues/issue.lifecycle.js";
 import {
   createBadRequestError,
   createForbiddenError,

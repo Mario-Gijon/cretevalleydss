@@ -13,7 +13,7 @@ import {
 import {
   resolveIssue as resolveIssueService,
 } from "../modules/issues/resolution/index.js";
-import { deleteActiveIssueAsAdmin } from "../modules/issues/issue.lifecycle.js";
+import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
 
 import {
   getAdminIssuesListPayload,
