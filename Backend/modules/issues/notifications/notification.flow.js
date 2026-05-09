@@ -1,14 +1,14 @@
          
-import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notificacions.js";
-import { Participation } from "../../models/Participations.js";
+import { Issue } from "../../../models/Issues.js";
+import { Notification } from "../../../models/Notificacions.js";
+import { Participation } from "../../../models/Participations.js";
 
         
 import {
   createBadRequestError,
   createNotFoundError,
-} from "../../utils/common/errors.js";
-import { toIdString } from "../../utils/common/ids.js";
+} from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 
 /**
  * @typedef {Object} NotificationsPayload

@@ -66,7 +66,7 @@ import {
   getNotificationsPayload,
   markAllNotificationsAsReadFlow,
   removeNotificationForUserFlow,
-} from "../modules/issues/issue.notifications.js";
+} from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finishedIssue.payload.js";
 import {
   generateIssueResultsAnalysisFlow,
