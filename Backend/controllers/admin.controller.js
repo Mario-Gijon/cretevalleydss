@@ -6,7 +6,7 @@ import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 
           
-import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
+import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import {
   computeWeights as computeWeightsService,
 } from "../modules/issues/weightEvaluations/index.js";

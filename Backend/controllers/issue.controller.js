@@ -74,7 +74,7 @@ import {
   getSavedIssueResultsAnalysisFlow,
   getSavedScenarioResultsAnalysisFlow,
 } from "../modules/issues/analysis/index.js";
-import { editIssueExpertsFlow } from "../modules/issues/issue.experts.js";
+import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import { createIssueFlow } from "../modules/issues/creation/index.js";
 
                      

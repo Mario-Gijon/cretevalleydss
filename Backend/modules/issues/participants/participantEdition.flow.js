@@ -1,32 +1,32 @@
          
-import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../models/Evaluations.js";
-import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notificacions.js";
-import { Participation } from "../../models/Participations.js";
-import { User } from "../../models/Users.js";
-import { buildInitialAlternativeEvaluationDocs } from "./alternativeEvaluations/index.js";
-import { buildInitialCriteriaWeightEvaluationDocs } from "./weightEvaluations/weightEvaluation.initialDocs.js";
+import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
+import { Evaluation } from "../../../models/Evaluations.js";
+import { Issue } from "../../../models/Issues.js";
+import { Notification } from "../../../models/Notificacions.js";
+import { Participation } from "../../../models/Participations.js";
+import { User } from "../../../models/Users.js";
+import { buildInitialAlternativeEvaluationDocs } from "../alternativeEvaluations/index.js";
+import { buildInitialCriteriaWeightEvaluationDocs } from "../weightEvaluations/weightEvaluation.initialDocs.js";
 import {
   cleanupExpertDraftsOnExit,
   mapIssueStageToExitStage,
   registerUserExit,
-} from "./lifecycle/index.js";
-import { getDefaultIssueSnapshot, getNextConsensusPhase } from "./issue.queries.js";
+} from "../lifecycle/index.js";
+import { getDefaultIssueSnapshot, getNextConsensusPhase } from "../issue.queries.js";
 
 import {
   createBadRequestError,
   createForbiddenError,
   createNotFoundError,
-} from "../../utils/common/errors.js";
-import { sameId } from "../../utils/common/ids.js";
-import { normalizeEmail } from "../../utils/common/strings.js";
+} from "../../../utils/common/errors.js";
+import { sameId } from "../../../utils/common/ids.js";
+import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../../modules/issues/issue.ordering.js";
-import { sendExpertInvitationEmail } from "../../services/email.service.js";
+} from "../issue.ordering.js";
+import { sendExpertInvitationEmail } from "../../../services/email.service.js";
 
 /**
  * Normaliza las listas de expertos a añadir y expulsar,
