@@ -4,7 +4,7 @@ import { CriteriaWeightEvaluation } from "../../../../models/CriteriaWeightEvalu
 import { Participation } from "../../../../models/Participations.js";
 
 import { getOrderedLeafCriteriaDb } from "../../issue.ordering.js";
-import { validateFinalWeights } from "../../issue.validation.js";
+import { validateFinalWeights } from "./bwm.validation.js";
 
 import { createBadRequestError } from "../../../../utils/common/errors.js";
 import {

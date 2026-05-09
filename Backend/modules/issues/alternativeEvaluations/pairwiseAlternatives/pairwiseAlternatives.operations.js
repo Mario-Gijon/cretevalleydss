@@ -2,7 +2,7 @@ import { Evaluation } from "../../../../models/Evaluations.js";
 import { createBadRequestError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
-import { formatPairwiseEvaluationsByCriterion } from "../../issue.mappers.js";
+import { formatPairwiseEvaluationsByCriterion } from "../alternativeEvaluation.mappers.js";
 import {
   denormalizeCanonicalValueForDomainOrThrow,
 } from "../../expressionDomains/expressionDomain.transforms.js";

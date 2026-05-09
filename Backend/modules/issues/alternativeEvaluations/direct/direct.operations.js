@@ -3,7 +3,7 @@ import { Criterion } from "../../../../models/Criteria.js";
 import { Evaluation } from "../../../../models/Evaluations.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
-import { formatExpressionDomainForClient } from "../../issue.mappers.js";
+import { formatExpressionDomainForClient } from "../alternativeEvaluation.mappers.js";
 import { denormalizeCanonicalValueForDomainOrThrow } from "../../expressionDomains/expressionDomain.transforms.js";
 
 import {
