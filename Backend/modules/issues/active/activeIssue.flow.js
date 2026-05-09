@@ -1,7 +1,7 @@
         
-import { orderDocsByIdList } from "../../modules/issues/issue.ordering.js";
-import { sameId, toIdString } from "../../utils/common/ids.js";
-import { buildConsensusHistoryFromDocs } from "./consensus/index.js";
+import { orderDocsByIdList } from "../issue.ordering.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
+import { buildConsensusHistoryFromDocs } from "../consensus/index.js";
 
 /**
  * @typedef {Object} ActiveTasksByType

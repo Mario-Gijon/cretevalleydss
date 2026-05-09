@@ -40,7 +40,7 @@ import {
   getEmptyTasksByType,
   sortActiveIssues,
   sortActiveTasksByType,
-} from "../modules/issues/issue.active.js";
+} from "../modules/issues/active/index.js";
 import {
   createIssueScenarioFlow,
   getIssueScenariosPayload,

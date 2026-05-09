@@ -5,7 +5,7 @@ import { Participation } from "../../../models/Participations.js";
 import { Evaluation } from "../../../models/Evaluations.js";
 import { Consensus } from "../../../models/Consensus.js";
 import { denormalizeCanonicalValueForDomainOrThrow } from "../expressionDomains/expressionDomain.transforms.js";
-import { buildIssueCriteriaTree } from "../issue.active.js";
+import { buildIssueCriteriaTree } from "../active/index.js";
 import { createNotFoundError } from "../../../utils/common/errors.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {

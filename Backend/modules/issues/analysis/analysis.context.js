@@ -5,7 +5,7 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { buildIssueCriteriaTree } from "../issue.active.js";
+import { buildIssueCriteriaTree } from "../active/index.js";
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
