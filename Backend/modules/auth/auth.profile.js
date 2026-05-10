@@ -24,13 +24,13 @@ const withOptionalSession = (query, session = null) =>
  * @returns {AuthenticatedUserProfilePayload}
  */
 const buildAuthenticatedUserProfilePayload = (user) => {
-  const role = user?.role ?? "user";
+  const role = user.role;
 
   return {
-    university: user?.university || "",
-    name: user?.name || "",
-    email: user?.email || "",
-    accountCreation: user?.accountCreation || null,
+    university: user.university,
+    name: user.name,
+    email: user.email,
+    accountCreation: user.accountCreation,
     role,
     isAdmin: role === "admin",
   };

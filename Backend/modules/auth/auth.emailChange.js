@@ -61,7 +61,7 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
     });
   }
 
-  const currentEmail = String(user.email ?? "").trim().toLowerCase();
+  const currentEmail = user.email.trim().toLowerCase();
 
   if (currentEmail === cleanEmail) {
     throw createBadRequestError(
@@ -77,7 +77,7 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
     session
   );
 
-  if (existingUser && String(existingUser._id) !== String(user._id)) {
+  if (existingUser && existingUser._id.toString() !== user._id.toString()) {
     throw createConflictError("Email already registered", {
       field: "newEmail",
     });
@@ -157,7 +157,7 @@ export const confirmAuthenticatedUserEmailChangeFlow = async ({
     session
   );
 
-  if (existingUser && String(existingUser._id) !== String(user._id)) {
+  if (existingUser && existingUser._id.toString() !== user._id.toString()) {
     throw createConflictError("Email already registered", {
       field: "email",
     });

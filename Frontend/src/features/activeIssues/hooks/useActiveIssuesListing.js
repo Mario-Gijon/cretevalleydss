@@ -26,7 +26,7 @@ export const useActiveIssuesListing = ({
 }) => {
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
+  const [sortBy, setSortBy] = useState("creationDate");
   const [taskType, setTaskType] = useState("all");
 
   /**
@@ -98,7 +98,7 @@ export const useActiveIssuesListing = ({
       return list;
     }
 
-    if (sortBy === "finalizationDate") {
+    if (sortBy === "deadlineDate") {
       const withDeadline = [];
       const withoutDeadline = [];
 

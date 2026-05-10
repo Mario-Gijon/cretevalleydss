@@ -198,7 +198,7 @@ export const sortActiveIssues = (issues, sortBy) => {
     });
   }
 
-  if (sortBy === "finalizationDate") {
+  if (sortBy === "deadlineDate") {
     const withDeadline = [];
     const withoutDeadline = [];
 
@@ -241,9 +241,8 @@ export const sortActiveIssues = (issues, sortBy) => {
  * @returns {Array}
  */
 export const filterAndSortActiveIssues = (issues, query, searchBy, sortBy) => {
-  const safeIssues = Array.isArray(issues) ? issues : [];
 
-  const filtered = safeIssues.filter((issue) => issueMatchesSearch(issue, query, searchBy));
+  const filtered = issues.filter((issue) => issueMatchesSearch(issue, query, searchBy));
 
   return sortActiveIssues(filtered, sortBy);
 };

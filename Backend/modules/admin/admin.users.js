@@ -90,15 +90,14 @@ const syncActiveIssueStageAfterUserRemoval = async ({
     return false;
   }
 
-  const relevantParticipations = (remainingParticipations || []).filter(
+  const relevantParticipations = remainingParticipations.filter(
     (participation) =>
-      participation &&
       ["accepted", "pending"].includes(participation.invitationStatus)
   );
 
   const totalParticipants = relevantParticipations.length;
   const totalWeightsDone = relevantParticipations.filter(
-    (participation) => participation.weightsCompleted === true
+    (participation) => participation.weightsCompleted
   ).length;
 
   if (
@@ -261,13 +260,13 @@ const removeUserFromFinishedIssue = async ({
   );
 
   const hiddenUserIdSet = new Set(
-    hiddenExits.map((exitDoc) => String(exitDoc.user))
+    hiddenExits.map((exitDoc) => toIdString(exitDoc.user))
   );
 
   const allVisibleUsersHaveHidden =
     visibleUserIds.length > 0 &&
     visibleUserIds.every((visibleUserId) =>
-      hiddenUserIdSet.has(String(visibleUserId))
+      hiddenUserIdSet.has(toIdString(visibleUserId))
     );
 
   if (!allVisibleUsersHaveHidden) {
@@ -300,11 +299,11 @@ const normalizeAdminManagedRole = (role) =>
 const buildAdminManagedUserPayload = (user) => ({
   id: toIdString(user._id),
   name: user.name,
-  university: user.university || "",
+  university: user.university,
   email: user.email,
-  role: user.role || "user",
-  accountConfirm: Boolean(user.accountConfirm),
-  accountCreation: user.accountCreation || null,
+  role: user.role,
+  accountConfirm: user.accountConfirm,
+  accountCreation: user.accountCreation,
 });
 
 /**
@@ -322,7 +321,7 @@ const buildAdminUserIdentityPayload = (user) => {
     id: toIdString(user._id),
     name: user.name,
     email: user.email,
-    role: user.role || "user",
+    role: user.role,
   };
 };
 
@@ -692,14 +691,14 @@ export const deleteUserAdminFlow = async ({
     session
   );
 
-  const issueIds = [...new Set(participations.map((item) => String(item.issue)))];
+  const issueIds = [...new Set(participations.map((item) => toIdString(item.issue)))];
 
   const issues = issueIds.length
     ? await withOptionalSession(Issue.find({ _id: { $in: issueIds } }), session)
     : [];
 
   const participationsByIssueId = new Map(
-    participations.map((participation) => [String(participation.issue), participation])
+    participations.map((participation) => [toIdString(participation.issue), participation])
   );
 
   const summary = {
@@ -713,7 +712,7 @@ export const deleteUserAdminFlow = async ({
   };
 
   for (const issue of issues) {
-    const participation = participationsByIssueId.get(String(issue._id));
+    const participation = participationsByIssueId.get(toIdString(issue._id));
 
     if (!participation) {
       continue;
@@ -746,7 +745,7 @@ export const deleteUserAdminFlow = async ({
     session
   );
 
-  summary.domainsDeleted = deleteDomainsResult.deletedCount || 0;
+  summary.domainsDeleted = deleteDomainsResult.deletedCount;
 
   await withOptionalSession(
     Notification.deleteMany({
@@ -886,16 +885,16 @@ export const getAdminUsersListPayload = async ({
   ]);
 
   const domainsMap = new Map(
-    domainsAgg.map((row) => [String(row._id), row.count])
+    domainsAgg.map((row) => [toIdString(row._id), row.count])
   );
 
   const ownedIssuesMap = new Map(
     ownedIssuesAgg.map((row) => [
-      String(row._id),
+      toIdString(row._id),
       {
-        total: row.total || 0,
-        active: row.active || 0,
-        finished: row.finished || 0,
+        total: row.total,
+        active: row.active,
+        finished: row.finished,
       },
     ])
   );
@@ -903,7 +902,7 @@ export const getAdminUsersListPayload = async ({
   const participationStatsMap = new Map();
 
   for (const user of users) {
-    participationStatsMap.set(String(user._id), {
+    participationStatsMap.set(toIdString(user._id), {
       activeIssues: 0,
       finishedIssues: 0,
     });
@@ -914,7 +913,7 @@ export const getAdminUsersListPayload = async ({
       continue;
     }
 
-    const key = String(participation.expert);
+    const key = toIdString(participation.expert);
     const stats = participationStatsMap.get(key);
 
     if (!stats) {
@@ -937,9 +936,9 @@ export const getAdminUsersListPayload = async ({
         name: user.name,
         university: user.university,
         email: user.email,
-        role: user.role || "user",
-        accountConfirm: Boolean(user.accountConfirm),
-        accountCreation: user.accountCreation || null,
+        role: user.role,
+        accountConfirm: user.accountConfirm,
+        accountCreation: user.accountCreation,
         stats: {
           activeIssues: participationStatsMap.get(userId)?.activeIssues || 0,
           finishedIssues:

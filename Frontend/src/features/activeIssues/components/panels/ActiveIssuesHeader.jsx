@@ -76,8 +76,8 @@ const ActiveIssuesHeader = ({
   const sortOptions = useMemo(
     () => [
       { value: "name", label: "Name" },
-      { value: "finalizationDate", label: "Deadline date" },
-      { value: "creationDate", label: "Creation date" },
+      { value: "creationDate", label: "Creation Date" },
+      { value: "deadlineDate", label: "Deadline Date" },
     ],
     []
   );
