@@ -1,10 +1,7 @@
-         
 import { Issue } from "../../../models/Issues.js";
 import { IssueModel } from "../../../models/IssueModels.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { Participation } from "../../../models/Participations.js";
-
-        
 import {
   createAlternativesRankingsSection,
   createAnalyticalGraphsSection,
@@ -19,12 +16,11 @@ import {
 import { detectIssueDomainTypeOrThrow } from "../expressionDomains/issueDomainDetection.js";
 import {
   createBadRequestError,
+  createInternalError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-
-          
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
@@ -40,25 +36,18 @@ import {
 /**
  * Detecta el tipo de dominio del issue terminado.
  *
- * Si no puede detectarse de forma fiable, devuelve null para no romper
- * la vista de detalle.
- *
  * @param {object} params Parámetros de entrada.
  * @param {string|Object} params.issueId Id del issue.
  * @param {Array<string|Object>} params.expertIds Ids de expertos aceptados.
- * @returns {Promise<string|null>}
+ * @returns {Promise<string>}
  */
 const detectFinishedIssueDomainType = async ({ issueId, expertIds }) => {
-  try {
-    const detected = await detectIssueDomainTypeOrThrow({
-      issueId,
-      expertIds,
-    });
+  const detected = await detectIssueDomainTypeOrThrow({
+    issueId,
+    expertIds,
+  });
 
-    return detected.domainType;
-  } catch (error) {
-    return null;
-  }
+  return detected.domainType;
 };
 
 /**
@@ -90,18 +79,16 @@ const buildAvailableModelsPayload = ({
     return {
       id: toIdString(modelDoc._id),
       name: modelDoc.name,
-      isConsensus: Boolean(modelDoc.isConsensus),
+      isConsensus: modelDoc.isConsensus,
       evaluationStructure: modelEvaluationStructure,
-      isMultiCriteria: Boolean(modelDoc.isMultiCriteria),
+      isMultiCriteria: modelDoc.isMultiCriteria,
       smallDescription: modelDoc.smallDescription,
       moreInfoUrl: modelDoc.moreInfoUrl,
-      parameters: modelDoc.parameters || [],
+      parameters: modelDoc.parameters,
       defaultsResolved,
       compatibility: {
         evaluationStructure: sameEvaluationStructure,
-        domain: domainType
-          ? Boolean(modelDoc.supportedDomains?.[domainType]?.enabled)
-          : true,
+        domain: modelDoc.supportedDomains[domainType].enabled,
       },
     };
   });
@@ -114,21 +101,17 @@ const buildAvailableModelsPayload = ({
  * @returns {Array<Object>}
  */
 const buildFinishedIssueScenariosPayload = ({ scenarioDocs }) =>
-  (scenarioDocs || []).map((scenario) => {
-    const scenarioEvaluationStructure = scenario.evaluationStructure;
-
+  scenarioDocs.map((scenario) => {
     return {
       id: toIdString(scenario._id),
-      name: scenario.name || "",
-      targetModelId: scenario.targetModel
-        ? toIdString(scenario.targetModel)
-        : null,
-      targetModelName: scenario.targetModelName || "",
-      targetVersionLabel: scenario.targetVersionLabel || "",
-      domainType: scenario.domainType ?? null,
-      evaluationStructure: scenarioEvaluationStructure,
-      status: scenario.status || "done",
-      createdAt: scenario.createdAt || null,
+      name: scenario.name,
+      targetModelId: toIdString(scenario.targetModel),
+      targetModelName: scenario.targetModelName,
+      targetVersionLabel: scenario.targetVersionLabel,
+      domainType: scenario.domainType,
+      evaluationStructure: scenario.evaluationStructure,
+      status: scenario.status,
+      createdAt: scenario.createdAt,
       createdBy: scenario.createdBy
         ? {
             email: scenario.createdBy.email,
@@ -200,7 +183,35 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
       .lean(),
     getConsensusRoundsForIssue(issue._id),
   ]);
-  const latestConsensus = consensusDocs[consensusDocs.length - 1] || null;
+
+  if (!orderedIssue) {
+    throw createInternalError("Ordered issue document is required", {
+      field: "orderedIssue",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+
+  const latestConsensus = consensusDocs[consensusDocs.length - 1];
+  if (!latestConsensus) {
+    throw createInternalError("Finished issue requires consensus rounds", {
+      field: "consensusDocs",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+
+  if (!latestConsensus.details.modelExecution) {
+    throw createInternalError("Consensus modelExecution is required", {
+      field: "consensus.details.modelExecution",
+      details: {
+        issueId: issue._id.toString(),
+        phase: latestConsensus.phase,
+      },
+    });
+  }
 
   const leafDocs = await getOrderedLeafCriteriaDb({
     issueId: issue._id,
@@ -232,12 +243,21 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
   });
 
   const baseModel = issue.model;
+  if (!baseModel) {
+    throw createInternalError("Finished issue model must be populated", {
+      field: "model",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+
   const baseDefaultsResolved = buildDefaultsResolved({
     modelDoc: baseModel,
     leafCount,
   });
 
-  const baseParamsSaved = issue.modelParameters || {};
+  const baseParamsSaved = issue.modelParameters;
   const baseParamsResolved = mergeParamsResolved({
     defaultsResolved: baseDefaultsResolved,
     savedParams: baseParamsSaved,
@@ -249,25 +269,24 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
 
   const baseScenario = {
     id: null,
-    name: `Base (${baseModel?.name || "Model"})`,
-    targetModelId: toIdString(baseModel?._id),
-    targetModelName: baseModel?.name || "",
+    name: `Base (${baseModel.name})`,
+    targetModelId: toIdString(baseModel._id),
+    targetModelName: baseModel.name,
     domainType,
     evaluationStructure: issueEvaluationStructure,
     status: "done",
-    createdAt: latestConsensus?.timestamp || null,
+    createdAt: latestConsensus.timestamp,
     createdBy: null,
-    preview: latestConsensus?.details?.rankedAlternatives || null,
+    preview: latestConsensus.details.rankedAlternatives,
     outputs: {
-      details: latestConsensus?.details || {},
-      collectiveEvaluations: latestConsensus?.collectiveEvaluations || {},
-      rawResults:
-        latestConsensus?.details?.modelExecution?.rawOutput ?? null,
+      details: latestConsensus.details,
+      collectiveEvaluations: latestConsensus.collectiveEvaluations,
+      rawResults: latestConsensus.details.modelExecution.rawOutput,
     },
   };
 
-  const consensusDetails = latestConsensus?.details || {};
-  const modelExecution = consensusDetails?.modelExecution || null;
+  const consensusDetails = latestConsensus.details;
+  const modelExecution = consensusDetails.modelExecution;
   const consensusRounds = buildConsensusHistoryFromDocs(consensusDocs);
 
   return {
@@ -277,7 +296,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     analyticalGraphs,
     consensusDetails,
     modelExecution,
-    consensus: consensusDocs || [],
+    consensus: consensusDocs,
     consensusHistory: consensusRounds,
     consensusRounds,
     scenarios: [baseScenario, ...scenarios],
@@ -285,10 +304,10 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
       leafCriteria,
       domainType,
       base: {
-        modelId: toIdString(baseModel?._id),
-        modelName: baseModel?.name,
+        modelId: toIdString(baseModel._id),
+        modelName: baseModel.name,
         evaluationStructure: issueEvaluationStructure,
-        parameters: baseModel?.parameters || [],
+        parameters: baseModel.parameters,
         paramsSaved: baseParamsSaved,
         paramsResolved: baseParamsResolved,
       },

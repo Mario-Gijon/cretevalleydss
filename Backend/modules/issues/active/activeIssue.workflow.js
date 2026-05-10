@@ -1,84 +1,33 @@
 /**
- * Elimina el campo weights de modelParameters para respuestas de issues activos.
- *
- * @param {unknown} modelParameters Parámetros del modelo.
- * @returns {Object}
- */
-export const cleanModelParameters = (modelParameters) => {
-  const parsed =
-    modelParameters && typeof modelParameters === "object"
-      ? { ...modelParameters }
-      : {};
-
-  if ("weights" in parsed) {
-    delete parsed.weights;
-  }
-
-  return parsed;
-};
-
-/**
- * Detecta si el issue ya dispone de pesos directos.
- *
- * @param {Object} issue Issue a inspeccionar.
- * @returns {boolean}
- */
-export const detectHasDirectWeights = (issue) => {
-  const weightingMode = String(issue?.weightingMode || "").toLowerCase();
-
-  if (["manual", "direct", "predefined", "fixed"].includes(weightingMode)) {
-    return true;
-  }
-
-  const weights = issue?.modelParameters?.weights;
-  return (
-    Array.isArray(weights) &&
-    weights.length > 0 &&
-    weights.some((value) => value !== null && value !== undefined)
-  );
-};
-
-/**
- * Detecta si el issue tiene consenso de alternativas habilitado.
- *
- * @param {Object} issue Issue a inspeccionar.
- * @returns {boolean}
- */
-export const detectHasAlternativeConsensusEnabled = (issue) =>
-  Boolean(issue?.isConsensus);
-
-/**
  * Construye los pasos del workflow para la UI de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {boolean} params.hasDirectWeights Indica si el issue tiene pesos directos.
+ * @param {boolean} params.usesManualWeighting Indica si el issue usa ponderación manual.
  * @param {boolean} params.hasAlternativeConsensus Indica si el issue tiene consenso de alternativas.
  * @returns {Array<Object>}
  */
-export const buildWorkflowStepsStable = ({
-  hasDirectWeights,
+export const buildActiveWorkflowSteps = ({
+  usesManualWeighting,
   hasAlternativeConsensus,
 }) => {
-  if (hasDirectWeights) {
-    return [
-      { key: "weightsAssigned", label: "Weights assigned" },
-      { key: "alternativeEvaluation", label: "Alternative evaluation" },
-      ...(hasAlternativeConsensus
-        ? [{ key: "alternativeConsensus", label: "Alternative consensus" }]
-        : []),
-      { key: "readyResolve", label: "Ready to resolve" },
-    ];
+  const steps = [];
+
+  if (usesManualWeighting) {
+    steps.push({ key: "weightsAssigned", label: "Weights assigned" });
+  } else {
+    steps.push({ key: "criteriaWeighting", label: "Criteria weighting" });
+    steps.push({ key: "weightsFinished", label: "Weights finished" });
   }
 
-  return [
-    { key: "criteriaWeighting", label: "Criteria weighting" },
-    { key: "weightsFinished", label: "Weights finished" },
-    { key: "alternativeEvaluation", label: "Alternative evaluation" },
-    ...(hasAlternativeConsensus
-      ? [{ key: "alternativeConsensus", label: "Alternative consensus" }]
-      : []),
-    { key: "readyResolve", label: "Ready to resolve" },
-  ];
+  steps.push({ key: "alternativeEvaluation", label: "Alternative evaluation" });
+
+  if (hasAlternativeConsensus) {
+    steps.push({ key: "alternativeConsensus", label: "Alternative consensus" });
+  }
+
+  steps.push({ key: "readyResolve", label: "Ready to resolve" });
+
+  return steps;
 };
 
 /**

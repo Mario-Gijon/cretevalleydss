@@ -1,6 +1,7 @@
 import { Issue } from "../../models/Issues.js";
 import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
+import { createInternalError } from "../../utils/common/errors.js";
 
 /**
  * @callback IssueNameSelector
@@ -21,31 +22,12 @@ import { Criterion } from "../../models/Criteria.js";
  */
 
 /**
- * @typedef {Object} BuildIssueOrdersParams
- * @property {Array<Object>} [alternativesDocs]
- * @property {Array<Object>} [leafCriteriaDocs]
- */
-
-/**
  * @typedef {Object} EnsureIssueOrdersParams
  * @property {string|Object} [issueId]
  * @property {Object|null} [session]
  */
 
 const COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true });
-
-/**
- * Convierte un id o documento en string.
- *
- * @param {*} value Valor a convertir.
- * @returns {string}
- */
-export const oidStr = (value) => {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object" && value._id) return String(value._id);
-  return String(value);
-};
 
 /**
  * Compara dos documentos por nombre y, en empate, por id.
@@ -57,9 +39,9 @@ export const oidStr = (value) => {
  * @returns {number}
  */
 export const compareNameId = (aName, aId, bName, bId) => {
-  const nameComparison = COLLATOR.compare(String(aName || ""), String(bName || ""));
+  const nameComparison = COLLATOR.compare(aName, bName);
   if (nameComparison !== 0) return nameComparison;
-  return String(aId).localeCompare(String(bId));
+  return aId.toString().localeCompare(bId.toString());
 };
 
 /**
@@ -72,10 +54,10 @@ export const compareNameId = (aName, aId, bName, bId) => {
  */
 export const sortDocsByNameId = (
   docs,
-  getName = (doc) => doc?.name,
-  getId = (doc) => doc?._id
+  getName = (doc) => doc.name,
+  getId = (doc) => doc._id
 ) => {
-  const sortedDocs = Array.isArray(docs) ? docs.slice() : [];
+  const sortedDocs = docs.slice();
 
   sortedDocs.sort((a, b) => compareNameId(getName(a), getId(a), getName(b), getId(b)));
 
@@ -93,75 +75,69 @@ export const sortDocsByNameId = (
 export const orderDocsByIdList = (
   docs,
   orderIds,
-  { getId = (doc) => doc?._id, getName = (doc) => doc?.name } = {}
+  { getId = (doc) => doc._id, getName = (doc) => doc.name } = {}
 ) => {
-  const docList = Array.isArray(docs) ? docs.slice() : [];
-  const normalizedOrderIds = Array.isArray(orderIds) ? orderIds.map(String) : [];
+  const docList = docs.slice();
+  const normalizedOrderIds = orderIds.map((id) => id.toString());
 
   if (normalizedOrderIds.length === 0) {
     return sortDocsByNameId(docList, getName, getId);
   }
 
-  const docsById = new Map(docList.map((doc) => [String(getId(doc)), doc]));
+  const docsById = new Map(docList.map((doc) => [getId(doc).toString(), doc]));
   const usedIds = new Set();
   const orderedDocs = [];
 
   for (const id of normalizedOrderIds) {
-    const doc = docsById.get(String(id));
+    const doc = docsById.get(id.toString());
 
     if (doc) {
       orderedDocs.push(doc);
-      usedIds.add(String(id));
+      usedIds.add(id.toString());
     }
   }
 
-  const extraDocs = docList.filter((doc) => !usedIds.has(String(getId(doc))));
+  const extraDocs = docList.filter((doc) => !usedIds.has(getId(doc).toString()));
   extraDocs.sort((a, b) => compareNameId(getName(a), getId(a), getName(b), getId(b)));
 
   return orderedDocs.concat(extraDocs);
 };
 
 /**
- * Construye órdenes iniciales de alternativas y criterios hoja.
- *
- * @param {BuildIssueOrdersParams} params
- * @returns {Object}
- */
-export const buildIssueOrdersFromDocs = ({ alternativesDocs = [], leafCriteriaDocs = [] }) => {
-  const altOrder = sortDocsByNameId(alternativesDocs).map((alternative) => alternative._id);
-  const leafOrder = sortDocsByNameId(leafCriteriaDocs).map((criterion) => criterion._id);
-
-  return { altOrder, leafOrder };
-};
-
-/**
  * Genera y guarda los órdenes del issue si no existen.
  *
  * @param {EnsureIssueOrdersParams} [params]
- * @returns {Promise<Object|null>}
+ * @returns {Promise<Object>}
  */
 export const ensureIssueOrdersDb = async ({ issueId, session } = {}) => {
   const issue = await Issue.findById(issueId)
     .select("_id alternativeOrder leafCriteriaOrder")
-    .session(session || null);
+    .session(session);
 
-  if (!issue) return null;
+  if (!issue) {
+    throw createInternalError("Issue not found while ensuring issue orders", {
+      field: "issueId",
+      details: {
+        issueId,
+      },
+    });
+  }
 
   const needsAlternativeOrder =
-    !Array.isArray(issue.alternativeOrder) || issue.alternativeOrder.length === 0;
+    issue.alternativeOrder.length === 0;
 
   const needsLeafCriteriaOrder =
-    !Array.isArray(issue.leafCriteriaOrder) || issue.leafCriteriaOrder.length === 0;
+    issue.leafCriteriaOrder.length === 0;
 
   if (!needsAlternativeOrder && !needsLeafCriteriaOrder) {
     return issue;
   }
 
   const [alternatives, leafCriteria] = await Promise.all([
-    Alternative.find({ issue: issue._id }).select("_id name").session(session || null).lean(),
+    Alternative.find({ issue: issue._id }).select("_id name").session(session).lean(),
     Criterion.find({ issue: issue._id, isLeaf: true })
       .select("_id name")
-      .session(session || null)
+      .session(session)
       .lean(),
   ]);
 
@@ -195,12 +171,19 @@ export const getOrderedAlternativesDb = async ({
     issueDoc ||
     (await Issue.findById(issueId)
       .select("_id alternativeOrder")
-      .session(session || null)
+      .session(session)
       .lean());
 
-  if (!issue) return [];
+  if (!issue) {
+    throw createInternalError("Issue not found while ordering alternatives", {
+      field: "issueId",
+      details: {
+        issueId,
+      },
+    });
+  }
 
-  const query = Alternative.find({ issue: issue._id }).select(select).session(session || null);
+  const query = Alternative.find({ issue: issue._id }).select(select).session(session);
   const alternatives = lean ? await query.lean() : await query;
 
   return orderDocsByIdList(alternatives, issue.alternativeOrder);
@@ -223,14 +206,21 @@ export const getOrderedLeafCriteriaDb = async ({
     issueDoc ||
     (await Issue.findById(issueId)
       .select("_id leafCriteriaOrder")
-      .session(session || null)
+      .session(session)
       .lean());
 
-  if (!issue) return [];
+  if (!issue) {
+    throw createInternalError("Issue not found while ordering leaf criteria", {
+      field: "issueId",
+      details: {
+        issueId,
+      },
+    });
+  }
 
   const query = Criterion.find({ issue: issue._id, isLeaf: true })
     .select(select)
-    .session(session || null);
+    .session(session);
 
   const leafCriteria = lean ? await query.lean() : await query;
 

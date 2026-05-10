@@ -1,20 +1,20 @@
-import { orderDocsByIdList } from "../issue.ordering.js";
-import { toIdString } from "../../../utils/common/ids.js";
+import { orderDocsByIdList } from "./issue.ordering.js";
+import { toIdString } from "../../utils/common/ids.js";
 
 /**
  * Construye el árbol de criterios del issue y devuelve también
  * la lista de criterios hoja en el orden configurado en el issue.
  *
- * @param {Array<Object>} issueCriteriaDocs Criterios del issue.
- * @param {Object} issueDoc Documento del issue.
+ * @param {Array<Object>} criteria Criterios del issue.
+ * @param {Object} issue Documento del issue.
  * @returns {Object}
  */
-export const buildIssueCriteriaTree = (issueCriteriaDocs, issueDoc) => {
-  const normalizedCriteria = issueCriteriaDocs.map((criterion) => ({
+export const buildIssueCriteriaTree = (criteria, issue) => {
+  const normalizedCriteria = criteria.map((criterion) => ({
     id: toIdString(criterion._id),
     name: criterion.name,
     type: criterion.type,
-    isLeaf: Boolean(criterion.isLeaf),
+    isLeaf: criterion.isLeaf,
     parentId: toIdString(criterion.parentCriterion),
     children: [],
   }));
@@ -30,20 +30,16 @@ export const buildIssueCriteriaTree = (issueCriteriaDocs, issueDoc) => {
     }
   }
 
-  const leafNodes = normalizedCriteria.filter((node) => node.isLeaf);
+  const leafCriteria = normalizedCriteria.filter((node) => node.isLeaf);
 
-  const orderedLeafNodes = orderDocsByIdList(
-    leafNodes,
-    issueDoc.leafCriteriaOrder,
-    {
-      getId: (node) => node.id,
-      getName: (node) => node.name,
-    }
-  );
+  const orderedLeafCriteria = orderDocsByIdList(leafCriteria, issue.leafCriteriaOrder, {
+    getId: (node) => node.id,
+    getName: (node) => node.name,
+  });
 
   return {
     criteriaTree,
-    orderedLeafNodes,
+    orderedLeafCriteria,
   };
 };
 
@@ -56,16 +52,16 @@ export const buildIssueCriteriaTree = (issueCriteriaDocs, issueDoc) => {
  */
 export const decorateCriteriaTree = (criteriaTree, finalWeightsById) => {
   const decorateNode = (node, depth = 0) => {
-    const isLeaf = Boolean(node.isLeaf) || !(node.children?.length);
+    const isLeaf = node.isLeaf || node.children.length === 0;
 
     node.depth = depth;
     node.display = {
       showType: depth === 0,
       showWeight: isLeaf,
-      weight: isLeaf ? finalWeightsById?.[node.id] ?? null : null,
+      weight: isLeaf ? finalWeightsById[node.id] : undefined,
     };
 
-    if (node.children?.length) {
+    if (node.children.length > 0) {
       node.children.forEach((child) => decorateNode(child, depth + 1));
     }
   };

@@ -5,24 +5,22 @@ import { Participation } from "../../../models/Participations.js";
 import { Evaluation } from "../../../models/Evaluations.js";
 import { Consensus } from "../../../models/Consensus.js";
 import { denormalizeCanonicalValueForDomainOrThrow } from "../expressionDomains/expressionDomain.transforms.js";
-import { buildIssueCriteriaTree } from "../active/index.js";
-import { createNotFoundError } from "../../../utils/common/errors.js";
+import { buildIssueCriteriaTree } from "../issue.criteriaTree.js";
+import {
+  createInternalError,
+  createNotFoundError,
+} from "../../../utils/common/errors.js";
 
 const getPhaseParticipantsSet = (phaseDoc) => {
-  const matrices = phaseDoc?.details?.matrices;
-
-  if (matrices && typeof matrices === "object") {
-    return new Set(Object.keys(matrices));
-  }
-
-  return null;
+  const matrices = phaseDoc.details.matrices;
+  return new Set(Object.keys(matrices));
 };
 
 const hasValue = (value) => value !== undefined && value !== null && value !== "";
 
 const getSubmittedValueForPhase = (evaluation, phaseNumber, isConsensus) => {
   if (isConsensus) {
-    const historyEntry = evaluation.history?.find(
+    const historyEntry = evaluation.history.find(
       (entry) => entry.phase === phaseNumber && hasValue(entry.value)
     );
 
@@ -32,7 +30,7 @@ const getSubmittedValueForPhase = (evaluation, phaseNumber, isConsensus) => {
 
     if (
       evaluation.timestamp &&
-      (evaluation.consensusPhase ?? 1) === phaseNumber &&
+      evaluation.consensusPhase === phaseNumber &&
       hasValue(evaluation.value)
     ) {
       return evaluation.value;
@@ -51,23 +49,22 @@ const mapCriteriaTreeToSummaryShape = (node) => ({
   _id: node.id,
   name: node.name,
   type: node.type,
-  isLeaf: Boolean(node.isLeaf),
-  parentCriterion: node.parentId || null,
-  children: (node.children || []).map(mapCriteriaTreeToSummaryShape),
+  isLeaf: node.isLeaf,
+  parentCriterion: node.parentId,
+  children: node.children.map(mapCriteriaTreeToSummaryShape),
 });
 
 const attachWeightsToTree = (node, weightMap) => {
   if (node.isLeaf) {
     return {
       ...node,
-      weight: weightMap[node.name] ?? null,
+      weight: weightMap[node.name],
     };
   }
 
   return {
     ...node,
-    children:
-      node.children?.map((child) => attachWeightsToTree(child, weightMap)) ?? [],
+    children: node.children.map((child) => attachWeightsToTree(child, weightMap)),
   };
 };
 
@@ -75,8 +72,7 @@ const groupEvaluationsByExpert = (evaluations) => {
   const evaluationsByExpert = new Map();
 
   for (const evaluation of evaluations) {
-    const expertId = evaluation.expert?._id?.toString();
-    if (!expertId) continue;
+    const expertId = evaluation.expert._id.toString();
 
     if (!evaluationsByExpert.has(expertId)) {
       evaluationsByExpert.set(expertId, []);
@@ -125,15 +121,24 @@ export const createSummarySection = async (issueId) => {
 
   const lastConsensus = consensusPhases[consensusPhases.length - 1];
 
-  const { criteriaTree, orderedLeafNodes } = buildIssueCriteriaTree(
+  if (issue.isConsensus && !lastConsensus) {
+    throw createInternalError("Consensus issue must have at least one consensus round", {
+      field: "consensusPhases",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+
+  const { criteriaTree, orderedLeafCriteria } = buildIssueCriteriaTree(
     criteria,
     issue
   );
 
-  const weights = issue.modelParameters?.weights || [];
+  const weights = issue.modelParameters.weights;
 
-  const weightMap = orderedLeafNodes.reduce((acc, node, index) => {
-    acc[node.name] = weights[index] ?? null;
+  const weightMap = orderedLeafCriteria.reduce((acc, node, index) => {
+    acc[node.name] = weights[index];
     return acc;
   }, {});
 
@@ -146,15 +151,15 @@ export const createSummarySection = async (issueId) => {
       .map(mapCriteriaTreeToSummaryShape)
       .map((node) => attachWeightsToTree(node, weightMap)),
     alternatives: alternatives.map((alternative) => alternative.name).sort(),
-    creationDate: issue.creationDate ?? null,
-    closureDate: issue.closureDate ?? null,
+    creationDate: issue.creationDate,
+    closureDate: issue.closureDate,
     evaluationStructure: issue.evaluationStructure,
     consensusInfo: issue.isConsensus
       ? {
           maximumPhases: issue.consensusMaxPhases,
           threshold: issue.consensusThreshold,
-          consensusReached: lastConsensus?.level ?? null,
-          consensusReachedPhase: lastConsensus?.phase ?? 1,
+          consensusReached: lastConsensus.level,
+          consensusReachedPhase: lastConsensus.phase,
         }
       : null,
     experts: {
@@ -199,7 +204,11 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
   const consensusData = {};
 
   const issue = await Issue.findById(issueId).lean();
-  const isConsensus = Boolean(issue?.isConsensus);
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
+
+  const isConsensus = issue.isConsensus;
 
   const [consensusPhasesRaw, allEvaluations, criteria, alternatives] = await Promise.all([
     Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean(),
@@ -210,9 +219,15 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     Alternative.find({ issue: issueId }).lean(),
   ]);
 
-  const consensusPhases = consensusPhasesRaw.length
-    ? consensusPhasesRaw
-    : [{ phase: 1, collectiveEvaluations: {}, details: {} }];
+  if (consensusPhasesRaw.length === 0) {
+    throw createInternalError("Finished issue requires consensus phases", {
+      field: "consensusPhases",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+  const consensusPhases = consensusPhasesRaw;
 
   const criterionMap = new Map(
     criteria.map((criterion) => [criterion._id.toString(), criterion.name])
@@ -231,8 +246,7 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
     const domainByExpertCell = {};
 
     for (const [, evaluations] of evaluationsByExpert.entries()) {
-      const expertEmail = evaluations?.[0]?.expert?.email;
-      if (!expertEmail) continue;
+      const expertEmail = evaluations[0].expert.email;
       if (hasFilter && !participants.has(expertEmail)) continue;
 
       const evaluationsInPhase = evaluations.filter(
@@ -282,13 +296,10 @@ export const createExpertsPairwiseRatingsSection = async (issueId) => {
       }
     }
 
-    const collectiveEvaluations = phaseDoc?.collectiveEvaluations;
+    const collectiveEvaluations = phaseDoc.collectiveEvaluations;
 
     consensusData[phaseNumber] = {
-      collectiveEvaluations:
-        collectiveEvaluations && Object.keys(collectiveEvaluations).length
-          ? collectiveEvaluations
-          : null,
+      collectiveEvaluations,
       expertEvaluations,
     };
   }
@@ -306,7 +317,11 @@ export const createExpertsRatingsSection = async (issueId) => {
   const consensusData = {};
 
   const issue = await Issue.findById(issueId).lean();
-  const isConsensus = Boolean(issue?.isConsensus);
+  if (!issue) {
+    throw createNotFoundError("Issue not found");
+  }
+
+  const isConsensus = issue.isConsensus;
 
   const [consensusPhasesRaw, allEvaluations, criteria, alternatives] = await Promise.all([
     Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean(),
@@ -315,9 +330,15 @@ export const createExpertsRatingsSection = async (issueId) => {
     Alternative.find({ issue: issueId }).lean(),
   ]);
 
-  const consensusPhases = consensusPhasesRaw.length
-    ? consensusPhasesRaw
-    : [{ phase: 1, collectiveEvaluations: {}, details: {} }];
+  if (consensusPhasesRaw.length === 0) {
+    throw createInternalError("Finished issue requires consensus phases", {
+      field: "consensusPhases",
+      details: {
+        issueId: issue._id.toString(),
+      },
+    });
+  }
+  const consensusPhases = consensusPhasesRaw;
 
   const evaluationsByExpert = groupEvaluationsByExpert(allEvaluations);
 
@@ -329,8 +350,7 @@ export const createExpertsRatingsSection = async (issueId) => {
     const domainByExpertCell = {};
 
     for (const [, evaluations] of evaluationsByExpert.entries()) {
-      const expertEmail = evaluations?.[0]?.expert?.email;
-      if (!expertEmail) continue;
+      const expertEmail = evaluations[0].expert.email;
       if (hasFilter && !participants.has(expertEmail)) continue;
 
       const evaluationsInPhase = evaluations.filter(
@@ -350,8 +370,8 @@ export const createExpertsRatingsSection = async (issueId) => {
         for (const criterion of criteria) {
           const evaluation = evaluationsInPhase.find(
             (item) =>
-              item.criterion?.toString() === criterion._id.toString() &&
-              item.alternative?.toString() === alternative._id.toString()
+              item.criterion.toString() === criterion._id.toString() &&
+              item.alternative.toString() === alternative._id.toString()
           );
 
           if (!evaluation) continue;
@@ -368,7 +388,7 @@ export const createExpertsRatingsSection = async (issueId) => {
             domainByExpertCell[expertEmail] = {};
           }
           domainByExpertCell[expertEmail][`${alternative.name}::${criterion.name}`] =
-            evaluation.expressionDomain || null;
+            evaluation.expressionDomain;
           hasAnyValue = true;
         }
 
@@ -382,8 +402,8 @@ export const createExpertsRatingsSection = async (issueId) => {
       expertEvaluations[expertEmail] = rows;
     }
 
-    const collectiveEvaluations = phaseDoc?.collectiveEvaluations;
-    let collectiveEvaluationsLocalizedByExpert = null;
+    const collectiveEvaluations = phaseDoc.collectiveEvaluations;
+    let collectiveEvaluationsLocalizedByExpert;
 
     if (collectiveEvaluations && Object.keys(collectiveEvaluations).length) {
       collectiveEvaluationsLocalizedByExpert = {};
@@ -391,17 +411,14 @@ export const createExpertsRatingsSection = async (issueId) => {
       for (const expertEmail of Object.keys(expertEvaluations)) {
         const localizedByAlternative = {};
 
-        for (const [alternativeName, byCriterion] of Object.entries(
-          collectiveEvaluations || {}
-        )) {
+        for (const [alternativeName, byCriterion] of Object.entries(collectiveEvaluations)) {
           localizedByAlternative[alternativeName] = {};
 
-          for (const [criterionName, payload] of Object.entries(byCriterion || {})) {
-            const canonicalValue = payload?.value ?? null;
-            const domainSnapshot =
-              domainByExpertCell?.[expertEmail]?.[
-                `${alternativeName}::${criterionName}`
-              ] || null;
+          for (const [criterionName, payload] of Object.entries(byCriterion)) {
+            const canonicalValue = payload.value;
+            const domainSnapshot = domainByExpertCell?.[expertEmail]?.[
+              `${alternativeName}::${criterionName}`
+            ];
 
             let localizedValue = canonicalValue;
             let localizedLabel = null;
@@ -416,13 +433,13 @@ export const createExpertsRatingsSection = async (issueId) => {
                   canonicalValue,
                   domainSnapshot,
                   context: {
-                    issueId: issueId?.toString?.() || String(issueId),
+                    issueId,
                     expertId: expertEmail,
                   },
                 });
 
-                localizedValue = localized?.localizedValue ?? canonicalValue;
-                localizedLabel = localized?.localizedLabel ?? null;
+                localizedValue = localized.localizedValue;
+                localizedLabel = localized.localizedLabel;
               } catch (error) {
                 localizedValue = canonicalValue;
                 localizedLabel = null;
@@ -456,10 +473,7 @@ export const createExpertsRatingsSection = async (issueId) => {
     }
 
     consensusData[phaseNumber] = {
-      collectiveEvaluations:
-        collectiveEvaluations && Object.keys(collectiveEvaluations).length
-          ? collectiveEvaluations
-          : null,
+      collectiveEvaluations,
       collectiveEvaluationsLocalizedByExpert,
       expertEvaluations,
     };
@@ -497,7 +511,7 @@ export const createAnalyticalGraphsSection = async (issueId, isConsensus) => {
   if (isConsensus && consensusDocs.length > 1) {
     result.consensusLevelLineChart = {
       labels: consensusDocs.map((doc) => `${doc.phase}`),
-      data: consensusDocs.map((doc) => doc.level ?? 0),
+      data: consensusDocs.map((doc) => doc.level),
     };
   }
 

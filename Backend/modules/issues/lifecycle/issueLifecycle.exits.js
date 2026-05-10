@@ -1,40 +1,17 @@
 import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
 import { Evaluation } from "../../../models/Evaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
-import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 
 import { getNextConsensusPhase } from "../issue.queries.js";
 import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
+import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";
 
 import {
   createBadRequestError,
   createForbiddenError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId } from "../../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
-
-const getIssueOrThrow = async ({ issueId, session = null }) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-
-  const issue = await withOptionalSession(Issue.findById(issueId), session);
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
-
-  return issue;
-};
 
 export const registerUserExit = async ({
   issueId,

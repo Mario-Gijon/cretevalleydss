@@ -10,7 +10,6 @@ import { sameId } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { executeResolutionModelPipeline } from "../resolution/resolution.execution.js";
 import { getCreateScenarioContext } from "./scenario.context.js";
-import { buildScenarioPayload } from "./scenario.payloads.js";
 import axios from "axios";
 
 /**
@@ -41,7 +40,7 @@ export const createIssueScenarioFlow = async ({
     consensusLevel,
   } = await executeResolutionModelPipeline({
     issue: {
-      isConsensus: context.targetRuntimeModel?.outputKind === "consensusRanking",
+      isConsensus: context.targetRuntimeModel.outputKind === "consensusRanking",
       consensusThreshold: context.consensusThresholdUsed,
     },
     issueId: context.issue._id,
@@ -66,7 +65,7 @@ export const createIssueScenarioFlow = async ({
     ...consensusDetails,
     ...(consensusLevel != null ? { level: consensusLevel } : {}),
   };
-  if (details?.modelExecution?.apiModelKey != null) {
+  if (details.modelExecution && details.modelExecution.apiModelKey != null) {
     details.modelExecution.modelKey = details.modelExecution.apiModelKey;
   }
   const criterionTypes =
@@ -79,7 +78,7 @@ export const createIssueScenarioFlow = async ({
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
     createdBy: userId,
-    name: String(scenarioName || "").trim(),
+    name: scenarioName.trim(),
     targetModel: context.targetModel._id,
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
@@ -112,7 +111,7 @@ export const createIssueScenarioFlow = async ({
         name: criterion.name,
         criterionType: criterion.type,
       })),
-      weightsUsed: context.paramsUsed?.weights ?? null,
+      weightsUsed: context.paramsUsed.weights,
       matricesUsed,
       snapshotIdsUsed,
     },
@@ -144,7 +143,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
     .lean();
 
   return {
-    scenarios: scenarioDocs.map(buildScenarioPayload),
+    scenarios: scenarioDocs,
   };
 };
 
@@ -166,7 +165,7 @@ export const getScenarioByIdPayload = async ({ scenarioId }) => {
   }
 
   return {
-    scenario: buildScenarioPayload(scenarioDoc),
+    scenario: scenarioDoc,
   };
 };
 

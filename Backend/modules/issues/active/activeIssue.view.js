@@ -1,5 +1,6 @@
 import { orderDocsByIdList } from "../issue.ordering.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
 import {
   ACTIVE_ACTION_META,
@@ -9,13 +10,10 @@ import {
 import {
   buildIssueCriteriaTree,
   decorateCriteriaTree,
-} from "./activeIssue.criteria.js";
+} from "../issue.criteriaTree.js";
 import {
   buildDeadlineInfo,
-  buildWorkflowStepsStable,
-  cleanModelParameters,
-  detectHasAlternativeConsensusEnabled,
-  detectHasDirectWeights,
+  buildActiveWorkflowSteps,
 } from "./activeIssue.workflow.js";
 
 /**
@@ -45,95 +43,85 @@ export const buildActiveIssueView = ({
   dayjsLib,
 }) => {
   const issueId = toIdString(issue._id);
-  const evaluationStructure = issue.evaluationStructure;
+  const adminId = toIdString(issue.admin);
+  const isAdminUser = adminId === userId || adminIssueIdSet.has(issueId);
 
-  const isValidUserId =
-    Boolean(userId) &&
-    userId !== "undefined" &&
-    userId !== "null" &&
-    userId !== "[object Object]";
-
-  const adminId = toIdString(issue?.admin);
-  const isAdminUser =
-    isValidUserId &&
-    ((adminId && adminId === userId) || adminIssueIdSet.has(issueId));
-
-  const acceptedExperts = (issueParticipations || []).filter(
+  const acceptedParticipations = issueParticipations.filter(
     (participation) => participation.invitationStatus === "accepted"
   );
-  const pendingExperts = (issueParticipations || []).filter(
+  const pendingParticipations = issueParticipations.filter(
     (participation) => participation.invitationStatus === "pending"
   );
-  const declinedExperts = (issueParticipations || []).filter(
+  const declinedParticipations = issueParticipations.filter(
     (participation) => participation.invitationStatus === "declined"
   );
 
-  const hasPending = pendingExperts.length > 0;
-  const realParticipants = acceptedExperts;
+  const hasPending = pendingParticipations.length > 0;
 
-  const totalAccepted = acceptedExperts.length;
-  const weightsDone = acceptedExperts.filter(
+  const totalAccepted = acceptedParticipations.length;
+  const completedWeightEvaluations = acceptedParticipations.filter(
     (participation) => participation.weightsCompleted
   ).length;
-  const evalsDone = acceptedExperts.filter(
+  const completedAlternativeEvaluations = acceptedParticipations.filter(
     (participation) => participation.evaluationCompleted
   ).length;
 
-  const realWeightsDone = realParticipants.filter(
-    (participation) => participation.weightsCompleted
-  ).length;
-  const realEvalsDone = realParticipants.filter(
-    (participation) => participation.evaluationCompleted
-  ).length;
-
-  const isExpertAccepted = acceptedExperts.some((participation) =>
-    sameId(participation.expert?._id, userId)
+  const isExpertAccepted = acceptedParticipations.some((participation) =>
+    sameId(participation.expert._id, userId)
   );
 
-  const myParticipation =
-    (issueParticipations || []).find((participation) =>
-      sameId(participation.expert?._id, userId)
-    ) || null;
+  const myParticipation = issueParticipations.find((participation) =>
+    sameId(participation.expert._id, userId)
+  );
 
   const orderedAlternativeDocs = orderDocsByIdList(
-    issueAlternativeDocs || [],
+    issueAlternativeDocs,
     issue.alternativeOrder
   );
   const alternativeNames = orderedAlternativeDocs.map(
     (alternative) => alternative.name
   );
 
-  const { criteriaTree, orderedLeafNodes } = buildIssueCriteriaTree(
-    issueCriteriaDocs || [],
+  const { criteriaTree, orderedLeafCriteria } = buildIssueCriteriaTree(
+    issueCriteriaDocs,
     issue
   );
 
-  const weightsArray = issue.modelParameters?.weights || [];
+  const criteriaWeights = issue.modelParameters.weights;
 
-  const finalWeightsById = orderedLeafNodes.reduce((acc, node, index) => {
-    acc[node.id] = weightsArray[index] ?? null;
+  const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {
+    acc[node.id] = criteriaWeights[index];
     return acc;
   }, {});
 
-  const finalWeightsMap = orderedLeafNodes.reduce((acc, node, index) => {
-    acc[node.name] = weightsArray[index] ?? null;
+  const criteriaWeightsByName = orderedLeafCriteria.reduce((acc, node, index) => {
+    acc[node.name] = criteriaWeights[index];
     return acc;
   }, {});
 
-  decorateCriteriaTree(criteriaTree, finalWeightsById);
+  decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 
-  const consensusCurrentPhase = (savedPhasesCount || 0) + 1;
+  const consensusCurrentPhase = savedPhasesCount + 1;
 
   const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
   const stage = issue.currentStage;
+  const stageMeta = ACTIVE_STAGE_META[stage];
+
+  if (!stageMeta) {
+    throw createInternalError("Unsupported active issue stage", {
+      field: "currentStage",
+      details: {
+        issueId,
+        stage,
+      },
+    });
+  }
 
   const allWeightsDone =
-    realParticipants.length > 0 &&
-    realWeightsDone === realParticipants.length;
+    totalAccepted > 0 && completedWeightEvaluations === totalAccepted;
 
   const allEvalsDone =
-    realParticipants.length > 0 &&
-    realEvalsDone === realParticipants.length;
+    totalAccepted > 0 && completedAlternativeEvaluations === totalAccepted;
 
   const waitingAdmin =
     !isAdminUser &&
@@ -145,31 +133,31 @@ export const buildActiveIssueView = ({
     stage === "weightsFinished" &&
     isAdminUser &&
     !hasPending &&
-    realParticipants.length > 0 &&
+    totalAccepted > 0 &&
     allWeightsDone;
 
   const canResolveIssue =
     stage === "alternativeEvaluation" &&
     isAdminUser &&
     !hasPending &&
-    realParticipants.length > 0 &&
+    totalAccepted > 0 &&
     allEvalsDone;
 
   const canEvaluateWeights =
     stage === "criteriaWeighting" &&
     isExpertAccepted &&
-    realParticipants.some(
+    acceptedParticipations.some(
       (participation) =>
-        sameId(participation.expert?._id, userId) &&
+        sameId(participation.expert._id, userId) &&
         !participation.weightsCompleted
     );
 
   const canEvaluateAlternatives =
     stage === "alternativeEvaluation" &&
     isExpertAccepted &&
-    realParticipants.some(
+    acceptedParticipations.some(
       (participation) =>
-        sameId(participation.expert?._id, userId) &&
+        sameId(participation.expert._id, userId) &&
         !participation.evaluationCompleted
     );
 
@@ -203,28 +191,21 @@ export const buildActiveIssueView = ({
 
   const nextAction = actions[0] ?? null;
 
-  let statusLabel = ACTIVE_STAGE_META[stage]?.label ?? stage;
+  let statusLabel = stageMeta.label;
   let statusKey = stage;
 
-  if (stage === "finished") {
-    statusLabel = "Finished";
-    statusKey = "finished";
-  } else if (waitingAdmin) {
-    statusLabel = "Waiting for admin";
-    statusKey = "waitingAdmin";
-  } else if (nextAction) {
-    statusLabel = nextAction.label;
-    statusKey = nextAction.key;
-  } else {
-    statusLabel = "Waiting experts";
-    statusKey = "waitingExperts";
+  if (stage !== "finished") {
+    if (waitingAdmin) {
+      statusLabel = "Waiting for admin";
+      statusKey = "waitingAdmin";
+    } else if (nextAction) {
+      statusLabel = nextAction.label;
+      statusKey = nextAction.key;
+    } else {
+      statusLabel = "Waiting experts";
+      statusKey = "waitingExperts";
+    }
   }
-
-  const sortPriority = waitingAdmin
-    ? ACTIVE_ACTION_META.waitingAdmin?.sortPriority ?? 60
-    : nextAction
-      ? nextAction.sortPriority
-      : 80;
 
   const taskItems = actions
     .filter((action) => ACTIVE_TASK_ACTION_KEYS.includes(action.key))
@@ -242,71 +223,66 @@ export const buildActiveIssueView = ({
       deadline,
     }));
 
-  const participatedExperts =
-    stage === "criteriaWeighting" || stage === "weightsFinished"
-      ? acceptedExperts.filter(
-        (participation) => participation.weightsCompleted === true
-      )
-      : acceptedExperts.filter(
-        (participation) => participation.evaluationCompleted === true
-      );
+  const isWeightEvaluationStage =
+    stage === "criteriaWeighting" || stage === "weightsFinished";
 
-  const acceptedButNotEvaluated =
-    stage === "criteriaWeighting" || stage === "weightsFinished"
-      ? acceptedExperts.filter(
-        (participation) => !participation.weightsCompleted
-      )
-      : acceptedExperts.filter(
-        (participation) => !participation.evaluationCompleted
-      );
+  let completedParticipations;
+  let pendingEvaluationParticipations;
 
-  const evaluated = participatedExperts.some((participation) =>
-    sameId(participation.expert?._id, userId)
+  if (isWeightEvaluationStage) {
+    completedParticipations = acceptedParticipations.filter(
+      (participation) => participation.weightsCompleted
+    );
+    pendingEvaluationParticipations = acceptedParticipations.filter(
+      (participation) => !participation.weightsCompleted
+    );
+  } else {
+    completedParticipations = acceptedParticipations.filter(
+      (participation) => participation.evaluationCompleted
+    );
+    pendingEvaluationParticipations = acceptedParticipations.filter(
+      (participation) => !participation.evaluationCompleted
+    );
+  }
+
+  const evaluated = completedParticipations.some((participation) =>
+    sameId(participation.expert._id, userId)
   );
 
-  const role =
-    isAdminUser && isExpertAccepted
-      ? "both"
-      : isAdminUser
-        ? "admin"
-        : isExpertAccepted
-          ? "expert"
-          : "viewer";
+  let role = "viewer";
+  if (isAdminUser && isExpertAccepted) {
+    role = "both";
+  } else if (isAdminUser) {
+    role = "admin";
+  } else if (isExpertAccepted) {
+    role = "expert";
+  }
 
-  const responseModelParameters = cleanModelParameters(issue.modelParameters);
-
-  const hasDirectWeights = detectHasDirectWeights(issue);
-  const hasAlternativeConsensus =
-    detectHasAlternativeConsensusEnabled(issue);
-
-  const workflowSteps = buildWorkflowStepsStable({
-    hasDirectWeights,
-    hasAlternativeConsensus,
+  const workflowSteps = buildActiveWorkflowSteps({
+    usesManualWeighting: issue.weightingMode === "manual",
+    hasAlternativeConsensus: issue.isConsensus,
   });
-
-  const responseConsensusHistory =
-    Array.isArray(consensusHistoryRounds) ? consensusHistoryRounds : [];
 
   return {
     taskItems,
     issueView: {
       id: issueId,
       name: issue.name,
-      creator: issue.admin?.email,
+      creator: issue.admin.email,
       description: issue.description,
       model: issue.model,
-      evaluationStructure,
-      isConsensus: Boolean(issue.isConsensus),
+      evaluationStructure: issue.evaluationStructure,
+      isConsensus: issue.isConsensus,
       currentStage: stage,
       weightingMode: issue.weightingMode,
-      ...(issue.model?.isConsensus && {
+      ...(issue.isConsensus && {
         consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
         consensusThreshold: issue.consensusThreshold,
         consensusCurrentPhase,
       }),
-      creationDate: issue.creationDate || null,
-      createdAt: issue.createdAt ?? null,
-      closureDate: issue.closureDate || null,
+      creationDate: issue.creationDate,
+      createdAt: issue.createdAt,
+      closureDate: issue.closureDate,
       isAdmin: isAdminUser,
       isExpert: isExpertAccepted,
       role,
@@ -314,52 +290,50 @@ export const buildActiveIssueView = ({
       criteria: criteriaTree,
       evaluated,
       totalExperts:
-        participatedExperts.length +
-        pendingExperts.length +
-        declinedExperts.length +
-        acceptedButNotEvaluated.length,
-      participatedExperts: participatedExperts
+        totalAccepted +
+        pendingParticipations.length +
+        declinedParticipations.length,
+      participatedExperts: completedParticipations
         .map((participation) => participation.expert.email)
         .sort(),
-      pendingExperts: pendingExperts
+      pendingExperts: pendingParticipations
         .map((participation) => participation.expert.email)
         .sort(),
-      notAcceptedExperts: declinedExperts
+      notAcceptedExperts: declinedParticipations
         .map((participation) => participation.expert.email)
         .sort(),
-      acceptedButNotEvaluatedExperts: acceptedButNotEvaluated
+      acceptedButNotEvaluatedExperts: pendingEvaluationParticipations
         .map((participation) => participation.expert.email)
         .sort(),
       statusFlags,
       progress: {
-        weightsDone,
-        evalsDone,
+        weightsDone: completedWeightEvaluations,
+        evalsDone: completedAlternativeEvaluations,
         totalAccepted,
       },
-      finalWeights: finalWeightsMap,
-      consensusHistory: responseConsensusHistory,
-      consensusRounds: responseConsensusHistory,
-      modelParameters: responseModelParameters,
+      finalWeights: criteriaWeightsByName,
+      consensusHistory: consensusHistoryRounds,
+      consensusRounds: consensusHistoryRounds,
+      modelParameters: issue.modelParameters,
       myParticipation: myParticipation
         ? {
           invitationStatus: myParticipation.invitationStatus,
-          weightsCompleted: Boolean(myParticipation.weightsCompleted),
-          evaluationCompleted: Boolean(myParticipation.evaluationCompleted),
-          joinedAt: myParticipation.joinedAt || null,
+          weightsCompleted: myParticipation.weightsCompleted,
+          evaluationCompleted: myParticipation.evaluationCompleted,
+          joinedAt: myParticipation.joinedAt,
         }
         : null,
       actions,
       nextAction,
       ui: {
         stage,
-        stageLabel: ACTIVE_STAGE_META[stage]?.label ?? stage,
-        stageColorKey: ACTIVE_STAGE_META[stage]?.colorKey ?? "default",
+        stageLabel: stageMeta.label,
+        stageColorKey: stageMeta.colorKey,
         statusKey,
         statusLabel,
-        sortPriority,
         deadline,
-        hasDirectWeights,
-        hasAlternativeConsensus,
+        hasDirectWeights: issue.weightingMode === "manual",
+        hasAlternativeConsensus: issue.isConsensus,
         workflowSteps,
         permissions: {
           evaluateWeights: canEvaluateWeights,
@@ -369,7 +343,7 @@ export const buildActiveIssueView = ({
           waitingAdmin,
           waitingExperts: statusKey === "waitingExperts",
         },
-        modelParameters: responseModelParameters,
+        modelParameters: issue.modelParameters,
       },
     },
   };

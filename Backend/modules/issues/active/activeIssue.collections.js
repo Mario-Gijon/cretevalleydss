@@ -11,7 +11,7 @@ import { buildConsensusHistoryFromDocs } from "../consensus/index.js";
 const groupByIssueId = (items, selector) => {
   const grouped = {};
 
-  for (const item of items || []) {
+  for (const item of items) {
     const issueId = toIdString(selector(item));
     if (!issueId) continue;
 
@@ -42,7 +42,7 @@ export const buildActiveIssueCollections = ({
   consensusPhases,
 }) => {
   const consensusByIssue = {};
-  const consensusPhaseCountMap = (consensusPhases || []).reduce(
+  const consensusPhaseCountMap = consensusPhases.reduce(
     (acc, phaseDoc) => {
       const issueId = toIdString(phaseDoc.issue);
       if (!issueId) return acc;
@@ -59,14 +59,14 @@ export const buildActiveIssueCollections = ({
 
   return {
     participationMap: groupByIssueId(
-      participations || [],
+      participations,
       (participation) => participation.issue
     ),
     alternativesMap: groupByIssueId(
-      alternatives || [],
+      alternatives,
       (alternative) => alternative.issue
     ),
-    criteriaMap: groupByIssueId(criteria || [], (criterion) => criterion.issue),
+    criteriaMap: groupByIssueId(criteria, (criterion) => criterion.issue),
     consensusPhaseCountMap,
     consensusHistoryByIssue: Object.fromEntries(
       Object.entries(consensusByIssue).map(([issueId, docs]) => [

@@ -13,39 +13,17 @@ import { Participation } from "../../../models/Participations.js";
 import { getNextConsensusPhase } from "../issue.queries.js";
 import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
 import { registerUserExit } from "./issueLifecycle.exits.js";
+import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";
 
 import {
   createBadRequestError,
   createForbiddenError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import {
   sameId,
   toIdString,
   uniqueIdStrings,
 } from "../../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
-
-const getIssueOrThrow = async ({ issueId, session = null }) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-
-  const issue = await withOptionalSession(Issue.findById(issueId), session);
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
-
-  return issue;
-};
 
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
   await Promise.all([

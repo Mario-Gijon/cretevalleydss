@@ -90,7 +90,7 @@ export const getNotificationsPayload = async ({ userId }) => {
   const participationByIssueId = new Map(
     participations
       .map((participation) => [toIdString(participation.issue), participation])
-      .filter(([issueId]) => Boolean(issueId))
+      .filter(([issueId]) => issueId)
   );
 
   return {

@@ -19,9 +19,7 @@ import {
   createCriteriaRecursively,
   createIssueAlternatives,
 } from "./issueCreation.documents.js";
-import { normalizeNonEmptyString } from "./issueCreation.model.js";
-import { compareNameId } from "../../../modules/issues/issue.ordering.js";
-import { toIdString } from "../../../utils/common/ids.js";
+import { compareNameId } from "../issue.ordering.js";
 import {
   createBadRequestError,
   createConflictError,
@@ -105,7 +103,7 @@ export const createIssueFlow = async ({
       : null,
     weightingMode: input.weightingMode,
     currentStage: "criteriaWeighting",
-    ...(Boolean(model.isConsensus) && {
+    ...(model.isConsensus && {
       consensusMaxPhases: input.consensusMaxPhases,
       consensusThreshold: input.consensusThreshold,
     }),
@@ -153,7 +151,7 @@ export const createIssueFlow = async ({
   const isCriteriaWeightingRequired = issue.currentStage === "criteriaWeighting";
 
   if (isSingleLeafCriterion) {
-    const previousParams = issue.modelParameters || {};
+    const previousParams = issue.modelParameters;
 
     issue.modelParameters = {
       ...previousParams,

@@ -1,29 +1,24 @@
-const toArrayOrFallback = (value, fallback = []) =>
-  Array.isArray(value) ? value : fallback;
-
-export const mapConsensusDocToHistoryRound = (consensusDoc) => {
-  const details = consensusDoc?.details || {};
-  const rankedAlternatives = toArrayOrFallback(details.rankedAlternatives, []);
-  const rankedWithScores = toArrayOrFallback(
-    details.rankedWithScores,
-    rankedAlternatives
-  );
+const mapConsensusDocToHistoryRound = (consensusDoc) => {
+  const details = consensusDoc.details;
+  const rankedAlternatives = details.rankedAlternatives;
+  const rankedWithScores = details.rankedWithScores;
 
   return {
-    phase: consensusDoc?.phase ?? null,
-    computedAt: consensusDoc?.timestamp ?? null,
-    consensusLevel: consensusDoc?.level ?? null,
+    phase: consensusDoc.phase,
+    computedAt: consensusDoc.timestamp,
+    consensusLevel: consensusDoc.level,
     rankedAlternatives,
     rankedWithScores,
-    collectiveEvaluations: consensusDoc?.collectiveEvaluations ?? null,
-    feedback: details?.feedback ?? null,
-    recommendations: details?.recommendations ?? null,
-    modelExecution: details?.modelExecution ?? null,
+    collectiveEvaluations: consensusDoc.collectiveEvaluations,
+    feedback: details.feedback,
+    recommendations: details.recommendations,
+    modelExecution: details.modelExecution,
   };
 };
 
-export const buildConsensusHistoryFromDocs = (consensusDocs) =>
-  toArrayOrFallback(consensusDocs)
+export const buildConsensusHistoryFromDocs = (consensusDocs) => {
+  return consensusDocs
     .slice()
-    .sort((left, right) => Number(left?.phase || 0) - Number(right?.phase || 0))
+    .sort((left, right) => left.phase - right.phase)
     .map((doc) => mapConsensusDocToHistoryRound(doc));
+};

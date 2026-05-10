@@ -252,10 +252,10 @@ export const getAllActiveIssues = async (req, res) => {
     const emptyPayload = buildEmptyActiveIssuesPayload();
 
     return sendSuccess(res, "Active issues fetched successfully", {
-      issues: emptyPayload.issues || [],
-      tasks: emptyPayload.tasks || [],
-      taskCenter: emptyPayload.taskCenter || null,
-      filtersMeta: emptyPayload.filtersMeta || null,
+      issues: emptyPayload.issues,
+      tasks: emptyPayload.tasks,
+      taskCenter: emptyPayload.taskCenter,
+      filtersMeta: emptyPayload.filtersMeta,
     });
   }
 

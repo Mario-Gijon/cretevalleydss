@@ -1,14 +1,11 @@
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import {
+  createBadRequestError,
+  createInternalError,
+} from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
-const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
 const normalizeEndpointPath = (value) => {
-  const normalizedPath = normalizeNonEmptyString(value);
+  const normalizedPath = value.trim();
   if (!normalizedPath) return null;
 
   const clean = normalizedPath.replace(/^\/+|\/+$/g, "");
@@ -16,17 +13,15 @@ const normalizeEndpointPath = (value) => {
 };
 
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
-  const targetApiModelKey = normalizeNonEmptyString(targetModel?.apiModelKey);
-  const endpointPath = normalizeEndpointPath(targetModel?.apiEndpoint?.path);
-  const targetInputKind = normalizeNonEmptyString(targetModel?.inputKind);
-  const targetOutputKind = normalizeNonEmptyString(targetModel?.outputKind);
-  const targetEvaluationStructure = normalizeNonEmptyString(
-    targetModel?.evaluationStructure
-  );
-  const targetLifecycleKind = normalizeNonEmptyString(targetModel?.lifecycleKind);
-  const targetModelFamilyKey = normalizeNonEmptyString(targetModel?.modelFamilyKey);
-  const targetModelVersion = normalizeNonEmptyString(targetModel?.modelVersion);
-  const targetVersionLabel = normalizeNonEmptyString(targetModel?.versionLabel);
+  const targetApiModelKey = targetModel.apiModelKey.trim();
+  const endpointPath = normalizeEndpointPath(targetModel.apiEndpoint.path);
+  const targetInputKind = targetModel.inputKind.trim();
+  const targetOutputKind = targetModel.outputKind.trim();
+  const targetEvaluationStructure = targetModel.evaluationStructure.trim();
+  const targetLifecycleKind = targetModel.lifecycleKind.trim();
+  const targetModelFamilyKey = targetModel.modelFamilyKey.trim();
+  const targetModelVersion = targetModel.modelVersion.trim();
+  const targetVersionLabel = targetModel.versionLabel.trim();
 
   const missingFields = [];
 
@@ -41,13 +36,13 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   if (!targetVersionLabel) missingFields.push("versionLabel");
 
   if (missingFields.length > 0) {
-    throw createBadRequestError(
+    throw createInternalError(
       "Target model runtime metadata is invalid for scenario execution",
       {
         field: "targetModelId",
         details: {
           missingFields,
-          targetModelId: toIdString(targetModel?._id),
+          targetModelId: toIdString(targetModel._id),
         },
       }
     );
@@ -56,10 +51,9 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   return {
     targetApiModelKey,
     targetApiEndpoint: {
-      method: normalizeNonEmptyString(targetModel?.apiEndpoint?.method) ?? null,
+      method: targetModel.apiEndpoint.method,
       path: endpointPath,
-      operationId:
-        normalizeNonEmptyString(targetModel?.apiEndpoint?.operationId) ?? null,
+      operationId: targetModel.apiEndpoint.operationId,
     },
     targetInputKind,
     targetOutputKind,
@@ -75,7 +69,7 @@ export const buildTargetRuntimeModelFromSnapshot = ({
   targetModelName,
   targetRuntimeSnapshot,
 }) => ({
-  name: targetModelName || "unknown",
+  name: targetModelName,
   apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
   apiEndpoint: { ...targetRuntimeSnapshot.targetApiEndpoint },
   inputKind: targetRuntimeSnapshot.targetInputKind,
@@ -88,12 +82,16 @@ export const buildTargetRuntimeModelFromSnapshot = ({
 });
 
 const resolveCriteriaWeightsKind = (modelDoc) => {
-  const parameters = Array.isArray(modelDoc?.parameters) ? modelDoc.parameters : [];
+  const parameters = modelDoc.parameters;
   const weightsParameter = parameters.find(
-    (parameter) => normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights"
+    (parameter) => parameter.semanticRole.trim() === "criteriaWeights"
   );
 
-  const weightsType = normalizeNonEmptyString(weightsParameter?.type);
+  if (!weightsParameter) {
+    return null;
+  }
+
+  const weightsType = weightsParameter.type.trim();
   if (weightsType === "fuzzyArray") {
     return "fuzzy";
   }
@@ -110,11 +108,10 @@ export const validateScenarioModelCompatibilityOrThrow = ({
   targetModel,
   targetRuntimeSnapshot,
 }) => {
-  const issueEvaluationStructure = normalizeNonEmptyString(issue?.evaluationStructure);
-  const issueInputKind = normalizeNonEmptyString(issue?.inputKind);
-  const targetEvaluationStructure =
-    targetRuntimeSnapshot?.targetEvaluationStructure ?? null;
-  const targetInputKind = targetRuntimeSnapshot?.targetInputKind ?? null;
+  const issueEvaluationStructure = issue.evaluationStructure.trim();
+  const issueInputKind = issue.inputKind.trim();
+  const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
+  const targetInputKind = targetRuntimeSnapshot.targetInputKind;
 
   if (targetEvaluationStructure !== issueEvaluationStructure) {
     throw createBadRequestError(
@@ -134,7 +131,7 @@ export const validateScenarioModelCompatibilityOrThrow = ({
     );
   }
 
-  const sourceWeightsKind = resolveCriteriaWeightsKind(issue?.model);
+  const sourceWeightsKind = resolveCriteriaWeightsKind(issue.model);
   const targetWeightsKind = resolveCriteriaWeightsKind(targetModel);
   if (
     sourceWeightsKind &&

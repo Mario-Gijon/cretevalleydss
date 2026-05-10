@@ -5,15 +5,7 @@ export {
 } from "./activeIssue.meta.js";
 
 export {
-  buildIssueCriteriaTree,
-  decorateCriteriaTree,
-} from "./activeIssue.criteria.js";
-
-export {
-  cleanModelParameters,
-  detectHasDirectWeights,
-  detectHasAlternativeConsensusEnabled,
-  buildWorkflowStepsStable,
+  buildActiveWorkflowSteps,
   buildDeadlineInfo,
 } from "./activeIssue.workflow.js";
 
@@ -23,7 +15,6 @@ export { buildActiveIssueView } from "./activeIssue.view.js";
 
 export {
   getEmptyTasksByType,
-  incrementCounter,
   sortActiveIssues,
   sortActiveTasksByType,
   buildActiveTaskCenter,

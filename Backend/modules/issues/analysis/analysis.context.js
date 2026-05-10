@@ -5,7 +5,7 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { buildIssueCriteriaTree } from "../active/index.js";
+import { buildIssueCriteriaTree } from "../issue.criteriaTree.js";
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
@@ -74,9 +74,9 @@ const mapCriteriaTreeToContextShape = (node) => ({
   id: node.id,
   name: node.name,
   type: node.type,
-  isLeaf: Boolean(node.isLeaf),
+  isLeaf: node.isLeaf,
   parentId: node.parentId || null,
-  children: (node.children || []).map(mapCriteriaTreeToContextShape),
+  children: node.children.map(mapCriteriaTreeToContextShape),
 });
 
 const buildFinalResultFromRound = ({ latestRound, latestConsensusDoc, warnings }) => {
@@ -914,7 +914,7 @@ export const buildIssueResultsAnalysisContext = async ({
         name: alternative.name,
         description: alternative.description || null,
       })),
-      criteriaTree: (criteriaTree || []).map(mapCriteriaTreeToContextShape),
+      criteriaTree: criteriaTree.map(mapCriteriaTreeToContextShape),
       leafCriteria: leafCriteria.map((criterion, index) => ({
         id: toIdString(criterion._id),
         name: criterion.name,
@@ -1105,7 +1105,7 @@ export const buildScenarioResultsAnalysisContext = async ({
         name: alternative.name,
         description: alternative.description || null,
       })),
-      criteriaTree: (criteriaTree || []).map(mapCriteriaTreeToContextShape),
+      criteriaTree: criteriaTree.map(mapCriteriaTreeToContextShape),
       leafCriteria: leafCriteria.map((criterion, index) => ({
         id: toIdString(criterion._id),
         name: criterion.name,

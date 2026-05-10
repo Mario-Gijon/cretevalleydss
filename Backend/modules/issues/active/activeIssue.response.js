@@ -12,6 +12,12 @@ const ACTIVE_ROLE_OPTIONS = [
   { value: "viewer", label: "Viewer" },
 ];
 
+const ACTIVE_SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "creationDate", label: "Creation Date" },
+  { value: "deadlineDate", label: "Deadline Date" },
+];
+
 /**
  * Devuelve un objeto de tareas vacío para la UI de activos.
  *
@@ -24,17 +30,6 @@ export const getEmptyTasksByType = () => ({
   evaluateAlternatives: [],
   waitingAdmin: [],
 });
-
-/**
- * Incrementa un contador en un objeto acumulador.
- *
- * @param {Object.<string, number>} counters Objeto acumulador.
- * @param {string} key Clave a incrementar.
- * @returns {void}
- */
-export const incrementCounter = (counters, key) => {
-  counters[key] = (counters[key] || 0) + 1;
-};
 
 /**
  * Construye las opciones de stage para filtros de activos.
@@ -67,39 +62,18 @@ const buildActionOptions = () => [
 ];
 
 /**
- * Construye las opciones de orden para filtros de activos.
- *
- * @param {boolean} [includeSmart=false] Indica si se añade la opción Smart.
- * @returns {Array<Object>}
- */
-const buildSortOptions = (includeSmart = false) => [
-  ...(includeSmart ? [{ value: "smart", label: "Smart" }] : []),
-  { value: "nameAsc", label: "Name (A→Z)" },
-  { value: "nameDesc", label: "Name (Z→A)" },
-  { value: "deadlineSoon", label: "Deadline (soonest)" },
-];
-
-/**
- * Ordena la colección de issues activos según prioridad de UI, deadline y nombre.
+ * Ordena la colección de issues activos por criterios visibles:
+ * creación (más recientes primero) y luego nombre.
  *
  * @param {Array<Object>} issues Issues formateados.
  * @returns {void}
  */
 export const sortActiveIssues = (issues) => {
-  (issues || []).sort((a, b) => {
-    const aPriority = a.ui?.sortPriority ?? 90;
-    const bPriority = b.ui?.sortPriority ?? 90;
-    if (aPriority !== bPriority) return aPriority - bPriority;
+  issues.sort((a, b) => {
+    const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (diff !== 0) return diff;
 
-    const aDeadline = a.ui?.deadline?.hasDeadline
-      ? a.ui.deadline.daysLeft
-      : 999999;
-    const bDeadline = b.ui?.deadline?.hasDeadline
-      ? b.ui.deadline.daysLeft
-      : 999999;
-    if (aDeadline !== bDeadline) return aDeadline - bDeadline;
-
-    return String(a.name).localeCompare(String(b.name));
+    return a.name.localeCompare(b.name);
   });
 };
 
@@ -111,16 +85,16 @@ export const sortActiveIssues = (issues) => {
  */
 export const sortActiveTasksByType = (tasksByType) => {
   for (const actionKey of ACTIVE_TASK_ACTION_KEYS) {
-    (tasksByType[actionKey] || []).sort((a, b) => {
+    tasksByType[actionKey].sort((a, b) => {
       if (a.sortPriority !== b.sortPriority) {
         return a.sortPriority - b.sortPriority;
       }
 
-      const aDeadline = a.deadline?.hasDeadline ? a.deadline.daysLeft : 999999;
-      const bDeadline = b.deadline?.hasDeadline ? b.deadline.daysLeft : 999999;
+      const aDeadline = a.deadline.hasDeadline ? a.deadline.daysLeft : 999999;
+      const bDeadline = b.deadline.hasDeadline ? b.deadline.daysLeft : 999999;
       if (aDeadline !== bDeadline) return aDeadline - bDeadline;
 
-      return String(a.issueName).localeCompare(String(b.issueName));
+      return a.issueName.localeCompare(b.issueName);
     });
   }
 };
@@ -133,7 +107,7 @@ export const sortActiveTasksByType = (tasksByType) => {
  */
 export const buildActiveTaskCenter = (tasksByType) => {
   const total = ACTIVE_TASK_ACTION_KEYS.reduce(
-    (acc, key) => acc + (tasksByType[key]?.length || 0),
+    (acc, key) => acc + tasksByType[key].length,
     0
   );
 
@@ -141,7 +115,7 @@ export const buildActiveTaskCenter = (tasksByType) => {
     .filter((action) => ACTIVE_TASK_ACTION_KEYS.includes(action.key))
     .sort((a, b) => a.sortPriority - b.sortPriority)
     .map((action) => {
-      const items = tasksByType[action.key] || [];
+      const items = tasksByType[action.key];
 
       return {
         key: action.key,
@@ -168,28 +142,24 @@ export const buildActiveTaskCenter = (tasksByType) => {
  * @param {Object.<string, number>} [params.roleCounts={}] Conteos por rol.
  * @param {Object.<string, number>} [params.stageCounts={}] Conteos por stage.
  * @param {Object.<string, number>} [params.actionCounts={}] Conteos por acción.
- * @param {boolean} [params.includeSmartSortOption=false] Indica si se añade la opción Smart.
- * @param {boolean} [params.includeSortDefault=false] Indica si defaults incluye sort.
  * @returns {Object}
  */
 export const buildActiveFiltersMeta = ({
   roleCounts = {},
   stageCounts = {},
   actionCounts = {},
-  includeSmartSortOption = false,
-  includeSortDefault = false,
 } = {}) => ({
   defaults: {
     role: "all",
     stage: "all",
     action: "all",
-    ...(includeSortDefault ? { sort: "smart" } : {}),
+    sort: "creationDate",
     q: "",
   },
   roleOptions: ACTIVE_ROLE_OPTIONS,
   stageOptions: buildStageOptions(),
   actionOptions: buildActionOptions(),
-  sortOptions: buildSortOptions(includeSmartSortOption),
+  sortOptions: ACTIVE_SORT_OPTIONS,
   counts: {
     roles: roleCounts,
     stages: stageCounts,
@@ -215,12 +185,14 @@ export const buildActiveIssuesResponseMeta = ({
   const stageCounts = {};
   const actionCounts = {};
 
-  for (const issue of formattedIssues || []) {
-    incrementCounter(roleCounts, issue.role || "viewer");
-    incrementCounter(stageCounts, issue.ui?.stage || issue.currentStage || "unknown");
+  for (const issue of formattedIssues) {
+    const role = issue.role;
+    const stage = issue.ui.stage;
+    const actionKey = issue.ui.statusKey;
 
-    const actionKey = issue.ui?.statusKey || issue.nextAction?.key || "none";
-    incrementCounter(actionCounts, actionKey);
+    roleCounts[role] = (roleCounts[role] || 0) + 1;
+    stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+    actionCounts[actionKey] = (actionCounts[actionKey] || 0) + 1;
   }
 
   return {
@@ -233,8 +205,6 @@ export const buildActiveIssuesResponseMeta = ({
       roleCounts,
       stageCounts,
       actionCounts,
-      includeSmartSortOption: false,
-      includeSortDefault: false,
     }),
   };
 };
@@ -261,7 +231,5 @@ export const buildEmptyActiveIssuesPayload = () => ({
     roleCounts: {},
     stageCounts: {},
     actionCounts: {},
-    includeSmartSortOption: true,
-    includeSortDefault: true,
   }),
 });

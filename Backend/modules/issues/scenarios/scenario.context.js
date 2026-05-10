@@ -27,10 +27,10 @@ import {
 } from "./scenario.compatibility.js";
 
 const getModelParameterKeys = (modelDoc) => {
+  const parameters = modelDoc.parameters;
   return new Set(
-    (modelDoc?.parameters || [])
+    parameters
       .map((parameter) => {
-        if (typeof parameter?.key !== "string") return null;
         const normalized = parameter.key.trim();
         return normalized.length > 0 ? normalized : null;
       })
@@ -73,18 +73,18 @@ const getTargetScenarioModelOrThrow = async ({
 };
 
 const resolveScenarioEvaluationPhaseOrThrow = ({ issue, consensusCount }) => {
-  const phase = Number(issue?.consensusPhase);
+  const phase = issue.consensusPhase;
 
   if (!Number.isInteger(phase) || phase < 1) {
     throw createBadRequestError("Issue consensusPhase is invalid", {
       field: "consensusPhase",
       details: {
-        consensusPhase: issue?.consensusPhase ?? null,
+        consensusPhase: issue.consensusPhase,
       },
     });
   }
 
-  if (Boolean(issue?.isConsensus) && Number(consensusCount) > 1) {
+  if (issue.isConsensus && consensusCount > 1) {
     throw createBadRequestError(
       "Simulation disabled: consensus issues with more than 1 saved phase are not supported yet."
     );
@@ -182,40 +182,28 @@ export const getCreateScenarioContext = async ({
     throw createBadRequestError("Issue has no alternatives/leaf criteria");
   }
 
-  const expertIds = participations
-    .map((participation) => participation.expert?._id)
-    .filter(Boolean);
+  const expertIds = participations.map((participation) => participation.expert._id);
 
-  let domainType = null;
-  try {
-    const detected = await detectIssueDomainTypeOrThrow({
-      issueId: issue._id,
-      expertIds,
-    });
-    domainType = detected.domainType;
-  } catch (error) {
-    domainType = null;
-  }
+  const detectedDomain = await detectIssueDomainTypeOrThrow({
+    issueId: issue._id,
+    expertIds,
+  });
+  const domainType = detectedDomain.domainType;
 
-  if (domainType && targetModel?.supportedDomains) {
-    const supportsDomain = Boolean(
-      targetModel.supportedDomains?.[domainType]?.enabled
+  const supportsDomain = targetModel.supportedDomains[domainType].enabled;
+  if (!supportsDomain) {
+    throw createBadRequestError(
+      `Target model does not support '${domainType}' domains. Pick a compatible model.`,
+      {
+        field: "targetModel",
+      }
     );
-
-    if (!supportsDomain) {
-      throw createBadRequestError(
-        `Target model does not support '${domainType}' domains. Pick a compatible model.`,
-        {
-          field: "targetModel",
-        }
-      );
-    }
   }
 
   const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
   const targetParameterKeys = getModelParameterKeys(targetModel);
   const baseIssueParameters = Object.fromEntries(
-    Object.entries(issue.modelParameters || {}).filter(([key]) =>
+    Object.entries(issue.modelParameters).filter(([key]) =>
       targetParameterKeys.has(key)
     )
   );

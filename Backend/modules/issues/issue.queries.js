@@ -1,18 +1,10 @@
-         
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
-
-          
-import {
-  ensureIssueOrdersDb,
-  getOrderedLeafCriteriaDb,
-} from "./issue.ordering.js";
-
-        
 import {
   createBadRequestError,
+  createInternalError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { toIdString, uniqueIdStrings } from "../../utils/common/ids.js";
@@ -24,7 +16,7 @@ import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
  * @param {string} issueId Id del issue.
  * @returns {void}
  */
-export const validateIssueIdOrThrow = (issueId) => {
+const validateIssueIdOrThrow = (issueId) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {
       field: "issueId",
@@ -88,13 +80,20 @@ export const getIssueByIdOrThrow = async (issueId, options = {}) => {
  */
 export const getNextConsensusPhase = async (issueId) => {
   const issue = await Issue.findById(issueId).select("consensusPhase").lean();
-  const phase = Number(issue?.consensusPhase);
+  if (!issue) {
+    throw createNotFoundError("Issue not found", {
+      field: "issueId",
+    });
+  }
+
+  const phase = issue.consensusPhase;
 
   if (!Number.isInteger(phase) || phase < 1) {
-    throw createBadRequestError("Issue consensusPhase is invalid", {
+    throw createInternalError("Issue consensusPhase is invalid", {
       field: "consensusPhase",
       details: {
-        consensusPhase: issue?.consensusPhase ?? null,
+        issueId,
+        consensusPhase: issue.consensusPhase,
       },
     });
   }
@@ -140,25 +139,6 @@ export const getAcceptedParticipation = async (issueId, userId) =>
   });
 
 /**
- * Obtiene los criterios hoja ordenados canónicamente para un issue.
- *
- * Este helper se mantiene aquí porque se usa como query de conveniencia
- * desde la capa HTTP, pero la lógica de orden canónico vive en issue.ordering.js.
- *
- * @param {Object} issue Documento del issue.
- * @returns {Promise<Array<Object>>}
- */
-export const getOrderedLeafCriteriaForIssue = async (issue) => {
-  await ensureIssueOrdersDb({ issueId: issue._id });
-
-  return getOrderedLeafCriteriaDb({
-    issueId: issue._id,
-    select: "_id name",
-    lean: true,
-  });
-};
-
-/**
  * Obtiene estadísticas de pesos completados para un issue.
  *
  * @param {string|Object} issueId Id del issue.
@@ -193,10 +173,9 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
   const normalizedUserId = toIdString(userId);
 
   if (!normalizedUserId) {
-    return {
-      issueIds: [],
-      adminIssueIds: [],
-    };
+    throw createBadRequestError("Valid user id is required", {
+      field: "userId",
+    });
   }
 
   const [adminIssues, acceptedParticipations] = await Promise.all([
@@ -214,14 +193,13 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
   ]);
 
   const adminIssueIds = uniqueIdStrings(
-    adminIssues.map((issue) => toIdString(issue._id)).filter(Boolean)
+    adminIssues.map((issue) => toIdString(issue._id))
   );
 
   const expertIssueIds = uniqueIdStrings(
     acceptedParticipations
       .filter((participation) => participation.issue)
-      .map((participation) => toIdString(participation.issue?._id))
-      .filter(Boolean)
+      .map((participation) => toIdString(participation.issue._id))
   );
 
   return {
@@ -244,7 +222,9 @@ export const getUserFinishedIssueIds = async (
   const normalizedUserId = toIdString(userId);
 
   if (!normalizedUserId) {
-    return [];
+    throw createBadRequestError("Valid user id is required", {
+      field: "userId",
+    });
   }
 
   const adminIssues = await Issue.find({
@@ -256,7 +236,7 @@ export const getUserFinishedIssueIds = async (
     .lean();
 
   const adminIssueIds = uniqueIdStrings(
-    adminIssues.map((issue) => toIdString(issue._id)).filter(Boolean)
+    adminIssues.map((issue) => toIdString(issue._id))
   );
 
   const participations = await Participation.find({
@@ -274,8 +254,7 @@ export const getUserFinishedIssueIds = async (
   const expertIssueIds = uniqueIdStrings(
     participations
       .filter((participation) => participation.issue)
-      .map((participation) => toIdString(participation.issue?._id))
-      .filter(Boolean)
+      .map((participation) => toIdString(participation.issue._id))
   );
 
   const allIssueIds = uniqueIdStrings([...adminIssueIds, ...expertIssueIds]);
@@ -292,9 +271,7 @@ export const getUserFinishedIssueIds = async (
     .session(session)
     .distinct("issue");
 
-  const hiddenIdsAsString = new Set(
-    hiddenIssueIds.map((id) => toIdString(id)).filter(Boolean)
-  );
+  const hiddenIdsAsString = new Set(hiddenIssueIds.map((id) => toIdString(id)));
 
   return allIssueIds.filter((id) => !hiddenIdsAsString.has(id));
 };
