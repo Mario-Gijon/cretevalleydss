@@ -35,7 +35,7 @@ const ISSUE_MODELS = [
         continuous: true,
         discrete: true,
       },
-      linguistic: false,
+      linguistic: [],
     },
   },
   {
@@ -107,7 +107,7 @@ const ISSUE_MODELS = [
         continuous: true,
         discrete: true,
       },
-      linguistic: false,
+      linguistic: [],
     },
   },
   {
@@ -126,7 +126,7 @@ const ISSUE_MODELS = [
         continuous: true,
         discrete: true,
       },
-      linguistic: false,
+      linguistic: [],
     },
   },
   {
@@ -158,7 +158,7 @@ const ISSUE_MODELS = [
         continuous: true,
         discrete: true,
       },
-      linguistic: false,
+      linguistic: [],
     },
   },
   {
@@ -190,7 +190,7 @@ const ISSUE_MODELS = [
         continuous: false,
         discrete: false,
       },
-      linguistic: true,
+      linguistic: ["triangular"],
     },
   },
 ];

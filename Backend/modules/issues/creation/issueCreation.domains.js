@@ -91,7 +91,11 @@ export const buildExpertAssignmentDomainMap = ({
 const resolveSupportedDomainFlags = (modelSupportedDomains) => ({
   numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
   numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
-  linguistic: modelSupportedDomains?.linguistic === true,
+  linguisticMembershipFunctions: Array.isArray(modelSupportedDomains?.linguistic)
+    ? modelSupportedDomains.linguistic
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean)
+    : [],
 });
 
 const isNumericContinuousDomain = (domain) => {
@@ -129,8 +133,14 @@ const isSupportedDomainForModel = ({
       domain?.isGlobal !== true &&
       normalizedDomainUserId &&
       normalizedDomainUserId === toIdString(userId);
+    const membershipFunction = String(domain?.membershipFunction || "")
+      .trim()
+      .toLowerCase();
+    const supportsMembershipFunction =
+      membershipFunction.length > 0 &&
+      supported.linguisticMembershipFunctions.includes(membershipFunction);
 
-    return supported.linguistic && isCreatorOwnedDomain;
+    return supportsMembershipFunction && isCreatorOwnedDomain;
   }
 
   return false;
@@ -159,7 +169,9 @@ export const loadAccessibleExpressionDomains = async ({
       { isGlobal: false, user: userId },
     ],
   })
-    .select("_id name type numericRange linguisticLabels isGlobal user")
+    .select(
+      "_id name type numericRange linguisticLabels membershipFunction valueCount valuesMode isGlobal user"
+    )
     .session(session);
 
   const existingDomainIds = new Set(

@@ -24,6 +24,7 @@ import {
   getCreateIssueCompactDialogContentSx,
   getCreateIssueCompactDialogTitleSx,
 } from "../styles/createIssueStep.styles";
+import { getLinguisticMembershipDefinition } from "../../../utils/linguisticMembershipFunctions";
 
 export const ViewExpressionsDomainDialog = ({
   open,
@@ -118,6 +119,11 @@ export const ViewExpressionsDomainDialog = ({
                             ? "Numeric (0-1)"
                             : `Linguistic (${domain.linguisticLabels.length} labels)`}
                         </Typography>
+                        {domain.type === "linguistic" ? (
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                            Function: {getLinguisticMembershipDefinition(domain.membershipFunction)?.label || domain.membershipFunction || "Unknown"} • Values: {domain.valueCount ?? "?"}
+                          </Typography>
+                        ) : null}
                       </Stack>
 
                       <Stack direction="row" spacing={0.8}>
@@ -161,7 +167,10 @@ export const ViewExpressionsDomainDialog = ({
                             bgcolor: alpha(theme.palette.common.white, 0.015),
                           }}
                         >
-                          <FuzzyPreviewChart labels={domain.linguisticLabels} />
+                          <FuzzyPreviewChart
+                            labels={domain.linguisticLabels}
+                            membershipFunction={domain.membershipFunction}
+                          />
                         </Box>
                       </Stack>
                     ) : (

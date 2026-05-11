@@ -26,7 +26,12 @@ export const formatExpressionDomainForClient = (domain) => {
     name: domain.name,
     type: domain.type,
     ...(domain.type === "numeric" && { range: buildNumericRangeForClient(domain) }),
-    ...(domain.type === "linguistic" && { labels: domain.linguisticLabels }),
+    ...(domain.type === "linguistic" && {
+      membershipFunction: domain.membershipFunction || null,
+      valueCount: domain.valueCount ?? null,
+      valuesMode: domain.valuesMode || null,
+      labels: domain.linguisticLabels,
+    }),
   };
 };
 
@@ -75,6 +80,9 @@ export const formatPairwiseEvaluationsByCriterion = (evaluations) => {
               range: buildNumericRangeForClient(expressionDomain),
             }),
             ...(expressionDomain.type === "linguistic" && {
+              membershipFunction: expressionDomain.membershipFunction || null,
+              valueCount: expressionDomain.valueCount ?? null,
+              valuesMode: expressionDomain.valuesMode || null,
               labels: expressionDomain.linguisticLabels,
             }),
           }

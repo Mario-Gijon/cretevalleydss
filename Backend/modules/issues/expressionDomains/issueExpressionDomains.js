@@ -1,5 +1,6 @@
          
 import { ExpressionDomain } from "../../../models/ExpressionDomain.js";
+import { getLinguisticMembershipFunctionOrThrow } from "./linguisticMembership.functions.js";
 
         
 import {
@@ -33,6 +34,8 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     name,
     type,
     numericRange,
+    membershipFunction,
+    valuesMode,
     linguisticLabels,
     isGlobal,
   } = payload || {};
@@ -97,8 +100,26 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
       name,
       type,
       numericRange: { min, max, step },
+      membershipFunction: null,
+      valueCount: null,
+      valuesMode: null,
       linguisticLabels: [],
     };
+  }
+
+  const membershipDefinition = getLinguisticMembershipFunctionOrThrow({
+    membershipFunction,
+  });
+  const derivedValueCount = membershipDefinition.valueCount;
+  const normalizedValuesMode =
+    valuesMode == null || valuesMode === ""
+      ? "automatic"
+      : normalizeString(valuesMode);
+
+  if (!["automatic", "custom"].includes(normalizedValuesMode)) {
+    throw createBadRequestError("valuesMode must be 'automatic' or 'custom'", {
+      field: "valuesMode",
+    });
   }
 
   if (!Array.isArray(linguisticLabels) || linguisticLabels.length === 0) {
@@ -129,9 +150,9 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     }
     seenLabels.add(label);
 
-    if (!Array.isArray(values) || values.length < 2) {
+    if (!Array.isArray(values) || values.length !== derivedValueCount) {
       throw createBadRequestError(
-        "values must be an array with at least 2 numbers",
+        `values must be an array with length ${derivedValueCount}`,
         {
           field: "linguisticLabels",
         }
@@ -142,6 +163,12 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
 
     if (!numericValues.every(Number.isFinite)) {
       throw createBadRequestError("values must be numbers", {
+        field: "linguisticLabels",
+      });
+    }
+
+    if (!numericValues.every((item) => item >= 0 && item <= 1)) {
+      throw createBadRequestError("values must be in range [0, 1]", {
         field: "linguisticLabels",
       });
     }
@@ -158,7 +185,6 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     }
 
     return {
-      ...labelItem,
       label,
       values: numericValues,
     };
@@ -167,6 +193,10 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   return {
     name,
     type,
+    numericRange: null,
+    membershipFunction: membershipDefinition.key,
+    valueCount: derivedValueCount,
+    valuesMode: normalizedValuesMode,
     linguisticLabels: normalizedLabels,
   };
 };
@@ -260,7 +290,12 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
       ? { numericRange: normalizedDomain.numericRange }
       : {}),
     ...(normalizedDomain.type === "linguistic"
-      ? { linguisticLabels: normalizedDomain.linguisticLabels }
+      ? {
+          membershipFunction: normalizedDomain.membershipFunction,
+          valueCount: normalizedDomain.valueCount,
+          valuesMode: normalizedDomain.valuesMode,
+          linguisticLabels: normalizedDomain.linguisticLabels,
+        }
       : {}),
   });
 
@@ -324,21 +359,30 @@ export const updateUserExpressionDomain = async ({
     session,
   });
 
-  if (updatedDomain.name !== undefined) {
-    domain.name = normalizeString(updatedDomain.name);
-  }
+  const normalizedDomain = normalizeNewExpressionDomainPayload({
+    name: updatedDomain.name ?? domain.name,
+    type: updatedDomain.type ?? domain.type,
+    numericRange: updatedDomain.numericRange ?? domain.numericRange,
+    membershipFunction:
+      updatedDomain.membershipFunction ?? domain.membershipFunction,
+    valuesMode: updatedDomain.valuesMode ?? domain.valuesMode,
+    linguisticLabels: updatedDomain.linguisticLabels ?? domain.linguisticLabels,
+    isGlobal: domain.isGlobal,
+  });
 
-  if (updatedDomain.type !== undefined) {
-    domain.type = normalizeString(updatedDomain.type);
-  }
-
-  if (updatedDomain.numericRange !== undefined) {
-    domain.numericRange = updatedDomain.numericRange;
-  }
-
-  if (updatedDomain.linguisticLabels !== undefined) {
-    domain.linguisticLabels = updatedDomain.linguisticLabels;
-  }
+  domain.name = normalizedDomain.name;
+  domain.type = normalizedDomain.type;
+  domain.numericRange =
+    normalizedDomain.type === "numeric" ? normalizedDomain.numericRange : null;
+  domain.membershipFunction =
+    normalizedDomain.type === "linguistic"
+      ? normalizedDomain.membershipFunction
+      : null;
+  domain.valueCount =
+    normalizedDomain.type === "linguistic" ? normalizedDomain.valueCount : null;
+  domain.valuesMode =
+    normalizedDomain.type === "linguistic" ? normalizedDomain.valuesMode : null;
+  domain.linguisticLabels = normalizedDomain.linguisticLabels;
 
   await domain.save(session ? { session } : undefined);
 

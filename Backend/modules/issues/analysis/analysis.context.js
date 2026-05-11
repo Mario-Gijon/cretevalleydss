@@ -799,7 +799,10 @@ export const buildIssueResultsAnalysisContext = async ({
         "expert alternative comparedAlternative criterion value history consensusPhase timestamp expressionDomain"
       )
       .populate("expert", "email name")
-      .populate("expressionDomain", "name type numericRange linguisticLabels")
+      .populate(
+        "expressionDomain",
+        "name type numericRange membershipFunction valueCount valuesMode linguisticLabels"
+      )
       .lean(),
     Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
     Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),
@@ -996,7 +999,10 @@ export const buildScenarioResultsAnalysisContext = async ({
           "expert alternative comparedAlternative criterion value history consensusPhase timestamp expressionDomain"
         )
         .populate("expert", "email name")
-        .populate("expressionDomain", "name type numericRange linguisticLabels")
+        .populate(
+          "expressionDomain",
+          "name type numericRange membershipFunction valueCount valuesMode linguisticLabels"
+        )
         .lean(),
       Consensus.findOne({ issue: issue._id }).sort({ phase: -1 }).lean(),
       Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),

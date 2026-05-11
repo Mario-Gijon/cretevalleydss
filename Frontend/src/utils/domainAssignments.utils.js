@@ -67,7 +67,11 @@ const toDomainId = (value) => (value === null || value === undefined ? null : St
 const getModelDomainSupport = (selectedModel) => ({
   numericContinuous: selectedModel?.supportedDomains?.numeric?.continuous === true,
   numericDiscrete: selectedModel?.supportedDomains?.numeric?.discrete === true,
-  linguistic: selectedModel?.supportedDomains?.linguistic === true,
+  linguisticMembershipFunctions: Array.isArray(selectedModel?.supportedDomains?.linguistic)
+    ? selectedModel.supportedDomains.linguistic
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean)
+    : [],
 });
 
 const isNumericContinuousDomain = (domain) =>
@@ -95,8 +99,15 @@ export const getSupportedDomainPools = (
       (support.numericDiscrete && isNumericDiscreteDomain(domain))
   );
 
-  const linguisticDomains = support.linguistic
-    ? expressionDomains.filter((domain) => domain?.type === "linguistic")
+  const linguisticDomains = support.linguisticMembershipFunctions.length
+    ? expressionDomains.filter(
+      (domain) =>
+        domain?.type === "linguistic" &&
+        typeof domain?.membershipFunction === "string" &&
+        support.linguisticMembershipFunctions.includes(
+          domain.membershipFunction.trim().toLowerCase()
+        )
+    )
     : [];
 
   return {

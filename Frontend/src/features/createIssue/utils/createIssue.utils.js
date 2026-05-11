@@ -19,27 +19,6 @@ export const steps = [
 ];
 
 /**
- * Construye triángulos difusos básicos para un número dado de etiquetas.
- *
- * @param {number} nLabels Número de etiquetas.
- * @returns {object[]}
- */
-export const buildFuzzyTriangles = (nLabels) => {
-  const step = 1 / (nLabels - 1);
-
-  return Array.from({ length: nLabels }, (_, i) => {
-    const m = i * step;
-    const l = Math.max(0, m - step);
-    const u = Math.min(1, m + step);
-
-    return {
-      label: `Etiqueta ${i + 1}`,
-      values: [l, m, u],
-    };
-  });
-};
-
-/**
  * Valida el nombre del issue.
  *
  * @param {string} issueName Nombre del issue.

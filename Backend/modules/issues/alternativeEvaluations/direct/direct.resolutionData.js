@@ -33,7 +33,10 @@ export const buildDirectResolutionData = async ({
     consensusPhase: currentPhase,
   })
     .select("expert alternative criterion value expressionDomain")
-    .populate("expressionDomain", "type linguisticLabels numericRange name")
+    .populate(
+      "expressionDomain",
+      "type linguisticLabels numericRange membershipFunction valueCount valuesMode name"
+    )
     .lean();
 
   const evaluationMap = new Map();

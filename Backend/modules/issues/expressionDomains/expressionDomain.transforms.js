@@ -138,10 +138,10 @@ const normalizeIntervalToCanonicalOrThrow = ({ value, domainSnapshot, context })
   return [(lower - min) / span, (upper - min) / span];
 };
 
-const normalizeFuzzyTupleToCanonicalOrThrow = ({ value, domainSnapshot, context }) => {
-  if (!Array.isArray(value) || value.length !== 3) {
+const normalizeFuzzyArrayToCanonicalOrThrow = ({ value, domainSnapshot, context }) => {
+  if (!Array.isArray(value) || value.length < 2) {
     buildDomainError({
-      reason: "fuzzy value must be an array [l, m, u]",
+      reason: "fuzzy value must be an ordered numeric array",
       value,
       domainSnapshot,
       context,
@@ -152,20 +152,22 @@ const normalizeFuzzyTupleToCanonicalOrThrow = ({ value, domainSnapshot, context 
 
   if (tuple.some((item) => !Number.isFinite(item))) {
     buildDomainError({
-      reason: "fuzzy tuple values must be finite numbers",
+      reason: "fuzzy values must be finite numbers",
       value,
       domainSnapshot,
       context,
     });
   }
 
-  if (!(tuple[0] <= tuple[1] && tuple[1] <= tuple[2])) {
-    buildDomainError({
-      reason: "fuzzy tuple must satisfy l <= m <= u",
-      value,
-      domainSnapshot,
-      context,
-    });
+  for (let index = 1; index < tuple.length; index += 1) {
+    if (tuple[index] < tuple[index - 1]) {
+      buildDomainError({
+        reason: "fuzzy values must be non-decreasing",
+        value,
+        domainSnapshot,
+        context,
+      });
+    }
   }
 
   const { min, max, span } = getNumericRangeOrThrow(domainSnapshot, value, context);
@@ -176,11 +178,35 @@ const normalizeFuzzyTupleToCanonicalOrThrow = ({ value, domainSnapshot, context 
   return tuple.map((numberValue) => (numberValue - min) / span);
 };
 
-const buildRepresentativeFromCanonicalFuzzy = (tuple) =>
-  (tuple[0] + tuple[1] + tuple[2]) / 3;
+const getLinguisticValueCountOrThrow = ({ domainSnapshot, value, context }) => {
+  const valueCount = parseNumber(domainSnapshot?.valueCount);
 
-const buildFuzzyTupleFromLinguisticValues = (values) => {
-  if (!Array.isArray(values) || values.length < 2) {
+  if (!Number.isInteger(valueCount) || valueCount < 2) {
+    buildDomainError({
+      reason: "linguistic domain valueCount is invalid",
+      value,
+      domainSnapshot,
+      context,
+    });
+  }
+
+  return valueCount;
+};
+
+const buildRepresentativeFromCanonicalFuzzy = (values) => {
+  if (!Array.isArray(values) || values.length === 0) {
+    return null;
+  }
+
+  const sum = values.reduce((accumulator, item) => accumulator + item, 0);
+  return sum / values.length;
+};
+
+const buildCanonicalFuzzyFromLinguisticValues = ({
+  values,
+  expectedLength,
+}) => {
+  if (!Array.isArray(values) || values.length !== expectedLength) {
     return null;
   }
 
@@ -203,14 +229,7 @@ const buildFuzzyTupleFromLinguisticValues = (values) => {
     }
   }
 
-  if (numericValues.length === 3) {
-    return numericValues;
-  }
-
-  const lower = numericValues[0];
-  const upper = numericValues[numericValues.length - 1];
-  const middle = numericValues[Math.floor(numericValues.length / 2)] ?? (lower + upper) / 2;
-  return [lower, middle, upper];
+  return numericValues;
 };
 
 const findLinguisticLabelByRawValue = ({ value, domainSnapshot }) => {
@@ -235,10 +254,18 @@ const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, apiInputFor
     });
   }
 
-  const fuzzyTuple = buildFuzzyTupleFromLinguisticValues(labelDefinition.values);
-  if (!fuzzyTuple) {
+  const expectedValueCount = getLinguisticValueCountOrThrow({
+    domainSnapshot,
+    value,
+    context,
+  });
+  const fuzzyValues = buildCanonicalFuzzyFromLinguisticValues({
+    values: labelDefinition.values,
+    expectedLength: expectedValueCount,
+  });
+  if (!fuzzyValues) {
     buildDomainError({
-      reason: "linguistic label values must be canonical numbers in [0,1] and non-decreasing",
+      reason: `linguistic label values must have length ${expectedValueCount}, be canonical numbers in [0,1], and be non-decreasing`,
       value,
       domainSnapshot,
       context,
@@ -253,10 +280,10 @@ const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, apiInputFor
   }
 
   if (apiInputFormat === "directFuzzyMatrix") {
-    return fuzzyTuple;
+    return fuzzyValues;
   }
 
-  return buildRepresentativeFromCanonicalFuzzy(fuzzyTuple);
+  return buildRepresentativeFromCanonicalFuzzy(fuzzyValues);
 };
 
 export const normalizeEvaluationValueForInputOrThrow = ({
@@ -295,8 +322,8 @@ export const normalizeEvaluationValueForInputOrThrow = ({
       return (canonicalInterval[0] + canonicalInterval[1]) / 2;
     }
 
-    if (Array.isArray(value) && value.length === 3) {
-      const canonicalTuple = normalizeFuzzyTupleToCanonicalOrThrow({
+    if (Array.isArray(value) && value.length >= 3) {
+      const canonicalTuple = normalizeFuzzyArrayToCanonicalOrThrow({
         value,
         domainSnapshot,
         context,
@@ -368,12 +395,45 @@ const denormalizeNumericCanonicalValueOrThrow = ({ canonicalValue, domainSnapsho
   return Number(rawValue.toFixed(10));
 };
 
-const tupleDistance = (left, right) =>
-  Math.sqrt(
-    left.reduce((sum, value, index) => sum + (value - right[index]) ** 2, 0)
-  );
+const tupleDistanceOrThrow = ({
+  left,
+  right,
+  domainSnapshot,
+  value,
+  context,
+}) => {
+  if (!Array.isArray(left) || !Array.isArray(right)) {
+    buildDomainError({
+      reason: "fuzzy values must be arrays",
+      value,
+      domainSnapshot,
+      context,
+    });
+  }
 
-const findNearestLinguisticLabelForCrisp = ({ canonicalValue, domainSnapshot }) => {
+  if (left.length !== right.length) {
+    buildDomainError({
+      reason: "fuzzy values must have the same length",
+      value,
+      domainSnapshot,
+      context,
+      extras: {
+        leftLength: left.length,
+        rightLength: right.length,
+      },
+    });
+  }
+
+  return Math.sqrt(
+    left.reduce((sum, item, index) => sum + (item - right[index]) ** 2, 0)
+  );
+};
+
+const findNearestLinguisticLabelForCrisp = ({
+  canonicalValue,
+  domainSnapshot,
+  expectedValueCount,
+}) => {
   const labels = Array.isArray(domainSnapshot?.linguisticLabels)
     ? domainSnapshot.linguisticLabels
     : [];
@@ -386,12 +446,18 @@ const findNearestLinguisticLabelForCrisp = ({ canonicalValue, domainSnapshot }) 
   let bestDistance = Number.POSITIVE_INFINITY;
 
   labels.forEach((labelDefinition) => {
-    const fuzzyTuple = buildFuzzyTupleFromLinguisticValues(labelDefinition.values);
-    if (!fuzzyTuple) {
+    const fuzzyValues = buildCanonicalFuzzyFromLinguisticValues({
+      values: labelDefinition.values,
+      expectedLength: expectedValueCount,
+    });
+    if (!fuzzyValues) {
       return;
     }
 
-    const representative = buildRepresentativeFromCanonicalFuzzy(fuzzyTuple);
+    const representative = buildRepresentativeFromCanonicalFuzzy(fuzzyValues);
+    if (!Number.isFinite(representative)) {
+      return;
+    }
     const distance = Math.abs(representative - canonicalValue);
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -402,7 +468,13 @@ const findNearestLinguisticLabelForCrisp = ({ canonicalValue, domainSnapshot }) 
   return bestLabel;
 };
 
-const findNearestLinguisticLabelForFuzzy = ({ canonicalTuple, domainSnapshot }) => {
+const findNearestLinguisticLabelForFuzzy = ({
+  canonicalTuple,
+  domainSnapshot,
+  expectedValueCount,
+  value,
+  context,
+}) => {
   const labels = Array.isArray(domainSnapshot?.linguisticLabels)
     ? domainSnapshot.linguisticLabels
     : [];
@@ -415,12 +487,21 @@ const findNearestLinguisticLabelForFuzzy = ({ canonicalTuple, domainSnapshot }) 
   let bestDistance = Number.POSITIVE_INFINITY;
 
   labels.forEach((labelDefinition) => {
-    const fuzzyTuple = buildFuzzyTupleFromLinguisticValues(labelDefinition.values);
-    if (!fuzzyTuple) {
+    const fuzzyValues = buildCanonicalFuzzyFromLinguisticValues({
+      values: labelDefinition.values,
+      expectedLength: expectedValueCount,
+    });
+    if (!fuzzyValues) {
       return;
     }
 
-    const distance = tupleDistance(canonicalTuple, fuzzyTuple);
+    const distance = tupleDistanceOrThrow({
+      left: canonicalTuple,
+      right: fuzzyValues,
+      domainSnapshot,
+      value,
+      context,
+    });
     if (distance < bestDistance) {
       bestDistance = distance;
       bestLabel = labelDefinition;
@@ -456,10 +537,28 @@ export const denormalizeCanonicalValueForDomainOrThrow = ({
   }
 
   if (domainSnapshot.type === "linguistic") {
-    if (Array.isArray(canonicalValue) && canonicalValue.length === 3) {
+    const expectedValueCount = getLinguisticValueCountOrThrow({
+      domainSnapshot,
+      value: canonicalValue,
+      context,
+    });
+
+    if (Array.isArray(canonicalValue)) {
+      if (canonicalValue.length !== expectedValueCount) {
+        buildDomainError({
+          reason: `canonical linguistic fuzzy value must have length ${expectedValueCount}`,
+          value: canonicalValue,
+          domainSnapshot,
+          context,
+        });
+      }
+
       const labelDefinition = findNearestLinguisticLabelForFuzzy({
         canonicalTuple: canonicalValue,
         domainSnapshot,
+        expectedValueCount,
+        value: canonicalValue,
+        context,
       });
 
       return {
@@ -482,6 +581,7 @@ export const denormalizeCanonicalValueForDomainOrThrow = ({
     const labelDefinition = findNearestLinguisticLabelForCrisp({
       canonicalValue: numeric,
       domainSnapshot,
+      expectedValueCount,
     });
 
     return {

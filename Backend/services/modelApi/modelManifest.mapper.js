@@ -131,7 +131,7 @@ export const normalizeSupportedDomains = (supportedDomains) => {
         continuous: false,
         discrete: false,
       },
-      linguistic: false,
+      linguistic: [],
     };
   }
 
@@ -140,7 +140,9 @@ export const normalizeSupportedDomains = (supportedDomains) => {
       continuous: supportedDomains?.numeric?.continuous === true,
       discrete: supportedDomains?.numeric?.discrete === true,
     },
-    linguistic: supportedDomains.linguistic === true,
+    linguistic: normalizeStringList(supportedDomains?.linguistic).map((item) =>
+      item.toLowerCase()
+    ),
   };
 };
 

@@ -33,7 +33,10 @@ export const buildPairwiseAlternativesResolutionData = async ({
     consensusPhase: currentPhase,
   })
     .select("expert alternative comparedAlternative criterion value expressionDomain")
-    .populate("expressionDomain", "type linguisticLabels numericRange name")
+    .populate(
+      "expressionDomain",
+      "type linguisticLabels numericRange membershipFunction valueCount valuesMode name"
+    )
     .lean();
 
   const snapshotSet = new Set();

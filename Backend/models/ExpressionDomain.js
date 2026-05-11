@@ -102,6 +102,30 @@ const expressionDomainSchema = new Schema({
     },
   },
 
+  membershipFunction: {
+    type: String,
+    trim: true,
+    default: null,
+    required() {
+      return this.type === "linguistic";
+    },
+  },
+  valueCount: {
+    type: Number,
+    default: null,
+    required() {
+      return this.type === "linguistic";
+    },
+  },
+  valuesMode: {
+    type: String,
+    enum: ["automatic", "custom"],
+    default: null,
+    required() {
+      return this.type === "linguistic";
+    },
+  },
+
   linguisticLabels: [
     {
       label: {

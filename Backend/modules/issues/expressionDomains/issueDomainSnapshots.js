@@ -44,6 +44,10 @@ export const createIssueDomainSnapshots = async ({
     name: domain.name,
     type: domain.type,
     numericRange: domain.type === "numeric" ? domain.numericRange : undefined,
+    membershipFunction:
+      domain.type === "linguistic" ? domain.membershipFunction || null : null,
+    valueCount: domain.type === "linguistic" ? domain.valueCount ?? null : null,
+    valuesMode: domain.type === "linguistic" ? domain.valuesMode || null : null,
     linguisticLabels:
       domain.type === "linguistic" ? domain.linguisticLabels || [] : [],
   }));

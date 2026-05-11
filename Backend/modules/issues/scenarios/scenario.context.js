@@ -120,7 +120,10 @@ const modelSupportsIssueDomainType = (supportedDomains, domainType) => {
   }
 
   if (domainType === "linguistic") {
-    return supportedDomains?.linguistic === true;
+    return (
+      Array.isArray(supportedDomains?.linguistic) &&
+      supportedDomains.linguistic.length > 0
+    );
   }
 
   return false;

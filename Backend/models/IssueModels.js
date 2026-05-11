@@ -289,8 +289,8 @@ const issueModelSchema = new Schema({
       },
     },
     linguistic: {
-      type: Boolean,
-      default: false,
+      type: [String],
+      default: [],
     },
   },
   modelInputFields: {

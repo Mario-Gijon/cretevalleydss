@@ -91,7 +91,7 @@ def _build_supported_domains(domain_types: list[str]) -> dict[str, Any]:
             "continuous": "numericcontinuous" in normalized_domain_types,
             "discrete": "numericdiscrete" in normalized_domain_types,
         },
-        "linguistic": "linguistic" in normalized_domain_types,
+        "linguistic": ["triangular"] if "linguistic" in normalized_domain_types else [],
     }
 
 

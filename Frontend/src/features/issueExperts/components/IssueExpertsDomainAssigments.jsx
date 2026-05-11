@@ -21,6 +21,7 @@ import {
   getMixedOrValue,
   getSupportedDomainPools,
 } from "../../../utils/domainAssignments.utils";
+import { getLinguisticMembershipDefinition } from "../../../utils/linguisticMembershipFunctions";
 
 const rowSx = {
   width: "100%",
@@ -90,7 +91,7 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     [selectedModel, globalDomains, expressionDomains]
   );
   const supportsNumeric = support.numericContinuous || support.numericDiscrete;
-  const supportsLinguistic = support.linguistic;
+  const supportsLinguistic = support.linguisticMembershipFunctions.length > 0;
 
   const domainOptions = useMemo(() => {
     const opts = [];
@@ -240,14 +241,26 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
 
   if (supportsLinguistic && !supportsNumeric && domainOptions.length === 0) {
+    const acceptedTypes = support.linguisticMembershipFunctions
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+    const acceptedTypeLabels = acceptedTypes.map(
+      (item) => getLinguisticMembershipDefinition(item)?.label || item
+    );
+
     return (
       <Box sx={{ py: 1.5 }}>
         <Typography variant="body2" sx={{ fontWeight: 950, color: "warning.main" }}>
           This model only supports linguistic domains.
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850, mt: 0.5 }}>
-          No linguistic domains are available. Please create one to continue.
+          No compatible linguistic domains are available. Please create one to continue.
         </Typography>
+        {acceptedTypes.length > 0 ? (
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850, mt: 0.6 }}>
+            Accepted linguistic types: {acceptedTypeLabels.join(", ")}
+          </Typography>
+        ) : null}
       </Box>
     );
   }
