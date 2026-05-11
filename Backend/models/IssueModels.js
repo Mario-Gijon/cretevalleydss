@@ -5,35 +5,6 @@
 import { Schema, model } from "mongoose";
 import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
-
-/**
- * Documento persistido de definición de modelo de decisión.
- *
- * @typedef {Object} IssueModelDocument
- * @property {*} _id Identificador del documento.
- * @property {string} name Nombre del modelo.
- * @property {string} [apiModelKey] Clave estable del modelo en ApiModels.
- * @property {string} [modelRole] Rol declarado en el manifest.
- * @property {string} [modelStatus] Estado declarado en el manifest.
- * @property {boolean} [publicInIssueCatalog] Indica si aparece en el catálogo público de issues.
- * @property {boolean} [supportsScenarios] Indica si soporta escenarios.
- * @property {Object} [apiEndpoint] Endpoint publicado por ApiModels.
- * @property {Object} [manifestSync] Metadatos de sincronización con el manifest.
- * @property {boolean} isConsensus Indica si el modelo soporta consenso.
- * @property {boolean} isMultiCriteria Indica si el modelo es multicriterio.
- * @property {string} smallDescription Descripción breve.
- * @property {string} extendDescription Descripción ampliada.
- * @property {string} moreInfoUrl Enlace externo de referencia.
- * @property {Array<Object>} parameters Parámetros configurables.
- * @property {string} evaluationStructure Estructura de evaluación exigida.
- * @property {string | null} [lifecycleKind] Tipo de ciclo de vida de resolución.
- * @property {string | null} [inputKind] Tipo de payload de entrada publicado por ApiModels.
- * @property {string | null} [outputKind] Tipo de salida/resultado publicado por ApiModels.
- * @property {Object} [criterionTypes] Vocabulario de tipos de criterio y aliases publicados por ApiModels.
- * @property {Object} supportedDomains Dominios de expresión soportados.
- */
-
-
 /**
  * Comprueba si un valor pertenece al conjunto permitido.
  *
@@ -112,30 +83,6 @@ function validateParameterDefault(value) {
   return true;
 }
 
-/**
- * Subschema de parámetro configurable de un modelo de decisión.
- *
- * Define un parámetro declarativo del modelo, incluyendo su tipo,
- * valor por defecto y restricciones de validación.
- *
- * Tipos soportados:
- * - `number`
- * - `integer`
- * - `boolean`
- * - `string`
- * - `enum`
- * - `array`
- * - `interval`
- * - `tuple`
- * - `fuzzyNumber`
- * - `fuzzyArray`
- *
- * Restricciones soportadas:
- * - `min`, `max`, `step`
- * - `length`, `itemType`, `tupleLength`
- * - `sum`, `normalize`, `ordered`
- * - `allowed`
- */
 const parameterSchema = new Schema(
   {
     key: {
@@ -160,18 +107,6 @@ const parameterSchema = new Schema(
     },
     type: {
       type: String,
-      enum: [
-        "number",
-        "integer",
-        "boolean",
-        "string",
-        "enum",
-        "array",
-        "interval",
-        "tuple",
-        "fuzzyNumber",
-        "fuzzyArray",
-      ],
       required: true,
     },
     scope: {
@@ -192,48 +127,8 @@ const parameterSchema = new Schema(
       type: Schema.Types.Mixed,
     },
     restrictions: {
-      min: {
-        type: Number,
-        default: null,
-      },
-      max: {
-        type: Number,
-        default: null,
-      },
-      step: {
-        type: Number,
-        default: null,
-      },
-      length: {
-        type: Schema.Types.Mixed,
-        default: null,
-      },
-      itemType: {
-        type: String,
-        trim: true,
-        default: null,
-      },
-      tupleLength: {
-        type: Number,
-        default: null,
-      },
-      sum: {
-        type: Number,
-        default: null,
-      },
-      normalize: {
-        type: Boolean,
-        default: false,
-      },
-      ordered: {
-        type: String,
-        trim: true,
-        default: null,
-      },
-      allowed: {
-        type: [Schema.Types.Mixed],
-        default: null,
-      },
+      type: Schema.Types.Mixed,
+      default: null,
     },
     ui: {
       type: Schema.Types.Mixed,
@@ -250,40 +145,6 @@ parameterSchema.path("default").validate(
   "Valor inválido para el parámetro según sus restricciones"
 );
 
-/**
- * Modelo de definición de algoritmo o método de decisión.
- *
- * Describe un modelo disponible para crear issues, incluyendo su nombre,
- * descripción funcional, parámetros configurables, estructura de evaluación
- * y tipos de dominios de expresión soportados.
- *
- * Campos principales:
- * - `name`: nombre del modelo.
- * - `apiModelKey`: clave estable del modelo en ApiModels.
- * - `isConsensus`: indica si el modelo está orientado a procesos con consenso.
- * - `isMultiCriteria`: indica si el modelo trabaja con múltiples criterios.
- * - `smallDescription`: descripción breve del modelo.
- * - `extendDescription`: descripción ampliada.
- * - `moreInfoUrl`: enlace informativo externo.
- * - `parameters`: parámetros configurables del modelo.
- * - `evaluationStructure`: estructura de evaluación exigida por el modelo.
- * - `inputKind`: clase de payload de entrada esperada por ApiModels.
- * - `outputKind`: clase de resultado devuelta por ApiModels.
- * - `criterionTypes`: vocabulario canónico y aliases de tipos de criterio.
- * - `supportedDomains`: capacidades del modelo respecto a dominios numéricos
- *   y lingüísticos.
- *
- * Notas de dominio:
- * - Este modelo actúa como catálogo de modelos disponibles.
- * - No almacena ejecuciones ni resultados de issues concretos.
- */
-
-/**
- * Schema Mongoose que define la estructura persistida del documento.
- *
- * @constant
- * @type {Object}
- */
 const issueModelSchema = new Schema({
   name: {
     type: String,
@@ -293,6 +154,7 @@ const issueModelSchema = new Schema({
   apiModelKey: {
     type: String,
     trim: true,
+    required: true,
     index: true,
   },
   modelFamilyKey: {
@@ -310,68 +172,62 @@ const issueModelSchema = new Schema({
     trim: true,
     required: true,
   },
-  modelRole: {
-    type: String,
-    enum: ["issueModel", "weightingService", "utilityModel"],
-    default: "issueModel",
-  },
-  modelStatus: {
-    type: String,
-    enum: [
-      "available",
-      "experimental",
-      "pendingIntegration",
-      "deprecated",
-      "stale",
-      "unavailable",
-    ],
-    default: "available",
-  },
-  publicInIssueCatalog: {
+  isIssueModel: {
     type: Boolean,
-    default: true,
+    required: true,
+    default: false,
   },
-  supportsScenarios: {
+  visibleInIssueCreation: {
     type: Boolean,
-    default: true,
+    default: function resolveDefaultVisibility() {
+      return this.isIssueModel === true;
+    },
   },
   apiEndpoint: {
     method: {
       type: String,
       trim: true,
+      default: null,
     },
     path: {
       type: String,
       trim: true,
+      required: true,
     },
     operationId: {
       type: String,
       trim: true,
+      default: null,
     },
   },
   manifestSync: {
     source: {
       type: String,
       trim: true,
+      default: null,
     },
     manifestVersion: {
       type: String,
       trim: true,
+      default: null,
     },
     apiVersion: {
       type: String,
       trim: true,
+      default: null,
     },
     lastSyncedAt: {
       type: Date,
+      default: null,
     },
     lastSeenAt: {
       type: Date,
+      default: null,
     },
-  },
-  isConsensus: {
-    type: Boolean,
-    required: true,
+    isStale: {
+      type: Boolean,
+      default: false,
+    },
   },
   isMultiCriteria: {
     type: Boolean,
@@ -379,15 +235,18 @@ const issueModelSchema = new Schema({
   },
   smallDescription: {
     type: String,
-    required: true,
+    trim: true,
+    default: null,
   },
   extendDescription: {
     type: String,
-    required: true,
+    trim: true,
+    default: null,
   },
   moreInfoUrl: {
     type: String,
-    required: true,
+    trim: true,
+    default: null,
   },
   parameters: {
     type: [parameterSchema],
@@ -402,71 +261,54 @@ const issueModelSchema = new Schema({
     type: String,
     trim: true,
     enum: Object.values(LIFECYCLE_KINDS),
+    required: true,
   },
-  inputKind: {
+  apiInputFormat: {
     type: String,
     trim: true,
-    default: null,
+    required: true,
   },
-  outputKind: {
+  apiOutputFormat: {
     type: String,
     trim: true,
-    default: null,
+    required: true,
   },
   criterionTypes: {
-    canonical: {
-      type: [String],
-      default: [],
-    },
-    aliases: {
-      type: Map,
-      of: String,
-      default: undefined,
-    },
+    type: [String],
+    default: [],
   },
   supportedDomains: {
     numeric: {
-      enabled: {
+      continuous: {
         type: Boolean,
         default: false,
       },
-      range: {
-        min: {
-          type: Number,
-          default: null,
-        },
-        max: {
-          type: Number,
-          default: null,
-        },
+      discrete: {
+        type: Boolean,
+        default: false,
       },
     },
     linguistic: {
-      enabled: {
-        type: Boolean,
-        default: false,
-      },
-      minLabels: {
-        type: Number,
-        default: null,
-      },
-      maxLabels: {
-        type: Number,
-        default: null,
-      },
-      oddOnly: {
-        type: Boolean,
-        default: false,
-      },
+      type: Boolean,
+      default: false,
     },
+  },
+  modelInputFields: {
+    type: [String],
+    default: [],
+  },
+  modelOutputFields: {
+    type: [String],
+    default: [],
+  },
+  request: {
+    type: Schema.Types.Mixed,
+    default: null,
+  },
+  response: {
+    type: Schema.Types.Mixed,
+    default: null,
   },
 });
 
-
-/**
- * Modelo Mongoose compilado desde el schema del módulo.
- *
- * @class IssueModel
- * @classdesc Modelo Mongoose que actúa como catálogo de modelos y algoritmos de decisión.
- */
 export const IssueModel = model("IssueModel", issueModelSchema);

@@ -62,6 +62,50 @@ export const getMixedOrValue = (values) => {
   return null;
 };
 
+const toDomainId = (value) => (value === null || value === undefined ? null : String(value));
+
+const getModelDomainSupport = (selectedModel) => ({
+  numericContinuous: selectedModel?.supportedDomains?.numeric?.continuous === true,
+  numericDiscrete: selectedModel?.supportedDomains?.numeric?.discrete === true,
+  linguistic: selectedModel?.supportedDomains?.linguistic === true,
+});
+
+const isNumericContinuousDomain = (domain) =>
+  domain?.type === "numeric" &&
+  (domain?.numericRange?.step === null || domain?.numericRange?.step === undefined);
+
+const isNumericDiscreteDomain = (domain) =>
+  domain?.type === "numeric" &&
+  Number.isFinite(domain?.numericRange?.step) &&
+  domain.numericRange.step > 0;
+
+export const getSupportedDomainPools = (
+  selectedModel,
+  globalDomains = [],
+  expressionDomains = []
+) => {
+  const support = getModelDomainSupport(selectedModel);
+  const numericCandidates = [...globalDomains, ...expressionDomains].filter(
+    (domain) => domain?.type === "numeric"
+  );
+
+  const numericDomains = numericCandidates.filter(
+    (domain) =>
+      (support.numericContinuous && isNumericContinuousDomain(domain)) ||
+      (support.numericDiscrete && isNumericDiscreteDomain(domain))
+  );
+
+  const linguisticDomains = support.linguistic
+    ? expressionDomains.filter((domain) => domain?.type === "linguistic")
+    : [];
+
+  return {
+    support,
+    numericDomains,
+    linguisticDomains,
+  };
+};
+
 /**
  * Construye la estructura inicial de asignaciones de dominios.
  *
@@ -83,29 +127,44 @@ export const buildInitialAssignments = (
   globalDomains,
   expressionDomains
 ) => {
-  const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
-  const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
-
-  const numericDomains = supportsNumeric
-    ? globalDomains.filter((d) => d.type === "numeric")
-    : [];
-
-  const linguisticDomains = supportsLinguistic
-    ? [...globalDomains, ...expressionDomains].filter(
-        (d) => d.type === "linguistic"
-      )
-    : [];
+  const { support, numericDomains, linguisticDomains } = getSupportedDomainPools(
+    selectedModel,
+    globalDomains,
+    expressionDomains
+  );
 
   const validDomainIds = [
-    ...numericDomains.map((d) => d._id),
-    ...linguisticDomains.map((d) => d._id),
+    ...numericDomains.map((domain) => toDomainId(domain._id)).filter(Boolean),
+    ...linguisticDomains.map((domain) => toDomainId(domain._id)).filter(Boolean),
   ];
 
-  const defaultDomainId =
+  const continuousDefaultDomainId =
     numericDomains.find(
-      (d) => d.numericRange?.min === 0 && d.numericRange?.max === 1
-    )?._id ||
-    linguisticDomains[0]?._id ||
+      (domain) =>
+        isNumericContinuousDomain(domain) &&
+        domain?.numericRange?.min === 0 &&
+        domain?.numericRange?.max === 1
+    )?._id || null;
+
+  const discreteDefaultDomainId =
+    numericDomains.find(
+      (domain) =>
+        isNumericDiscreteDomain(domain) &&
+        domain?.numericRange?.min === 0 &&
+        domain?.numericRange?.max === 9 &&
+        domain?.numericRange?.step === 1
+    )?._id || null;
+
+  const defaultDomainId =
+    (support.numericContinuous
+      ? toDomainId(continuousDefaultDomainId) ||
+        toDomainId(numericDomains.find(isNumericContinuousDomain)?._id)
+      : null) ||
+    (support.numericDiscrete
+      ? toDomainId(discreteDefaultDomainId) ||
+        toDomainId(numericDomains.find(isNumericDiscreteDomain)?._id)
+      : null) ||
+    toDomainId(linguisticDomains[0]?._id) ||
     "undefined";
 
   const updated = structuredClone(currentAssignments || { experts: {} });
@@ -142,7 +201,7 @@ export const buildInitialAssignments = (
 
       criteria.forEach((crit) => {
         const critName = crit.name;
-        const currentDomain = criteriaData[critName];
+        const currentDomain = toDomainId(criteriaData[critName]);
 
         if (!currentDomain || !validDomainIds.includes(currentDomain)) {
           criteriaData[critName] = defaultDomainId;

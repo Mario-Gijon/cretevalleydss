@@ -2,7 +2,6 @@ import { getEvaluationStructureOperationsOrThrow } from "../alternativeEvaluatio
 import { buildModelInputPayload } from "./modelInputs/modelInput.adapters.js";
 import { buildResolutionResult } from "./resolution.results.js";
 import { buildCriterionTypes, countNullsDeep } from "./resolution.shared.js";
-import { normalizeParams } from "../../../services/modelApi/modelParamNormalizer.js";
 import {
   buildModelEndpointUrl,
   getModelEndpointKey,
@@ -29,8 +28,8 @@ const getBuildResolutionDataOrThrow = ({
   return operations.buildResolutionData;
 };
 
-const isDirectInputKind = (inputKind) =>
-  inputKind === "directCrispMatrix" || inputKind === "directFuzzyMatrix";
+const isDirectApiInputFormat = (apiInputFormat) =>
+  apiInputFormat === "directCrispMatrix" || apiInputFormat === "directFuzzyMatrix";
 
 export const executeResolutionModelPipeline = async ({
   issue,
@@ -61,7 +60,7 @@ export const executeResolutionModelPipeline = async ({
     criteria,
     participations,
     currentPhase,
-    inputKind: model?.inputKind,
+    apiInputFormat: model?.apiInputFormat,
   });
 
   if (requireCompleteMatrices) {
@@ -80,14 +79,13 @@ export const executeResolutionModelPipeline = async ({
     );
   }
 
-  const normalizedModelParams = normalizeParams(modelParameters);
-  const criterionTypes = isDirectInputKind(model?.inputKind)
+  const criterionTypes = isDirectApiInputFormat(model?.apiInputFormat)
     ? buildCriterionTypes(criteria)
     : null;
   const modelInputPayload = buildModelInputPayload({
-    inputKind: model?.inputKind,
+    apiInputFormat: model?.apiInputFormat,
     matrices: matricesUsed,
-    modelParameters: normalizedModelParams,
+    modelParameters,
     criterionTypes,
     consensusThreshold: issue?.consensusThreshold,
   });
@@ -118,7 +116,7 @@ export const executeResolutionModelPipeline = async ({
     issue,
     model,
     modelKey,
-    modelParameters: normalizedModelParams,
+    modelParameters,
     rawOutput: results,
   });
 
@@ -127,7 +125,7 @@ export const executeResolutionModelPipeline = async ({
     snapshotIdsUsed,
     results,
     modelKey,
-    normalizedModelParams,
+    normalizedModelParams: modelParameters,
     ...resolutionResult,
   };
 };

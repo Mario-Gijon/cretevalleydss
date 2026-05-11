@@ -16,17 +16,17 @@ const buildPairwisePayload = ({
   modelParameters,
 });
 
-const INPUT_PAYLOAD_BUILDERS_BY_KIND = {
+const INPUT_PAYLOAD_BUILDERS_BY_API_INPUT_FORMAT = {
   directCrispMatrix: buildDirectPayload,
   directFuzzyMatrix: buildDirectPayload,
   pairwisePreferenceMatrix: buildPairwisePayload,
 };
 
 /**
- * Construye el payload de entrada para ApiModels según inputKind.
+ * Construye el payload de entrada para ApiModels según apiInputFormat.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|null|undefined} params.inputKind Tipo de input esperado por ApiModels.
+ * @param {string|null|undefined} params.apiInputFormat Tipo de input esperado por ApiModels.
  * @param {Object} params.matrices Matrices de evaluaciones.
  * @param {Object} params.modelParameters Parámetros efectivos del modelo.
  * @param {string[]} [params.criterionTypes] Tipos de criterio para modelos directos.
@@ -34,21 +34,22 @@ const INPUT_PAYLOAD_BUILDERS_BY_KIND = {
  * @returns {Object}
  */
 export const buildModelInputPayload = ({
-  inputKind,
+  apiInputFormat,
   matrices,
   modelParameters,
   criterionTypes,
   consensusThreshold,
 }) => {
-  const normalizedInputKind = String(inputKind || "").trim();
+  const normalizedApiInputFormat = String(apiInputFormat || "").trim();
 
-  if (!normalizedInputKind) {
-    throw createInternalError("Model input kind is required");
+  if (!normalizedApiInputFormat) {
+    throw createInternalError("Model apiInputFormat is required");
   }
 
-  const buildByInputKind = INPUT_PAYLOAD_BUILDERS_BY_KIND[normalizedInputKind];
-  if (buildByInputKind) {
-    return buildByInputKind({
+  const buildByApiInputFormat =
+    INPUT_PAYLOAD_BUILDERS_BY_API_INPUT_FORMAT[normalizedApiInputFormat];
+  if (buildByApiInputFormat) {
+    return buildByApiInputFormat({
       matrices,
       modelParameters,
       criterionTypes,
@@ -57,6 +58,6 @@ export const buildModelInputPayload = ({
   }
 
   throw createInternalError(
-    `Unsupported model input kind: ${String(inputKind)}`
+    `Unsupported apiInputFormat: ${String(apiInputFormat)}`
   );
 };

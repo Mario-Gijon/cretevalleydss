@@ -62,8 +62,9 @@ export const createIssueFlow = async ({
     modelLifecycleKind,
     apiModelKey,
     apiEndpoint,
-    inputKind,
-    outputKind,
+    apiInputFormat,
+    apiOutputFormat,
+    modelIsConsensus,
     modelFamilyKey,
     modelVersion,
     versionLabel,
@@ -85,15 +86,15 @@ export const createIssueFlow = async ({
     model: model._id,
     apiModelKey,
     apiEndpoint,
-    inputKind,
-    outputKind,
+    apiInputFormat,
+    apiOutputFormat,
     modelFamilyKey,
     modelVersion,
     versionLabel,
     evaluationStructure: modelEvaluationStructure,
     lifecycleKind: modelLifecycleKind,
     consensusPhase: 1,
-    isConsensus: input.withConsensus,
+    isConsensus: modelIsConsensus,
     name: input.issueName,
     description: input.issueDescription,
     active: true,
@@ -103,7 +104,7 @@ export const createIssueFlow = async ({
       : null,
     weightingMode: input.weightingMode,
     currentStage: "criteriaWeighting",
-    ...(model.isConsensus && {
+    ...(modelIsConsensus && {
       consensusMaxPhases: input.consensusMaxPhases,
       consensusThreshold: input.consensusThreshold,
     }),
@@ -187,6 +188,7 @@ export const createIssueFlow = async ({
   const domainDocs = await loadAccessibleExpressionDomains({
     domainIdList: usedDomainIds,
     userId: adminUserId,
+    modelSupportedDomains: model?.supportedDomains || null,
     session,
   });
 

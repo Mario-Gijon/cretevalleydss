@@ -1,431 +1,41 @@
 import { IssueModel } from "../../models/IssueModels.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
-import { EVALUATION_STRUCTURES } from "../../modules/issues/issue.evaluationStructure.js";
-import { isSupportedLifecycleKind } from "../../modules/issues/issue.lifecycleKind.js";
+import {
+  buildManifestTechnicalProjection,
+  getSyncBlockerReason,
+  hasOwn,
+  isValueEqual,
+  normalizeComparableFieldValue,
+  normalizeEndpoint,
+  normalizeParameters,
+  normalizeSupportedDomains,
+  toIdString,
+  validateSyncableManifestModel,
+} from "./modelManifest.mapper.js";
 
-const TECHNICAL_FIELDS = [
-  "apiModelKey",
-  "modelFamilyKey",
-  "modelVersion",
-  "versionLabel",
-  "apiEndpoint",
-  "evaluationStructure",
-  "lifecycleKind",
-  "inputKind",
-  "outputKind",
-  "isConsensus",
-  "isMultiCriteria",
-  "parameters",
-  "supportedDomains",
-  "role",
-  "status",
-  "supportsScenarios",
-  "smallDescription",
-  "extendDescription",
-  "moreInfoUrl",
-];
+const LOCAL_CONFIGURATION_FIELDS = ["visibleInIssueCreation"];
 
-const LOCAL_CONFIGURATION_FIELDS = ["publicInIssueCatalog"];
-
-const CATALOG_SYNC_FIELDS = [
-  "smallDescription",
-  "extendDescription",
-  "moreInfoUrl",
-];
-
-const SUPPORTED_EVALUATION_STRUCTURES = new Set(
-  Object.values(EVALUATION_STRUCTURES)
-);
-
-const SUPPORTED_INPUT_KINDS = new Set([
-  "directCrispMatrix",
-  "directFuzzyMatrix",
-  "pairwisePreferenceMatrix",
-]);
-
-const SUPPORTED_OUTPUT_KINDS = new Set([
-  "ranking",
-  "consensusRanking",
-]);
-
-const SUPPORTED_PARAMETER_TYPES = new Set([
-  "number",
-  "integer",
-  "boolean",
-  "string",
-  "enum",
-  "array",
-  "interval",
-  "tuple",
-  "fuzzyNumber",
-  "fuzzyArray",
-]);
-
-const SUPPORTED_PARAMETER_RESTRICTIONS = new Set([
-  "min",
-  "max",
-  "allowed",
-  "length",
-  "itemType",
-  "tupleLength",
-  "sum",
-  "normalize",
-  "ordered",
-]);
-
-const SUPPORTED_ORDERED_RULES = new Set([
-  "strictIncreasing",
-  "nonDecreasing",
-]);
-
-const SUPPORTED_DYNAMIC_LENGTHS = new Set([
-  "matchCriteria",
-  "matchAlternatives",
-]);
-
-const hasOwn = (value, key) =>
-  Object.prototype.hasOwnProperty.call(value || {}, key);
-
-const toIdString = (value) => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  return String(value);
-};
-
-const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-const normalizeParameter = (parameter = {}) => {
-  const restrictions = parameter?.restrictions || {};
-  const key = normalizeNonEmptyString(parameter?.key);
-
-  return {
-    key: key ?? null,
-    name: key ?? null,
-    label: normalizeNonEmptyString(parameter?.label) ?? null,
-    description: normalizeNonEmptyString(parameter?.description) ?? null,
-    type: parameter?.type ?? null,
-    required: parameter?.required === true,
-    default: parameter?.default ?? null,
-    restrictions: {
-      min: restrictions.min ?? null,
-      max: restrictions.max ?? null,
-      allowed: restrictions.allowed ?? null,
-      length: restrictions.length ?? null,
-      itemType: restrictions.itemType ?? null,
-      tupleLength: restrictions.tupleLength ?? null,
-      sum: restrictions.sum ?? null,
-      normalize: restrictions.normalize === true,
-      ordered: restrictions.ordered ?? null,
-    },
-    ui:
-      parameter?.ui && typeof parameter.ui === "object"
-        ? { ...parameter.ui }
-        : null,
-  };
-};
-
-const normalizeParameters = (parameters) => {
-  if (!Array.isArray(parameters)) {
-    return [];
-  }
-
-  return parameters
-    .map(normalizeParameter)
-    .sort((left, right) => String(left.name).localeCompare(String(right.name)));
-};
-
-const normalizeSupportedDomains = (supportedDomains) => {
-  if (!supportedDomains || typeof supportedDomains !== "object") {
-    return null;
-  }
-
-  const numeric = supportedDomains.numeric || null;
-  const linguistic = supportedDomains.linguistic || null;
-
-  return {
-    numeric: numeric
-      ? {
-        enabled: Boolean(numeric.enabled),
-        range: {
-          min: numeric.range?.min ?? null,
-          max: numeric.range?.max ?? null,
-        },
-      }
-      : null,
-    linguistic: linguistic
-      ? {
-        enabled: Boolean(linguistic.enabled),
-        minLabels: linguistic.minLabels ?? null,
-        maxLabels: linguistic.maxLabels ?? null,
-        oddOnly: Boolean(linguistic.oddOnly),
-      }
-      : null,
-  };
-};
-
-const normalizeEndpoint = (endpoint) => {
-  if (!endpoint || typeof endpoint !== "object") {
-    return null;
-  }
-
-  const rawPath = normalizeNonEmptyString(endpoint.path);
-  const path = rawPath ? `/${rawPath.replace(/^\/+/, "")}` : null;
-
-  if (!path) {
-    return null;
-  }
-
-  return {
-    method: normalizeNonEmptyString(endpoint.method),
-    path,
-    operationId: normalizeNonEmptyString(endpoint.operationId),
-  };
-};
-
-const validateManifestTechnicalFields = (manifestModel) => {
-  const errors = [];
-  const capabilities = manifestModel?.capabilities || {};
-
-  const key = normalizeNonEmptyString(manifestModel?.key);
-  const endpointPath = normalizeNonEmptyString(manifestModel?.endpoint?.path);
-  const evaluationStructure = normalizeNonEmptyString(
-    capabilities.evaluationStructure
+const getManifestSyncFields = (manifestProjection) => {
+  const projectionFields = Object.keys(manifestProjection || {}).filter(
+    (field) => field !== "displayName"
   );
-  const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
-  const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
-  const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
-  const lifecycleKind = normalizeNonEmptyString(capabilities.lifecycleKind);
-  const inputKind = normalizeNonEmptyString(capabilities.inputKind);
-  const outputKind = normalizeNonEmptyString(capabilities.outputKind);
 
-  if (!key) {
-    errors.push("key");
-  }
-
-  if (!endpointPath) {
-    errors.push("endpoint.path");
-  }
-  if (!modelFamilyKey) {
-    errors.push("modelFamilyKey");
-  }
-  if (!modelVersion) {
-    errors.push("modelVersion");
-  }
-  if (!versionLabel) {
-    errors.push("versionLabel");
-  }
-
-  if (!evaluationStructure) {
-    errors.push("capabilities.evaluationStructure");
-  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
-    errors.push(
-      `capabilities.evaluationStructure (unsupported: ${evaluationStructure})`
-    );
-  }
-
-  if (!lifecycleKind) {
-    errors.push("capabilities.lifecycleKind");
-  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
-    errors.push(
-      `capabilities.lifecycleKind (unsupported: ${lifecycleKind})`
-    );
-  }
-
-  if (!inputKind) {
-    errors.push("capabilities.inputKind");
-  } else if (!SUPPORTED_INPUT_KINDS.has(inputKind)) {
-    errors.push(`capabilities.inputKind (unsupported: ${inputKind})`);
-  }
-
-  if (!outputKind) {
-    errors.push("capabilities.outputKind");
-  } else if (!SUPPORTED_OUTPUT_KINDS.has(outputKind)) {
-    errors.push(`capabilities.outputKind (unsupported: ${outputKind})`);
-  }
-
-  if (typeof capabilities.isConsensus !== "boolean") {
-    errors.push("capabilities.isConsensus");
-  }
-
-  const parameters = Array.isArray(manifestModel?.parameters)
-    ? manifestModel.parameters
-    : [];
-  const seenKeys = new Set();
-
-  parameters.forEach((parameter, index) => {
-    const parameterPath = `parameters[${index}]`;
-    const key = normalizeNonEmptyString(parameter?.key);
-    const type = normalizeNonEmptyString(parameter?.type);
-    const restrictions =
-      parameter?.restrictions && typeof parameter.restrictions === "object"
-        ? parameter.restrictions
-        : {};
-
-    if (!key) {
-      errors.push(`${parameterPath}.key`);
-      return;
-    }
-
-    if (seenKeys.has(key)) {
-      errors.push(`${parameterPath}.key (duplicate: ${key})`);
-    }
-    seenKeys.add(key);
-
-    if (!type || !SUPPORTED_PARAMETER_TYPES.has(type)) {
-      errors.push(`${parameterPath}.type (unsupported: ${type || "unknown"})`);
-    }
-
-    Object.keys(restrictions).forEach((restrictionKey) => {
-      if (!SUPPORTED_PARAMETER_RESTRICTIONS.has(restrictionKey)) {
-        errors.push(`${parameterPath}.restrictions.${restrictionKey} (unsupported)`);
-      }
-    });
-
-    if (
-      restrictions.length !== undefined &&
-      restrictions.length !== null &&
-      !(Number.isInteger(restrictions.length) || SUPPORTED_DYNAMIC_LENGTHS.has(restrictions.length))
-    ) {
-      errors.push(`${parameterPath}.restrictions.length (invalid)`);
-    }
-
-    if (
-      restrictions.ordered !== undefined &&
-      restrictions.ordered !== null &&
-      !SUPPORTED_ORDERED_RULES.has(restrictions.ordered)
-    ) {
-      errors.push(`${parameterPath}.restrictions.ordered (invalid)`);
-    }
-
-    if (type === "enum" && (!Array.isArray(restrictions.allowed) || restrictions.allowed.length === 0)) {
-      errors.push(`${parameterPath}.restrictions.allowed (required for enum)`);
-    }
-  });
-
-  return errors;
+  return ["name", ...projectionFields];
 };
 
-const removeStorageFields = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(removeStorageFields);
+const getManifestTechnicalValue = (manifestModel, manifestProjection, field) => {
+  if (field === "name") {
+    return manifestProjection.displayName;
   }
 
-  if (!value || typeof value !== "object") {
-    return value ?? null;
-  }
-
-  return Object.keys(value)
-    .filter((key) => key !== "_id" && key !== "__v")
-    .sort()
-    .reduce((result, key) => {
-      result[key] = removeStorageFields(value[key]);
-      return result;
-    }, {});
-};
-
-const normalizeTechnicalValue = (field, value) => {
-  if (field === "apiEndpoint") {
-    return normalizeEndpoint(value);
-  }
-
-  if (field === "parameters") {
-    return normalizeParameters(value);
-  }
-
-  if (field === "supportedDomains") {
-    return normalizeSupportedDomains(value);
-  }
-
-  return removeStorageFields(value);
-};
-
-const getManifestTechnicalValue = (manifestModel, field) => {
-  if (field === "apiModelKey") {
-    return normalizeNonEmptyString(manifestModel?.key);
-  }
-
-  if (field === "apiEndpoint") {
-    return normalizeEndpoint(manifestModel?.endpoint);
-  }
-
-  if (field === "modelFamilyKey") {
-    return normalizeNonEmptyString(manifestModel?.modelFamilyKey);
-  }
-
-  if (field === "modelVersion") {
-    return normalizeNonEmptyString(manifestModel?.modelVersion);
-  }
-
-  if (field === "versionLabel") {
-    return normalizeNonEmptyString(manifestModel?.versionLabel);
-  }
-
-  if (field === "inputKind" || field === "outputKind") {
-    return manifestModel?.capabilities?.[field] ?? null;
-  }
-
-  if (field === "smallDescription") {
-    return (
-      normalizeNonEmptyString(manifestModel?.catalog?.smallDescription) ||
-      normalizeNonEmptyString(manifestModel?.documentation?.summary) ||
-      null
-    );
-  }
-
-  if (field === "extendDescription") {
-    return (
-      normalizeNonEmptyString(manifestModel?.catalog?.extendDescription) ||
-      normalizeNonEmptyString(manifestModel?.documentation?.description) ||
-      normalizeNonEmptyString(manifestModel?.catalog?.smallDescription) ||
-      normalizeNonEmptyString(manifestModel?.documentation?.summary) ||
-      null
-    );
-  }
-
-  if (field === "moreInfoUrl") {
-    return (
-      normalizeNonEmptyString(manifestModel?.catalog?.moreInfoUrl) ||
-      normalizeNonEmptyString(manifestModel?.documentation?.moreInfoUrl) ||
-      null
-    );
-  }
-
-  if (
-    field === "evaluationStructure" ||
-    field === "lifecycleKind" ||
-    field === "isConsensus" ||
-    field === "isMultiCriteria" ||
-    field === "supportedDomains" ||
-    field === "supportsScenarios"
-  ) {
-    return manifestModel?.capabilities?.[field] ?? null;
-  }
-
-  if (field === "parameters") {
-    return manifestModel?.parameters ?? [];
+  if (hasOwn(manifestProjection, field)) {
+    return manifestProjection[field] ?? null;
   }
 
   return manifestModel?.[field] ?? null;
 };
 
 const getMongoTechnicalValue = (mongoModel, field) => {
-  if (field === "role") {
-    return mongoModel?.modelRole ?? null;
-  }
-
-  if (field === "status") {
-    return mongoModel?.modelStatus ?? null;
-  }
-
   if (!hasOwn(mongoModel, field)) {
     return null;
   }
@@ -433,25 +43,25 @@ const getMongoTechnicalValue = (mongoModel, field) => {
   return mongoModel[field] ?? null;
 };
 
-const areValuesEqual = (left, right) => {
-  return JSON.stringify(left) === JSON.stringify(right);
-};
+const isMongoFieldPresent = (mongoModel, field) => hasOwn(mongoModel, field);
 
 const compareTechnicalFields = (manifestModel, mongoModel) => {
   const differences = [];
+  const manifestProjection = buildManifestTechnicalProjection(manifestModel);
+  const manifestSyncFields = getManifestSyncFields(manifestProjection);
 
-  for (const field of TECHNICAL_FIELDS) {
-    const manifestValue = normalizeTechnicalValue(
-      field,
-      getManifestTechnicalValue(manifestModel, field)
+  for (const field of manifestSyncFields) {
+    const manifestRawValue = getManifestTechnicalValue(
+      manifestModel,
+      manifestProjection,
+      field
     );
-    const mongoValue = normalizeTechnicalValue(
-      field,
-      getMongoTechnicalValue(mongoModel, field)
-    );
-    const mongoFieldPresent = hasOwn(mongoModel, field);
+    const mongoRawValue = getMongoTechnicalValue(mongoModel, field);
+    const manifestValue = normalizeComparableFieldValue(field, manifestRawValue);
+    const mongoValue = normalizeComparableFieldValue(field, mongoRawValue);
+    const mongoFieldPresent = isMongoFieldPresent(mongoModel, field);
 
-    if (areValuesEqual(manifestValue, mongoValue)) {
+    if (isValueEqual(field, manifestRawValue, mongoRawValue)) {
       continue;
     }
 
@@ -471,26 +81,26 @@ const compareTechnicalFields = (manifestModel, mongoModel) => {
 
 const compareLocalConfigurationFields = (manifestModel, mongoModel) => {
   const differences = [];
+  const manifestProjection = buildManifestTechnicalProjection(manifestModel);
 
   for (const field of LOCAL_CONFIGURATION_FIELDS) {
-    const manifestValue = normalizeTechnicalValue(
-      field,
-      getManifestTechnicalValue(manifestModel, field)
-    );
-    const mongoValue = normalizeTechnicalValue(
-      field,
-      getMongoTechnicalValue(mongoModel, field)
-    );
+    let manifestRawValue = null;
 
-    if (areValuesEqual(manifestValue, mongoValue)) {
+    if (field === "visibleInIssueCreation") {
+      manifestRawValue = manifestProjection.isIssueModel === true;
+    }
+
+    const mongoRawValue = getMongoTechnicalValue(mongoModel, field);
+
+    if (isValueEqual(field, manifestRawValue, mongoRawValue)) {
       continue;
     }
 
     differences.push({
       field,
-      manifestValue,
-      mongoValue,
-      reason: "Local Admin catalog visibility overrides manifest value",
+      manifestValue: normalizeComparableFieldValue(field, manifestRawValue),
+      mongoValue: normalizeComparableFieldValue(field, mongoRawValue),
+      reason: "Local Admin visibility overrides manifest default",
     });
   }
 
@@ -507,19 +117,19 @@ const buildMongoEntries = (issueModels) => {
 };
 
 const findMongoMatch = (manifestModel, mongoEntries) => {
-  const manifestKey = normalizeNonEmptyString(manifestModel?.key);
+  const manifestProjection = buildManifestTechnicalProjection(manifestModel);
   const keyMatches = mongoEntries.filter(
     (entry) =>
       !entry.matched &&
       entry.apiModelKey &&
-      entry.apiModelKey === manifestKey
+      entry.apiModelKey === manifestProjection.apiModelKey
   );
 
   if (keyMatches.length > 1) {
     return {
       kind: "ambiguous",
       candidates: keyMatches,
-      reason: `Multiple Mongo IssueModels already use apiModelKey ${manifestKey}`,
+      reason: `Multiple Mongo IssueModels already use apiModelKey ${manifestProjection.apiModelKey}`,
     };
   }
 
@@ -530,45 +140,33 @@ const findMongoMatch = (manifestModel, mongoEntries) => {
       matchedBy: "apiModelKey",
     };
   }
+
   return { kind: "missing" };
 };
 
 const buildNotSyncableModels = (manifestModels) => {
   return manifestModels
-    .filter((model) => model?.publicInIssueCatalog !== true)
     .map((model) => ({
-      key: model?.key ?? null,
-      role: model?.role ?? null,
-      status: model?.status ?? null,
-      reason: "Model is not public in issue catalog",
-      safeToCreateIssueModel: model?.sync?.safeToCreateIssueModel === true,
+      model,
+      blockerReason: getSyncBlockerReason(model),
+    }))
+    .filter((entry) => entry.blockerReason)
+    .map(({ model, blockerReason }) => ({
+      apiModelKey: model?.apiModelKey ?? null,
+      displayName: model?.displayName ?? null,
+      isIssueModel: model?.isIssueModel === true,
+      reason: blockerReason,
     }));
 };
 
-const buildManifestSummary = (manifest, manifestModels, publicManifestModels) => {
+const buildManifestSummary = (manifest, manifestModels, syncableManifestModels) => {
   return {
     manifestVersion: manifest?.manifestVersion ?? null,
     apiVersion: manifest?.apiVersion ?? null,
     totalModels: manifestModels.length,
-    publicIssueModels: publicManifestModels.length,
-    nonIssueModels: manifestModels.length - publicManifestModels.length,
+    issueModels: syncableManifestModels.length,
+    nonIssueModels: manifestModels.length - syncableManifestModels.length,
   };
-};
-
-const getNotSyncableReason = (manifestModel) => {
-  if (manifestModel?.publicInIssueCatalog !== true) {
-    return "Model is not public in issue catalog";
-  }
-
-  if (manifestModel?.sync?.safeToCreateIssueModel !== true) {
-    return "Model is not safe to create IssueModel";
-  }
-
-  if (manifestModel?.role !== "issueModel") {
-    return `Model role ${manifestModel?.role || "unknown"} is not issueModel`;
-  }
-
-  return null;
 };
 
 const buildModelRow = ({
@@ -580,44 +178,51 @@ const buildModelRow = ({
   differences = [],
   reason = null,
 }) => {
-  const capabilities = manifestModel?.capabilities || {};
+  const manifestProjection = manifestModel
+    ? buildManifestTechnicalProjection(manifestModel)
+    : null;
 
   return {
-    apiModelKey: manifestModel?.key ?? mongoModel?.apiModelKey ?? null,
-    displayName: manifestModel?.displayName ?? null,
+    apiModelKey:
+      manifestProjection?.apiModelKey ?? mongoModel?.apiModelKey ?? null,
+    displayName: manifestProjection?.displayName ?? null,
     mongoName: mongoModel?.name ?? null,
     mongoId: toIdString(mongoModel?._id),
-    role: manifestModel?.role ?? mongoModel?.modelRole ?? null,
-    status: manifestModel?.status ?? mongoModel?.modelStatus ?? null,
-    publicInIssueCatalog:
-      mongoModel?.publicInIssueCatalog ?? manifestModel?.publicInIssueCatalog ?? null,
-    safeToCreateIssueModel:
-      manifestModel?.sync?.safeToCreateIssueModel ?? null,
+    isIssueModel:
+      manifestProjection?.isIssueModel ?? mongoModel?.isIssueModel ?? null,
+    visibleInIssueCreation:
+      mongoModel?.visibleInIssueCreation ??
+      (manifestProjection?.isIssueModel === true ? true : null),
     evaluationStructure:
-      capabilities.evaluationStructure ?? mongoModel?.evaluationStructure ?? null,
+      manifestProjection?.evaluationStructure ?? mongoModel?.evaluationStructure ?? null,
     lifecycleKind:
-      capabilities.lifecycleKind ?? mongoModel?.lifecycleKind ?? null,
+      manifestProjection?.lifecycleKind ?? mongoModel?.lifecycleKind ?? null,
     modelFamilyKey:
-      manifestModel?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
+      manifestProjection?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
     modelVersion:
-      manifestModel?.modelVersion ?? mongoModel?.modelVersion ?? null,
+      manifestProjection?.modelVersion ?? mongoModel?.modelVersion ?? null,
     versionLabel:
-      manifestModel?.versionLabel ?? mongoModel?.versionLabel ?? null,
-    inputKind: capabilities.inputKind ?? mongoModel?.inputKind ?? null,
-    outputKind: capabilities.outputKind ?? mongoModel?.outputKind ?? null,
-    isConsensus:
-      capabilities.isConsensus ?? mongoModel?.isConsensus ?? null,
+      manifestProjection?.versionLabel ?? mongoModel?.versionLabel ?? null,
+    apiInputFormat:
+      manifestProjection?.apiInputFormat ?? mongoModel?.apiInputFormat ?? null,
+    apiOutputFormat:
+      manifestProjection?.apiOutputFormat ?? mongoModel?.apiOutputFormat ?? null,
     isMultiCriteria:
-      capabilities.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
-    supportsScenarios:
-      capabilities.supportsScenarios ?? mongoModel?.supportsScenarios ?? null,
-    supportedDomains:
-      normalizeSupportedDomains(capabilities.supportedDomains) ??
-      normalizeSupportedDomains(mongoModel?.supportedDomains),
-    endpoint:
-      normalizeEndpoint(manifestModel?.endpoint) ??
-      normalizeEndpoint(mongoModel?.apiEndpoint),
-    parameters: normalizeParameters(manifestModel?.parameters ?? mongoModel?.parameters),
+      manifestProjection?.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
+    supportedDomains: manifestProjection
+      ? normalizeSupportedDomains(manifestProjection.supportedDomains)
+      : normalizeSupportedDomains(mongoModel?.supportedDomains),
+    apiEndpoint:
+      normalizeEndpoint(manifestProjection?.apiEndpoint, { emptyValue: null }) ??
+      normalizeEndpoint(mongoModel?.apiEndpoint, { emptyValue: null }),
+    parameters:
+      normalizeParameters(manifestProjection?.parameters ?? mongoModel?.parameters),
+    modelInputFields:
+      manifestProjection?.modelInputFields ?? mongoModel?.modelInputFields ?? [],
+    modelOutputFields:
+      manifestProjection?.modelOutputFields ?? mongoModel?.modelOutputFields ?? [],
+    request: manifestProjection?.request ?? mongoModel?.request ?? null,
+    response: manifestProjection?.response ?? mongoModel?.response ?? null,
     syncState,
     matched,
     matchedBy,
@@ -640,15 +245,15 @@ export const buildModelManifestDryRunReport = ({
   issueModels = [],
 }) => {
   const manifestModels = Array.isArray(manifest?.models) ? manifest.models : [];
-  const publicManifestModels = manifestModels.filter(
-    (model) => model?.publicInIssueCatalog === true
+  const syncableManifestModels = manifestModels.filter(
+    (model) => !getSyncBlockerReason(model)
   );
   const mongoModels = Array.isArray(issueModels) ? issueModels : [];
   const mongoEntries = buildMongoEntries(mongoModels);
   const matches = [];
   const modelRows = [];
   const missingInMongo = [];
-  const invalidManifestTechnicalFields = [];
+  const invalidManifestRuntimeFields = [];
   const technicalDifferences = [];
   const localConfigurationDifferences = [];
   const warnings = [];
@@ -658,31 +263,29 @@ export const buildModelManifestDryRunReport = ({
     warnings.push("No IssueModel documents found in MongoDB.");
   }
 
-  for (const manifestModel of publicManifestModels) {
-    const technicalValidationErrors = validateManifestTechnicalFields(
-      manifestModel
-    );
+  for (const manifestModel of syncableManifestModels) {
+    const runtimeValidationErrors = validateSyncableManifestModel(manifestModel);
 
-    if (technicalValidationErrors.length > 0) {
-      invalidManifestTechnicalFields.push({
-        key: manifestModel?.key ?? null,
+    if (runtimeValidationErrors.length > 0) {
+      invalidManifestRuntimeFields.push({
+        apiModelKey: manifestModel?.apiModelKey ?? null,
         displayName: manifestModel?.displayName ?? null,
-        errors: technicalValidationErrors,
+        errors: runtimeValidationErrors,
       });
       warnings.push(
-        `Public manifest model ${manifestModel?.key || "unknown"} has invalid required technical fields: ${technicalValidationErrors.join(", ")}`
+        `Syncable manifest model ${manifestModel?.apiModelKey || "unknown"} has invalid required runtime fields: ${runtimeValidationErrors.join(", ")}`
       );
       modelRows.push(
         buildModelRow({
           manifestModel,
-          syncState: "Invalid technical config",
+          syncState: "Invalid runtime config",
           reason:
-            "Manifest model is missing or has invalid required technical fields",
-          differences: technicalValidationErrors.map((field) => ({
+            "Manifest model is missing or has invalid required runtime fields",
+          differences: runtimeValidationErrors.map((field) => ({
             field,
             manifestValue: null,
             mongoValue: null,
-            reason: "Invalid manifest technical field",
+            reason: "Invalid manifest runtime field",
           })),
         })
       );
@@ -693,15 +296,15 @@ export const buildModelManifestDryRunReport = ({
 
     if (match.kind === "missing") {
       missingInMongo.push({
-        key: manifestModel?.key ?? null,
+        apiModelKey: manifestModel?.apiModelKey ?? null,
         displayName: manifestModel?.displayName ?? null,
-        reason: "Public manifest model was not found in Mongo IssueModels",
+        reason: "Syncable manifest model was not found in Mongo IssueModels",
       });
       modelRows.push(
         buildModelRow({
           manifestModel,
           syncState: "Missing in Mongo",
-          reason: "Public manifest model was not found in Mongo IssueModels",
+          reason: "Syncable manifest model was not found in Mongo IssueModels",
         })
       );
       continue;
@@ -726,10 +329,9 @@ export const buildModelManifestDryRunReport = ({
       manifestModel,
       match.entry.model
     );
-    const syncState =
-      differences.length > 0 ? "Has differences" : "Synced";
+    const syncState = differences.length > 0 ? "Has differences" : "Synced";
     const matchReport = {
-      manifestKey: manifestModel?.key ?? null,
+      manifestKey: manifestModel?.apiModelKey ?? null,
       manifestDisplayName: manifestModel?.displayName ?? null,
       mongoName: match.entry.model?.name ?? null,
       mongoId: toIdString(match.entry.model?._id),
@@ -752,7 +354,7 @@ export const buildModelManifestDryRunReport = ({
 
     if (differences.length > 0) {
       technicalDifferences.push({
-        manifestKey: matchReport.manifestKey,
+        apiModelKey: matchReport.manifestKey,
         mongoName: matchReport.mongoName,
         mongoId: matchReport.mongoId,
         differences,
@@ -761,7 +363,7 @@ export const buildModelManifestDryRunReport = ({
 
     if (configurationDifferences.length > 0) {
       localConfigurationDifferences.push({
-        manifestKey: matchReport.manifestKey,
+        apiModelKey: matchReport.manifestKey,
         mongoName: matchReport.mongoName,
         mongoId: matchReport.mongoId,
         differences: configurationDifferences,
@@ -772,101 +374,101 @@ export const buildModelManifestDryRunReport = ({
   const missingInManifest = mongoEntries
     .filter((entry) => !entry.matched)
     .map((entry) => ({
+      apiModelKey: entry.model?.apiModelKey ?? null,
       mongoName: entry.model?.name ?? null,
       mongoId: toIdString(entry.model?._id),
-      reason: "Mongo IssueModel is not present in public manifest models",
+      reason: "Mongo IssueModel is not present in syncable manifest models",
     }));
 
   mongoEntries
     .filter((entry) => !entry.matched)
     .forEach((entry) => {
+      const isStale = entry.model?.manifestSync?.isStale === true;
+
       modelRows.push(
         buildModelRow({
           mongoModel: entry.model,
-          syncState:
-            entry.model?.modelStatus === "stale"
-              ? "Stale"
-              : "Missing in manifest",
-          reason: "Mongo IssueModel is not present in public manifest models",
+          syncState: isStale ? "Stale" : "Missing in manifest",
+          reason: "Mongo IssueModel is not present in syncable manifest models",
         })
       );
     });
 
   for (const missingModel of missingInMongo) {
     warnings.push(
-      `Public manifest model ${missingModel.key} was not found in Mongo IssueModels.`
+      `Syncable manifest model ${missingModel.apiModelKey} was not found in Mongo IssueModels.`
     );
   }
 
   for (const missingModel of missingInManifest) {
     warnings.push(
-      `Mongo IssueModel ${missingModel.mongoName} is not present in public manifest models.`
+      `Mongo IssueModel ${missingModel.mongoName} is not present in syncable manifest models.`
     );
   }
 
   if (technicalDifferences.length > 0) {
-    warnings.push("Technical differences were detected in matched models.");
+    warnings.push("Manifest-owned differences were detected in matched models.");
     recommendations.push(
-      "Review technical differences before enabling any write synchronization."
+      "Review manifest-owned differences before enabling write synchronization."
     );
   }
 
-  if (invalidManifestTechnicalFields.length > 0) {
+  if (invalidManifestRuntimeFields.length > 0) {
     recommendations.push(
-      "Fix invalid required technical fields in public manifest models before synchronization."
+      "Fix invalid required runtime fields in syncable manifest models before synchronization."
     );
   }
 
   if (localConfigurationDifferences.length > 0) {
     recommendations.push(
-      "Review local catalog visibility overrides; sync preserves Admin visibility choices."
+      "Review local visibility overrides; sync preserves Admin visibility choices."
     );
   }
 
   if (missingInMongo.length > 0) {
     recommendations.push(
-      "Review missing public manifest models before enabling model creation."
+      "Review missing syncable manifest models before enabling model creation."
     );
   }
 
   if (missingInManifest.length > 0) {
     recommendations.push(
-      "Review Mongo IssueModels that are not present in the public manifest."
+      "Review Mongo IssueModels that are not present in syncable manifest models."
     );
   }
 
   const notSyncable = buildNotSyncableModels(manifestModels);
 
   manifestModels
-    .filter((model) => model?.publicInIssueCatalog !== true)
-    .forEach((manifestModel) => {
+    .map((manifestModel) => ({
+      manifestModel,
+      blockerReason: getSyncBlockerReason(manifestModel),
+    }))
+    .filter((entry) => entry.blockerReason)
+    .forEach(({ manifestModel, blockerReason }) => {
       modelRows.push(
         buildModelRow({
           manifestModel,
           syncState: "Not syncable",
-          reason: getNotSyncableReason(manifestModel),
+          reason: blockerReason,
         })
       );
     });
 
   if (notSyncable.length > 0) {
     recommendations.push(
-      "Keep non-public manifest models out of IssueModel synchronization."
+      "Keep non-syncable manifest models out of IssueModel synchronization."
     );
   }
 
   return {
-    manifest: buildManifestSummary(
-      manifest,
-      manifestModels,
-      publicManifestModels
-    ),
+    manifest: buildManifestSummary(manifest, manifestModels, syncableManifestModels),
     summary: {
       matched: matches.length,
       missingInMongo,
       missingInManifest,
       notSyncable,
-      invalidManifestTechnicalFields,
+      invalidManifestRuntimeFields,
       technicalDifferences,
       localConfigurationDifferences,
     },
@@ -874,7 +476,9 @@ export const buildModelManifestDryRunReport = ({
     modelRows,
     warnings,
     recommendations,
-    syncedCatalogFields: CATALOG_SYNC_FIELDS,
+    syncedManifestFields: getManifestSyncFields(
+      buildManifestTechnicalProjection(syncableManifestModels[0] || null)
+    ),
   };
 };
 

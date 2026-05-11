@@ -6,7 +6,6 @@ import {
   LIFECYCLE_KINDS,
   isSupportedLifecycleKind,
 } from "../issue.lifecycleKind.js";
-import { countLeafCriteriaNodes } from "../modelParameters/index.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
 const SUPPORTED_EVALUATION_STRUCTURES = new Set(
@@ -108,41 +107,33 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     });
   }
 
-  const inputKind = normalizeNonEmptyString(model?.inputKind);
-  if (!inputKind) {
+  const apiInputFormat = normalizeNonEmptyString(model?.apiInputFormat);
+  if (!apiInputFormat) {
     runtimeErrors.push({
-      field: "inputKind",
+      field: "apiInputFormat",
       message: "is required",
-      value: model?.inputKind,
+      value: model?.apiInputFormat,
     });
-  } else if (!SUPPORTED_INPUT_KINDS.has(inputKind)) {
+  } else if (!SUPPORTED_INPUT_KINDS.has(apiInputFormat)) {
     runtimeErrors.push({
-      field: "inputKind",
-      message: `is unsupported: ${inputKind}`,
-      value: model?.inputKind,
+      field: "apiInputFormat",
+      message: `is unsupported: ${apiInputFormat}`,
+      value: model?.apiInputFormat,
     });
   }
 
-  const outputKind = normalizeNonEmptyString(model?.outputKind);
-  if (!outputKind) {
+  const apiOutputFormat = normalizeNonEmptyString(model?.apiOutputFormat);
+  if (!apiOutputFormat) {
     runtimeErrors.push({
-      field: "outputKind",
+      field: "apiOutputFormat",
       message: "is required",
-      value: model?.outputKind,
+      value: model?.apiOutputFormat,
     });
-  } else if (!SUPPORTED_OUTPUT_KINDS.has(outputKind)) {
+  } else if (!SUPPORTED_OUTPUT_KINDS.has(apiOutputFormat)) {
     runtimeErrors.push({
-      field: "outputKind",
-      message: `is unsupported: ${outputKind}`,
-      value: model?.outputKind,
-    });
-  }
-
-  if (typeof model?.isConsensus !== "boolean") {
-    runtimeErrors.push({
-      field: "isConsensus",
-      message: "must be a boolean",
-      value: model?.isConsensus,
+      field: "apiOutputFormat",
+      message: `is unsupported: ${apiOutputFormat}`,
+      value: model?.apiOutputFormat,
     });
   }
 
@@ -198,10 +189,11 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       path: endpointPath,
       operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
     },
-    inputKind,
-    outputKind,
+    apiInputFormat,
+    apiOutputFormat,
     evaluationStructure: validateEvaluationStructureOrThrow(evaluationStructure),
     lifecycleKind,
+    isConsensus: lifecycleKind === LIFECYCLE_KINDS.THRESHOLD_CONSENSUS,
     modelFamilyKey,
     modelVersion,
     versionLabel,
@@ -214,14 +206,15 @@ export const validateIssueConsensusCompatibilityOrThrow = ({
   lifecycleKind,
 }) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
-  const modelIsConsensus = model?.isConsensus;
-  const outputKind = normalizeNonEmptyString(model?.outputKind);
   const normalizedLifecycleKind = normalizeNonEmptyString(lifecycleKind);
+  const modelIsConsensus =
+    normalizedLifecycleKind === LIFECYCLE_KINDS.THRESHOLD_CONSENSUS;
+  const apiOutputFormat = normalizeNonEmptyString(model?.apiOutputFormat);
   const incompatibilities = [];
 
   if (requestedWithConsensus !== modelIsConsensus) {
     incompatibilities.push(
-      `withConsensus (${requestedWithConsensus}) must match model.isConsensus (${modelIsConsensus})`
+      `withConsensus (${requestedWithConsensus}) must match model lifecycle (${normalizedLifecycleKind})`
     );
   }
 
@@ -232,9 +225,9 @@ export const validateIssueConsensusCompatibilityOrThrow = ({
       );
     }
 
-    if (outputKind !== CONSENSUS_OUTPUT_KIND) {
+    if (apiOutputFormat !== CONSENSUS_OUTPUT_KIND) {
       incompatibilities.push(
-        `consensus model requires outputKind '${CONSENSUS_OUTPUT_KIND}'`
+        `consensus model requires apiOutputFormat '${CONSENSUS_OUTPUT_KIND}'`
       );
     }
   } else {
@@ -244,9 +237,9 @@ export const validateIssueConsensusCompatibilityOrThrow = ({
       );
     }
 
-    if (outputKind !== SINGLE_PASS_OUTPUT_KIND) {
+    if (apiOutputFormat !== SINGLE_PASS_OUTPUT_KIND) {
       incompatibilities.push(
-        `non-consensus model requires outputKind '${SINGLE_PASS_OUTPUT_KIND}'`
+        `non-consensus model requires apiOutputFormat '${SINGLE_PASS_OUTPUT_KIND}'`
       );
     }
   }
@@ -259,7 +252,7 @@ export const validateIssueConsensusCompatibilityOrThrow = ({
         details: {
           requestedWithConsensus,
           modelIsConsensus,
-          outputKind: outputKind ?? null,
+          apiOutputFormat: apiOutputFormat ?? null,
           lifecycleKind: normalizedLifecycleKind ?? null,
           incompatibilities,
         },

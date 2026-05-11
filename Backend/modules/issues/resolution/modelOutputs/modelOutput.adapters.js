@@ -10,18 +10,18 @@ const getValueType = (value) => {
 };
 
 const throwInvalidModelOutputField = ({
-  outputKind,
+  apiOutputFormat,
   model,
   field,
   message,
   value,
 }) => {
   throw createInternalError(
-    `Invalid ApiModels output for outputKind '${outputKind}' in model '${String(model?.name || "unknown")}': ${field} ${message}.`,
+    `Invalid ApiModels output for apiOutputFormat '${apiOutputFormat}' in model '${String(model?.name || "unknown")}': ${field} ${message}.`,
     {
       field: `rawOutput.${field}`,
       details: {
-        outputKind,
+        apiOutputFormat,
         model: model?.name ?? null,
         field,
         message,
@@ -35,14 +35,14 @@ const requireRankingIndexes = ({
   rawOutput,
   rankingField,
   alternativeCount,
-  outputKind,
+  apiOutputFormat,
   model,
 }) => {
   const rankingIndexes = rawOutput?.[rankingField];
 
   if (!Array.isArray(rankingIndexes)) {
     throwInvalidModelOutputField({
-      outputKind,
+      apiOutputFormat,
       model,
       field: rankingField,
       message: "must be an array of alternative indexes",
@@ -52,7 +52,7 @@ const requireRankingIndexes = ({
 
   if (rankingIndexes.length !== alternativeCount) {
     throwInvalidModelOutputField({
-      outputKind,
+      apiOutputFormat,
       model,
       field: rankingField,
       message: `must contain exactly ${alternativeCount} indexes`,
@@ -65,7 +65,7 @@ const requireRankingIndexes = ({
   rankingIndexes.forEach((index, position) => {
     if (!Number.isInteger(index)) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: `${rankingField}[${position}]`,
         message: "must be an integer index",
@@ -75,7 +75,7 @@ const requireRankingIndexes = ({
 
     if (index < 0 || index >= alternativeCount) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: `${rankingField}[${position}]`,
         message: `is out of bounds for ${alternativeCount} alternatives`,
@@ -85,7 +85,7 @@ const requireRankingIndexes = ({
 
     if (seenIndexes.has(index)) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: `${rankingField}[${position}]`,
         message: "contains a duplicate index",
@@ -102,14 +102,14 @@ const requireRankingIndexes = ({
 const requireCollectiveScores = ({
   rawOutput,
   alternativeCount,
-  outputKind,
+  apiOutputFormat,
   model,
 }) => {
   const collectiveScores = rawOutput?.collective_scores;
 
   if (!Array.isArray(collectiveScores)) {
     throwInvalidModelOutputField({
-      outputKind,
+      apiOutputFormat,
       model,
       field: "collective_scores",
       message: "must be an array of scores",
@@ -119,7 +119,7 @@ const requireCollectiveScores = ({
 
   if (collectiveScores.length !== alternativeCount) {
     throwInvalidModelOutputField({
-      outputKind,
+      apiOutputFormat,
       model,
       field: "collective_scores",
       message: `must contain exactly ${alternativeCount} scores`,
@@ -130,7 +130,7 @@ const requireCollectiveScores = ({
   collectiveScores.forEach((score, index) => {
     if (typeof score !== "number" || !Number.isFinite(score)) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: `collective_scores[${index}]`,
         message: "must be a finite number",
@@ -142,12 +142,12 @@ const requireCollectiveScores = ({
   return collectiveScores;
 };
 
-const requireConsensusLevel = ({ rawOutput, outputKind, model }) => {
+const requireConsensusLevel = ({ rawOutput, apiOutputFormat, model }) => {
   const consensusLevel = rawOutput?.cm;
 
   if (typeof consensusLevel !== "number" || !Number.isFinite(consensusLevel)) {
     throwInvalidModelOutputField({
-      outputKind,
+      apiOutputFormat,
       model,
       field: "cm",
       message: "must be a finite number",
@@ -162,21 +162,21 @@ const extractRequiredRankingData = ({
   rawOutput,
   rankingField,
   alternativeCount,
-  outputKind,
+  apiOutputFormat,
   model,
 }) => {
   const rankingIndexes = requireRankingIndexes({
     rawOutput,
     rankingField,
     alternativeCount,
-    outputKind,
+    apiOutputFormat,
     model,
   });
 
   const collectiveScores = requireCollectiveScores({
     rawOutput,
     alternativeCount,
-    outputKind,
+    apiOutputFormat,
     model,
   });
 
@@ -222,13 +222,13 @@ const normalizeRankingOutput = ({
   issue,
   model,
 }) => {
-  const outputKind = "ranking";
+  const apiOutputFormat = "ranking";
   const alternativeNames = buildAlternativeNames(alternatives);
   const { rankingIndexes, collectiveScores } = extractRequiredRankingData({
     rawOutput,
     rankingField: "collective_ranking",
     alternativeCount: alternativeNames.length,
-    outputKind,
+    apiOutputFormat,
     model,
   });
 
@@ -250,7 +250,7 @@ const normalizeRankingOutput = ({
   if (collectiveMatrix != null) {
     if (!Array.isArray(collectiveMatrix)) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: "collective_matrix",
         message: "must be an array of alternative rows",
@@ -260,7 +260,7 @@ const normalizeRankingOutput = ({
 
     if (collectiveMatrix.length !== alternativeNames.length) {
       throwInvalidModelOutputField({
-        outputKind,
+        apiOutputFormat,
         model,
         field: "collective_matrix",
         message: `must contain exactly ${alternativeNames.length} rows`,
@@ -271,7 +271,7 @@ const normalizeRankingOutput = ({
     collectiveMatrix.forEach((row, alternativeIndex) => {
       if (!Array.isArray(row)) {
         throwInvalidModelOutputField({
-          outputKind,
+          apiOutputFormat,
           model,
           field: `collective_matrix[${alternativeIndex}]`,
           message: "must be an array of criterion values",
@@ -281,7 +281,7 @@ const normalizeRankingOutput = ({
 
       if (row.length !== (criteria || []).length) {
         throwInvalidModelOutputField({
-          outputKind,
+          apiOutputFormat,
           model,
           field: `collective_matrix[${alternativeIndex}]`,
           message: `must contain exactly ${(criteria || []).length} criterion values`,
@@ -310,7 +310,7 @@ const normalizeRankingOutput = ({
     collectiveRanking: rankedAlternatives,
     collectiveEvaluations,
     consensusLevel: issue?.isConsensus
-      ? requireConsensusLevel({ rawOutput, outputKind, model })
+      ? requireConsensusLevel({ rawOutput, apiOutputFormat, model })
       : null,
     plotsGraphic: buildPlotsGraphicWithEmails(participations, rawOutput?.plots_graphic),
   };
@@ -323,13 +323,13 @@ const normalizeConsensusRankingOutput = ({
   participations,
   model,
 }) => {
-  const outputKind = "consensusRanking";
+  const apiOutputFormat = "consensusRanking";
   const alternativeNames = buildAlternativeNames(alternatives);
   const { rankingIndexes, collectiveScores } = extractRequiredRankingData({
     rawOutput,
     rankingField: "alternatives_rankings",
     alternativeCount: alternativeNames.length,
-    outputKind,
+    apiOutputFormat,
     model,
   });
 
@@ -366,12 +366,12 @@ const normalizeConsensusRankingOutput = ({
     collectiveScoresByName,
     collectiveRanking: rankedWithScores.map((item) => item.name),
     collectiveEvaluations: transformedCollectiveEvaluations,
-    consensusLevel: requireConsensusLevel({ rawOutput, outputKind, model }),
+    consensusLevel: requireConsensusLevel({ rawOutput, apiOutputFormat, model }),
     plotsGraphic: buildPlotsGraphicWithEmails(participations, rawOutput?.plots_graphic),
   };
 };
 
-const OUTPUT_NORMALIZERS_BY_KIND = {
+const OUTPUT_NORMALIZERS_BY_API_OUTPUT_FORMAT = {
   ranking: normalizeRankingOutput,
   consensusRanking: normalizeConsensusRankingOutput,
 };
@@ -380,7 +380,7 @@ const OUTPUT_NORMALIZERS_BY_KIND = {
  * Normaliza la salida de ApiModels según el tipo de output declarado por el modelo.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string|null|undefined} params.outputKind Tipo de salida publicada por ApiModels.
+ * @param {string|null|undefined} params.apiOutputFormat Tipo de salida publicada por ApiModels.
  * @param {Object} params.rawOutput Payload desempaquetado devuelto por ApiModels.
  * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.criteria Criterios hoja ordenados.
@@ -390,7 +390,7 @@ const OUTPUT_NORMALIZERS_BY_KIND = {
  * @returns {Object}
  */
 export const normalizeModelOutput = ({
-  outputKind,
+  apiOutputFormat,
   rawOutput,
   alternatives,
   criteria,
@@ -398,11 +398,12 @@ export const normalizeModelOutput = ({
   issue,
   model,
 }) => {
-  const normalizedOutputKind = String(outputKind || "").trim();
+  const normalizedApiOutputFormat = String(apiOutputFormat || "").trim();
 
-  const normalizeByOutputKind = OUTPUT_NORMALIZERS_BY_KIND[normalizedOutputKind];
-  if (normalizeByOutputKind) {
-    return normalizeByOutputKind({
+  const normalizeByApiOutputFormat =
+    OUTPUT_NORMALIZERS_BY_API_OUTPUT_FORMAT[normalizedApiOutputFormat];
+  if (normalizeByApiOutputFormat) {
+    return normalizeByApiOutputFormat({
       rawOutput,
       alternatives,
       criteria,
@@ -413,6 +414,6 @@ export const normalizeModelOutput = ({
   }
 
   throw createInternalError(
-    `Unsupported model output kind: ${String(outputKind)} for model ${String(model?.name || "unknown")}`
+    `Unsupported apiOutputFormat: ${String(apiOutputFormat)} for model ${String(model?.name || "unknown")}`
   );
 };

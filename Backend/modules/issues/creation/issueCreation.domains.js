@@ -88,18 +88,68 @@ export const buildExpertAssignmentDomainMap = ({
   };
 };
 
+const resolveSupportedDomainFlags = (modelSupportedDomains) => ({
+  numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
+  numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
+  linguistic: modelSupportedDomains?.linguistic === true,
+});
+
+const isNumericContinuousDomain = (domain) => {
+  const step = domain?.numericRange?.step;
+  return domain?.type === "numeric" && (step === null || step === undefined);
+};
+
+const isNumericDiscreteDomain = (domain) => {
+  const step = domain?.numericRange?.step;
+  return (
+    domain?.type === "numeric" &&
+    Number.isFinite(step) &&
+    step > 0
+  );
+};
+
+const isSupportedDomainForModel = ({
+  domain,
+  modelSupportedDomains,
+  userId,
+}) => {
+  const supported = resolveSupportedDomainFlags(modelSupportedDomains);
+
+  if (isNumericContinuousDomain(domain)) {
+    return supported.numericContinuous;
+  }
+
+  if (isNumericDiscreteDomain(domain)) {
+    return supported.numericDiscrete;
+  }
+
+  if (domain?.type === "linguistic") {
+    const normalizedDomainUserId = toIdString(domain?.user);
+    const isCreatorOwnedDomain =
+      domain?.isGlobal !== true &&
+      normalizedDomainUserId &&
+      normalizedDomainUserId === toIdString(userId);
+
+    return supported.linguistic && isCreatorOwnedDomain;
+  }
+
+  return false;
+};
+
 /**
  * Carga y valida los dominios de expresión usados en el issue.
  *
  * @param {object} params Parámetros de entrada.
  * @param {string[]} params.domainIdList Ids de dominios requeridos.
  * @param {string} params.userId Id del usuario actual.
+ * @param {object} params.modelSupportedDomains Dominios soportados por el modelo.
  * @param {Object} params.session Sesión de mongoose.
  * @returns {Promise<Array<Object>>}
  */
 export const loadAccessibleExpressionDomains = async ({
   domainIdList,
   userId,
+  modelSupportedDomains,
   session,
 }) => {
   const domainDocs = await ExpressionDomain.find({
@@ -109,7 +159,7 @@ export const loadAccessibleExpressionDomains = async ({
       { isGlobal: false, user: userId },
     ],
   })
-    .select("_id name type numericRange linguisticLabels")
+    .select("_id name type numericRange linguisticLabels isGlobal user")
     .session(session);
 
   const existingDomainIds = new Set(
@@ -125,6 +175,29 @@ export const loadAccessibleExpressionDomains = async ({
       `ExpressionDomain not found or not accessible: ${missingDomains.join(", ")}`,
       {
         field: "domainAssignments",
+      }
+    );
+  }
+
+  const unsupportedDomains = domainDocs.filter(
+    (domain) =>
+      !isSupportedDomainForModel({
+        domain,
+        modelSupportedDomains,
+        userId,
+      })
+  );
+
+  if (unsupportedDomains.length > 0) {
+    throw createBadRequestError(
+      "Some assigned expression domains are not compatible with the selected model",
+      {
+        field: "domainAssignments",
+        details: {
+          unsupportedDomainIds: unsupportedDomains.map((domain) =>
+            toIdString(domain._id)
+          ),
+        },
       }
     );
   }

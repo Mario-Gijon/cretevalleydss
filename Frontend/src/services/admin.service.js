@@ -332,16 +332,16 @@ export const getAdminModelCatalog = async () =>
  * Actualiza si un modelo aparece en el flujo Create Issue.
  *
  * @param {string} modelId Id del modelo.
- * @param {boolean} publicInIssueCatalog Nueva visibilidad.
+ * @param {boolean} visibleInIssueCreation Nueva visibilidad.
  * @returns {Promise<object>}
  */
 export const updateModelCatalogVisibility = async (
   modelId,
-  publicInIssueCatalog
+  visibleInIssueCreation
 ) =>
   requestJson(
     `${API}/admin/models/${modelId}/catalog-visibility`,
-    jsonRequest("PATCH", { publicInIssueCatalog }),
+    jsonRequest("PATCH", { visibleInIssueCreation }),
     {
       fetcher: authFetch,
       fallbackMessage: "Error updating model catalog visibility.",

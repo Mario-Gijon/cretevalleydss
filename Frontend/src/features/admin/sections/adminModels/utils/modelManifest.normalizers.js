@@ -1,4 +1,4 @@
-import { asArray, count, toTitle } from "./modelManifest.formatters";
+import { asArray, count } from "./modelManifest.formatters";
 import { getSyncState } from "./modelManifest.severity";
 
 export const normalizeRowsFromDryRun = (report) => {
@@ -46,8 +46,8 @@ export const normalizeRowsFromDryRun = (report) => {
     rows.push({
       apiModelKey: item.key,
       displayName: item.key,
-      role: item.role,
-      status: item.status,
+      lifecycleKind: item.lifecycleKind || null,
+      isIssueModel: item.isIssueModel ?? null,
       safeToCreateIssueModel: item.safeToCreateIssueModel,
       reason: item.reason,
       syncState: "Not syncable",
@@ -58,15 +58,10 @@ export const normalizeRowsFromDryRun = (report) => {
 };
 
 export const getCatalogSyncState = (model = {}) => {
-  const status = String(model.modelStatus || model.status || "available").toLowerCase();
-
-  if (status === "stale") return "Stale";
-  if (status === "pendingintegration") return "Pending Integration";
-  if (status === "unavailable") return "Unavailable";
-  if (model?.manifestSync?.lastSyncedAt && status === "available") return "Synced";
-  if (status === "available") return "Available";
-
-  return toTitle(model.modelStatus || model.status);
+  if (model?.manifestSync?.isStale) return "Stale";
+  if (model?.manifestSync?.lastSyncedAt) return "Synced";
+  if (model?.apiModelKey) return "Available";
+  return "Unknown";
 };
 
 export const normalizeRowsFromCatalog = (models = []) =>
@@ -75,17 +70,23 @@ export const normalizeRowsFromCatalog = (models = []) =>
     displayName: model?.name || "Unknown model",
     mongoName: model?.name || "Unknown model",
     mongoId: model?.id || model?._id || null,
-    role: model?.modelRole || "issueModel",
-    status: model?.modelStatus || "available",
-    publicInIssueCatalog: model?.publicInIssueCatalog !== false,
+    isIssueModel: model?.isIssueModel === true,
+    visibleInIssueCreation: model?.visibleInIssueCreation !== false,
+    apiInputFormat: model?.apiInputFormat || null,
+    apiOutputFormat: model?.apiOutputFormat || null,
+    modelInputFields: asArray(model?.modelInputFields),
+    modelOutputFields: asArray(model?.modelOutputFields),
+    lifecycleKind: model?.lifecycleKind || null,
+    criterionTypes: asArray(model?.criterionTypes),
     safeToCreateIssueModel: null,
-    evaluationStructure: model?.evaluationStructure,
+    evaluationStructure: model?.evaluationStructure || null,
     isConsensus: model?.isConsensus,
     isMultiCriteria: model?.isMultiCriteria,
-    supportsScenarios: model?.supportsScenarios !== false,
     supportedDomains: model?.supportedDomains || null,
     endpoint: model?.apiEndpoint || null,
     parameters: asArray(model?.parameters),
+    request: model?.request ?? null,
+    response: model?.response ?? null,
     manifestSync: model?.manifestSync || null,
     smallDescription: model?.smallDescription,
     extendDescription: model?.extendDescription,

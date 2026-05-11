@@ -50,6 +50,21 @@ const detectFinishedIssueDomainType = async ({ issueId, expertIds }) => {
   return detected.domainType;
 };
 
+const modelSupportsIssueDomainType = (supportedDomains, domainType) => {
+  if (domainType === "numeric") {
+    return (
+      supportedDomains?.numeric?.continuous === true ||
+      supportedDomains?.numeric?.discrete === true
+    );
+  }
+
+  if (domainType === "linguistic") {
+    return supportedDomains?.linguistic === true;
+  }
+
+  return false;
+};
+
 /**
  * Construye la lista de modelos compatibles para simulación desde un issue finalizado.
  *
@@ -75,11 +90,12 @@ const buildAvailableModelsPayload = ({
     const modelEvaluationStructure = modelDoc.evaluationStructure;
     const sameEvaluationStructure =
       modelEvaluationStructure === issueEvaluationStructure;
+    const modelIsConsensus = modelDoc.lifecycleKind === "thresholdConsensus";
 
     return {
       id: toIdString(modelDoc._id),
       name: modelDoc.name,
-      isConsensus: modelDoc.isConsensus,
+      isConsensus: modelIsConsensus,
       evaluationStructure: modelEvaluationStructure,
       isMultiCriteria: modelDoc.isMultiCriteria,
       smallDescription: modelDoc.smallDescription,
@@ -88,7 +104,7 @@ const buildAvailableModelsPayload = ({
       defaultsResolved,
       compatibility: {
         evaluationStructure: sameEvaluationStructure,
-        domain: modelDoc.supportedDomains[domainType].enabled,
+        domain: modelSupportsIssueDomainType(modelDoc?.supportedDomains, domainType),
       },
     };
   });
@@ -169,9 +185,16 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     })
       .select("expert")
       .lean(),
-    IssueModel.find()
+    IssueModel.find({
+      isIssueModel: true,
+      $or: [
+        { manifestSync: { $exists: false } },
+        { "manifestSync.isStale": { $exists: false } },
+        { "manifestSync.isStale": false },
+      ],
+    })
       .select(
-        "name isConsensus evaluationStructure isMultiCriteria smallDescription extendDescription moreInfoUrl parameters supportedDomains"
+        "name lifecycleKind evaluationStructure isMultiCriteria smallDescription extendDescription moreInfoUrl parameters supportedDomains"
       )
       .lean(),
     IssueScenario.find({ issue: issue._id })

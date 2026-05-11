@@ -114,12 +114,12 @@ const issueScenarioSchema = new Schema(
         trim: true,
       },
     },
-    targetInputKind: {
+    targetApiInputFormat: {
       type: String,
       required: true,
       trim: true,
     },
-    targetOutputKind: {
+    targetApiOutputFormat: {
       type: String,
       required: true,
       trim: true,

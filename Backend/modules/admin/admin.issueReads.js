@@ -258,7 +258,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name evaluationStructure isConsensus isMultiCriteria parameters supportedDomains"
+      "name evaluationStructure lifecycleKind isMultiCriteria parameters supportedDomains"
     )
     .lean();
 
@@ -522,7 +522,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           ? {
               id: toIdString(issue.model._id),
               name: issue.model.name,
-              isConsensus: issue.model.isConsensus,
+              isConsensus:
+                issue.model.lifecycleKind === "thresholdConsensus",
               isMultiCriteria: issue.model.isMultiCriteria,
               supportedDomains: issue.model.supportedDomains,
               parameters: issue.model.parameters,
@@ -1496,7 +1497,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name evaluationStructure isConsensus isMultiCriteria"
+      "name evaluationStructure lifecycleKind isMultiCriteria"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -1728,7 +1729,8 @@ export const getAdminIssuesListPayload = async ({
               id: toIdString(issue.model._id),
               name: issue.model.name,
               evaluationStructure: modelEvaluationStructure,
-              isConsensus: issue.model.isConsensus,
+              isConsensus:
+                issue.model.lifecycleKind === "thresholdConsensus",
               isMultiCriteria: issue.model.isMultiCriteria,
             }
           : null,

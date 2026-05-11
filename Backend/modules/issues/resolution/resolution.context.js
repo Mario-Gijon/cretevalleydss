@@ -35,15 +35,15 @@ export const getResolutionContext = async ({
   const snapshotErrors = [];
   const apiModelKey = String(issueDoc?.apiModelKey || "").trim();
   const endpointPath = String(issueDoc?.apiEndpoint?.path || "").trim();
-  const inputKind = String(issueDoc?.inputKind || "").trim();
-  const outputKind = String(issueDoc?.outputKind || "").trim();
+  const apiInputFormat = String(issueDoc?.apiInputFormat || "").trim();
+  const apiOutputFormat = String(issueDoc?.apiOutputFormat || "").trim();
   const evaluationStructure = String(issueDoc?.evaluationStructure || "").trim();
   const lifecycleKind = String(issueDoc?.lifecycleKind || "").trim();
 
   if (!apiModelKey) snapshotErrors.push("apiModelKey");
   if (!endpointPath) snapshotErrors.push("apiEndpoint.path");
-  if (!inputKind) snapshotErrors.push("inputKind");
-  if (!outputKind) snapshotErrors.push("outputKind");
+  if (!apiInputFormat) snapshotErrors.push("apiInputFormat");
+  if (!apiOutputFormat) snapshotErrors.push("apiOutputFormat");
   if (!evaluationStructure) snapshotErrors.push("evaluationStructure");
   if (!lifecycleKind) snapshotErrors.push("lifecycleKind");
 
@@ -68,8 +68,8 @@ export const getResolutionContext = async ({
       path: endpointPath,
       operationId: issueDoc?.apiEndpoint?.operationId ?? null,
     },
-    inputKind,
-    outputKind,
+    apiInputFormat,
+    apiOutputFormat,
   };
 
   if (!sameId(issueDoc.admin, userId)) {

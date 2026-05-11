@@ -17,8 +17,6 @@ import {
   toTitle,
 } from "../utils/modelManifest.formatters";
 import {
-  getSeverityForRole,
-  getSeverityForStatus,
   getSeverityForSyncState,
   getSyncState,
 } from "../utils/modelManifest.severity";
@@ -33,11 +31,11 @@ import StatusChip from "./StatusChip";
 const TABLE_HEADINGS = [
   "Model",
   "Key",
-  "Role",
-  "Status",
+  "Lifecycle",
   "Structure",
-  "Consensus",
-  "Scenarios",
+  "Input",
+  "Output",
+  "Issue model",
   "Sync state",
   "Active",
 ];
@@ -117,14 +115,9 @@ export default function ModelsTable({
                 </TableCell>
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
-                  <StatusChip label={toTitle(row.role)} severity={getSeverityForRole(row.role)} />
-                </TableCell>
-
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
-                  <StatusChip
-                    label={toTitle(row.status)}
-                    severity={getSeverityForStatus(row.status)}
-                  />
+                  <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
+                    {toTitle(row.lifecycleKind)}
+                  </Typography>
                 </TableCell>
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
@@ -135,12 +128,18 @@ export default function ModelsTable({
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
-                    {formatBoolean(row.isConsensus)}
+                    {row.apiInputFormat || "Unknown"}
                   </Typography>
                 </TableCell>
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
-                  {formatBoolean(row.supportsScenarios, "Supported", "Not supported")}
+                  <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
+                    {row.apiOutputFormat || "Unknown"}
+                  </Typography>
+                </TableCell>
+
+                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                  {formatBoolean(row.isIssueModel)}
                 </TableCell>
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>

@@ -161,7 +161,7 @@ def _extract_herrera_shape(
 
 
 def _normalize_criterion_types(value):
-    """Acepta aliases de UI y devuelve el vocabulario esperado por los modelos."""
+    """Valida criterionTypes usando el vocabulario canónico esperado por los modelos."""
 
     if value is None:
         return value
@@ -169,21 +169,14 @@ def _normalize_criterion_types(value):
     if not isinstance(value, list):
         raise ValueError("criterionTypes must be a list")
 
-    aliases = {
-        "max": "max",
-        "min": "min",
-        "benefit": "max",
-        "cost": "min",
-    }
+    allowed_values = {"max", "min"}
 
     normalized = []
     for item in value:
         key = str(item).strip().lower()
-        if key not in aliases:
-            raise ValueError(
-                "criterionTypes values must be one of: max, min, benefit, cost"
-            )
-        normalized.append(aliases[key])
+        if key not in allowed_values:
+            raise ValueError("criterionTypes values must be one of: max, min")
+        normalized.append(key)
 
     return normalized
 
@@ -318,7 +311,7 @@ class TopsisRequest(RequestSchema):
     )
     criterionTypes: list[str] = Field(
         ...,
-        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+        description="Tipo por criterio (`max` o `min`).",
     )
     modelParameters: TopsisModelParameters = Field(
         ...,
@@ -364,7 +357,7 @@ class BordaRequest(RequestSchema):
     )
     criterionTypes: list[str] = Field(
         ...,
-        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+        description="Tipo por criterio (`max` o `min`).",
     )
 
     @model_validator(mode="after")
@@ -411,7 +404,7 @@ class ArasRequest(RequestSchema):
     )
     criterionTypes: list[str] = Field(
         ...,
-        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+        description="Tipo por criterio (`max` o `min`).",
     )
     modelParameters: ArasModelParameters = Field(
         ...,
@@ -473,7 +466,7 @@ class FuzzyTopsisRequest(RequestSchema):
     )
     criterionTypes: list[str] = Field(
         ...,
-        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+        description="Tipo por criterio (`max` o `min`).",
     )
     modelParameters: FuzzyTopsisModelParameters = Field(
         ...,
@@ -547,7 +540,7 @@ class MarcosRequest(RequestSchema):
     )
     criterionTypes: list[str] = Field(
         ...,
-        description="Tipo por criterio (`max` o `min`; también acepta `benefit` o `cost`).",
+        description="Tipo por criterio (`max` o `min`).",
     )
     modelParameters: MarcosModelParameters = Field(
         ...,

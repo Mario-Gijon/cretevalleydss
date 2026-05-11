@@ -705,8 +705,8 @@ export const useFinishedIssueDialogView = ({
     ? {
       modelName: modelExecution?.modelName ?? null,
       modelKey: modelExecution?.modelKey ?? null,
-      inputKind: modelExecution?.inputKind ?? null,
-      outputKind: modelExecution?.outputKind ?? null,
+      apiInputFormat: modelExecution?.apiInputFormat ?? null,
+      apiOutputFormat: modelExecution?.apiOutputFormat ?? null,
       executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
     }
     : null;

@@ -109,12 +109,12 @@ const issueSchema = new Schema(
         trim: true,
       },
     },
-    inputKind: {
+    apiInputFormat: {
       type: String,
       required: true,
       trim: true,
     },
-    outputKind: {
+    apiOutputFormat: {
       type: String,
       required: true,
       trim: true,

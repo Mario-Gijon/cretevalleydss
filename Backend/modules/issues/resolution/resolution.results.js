@@ -20,8 +20,8 @@ const buildModelExecutionDetails = ({
     apiModelKey: model?.apiModelKey ?? modelKey ?? null,
     modelKey: modelKey ?? null,
     modelName: model?.name ?? null,
-    inputKind: model?.inputKind ?? null,
-    outputKind: model?.outputKind ?? null,
+    apiInputFormat: model?.apiInputFormat ?? null,
+    apiOutputFormat: model?.apiOutputFormat ?? null,
     apiEndpoint: model?.apiEndpoint ?? null,
     apiEndpointPath: model?.apiEndpoint?.path ?? null,
     modelParameters: modelParameters ?? null,
@@ -59,7 +59,7 @@ export const buildResolutionResult = ({
   rawOutput,
 }) => {
   const normalizedOutput = normalizeModelOutput({
-    outputKind: model?.outputKind,
+    apiOutputFormat: model?.apiOutputFormat,
     rawOutput: results,
     alternatives,
     criteria,

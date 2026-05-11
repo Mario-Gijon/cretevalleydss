@@ -1,9 +1,4 @@
-"""Construcción del manifest técnico de modelos.
-
-El manifest público mantiene el contrato usado por Backend/Frontend, pero se
-construye desde `MODEL_DEFINITIONS` para evitar duplicar metadata pesada en cada
-modelo registrado.
-"""
+"""Construcción del manifest técnico de modelos."""
 
 from typing import Any
 
@@ -18,35 +13,7 @@ API_CONTRACT = {
     "error": "object|null",
 }
 
-_ADMIN_PRESERVED_FIELDS = [
-    "smallDescription",
-    "extendDescription",
-    "moreInfoUrl",
-]
-
-_ISSUE_MODEL_TECHNICAL_FIELDS = [
-    "modelFamilyKey",
-    "modelVersion",
-    "versionLabel",
-    "parameters",
-    "evaluationStructure",
-    "lifecycleKind",
-    "inputKind",
-    "outputKind",
-    "criterionTypes",
-    "supportedDomains",
-    "supportsScenarios",
-    "isConsensus",
-    "isMultiCriteria",
-]
-
-_CRITERION_TYPES = {
-    "canonical": ["max", "min"],
-    "aliases": {
-        "benefit": "max",
-        "cost": "min",
-    },
-}
+_CRITERION_TYPES = ["max", "min"]
 
 _WEIGHTS_PARAMETER = {
     "key": "weights",
@@ -110,47 +77,8 @@ def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]
     return normalized
 
 
-def _get_request_example(schema: dict[str, Any]) -> dict[str, Any] | None:
-    """Extrae el ejemplo principal del JSON Schema de Pydantic."""
-
-    example = schema.get("example")
-    return example if isinstance(example, dict) else None
-
-
-def _get_response_data_keys(response_examples: dict[str, Any]) -> list[str]:
-    """Deduce claves principales de data desde el ejemplo de éxito."""
-
-    success_value = response_examples.get("success", {}).get("value", {})
-    data = success_value.get("data")
-
-    if not isinstance(data, dict):
-        return []
-
-    return sorted(data.keys())
-
-
-def _build_sync(sync_as_issue_model: bool) -> dict[str, Any]:
-    """Construye metadata de sincronización compatible con el contrato actual."""
-
-    return {
-        "safeToCreateIssueModel": sync_as_issue_model,
-        "safeTechnicalFields": (
-            _ISSUE_MODEL_TECHNICAL_FIELDS if sync_as_issue_model else []
-        ),
-        "preserveAdminFields": _ADMIN_PRESERVED_FIELDS,
-    }
-
-
-def _build_supported_domains(domain_types: list[str]) -> dict[str, Any] | None:
-    """Expande tipos de dominio soportados al formato público del manifest.
-
-    El modelo solo declara si trabaja con valores numéricos o lingüísticos. Los
-    rangos concretos, número de etiquetas o restricciones del dominio pertenecen
-    al dominio de expresión configurado en el problema, no al modelo.
-    """
-
-    if not domain_types:
-        return None
+def _build_supported_domains(domain_types: list[str]) -> dict[str, Any]:
+    """Construye dominios soportados en forma canónica con subtipos numéricos."""
 
     normalized_domain_types = {
         domain_type.strip().lower()
@@ -160,18 +88,10 @@ def _build_supported_domains(domain_types: list[str]) -> dict[str, Any] | None:
 
     return {
         "numeric": {
-            "enabled": "numeric" in normalized_domain_types,
-            "range": {
-                "min": None,
-                "max": None,
-            },
+            "continuous": "numericcontinuous" in normalized_domain_types,
+            "discrete": "numericdiscrete" in normalized_domain_types,
         },
-        "linguistic": {
-            "enabled": "linguistic" in normalized_domain_types,
-            "minLabels": None,
-            "maxLabels": None,
-            "oddOnly": False,
-        },
+        "linguistic": "linguistic" in normalized_domain_types,
     }
 
 
@@ -186,70 +106,64 @@ def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
     if model.uses_fuzzy_weights:
         parameters.append(_normalize_parameter_definition(_FUZZY_WEIGHTS_PARAMETER))
 
-    parameters.extend(
-        _normalize_parameter_definition(parameter)
-        for parameter in model.parameters
-    )
+    parameters.extend(_normalize_parameter_definition(parameter) for parameter in model.parameters)
     return parameters
 
 
-def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
-    """Convierte una definición de modelo al formato público del manifest."""
+def _get_request_example(model: ModelDefinition) -> dict[str, Any] | None:
+    """Extrae el ejemplo principal del JSON Schema de Pydantic."""
 
-    request_schema = model.request_model.model_json_schema()
-    supported_domains = _build_supported_domains(model.supported_expression_domains)
+    schema = model.request_model.model_json_schema()
+    example = schema.get("example")
+
+    return example if isinstance(example, dict) else None
+
+
+def _get_response_example(model: ModelDefinition) -> dict[str, Any] | None:
+    """Extrae el ejemplo principal de éxito del modelo."""
+
+    success_value = model.response_examples.get("success", {}).get("value")
+
+    return success_value if isinstance(success_value, dict) else None
+
+
+def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
+    """Convierte una definición de modelo al formato público canónico del manifest."""
 
     return {
-        "key": model.key,
+        "apiModelKey": model.api_model_key,
+        "displayName": model.display_name,
         "modelFamilyKey": model.family_key,
         "modelVersion": model.model_version,
         "versionLabel": model.version_label,
-        "displayName": model.display_name,
-        "aliases": model.aliases,
-        "role": model.role,
-        "status": model.status,
-        "publicInIssueCatalog": model.public_in_issue_catalog,
-        "endpoint": {
+        "isIssueModel": model.is_issue_model,
+        "apiEndpoint": {
             "method": "POST",
-            "path": model.path,
+            "path": model.api_endpoint_path,
             "operationId": model.operation_id,
         },
-        "documentation": {
-            "summary": model.summary,
-            "description": model.description,
-            "moreInfoUrl": model.more_info_url,
-        },
-        "catalog": {
-            "smallDescription": model.small_description or model.summary,
-            "extendDescription": model.extend_description or model.description,
-            "moreInfoUrl": model.more_info_url,
-        },
-        "capabilities": {
-            "evaluationStructure": model.evaluation_structure,
-            "lifecycleKind": model.lifecycle_kind,
-            "isConsensus": model.is_consensus,
-            "isMultiCriteria": model.is_multi_criteria,
-            "inputKind": model.input_kind,
-            "outputKind": model.output_kind,
-            "supportsScenarios": model.supports_scenarios,
-            "supportedDomains": supported_domains,
-        },
-        "parameters": _build_parameters(model),
+        "smallDescription": model.small_description,
+        "extendDescription": model.extend_description,
+        "moreInfoUrl": model.more_info_url,
+        "evaluationStructure": model.evaluation_structure,
+        "lifecycleKind": model.lifecycle_kind,
+        "apiInputFormat": model.api_input_format,
+        "apiOutputFormat": model.api_output_format,
+        "isMultiCriteria": model.is_multi_criteria,
+        "supportedDomains": _build_supported_domains(model.supported_domains),
         "criterionTypes": _CRITERION_TYPES if model.uses_criterion_types else None,
-        "inputFields": model.input_fields,
-        "outputFields": model.output_fields,
+        "parameters": _build_parameters(model),
+        "modelInputFields": list(model.model_input_fields),
+        "modelOutputFields": list(model.model_output_fields),
         "request": {
-            "schemaName": model.request_model.__name__,
-            "required": request_schema.get("required", []),
-            "jsonSchema": request_schema,
-            "example": _get_request_example(request_schema),
+            "contentType": "application/json",
+            "bodyFields": list(model.request_body_fields),
+            "example": _get_request_example(model),
         },
         "response": {
-            "contract": "success/message/data/error",
-            "dataKeys": _get_response_data_keys(model.response_examples),
-            "examples": model.response_examples,
+            "dataFields": list(model.model_output_fields),
+            "example": _get_response_example(model),
         },
-        "sync": _build_sync(model.sync_as_issue_model),
     }
 
 

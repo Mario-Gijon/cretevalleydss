@@ -40,8 +40,8 @@ const resolvePhaseFromContext = (analysisContext, issue) => {
 const buildModelSnapshot = (analysisContext) => ({
   apiModelKey: analysisContext?.model?.apiModelKey ?? null,
   evaluationStructure: analysisContext?.model?.evaluationStructure ?? null,
-  inputKind: analysisContext?.model?.inputKind ?? null,
-  outputKind: analysisContext?.model?.outputKind ?? null,
+  apiInputFormat: analysisContext?.model?.apiInputFormat ?? null,
+  apiOutputFormat: analysisContext?.model?.apiOutputFormat ?? null,
   lifecycleKind: analysisContext?.model?.lifecycleKind ?? null,
   modelVersion: analysisContext?.model?.modelVersion ?? null,
   versionLabel: analysisContext?.model?.versionLabel ?? null,
@@ -311,7 +311,7 @@ const persistFailedResultsAnalysisWithMinimalContext = async ({
   try {
     const issue = await Issue.findById(issueId)
       .select(
-        "_id apiModelKey evaluationStructure inputKind outputKind lifecycleKind modelVersion versionLabel consensusPhase"
+        "_id apiModelKey evaluationStructure apiInputFormat apiOutputFormat lifecycleKind modelVersion versionLabel consensusPhase"
       )
       .lean();
 
@@ -342,8 +342,8 @@ const persistFailedResultsAnalysisWithMinimalContext = async ({
       modelSnapshot: {
         apiModelKey: issue?.apiModelKey ?? null,
         evaluationStructure: issue?.evaluationStructure ?? null,
-        inputKind: issue?.inputKind ?? null,
-        outputKind: issue?.outputKind ?? null,
+        apiInputFormat: issue?.apiInputFormat ?? null,
+        apiOutputFormat: issue?.apiOutputFormat ?? null,
         lifecycleKind: issue?.lifecycleKind ?? null,
         modelVersion: issue?.modelVersion ?? null,
         versionLabel: issue?.versionLabel ?? null,

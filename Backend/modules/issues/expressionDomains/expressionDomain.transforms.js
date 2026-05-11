@@ -225,7 +225,7 @@ const findLinguisticLabelByRawValue = ({ value, domainSnapshot }) => {
   return null;
 };
 
-const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, inputKind, value, domainSnapshot, context }) => {
+const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, apiInputFormat, value, domainSnapshot, context }) => {
   if (!labelDefinition) {
     buildDomainError({
       reason: "linguistic label not found in domain",
@@ -252,7 +252,7 @@ const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, inputKind, 
     });
   }
 
-  if (inputKind === "directFuzzyMatrix") {
+  if (apiInputFormat === "directFuzzyMatrix") {
     return fuzzyTuple;
   }
 
@@ -262,7 +262,7 @@ const buildCanonicalFromLinguisticLabelOrThrow = ({ labelDefinition, inputKind, 
 export const normalizeEvaluationValueForInputOrThrow = ({
   value,
   domainSnapshot,
-  inputKind,
+  apiInputFormat,
   context = {},
 }) => {
   if (value === null || value === undefined || value === "") {
@@ -288,7 +288,7 @@ export const normalizeEvaluationValueForInputOrThrow = ({
         context,
       });
 
-      if (inputKind === "directFuzzyMatrix") {
+      if (apiInputFormat === "directFuzzyMatrix") {
         return [canonicalInterval[0], (canonicalInterval[0] + canonicalInterval[1]) / 2, canonicalInterval[1]];
       }
 
@@ -302,7 +302,7 @@ export const normalizeEvaluationValueForInputOrThrow = ({
         context,
       });
 
-      if (inputKind === "directFuzzyMatrix") {
+      if (apiInputFormat === "directFuzzyMatrix") {
         return canonicalTuple;
       }
 
@@ -320,7 +320,7 @@ export const normalizeEvaluationValueForInputOrThrow = ({
     const labelDefinition = findLinguisticLabelByRawValue({ value, domainSnapshot });
     return buildCanonicalFromLinguisticLabelOrThrow({
       labelDefinition,
-      inputKind,
+      apiInputFormat,
       value,
       domainSnapshot,
       context,

@@ -69,6 +69,24 @@ const getTargetScenarioModelOrThrow = async ({
     });
   }
 
+  if (targetModel.isIssueModel !== true) {
+    throw createBadRequestError("Target model is not available for issue simulation", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
+  if (targetModel?.manifestSync?.isStale === true) {
+    throw createBadRequestError("Target model is stale and cannot be used for simulation", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
   return targetModel;
 };
 
@@ -91,6 +109,21 @@ const resolveScenarioEvaluationPhaseOrThrow = ({ issue, consensusCount }) => {
   }
 
   return phase;
+};
+
+const modelSupportsIssueDomainType = (supportedDomains, domainType) => {
+  if (domainType === "numeric") {
+    return (
+      supportedDomains?.numeric?.continuous === true ||
+      supportedDomains?.numeric?.discrete === true
+    );
+  }
+
+  if (domainType === "linguistic") {
+    return supportedDomains?.linguistic === true;
+  }
+
+  return false;
 };
 
 export const getCreateScenarioContext = async ({
@@ -190,7 +223,10 @@ export const getCreateScenarioContext = async ({
   });
   const domainType = detectedDomain.domainType;
 
-  const supportsDomain = targetModel.supportedDomains[domainType].enabled;
+  const supportsDomain = modelSupportsIssueDomainType(
+    targetModel?.supportedDomains,
+    domainType
+  );
   if (!supportsDomain) {
     throw createBadRequestError(
       `Target model does not support '${domainType}' domains. Pick a compatible model.`,

@@ -183,7 +183,7 @@ export const getManifestModels = async (options = {}) => {
 };
 
 /**
- * Fetches manifest models that are public in the Backend issue catalog.
+ * Fetches manifest models marked as issue models.
  *
  * @param {Object} [options] Request options forwarded to fetchModelManifest.
  * @returns {Promise<Array<Object>>}
@@ -191,5 +191,5 @@ export const getManifestModels = async (options = {}) => {
 export const getPublicIssueManifestModels = async (options = {}) => {
   const models = await getManifestModels(options);
 
-  return models.filter((model) => model?.publicInIssueCatalog === true);
+  return models.filter((model) => model?.isIssueModel === true);
 };

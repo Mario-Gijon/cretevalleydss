@@ -10,8 +10,6 @@ import {
   toTitle,
 } from "../utils/modelManifest.formatters";
 import {
-  getSeverityForRole,
-  getSeverityForStatus,
   getSeverityForSyncState,
   getSyncState,
 } from "../utils/modelManifest.severity";
@@ -45,11 +43,11 @@ export default function ModelCards({
 
                 <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
                   <StatusChip label={row.apiModelKey || "No key"} />
-                  <StatusChip label={toTitle(row.role)} severity={getSeverityForRole(row.role)} />
                   <StatusChip
-                    label={toTitle(row.status)}
-                    severity={getSeverityForStatus(row.status)}
+                    label={row.isIssueModel ? "Issue model" : "Non-issue model"}
+                    severity={row.isIssueModel ? "success" : "info"}
                   />
+                  <StatusChip label={toTitle(row.lifecycleKind)} />
                   <StatusChip
                     label={getSyncState(row)}
                     severity={getSeverityForSyncState(getSyncState(row))}
@@ -64,12 +62,11 @@ export default function ModelCards({
               <FieldGrid
                 rows={[
                   { label: "Catalog", value: getCatalogVisibilityLabel(row) },
+                  { label: "Lifecycle", value: toTitle(row.lifecycleKind) },
                   { label: "Structure", value: toTitle(row.evaluationStructure) },
-                  { label: "Consensus", value: formatBoolean(row.isConsensus) },
-                  {
-                    label: "Scenarios",
-                    value: formatBoolean(row.supportsScenarios, "Supported", "Not supported"),
-                  },
+                  { label: "Input", value: row.apiInputFormat },
+                  { label: "Output", value: row.apiOutputFormat },
+                  { label: "Issue model", value: formatBoolean(row.isIssueModel) },
                 ]}
               />
 

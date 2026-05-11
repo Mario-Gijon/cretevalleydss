@@ -19,7 +19,7 @@ export const buildDirectResolutionData = async ({
   criteria,
   participations,
   currentPhase,
-  inputKind = "directCrispMatrix",
+  apiInputFormat = "directCrispMatrix",
 }) => {
   const expertIds = participations
     .map((participation) => participation.expert?._id)
@@ -74,7 +74,7 @@ export const buildDirectResolutionData = async ({
             : normalizeEvaluationValueForInputOrThrow({
                 value: evaluation.value,
                 domainSnapshot: evaluation?.expressionDomain,
-                inputKind,
+                apiInputFormat,
                 context: {
                   issueId,
                   expertId,

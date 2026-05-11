@@ -422,7 +422,7 @@ const buildDirectEvaluationsContext = ({
       const canonicalValue = normalizeEvaluationValueForInputOrThrow({
         value,
         domainSnapshot: evaluation.expressionDomain,
-        inputKind: issue?.inputKind,
+        apiInputFormat: issue?.apiInputFormat,
         context: {
           issueId: toIdString(issue?._id),
           expertId: toIdString(evaluation?.expert?._id),
@@ -544,7 +544,7 @@ const buildPairwiseEvaluationsContext = ({
       const canonicalValue = normalizeEvaluationValueForInputOrThrow({
         value,
         domainSnapshot: evaluation.expressionDomain,
-        inputKind: issue?.inputKind,
+        apiInputFormat: issue?.apiInputFormat,
         context: {
           issueId: toIdString(issue?._id),
           expertId: toIdString(evaluation?.expert?._id),
@@ -614,8 +614,8 @@ const buildScenariosContext = (scenarioDocs, warnings) => {
       modelFamilyKey: scenario.targetModelFamilyKey || null,
       modelVersion: scenario.targetModelVersion || null,
       versionLabel: scenario.targetVersionLabel || null,
-      inputKind: scenario.targetInputKind || null,
-      outputKind: scenario.targetOutputKind || null,
+      apiInputFormat: scenario.targetApiInputFormat || null,
+      apiOutputFormat: scenario.targetApiOutputFormat || null,
       evaluationStructure: scenario.targetEvaluationStructure || null,
       lifecycleKind: scenario.targetLifecycleKind || null,
       apiEndpoint: scenario.targetApiEndpoint || null,
@@ -718,7 +718,7 @@ export const getAuthorizedScenarioForAnalysisOrThrow = async ({
 
   const scenario = await IssueScenario.findById(scenarioId)
     .select(
-      "_id issue name status targetModel targetModelName targetApiModelKey targetApiEndpoint targetInputKind targetOutputKind targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs"
+      "_id issue name status targetModel targetModelName targetApiModelKey targetApiEndpoint targetApiInputFormat targetApiOutputFormat targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs"
     )
     .lean();
 
@@ -805,7 +805,7 @@ export const buildIssueResultsAnalysisContext = async ({
     Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),
     IssueScenario.find({ issue: issue._id })
       .sort({ createdAt: -1 })
-      .select("_id name status createdAt targetModel targetModelName targetApiModelKey targetApiEndpoint targetInputKind targetOutputKind targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs")
+      .select("_id name status createdAt targetModel targetModelName targetApiModelKey targetApiEndpoint targetApiInputFormat targetApiOutputFormat targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs")
       .lean(),
   ]);
 
@@ -900,8 +900,8 @@ export const buildIssueResultsAnalysisContext = async ({
       apiModelKey: issue.apiModelKey || null,
       apiEndpoint: issue.apiEndpoint || null,
       evaluationStructure: issue.evaluationStructure || null,
-      inputKind: issue.inputKind || null,
-      outputKind: issue.outputKind || null,
+      apiInputFormat: issue.apiInputFormat || null,
+      apiOutputFormat: issue.apiOutputFormat || null,
       lifecycleKind: issue.lifecycleKind || null,
       modelFamilyKey: issue.modelFamilyKey || null,
       modelVersion: issue.modelVersion || null,
@@ -1002,7 +1002,7 @@ export const buildScenarioResultsAnalysisContext = async ({
       Consensus.find({ issue: issue._id }).sort({ phase: 1 }).lean(),
       IssueScenario.find({ issue: issue._id })
         .sort({ createdAt: -1 })
-        .select("_id name status createdAt targetModel targetModelName targetApiModelKey targetApiEndpoint targetInputKind targetOutputKind targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs")
+        .select("_id name status createdAt targetModel targetModelName targetApiModelKey targetApiEndpoint targetApiInputFormat targetApiOutputFormat targetEvaluationStructure targetLifecycleKind targetModelFamilyKey targetModelVersion targetVersionLabel config inputs outputs")
         .lean(),
     ]);
 
@@ -1037,7 +1037,7 @@ export const buildScenarioResultsAnalysisContext = async ({
       phaseUsed,
       issue: {
         ...issue,
-        inputKind: scenario?.targetInputKind || issue?.inputKind,
+        apiInputFormat: scenario?.targetApiInputFormat || issue?.apiInputFormat,
       },
       alternatives,
       criteria: leafCriteria,
@@ -1049,7 +1049,7 @@ export const buildScenarioResultsAnalysisContext = async ({
       phaseUsed,
       issue: {
         ...issue,
-        inputKind: scenario?.targetInputKind || issue?.inputKind,
+        apiInputFormat: scenario?.targetApiInputFormat || issue?.apiInputFormat,
       },
       alternatives,
       criteria: leafCriteria,
@@ -1090,8 +1090,8 @@ export const buildScenarioResultsAnalysisContext = async ({
       apiModelKey: scenario?.targetApiModelKey || null,
       apiEndpoint: scenario?.targetApiEndpoint || null,
       evaluationStructure: scenario?.targetEvaluationStructure || issue.evaluationStructure || null,
-      inputKind: scenario?.targetInputKind || null,
-      outputKind: scenario?.targetOutputKind || null,
+      apiInputFormat: scenario?.targetApiInputFormat || null,
+      apiOutputFormat: scenario?.targetApiOutputFormat || null,
       lifecycleKind: scenario?.targetLifecycleKind || null,
       modelFamilyKey: scenario?.targetModelFamilyKey || null,
       modelVersion: scenario?.targetModelVersion || null,

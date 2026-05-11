@@ -5,7 +5,7 @@ import {
 import { toIdString } from "../../../utils/common/ids.js";
 
 const normalizeEndpointPath = (value) => {
-  const normalizedPath = value.trim();
+  const normalizedPath = String(value || "").trim();
   if (!normalizedPath) return null;
 
   const clean = normalizedPath.replace(/^\/+|\/+$/g, "");
@@ -13,22 +13,22 @@ const normalizeEndpointPath = (value) => {
 };
 
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
-  const targetApiModelKey = targetModel.apiModelKey.trim();
-  const endpointPath = normalizeEndpointPath(targetModel.apiEndpoint.path);
-  const targetInputKind = targetModel.inputKind.trim();
-  const targetOutputKind = targetModel.outputKind.trim();
-  const targetEvaluationStructure = targetModel.evaluationStructure.trim();
-  const targetLifecycleKind = targetModel.lifecycleKind.trim();
-  const targetModelFamilyKey = targetModel.modelFamilyKey.trim();
-  const targetModelVersion = targetModel.modelVersion.trim();
-  const targetVersionLabel = targetModel.versionLabel.trim();
+  const targetApiModelKey = String(targetModel?.apiModelKey || "").trim();
+  const endpointPath = normalizeEndpointPath(targetModel?.apiEndpoint?.path);
+  const targetApiInputFormat = String(targetModel?.apiInputFormat || "").trim();
+  const targetApiOutputFormat = String(targetModel?.apiOutputFormat || "").trim();
+  const targetEvaluationStructure = String(targetModel?.evaluationStructure || "").trim();
+  const targetLifecycleKind = String(targetModel?.lifecycleKind || "").trim();
+  const targetModelFamilyKey = String(targetModel?.modelFamilyKey || "").trim();
+  const targetModelVersion = String(targetModel?.modelVersion || "").trim();
+  const targetVersionLabel = String(targetModel?.versionLabel || "").trim();
 
   const missingFields = [];
 
   if (!targetApiModelKey) missingFields.push("apiModelKey");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
-  if (!targetInputKind) missingFields.push("inputKind");
-  if (!targetOutputKind) missingFields.push("outputKind");
+  if (!targetApiInputFormat) missingFields.push("apiInputFormat");
+  if (!targetApiOutputFormat) missingFields.push("apiOutputFormat");
   if (!targetEvaluationStructure) missingFields.push("evaluationStructure");
   if (!targetLifecycleKind) missingFields.push("lifecycleKind");
   if (!targetModelFamilyKey) missingFields.push("modelFamilyKey");
@@ -51,12 +51,12 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   return {
     targetApiModelKey,
     targetApiEndpoint: {
-      method: targetModel.apiEndpoint.method,
+      method: targetModel?.apiEndpoint?.method || null,
       path: endpointPath,
-      operationId: targetModel.apiEndpoint.operationId,
+      operationId: targetModel?.apiEndpoint?.operationId || null,
     },
-    targetInputKind,
-    targetOutputKind,
+    targetApiInputFormat,
+    targetApiOutputFormat,
     targetEvaluationStructure,
     targetLifecycleKind,
     targetModelFamilyKey,
@@ -72,8 +72,8 @@ export const buildTargetRuntimeModelFromSnapshot = ({
   name: targetModelName,
   apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
   apiEndpoint: { ...targetRuntimeSnapshot.targetApiEndpoint },
-  inputKind: targetRuntimeSnapshot.targetInputKind,
-  outputKind: targetRuntimeSnapshot.targetOutputKind,
+  apiInputFormat: targetRuntimeSnapshot.targetApiInputFormat,
+  apiOutputFormat: targetRuntimeSnapshot.targetApiOutputFormat,
   evaluationStructure: targetRuntimeSnapshot.targetEvaluationStructure,
   lifecycleKind: targetRuntimeSnapshot.targetLifecycleKind,
   modelFamilyKey: targetRuntimeSnapshot.targetModelFamilyKey,
@@ -108,10 +108,10 @@ export const validateScenarioModelCompatibilityOrThrow = ({
   targetModel,
   targetRuntimeSnapshot,
 }) => {
-  const issueEvaluationStructure = issue.evaluationStructure.trim();
-  const issueInputKind = issue.inputKind.trim();
+  const issueEvaluationStructure = String(issue?.evaluationStructure || "").trim();
+  const issueApiInputFormat = String(issue?.apiInputFormat || "").trim();
   const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
-  const targetInputKind = targetRuntimeSnapshot.targetInputKind;
+  const targetApiInputFormat = targetRuntimeSnapshot.targetApiInputFormat;
 
   if (targetEvaluationStructure !== issueEvaluationStructure) {
     throw createBadRequestError(
@@ -122,9 +122,9 @@ export const validateScenarioModelCompatibilityOrThrow = ({
     );
   }
 
-  if (targetInputKind !== issueInputKind) {
+  if (targetApiInputFormat !== issueApiInputFormat) {
     throw createBadRequestError(
-      "Incompatible models: target model input kind does not match this issue input kind.",
+      "Incompatible models: target model apiInputFormat does not match this issue apiInputFormat.",
       {
         field: "targetModel",
       }

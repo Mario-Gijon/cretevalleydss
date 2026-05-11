@@ -14,7 +14,7 @@ def _build_model_endpoint(model: ModelDefinition):
     async def endpoint(payload: request_model):  # type: ignore[valid-type]
         return model.handler(payload)
 
-    endpoint.__name__ = f"{model.key}_endpoint"
+    endpoint.__name__ = f"{model.api_model_key}_endpoint"
     endpoint.__doc__ = model.description
 
     return endpoint
@@ -57,7 +57,7 @@ def _build_responses(model: ModelDefinition) -> dict[int, dict[str, object]]:
 
 for model_definition in MODEL_DEFINITIONS:
     router.add_api_route(
-        model_definition.path,
+        model_definition.api_endpoint_path,
         _build_model_endpoint(model_definition),
         methods=["POST"],
         response_model=ModelExecutionResponse,
@@ -65,6 +65,6 @@ for model_definition in MODEL_DEFINITIONS:
         summary=model_definition.summary,
         description=model_definition.description,
         operation_id=model_definition.operation_id,
-        name=model_definition.key,
+        name=model_definition.api_model_key,
         responses=_build_responses(model_definition),
     )

@@ -237,7 +237,7 @@ router.get(
  *       - Admin
  *     summary: Actualiza la visibilidad de un modelo en Create Issue
  *     description: |
- *       Cambia únicamente publicInIssueCatalog para controlar si un modelo
+ *       Cambia únicamente visibleInIssueCreation para controlar si un modelo
  *       aparece al crear nuevos issues. No modifica metadatos técnicos,
  *       campos editoriales ni issues existentes.
  *     security:
@@ -255,16 +255,16 @@ router.get(
  *           schema:
  *             type: object
  *             required:
- *               - publicInIssueCatalog
+ *               - visibleInIssueCreation
  *             properties:
- *               publicInIssueCatalog:
+ *               visibleInIssueCreation:
  *                 type: boolean
  *                 example: false
  *     responses:
  *       200:
  *         description: Visibilidad actualizada correctamente
  *       400:
- *         description: Id inválido o publicInIssueCatalog no booleano
+ *         description: Id inválido o visibleInIssueCreation no booleano
  *       401:
  *         description: Access token ausente, expirado o inválido
  *       403:

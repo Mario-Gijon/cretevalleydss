@@ -33,7 +33,7 @@ export const valueToText = (value) => {
 export const getModelDisplayName = (row = {}) =>
   row.displayName || row.mongoName || row.apiModelKey || "Unknown model";
 
-export const isVisibleInCreate = (row = {}) => row.publicInIssueCatalog !== false;
+export const isVisibleInCreate = (row = {}) => row.visibleInIssueCreation !== false;
 
 export const getCatalogVisibilityLabel = (row = {}) =>
   isVisibleInCreate(row) ? "Active" : "Inactive";

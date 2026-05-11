@@ -40,7 +40,8 @@ export const createIssueScenarioFlow = async ({
     consensusLevel,
   } = await executeResolutionModelPipeline({
     issue: {
-      isConsensus: context.targetRuntimeModel.outputKind === "consensusRanking",
+      isConsensus:
+        context.targetRuntimeModel.lifecycleKind === "thresholdConsensus",
       consensusThreshold: context.consensusThresholdUsed,
     },
     issueId: context.issue._id,
@@ -83,8 +84,8 @@ export const createIssueScenarioFlow = async ({
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
     targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
-    targetInputKind: context.targetRuntimeSnapshot.targetInputKind,
-    targetOutputKind: context.targetRuntimeSnapshot.targetOutputKind,
+    targetApiInputFormat: context.targetRuntimeSnapshot.targetApiInputFormat,
+    targetApiOutputFormat: context.targetRuntimeSnapshot.targetApiOutputFormat,
     targetEvaluationStructure:
       context.targetRuntimeSnapshot.targetEvaluationStructure,
     targetLifecycleKind: context.targetRuntimeSnapshot.targetLifecycleKind,

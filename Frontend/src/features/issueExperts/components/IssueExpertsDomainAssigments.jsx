@@ -17,7 +17,10 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { getMixedOrValue } from "../../../utils/domainAssignments.utils";
+import {
+  getMixedOrValue,
+  getSupportedDomainPools,
+} from "../../../utils/domainAssignments.utils";
 
 const rowSx = {
   width: "100%",
@@ -82,35 +85,32 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
   const { globalDomains } = useIssuesDataContext();
 
   const leafCriteria = getLeafCriteria(criteria);
-  const supportsNumeric = !!selectedModel?.supportedDomains?.numeric?.enabled;
-  const supportsLinguistic = !!selectedModel?.supportedDomains?.linguistic?.enabled;
-
+  const { support, numericDomains, linguisticDomains } = useMemo(
+    () => getSupportedDomainPools(selectedModel, globalDomains, expressionDomains),
+    [selectedModel, globalDomains, expressionDomains]
+  );
+  const supportsNumeric = support.numericContinuous || support.numericDiscrete;
+  const supportsLinguistic = support.linguistic;
 
   const domainOptions = useMemo(() => {
     const opts = [];
 
-    if (supportsNumeric) {
-      globalDomains
-        .filter((d) => d.type === "numeric")
-        .forEach((d) =>
-          opts.push({
-            value: String(d._id),
-            label: d.name,
-          })
-        );
-    }
+    numericDomains.forEach((domain) =>
+      opts.push({
+        value: String(domain._id),
+        label: domain.name,
+      })
+    );
 
-    if (supportsLinguistic) {
-      [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains].forEach((d) =>
-        opts.push({
-          value: String(d._id),
-          label: d.name,
-        })
-      );
-    }
+    linguisticDomains.forEach((domain) =>
+      opts.push({
+        value: String(domain._id),
+        label: domain.name,
+      })
+    );
 
     return opts;
-  }, [supportsNumeric, supportsLinguistic, globalDomains, expressionDomains]);
+  }, [numericDomains, linguisticDomains]);
 
   const assignValue = (path, value) => {
     setDomainAssignments((prev) => {
@@ -168,16 +168,30 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     }
 
 
+    const numericContinuousDefault = numericDomains.find(
+      (domain) =>
+        (domain?.numericRange?.step === null || domain?.numericRange?.step === undefined) &&
+        domain?.numericRange?.min === 0 &&
+        domain?.numericRange?.max === 1
+    );
+    const numericDiscreteDefault = numericDomains.find(
+      (domain) =>
+        Number.isFinite(domain?.numericRange?.step) &&
+        domain.numericRange.step > 0 &&
+        domain?.numericRange?.min === 0 &&
+        domain?.numericRange?.max === 9 &&
+        domain?.numericRange?.step === 1
+    );
+
     const fallback = supportsNumeric
       ? String(
-        globalDomains.find(
-          (d) => d.type === "numeric" && d.numericRange?.min === 0 && d.numericRange?.max === 1
-        )?._id || ""
+        numericContinuousDefault?._id ||
+        numericDiscreteDefault?._id ||
+        numericDomains[0]?._id ||
+        ""
       )
       : supportsLinguistic
-        ? String(
-          [...globalDomains.filter((d) => d.type === "linguistic"), ...expressionDomains][0]?._id || ""
-        )
+        ? String(linguisticDomains[0]?._id || "")
         : "undefined";
 
     let effectiveValue = currentValue ?? fallback;

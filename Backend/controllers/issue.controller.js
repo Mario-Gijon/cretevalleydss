@@ -93,23 +93,19 @@ export const modelsInfo = async (req, res) => {
   const models = await IssueModel.find({
     $and: [
       {
+        isIssueModel: true,
+      },
+      {
         $or: [
-          { publicInIssueCatalog: { $exists: false } },
-          { publicInIssueCatalog: { $ne: false } },
+          { visibleInIssueCreation: { $exists: false } },
+          { visibleInIssueCreation: { $ne: false } },
         ],
       },
       {
         $or: [
-          { modelRole: { $exists: false } },
-          { modelRole: null },
-          { modelRole: "issueModel" },
-        ],
-      },
-      {
-        $or: [
-          { modelStatus: { $exists: false } },
-          { modelStatus: null },
-          { modelStatus: { $nin: ["unavailable", "stale"] } },
+          { manifestSync: { $exists: false } },
+          { "manifestSync.isStale": { $exists: false } },
+          { "manifestSync.isStale": false },
         ],
       },
     ],

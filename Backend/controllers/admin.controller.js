@@ -123,16 +123,25 @@ const mapIssueModelCatalogItem = (model = {}) => {
     id,
     name: model.name,
     apiModelKey: model.apiModelKey || null,
-    modelRole: model.modelRole || "issueModel",
-    modelStatus: model.modelStatus || "available",
-    publicInIssueCatalog: model.publicInIssueCatalog !== false,
-    supportsScenarios: model.supportsScenarios !== false,
+    isIssueModel: model.isIssueModel === true,
+    visibleInIssueCreation: model.visibleInIssueCreation !== false,
     apiEndpoint: model.apiEndpoint || null,
     manifestSync: model.manifestSync || null,
-    isConsensus: model.isConsensus,
     isMultiCriteria: model.isMultiCriteria,
     evaluationStructure: model.evaluationStructure,
+    lifecycleKind: model.lifecycleKind || null,
+    apiInputFormat: model.apiInputFormat || null,
+    apiOutputFormat: model.apiOutputFormat || null,
+    criterionTypes: Array.isArray(model.criterionTypes) ? model.criterionTypes : [],
     parameters: Array.isArray(model.parameters) ? model.parameters : [],
+    modelInputFields: Array.isArray(model.modelInputFields)
+      ? model.modelInputFields
+      : [],
+    modelOutputFields: Array.isArray(model.modelOutputFields)
+      ? model.modelOutputFields
+      : [],
+    request: model.request || null,
+    response: model.response || null,
     supportedDomains: model.supportedDomains || null,
     smallDescription: model.smallDescription,
     extendDescription: model.extendDescription,
@@ -147,12 +156,11 @@ const mapIssueModelCatalogItem = (model = {}) => {
  * @returns {number}
  */
 const getModelCatalogSortRank = (model = {}) => {
-  const publicIssueModel = model.publicInIssueCatalog !== false;
-  const status = String(model.modelStatus || "").toLowerCase();
-  const staleOrUnavailable = status === "stale" || status === "unavailable";
+  const visibleInIssueCreation = model.visibleInIssueCreation !== false;
+  const stale = model?.manifestSync?.isStale === true;
 
-  if (publicIssueModel && !staleOrUnavailable) return 0;
-  if (publicIssueModel) return 1;
+  if (visibleInIssueCreation && !stale) return 0;
+  if (visibleInIssueCreation) return 1;
 
   return 2;
 };
@@ -207,7 +215,7 @@ export const getModelCatalogAdmin = async (_req, res) => {
  */
 export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   const { id } = req.params || {};
-  const { publicInIssueCatalog } = req.body || {};
+  const { visibleInIssueCreation } = req.body || {};
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid model id is required", {
@@ -215,15 +223,15 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
     });
   }
 
-  if (typeof publicInIssueCatalog !== "boolean") {
-    throw createBadRequestError("publicInIssueCatalog must be boolean", {
-      field: "publicInIssueCatalog",
+  if (typeof visibleInIssueCreation !== "boolean") {
+    throw createBadRequestError("visibleInIssueCreation must be boolean", {
+      field: "visibleInIssueCreation",
     });
   }
 
   const model = await IssueModel.findByIdAndUpdate(
     id,
-    { $set: { publicInIssueCatalog } },
+    { $set: { visibleInIssueCreation } },
     { new: true, runValidators: true }
   )
     .select("-__v")

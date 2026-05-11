@@ -18,8 +18,8 @@ const buildMetadataRows = (modelExecution) => {
   const rows = [
     { label: "Model", value: modelExecution.modelName },
     { label: "Key", value: modelExecution.modelKey },
-    { label: "Input", value: modelExecution.inputKind },
-    { label: "Output", value: modelExecution.outputKind },
+    { label: "Input", value: modelExecution.apiInputFormat },
+    { label: "Output", value: modelExecution.apiOutputFormat },
     { label: "Executed", value: modelExecution.executedAt },
   ];
 

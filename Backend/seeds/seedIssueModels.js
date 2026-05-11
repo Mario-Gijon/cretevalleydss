@@ -32,18 +32,10 @@ const ISSUE_MODELS = [
     ],
     supportedDomains: {
       numeric: {
-        enabled: true,
-        range: {
-          min: 0,
-          max: 1,
-        },
+        continuous: true,
+        discrete: true,
       },
-      linguistic: {
-        enabled: false,
-        minLabels: null,
-        maxLabels: null,
-        oddOnly: false,
-      },
+      linguistic: false,
     },
   },
   {
@@ -112,18 +104,10 @@ const ISSUE_MODELS = [
     ],
     supportedDomains: {
       numeric: {
-        enabled: true,
-        range: {
-          min: null,
-          max: null,
-        },
+        continuous: true,
+        discrete: true,
       },
-      linguistic: {
-        enabled: false,
-        minLabels: null,
-        maxLabels: null,
-        oddOnly: false,
-      },
+      linguistic: false,
     },
   },
   {
@@ -139,18 +123,10 @@ const ISSUE_MODELS = [
     parameters: [],
     supportedDomains: {
       numeric: {
-        enabled: true,
-        range: {
-          min: 0,
-          max: 1,
-        },
+        continuous: true,
+        discrete: true,
       },
-      linguistic: {
-        enabled: false,
-        minLabels: null,
-        maxLabels: null,
-        oddOnly: false,
-      },
+      linguistic: false,
     },
   },
   {
@@ -179,18 +155,10 @@ const ISSUE_MODELS = [
     ],
     supportedDomains: {
       numeric: {
-        enabled: true,
-        range: {
-          min: 0,
-          max: 1,
-        },
+        continuous: true,
+        discrete: true,
       },
-      linguistic: {
-        enabled: false,
-        minLabels: null,
-        maxLabels: null,
-        oddOnly: false,
-      },
+      linguistic: false,
     },
   },
   {
@@ -219,18 +187,10 @@ const ISSUE_MODELS = [
     ],
     supportedDomains: {
       numeric: {
-        enabled: false,
-        range: {
-          min: null,
-          max: null,
-        },
+        continuous: false,
+        discrete: false,
       },
-      linguistic: {
-        enabled: true,
-        minLabels: 3,
-        maxLabels: 9,
-        oddOnly: true,
-      },
+      linguistic: true,
     },
   },
 ];

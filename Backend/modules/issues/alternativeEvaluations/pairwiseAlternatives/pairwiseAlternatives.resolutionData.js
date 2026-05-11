@@ -19,7 +19,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
   criteria,
   participations,
   currentPhase,
-  inputKind = "pairwisePreferenceMatrix",
+  apiInputFormat = "pairwisePreferenceMatrix",
 }) => {
   const expertIds = participations
     .map((participation) => participation.expert?._id)
@@ -96,7 +96,7 @@ export const buildPairwiseAlternativesResolutionData = async ({
         : normalizeEvaluationValueForInputOrThrow({
             value: evaluation.value,
             domainSnapshot: evaluation?.expressionDomain,
-            inputKind,
+            apiInputFormat,
             context: {
               issueId,
               expertId: toIdString(evaluation.expert),
