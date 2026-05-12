@@ -11,25 +11,20 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from schemas.model_requests import (
-    ArasRequest,
-    BordaRequest,
     BwmRequest,
     CmccRequest,
-    FuzzyTopsisRequest,
-    HerreraViedmaRequest,
-    MarcosRequest,
-    TopsisRequest,
+    GenericModelExecutionRequest,
 )
-from services.model_handlers import (
-    execute_aras,
-    execute_borda,
-    execute_bwm,
-    execute_cmcc,
-    execute_fuzzy_topsis,
-    execute_herrera_viedma,
-    execute_marcos,
-    execute_topsis,
-)
+
+from services.model_executors.aras import execute_aras
+from services.model_executors.borda import execute_borda
+from services.model_executors.bwm import execute_bwm
+from services.model_executors.cmcc import execute_cmcc
+from services.model_executors.fuzzy_topsis import execute_fuzzy_topsis
+from services.model_executors.herrera_viedma_crp import execute_herrera_viedma
+from services.model_executors.marcos import execute_marcos
+from services.model_executors.topsis import execute_topsis
+
 from registry.response_examples import (
     HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
     MARCOS_RESPONSE_EXAMPLES,
@@ -65,20 +60,13 @@ class ModelDefinition:
     more_info_url: str | None = None
     is_issue_model: bool = True
 
-    evaluation_structure: str | None = None
-    lifecycle_kind: str | None = None
+    alternative_evaluation_structure_key: str | None = None
+    criteria_weighting_structure_key: str | None = None
+    supports_consensus: bool = False
     is_multi_criteria: bool | None = None
-    api_input_format: str = ""
-    api_output_format: str = ""
 
     supported_domains: list[str] = field(default_factory=list)
-    model_input_fields: list[str] = field(default_factory=list)
-    model_output_fields: list[str] = field(default_factory=list)
-    request_body_fields: list[str] = field(default_factory=list)
-
-    uses_weights: bool = False
-    uses_fuzzy_weights: bool = False
-    uses_criterion_types: bool = False
+    criterion_types: list[str] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -87,12 +75,21 @@ class ModelDefinition:
 
         return self.model_family_key or self.api_model_key
 
+    def __post_init__(self) -> None:
+        """Valida el contrato interno mínimo de metadata."""
+
+        if self.is_issue_model and not self.alternative_evaluation_structure_key:
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires "
+                "alternative_evaluation_structure_key for issue models."
+            )
+
 
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         api_model_key="herrera_viedma_crp",
         api_endpoint_path="/herrera_viedma_crp",
-        request_model=HerreraViedmaRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_herrera_viedma,
         summary="Execute Herrera-Viedma CRP",
         description=(
@@ -115,38 +112,12 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="pairwiseAlternatives",
-        lifecycle_kind="thresholdConsensus",
+        alternative_evaluation_structure_key="alternativePairwiseByCriterion",
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=True,
         is_multi_criteria=False,
-        api_input_format="pairwisePreferenceMatrix",
-        api_output_format="consensusRanking",
         supported_domains=["numericContinuous", "numericDiscrete"],
-        model_input_fields=[
-            "matrices",
-            "consensusThreshold",
-            "ag_lq",
-            "ex_lq",
-            "b",
-            "beta",
-        ],
-        model_output_fields=[
-            "alternatives_rankings",
-            "cm",
-            "collective_scores",
-            "collective_evaluations",
-            "plots_graphic",
-        ],
-        request_body_fields=[
-            "matrices",
-            "consensusThreshold",
-            "modelParameters.ag_lq",
-            "modelParameters.ex_lq",
-            "modelParameters.b",
-            "modelParameters.beta",
-        ],
-        uses_weights=False,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=False,
+        criterion_types=[],
         parameters=[
             {
                 "key": "ag_lq",
@@ -201,7 +172,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         api_model_key="topsis",
         api_endpoint_path="/topsis",
-        request_model=TopsisRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_topsis,
         summary="Execute TOPSIS",
         description=(
@@ -223,29 +194,17 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="direct",
-        lifecycle_kind="singlePass",
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="directCrispMatrix",
-        api_output_format="ranking",
         supported_domains=["numericContinuous", "numericDiscrete"],
-        model_input_fields=["matrices", "criterionTypes", "weights"],
-        model_output_fields=[
-            "collective_matrix",
-            "matrix_used",
-            "collective_scores",
-            "collective_ranking",
-            "plots_graphic",
-        ],
-        request_body_fields=["matrices", "criterionTypes", "modelParameters.weights"],
-        uses_weights=True,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=True,
+        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="borda",
         api_endpoint_path="/borda",
-        request_model=BordaRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_borda,
         summary="Execute Borda",
         description=(
@@ -267,29 +226,17 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="direct",
-        lifecycle_kind="singlePass",
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="directCrispMatrix",
-        api_output_format="ranking",
         supported_domains=["numericContinuous", "numericDiscrete"],
-        model_input_fields=["matrices", "criterionTypes"],
-        model_output_fields=[
-            "collective_matrix",
-            "matrix_used",
-            "collective_scores",
-            "collective_ranking",
-            "plots_graphic",
-        ],
-        request_body_fields=["matrices", "criterionTypes"],
-        uses_weights=False,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=True,
+        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="aras",
         api_endpoint_path="/aras",
-        request_model=ArasRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_aras,
         summary="Execute ARAS",
         description=(
@@ -311,29 +258,17 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="direct",
-        lifecycle_kind="singlePass",
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="directCrispMatrix",
-        api_output_format="ranking",
         supported_domains=["numericContinuous", "numericDiscrete"],
-        model_input_fields=["matrices", "criterionTypes", "weights"],
-        model_output_fields=[
-            "collective_matrix",
-            "matrix_used",
-            "collective_scores",
-            "collective_ranking",
-            "plots_graphic",
-        ],
-        request_body_fields=["matrices", "criterionTypes", "modelParameters.weights"],
-        uses_weights=True,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=True,
+        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="fuzzy_topsis",
         api_endpoint_path="/fuzzy_topsis",
-        request_model=FuzzyTopsisRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_fuzzy_topsis,
         summary="Execute Fuzzy TOPSIS",
         description=("Executes Fuzzy TOPSIS using fuzzy expert evaluation matrices."),
@@ -352,28 +287,38 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="direct",
-        lifecycle_kind="singlePass",
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        criteria_weighting_structure_key="fuzzyCriteriaWeights",
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="directFuzzyMatrix",
-        api_output_format="ranking",
         supported_domains=["linguistic"],
-        model_input_fields=["matrices", "criterionTypes", "weights"],
-        model_output_fields=[
-            "collective_matrix",
-            "collective_scores",
-            "collective_ranking",
-            "plots_graphic",
+        criterion_types=["max", "min"],
+        parameters=[
+            {
+                "key": "weights",
+                "label": "Fuzzy criteria weights",
+                "type": "fuzzyArray",
+                "scope": "perCriterion",
+                "semanticRole": "criteriaWeights",
+                "required": True,
+                "default": "equal",
+                "restrictions": {
+                    "min": 0,
+                    "max": 1,
+                    "ordered": "nonDecreasing",
+                    "length": 3,
+                    "allowed": None,
+                },
+                "ui": {
+                    "component": "fuzzyCriteriaWeights",
+                },
+            }
         ],
-        request_body_fields=["matrices", "criterionTypes", "modelParameters.weights"],
-        uses_weights=False,
-        uses_fuzzy_weights=True,
-        uses_criterion_types=True,
     ),
     ModelDefinition(
         api_model_key="marcos",
         api_endpoint_path="/marcos",
-        request_model=MarcosRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_marcos,
         summary="Execute MARCOS",
         description=(
@@ -395,28 +340,12 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         model_version="1.0.0",
         version_label="v1",
         more_info_url=None,
-        evaluation_structure="direct",
-        lifecycle_kind="singlePass",
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="directCrispMatrix",
-        api_output_format="ranking",
         supported_domains=["numericContinuous", "numericDiscrete"],
-        model_input_fields=[
-            "matrices",
-            "criterionTypes",
-            "weights",
-        ],
-        model_output_fields=[
-            "collective_matrix",
-            "matrix_used",
-            "collective_scores",
-            "collective_ranking",
-            "plots_graphic",
-        ],
-        request_body_fields=["matrices", "criterionTypes", "modelParameters.weights"],
-        uses_weights=True,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=True,
+        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="bwm",
@@ -442,18 +371,12 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         is_issue_model=False,
-        evaluation_structure=None,
-        lifecycle_kind=None,
+        alternative_evaluation_structure_key=None,
+        criteria_weighting_structure_key=None,
+        supports_consensus=False,
         is_multi_criteria=True,
-        api_input_format="bwmExpertComparisons",
-        api_output_format="weights",
         supported_domains=[],
-        model_input_fields=["experts_data", "eps_penalty"],
-        model_output_fields=["success", "weights", "n_experts", "mic_avg", "lic_avg"],
-        request_body_fields=["experts_data", "eps_penalty"],
-        uses_weights=False,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=False,
+        criterion_types=[],
         parameters=[
             {
                 "key": "eps_penalty",
@@ -489,43 +412,12 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         is_issue_model=False,
-        evaluation_structure=None,
-        lifecycle_kind=None,
+        alternative_evaluation_structure_key=None,
+        criteria_weighting_structure_key=None,
+        supports_consensus=False,
         is_multi_criteria=None,
-        api_input_format="cmccOpinionVector",
-        api_output_format="adjustedConsensusOpinions",
         supported_domains=[],
-        model_input_fields=[
-            "o",
-            "c",
-            "omega",
-            "w",
-            "eps",
-            "mu0",
-            "lower_bound",
-            "upper_bound",
-        ],
-        model_output_fields=[
-            "success",
-            "message",
-            "o_bar",
-            "g",
-            "consensus_level",
-            "objective",
-        ],
-        request_body_fields=[
-            "o",
-            "c",
-            "omega",
-            "w",
-            "eps",
-            "mu0",
-            "lower_bound",
-            "upper_bound",
-        ],
-        uses_weights=False,
-        uses_fuzzy_weights=False,
-        uses_criterion_types=False,
+        criterion_types=[],
         parameters=[
             {
                 "key": "eps",

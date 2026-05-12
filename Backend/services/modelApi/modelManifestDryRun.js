@@ -193,20 +193,22 @@ const buildModelRow = ({
     visibleInIssueCreation:
       mongoModel?.visibleInIssueCreation ??
       (manifestProjection?.isIssueModel === true ? true : null),
-    evaluationStructure:
-      manifestProjection?.evaluationStructure ?? mongoModel?.evaluationStructure ?? null,
-    lifecycleKind:
-      manifestProjection?.lifecycleKind ?? mongoModel?.lifecycleKind ?? null,
+    alternativeEvaluationStructureKey:
+      manifestProjection?.alternativeEvaluationStructureKey ??
+      mongoModel?.alternativeEvaluationStructureKey ??
+      null,
+    criteriaWeightingStructureKey:
+      manifestProjection?.criteriaWeightingStructureKey ??
+      mongoModel?.criteriaWeightingStructureKey ??
+      null,
+    supportsConsensus:
+      manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
     modelFamilyKey:
       manifestProjection?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
     modelVersion:
       manifestProjection?.modelVersion ?? mongoModel?.modelVersion ?? null,
     versionLabel:
       manifestProjection?.versionLabel ?? mongoModel?.versionLabel ?? null,
-    apiInputFormat:
-      manifestProjection?.apiInputFormat ?? mongoModel?.apiInputFormat ?? null,
-    apiOutputFormat:
-      manifestProjection?.apiOutputFormat ?? mongoModel?.apiOutputFormat ?? null,
     isMultiCriteria:
       manifestProjection?.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
     supportedDomains: manifestProjection
@@ -217,10 +219,6 @@ const buildModelRow = ({
       normalizeEndpoint(mongoModel?.apiEndpoint, { emptyValue: null }),
     parameters:
       normalizeParameters(manifestProjection?.parameters ?? mongoModel?.parameters),
-    modelInputFields:
-      manifestProjection?.modelInputFields ?? mongoModel?.modelInputFields ?? [],
-    modelOutputFields:
-      manifestProjection?.modelOutputFields ?? mongoModel?.modelOutputFields ?? [],
     request: manifestProjection?.request ?? mongoModel?.request ?? null,
     response: manifestProjection?.response ?? mongoModel?.response ?? null,
     syncState,

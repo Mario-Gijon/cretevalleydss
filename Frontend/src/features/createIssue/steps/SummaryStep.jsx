@@ -93,10 +93,8 @@ export const SummaryStep = () => {
     setDefaultModelParams,
     hasAttemptedCreateIssue,
     setHasAttemptedCreateIssue,
-    bwmData,
-    setBwmData,
-    weightingMode,
-    setWeightingMode,
+    criteriaWeightingConfig,
+    setCriteriaWeightingConfig,
   } = useCreateIssueContext();
 
   const [unlimited, setUnlimited] = useState(consensusMaxPhases === null);
@@ -104,7 +102,7 @@ export const SummaryStep = () => {
 
   const {
     selectedModel,
-    withConsensus,
+    isConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -214,9 +212,8 @@ export const SummaryStep = () => {
                   <KVRow k="Model" v={selectedModel?.name} />
                   <KVRow
                     k="Consensus"
-                    v={withConsensus ? "With consensus" : "Without consensus"}
+                    v={isConsensus ? "Enabled" : "Disabled"}
                   />
-                  <KVRow k="Experts" v={addedExperts.length} />
                 </Stack>
               </Grid>
             </Grid>
@@ -295,30 +292,26 @@ export const SummaryStep = () => {
 
         <Divider />
 
-        {selectedModel?.parameters?.length ? (
-          <Accordion disableGutters elevation={0} sx={accordionSx}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              {sectionHeader("Model parameters", null)}
-            </AccordionSummary>
+        <Accordion disableGutters elevation={0} sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader("Model parameters", null)}
+          </AccordionSummary>
 
-            <AccordionDetails sx={{ pt: 0 }}>
-              <ModelParameters
-                selectedModel={selectedModel}
-                allData={allData}
-                paramValues={paramValues}
-                bwmData={bwmData}
-                setBwmData={setBwmData}
-                setParamValues={setParamValues}
-                defaultModelParams={defaultModelParams}
-                setDefaultModelParams={setDefaultModelParams}
-                handleDefaultChange={handleDefaultChange}
-                showValidationErrors={hasAttemptedCreateIssue}
-                weightingMode={weightingMode}
-                setWeightingMode={setWeightingMode}
-              />
-            </AccordionDetails>
-          </Accordion>
-        ) : null}
+          <AccordionDetails sx={{ pt: 0 }}>
+            <ModelParameters
+              selectedModel={selectedModel}
+              allData={allData}
+              paramValues={paramValues}
+              setParamValues={setParamValues}
+              defaultModelParams={defaultModelParams}
+              setDefaultModelParams={setDefaultModelParams}
+              handleDefaultChange={handleDefaultChange}
+              showValidationErrors={hasAttemptedCreateIssue}
+              criteriaWeightingConfig={criteriaWeightingConfig}
+              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+            />
+          </AccordionDetails>
+        </Accordion>
 
         <Divider />
 
@@ -329,7 +322,7 @@ export const SummaryStep = () => {
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={1.4} alignItems="center">
-              <Grid item size={withConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
+              <Grid item size={isConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1.2}
@@ -368,7 +361,7 @@ export const SummaryStep = () => {
                 </Stack>
               </Grid>
 
-              {withConsensus && (
+              {isConsensus && (
                 <>
                   <Grid item size={{ xs: 12, md: 6 }}>
                     <Stack

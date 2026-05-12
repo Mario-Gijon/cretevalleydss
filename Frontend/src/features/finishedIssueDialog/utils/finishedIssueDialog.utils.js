@@ -1,4 +1,4 @@
-import { extractLeafCriteria } from "../../issueAlternativeEvaluation/shared/leafCriteria.utils";
+import { extractLeafCriteria } from "../../issueEvaluation/shared/leafCriteria.utils";
 import { getParameterExpectedLength } from "../../modelParameters";
 
 const countLeafCriteria = (nodes) => {
@@ -310,7 +310,93 @@ export const getLeafCriteriaNamesFallback = (summaryCriteria) => {
 };
 
 const getEvaluationCompatibilityFlag = (model) => {
-  return model?.compatibility?.evaluationStructure;
+  return model?.compatibility?.alternativeEvaluationStructure;
+};
+
+const isFinitePoint = (point) =>
+  Array.isArray(point) &&
+  point.length === 2 &&
+  Number.isFinite(Number(point[0])) &&
+  Number.isFinite(Number(point[1]));
+
+const normalizePoint = (point) => ({
+  x: Number(point[0]),
+  y: Number(point[1]),
+});
+
+export const normalizePlotsGraphic = (plotsGraphic) => {
+  if (!plotsGraphic || typeof plotsGraphic !== "object") {
+    return null;
+  }
+
+  const expertPointsRaw = Array.isArray(plotsGraphic.expert_points)
+    ? plotsGraphic.expert_points
+    : Array.isArray(plotsGraphic.expertPoints)
+      ? plotsGraphic.expertPoints
+      : null;
+
+  const collectivePointRaw = Array.isArray(plotsGraphic.collective_point)
+    ? plotsGraphic.collective_point
+    : Array.isArray(plotsGraphic.collectivePoint)
+      ? plotsGraphic.collectivePoint
+      : null;
+
+  const reason =
+    typeof plotsGraphic.reason === "string" && plotsGraphic.reason.trim()
+      ? plotsGraphic.reason.trim()
+      : null;
+
+  const labelsRaw = Array.isArray(plotsGraphic.expert_labels)
+    ? plotsGraphic.expert_labels
+    : [];
+  const pointsByEmailRaw =
+    plotsGraphic.expert_points_by_email &&
+    typeof plotsGraphic.expert_points_by_email === "object"
+      ? plotsGraphic.expert_points_by_email
+      : null;
+
+  const expertPoints = [];
+
+  if (pointsByEmailRaw) {
+    for (const [label, point] of Object.entries(pointsByEmailRaw)) {
+      if (!isFinitePoint(point)) continue;
+      expertPoints.push({
+        label: String(label),
+        ...normalizePoint(point),
+      });
+    }
+  } else if (Array.isArray(expertPointsRaw)) {
+    expertPointsRaw.forEach((point, index) => {
+      if (!isFinitePoint(point)) return;
+      const labelCandidate = labelsRaw[index];
+      const label =
+        typeof labelCandidate === "string" && labelCandidate.trim()
+          ? labelCandidate.trim()
+          : `Expert ${index + 1}`;
+
+      expertPoints.push({
+        label,
+        ...normalizePoint(point),
+      });
+    });
+  }
+
+  const collectivePoint = isFinitePoint(collectivePointRaw)
+    ? {
+        label: "Collective",
+        ...normalizePoint(collectivePointRaw),
+      }
+    : null;
+
+  return {
+    expertPoints,
+    collectivePoint,
+    reason,
+    raw: plotsGraphic,
+    isValid:
+      expertPoints.length > 0 &&
+      isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
+  };
 };
 
 /**
@@ -665,14 +751,22 @@ const buildRankingFromRawOutput = ({ rawOutput, alternativesByIndex }) => {
     .filter(Boolean);
 };
 
-const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesByIndex }) => {
-  const fromRankedWithScores = Array.isArray(details?.rankedWithScores)
-    ? details.rankedWithScores
+const normalizeScenarioRanking = ({
+  scenario,
+  standardResult,
+  computedPayload,
+  rawOutput,
+  alternativesByIndex,
+}) => {
+  const fromRankedWithScores = Array.isArray(computedPayload?.rankedWithScores)
+    ? computedPayload.rankedWithScores
+    : Array.isArray(standardResult?.rankedWithScores)
+      ? standardResult.rankedWithScores
     : [];
   if (fromRankedWithScores.length) return fromRankedWithScores;
 
-  const fromRankedAlternatives = Array.isArray(details?.rankedAlternatives)
-    ? details.rankedAlternatives
+  const fromRankedAlternatives = Array.isArray(standardResult?.rankedAlternatives)
+    ? standardResult.rankedAlternatives
     : [];
   if (fromRankedAlternatives.length) {
     const objectShape = fromRankedAlternatives.every(
@@ -698,12 +792,17 @@ const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesBy
   }
 
   const scoresByAlternative =
-    details?.scoresByAlternative ||
+    computedPayload?.scoresByAlternative ||
+    standardResult?.scoresByAlternative ||
     scenario?.outputs?.scoresByAlternative ||
     scenario?.result?.scoresByAlternative ||
     null;
   const rankingByName =
-    details?.ranking || scenario?.outputs?.ranking || scenario?.result?.ranking || null;
+    computedPayload?.ranking ||
+    standardResult?.ranking ||
+    scenario?.outputs?.ranking ||
+    scenario?.result?.ranking ||
+    null;
   if (Array.isArray(rankingByName) && rankingByName.length && scoresByAlternative && typeof scoresByAlternative === "object") {
     return rankingByName
       .map((name) => (typeof name === "string" && name.trim()
@@ -715,6 +814,44 @@ const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesBy
   return buildRankingFromRawOutput({ rawOutput, alternativesByIndex });
 };
 
+const buildCollectiveEvaluationsFromCollectivePayload = ({
+  collectivePayload,
+  alternativeNames,
+  criterionNames,
+}) => {
+  if (!collectivePayload || typeof collectivePayload !== "object") {
+    return null;
+  }
+
+  if (
+    collectivePayload.collectiveEvaluations &&
+    typeof collectivePayload.collectiveEvaluations === "object"
+  ) {
+    return collectivePayload.collectiveEvaluations;
+  }
+
+  const matrix = collectivePayload.collectiveMatrix;
+  if (!Array.isArray(matrix) || !alternativeNames.length || !criterionNames.length) {
+    return null;
+  }
+
+  const output = {};
+
+  for (let altIndex = 0; altIndex < alternativeNames.length; altIndex += 1) {
+    const alternativeName = alternativeNames[altIndex];
+    const row = matrix[altIndex];
+    if (!Array.isArray(row)) continue;
+
+    output[alternativeName] = {};
+
+    for (let criterionIndex = 0; criterionIndex < criterionNames.length; criterionIndex += 1) {
+      output[alternativeName][criterionNames[criterionIndex]] = row[criterionIndex] ?? "";
+    }
+  }
+
+  return Object.keys(output).length > 0 ? output : null;
+};
+
 /**
  * Proyecta un escenario de simulacion sobre la estructura base del issue.
  *
@@ -724,22 +861,35 @@ const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesBy
  */
 export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
-  const details = scenario?.outputs?.details || {};
-  const scenarioOutputs = scenario?.outputs || null;
+  const scenarioOutputs = scenario?.outputs || {};
+  const standardResult = scenarioOutputs?.standardResult || {};
+  const computedPayload = scenarioOutputs?.computedPayload || {};
+  const collectivePayload = scenarioOutputs?.collectivePayload || {};
+  const modelExecutionOutput = scenarioOutputs?.modelExecution || null;
   const scenarioRawOutput =
-    scenarioOutputs?.rawResults ??
-    scenarioOutputs?.details?.modelExecution?.rawOutput ??
+    scenarioOutputs?.rawOutput ??
+    standardResult?.rawOutput ??
+    modelExecutionOutput?.rawOutput ??
     null;
-  const collectiveEvaluations = scenario?.outputs?.collectiveEvaluations || null;
-  const scenarioEvaluationStructure = scenario?.targetEvaluationStructure || scenario?.evaluationStructure || null;
+  const scenarioEvaluationStructure =
+    scenario?.targetAlternativeEvaluationStructureKey ||
+    scenario?.alternativeEvaluationStructureKey ||
+    null;
   const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
     ? out.summary.alternatives
     : [];
+  const criterionNames = getLeafCriteriaNamesFallback(out?.summary?.criteria || []);
   const normalizedRanking = normalizeScenarioRanking({
     scenario,
-    details,
+    standardResult,
+    computedPayload,
     rawOutput: scenarioRawOutput,
     alternativesByIndex,
+  });
+  const collectiveEvaluations = buildCollectiveEvaluationsFromCollectivePayload({
+    collectivePayload,
+    alternativeNames: alternativesByIndex,
+    criterionNames,
   });
 
   out.summary = {
@@ -747,8 +897,8 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     model: scenario?.targetModelName || out?.summary?.model,
     modelName: scenario?.targetModelName || out?.summary?.modelName,
     targetModelName: scenario?.targetModelName,
-    evaluationStructure:
-      scenarioEvaluationStructure || out?.summary?.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      scenarioEvaluationStructure || out?.summary?.alternativeEvaluationStructureKey,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||
@@ -759,8 +909,9 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   out.modelParams.base = {
     ...(out.modelParams.base || {}),
     modelName: scenario?.targetModelName || out.modelParams.base?.modelName,
-    evaluationStructure:
-      scenarioEvaluationStructure || out.modelParams.base?.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      scenarioEvaluationStructure ||
+      out.modelParams.base?.alternativeEvaluationStructureKey,
     paramsSaved:
       scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
     paramsResolved:
@@ -772,9 +923,18 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   out.consensus = [];
   out.consensusHistory = [];
   out.consensusRounds = [];
-  out.consensusDetails = details;
+  out.consensusDetails = {
+    modelExecution: modelExecutionOutput,
+    rankedAlternatives: normalizedRanking,
+    plotsGraphic:
+      computedPayload?.plotsGraphic || standardResult?.plotsGraphic || {},
+    scoresByAlternative:
+      computedPayload?.scoresByAlternative ||
+      standardResult?.scoresByAlternative ||
+      {},
+  };
   out.modelExecution =
-    details?.modelExecution ||
+    modelExecutionOutput ||
     (scenarioRawOutput !== null && scenarioRawOutput !== undefined
       ? { rawOutput: scenarioRawOutput }
       : null);
@@ -783,9 +943,14 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     outputs: scenarioOutputs,
   };
 
-  const scatterPlot = details?.plotsGraphic;
-  if (scatterPlot?.expert_points && scatterPlot?.collective_point) {
-    out.analyticalGraphs = { ...(out.analyticalGraphs || {}), scatterPlot: [scatterPlot] };
+  const scatterPlot = computedPayload?.plotsGraphic || standardResult?.plotsGraphic;
+  const normalizedPlotsGraphic = normalizePlotsGraphic(scatterPlot);
+  if (normalizedPlotsGraphic) {
+    out.analyticalGraphs = {
+      ...(out.analyticalGraphs || {}),
+      plotsGraphic: scatterPlot,
+      ...(normalizedPlotsGraphic.isValid ? { scatterPlot: [scatterPlot] } : {}),
+    };
   }
 
   if (collectiveEvaluations && out?.expertsRatings && typeof out.expertsRatings === "object") {

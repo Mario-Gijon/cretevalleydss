@@ -1,9 +1,7 @@
-import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../../models/Evaluations.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { getNextConsensusPhase } from "../issue.queries.js";
 import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
 import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";
 
@@ -94,7 +92,7 @@ export const leaveActiveIssueFlow = async ({
     session
   );
 
-  const currentPhase = await getNextConsensusPhase(issue._id);
+  const currentPhase = issue.consensusPhase;
   const stageForLog = mapIssueStageToExitStage(issue.currentStage);
 
   await registerUserExit({
@@ -117,30 +115,11 @@ export const cleanupExpertDraftsOnExit = async ({
   session = null,
 }) => {
   await withOptionalSession(
-    CriteriaWeightEvaluation.deleteMany({
+    IssueEvaluation.deleteMany({
       issue: issueId,
       expert: expertId,
       completed: false,
     }),
     session
   );
-
-  const hasSubmittedSomething = await withOptionalSession(
-    Evaluation.exists({
-      issue: issueId,
-      expert: expertId,
-      $or: [
-        { timestamp: { $ne: null } },
-        { history: { $elemMatch: { timestamp: { $ne: null } } } },
-      ],
-    }),
-    session
-  );
-
-  if (!hasSubmittedSomething) {
-    await withOptionalSession(
-      Evaluation.deleteMany({ issue: issueId, expert: expertId }),
-      session
-    );
-  }
 };

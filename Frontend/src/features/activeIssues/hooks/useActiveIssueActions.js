@@ -1,11 +1,9 @@
 import { useState } from "react";
 
 import {
-  computeManualWeights,
-  computeWeights,
+  computeEvaluationStage,
   leaveIssue,
   removeIssue,
-  resolveIssue,
 } from "../../../services/issue.service";
 
 /**
@@ -83,7 +81,7 @@ export const useActiveIssueActions = ({
   };
 
   /**
-   * Resuelve el issue seleccionado.
+   * Ejecuta el cómputo de la etapa de evaluación de alternativas.
    *
    * @returns {Promise<void>}
    */
@@ -91,12 +89,15 @@ export const useActiveIssueActions = ({
     if (!selectedIssue) return;
 
     setBusy((prev) => ({ ...prev, resolve: true }));
-    const response = await resolveIssue(selectedIssue.id);
-    const finished = Boolean(response?.data?.finished ?? response?.finished);
+    const response = await computeEvaluationStage(
+      selectedIssue.id,
+      "alternativeEvaluation"
+    );
+    const finished = response?.data?.currentStage === "finished";
 
     if (response?.success) {
       showSnackbarAlert(
-        response?.message || "Issue resolved successfully",
+        response?.message || "Alternative evaluation computed successfully",
         finished ? "success" : "info"
       );
       await refresh({ alsoFinished: finished });
@@ -111,8 +112,7 @@ export const useActiveIssueActions = ({
   };
 
   /**
-   * Calcula o computa los pesos del issue seleccionado
-   * según su modo de ponderación.
+   * Ejecuta el cómputo de la etapa de ponderación de criterios.
    *
    * @returns {Promise<void>}
    */
@@ -121,18 +121,18 @@ export const useActiveIssueActions = ({
 
     setBusy((prev) => ({ ...prev, compute: true }));
 
-    const response =
-      selectedIssue.weightingMode === "consensus"
-        ? await computeManualWeights(selectedIssue.id)
-        : await computeWeights(selectedIssue.id);
-    const finished = Boolean(response?.data?.finished ?? response?.finished);
+    const response = await computeEvaluationStage(
+      selectedIssue.id,
+      "criteriaWeighting"
+    );
+    const finished = response?.data?.currentStage === "finished";
 
     if (response?.success) {
       showSnackbarAlert(
         response?.message || "Weights computed successfully",
         finished ? "success" : "info"
       );
-      await refresh({ alsoFinished: true });
+      await refresh({ alsoFinished: finished });
       closeDrawer();
     } else {
       showSnackbarAlert(response?.message || "Error computing weights", "error");

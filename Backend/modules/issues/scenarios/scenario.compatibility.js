@@ -3,6 +3,7 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { EVALUATION_STRUCTURE_KEYS } from "../evaluations/evaluation.constants.js";
 
 const normalizeEndpointPath = (value) => {
   const normalizedPath = String(value || "").trim();
@@ -15,10 +16,14 @@ const normalizeEndpointPath = (value) => {
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   const targetApiModelKey = String(targetModel?.apiModelKey || "").trim();
   const endpointPath = normalizeEndpointPath(targetModel?.apiEndpoint?.path);
-  const targetApiInputFormat = String(targetModel?.apiInputFormat || "").trim();
-  const targetApiOutputFormat = String(targetModel?.apiOutputFormat || "").trim();
-  const targetEvaluationStructure = String(targetModel?.evaluationStructure || "").trim();
-  const targetLifecycleKind = String(targetModel?.lifecycleKind || "").trim();
+  const targetAlternativeEvaluationStructureKey = String(
+    targetModel?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetCriteriaWeightingStructureKey =
+    targetModel?.criteriaWeightingStructureKey == null
+      ? null
+      : String(targetModel.criteriaWeightingStructureKey).trim() || null;
+  const targetSupportsConsensus = targetModel?.supportsConsensus === true;
   const targetModelFamilyKey = String(targetModel?.modelFamilyKey || "").trim();
   const targetModelVersion = String(targetModel?.modelVersion || "").trim();
   const targetVersionLabel = String(targetModel?.versionLabel || "").trim();
@@ -27,10 +32,9 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
 
   if (!targetApiModelKey) missingFields.push("apiModelKey");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
-  if (!targetApiInputFormat) missingFields.push("apiInputFormat");
-  if (!targetApiOutputFormat) missingFields.push("apiOutputFormat");
-  if (!targetEvaluationStructure) missingFields.push("evaluationStructure");
-  if (!targetLifecycleKind) missingFields.push("lifecycleKind");
+  if (!targetAlternativeEvaluationStructureKey) {
+    missingFields.push("alternativeEvaluationStructureKey");
+  }
   if (!targetModelFamilyKey) missingFields.push("modelFamilyKey");
   if (!targetModelVersion) missingFields.push("modelVersion");
   if (!targetVersionLabel) missingFields.push("versionLabel");
@@ -42,7 +46,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
         field: "targetModelId",
         details: {
           missingFields,
-          targetModelId: toIdString(targetModel._id),
+          targetModelId: toIdString(targetModel?._id),
         },
       }
     );
@@ -55,93 +59,78 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       path: endpointPath,
       operationId: targetModel?.apiEndpoint?.operationId || null,
     },
-    targetApiInputFormat,
-    targetApiOutputFormat,
-    targetEvaluationStructure,
-    targetLifecycleKind,
+    targetAlternativeEvaluationStructureKey,
+    targetCriteriaWeightingStructureKey,
+    targetSupportsConsensus,
     targetModelFamilyKey,
     targetModelVersion,
     targetVersionLabel,
   };
 };
 
-export const buildTargetRuntimeModelFromSnapshot = ({
-  targetModelName,
-  targetRuntimeSnapshot,
-}) => ({
-  name: targetModelName,
-  apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
-  apiEndpoint: { ...targetRuntimeSnapshot.targetApiEndpoint },
-  apiInputFormat: targetRuntimeSnapshot.targetApiInputFormat,
-  apiOutputFormat: targetRuntimeSnapshot.targetApiOutputFormat,
-  evaluationStructure: targetRuntimeSnapshot.targetEvaluationStructure,
-  lifecycleKind: targetRuntimeSnapshot.targetLifecycleKind,
-  modelFamilyKey: targetRuntimeSnapshot.targetModelFamilyKey,
-  modelVersion: targetRuntimeSnapshot.targetModelVersion,
-  versionLabel: targetRuntimeSnapshot.targetVersionLabel,
-});
-
-const resolveCriteriaWeightsKind = (modelDoc) => {
-  const parameters = modelDoc.parameters;
-  const weightsParameter = parameters.find(
-    (parameter) => parameter.semanticRole.trim() === "criteriaWeights"
-  );
-
-  if (!weightsParameter) {
-    return null;
-  }
-
-  const weightsType = weightsParameter.type.trim();
-  if (weightsType === "fuzzyArray") {
-    return "fuzzy";
-  }
-
-  if (weightsType === "array") {
-    return "crisp";
-  }
-
-  return null;
-};
-
 export const validateScenarioModelCompatibilityOrThrow = ({
   issue,
-  targetModel,
   targetRuntimeSnapshot,
 }) => {
-  const issueEvaluationStructure = String(issue?.evaluationStructure || "").trim();
-  const issueApiInputFormat = String(issue?.apiInputFormat || "").trim();
-  const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
-  const targetApiInputFormat = targetRuntimeSnapshot.targetApiInputFormat;
-
-  if (targetEvaluationStructure !== issueEvaluationStructure) {
+  if (issue?.currentStage !== "finished") {
     throw createBadRequestError(
-      "Incompatible models: evaluation structure does not match this issue input type.",
+      "Scenario model runs are only supported for finished issues",
       {
-        field: "targetModel",
+        field: "currentStage",
       }
     );
   }
 
-  if (targetApiInputFormat !== issueApiInputFormat) {
+  if (issue?.active !== false) {
     throw createBadRequestError(
-      "Incompatible models: target model apiInputFormat does not match this issue apiInputFormat.",
+      "Scenario model runs are only supported for inactive issues",
       {
-        field: "targetModel",
+        field: "active",
       }
     );
   }
 
-  const sourceWeightsKind = resolveCriteriaWeightsKind(issue.model);
-  const targetWeightsKind = resolveCriteriaWeightsKind(targetModel);
+  if (issue?.isConsensus === true) {
+    throw createBadRequestError(
+      "Consensus scenarios are not implemented for plugin model runs",
+      {
+        field: "isConsensus",
+      }
+    );
+  }
+
+  const issueAlternativeEvaluationStructureKey = String(
+    issue?.alternativeEvaluationStructureKey || ""
+  ).trim();
+
   if (
-    sourceWeightsKind &&
-    targetWeightsKind &&
-    sourceWeightsKind !== targetWeightsKind
+    issueAlternativeEvaluationStructureKey !==
+    EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX
   ) {
     throw createBadRequestError(
-      "Incompatible models: target model criteria weights kind does not match this issue model.",
+      "Only alternativeCriteriaMatrix scenarios are supported in this phase",
       {
-        field: "targetModel",
+        field: "alternativeEvaluationStructureKey",
+        details: {
+          alternativeEvaluationStructureKey: issueAlternativeEvaluationStructureKey || null,
+        },
+      }
+    );
+  }
+
+  if (
+    targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey !==
+    issueAlternativeEvaluationStructureKey
+  ) {
+    throw createBadRequestError(
+      "Incompatible model: alternative evaluation structure does not match this issue",
+      {
+        field: "targetModelId",
+        details: {
+          issueAlternativeEvaluationStructureKey,
+          targetAlternativeEvaluationStructureKey:
+            targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+        },
       }
     );
   }

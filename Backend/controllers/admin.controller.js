@@ -8,11 +8,8 @@ import { IssueModel } from "../models/IssueModels.js";
           
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import {
-  computeWeights as computeWeightsService,
-} from "../modules/issues/weightEvaluations/index.js";
-import {
-  resolveIssue as resolveIssueService,
-} from "../modules/issues/resolution/index.js";
+  computeIssueEvaluationStage,
+} from "../modules/issues/evaluations/index.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
 
 import {
@@ -550,41 +547,10 @@ export const computeIssueWeightsAdmin = async (req, res) => {
     issueId,
   });
 
-  const result = await computeWeightsService({
+  const result = await computeIssueEvaluationStage({
     issueId,
     userId: creatorUserId,
-  });
-
-  return sendSuccess(
-    res,
-    result.message,
-    {
-      finished: result.finished,
-      weights: result.weights,
-      criteriaOrder: result.criteriaOrder,
-    },
-  );
-};
-
-/**
- * Permite al admin resolver un issue reutilizando flows de dominio.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
-export const resolveIssueAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
-  const forceFinalize = Boolean(req.body?.forceFinalize);
-
-  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
-    issueId,
-  });
-
-  const result = await resolveIssueService({
-    issueId,
-    userId: creatorUserId,
-    forceFinalize,
+    stage: "criteriaWeighting",
     apiModelsBaseUrl:
       process.env.ORIGIN_APIMODELS || "http://localhost:7000",
     httpClient: axios,
@@ -594,9 +560,41 @@ export const resolveIssueAdmin = async (req, res) => {
     res,
     result.message,
     {
-      finished: result.finished,
-      rankedAlternatives: result.rankedAlternatives || null,
-      resultsAnalysis: result.resultsAnalysis ?? null,
+      currentStage: result.currentStage,
+      consensusPhase: result.consensusPhase,
+      computedPayload: result.computedPayload ?? null,
+      modelExecution: result.modelExecution ?? null,
+    },
+  );
+};
+
+export const resolveIssueAdmin = async (req, res) => {
+  const issueId = req.body?.issueId || req.body?.id;
+
+  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+    issueId,
+  });
+
+  const result = await computeIssueEvaluationStage({
+    issueId,
+    userId: creatorUserId,
+    stage: "alternativeEvaluation",
+    apiModelsBaseUrl:
+      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
+
+  const finished = result.currentStage === "finished";
+
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      finished,
+      currentStage: result.currentStage,
+      consensusPhase: result.consensusPhase,
+      computedPayload: result.computedPayload ?? null,
+      modelExecution: result.modelExecution ?? null,
     },
   );
 };

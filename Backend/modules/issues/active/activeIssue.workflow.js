@@ -2,19 +2,17 @@
  * Construye los pasos del workflow para la UI de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {boolean} params.usesManualWeighting Indica si el issue usa ponderación manual.
+ * @param {string} params.criteriaWeightingStructureKey Clave de estructura de ponderación.
  * @param {boolean} params.hasAlternativeConsensus Indica si el issue tiene consenso de alternativas.
  * @returns {Array<Object>}
  */
 export const buildActiveWorkflowSteps = ({
-  usesManualWeighting,
+  criteriaWeightingStructureKey,
   hasAlternativeConsensus,
 }) => {
   const steps = [];
 
-  if (usesManualWeighting) {
-    steps.push({ key: "weightsAssigned", label: "Weights assigned" });
-  } else {
+  if (criteriaWeightingStructureKey) {
     steps.push({ key: "criteriaWeighting", label: "Criteria weighting" });
     steps.push({ key: "weightsFinished", label: "Weights finished" });
   }

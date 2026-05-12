@@ -20,16 +20,11 @@ import { sameId, toIdString } from "../utils/common/ids.js";
 import { endSessionSafely } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import {
-  getAlternativeEvaluations,
-  saveAlternativeEvaluationDraft,
-  submitAlternativeEvaluations,
-} from "../modules/issues/alternativeEvaluations/index.js";
-import {
-  computeWeights as computeWeightsService,
-  getWeightEvaluation,
-  saveWeightDraft,
-  submitWeights,
-} from "../modules/issues/weightEvaluations/index.js";
+  computeIssueEvaluationStage,
+  getIssueEvaluationPayload,
+  saveIssueEvaluationDraft,
+  submitIssueEvaluation,
+} from "../modules/issues/evaluations/index.js";
 
           
 import {
@@ -48,9 +43,6 @@ import {
   removeIssueScenarioFlow,
 } from "../modules/issues/scenarios/index.js";
 import {
-  resolveIssue as resolveIssueService,
-} from "../modules/issues/resolution/index.js";
-import {
   deleteActiveIssueAsAdmin,
   hideFinishedIssueForUserFlow,
   leaveActiveIssueFlow,
@@ -68,12 +60,6 @@ import {
   removeNotificationForUserFlow,
 } from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finishedIssue.payload.js";
-import {
-  generateIssueResultsAnalysisFlow,
-  generateScenarioResultsAnalysisFlow,
-  getSavedIssueResultsAnalysisFlow,
-  getSavedScenarioResultsAnalysisFlow,
-} from "../modules/issues/analysis/index.js";
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import { createIssueFlow } from "../modules/issues/creation/index.js";
 
@@ -202,6 +188,9 @@ export const createIssue = async (req, res) => {
         issueInfo,
         adminUserId: req.uid,
         session,
+        apiModelsBaseUrl:
+          process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+        httpClient: axios,
       });
     });
 
@@ -628,252 +617,6 @@ export const getFinishedIssueInfo = async (req, res) => {
 };
 
 /**
- * Genera un análisis de resultados para un issue finalizado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getIssueResultsAnalysis = async (req, res) => {
-  const { id } = req.body;
-
-  const analysis = await generateIssueResultsAnalysisFlow({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(
-    res,
-    "Results analysis generated successfully.",
-    analysis
-  );
-};
-
-/**
- * Obtiene el último análisis de resultados persistido de un issue finalizado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getSavedIssueResultsAnalysis = async (req, res) => {
-  const { id } = req.body;
-
-  const analysis = await getSavedIssueResultsAnalysisFlow({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  if (!analysis) {
-    return sendSuccess(
-      res,
-      "No results analysis has been generated yet.",
-      null
-    );
-  }
-
-  return sendSuccess(res, "Results analysis fetched successfully.", analysis);
-};
-
-/**
- * Genera o regenera el análisis persistido para un escenario de un issue finalizado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getScenarioResultsAnalysis = async (req, res) => {
-  const { id, scenarioId } = req.body;
-
-  const analysis = await generateScenarioResultsAnalysisFlow({
-    issueId: id,
-    scenarioId,
-    userId: req.uid,
-  });
-
-  return sendSuccess(
-    res,
-    "Scenario results analysis generated successfully.",
-    analysis
-  );
-};
-
-/**
- * Obtiene el último análisis persistido para un escenario de un issue finalizado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getSavedScenarioResultsAnalysis = async (req, res) => {
-  const { id, scenarioId } = req.body;
-
-  const analysis = await getSavedScenarioResultsAnalysisFlow({
-    issueId: id,
-    scenarioId,
-    userId: req.uid,
-  });
-
-  if (!analysis) {
-    return sendSuccess(
-      res,
-      "No results analysis has been generated for this scenario yet.",
-      null
-    );
-  }
-
-  return sendSuccess(res, "Scenario results analysis fetched successfully.", analysis);
-};
-
-/**
- * Guarda borradores de pesos BWM del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const saveBwmWeights = async (req, res) => {
-  const result = await saveWeightDraft({
-    issueId: req.body?.id,
-    userId: req.uid,
-    body: req.body,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
- * Obtiene los pesos BWM guardados del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getBwmWeights = async (req, res) => {
-  const result = await getWeightEvaluation({
-    issueId: req.body?.id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, "Weights fetched successfully", {
-    bwmData: result.bwmData,
-  });
-};
-
-/**
- * Valida y envía los pesos BWM del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const sendBwmWeights = async (req, res) => {
-  const result = await submitWeights({
-    issueId: req.body?.id,
-    userId: req.uid,
-    body: req.body,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
- * Calcula pesos BWM colectivos y actualiza el issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const computeWeights = async (req, res) => {
-  const { id } = req.body;
-
-  const result = await computeWeightsService({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, result.message, {
-    finished: result.finished,
-    weights: result.weights,
-    criteriaOrder: result.criteriaOrder,
-  });
-};
-
-/**
- * Guarda borradores de pesos manuales del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const saveManualWeights = async (req, res) => {
-  const result = await saveWeightDraft({
-    issueId: req.body?.id,
-    userId: req.uid,
-    body: req.body,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
- * Obtiene los pesos manuales guardados del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getManualWeights = async (req, res) => {
-  const result = await getWeightEvaluation({
-    issueId: req.body?.id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, "Manual weights fetched successfully", {
-    manualWeights: result.manualWeights,
-  });
-};
-
-/**
- * Valida y envía los pesos manuales del experto actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const sendManualWeights = async (req, res) => {
-  const result = await submitWeights({
-    issueId: req.body?.id,
-    userId: req.uid,
-    body: req.body,
-  });
-
-  return sendSuccess(res, result.message);
-};
-
-/**
- * Calcula pesos manuales colectivos y actualiza el issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const computeManualWeights = async (req, res) => {
-  const { id } = req.body;
-
-  const result = await computeWeightsService({
-    issueId: id,
-    userId: req.uid,
-  });
-
-  return sendSuccess(res, result.message, {
-    finished: result.finished,
-    weights: result.weights,
-    criteriaOrder: result.criteriaOrder,
-  });
-};
-
-/**
  * Crea un escenario de simulación para un issue resuelto.
  *
  * @param {Object} req Request de Express.
@@ -954,83 +697,77 @@ export const removeScenario = async (req, res) => {
   return sendSuccess(res, "Scenario deleted", { scenarioId });
 };
 
-/**
- * Guarda evaluaciones del experto actual según la estructura del issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const saveEvaluations = async (req, res) => {
-  const { id: issueId } = req.body;
+export const getIssueEvaluationByStage = async (req, res) => {
+  const issueId = req.params?.id || req.body?.id;
+  const stage = req.params?.stage;
 
-  await saveAlternativeEvaluationDraft({
+  const result = await getIssueEvaluationPayload({
     issueId,
     userId: req.uid,
-    body: req.body,
+    stage,
   });
 
-  return sendSuccess(res, "Evaluations saved successfully");
+  return sendSuccess(res, "Evaluation fetched successfully", result);
 };
 
-/**
- * Obtiene evaluaciones del experto actual según la estructura del issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const getEvaluations = async (req, res) => {
-  const { id: issueId } = req.body;
+export const saveIssueEvaluationByStage = async (req, res) => {
+  const issueId = req.params?.id || req.body?.id;
+  const stage = req.params?.stage;
+  const payload = req.body?.payload;
 
-  const data = await getAlternativeEvaluations({
+  const result = await saveIssueEvaluationDraft({
     issueId,
     userId: req.uid,
+    stage,
+    payload,
   });
 
-  return sendSuccess(res, "Evaluations fetched successfully", data);
+  return sendSuccess(res, result.message, {
+    stage: result.stage,
+    structureKey: result.structureKey,
+    consensusPhase: result.consensusPhase,
+    completed: result.completed,
+  });
 };
 
-/**
- * Envía evaluaciones del experto actual según la estructura del issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const submitEvaluations = async (req, res) => {
-  const { id: issueId } = req.body;
+export const submitIssueEvaluationByStage = async (req, res) => {
+  const issueId = req.params?.id || req.body?.id;
+  const stage = req.params?.stage;
+  const payload = req.body?.payload;
 
-  const result = await submitAlternativeEvaluations({
+  const result = await submitIssueEvaluation({
     issueId,
     userId: req.uid,
-    body: req.body,
+    stage,
+    payload,
   });
 
-  return sendSuccess(res, result.message);
+  return sendSuccess(res, result.message, {
+    stage: result.stage,
+    structureKey: result.structureKey,
+    consensusPhase: result.consensusPhase,
+    completed: result.completed,
+    currentStage: result.currentStage,
+  });
 };
 
-/**
- * Resuelve un issue según la estructura de evaluación configurada.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
-export const resolveIssue = async (req, res) => {
-  const { id: issueId, forceFinalize = false } = req.body;
+export const computeEvaluationStage = async (req, res) => {
+  const issueId = req.params?.id || req.body?.id;
+  const stage = req.params?.stage;
 
-  const result = await resolveIssueService({
+  const result = await computeIssueEvaluationStage({
     issueId,
     userId: req.uid,
-    forceFinalize: Boolean(forceFinalize),
+    stage,
     apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
     httpClient: axios,
   });
 
   return sendSuccess(res, result.message, {
-    finished: result.finished,
-    rankedAlternatives: result.rankedAlternatives ?? null,
-    resultsAnalysis: result.resultsAnalysis ?? null,
+    stage: result.stage,
+    structureKey: result.structureKey,
+    consensusPhase: result.consensusPhase,
+    currentStage: result.currentStage,
+    result: result.result,
   });
 };

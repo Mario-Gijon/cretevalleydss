@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { getAlternativeEvaluationStructureEntry } from "../../issueAlternativeEvaluation/alternativeEvaluation.registry.js";
+import DirectEvaluationMatrix from "../../issueEvaluation/structures/alternativeCriteriaMatrix/DirectEvaluationMatrix.jsx";
+import PairwiseAlternativeMatrix from "../../issueEvaluation/structures/alternativePairwiseByCriterion/PairwiseAlternativeMatrix.jsx";
 import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueEvaluationStructure.js";
+import { EVALUATION_STRUCTURE_KEYS } from "../../issueEvaluation/evaluation.constants.js";
+
+const MATRIX_BY_STRUCTURE_KEY = Object.freeze({
+  [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX]: DirectEvaluationMatrix,
+  [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION]:
+    PairwiseAlternativeMatrix,
+});
 
 /**
  * Hook for managing finished issue ratings state and data extraction.
@@ -43,12 +51,7 @@ export const useFinishedIssueRatingsView = ({
     [viewIssue]
   );
 
-  const entry = useMemo(
-    () => getAlternativeEvaluationStructureEntry(evaluationStructure),
-    [evaluationStructure]
-  );
-
-  const Matrix = entry?.Matrix || null;
+  const Matrix = MATRIX_BY_STRUCTURE_KEY[evaluationStructure] || null;
   const unsupportedEvaluationStructure = !Matrix;
 
   const phaseRatings = useMemo(

@@ -1,0 +1,59 @@
+import { Schema, model } from "mongoose";
+
+const issueStageResultSchema = new Schema(
+  {
+    issue: {
+      type: Schema.Types.ObjectId,
+      ref: "Issue",
+      required: true,
+      index: true,
+    },
+    stage: {
+      type: String,
+      enum: ["criteriaWeighting", "alternativeEvaluation"],
+      required: true,
+      index: true,
+    },
+    consensusPhase: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 1,
+      index: true,
+    },
+    consensusMeasure: {
+      type: Number,
+      default: null,
+    },
+    collectivePayload: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    computedPayload: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    modelExecution: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    rawOutput: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+issueStageResultSchema.index(
+  {
+    issue: 1,
+    stage: 1,
+    consensusPhase: 1,
+  },
+  { unique: true }
+);
+
+export const IssueStageResult = model("IssueStageResult", issueStageResultSchema);

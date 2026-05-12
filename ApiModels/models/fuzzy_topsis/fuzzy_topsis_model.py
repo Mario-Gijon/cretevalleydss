@@ -18,12 +18,49 @@ def _avg_triples(triples_list: list[list[float]]) -> tuple[float, float, float]:
     return low, medium, high
 
 
+def _normalize_fuzzy_weight_or_throw(value: Any, index: int) -> tuple[float, float, float]:
+    field = f"weights[{index}]"
+
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        raise ValueError("Fuzzy TOPSIS requires fuzzy criteria weights")
+
+    parsed = [float(item) for item in value]
+
+    if not all(np.isfinite(item) for item in parsed):
+        raise ValueError(f"{field} must contain finite numbers")
+
+    return tuple(parsed)
+
+
+def _validate_fuzzy_matrices_or_throw(
+    matrices: dict[str, list[list[list[float]]]],
+) -> None:
+    for expert_key, matrix in matrices.items():
+        for row_index, row in enumerate(matrix):
+            for col_index, cell in enumerate(row):
+                field = (
+                    f"matrices['{expert_key}'][{row_index}][{col_index}]"
+                )
+                if not isinstance(cell, (list, tuple)):
+                    raise ValueError(
+                        "Fuzzy TOPSIS requires fuzzy numeric values for every cell; "
+                        f"cell {field} received {type(cell).__name__}"
+                    )
+                if len(cell) != 3:
+                    raise ValueError(f"{field} must be a fuzzy triplet [l, m, u]")
+                parsed = [float(item) for item in cell]
+                if not all(np.isfinite(item) for item in parsed):
+                    raise ValueError(f"{field} must contain finite numbers")
+
+
 def run_fuzzy_topsis(
     matrices: dict[str, list[list[list[float]]]],
-    weights: list[list[float]],
+    weights: list[Any],
     criterion_type: list[str],
 ) -> dict[str, Any]:
     """Ejecuta Fuzzy TOPSIS sobre una matriz colectiva difusa."""
+
+    _validate_fuzzy_matrices_or_throw(matrices)
 
     matrices_list = list(matrices.values())
     first_matrix = matrices_list[0]
@@ -38,7 +75,10 @@ def run_fuzzy_topsis(
             row.append(_avg_triples(triples))
         collective_matrix.append(row)
 
-    flat_weights = [tuple(weight) for weight in weights]
+    flat_weights = [
+        _normalize_fuzzy_weight_or_throw(weight, index)
+        for index, weight in enumerate(weights)
+    ]
     if len(flat_weights) != len(criterion_type):
         raise ValueError(f"Mismatch: {len(flat_weights)} weights vs {len(criterion_type)} criteria")
 

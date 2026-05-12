@@ -22,7 +22,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const alternatives = Array.isArray(issueInfo.alternatives)
     ? issueInfo.alternatives
     : [];
-  const withConsensus = Boolean(issueInfo.withConsensus);
+  const isConsensus = issueInfo.isConsensus === true;
   const criteria = Array.isArray(issueInfo.criteria) ? issueInfo.criteria : [];
   const addedExperts = Array.isArray(issueInfo.addedExperts)
     ? issueInfo.addedExperts
@@ -32,7 +32,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const consensusMaxPhases = issueInfo.consensusMaxPhases;
   const consensusThreshold = issueInfo.consensusThreshold;
   const paramValues = issueInfo.paramValues || {};
-  const weightingMode = normalizeString(issueInfo.weightingMode || "manual");
+  const criteriaWeightingConfig = issueInfo.criteriaWeightingConfig;
 
   if (!issueName) {
     throw createBadRequestError("Issue name is required", {
@@ -98,7 +98,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     issueDescription,
     selectedModelId,
     uniqueAlternativeNames,
-    withConsensus,
+    isConsensus,
     criteria,
     uniqueExpertEmails,
     normalizedAssignmentsByExpert,
@@ -106,6 +106,6 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     consensusMaxPhases,
     consensusThreshold,
     paramValues,
-    weightingMode,
+    criteriaWeightingConfig,
   };
 };

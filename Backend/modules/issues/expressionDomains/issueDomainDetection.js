@@ -1,44 +1,54 @@
-import { Evaluation } from "../../../models/Evaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
+const normalizeDomainType = (value) => {
+  const normalized = String(value || "").trim();
+
+  return normalized.length > 0 ? normalized : null;
+};
+
 /**
- * Detecta el tipo de dominio usado en un issue a partir de los snapshots utilizados.
+ * Detecta el tipo de dominio de expresión usado por un issue desde sus snapshots.
  *
- * @param {object} params Datos de entrada.
+ * @param {object} params Parámetros de entrada.
  * @param {string|Object} params.issueId Id del issue.
- * @param {Array<string|Object>} params.expertIds Ids de expertos.
- * @returns {Promise<Object>}
+ * @returns {Promise<{domainType: string|null, domainTypes: string[]}>}
  */
-export const detectIssueDomainTypeOrThrow = async ({ issueId, expertIds }) => {
-  const snapshotIds = await Evaluation.distinct("expressionDomain", {
-    issue: issueId,
-    expert: { $in: expertIds },
-  });
+export const detectIssueDomainTypeOrThrow = async ({ issueId }) => {
+  const snapshots = await IssueExpressionDomain.find({ issue: issueId })
+    .select("type")
+    .lean();
 
-  const snapshots = await IssueExpressionDomain.find(
-    { _id: { $in: snapshotIds }, issue: issueId },
-    "type"
-  ).lean();
+  const domainTypes = [
+    ...new Set(
+      snapshots
+        .map((snapshot) => normalizeDomainType(snapshot.type))
+        .filter(Boolean)
+    ),
+  ];
 
-  const types = new Set(
-    snapshots.map((snapshot) => snapshot.type).filter(Boolean)
-  );
-
-  if (types.size === 0) {
-    throw createBadRequestError(
-      "Cannot detect issue domain type (no snapshots found in evaluations)."
-    );
+  if (domainTypes.length === 0) {
+    return {
+      domainType: null,
+      domainTypes: [],
+    };
   }
 
-  if (types.size > 1) {
+  if (domainTypes.length > 1) {
     throw createBadRequestError(
-      "This issue mixes numeric and linguistic domains. Simulation is disabled for now."
+      "Mixed expression domain types are not supported for this operation",
+      {
+        field: "expressionDomain",
+        details: {
+          domainTypes,
+        },
+      }
     );
   }
 
   return {
-    domainType: Array.from(types)[0],
-    snapshotIdsUsed: snapshotIds,
+    domainType: domainTypes[0],
+    domainTypes,
   };
 };

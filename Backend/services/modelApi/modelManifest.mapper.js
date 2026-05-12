@@ -1,11 +1,4 @@
-import { EVALUATION_STRUCTURES } from "../../modules/issues/issue.evaluationStructure.js";
-import { isSupportedLifecycleKind } from "../../modules/issues/issue.lifecycleKind.js";
-
 export const MANIFEST_SYNC_SOURCE = "ApiModels";
-
-const SUPPORTED_EVALUATION_STRUCTURES = new Set(
-  Object.values(EVALUATION_STRUCTURES)
-);
 
 export const hasOwn = (value, key) =>
   Object.prototype.hasOwnProperty.call(value || {}, key);
@@ -200,12 +193,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const apiModelKey = normalizeNonEmptyString(manifestModel?.apiModelKey);
   const displayName = normalizeNonEmptyString(manifestModel?.displayName);
   const endpointPath = normalizeNonEmptyString(manifestModel?.apiEndpoint?.path);
-  const evaluationStructure = normalizeNonEmptyString(
-    manifestModel?.evaluationStructure
+  const alternativeEvaluationStructureKey = normalizeNonEmptyString(
+    manifestModel?.alternativeEvaluationStructureKey
   );
-  const lifecycleKind = normalizeNonEmptyString(manifestModel?.lifecycleKind);
-  const apiInputFormat = normalizeNonEmptyString(manifestModel?.apiInputFormat);
-  const apiOutputFormat = normalizeNonEmptyString(manifestModel?.apiOutputFormat);
   const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
   const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
   const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
@@ -213,31 +203,12 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
+  if (!alternativeEvaluationStructureKey) {
+    missingFields.push("alternativeEvaluationStructureKey");
+  }
   if (!modelFamilyKey) missingFields.push("modelFamilyKey");
   if (!modelVersion) missingFields.push("modelVersion");
   if (!versionLabel) missingFields.push("versionLabel");
-
-  if (!evaluationStructure) {
-    missingFields.push("evaluationStructure");
-  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
-    missingFields.push(
-      `evaluationStructure (unsupported: ${evaluationStructure})`
-    );
-  }
-
-  if (!lifecycleKind) {
-    missingFields.push("lifecycleKind");
-  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
-    missingFields.push(`lifecycleKind (unsupported: ${lifecycleKind})`);
-  }
-
-  if (!apiInputFormat) {
-    missingFields.push("apiInputFormat");
-  }
-
-  if (!apiOutputFormat) {
-    missingFields.push("apiOutputFormat");
-  }
 
   if (typeof manifestModel?.isMultiCriteria !== "boolean") {
     missingFields.push("isMultiCriteria");
@@ -261,16 +232,17 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
   extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
   moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
-  evaluationStructure: normalizeNonEmptyString(manifestModel?.evaluationStructure),
-  lifecycleKind: normalizeNonEmptyString(manifestModel?.lifecycleKind),
-  apiInputFormat: normalizeNonEmptyString(manifestModel?.apiInputFormat),
-  apiOutputFormat: normalizeNonEmptyString(manifestModel?.apiOutputFormat),
+  alternativeEvaluationStructureKey: normalizeNonEmptyString(
+    manifestModel?.alternativeEvaluationStructureKey
+  ),
+  criteriaWeightingStructureKey: normalizeNonEmptyString(
+    manifestModel?.criteriaWeightingStructureKey
+  ),
+  supportsConsensus: manifestModel?.supportsConsensus === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
   criterionTypes: normalizeCriterionTypes(manifestModel?.criterionTypes),
   parameters: normalizeParameters(manifestModel?.parameters),
-  modelInputFields: normalizeStringList(manifestModel?.modelInputFields),
-  modelOutputFields: normalizeStringList(manifestModel?.modelOutputFields),
   request: normalizeDynamicObject(manifestModel?.request),
   response: normalizeDynamicObject(manifestModel?.response),
 });
@@ -342,10 +314,6 @@ export const normalizeComparableFieldValue = (field, value) => {
 
   if (field === "criterionTypes") {
     return normalizeCriterionTypes(plainValue);
-  }
-
-  if (field === "modelInputFields" || field === "modelOutputFields") {
-    return normalizeStringList(plainValue);
   }
 
   return normalizeForStableStringify(plainValue);

@@ -1,19 +1,18 @@
 import mongoose from "mongoose";
 
-         
+
 import { Alternative } from "../../models/Alternatives.js";
 import { User } from "../../models/Users.js";
 import { Consensus } from "../../models/Consensus.js";
 import { Criterion } from "../../models/Criteria.js";
-import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../models/Evaluations.js";
+import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
 import { Participation } from "../../models/Participations.js";
 
-          
+
 import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
@@ -23,7 +22,7 @@ import {
   EVALUATION_STRUCTURES,
 } from "../issues/issue.evaluationStructure.js";
 
-        
+
 import {
   createBadRequestError,
   createNotFoundError,
@@ -285,7 +284,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     consensusDocs,
     scenarios,
     snapshots,
-    evaluationAggByExpert,
+    evaluationDocs,
     weightDocs,
   ] = await Promise.all([
     getOrderedAlternativesDb({
@@ -316,28 +315,18 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       .populate("createdBy", "name email")
       .lean(),
     IssueExpressionDomain.find({ issue: issueId }).lean(),
-    Evaluation.aggregate([
-      { $match: { issue: new mongoose.Types.ObjectId(issueId) } },
-      {
-        $group: {
-          _id: "$expert",
-          totalDocs: { $sum: 1 },
-          filledDocs: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [{ $ne: ["$value", null] }, { $ne: ["$value", ""] }],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          lastEvaluationAt: { $max: "$timestamp" },
-        },
-      },
-    ]),
-    CriteriaWeightEvaluation.find({ issue: issueId }).lean(),
+    IssueEvaluation.find({
+      issue: issueId,
+      stage: "alternativeEvaluation",
+    })
+      .select("expert payload completed submittedAt")
+      .lean(),
+    IssueEvaluation.find({
+      issue: issueId,
+      stage: "criteriaWeighting",
+    })
+      .select("expert payload completed submittedAt")
+      .lean(),
   ]);
 
   const issueEvaluationStructure = issue.evaluationStructure;
@@ -363,16 +352,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     finalWeightsByName[criterion.name] = value;
   });
 
-  const evaluationAggMap = new Map(
-    evaluationAggByExpert.map((row) => [
-      toIdString(row._id),
-      {
-        totalDocs: row.totalDocs,
-        filledDocs: row.filledDocs,
-        lastEvaluationAt: row.lastEvaluationAt,
-      },
-    ])
-  );
+  const evaluationAggMap = buildIssueEvaluationStatsByExpert(evaluationDocs);
 
   const weightDocMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
@@ -390,13 +370,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         history: exit.history,
         user: exit.user
           ? {
-              id: toIdString(exit.user._id),
-              name: exit.user.name,
-              email: exit.user.email,
-              role: exit.user.role,
-              university: exit.user.university,
-              accountConfirm: exit.user.accountConfirm,
-            }
+            id: toIdString(exit.user._id),
+            name: exit.user.name,
+            email: exit.user.email,
+            role: exit.user.role,
+            university: exit.user.university,
+            accountConfirm: exit.user.accountConfirm,
+          }
           : null,
       },
     ])
@@ -496,39 +476,39 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   ).length;
 
   return {
-      issue: {
-        id: toIdString(issue._id),
-        name: issue.name,
-        description: issue.description,
-        active: issue.active,
-        currentStage: issue.currentStage,
-        currentStageMeta: getIssueStageMeta(issue.currentStage),
-        weightingMode: issue.weightingMode,
-        isConsensus: issue.isConsensus,
-        consensusMaxPhases: issue.consensusMaxPhases,
-        consensusThreshold: issue.consensusThreshold,
-        creationDate: issue.creationDate,
-        closureDate: issue.closureDate,
-        admin: issue.admin
-          ? {
-              id: toIdString(issue.admin._id),
-              name: issue.admin.name,
-              email: issue.admin.email,
-              role: issue.admin.role,
-              accountConfirm: issue.admin.accountConfirm,
-            }
-          : null,
-        model: issue.model
-          ? {
-              id: toIdString(issue.model._id),
-              name: issue.model.name,
-              isConsensus:
-                issue.model.lifecycleKind === "thresholdConsensus",
-              isMultiCriteria: issue.model.isMultiCriteria,
-              supportedDomains: issue.model.supportedDomains,
-              parameters: issue.model.parameters,
-            }
-          : null,
+    issue: {
+      id: toIdString(issue._id),
+      name: issue.name,
+      description: issue.description,
+      active: issue.active,
+      currentStage: issue.currentStage,
+      currentStageMeta: getIssueStageMeta(issue.currentStage),
+      weightingMode: issue.weightingMode,
+      isConsensus: issue.isConsensus,
+      consensusMaxPhases: issue.consensusMaxPhases,
+      consensusThreshold: issue.consensusThreshold,
+      creationDate: issue.creationDate,
+      closureDate: issue.closureDate,
+      admin: issue.admin
+        ? {
+          id: toIdString(issue.admin._id),
+          name: issue.admin.name,
+          email: issue.admin.email,
+          role: issue.admin.role,
+          accountConfirm: issue.admin.accountConfirm,
+        }
+        : null,
+      model: issue.model
+        ? {
+          id: toIdString(issue.model._id),
+          name: issue.model.name,
+          isConsensus:
+            issue.model.lifecycleKind === "thresholdConsensus",
+          isMultiCriteria: issue.model.isMultiCriteria,
+          supportedDomains: issue.model.supportedDomains,
+          parameters: issue.model.parameters,
+        }
+        : null,
       alternatives: orderedAlternatives.map((alternative) => ({
         id: toIdString(alternative._id),
         name: alternative.name,
@@ -560,10 +540,10 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         createdAt: scenario.createdAt,
         createdBy: scenario.createdBy
           ? {
-              id: toIdString(scenario.createdBy._id),
-              name: scenario.createdBy.name,
-              email: scenario.createdBy.email,
-            }
+            id: toIdString(scenario.createdBy._id),
+            name: scenario.createdBy.name,
+            email: scenario.createdBy.email,
+          }
           : null,
       })),
       metrics: {
@@ -647,12 +627,12 @@ const buildExpertProgressRow = ({
   entryStage: currentParticipant ? participation?.entryStage : null,
   exitInfo: exit
     ? {
-        hidden: exit.hidden,
-        timestamp: exit.timestamp,
-        phase: exit.phase,
-        stage: exit.stage,
-        reason: exit.reason,
-      }
+      hidden: exit.hidden,
+      timestamp: exit.timestamp,
+      phase: exit.phase,
+      stage: exit.stage,
+      reason: exit.reason,
+    }
     : null,
   progress: {
     expectedEvaluationCells,
@@ -735,31 +715,18 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
     ExitUserIssue.find({ issue: issueId, hidden: true })
       .populate("user", "name email role university accountConfirm")
       .lean(),
-    Evaluation.aggregate([
-      { $match: { issue: new mongoose.Types.ObjectId(issueId) } },
-      {
-        $group: {
-          _id: "$expert",
-          totalDocs: { $sum: 1 },
-          filledDocs: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ["$value", null] },
-                    { $ne: ["$value", ""] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          lastEvaluationAt: { $max: "$timestamp" },
-        },
-      },
-    ]),
-    CriteriaWeightEvaluation.find({ issue: issueId }).lean(),
+    IssueEvaluation.find({
+      issue: issueId,
+      stage: "alternativeEvaluation",
+    })
+      .select("expert payload completed submittedAt")
+      .lean(),
+    IssueEvaluation.find({
+      issue: issueId,
+      stage: "criteriaWeighting",
+    })
+      .select("expert payload completed submittedAt")
+      .lean(),
   ]);
 
   const evaluationStructure = issue.evaluationStructure;
@@ -770,16 +737,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
     evaluationStructure,
   });
 
-  const evaluationMap = new Map(
-    evaluationAgg.map((row) => [
-      toIdString(row._id),
-      {
-        totalDocs: row.totalDocs,
-        filledDocs: row.filledDocs,
-        lastEvaluationAt: row.lastEvaluationAt,
-      },
-    ])
-  );
+  const evaluationMap = buildIssueEvaluationStatsByExpert(evaluationAgg);
 
   const weightMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
@@ -855,9 +813,9 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       evaluationStructure,
       model: issue.model
         ? {
-            id: toIdString(issue.model._id),
-            name: issue.model.name,
-          }
+          id: toIdString(issue.model._id),
+          name: issue.model.name,
+        }
         : null,
     },
     experts: rows,
@@ -872,6 +830,117 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
  */
 const isFilledValue = (value) =>
   !(value === null || value === undefined || value === "");
+
+const countPayloadCells = (payload = {}) => {
+  if (payload?.cells && typeof payload.cells === "object") {
+    return Object.keys(payload.cells).length;
+  }
+
+  const comparisonsByCriterion = payload?.comparisonsByCriterion;
+  if (comparisonsByCriterion && typeof comparisonsByCriterion === "object") {
+    return Object.values(comparisonsByCriterion).reduce(
+      (total, criterionComparisons) =>
+        total +
+        (criterionComparisons && typeof criterionComparisons === "object"
+          ? Object.keys(criterionComparisons).length
+          : 0),
+      0
+    );
+  }
+
+  return 0;
+};
+
+const countFilledPayloadCells = (payload = {}) => {
+  if (payload?.cells && typeof payload.cells === "object") {
+    return Object.values(payload.cells).filter((cell) =>
+      isFilledValue(cell?.value)
+    ).length;
+  }
+
+  const comparisonsByCriterion = payload?.comparisonsByCriterion;
+  if (comparisonsByCriterion && typeof comparisonsByCriterion === "object") {
+    return Object.values(comparisonsByCriterion).reduce(
+      (total, criterionComparisons) => {
+        if (!criterionComparisons || typeof criterionComparisons !== "object") {
+          return total;
+        }
+
+        return (
+          total +
+          Object.values(criterionComparisons).filter((cell) =>
+            isFilledValue(cell?.value)
+          ).length
+        );
+      },
+      0
+    );
+  }
+
+  return 0;
+};
+
+const buildIssueEvaluationStatsByExpert = (evaluationDocs = []) => {
+  const statsByExpert = new Map();
+
+  for (const evaluationDoc of evaluationDocs) {
+    const expertId = toIdString(evaluationDoc.expert);
+    const previous = statsByExpert.get(expertId) || {
+      totalDocs: 0,
+      filledDocs: 0,
+      lastEvaluationAt: null,
+    };
+
+    const payload = evaluationDoc.payload || {};
+    const submittedAt = evaluationDoc.submittedAt || null;
+
+    previous.totalDocs += countPayloadCells(payload);
+    previous.filledDocs += countFilledPayloadCells(payload);
+
+    if (
+      submittedAt &&
+      (!previous.lastEvaluationAt ||
+        new Date(submittedAt) > new Date(previous.lastEvaluationAt))
+    ) {
+      previous.lastEvaluationAt = submittedAt;
+    }
+
+    statsByExpert.set(expertId, previous);
+  }
+
+  return statsByExpert;
+};
+
+const buildIssueEvaluationStatsByIssue = (evaluationDocs = []) => {
+  const statsByIssue = new Map();
+
+  for (const evaluationDoc of evaluationDocs) {
+    const issueId = toIdString(evaluationDoc.issue);
+
+    const previous = statsByIssue.get(issueId) || {
+      filledCells: 0,
+      lastEvaluationAt: null,
+    };
+
+    previous.filledCells += countFilledPayloadCells(
+      evaluationDoc.payload || {}
+    );
+
+    const submittedAt = evaluationDoc.submittedAt || null;
+
+    if (
+      submittedAt &&
+      (!previous.lastEvaluationAt ||
+        new Date(submittedAt) > new Date(previous.lastEvaluationAt))
+    ) {
+      previous.lastEvaluationAt = submittedAt;
+    }
+
+    statsByIssue.set(issueId, previous);
+  }
+
+  return statsByIssue;
+};
 
 /**
  * Ordena un objeto siguiendo un orden fijo de claves.
@@ -1015,6 +1084,7 @@ export const getIssueExpertEvaluationsPayload = async ({
     latestConsensus,
     orderedAlternatives,
     orderedLeafCriteria,
+    evaluationDoc,
   ] = await Promise.all([
     User.findById(expertId)
       .select("name email role university accountConfirm")
@@ -1033,94 +1103,71 @@ export const getIssueExpertEvaluationsPayload = async ({
       select: "_id name type",
       lean: true,
     }),
-  ]);
-
-  const evaluationStructure = issue.evaluationStructure;
-  const usesPairwiseAlternatives =
-    evaluationStructure ===
-    EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
-
-  if (usesPairwiseAlternatives) {
-    const evaluationDocs = await Evaluation.find({
+    IssueEvaluation.findOne({
       issue: issueId,
       expert: expertId,
-      comparedAlternative: { $ne: null },
+      stage: "alternativeEvaluation",
     })
-      .populate("alternative", "name")
-      .populate("comparedAlternative", "name")
-      .populate("criterion", "name")
-      .populate("expressionDomain")
-      .lean();
+      .sort({ consensusPhase: -1 })
+      .lean(),
+  ]);
 
-    if (!participation && !expert && evaluationDocs.length === 0) {
-      throw createNotFoundError("Expert data for this issue not found", {
-        field: "expertId",
-      });
-    }
+  if (!participation && !expert && !evaluationDoc) {
+    throw createNotFoundError("Expert data for this issue not found", {
+      field: "expertId",
+    });
+  }
+
+  const evaluationStructure = issue.evaluationStructure;
+  const evaluationPayload = evaluationDoc?.payload || {};
+  const lastEvaluationAt = evaluationDoc?.submittedAt || null;
+  const consensusPhase = evaluationDoc?.consensusPhase ?? null;
+
+  const usesPairwiseAlternatives =
+    evaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES;
+
+  if (usesPairwiseAlternatives) {
+    const comparisonsByCriterion =
+      evaluationPayload.comparisonsByCriterion || {};
 
     const evaluations = {};
     const orderedAlternativeNames = orderedAlternatives.map(
       (alternative) => alternative.name
     );
 
-    for (const criterion of orderedLeafCriteria) {
-      evaluations[criterion.name] = orderedAlternatives.map((alternative) => ({
-        id: alternative.name,
-      }));
-    }
-
-    const rowMap = new Map();
-
-    for (const criterion of orderedLeafCriteria) {
-      for (const alternative of orderedAlternatives) {
-        rowMap.set(
-          `${criterion.name}__${alternative.name}`,
-          evaluations[criterion.name].find(
-            (row) => row.id === alternative.name
-          )
-        );
-      }
-    }
-
-    let lastEvaluationAt = null;
     let filledCells = 0;
 
-    for (const doc of evaluationDocs) {
-      const criterionName = doc.criterion?.name;
-      const alternativeName = doc.alternative?.name;
-      const comparedAlternativeName = doc.comparedAlternative?.name;
+    for (const criterion of orderedLeafCriteria) {
+      const criterionComparisons =
+        comparisonsByCriterion?.[criterion.name] || {};
 
-      if (!criterionName || !alternativeName || !comparedAlternativeName) {
-        continue;
-      }
+      evaluations[criterion.name] = orderedAlternatives.map((alternative) => {
+        const row = {
+          id: alternative.name,
+        };
 
-      const row = rowMap.get(`${criterionName}__${alternativeName}`);
-      if (!row) continue;
+        for (const comparedAlternative of orderedAlternatives) {
+          if (alternative.name === comparedAlternative.name) {
+            continue;
+          }
 
-      row[comparedAlternativeName] = {
-        value: doc?.value,
-        domain: formatIssueSnapshotDomain(doc?.expressionDomain),
-        timestamp: doc?.timestamp,
-        consensusPhase: doc?.consensusPhase,
-      };
+          const pairKey = `${alternative.name}::${comparedAlternative.name}`;
+          const cell = criterionComparisons?.[pairKey];
 
-      if (isFilledValue(doc.value)) {
-        filledCells += 1;
-      }
+          row[comparedAlternative.name] = {
+            value: cell?.value,
+            domain: formatIssueSnapshotDomain(cell?.expressionDomain),
+            timestamp: lastEvaluationAt,
+            consensusPhase,
+          };
 
-      if (
-        doc.timestamp &&
-        (!lastEvaluationAt ||
-          new Date(doc.timestamp) > new Date(lastEvaluationAt))
-      ) {
-        lastEvaluationAt = doc.timestamp;
-      }
-    }
+          if (isFilledValue(cell?.value)) {
+            filledCells += 1;
+          }
+        }
 
-    for (const criterionName of Object.keys(evaluations)) {
-      evaluations[criterionName] = evaluations[criterionName].map((row) =>
-        orderObjectByKeys(row, ["id", ...orderedAlternativeNames])
-      );
+        return orderObjectByKeys(row, ["id", ...orderedAlternativeNames]);
+      });
     }
 
     return {
@@ -1138,8 +1185,7 @@ export const getIssueExpertEvaluationsPayload = async ({
         expectedCells: countExpectedEvaluationCellsPerExpert({
           alternativesCount: orderedAlternatives.length,
           leafCriteriaCount: orderedLeafCriteria.length,
-          evaluationStructure:
-            EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
+          evaluationStructure: EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES,
         }),
         filledCells,
         lastEvaluationAt,
@@ -1149,58 +1195,27 @@ export const getIssueExpertEvaluationsPayload = async ({
     };
   }
 
-  const evaluationDocs = await Evaluation.find({
-    issue: issueId,
-    expert: expertId,
-    comparedAlternative: null,
-  })
-    .populate("alternative", "name")
-    .populate("criterion", "name")
-    .populate("expressionDomain")
-    .lean();
-
-  if (!participation && !expert && evaluationDocs.length === 0) {
-    throw createNotFoundError("Expert data for this issue not found");
-  }
-
+  const cells = evaluationPayload.cells || {};
   const evaluations = {};
-  const evaluationMap = new Map();
-
-  let lastEvaluationAt = null;
   let filledCells = 0;
-
-  for (const doc of evaluationDocs) {
-    const alternativeId = toIdString(doc.alternative?._id || doc.alternative);
-    const criterionId = toIdString(doc.criterion?._id || doc.criterion);
-
-    evaluationMap.set(`${alternativeId}__${criterionId}`, doc);
-
-    if (isFilledValue(doc.value)) {
-      filledCells += 1;
-    }
-
-    if (
-      doc.timestamp &&
-      (!lastEvaluationAt || new Date(doc.timestamp) > new Date(lastEvaluationAt))
-    ) {
-      lastEvaluationAt = doc.timestamp;
-    }
-  }
 
   for (const alternative of orderedAlternatives) {
     evaluations[alternative.name] = {};
 
     for (const criterion of orderedLeafCriteria) {
-      const doc = evaluationMap.get(
-        `${toIdString(alternative._id)}__${toIdString(criterion._id)}`
-      );
+      const cellKey = `${alternative.name}::${criterion.name}`;
+      const cell = cells?.[cellKey];
 
       evaluations[alternative.name][criterion.name] = {
-        value: doc?.value,
-        domain: formatIssueSnapshotDomain(doc?.expressionDomain),
-        timestamp: doc?.timestamp,
-        consensusPhase: doc?.consensusPhase,
+        value: cell?.value,
+        domain: formatIssueSnapshotDomain(cell?.expressionDomain),
+        timestamp: lastEvaluationAt,
+        consensusPhase,
       };
+
+      if (isFilledValue(cell?.value)) {
+        filledCells += 1;
+      }
     }
   }
 
@@ -1219,7 +1234,7 @@ export const getIssueExpertEvaluationsPayload = async ({
       expectedCells: countExpectedEvaluationCellsPerExpert({
         alternativesCount: orderedAlternatives.length,
         leafCriteriaCount: orderedLeafCriteria.length,
-        evaluationStructure: EVALUATION_STRUCTURES.DIRECT,
+        evaluationStructure,
       }),
       filledCells,
       lastEvaluationAt,
@@ -1291,10 +1306,13 @@ export const getIssueExpertWeightsPayload = async ({
         select: "_id name type",
         lean: true,
       }),
-      CriteriaWeightEvaluation.findOne({
+      IssueEvaluation.findOne({
         issue: issueId,
         expert: expertId,
-      }).lean(),
+        stage: "criteriaWeighting",
+      })
+        .sort({ consensusPhase: -1 })
+        .lean(),
     ]);
 
   if (!expert && !participation && !weightDoc) {
@@ -1308,16 +1326,16 @@ export const getIssueExpertWeightsPayload = async ({
   const resolvedWeights =
     issue.modelParameters.weights.length
       ? leafNames.reduce((accumulator, name, index) => {
-          accumulator[name] = issue.modelParameters.weights[index];
-          return accumulator;
-        }, {})
+        accumulator[name] = issue.modelParameters.weights[index];
+        return accumulator;
+      }, {})
       : null;
 
   const manualWeights = weightDoc
-    ? orderObjectByKeys(weightDoc.input?.manualWeights ?? {}, leafNames)
+    ? orderObjectByKeys(weightDoc.payload?.weightsByCriterion ?? {}, leafNames)
     : orderObjectByKeys({}, leafNames);
 
-  const weightBwmData = weightDoc?.input?.bwmData;
+  const weightBwmData = weightDoc?.payload || {};
   const bwm = {
     bestCriterion: weightBwmData?.bestCriterion,
     worstCriterion: weightBwmData?.worstCriterion,
@@ -1351,9 +1369,9 @@ export const getIssueExpertWeightsPayload = async ({
       evaluationStructure: issue.evaluationStructure,
       model: issue.model
         ? {
-            id: toIdString(issue.model._id),
-            name: issue.model.name,
-          }
+          id: toIdString(issue.model._id),
+          name: issue.model.name,
+        }
         : null,
     },
     expert: buildAdminExpertIdentityPayload(expert, expertId),
@@ -1364,18 +1382,18 @@ export const getIssueExpertWeightsPayload = async ({
       singleLeafAutoWeights:
         leafNames.length === 1
           ? {
-              [leafNames[0]]: resolvedWeights?.[leafNames[0]],
-            }
+            [leafNames[0]]: resolvedWeights?.[leafNames[0]],
+          }
           : null,
       resolvedWeights,
       manualWeights,
       bwm,
       docMeta: weightDoc
         ? {
-            completed: weightDoc.completed,
-            consensusPhase: weightDoc.consensusPhase,
-            updatedAt: weightDoc.updatedAt,
-          }
+          completed: weightDoc.completed,
+          consensusPhase: weightDoc.consensusPhase,
+          updatedAt: weightDoc.updatedAt,
+        }
         : null,
     },
   };
@@ -1613,29 +1631,12 @@ export const getAdminIssuesListPayload = async ({
       },
     ]),
 
-    Evaluation.aggregate([
-      { $match: { issue: { $in: issueIds } } },
-      {
-        $group: {
-          _id: "$issue",
-          filledCells: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ["$value", null] },
-                    { $ne: ["$value", ""] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          lastEvaluationAt: { $max: "$timestamp" },
-        },
-      },
-    ]),
+    IssueEvaluation.find({
+      issue: { $in: issueIds },
+      stage: "alternativeEvaluation",
+    })
+      .select("issue payload submittedAt")
+      .lean(),
   ]);
 
   const alternativesMap = new Map(
@@ -1658,9 +1659,7 @@ export const getAdminIssuesListPayload = async ({
     scenariosAgg.map((row) => [toIdString(row._id), row.total || 0])
   );
 
-  const evaluationsMap = new Map(
-    evaluationsAgg.map((row) => [toIdString(row._id), row])
-  );
+  const evaluationsMap = buildIssueEvaluationStatsByIssue(evaluationsAgg);
 
   return {
     issues: issues.map((issue) => {
@@ -1717,22 +1716,22 @@ export const getAdminIssuesListPayload = async ({
         evaluationStructure,
         admin: issue.admin
           ? {
-              id: toIdString(issue.admin._id),
-              name: issue.admin.name,
-              email: issue.admin.email,
-              role: issue.admin.role,
-              accountConfirm: issue.admin.accountConfirm,
-            }
+            id: toIdString(issue.admin._id),
+            name: issue.admin.name,
+            email: issue.admin.email,
+            role: issue.admin.role,
+            accountConfirm: issue.admin.accountConfirm,
+          }
           : null,
         model: issue.model
           ? {
-              id: toIdString(issue.model._id),
-              name: issue.model.name,
-              evaluationStructure: modelEvaluationStructure,
-              isConsensus:
-                issue.model.lifecycleKind === "thresholdConsensus",
-              isMultiCriteria: issue.model.isMultiCriteria,
-            }
+            id: toIdString(issue.model._id),
+            name: issue.model.name,
+            evaluationStructure: modelEvaluationStructure,
+            isConsensus:
+              issue.model.lifecycleKind === "thresholdConsensus",
+            isMultiCriteria: issue.model.isMultiCriteria,
+          }
           : null,
         metrics: {
           totalAlternatives,

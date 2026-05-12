@@ -5,10 +5,6 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
-  getParameterExpectedLength,
-  validateCriteriaWeightsParameterValue
-} from "../../modelParameters";
-import {
   readStoredCreateIssueData,
   setDefaults,
   steps,
@@ -21,10 +17,197 @@ import {
   buildInitialAssignments,
   validateDomainAssigments,
 } from "../../../utils/domainAssignments.utils";
+import {
+  isFuzzyCriteriaWeightModel,
+  resolveFuzzyCriteriaWeightValueCount,
+} from "../utils/criteriaWeighting.model";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
+const CRITERIA_WEIGHTING_MODES = Object.freeze({
+  CREATOR_FUZZY: "creatorFuzzy",
+  CREATOR_MANUAL: "creatorManual",
+  EXPERT_MANUAL: "expertManual",
+  CREATOR_BWM: "creatorBwm",
+  EXPERT_BWM: "expertBwm",
+  EXPERT_BWM_CMCC: "expertBwmCmcc",
+});
+
+
+const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
+  if (isFuzzyCriteriaWeightModel(selectedModel)) {
+    return {
+      mode: CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY,
+      source: "creator",
+      method: "fuzzy",
+      aggregationMode: "none",
+      structureKey: "fuzzyCriteriaWeights",
+      payload: {},
+    };
+  }
+
+  const preferredStructureKey = selectedModel?.criteriaWeightingStructureKey;
+
+  if (preferredStructureKey === "bestWorstCriteria") {
+    return {
+      mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
+      source: "experts",
+      method: "bwm",
+      aggregationMode: "bwmMean",
+      structureKey: "bestWorstCriteria",
+      payload: {},
+    };
+  }
+
+  return {
+    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+    source: "experts",
+    method: "manual",
+    aggregationMode: "mean",
+    structureKey: "manualCriteriaWeights",
+    payload: {},
+  };
+};
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const validateCreatorManualConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
+  const payload = criteriaWeightingConfig?.payload;
+  const weightsByCriterion = payload?.weightsByCriterion;
+
+  if (!isPlainObject(weightsByCriterion)) {
+    return "Manual mode requires weights by criterion.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const expectedKeySet = new Set(criterionNames);
+
+  const unknownKeys = Object.keys(weightsByCriterion).filter(
+    (criterionName) => !expectedKeySet.has(criterionName)
+  );
+  if (unknownKeys.length > 0) {
+    return `Unknown criteria in manual weights: ${unknownKeys.join(", ")}`;
+  }
+
+  const weights = criterionNames.map((criterionName) =>
+    Number(weightsByCriterion[criterionName])
+  );
+
+  if (weights.some((value) => !Number.isFinite(value))) {
+    return "Manual mode requires numeric weights for all criteria.";
+  }
+
+  if (weights.some((value) => value < 0 || value > 1)) {
+    return "Manual weights must be between 0 and 1.";
+  }
+
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (Math.abs(total - 1) > 0.001) {
+    return "Manual weights must sum to 1.";
+  }
+
+  return null;
+};
+
+const validateCreatorBwmConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
+  const payload = criteriaWeightingConfig?.payload;
+  if (!isPlainObject(payload)) {
+    return "BWM mode requires payload data.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const criterionNameSet = new Set(criterionNames);
+
+  const bestCriterion = typeof payload.bestCriterion === "string"
+    ? payload.bestCriterion.trim()
+    : "";
+  const worstCriterion = typeof payload.worstCriterion === "string"
+    ? payload.worstCriterion.trim()
+    : "";
+
+  if (!bestCriterion || !criterionNameSet.has(bestCriterion)) {
+    return "BWM mode requires a valid best criterion.";
+  }
+
+  if (!worstCriterion || !criterionNameSet.has(worstCriterion)) {
+    return "BWM mode requires a valid worst criterion.";
+  }
+
+  if (criterionNames.length > 1 && bestCriterion === worstCriterion) {
+    return "Best and worst criterion must be different.";
+  }
+
+  const bestToOthers = payload.bestToOthers;
+  const othersToWorst = payload.othersToWorst;
+  if (!isPlainObject(bestToOthers) || !isPlainObject(othersToWorst)) {
+    return "BWM mode requires best-to-others and others-to-worst values.";
+  }
+
+  for (const criterionName of criterionNames) {
+    const bestValue = Number(bestToOthers[criterionName]);
+    const worstValue = Number(othersToWorst[criterionName]);
+
+    if (!Number.isFinite(bestValue) || bestValue < 1 || bestValue > 9) {
+      return `BWM best-to-others for '${criterionName}' must be between 1 and 9.`;
+    }
+
+    if (!Number.isFinite(worstValue) || worstValue < 1 || worstValue > 9) {
+      return `BWM others-to-worst for '${criterionName}' must be between 1 and 9.`;
+    }
+  }
+
+  if (Number(bestToOthers[bestCriterion]) !== 1) {
+    return "BWM requires best-to-others[bestCriterion] = 1.";
+  }
+
+  if (Number(othersToWorst[worstCriterion]) !== 1) {
+    return "BWM requires others-to-worst[worstCriterion] = 1.";
+  }
+
+  return null;
+};
+
+const validateCreatorFuzzyConfig = ({
+  criteriaWeightingConfig,
+  leafCriteria,
+  selectedModel,
+}) => {
+  const payload = criteriaWeightingConfig?.payload;
+  const weightsByCriterion = payload?.weightsByCriterion;
+
+  if (!isPlainObject(weightsByCriterion)) {
+    return "Fuzzy criteria weights are required.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const fuzzyValueCount = resolveFuzzyCriteriaWeightValueCount(selectedModel);
+
+  for (const criterionName of criterionNames) {
+    const vector = weightsByCriterion[criterionName];
+    if (!Array.isArray(vector) || vector.length !== fuzzyValueCount) {
+      return `Fuzzy weight for '${criterionName}' must contain ${fuzzyValueCount} values.`;
+    }
+
+    const numericVector = vector.map(Number);
+    if (numericVector.some((item) => !Number.isFinite(item))) {
+      return `Fuzzy weight for '${criterionName}' must contain valid numbers.`;
+    }
+
+    if (numericVector.some((item) => item < 0 || item > 1)) {
+      return `Fuzzy weight for '${criterionName}' must stay within [0, 1].`;
+    }
+
+    for (let index = 1; index < numericVector.length; index += 1) {
+      if (numericVector[index] < numericVector[index - 1]) {
+        return `Fuzzy weight for '${criterionName}' must be non-decreasing.`;
+      }
+    }
+  }
+
+  return null;
+};
 
 dayjs.extend(utc);
 
@@ -72,7 +255,7 @@ export const useCreateIssueFlow = () => {
   const [activeStep, setActiveStep] = useState(storedData.activeStep || 0);
   const [completed] = useState(storedData.completed || {});
   const [selectedModel, setSelectedModel] = useState(storedData.selectedModel || null);
-  const [withConsensus, setWithConsensus] = useState(storedData.withConsensus || false);
+  const [isConsensus, setIsConsensus] = useState(storedData.isConsensus === true);
   const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
   const [criteria, setCriteria] = useState(storedData.criteria || []);
   const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
@@ -96,16 +279,10 @@ export const useCreateIssueFlow = () => {
   const [domainAssignments, setDomainAssignments] = useState(
     storedData.domainAssignments || {}
   );
-  const [bwmData, setBwmData] = useState(
-    storedData.bwmData || {
-      best: "",
-      worst: "",
-      bestToOthers: {},
-      othersToWorst: {},
-    }
-  );
-  const [weightingMode, setWeightingMode] = useState(
-    storedData.weightingMode || "manual"
+  const [criteriaWeightingConfig, setCriteriaWeightingConfig] = useState(
+    isPlainObject(storedData.criteriaWeightingConfig)
+      ? storedData.criteriaWeightingConfig
+      : buildDefaultCriteriaWeightingConfig(storedData.selectedModel || null)
   );
 
   useEffect(() => {
@@ -113,7 +290,7 @@ export const useCreateIssueFlow = () => {
       activeStep,
       completed,
       selectedModel,
-      withConsensus,
+      isConsensus,
       alternatives,
       criteria,
       addedExperts,
@@ -121,10 +298,9 @@ export const useCreateIssueFlow = () => {
       issueDescription,
       domainAssignments,
       paramValues,
-      bwmData,
-      weightingMode,
+      criteriaWeightingConfig,
       closureDate: closureDate ? closureDate.toJSON() : null,
-      ...(withConsensus && {
+      ...(isConsensus && {
         consensusMaxPhases,
         consensusThreshold,
       }),
@@ -135,7 +311,7 @@ export const useCreateIssueFlow = () => {
     activeStep,
     completed,
     selectedModel,
-    withConsensus,
+    isConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -146,8 +322,7 @@ export const useCreateIssueFlow = () => {
     consensusThreshold,
     domainAssignments,
     paramValues,
-    bwmData,
-    weightingMode,
+    criteriaWeightingConfig,
   ]);
 
   useEffect(() => {
@@ -166,6 +341,9 @@ export const useCreateIssueFlow = () => {
       setDefaultModelParams(true);
       setHasAttemptedCreateIssue(false);
     }
+    setCriteriaWeightingConfig(
+      buildDefaultCriteriaWeightingConfig(selectedModel)
+    );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModel]);
@@ -230,12 +408,6 @@ export const useCreateIssueFlow = () => {
   }, [criteria, defaultModelParams, paramValues, selectedModel]);
 
   useEffect(() => {
-    if (weightingMode !== "bwm") {
-      setBwmData({ best: "", worst: "", bestToOthers: {}, othersToWorst: {} });
-    }
-  }, [weightingMode]);
-
-  useEffect(() => {
     if (hasAttemptedCreateIssue) {
       setHasAttemptedCreateIssue(false);
     }
@@ -291,42 +463,32 @@ export const useCreateIssueFlow = () => {
   };
 
   const allData = useMemo(() => {
-    const leafCount = getLeafCriteria(criteria).length;
-    const isSingleLeaf = leafCount === 1;
-
-    const filteredParams = { ...paramValues };
-    if (!isSingleLeaf && weightingMode !== "manual") {
-      delete filteredParams.weights;
-    }
-
     return {
       issueName,
       issueDescription,
       selectedModel,
-      withConsensus,
+      isConsensus,
       alternatives,
       criteria,
       addedExperts,
       closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
       domainAssignments,
-      weightingMode,
-      paramValues: filteredParams,
-      ...(weightingMode === "bwm" && { bwmData }),
-      ...(withConsensus && { consensusMaxPhases, consensusThreshold }),
+      criteriaWeightingConfig,
+      paramValues,
+      ...(isConsensus && { consensusMaxPhases, consensusThreshold }),
     };
   }, [
     issueName,
     issueDescription,
     selectedModel,
-    withConsensus,
+    isConsensus,
     alternatives,
     criteria,
     addedExperts,
     closureDate,
     domainAssignments,
-    weightingMode,
+    criteriaWeightingConfig,
     paramValues,
-    bwmData,
     consensusMaxPhases,
     consensusThreshold,
   ]);
@@ -350,6 +512,14 @@ export const useCreateIssueFlow = () => {
       return;
     }
 
+    if (isConsensus && selectedModel?.supportsConsensus !== true) {
+      showSnackbarAlert(
+        "Selected model does not support consensus issues.",
+        "error"
+      );
+      return;
+    }
+
     if (!validateDomainAssigments(domainAssignments)) {
       showSnackbarAlert(
         "You must assign an expression domain to all criteria before creating the issue.",
@@ -359,27 +529,50 @@ export const useCreateIssueFlow = () => {
     }
 
     const leafCriteria = getLeafCriteria(criteria);
-    const criteriaWeightsParameter = (selectedModel?.parameters || []).find(
-      (parameter) => parameter?.ui?.component === "criteriaWeights"
-    );
+    if (!criteriaWeightingConfig || typeof criteriaWeightingConfig !== "object") {
+      showSnackbarAlert("Criteria weighting configuration is required.", "error");
+      return;
+    }
 
-    if (criteriaWeightsParameter) {
-      const paramKey = criteriaWeightsParameter?.key;
-      const weightsValue = allData?.paramValues?.[paramKey];
-      const expectedLength = getParameterExpectedLength(
-        criteriaWeightsParameter,
-        leafCriteria.length
+    if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC) {
+      showSnackbarAlert(
+        "Simulated consensus for BWM will be available later.",
+        "error"
       );
+      return;
+    }
 
-      if (weightsValue !== undefined && expectedLength !== null) {
-        const validation = validateCriteriaWeightsParameterValue({
-          parameter: criteriaWeightsParameter,
-          value: weightsValue,
-          leafCount: leafCriteria.length,
+    if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
+      const fuzzyValidationError = validateCreatorFuzzyConfig({
+        criteriaWeightingConfig,
+        leafCriteria,
+        selectedModel,
+      });
+      if (fuzzyValidationError) {
+        showSnackbarAlert(fuzzyValidationError, "error");
+        return;
+      }
+    }
+
+    if (leafCriteria.length > 1) {
+      if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
+        const manualValidationError = validateCreatorManualConfig({
+          criteriaWeightingConfig,
+          leafCriteria,
         });
+        if (manualValidationError) {
+          showSnackbarAlert(manualValidationError, "error");
+          return;
+        }
+      }
 
-        if (!validation.isValid) {
-          showSnackbarAlert(validation.message, "error");
+      if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
+        const bwmValidationError = validateCreatorBwmConfig({
+          criteriaWeightingConfig,
+          leafCriteria,
+        });
+        if (bwmValidationError) {
+          showSnackbarAlert(bwmValidationError, "error");
           return;
         }
       }
@@ -387,7 +580,25 @@ export const useCreateIssueFlow = () => {
 
     setLoading(true);
 
-    const {  ...issueInfoPayload } = allData;
+    const modelParameters = Array.isArray(selectedModel?.parameters)
+      ? selectedModel.parameters
+      : [];
+    const criteriaWeightParameterKeys = modelParameters
+      .filter((parameter) => parameter?.semanticRole === "criteriaWeights")
+      .map((parameter) => parameter?.key)
+      .filter(Boolean);
+    const issueInfoPayload = { ...allData };
+    const sanitizedParamValues = Object.entries(issueInfoPayload.paramValues || {})
+      .filter(
+        ([key]) =>
+          key !== "weights" && !criteriaWeightParameterKeys.includes(key)
+      )
+      .reduce((accumulator, [key, value]) => {
+        accumulator[key] = value;
+        return accumulator;
+      }, {});
+    issueInfoPayload.paramValues = sanitizedParamValues;
+
     const result = await createIssue({
       ...issueInfoPayload,
       selectedModelId: selectedModel?._id || null,
@@ -447,7 +658,7 @@ export const useCreateIssueFlow = () => {
     activeStep,
     completed,
     selectedModel,
-    withConsensus,
+    isConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -463,12 +674,11 @@ export const useCreateIssueFlow = () => {
     defaultModelParams,
     hasAttemptedCreateIssue,
     domainAssignments,
-    bwmData,
-    weightingMode,
+    criteriaWeightingConfig,
     allData,
     headerSubtitle,
     setSelectedModel,
-    setWithConsensus,
+    setIsConsensus,
     setAlternatives,
     setCriteria,
     setAddedExperts,
@@ -479,8 +689,7 @@ export const useCreateIssueFlow = () => {
     setDefaultModelParams,
     setHasAttemptedCreateIssue,
     setDomainAssignments,
-    setBwmData,
-    setWeightingMode,
+    setCriteriaWeightingConfig,
     handleValidateIssueName,
     handleValidateIssueDescription,
     handleClosureDateError,

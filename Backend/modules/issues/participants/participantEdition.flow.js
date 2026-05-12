@@ -1,21 +1,15 @@
-         
-import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../../models/Evaluations.js";
 import { Issue } from "../../../models/Issues.js";
 import { Notification } from "../../../models/Notificacions.js";
 import { Participation } from "../../../models/Participations.js";
 import { User } from "../../../models/Users.js";
-import { buildInitialAlternativeEvaluationDocs } from "../alternativeEvaluations/index.js";
-import { buildInitialCriteriaWeightEvaluationDocs } from "../weightEvaluations/weightEvaluation.initialDocs.js";
+
 import {
   cleanupExpertDraftsOnExit,
   mapIssueStageToExitStage,
   registerUserExit,
 } from "../lifecycle/index.js";
-import { getDefaultIssueSnapshot, getNextConsensusPhase } from "../issue.queries.js";
 
 import {
-  createBadRequestError,
   createForbiddenError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
@@ -23,7 +17,6 @@ import { sameId } from "../../../utils/common/ids.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   ensureIssueOrdersDb,
-  getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../issue.ordering.js";
 import { sendExpertInvitationEmail } from "../../../services/email.service.js";
@@ -86,95 +79,26 @@ const getEditExpertsContext = async ({ issueId, userId }) => {
 
   await ensureIssueOrdersDb({ issueId: issue._id });
 
-  const [
-    alternatives,
-    leafCriteria,
-    currentPhase,
-    defaultSnapshot,
-    admin,
-  ] = await Promise.all([
-    getOrderedAlternativesDb({
-      issueId: issue._id,
-      issueDoc: issue,
-      select: "_id name",
-      lean: false,
-    }),
+  const [leafCriteria, admin] = await Promise.all([
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
       select: "_id name type",
-      lean: false,
+      lean: true,
     }),
-    getNextConsensusPhase(issue._id),
-    getDefaultIssueSnapshot(issue._id),
     User.findById(userId).select("name email").lean(),
   ]);
-
-  if (!defaultSnapshot) {
-    throw createBadRequestError(
-      "This issue has no IssueExpressionDomain snapshots. Cannot add experts until domains are snapshotted."
-    );
-  }
 
   return {
     issue,
     admin,
-    alternatives,
     leafCriteria,
-    currentPhase,
+    currentPhase: issue.consensusPhase,
     stageForLog: mapIssueStageToExitStage(issue.currentStage),
-    defaultSnapshot,
-    evaluationStructure: issue.evaluationStructure,
     weightsStageIsOpen:
       issue.currentStage === "criteriaWeighting" ||
       issue.currentStage === "weightsFinished",
   };
-};
-
-/**
- * Construye los documentos iniciales de Evaluation para un experto recién añadido.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {Object} params.expertUser Usuario experto.
- * @param {Array<Object>} params.leafCriteria Criterios hoja ordenados.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
- * @param {string} params.evaluationStructure Estructura de evaluación del issue.
- * @param {Object} params.defaultSnapshot Snapshot por defecto del issue.
- * @param {number} params.currentPhase Fase actual de consenso.
- * @returns {Array<Object>}
- */
-const buildInitialExpertEvaluationDocs = ({
-  issueId,
-  expertUser,
-  leafCriteria,
-  alternatives,
-  evaluationStructure,
-  defaultSnapshot,
-  currentPhase,
-}) => {
-  const baseDocs = buildInitialAlternativeEvaluationDocs({
-    issueId,
-    experts: [expertUser],
-    leafCriteria,
-    alternatives,
-    evaluationStructure,
-    consensusPhase: currentPhase,
-    includeReciprocal: true,
-  });
-
-  return baseDocs.map((doc) => {
-    const { completed, ...rest } = doc;
-
-    return {
-      ...rest,
-      expressionDomain: defaultSnapshot._id,
-      value: null,
-      timestamp: null,
-      history: [],
-      consensusPhase: currentPhase,
-    };
-  });
 };
 
 /**
@@ -186,12 +110,9 @@ const buildInitialExpertEvaluationDocs = ({
  * @param {string} params.userId Id del usuario actual.
  * @param {string[]} params.expertEmails Correos normalizados a añadir.
  * @param {Map<string, Object>} params.userByEmail Usuarios indexados por email.
- * @param {Array<Object>} params.alternatives Alternativas ordenadas.
  * @param {Array<Object>} params.leafCriteria Criterios hoja ordenados.
  * @param {number} params.currentPhase Fase actual.
- * @param {string | null} params.stageForLog Stage para logs de salida.
- * @param {Object} params.defaultSnapshot Snapshot por defecto del issue.
- * @param {string} params.evaluationStructure Estructura de evaluación del issue.
+ * @param {string | null} params.stageForLog Stage para logs de entrada.
  * @param {boolean} params.weightsStageIsOpen Indica si la fase de pesos sigue abierta.
  * @returns {Promise<string[]>}
  */
@@ -201,12 +122,9 @@ const addExpertsToActiveIssue = async ({
   userId,
   expertEmails,
   userByEmail,
-  alternatives,
   leafCriteria,
   currentPhase,
   stageForLog,
-  defaultSnapshot,
-  evaluationStructure,
   weightsStageIsOpen,
 }) => {
   const invitationEmailsToSend = [];
@@ -249,49 +167,6 @@ const addExpertsToActiveIssue = async ({
       });
 
       invitationEmailsToSend.push(email);
-    }
-
-    const evaluationExists = await Evaluation.exists({
-      issue: issue._id,
-      expert: expertUser._id,
-    });
-
-    if (!evaluationExists) {
-      const evaluationDocs = buildInitialExpertEvaluationDocs({
-        issueId: issue._id,
-        expertUser,
-        leafCriteria,
-        alternatives,
-        evaluationStructure,
-        defaultSnapshot,
-        currentPhase,
-      });
-
-      if (evaluationDocs.length > 0) {
-        await Evaluation.insertMany(evaluationDocs);
-      }
-    }
-
-    if (weightsStageIsOpen && leafCriteria.length > 1) {
-      const existingWeightEvaluation = await CriteriaWeightEvaluation.findOne({
-        issue: issue._id,
-        expert: expertUser._id,
-      }).lean();
-
-      if (!existingWeightEvaluation) {
-        const criteriaWeightDocs = buildInitialCriteriaWeightEvaluationDocs({
-          issueId: issue._id,
-          experts: [expertUser],
-          leafCriteria,
-          weightingMode: issue.weightingMode,
-          consensusPhase: currentPhase,
-          completed: false,
-        });
-
-        if (criteriaWeightDocs.length > 0) {
-          await CriteriaWeightEvaluation.insertMany(criteriaWeightDocs);
-        }
-      }
     }
   }
 
@@ -393,12 +268,9 @@ export const editIssueExpertsFlow = async ({
     userId,
     expertEmails: finalExpertsToAdd,
     userByEmail,
-    alternatives: context.alternatives,
     leafCriteria: context.leafCriteria,
     currentPhase: context.currentPhase,
     stageForLog: context.stageForLog,
-    defaultSnapshot: context.defaultSnapshot,
-    evaluationStructure: context.evaluationStructure,
     weightsStageIsOpen: context.weightsStageIsOpen,
   });
 

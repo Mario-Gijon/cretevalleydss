@@ -1,28 +1,27 @@
-import { EVALUATION_STRUCTURES } from "./alternativeEvaluations/alternativeEvaluation.constants.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
 
-export { EVALUATION_STRUCTURES };
+export const EVALUATION_STRUCTURES = Object.freeze({
+  DIRECT: "direct",
+  PAIRWISE_ALTERNATIVES: "pairwiseAlternatives",
+});
 
 const SUPPORTED_EVALUATION_STRUCTURES = new Set(
   Object.values(EVALUATION_STRUCTURES)
 );
 
 /**
- * Valida la estructura de evaluación.
+ * Valida una estructura de evaluación legacy.
  *
- * Si el campo no viene informado, lanza error explícito.
- * Si viene informado con un valor no soportado, lanza error explícito.
- *
- * @param {string|null|undefined} evaluationStructure Estructura de evaluación.
+ * @param {string} evaluationStructure Estructura recibida.
  * @returns {string}
  */
 export const validateEvaluationStructureOrThrow = (evaluationStructure) => {
-  if (!evaluationStructure) {
-    throw new Error("evaluationStructure is required");
-  }
-
   if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
-    throw new Error(
-      `Unsupported evaluationStructure '${String(evaluationStructure)}'`
+    throw createBadRequestError(
+      `Unsupported evaluation structure '${evaluationStructure}'`,
+      {
+        field: "evaluationStructure",
+      }
     );
   }
 

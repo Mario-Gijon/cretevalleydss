@@ -30,6 +30,24 @@ import {
 } from "../shell/IssueDetailsDrawer.parts";
 import IssueParticipationChart from "../../shared/IssueParticipationChart";
 
+const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
+  manualCriteriaWeights: "Manual criteria weights",
+  bestWorstCriteria: "BWM",
+  fuzzyCriteriaWeights: "Fuzzy criteria weights",
+};
+
+const ALTERNATIVE_STRUCTURE_LABELS = {
+  alternativeCriteriaMatrix: "Alternative-criteria matrix",
+  alternativePairwiseByCriterion: "Pairwise alternatives by criterion",
+};
+
+const CRITERIA_WEIGHTING_AGGREGATION_MODE_LABELS = {
+  none: "No aggregation",
+  mean: "Expert mean aggregation",
+  bwmMean: "Expert BWM aggregation",
+  cmccSimulation: "CMCC simulation",
+};
+
 /**
  * Pestaña Overview del drawer de detalles del issue.
  *
@@ -290,8 +308,28 @@ const IssueDetailsOverviewTab = ({
               v={stageLabel(selectedIssue?.currentStage)}
             />
             <IssueDetailsDrawerKeyValueRow
-              k="Weighting mode"
-              v={selectedIssue?.weightingMode}
+              k="Criteria weighting structure"
+              v={
+                CRITERIA_WEIGHTING_STRUCTURE_LABELS[
+                  selectedIssue?.criteriaWeightingStructureKey
+                ] || selectedIssue?.criteriaWeightingStructureKey || "—"
+              }
+            />
+            <IssueDetailsDrawerKeyValueRow
+              k="Criteria weighting aggregation mode"
+              v={
+                CRITERIA_WEIGHTING_AGGREGATION_MODE_LABELS[
+                  selectedIssue?.criteriaWeightingAggregationMode
+                ] || selectedIssue?.criteriaWeightingAggregationMode || "—"
+              }
+            />
+            <IssueDetailsDrawerKeyValueRow
+              k="Alternative evaluation structure"
+              v={
+                ALTERNATIVE_STRUCTURE_LABELS[
+                  selectedIssue?.alternativeEvaluationStructureKey
+                ] || selectedIssue?.alternativeEvaluationStructureKey || "—"
+              }
             />
             <IssueDetailsDrawerKeyValueRow
               k="Consensus"

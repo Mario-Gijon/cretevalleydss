@@ -11,7 +11,7 @@ def get_plots_graphics_from_matrices(
     matrices_np: Sequence[Any],
     collective_matrix: Any,
     method: str = "MDS",
-) -> dict[str, list[list[float]] | list[float]]:
+) -> dict[str, Any]:
     """Obtiene puntos 2D para expertos y punto colectivo.
 
     El punto colectivo se calcula sobre la matriz agregada y los puntos de experto
@@ -22,17 +22,27 @@ def get_plots_graphics_from_matrices(
     preferences_flat = np.array([np.array(pref, dtype=float).flatten() for pref in preferences], dtype=float)
     preferences_flat[preferences_flat == 0] = 1e-10
 
-    if preferences_flat.shape[0] < 2 or np.allclose(preferences_flat, preferences_flat[0], atol=1e-12):
-        collective_point = [0.0, 0.0]
-        expert_points = [[0.0, 0.0] for _ in range(preferences_flat.shape[0] - 1)]
-        return {"expert_points": expert_points, "collective_point": collective_point}
+    """ if preferences_flat.shape[0] < 2:
+        return {
+            "reason": "insufficient_points_for_projection",
+        }
+
+    if np.allclose(preferences_flat, preferences_flat[0], atol=1e-12):
+        return {
+            "reason": "insufficient_variation_for_projection",
+        } """
 
     if method.upper() == "PCA":
         reducer = PCA(n_components=2)
     else:
         reducer = MDS(n_components=2, dissimilarity="euclidean", random_state=42)
 
-    transformed = reducer.fit_transform(preferences_flat)
+    try:
+        transformed = reducer.fit_transform(preferences_flat)
+    except Exception:
+        return {
+            "reason": "projection_failed",
+        }
     collective_point_np = transformed[-1]
     expert_points_np = transformed[:-1] - collective_point_np
 

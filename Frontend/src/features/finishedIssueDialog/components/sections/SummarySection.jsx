@@ -174,6 +174,32 @@ const SummarySection = () => {
         {viewIssue?.summary?.closureDate ? (
           <Row label="Closure date" value={viewIssue.summary.closureDate} />
         ) : null}
+
+        {viewIssue?.summary?.consensusInfo ? (
+          <>
+            <Divider sx={{ opacity: 0.14 }} />
+            <Row
+              label="Consensus threshold"
+              value={viewIssue.summary.consensusInfo.threshold}
+            />
+            <Row
+              label="Consensus max phases"
+              value={viewIssue.summary.consensusInfo.maxPhases}
+            />
+            <Row
+              label="Consensus reached phase"
+              value={viewIssue.summary.consensusInfo.consensusReachedPhase ?? "—"}
+            />
+            <Row
+              label="Finalization reason"
+              value={viewIssue.summary.consensusInfo.finalizationReason ?? "—"}
+            />
+            <Row
+              label="Final consensus"
+              value={viewIssue.summary.consensusInfo.finalConsensusMeasure ?? "—"}
+            />
+          </>
+        ) : null}
       </Stack>
     </SectionCard>
   );

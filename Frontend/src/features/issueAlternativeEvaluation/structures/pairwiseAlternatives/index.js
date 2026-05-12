@@ -1,4 +1,3 @@
-import PairwiseAlternativesEvaluationDialog from "./PairwiseAlternativesEvaluationDialog.jsx";
 import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix.jsx";
 
 export {
@@ -18,6 +17,6 @@ export {
 
 export const pairwiseAlternativesEvaluationStructure = {
   label: "Pairwise alternatives evaluation",
-  Dialog: PairwiseAlternativesEvaluationDialog,
+  Dialog: null,
   Matrix: PairwiseAlternativeMatrix,
 };

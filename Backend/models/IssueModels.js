@@ -3,7 +3,6 @@
  */
 
 import { Schema, model } from "mongoose";
-import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 /**
  * Comprueba si un valor pertenece al conjunto permitido.
@@ -252,26 +251,19 @@ const issueModelSchema = new Schema({
     type: [parameterSchema],
     default: [],
   },
-  evaluationStructure: {
-    type: String,
-    enum: ["direct", "pairwiseAlternatives"],
-    required: true,
-  },
-  lifecycleKind: {
-    type: String,
-    trim: true,
-    enum: Object.values(LIFECYCLE_KINDS),
-    required: true,
-  },
-  apiInputFormat: {
+  alternativeEvaluationStructureKey: {
     type: String,
     trim: true,
     required: true,
   },
-  apiOutputFormat: {
+  criteriaWeightingStructureKey: {
     type: String,
     trim: true,
-    required: true,
+    default: null,
+  },
+  supportsConsensus: {
+    type: Boolean,
+    default: false,
   },
   criterionTypes: {
     type: [String],
@@ -292,14 +284,6 @@ const issueModelSchema = new Schema({
       type: [String],
       default: [],
     },
-  },
-  modelInputFields: {
-    type: [String],
-    default: [],
-  },
-  modelOutputFields: {
-    type: [String],
-    default: [],
   },
   request: {
     type: Schema.Types.Mixed,

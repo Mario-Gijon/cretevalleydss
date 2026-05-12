@@ -2,17 +2,41 @@ import { IssueModel } from "../../../models/IssueModels.js";
 import { User } from "../../../models/Users.js";
 import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "../modelParameters/index.js";
 import {
-  modelRequiresCriterionWeights,
-  normalizeNonEmptyString,
-  validateIssueConsensusCompatibilityOrThrow,
   validateIssueModelRuntimeConfigOrThrow,
+  normalizeNonEmptyString,
 } from "./issueCreation.model.js";
-import { countLeafCriteriaNodes } from "../modelParameters/index.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   createBadRequestError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
+
+const stripCriteriaWeightParameterValues = ({ model, paramValues }) => {
+  const rawParamValues =
+    paramValues && typeof paramValues === "object" && !Array.isArray(paramValues)
+      ? paramValues
+      : {};
+  const normalized = { ...rawParamValues };
+
+  const criteriaWeightParameterKeys = (Array.isArray(model?.parameters)
+    ? model.parameters
+    : []
+  )
+    .filter(
+      (parameter) =>
+        normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights" &&
+        normalizeNonEmptyString(parameter?.key)
+    )
+    .map((parameter) => parameter.key);
+
+  for (const parameterKey of criteriaWeightParameterKeys) {
+    delete normalized[parameterKey];
+  }
+
+  delete normalized.weights;
+
+  return normalized;
+};
 
 /**
  * Carga y valida el modelo, admin y expertos para la creación del issue.
@@ -20,8 +44,6 @@ import {
  * @param {object} params Parámetros de entrada.
  * @param {string} params.adminUserId Id del admin actual.
  * @param {string} params.selectedModelId Id del modelo elegido.
- * @param {boolean} params.requestedWithConsensus Indicador withConsensus recibido en la petición.
- * @param {string} params.weightingMode Modo de ponderación solicitado.
  * @param {Object} params.paramValues Parámetros del modelo recibidos en la petición.
  * @param {Array<Object>} params.criteriaNodes Criterios recibidos en la petición.
  * @param {string[]} params.uniqueExpertEmails Correos únicos de expertos.
@@ -31,8 +53,6 @@ import {
 export const loadCreateIssueActorsAndModel = async ({
   adminUserId,
   selectedModelId,
-  requestedWithConsensus,
-  weightingMode,
   paramValues,
   criteriaNodes,
   alternativesCount,
@@ -50,51 +70,30 @@ export const loadCreateIssueActorsAndModel = async ({
   const {
     apiModelKey,
     apiEndpoint,
-    apiInputFormat,
-    apiOutputFormat,
-    evaluationStructure: modelEvaluationStructure,
-    lifecycleKind: modelLifecycleKind,
-    isConsensus: modelIsConsensus,
+    alternativeEvaluationStructureKey,
+    criteriaWeightingStructureKey,
+    supportsConsensus,
     modelFamilyKey,
     modelVersion,
     versionLabel,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
-  validateIssueConsensusCompatibilityOrThrow({
-    requestedWithConsensus,
+
+  const sanitizedParamValues = stripCriteriaWeightParameterValues({
     model: existingModel,
-    lifecycleKind: modelLifecycleKind,
+    paramValues,
   });
 
   const normalizedModelParameters = validateAndNormalizeModelParametersSharedOrThrow({
     model: existingModel,
-    paramValues,
+    paramValues: sanitizedParamValues,
     criteriaNodes,
     alternativesCount,
   });
-
-  const requiresCriterionWeights = modelRequiresCriterionWeights(existingModel);
-  const leafCriteriaCount = countLeafCriteriaNodes(criteriaNodes);
-  const normalizedWeightingMode = normalizeNonEmptyString(weightingMode);
-  const hasNormalizedWeights = Array.isArray(normalizedModelParameters?.weights);
-
-  if (
-    normalizedWeightingMode === "manual" &&
-    requiresCriterionWeights &&
-    leafCriteriaCount > 1 &&
-    !hasNormalizedWeights
-  ) {
-    throw createBadRequestError(
-      "Manual weighting mode requires valid model parameter 'weights'",
-      {
-        field: "paramValues.weights",
-        details: {
-          weightingMode: normalizedWeightingMode,
-          requiredByModel: true,
-          leafCriteriaCount,
-        },
-      }
-    );
-  }
+  const normalizedModelParametersWithoutCriteriaWeights =
+    stripCriteriaWeightParameterValues({
+      model: existingModel,
+      paramValues: normalizedModelParameters,
+    });
 
   const admin = await User.findById(adminUserId).session(session);
   if (!admin) {
@@ -128,16 +127,15 @@ export const loadCreateIssueActorsAndModel = async ({
     adminEmail: normalizeEmail(admin.email),
     expertUsers,
     expertByEmail,
-    modelEvaluationStructure,
-    modelLifecycleKind,
     apiModelKey,
     apiEndpoint,
-    apiInputFormat,
-    apiOutputFormat,
-    modelIsConsensus,
+    alternativeEvaluationStructureKey,
+    criteriaWeightingStructureKey,
+    supportsConsensus,
     modelFamilyKey,
     modelVersion,
     versionLabel,
-    normalizedModelParameters,
+    normalizedModelParameters:
+      normalizedModelParametersWithoutCriteriaWeights,
   };
 };

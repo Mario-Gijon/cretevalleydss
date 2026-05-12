@@ -83,35 +83,6 @@ export const computeIssueDeadlineProgress = (issue) => {
 };
 
 /**
- * Detecta si el issue ya dispone de pesos directos.
- *
- * @param {Object|null} issue Issue a evaluar.
- * @returns {boolean}
- */
-export const detectIssueDirectWeights = (issue) => {
-  if (issue?.ui?.hasDirectWeights === true) return true;
-  if (issue?.ui?.hasDirectWeights === false) return false;
-
-  const weightingMode = String(issue?.weightingMode || "").toLowerCase();
-
-  if (["manual", "direct", "predefined", "fixed"].includes(weightingMode)) {
-    return true;
-  }
-
-  const weights = issue?.modelParameters?.weights;
-
-  if (
-    Array.isArray(weights) &&
-    weights.length > 0 &&
-    weights.some((value) => value !== null && value !== undefined)
-  ) {
-    return true;
-  }
-
-  return false;
-};
-
-/**
  * Detecta si existe una fase de consenso en alternativas.
  *
  * @param {Object|null} issue Issue a evaluar.
@@ -156,23 +127,18 @@ export const buildIssueWorkflowSteps = (issue) => {
     return serverSteps;
   }
 
-  const hasDirectWeights = detectIssueDirectWeights(issue);
   const hasAlternativeConsensus = detectIssueAlternativeConsensus(issue);
-
-  if (hasDirectWeights) {
-    return [
-      { key: "weightsAssigned", label: "Weights assigned" },
-      { key: "alternativeEvaluation", label: "Alternative evaluation" },
-      ...(hasAlternativeConsensus
-        ? [{ key: "alternativeConsensus", label: "Alternative consensus" }]
-        : []),
-      { key: "readyResolve", label: "Ready to resolve" },
-    ];
-  }
+  const hasCriteriaWeighting =
+    issue?.ui?.hasCriteriaWeighting === true ||
+    Boolean(issue?.criteriaWeightingStructureKey);
 
   return [
-    { key: "criteriaWeighting", label: "Criteria weighting" },
-    { key: "weightsFinished", label: "Weights finished" },
+    ...(hasCriteriaWeighting
+      ? [
+        { key: "criteriaWeighting", label: "Criteria weighting" },
+        { key: "weightsFinished", label: "Weights finished" },
+      ]
+      : []),
     { key: "alternativeEvaluation", label: "Alternative evaluation" },
     ...(hasAlternativeConsensus
       ? [{ key: "alternativeConsensus", label: "Alternative consensus" }]
@@ -195,15 +161,11 @@ export const mapIssueServerStatusToStepKey = (issue) => {
   const key = String(rawKey);
 
   if (key === "evaluateWeights") {
-    return detectIssueDirectWeights(issue)
-      ? "weightsAssigned"
-      : "criteriaWeighting";
+    return "criteriaWeighting";
   }
 
   if (key === "computeWeights") {
-    return detectIssueDirectWeights(issue)
-      ? "weightsAssigned"
-      : "weightsFinished";
+    return "weightsFinished";
   }
 
   if (key === "evaluateAlternatives") return "alternativeEvaluation";
@@ -215,9 +177,7 @@ export const mapIssueServerStatusToStepKey = (issue) => {
       return "alternativeEvaluation";
     }
 
-    return detectIssueDirectWeights(issue)
-      ? "weightsAssigned"
-      : "criteriaWeighting";
+    return "criteriaWeighting";
   }
 
   if (key === "finished") return "__done__";
@@ -275,20 +235,16 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
   }
 
   if (stage === "weightsFinished") {
-    return detectIssueDirectWeights(issue)
-      ? "weightsAssigned"
-      : "weightsFinished";
+    return "weightsFinished";
   }
 
   if (stage === "criteriaWeighting") {
-    return detectIssueDirectWeights(issue)
-      ? "weightsAssigned"
-      : "criteriaWeighting";
+    return "criteriaWeighting";
   }
 
-  return detectIssueDirectWeights(issue)
-    ? stage === "alternativeEvaluation"
-      ? "alternativeEvaluation"
-      : "weightsAssigned"
-    : "criteriaWeighting";
+  if (stage === "alternativeEvaluation") {
+    return "alternativeEvaluation";
+  }
+
+  return "criteriaWeighting";
 };

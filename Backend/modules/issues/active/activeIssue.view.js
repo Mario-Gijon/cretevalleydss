@@ -16,6 +16,62 @@ import {
   buildActiveWorkflowSteps,
 } from "./activeIssue.workflow.js";
 
+const WEIGHTS_OPTIONAL_STAGES = new Set(["criteriaWeighting", "weightsFinished"]);
+const WEIGHTS_REQUIRED_STAGES = new Set(["alternativeEvaluation", "finished"]);
+
+const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
+  const criteriaCount = orderedLeafCriteria.length;
+  const stage = issue?.currentStage;
+  const weights = issue?.modelParameters?.weights;
+
+  if (criteriaCount === 0) {
+    return [];
+  }
+
+  if (Array.isArray(weights)) {
+    if (weights.length !== criteriaCount) {
+      throw createInternalError("Issue is missing effective criteria weights", {
+        field: "modelParameters.weights",
+        details: {
+          issueId,
+          currentStage: stage,
+          criteriaCount,
+          weightsLength: weights.length,
+        },
+      });
+    }
+
+    return weights;
+  }
+
+  if (criteriaCount === 1) {
+    return [1];
+  }
+
+  if (WEIGHTS_OPTIONAL_STAGES.has(stage)) {
+    return null;
+  }
+
+  if (WEIGHTS_REQUIRED_STAGES.has(stage)) {
+    throw createInternalError("Issue is missing effective criteria weights", {
+      field: "modelParameters.weights",
+      details: {
+        issueId,
+        currentStage: stage,
+        criteriaCount,
+      },
+    });
+  }
+
+  throw createInternalError("Unsupported active issue stage", {
+    field: "currentStage",
+    details: {
+      issueId,
+      stage,
+    },
+  });
+};
+
 /**
  * Construye la vista de un issue activo y las tareas asociadas para el task center.
  *
@@ -87,15 +143,19 @@ export const buildActiveIssueView = ({
     issue
   );
 
-  const criteriaWeights = issue.modelParameters.weights;
+  const criteriaWeights = getEffectiveCriteriaWeightsForActiveView({
+    issue,
+    orderedLeafCriteria,
+    issueId,
+  });
 
   const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.id] = criteriaWeights[index];
+    acc[node.id] = Array.isArray(criteriaWeights) ? criteriaWeights[index] : null;
     return acc;
   }, {});
 
   const criteriaWeightsByName = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.name] = criteriaWeights[index];
+    acc[node.name] = Array.isArray(criteriaWeights) ? criteriaWeights[index] : null;
     return acc;
   }, {});
 
@@ -258,8 +318,17 @@ export const buildActiveIssueView = ({
     role = "expert";
   }
 
+  if (!issue.criteriaWeightingStructureKey) {
+    throw createInternalError("Issue is missing criteria weighting structure", {
+      field: "criteriaWeightingStructureKey",
+      details: {
+        issueId,
+      },
+    });
+  }
+
   const workflowSteps = buildActiveWorkflowSteps({
-    usesManualWeighting: issue.weightingMode === "manual",
+    criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
     hasAlternativeConsensus: issue.isConsensus,
   });
 
@@ -271,10 +340,12 @@ export const buildActiveIssueView = ({
       creator: issue.admin.email,
       description: issue.description,
       model: issue.model,
-      evaluationStructure: issue.evaluationStructure,
+      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+      criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
+      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
       isConsensus: issue.isConsensus,
+      supportsConsensus: issue.supportsConsensus,
       currentStage: stage,
-      weightingMode: issue.weightingMode,
       ...(issue.isConsensus && {
         consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
         consensusThreshold: issue.consensusThreshold,
@@ -332,7 +403,11 @@ export const buildActiveIssueView = ({
         statusKey,
         statusLabel,
         deadline,
-        hasDirectWeights: issue.weightingMode === "manual",
+        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+        criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
+        alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
+        hasCriteriaWeighting:
+          stage === "criteriaWeighting" || stage === "weightsFinished",
         hasAlternativeConsensus: issue.isConsensus,
         workflowSteps,
         permissions: {

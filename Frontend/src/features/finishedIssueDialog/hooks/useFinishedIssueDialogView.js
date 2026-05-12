@@ -3,13 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createIssueScenario,
   getFinishedIssueInfo,
-  getIssueResultsAnalysis,
-  getScenarioResultsAnalysis,
   getIssueScenarioById,
   getIssueScenarios,
   getModelsInfo,
-  regenerateIssueResultsAnalysis,
-  regenerateScenarioResultsAnalysis,
   removeIssueScenario,
 } from "../../../services/issue.service";
 import { useFinishedIssueRatingsView } from "./useFinishedIssueRatingsView.js";
@@ -77,15 +73,15 @@ const resolveModelSpecificOutput = ({ viewIssue, currentPhaseIndex }) => {
     selectedRoundModelExecution,
     viewIssue?.modelExecution,
     viewIssue?.consensusDetails?.modelExecution,
-    viewIssue?.selectedScenario?.outputs?.details?.modelExecution,
+    viewIssue?.selectedScenario?.outputs?.modelExecution,
   ]);
 
   const rawOutput = firstDefinedValue([
     selectedRoundModelExecution?.rawOutput,
     viewIssue?.modelExecution?.rawOutput,
     viewIssue?.consensusDetails?.modelExecution?.rawOutput,
-    viewIssue?.selectedScenario?.outputs?.rawResults,
-    viewIssue?.selectedScenario?.outputs?.details?.modelExecution?.rawOutput,
+    viewIssue?.selectedScenario?.outputs?.rawOutput,
+    viewIssue?.selectedScenario?.outputs?.standardResult?.rawOutput,
     modelExecution?.rawOutput,
   ]);
 
@@ -150,11 +146,6 @@ export const useFinishedIssueDialogView = ({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [paramsJson, setParamsJson] = useState("{}");
 
-  const [savedAnalysis, setSavedAnalysis] = useState(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
-  const [analysisError, setAnalysisError] = useState("");
-
   useEffect(() => {
     baseIssueRef.current = issue;
   }, [issue]);
@@ -180,8 +171,6 @@ export const useFinishedIssueDialogView = ({
     const run = async () => {
       setLoadingInfo(true);
       setRunsLoading(true);
-      setSavedAnalysis(null);
-      setAnalysisError("");
 
       try {
         const [baseResp, runsResp] = await Promise.all([
@@ -226,7 +215,6 @@ export const useFinishedIssueDialogView = ({
         setSelectedRunKey("base");
         setRunCache({});
         setCurrentPhaseIndex(0);
-        setSavedAnalysis(null);
       } finally {
         // eslint-disable-next-line no-unsafe-finally
         if (cancelled || openTokenRef.current !== token) return;
@@ -246,75 +234,10 @@ export const useFinishedIssueDialogView = ({
     const issueId = selectedIssue?.id;
     if (!issueId || !openFinishedIssueDialog) return;
 
-    let cancelled = false;
-    const activeRun = selectedRunKey;
-    const scenarioId = activeRun !== "base" ? activeRun : null;
-
-    const loadAnalysis = async () => {
-      setLoadingAnalysis(true);
-      setSavedAnalysis(null);
-      setAnalysisError("");
-
-      try {
-        const response = scenarioId
-          ? await getScenarioResultsAnalysis(issueId, scenarioId)
-          : await getIssueResultsAnalysis(issueId);
-
-        if (cancelled) return;
-        setSavedAnalysis(unwrap(response) || null);
-      } catch (error) {
-        if (cancelled) return;
-        const message = scenarioId
-          ? "Could not load scenario results analysis."
-          : "Could not load results analysis.";
-        setSavedAnalysis(null);
-        setAnalysisError(error?.response?.data?.message || message);
-      } finally {
-        // eslint-disable-next-line no-unsafe-finally
-        if (cancelled) return;
-        setLoadingAnalysis(false);
-      }
-    };
-
-    loadAnalysis();
-
     return () => {
-      cancelled = true;
+      
     };
   }, [selectedIssue?.id, selectedRunKey, openFinishedIssueDialog]);
-
-  const handleGenerateOrRegenerateAnalysis = async () => {
-    if (!selectedIssue?.id) return;
-
-    try {
-      setGeneratingAnalysis(true);
-      setAnalysisError("");
-      const scenarioId = selectedRunKey !== "base" ? selectedRunKey : null;
-
-      const response = scenarioId
-        ? await regenerateScenarioResultsAnalysis(selectedIssue.id, scenarioId)
-        : await regenerateIssueResultsAnalysis(selectedIssue.id);
-      const generated = unwrap(response);
-
-      setSavedAnalysis(generated || null);
-      showSnackbarAlert(
-        scenarioId
-          ? "Scenario results analysis generated successfully."
-          : "Results analysis generated successfully.",
-        "success"
-      );
-    } catch (error) {
-      const msg =
-        error?.response?.data?.message ||
-        (selectedRunKey !== "base"
-          ? "Could not generate scenario results analysis."
-          : "Could not generate results analysis.");
-      setAnalysisError(msg);
-      showSnackbarAlert(msg, "error");
-    } finally {
-      setGeneratingAnalysis(false);
-    }
-  };
 
   const ensureRunLoaded = async (runKey) => {
     if (!runKey || runKey === "base") return null;
@@ -327,7 +250,7 @@ export const useFinishedIssueDialogView = ({
       const response = unwrap(await getIssueScenarioById(runKey));
       const scenario = response?.scenario || response || null;
 
-      if (!scenario?.outputs?.details) {
+      if (!scenario?.outputs?.standardResult && !scenario?.outputs?.computedPayload) {
         showSnackbarAlert("Scenario results not available yet.", "warning");
         return null;
       }
@@ -705,8 +628,6 @@ export const useFinishedIssueDialogView = ({
     ? {
       modelName: modelExecution?.modelName ?? null,
       modelKey: modelExecution?.modelKey ?? null,
-      apiInputFormat: modelExecution?.apiInputFormat ?? null,
-      apiOutputFormat: modelExecution?.apiOutputFormat ?? null,
       executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
     }
     : null;
@@ -755,15 +676,6 @@ export const useFinishedIssueDialogView = ({
       ranking,
       lastIndex,
       formatScore,
-      isScenarioSelected,
-    },
-    analysisSection: {
-      viewIssue,
-      savedAnalysis,
-      loadingAnalysis,
-      generatingAnalysis,
-      analysisError,
-      handleGenerateOrRegenerateAnalysis,
       isScenarioSelected,
     },
     modelSpecificOutputSection: {

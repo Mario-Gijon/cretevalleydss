@@ -32,13 +32,76 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
   const current = data?.[phase];
   if (!current) return null;
 
-  const expertPoints = Object.entries(current.expert_points || {}).map(
-    ([email, [x, y]]) => ({ x, y, email })
-  );
-  const collectivePoint = {
-    x: current.collective_point?.[0],
-    y: current.collective_point?.[1],
+  const parsePoint = (point) => {
+    if (!Array.isArray(point) || point.length !== 2) return null;
+    const x = Number(point[0]);
+    const y = Number(point[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x, y };
   };
+
+  let expertPoints = [];
+
+  if (Array.isArray(current.expertPoints)) {
+    expertPoints = current.expertPoints
+      .map((entry, index) => {
+        const x = Number(entry?.x);
+        const y = Number(entry?.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const label =
+          typeof entry?.label === "string" && entry.label.trim()
+            ? entry.label.trim()
+            : `Expert ${index + 1}`;
+        return { x, y, email: label };
+      })
+      .filter(Boolean);
+  } else if (
+    current.expert_points_by_email &&
+    typeof current.expert_points_by_email === "object"
+  ) {
+    expertPoints = Object.entries(current.expert_points_by_email)
+      .map(([email, point]) => {
+        const parsed = parsePoint(point);
+        if (!parsed) return null;
+        return { ...parsed, email: String(email) };
+      })
+      .filter(Boolean);
+  } else if (Array.isArray(current.expert_points)) {
+    const labels = Array.isArray(current.expert_labels) ? current.expert_labels : [];
+    expertPoints = current.expert_points
+      .map((point, index) => {
+        const parsed = parsePoint(point);
+        if (!parsed) return null;
+        const labelCandidate = labels[index];
+        const email =
+          typeof labelCandidate === "string" && labelCandidate.trim()
+            ? labelCandidate.trim()
+            : `Expert ${index + 1}`;
+        return { ...parsed, email };
+      })
+      .filter(Boolean);
+  }
+
+  const collectiveCandidate = current.collectivePoint || current.collective_point;
+  const parsedCollective = Array.isArray(collectiveCandidate)
+    ? parsePoint(collectiveCandidate)
+    : (Number.isFinite(Number(collectiveCandidate?.x)) &&
+      Number.isFinite(Number(collectiveCandidate?.y))
+      ? { x: Number(collectiveCandidate.x), y: Number(collectiveCandidate.y) }
+      : null);
+
+  const collectivePoint = parsedCollective || { x: 0, y: 0 };
+
+  if (!expertPoints.length) return null;
+
+  const allX = [...expertPoints.map((point) => point.x), collectivePoint.x];
+  const allY = [...expertPoints.map((point) => point.y), collectivePoint.y];
+  const minX = Math.min(...allX);
+  const maxX = Math.max(...allX);
+  const minY = Math.min(...allY);
+  const maxY = Math.max(...allY);
+  const xPadding = minX === maxX ? 1 : Math.max((maxX - minX) * 0.2, 0.2);
+  const yPadding = minY === maxY ? 1 : Math.max((maxY - minY) * 0.2, 0.2);
 
   const chartData = {
     datasets: [
@@ -87,20 +150,21 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
     },
     scales: {
       x: {
-        min: -1,
-        max: 1,
+        min: minX - xPadding,
+        max: maxX + xPadding,
         type: "linear",
         grid: { color: alpha("#fff", 0.14) },
         ticks: { color: alpha("#fff", 0.85) },
       },
       y: {
-        min: -1,
-        max: 1,
+        min: minY - yPadding,
+        max: maxY + yPadding,
         grid: { color: alpha("#fff", 0.14) },
         ticks: { color: alpha("#fff", 0.85), stepSize: 0.4 },
       },
     },
   };
 
-  return <Scatter ref={scatterPlotRef} data={chartData} options={chartOptions} />;
+  return <Scatter ref={scatterPlotRef} data={chartData} options={chartOptions} />
+
 };

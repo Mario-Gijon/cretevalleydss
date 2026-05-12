@@ -1,4 +1,3 @@
-import DirectAlternativesEvaluationDialog from "./DirectAlternativesEvaluationDialog.jsx";
 import DirectEvaluationMatrix from "./DirectEvaluationMatrix.jsx";
 
 export {
@@ -15,6 +14,6 @@ export {
 
 export const directEvaluationStructure = {
   label: "Direct evaluation",
-  Dialog: DirectAlternativesEvaluationDialog,
+  Dialog: null,
   Matrix: DirectEvaluationMatrix,
 };
