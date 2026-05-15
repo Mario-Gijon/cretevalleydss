@@ -41,20 +41,17 @@ export const buildActiveIssueCollections = ({
   consensusPhases,
 }) => {
   const consensusByIssue = {};
-  const consensusPhaseCountMap = consensusPhases.reduce((acc, phaseDoc) => {
-    const issueId = toIdString(phaseDoc.issue);
-    if (!issueId) return acc;
 
-    acc[issueId] = (acc[issueId] || 0) + 1;
+  for (const phaseDoc of consensusPhases) {
+    const issueId = toIdString(phaseDoc.issue);
+    if (!issueId) continue;
 
     if (!consensusByIssue[issueId]) {
       consensusByIssue[issueId] = [];
     }
 
     consensusByIssue[issueId].push(phaseDoc);
-
-    return acc;
-  }, {});
+  }
 
   return {
     participationMap: groupByIssueId(
@@ -66,25 +63,22 @@ export const buildActiveIssueCollections = ({
       (alternative) => alternative.issue
     ),
     criteriaMap: groupByIssueId(criteria, (criterion) => criterion.issue),
-    consensusPhaseCountMap,
     consensusHistoryByIssue: Object.fromEntries(
       Object.entries(consensusByIssue).map(([issueId, docs]) => [
         issueId,
         docs
           .sort((left, right) => left.phase - right.phase)
-          .map((consensusDoc) => {
-            return {
-              phase: consensusDoc.phase,
-              computedAt: consensusDoc.timestamp,
-              consensusLevel: consensusDoc.level,
-              rankedAlternatives: consensusDoc.details.rankedAlternatives,
-              rankedWithScores: consensusDoc.details.rankedWithScores,
-              collectiveEvaluations: consensusDoc.collectiveEvaluations,
-              feedback: consensusDoc.details.feedback,
-              recommendations: consensusDoc.details.recommendations,
-              modelExecution: consensusDoc.details.modelExecution,
-            };
-          }),
+          .map((consensusDoc) => ({
+            phase: consensusDoc.phase,
+            computedAt: consensusDoc.timestamp,
+            consensusLevel: consensusDoc.level,
+            rankedAlternatives: consensusDoc.details.rankedAlternatives,
+            rankedWithScores: consensusDoc.details.rankedWithScores,
+            collectiveEvaluations: consensusDoc.collectiveEvaluations,
+            feedback: consensusDoc.details.feedback,
+            recommendations: consensusDoc.details.recommendations,
+            modelExecution: consensusDoc.details.modelExecution,
+          })),
       ])
     ),
   };

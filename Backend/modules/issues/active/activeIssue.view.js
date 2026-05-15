@@ -173,7 +173,7 @@ export const buildActiveIssueView = ({
 
   decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 
-  const consensusCurrentPhase = issue.currentStage;
+  const consensusCurrentPhase = issue.consensusPhase;
 
   const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
   const stage = issue.currentStage;
