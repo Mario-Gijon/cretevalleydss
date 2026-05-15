@@ -31,6 +31,7 @@ const WEIGHTS_REQUIRED_STAGES = new Set([
   ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
   ISSUE_STAGES.FINISHED,
 ]);
+
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
   const stage = issue.currentStage;
@@ -198,11 +199,11 @@ export const buildActiveIssueView = ({
   const waitingAdmin =
     !isAdminUser &&
     !hasPending &&
-    ((stage === "weightsFinished" && allWeightsDone) ||
+    ((stage === ISSUE_STAGES.WEIGHTS_FINISHED && allWeightsDone) ||
       (ALTERNATIVE_EVALUATION_STAGES.has(stage) && allEvalsDone));
 
   const canComputeWeights =
-    stage === "weightsFinished" &&
+    stage === ISSUE_STAGES.WEIGHTS_FINISHED &&
     isAdminUser &&
     !hasPending &&
     totalAccepted > 0 &&
@@ -216,7 +217,7 @@ export const buildActiveIssueView = ({
     allEvalsDone;
 
   const canEvaluateWeights =
-    stage === "criteriaWeighting" &&
+    stage === ISSUE_STAGES.CRITERIA_WEIGHTING &&
     isExpertAccepted &&
     acceptedParticipations.some(
       (participation) =>
@@ -234,13 +235,13 @@ export const buildActiveIssueView = ({
     );
 
   const waitingExperts =
-    (hasPending && stage !== "finished") ||
+    (hasPending && stage !== ISSUE_STAGES.FINISHED) ||
     (!waitingAdmin &&
       !canResolveIssue &&
       !canComputeWeights &&
       !canEvaluateWeights &&
       !canEvaluateAlternatives &&
-      stage !== "finished");
+      stage !== ISSUE_STAGES.FINISHED);
 
   const statusFlags = {
     canEvaluateWeights,
@@ -266,7 +267,7 @@ export const buildActiveIssueView = ({
   let statusLabel = stageMeta.label;
   let statusKey = stage;
 
-  if (stage !== "finished") {
+  if (stage !== ISSUE_STAGES.FINISHED) {
     if (waitingAdmin) {
       statusLabel = "Waiting for admin";
       statusKey = "waitingAdmin";
@@ -292,7 +293,7 @@ export const buildActiveIssueView = ({
   }));
 
   const isWeightEvaluationStage =
-    stage === "criteriaWeighting" || stage === "weightsFinished";
+    stage === ISSUE_STAGES.CRITERIA_WEIGHTING || stage === ISSUE_STAGES.WEIGHTS_FINISHED;
 
   let completedParticipations;
   let pendingEvaluationParticipations;
@@ -405,7 +406,7 @@ export const buildActiveIssueView = ({
         criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
         alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
         hasCriteriaWeighting:
-          stage === "criteriaWeighting" || stage === "weightsFinished",
+          stage === ISSUE_STAGES.CRITERIA_WEIGHTING || stage === ISSUE_STAGES.WEIGHTS_FINISHED,
         hasAlternativeConsensus: issue.isConsensus,
         workflowSteps,
         permissions: {

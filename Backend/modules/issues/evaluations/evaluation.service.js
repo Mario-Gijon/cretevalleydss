@@ -7,19 +7,14 @@ import {
   createForbiddenError,
   createInternalError,
 } from "../../../utils/common/errors.js";
-import { EVALUATION_STAGES } from "./evaluation.constants.js";
+import {
+  EVALUATION_STAGES,
+  ISSUE_STAGES
+} from "./evaluation.constants.js";
 import { getIssueEvaluationStructureForStageOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
 
-
-
-const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set([
-  EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  "weightsFinished",
-  EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
-  "finished",
-]);
+const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set(Object.values(ISSUE_STAGES));
 
 const assertIssueAcceptsStageOrThrow = ({ issue, stage }) => {
   if (!issueAcceptsEvaluationStage({ issue, stage })) {
@@ -42,7 +37,7 @@ const issueAcceptsEvaluationStage = ({ issue, stage }) => {
 
   return (
     stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    issue.currentStage === EVALUATION_STAGES.ALTERNATIVE_CONSENSUS
+    issue.currentStage === ISSUE_STAGES.ALTERNATIVE_CONSENSUS
   );
 };
 
@@ -269,7 +264,7 @@ const maybeAdvanceIssueStageAfterSubmit = async ({ issue, stage }) => {
   );
 
   if (allWeightsCompleted && issue.currentStage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    issue.currentStage = "weightsFinished";
+    issue.currentStage !== ISSUE_STAGES.WEIGHTS_FINISHED
     await issue.save();
   }
 };
