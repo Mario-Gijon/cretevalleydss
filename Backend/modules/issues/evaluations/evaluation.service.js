@@ -11,27 +11,39 @@ import { EVALUATION_STAGES } from "./evaluation.constants.js";
 import { getIssueEvaluationStructureForStageOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
 
+
+
 const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set([
   EVALUATION_STAGES.CRITERIA_WEIGHTING,
   "weightsFinished",
   EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS_STAGE,
   "finished",
 ]);
 
 const assertIssueAcceptsStageOrThrow = ({ issue, stage }) => {
-  if (issue?.currentStage !== stage) {
+  if (!issueAcceptsEvaluationStage({ issue, stage })) {
     throw createBadRequestError(
       `Issue is not currently accepting '${stage}' evaluations`,
       {
         code: "ISSUE_STAGE_NOT_ACCEPTING_EVALUATIONS",
         field: "stage",
         details: {
-          currentStage: issue?.currentStage ?? null,
+          currentStage: issue.currentStage,
           requestedStage: stage,
         },
       }
     );
   }
+};
+
+const issueAcceptsEvaluationStage = ({ issue, stage }) => {
+  if (issue.currentStage === stage) return true;
+
+  return (
+    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
+    issue.currentStage === EVALUATION_STAGES.ALTERNATIVE_CONSENSUS_STAGE
+  );
 };
 
 const resolveCurrentConsensusPhaseOrThrow = (issue) => {
@@ -118,8 +130,8 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
   const phase = resolveCurrentConsensusPhaseOrThrow(issue);
 
   if (
-    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING &&
-    issue.currentStage !== "weightsFinished"
+    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
+    !issueAcceptsEvaluationStage({ issue, stage })
   ) {
     throw createBadRequestError(
       `Issue is not currently ready to compute '${stage}'`,
@@ -384,8 +396,8 @@ const normalizeComputeResult = (computeResult = {}) => {
     rawOutput: computeResult?.rawOutput ?? {},
     issueUpdates:
       computeResult?.issueUpdates &&
-      typeof computeResult.issueUpdates === "object" &&
-      !Array.isArray(computeResult.issueUpdates)
+        typeof computeResult.issueUpdates === "object" &&
+        !Array.isArray(computeResult.issueUpdates)
         ? computeResult.issueUpdates
         : {},
     nextCurrentStage: computeResult?.nextCurrentStage ?? null,
@@ -489,12 +501,12 @@ export const saveIssueEvaluationDraft = async ({
   const normalizedPayload =
     typeof structure.send === "function"
       ? await structure.send({
-          payload,
-          issueId: issue._id,
-          userId,
-          issue,
-          phase,
-        })
+        payload,
+        issueId: issue._id,
+        userId,
+        issue,
+        phase,
+      })
       : payload;
 
   await upsertIssueEvaluation({
@@ -531,12 +543,12 @@ export const submitIssueEvaluation = async ({
   const normalizedPayload =
     typeof structure.submit === "function"
       ? await structure.submit({
-          payload,
-          issueId: issue._id,
-          userId,
-          issue,
-          phase,
-        })
+        payload,
+        issueId: issue._id,
+        userId,
+        issue,
+        phase,
+      })
       : payload;
 
   await upsertIssueEvaluation({

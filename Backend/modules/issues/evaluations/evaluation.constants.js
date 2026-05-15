@@ -1,6 +1,7 @@
 export const EVALUATION_STAGES = Object.freeze({
   CRITERIA_WEIGHTING: "criteriaWeighting",
   ALTERNATIVE_EVALUATION: "alternativeEvaluation",
+  ALTERNATIVE_CONSENSUS: "alternativeConsensus"
 });
 
 export const EVALUATION_STRUCTURE_KEYS = Object.freeze({

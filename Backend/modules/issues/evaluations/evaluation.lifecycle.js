@@ -84,8 +84,8 @@ export const resolveEvaluationComputeLifecycle = ({
   const finalizationReason = consensusReached
     ? "consensusReached"
     : maxPhasesReached
-    ? "maxPhasesReached"
-    : null;
+      ? "maxPhasesReached"
+      : null;
 
   const nextConsensusPhase = shouldFinalize
     ? currentConsensusPhase
@@ -111,13 +111,13 @@ export const resolveEvaluationComputeLifecycle = ({
 
   const issueUpdates = shouldFinalize
     ? {
-        ...baseIssueUpdates,
-        active: false,
-      }
+      ...baseIssueUpdates,
+      active: false,
+    }
     : {
-        ...baseIssueUpdates,
-        consensusPhase: nextConsensusPhase,
-      };
+      ...baseIssueUpdates,
+      consensusPhase: nextConsensusPhase,
+    };
 
   return {
     computeResult: {
@@ -125,7 +125,7 @@ export const resolveEvaluationComputeLifecycle = ({
       issueUpdates,
       nextCurrentStage: shouldFinalize
         ? "finished"
-        : EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        : EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
       computedPayload: {
         ...baseComputedPayload,
         consensusLifecycle: lifecycleMetadata,

@@ -16,8 +16,16 @@ import {
   buildActiveWorkflowSteps,
 } from "./activeIssue.workflow.js";
 
+const ALTERNATIVE_EVALUATION_STAGES = new Set([
+  "alternativeEvaluation",
+  "alternativeConsensus",
+]);
 const WEIGHTS_OPTIONAL_STAGES = new Set(["criteriaWeighting", "weightsFinished"]);
-const WEIGHTS_REQUIRED_STAGES = new Set(["alternativeEvaluation", "finished"]);
+const WEIGHTS_REQUIRED_STAGES = new Set([
+  "alternativeEvaluation",
+  "alternativeConsensus",
+  "finished",
+]);
 
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
@@ -187,7 +195,7 @@ export const buildActiveIssueView = ({
     !isAdminUser &&
     !hasPending &&
     ((stage === "weightsFinished" && allWeightsDone) ||
-      (stage === "alternativeEvaluation" && allEvalsDone));
+      (ALTERNATIVE_EVALUATION_STAGES.has(stage) && allEvalsDone));
 
   const canComputeWeights =
     stage === "weightsFinished" &&
@@ -197,7 +205,7 @@ export const buildActiveIssueView = ({
     allWeightsDone;
 
   const canResolveIssue =
-    stage === "alternativeEvaluation" &&
+    ALTERNATIVE_EVALUATION_STAGES.has(stage) &&
     isAdminUser &&
     !hasPending &&
     totalAccepted > 0 &&
@@ -213,7 +221,7 @@ export const buildActiveIssueView = ({
     );
 
   const canEvaluateAlternatives =
-    stage === "alternativeEvaluation" &&
+    ALTERNATIVE_EVALUATION_STAGES.has(stage) &&
     isExpertAccepted &&
     acceptedParticipations.some(
       (participation) =>
