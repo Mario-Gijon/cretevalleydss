@@ -288,13 +288,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="fuzzyCriteriaWeights",
+        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
         supported_domains=["linguistic"],
         criterion_types=["max", "min"],
         parameters=[
-            {
+            """ {
                 "key": "weights",
                 "label": "Fuzzy criteria weights",
                 "type": "fuzzyArray",
@@ -312,7 +312,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "ui": {
                     "component": "fuzzyCriteriaWeights",
                 },
-            }
+            } """
         ],
     ),
     ModelDefinition(

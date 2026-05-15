@@ -139,16 +139,16 @@ export const buildActiveTaskCenter = (tasksByType) => {
  * Construye la metadata de filtros para la respuesta de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Object.<string, number>} [params.roleCounts={}] Conteos por rol.
- * @param {Object.<string, number>} [params.stageCounts={}] Conteos por stage.
- * @param {Object.<string, number>} [params.actionCounts={}] Conteos por acción.
+ * @param {Object.<string, number>} params.roleCounts Conteos por rol.
+ * @param {Object.<string, number>} params.stageCounts Conteos por stage.
+ * @param {Object.<string, number>} params.actionCounts Conteos por acción.
  * @returns {Object}
  */
 export const buildActiveFiltersMeta = ({
-  roleCounts = {},
-  stageCounts = {},
-  actionCounts = {},
-} = {}) => ({
+  roleCounts,
+  stageCounts,
+  actionCounts,
+}) => ({
   defaults: {
     role: "all",
     stage: "all",

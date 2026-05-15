@@ -1,0 +1,747 @@
+
+===== TREE =====
+.
+├── ApiModels
+│   ├── api
+│   │   └── routers
+│   │       ├── model_manifest.py
+│   │       └── models.py
+│   ├── app.py
+│   ├── core
+│   │   └── application.py
+│   ├── legacy
+│   │   ├── cmcc_model.py
+│   │   ├── function_calls_example.txt
+│   │   ├── mcc_model.py
+│   │   └── README.md
+│   ├── models
+│   │   ├── aras
+│   │   │   └── aras_model.py
+│   │   ├── borda
+│   │   │   └── borda_model.py
+│   │   ├── bwm
+│   │   │   └── bwm_model.py
+│   │   ├── cmcc
+│   │   │   └── cmcc_model.py
+│   │   ├── fuzzy_topsis
+│   │   │   └── fuzzy_topsis_model.py
+│   │   ├── herrera_viedma_crp
+│   │   │   ├── herrera_viedma_crp_model.py
+│   │   │   └── utils.py
+│   │   ├── marcos
+│   │   │   └── marcos_model.py
+│   │   └── topsis
+│   │       └── topsis_model.py
+│   ├── registry
+│   │   ├── model_definitions.py
+│   │   └── response_examples.py
+│   ├── requirements.txt
+│   ├── schemas
+│   │   ├── common.py
+│   │   ├── model_manifest.py
+│   │   └── model_requests.py
+│   ├── services
+│   │   ├── model_executors
+│   │   │   ├── aras.py
+│   │   │   ├── borda.py
+│   │   │   ├── bwm.py
+│   │   │   ├── cmcc.py
+│   │   │   ├── fuzzy_topsis.py
+│   │   │   ├── herrera_viedma_crp.py
+│   │   │   ├── marcos.py
+│   │   │   ├── responses.py
+│   │   │   └── topsis.py
+│   │   └── model_manifest_service.py
+│   └── utils
+│       ├── clean_matrix.py
+│       ├── defuzzify_centroid.py
+│       └── get_plots_graphics_from_matrices.py
+├── Backend
+│   ├── app.js
+│   ├── bun.lockb
+│   ├── controllers
+│   │   ├── admin.controller.js
+│   │   ├── auth.controller.js
+│   │   └── issue.controller.js
+│   ├── database
+│   │   └── db.js
+│   ├── docs
+│   │   ├── jsdoc-home.md
+│   │   └── README.md
+│   ├── .env
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── jobs
+│   ├── jsdoc.json
+│   ├── middlewares
+│   │   ├── asyncHandler.js
+│   │   ├── authValidations.js
+│   │   ├── errorHandler.js
+│   │   ├── refreshToken.js
+│   │   ├── requireAdmin.js
+│   │   ├── requireRefreshToken.js
+│   │   └── requireToken.js
+│   ├── models
+│   │   ├── Alternatives.js
+│   │   ├── Consensus.js
+│   │   ├── Criteria.js
+│   │   ├── ExitUserIssue.js
+│   │   ├── ExpressionDomain.js
+│   │   ├── IssueEvaluations.js
+│   │   ├── IssueExpressionDomains.js
+│   │   ├── IssueModels.js
+│   │   ├── IssueScenarios.js
+│   │   ├── Issues.js
+│   │   ├── IssueStageResults.js
+│   │   ├── Notificacions.js
+│   │   ├── Participations.js
+│   │   ├── Users.js
+│   │   └── validators
+│   │       └── orderedNumericArrayValidator.js
+│   ├── modules
+│   │   ├── admin
+│   │   │   ├── admin.issueReads.js
+│   │   │   └── admin.users.js
+│   │   ├── auth
+│   │   │   ├── auth.account.js
+│   │   │   ├── auth.emailChange.js
+│   │   │   ├── auth.profile.js
+│   │   │   └── auth.session.js
+│   │   └── issues
+│   │       ├── active
+│   │       ├── creation
+│   │       ├── evaluations
+│   │       ├── expressionDomains
+│   │       ├── finished
+│   │       ├── issue.criteriaTree.js
+│   │       ├── issue.evaluationStructure.js
+│   │       ├── issue.lifecycleKind.js
+│   │       ├── issue.ordering.js
+│   │       ├── issue.queries.js
+│   │       ├── lifecycle
+│   │       ├── modelParameters
+│   │       ├── notifications
+│   │       ├── participants
+│   │       └── scenarios
+│   ├── openapi
+│   │   ├── bundled-openapi.json
+│   │   └── openapi.json
+│   ├── package.json
+│   ├── README.md
+│   ├── redocly.yaml
+│   ├── routes
+│   │   ├── admin.route.js
+│   │   ├── auth.route.js
+│   │   └── issue.route.js
+│   ├── scripts
+│   │   └── generate-openapi.mjs
+│   ├── seeds
+│   │   ├── seedExpressionDomains.js
+│   │   └── seedIssueModels.js
+│   ├── server.js
+│   ├── services
+│   │   ├── email.service.js
+│   │   ├── modelApi
+│   │   │   ├── modelCatalog.js
+│   │   │   ├── modelManifestClient.js
+│   │   │   ├── modelManifestDryRun.js
+│   │   │   ├── modelManifest.mapper.js
+│   │   │   ├── modelManifestSync.js
+│   │   │   └── modelResponse.js
+│   │   └── token.service.js
+│   ├── tsconfig.json
+│   └── utils
+│       └── common
+│           ├── errors.js
+│           ├── ids.js
+│           ├── mongoose.js
+│           ├── responses.js
+│           └── strings.js
+├── build_and_push.sh
+├── cloc-report.sh
+├── .codex
+├── cretevalley-docker-compose.yml
+├── docker-compose.yml
+├── Dockerfile.apimodels
+├── Dockerfile.backend
+├── Dockerfile.frontend
+├── .dockerignore
+├── Frontend
+│   ├── bun.lockb
+│   ├── .env.development
+│   ├── .env.production
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── README.md
+│   ├── src
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── eu_dark.svg
+│   │   │   ├── eu_light.svg
+│   │   │   ├── logo.svg
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── Account
+│   │   │   ├── FuzzyPreviewChart
+│   │   │   ├── GoUpButton
+│   │   │   ├── LoadingProgress
+│   │   │   ├── ResponsiveNavbar
+│   │   │   ├── SnackbarAlert
+│   │   │   └── StyledComponents
+│   │   ├── context
+│   │   │   ├── auth
+│   │   │   ├── issues
+│   │   │   └── snackbarAlert
+│   │   ├── features
+│   │   │   ├── activeIssues
+│   │   │   ├── admin
+│   │   │   ├── auth
+│   │   │   ├── createIssue
+│   │   │   ├── finishedIssueDialog
+│   │   │   ├── finishedIssues
+│   │   │   ├── issueAlternativeEvaluation
+│   │   │   ├── issueEvaluation
+│   │   │   ├── issueExperts
+│   │   │   ├── issueWeightEvaluation
+│   │   │   ├── modelParameters
+│   │   │   ├── notifications
+│   │   │   └── settings
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   └── private
+│   │   ├── services
+│   │   │   ├── admin.service.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── issue.service.js
+│   │   │   └── service.utils.js
+│   │   ├── styles
+│   │   │   └── dashboard.css
+│   │   ├── theme
+│   │   │   ├── appTheme.js
+│   │   │   └── globalStyles.js
+│   │   └── utils
+│   │       ├── authFetch.js
+│   │       ├── criteria.utils.js
+│   │       ├── domainAssignments.utils.js
+│   │       ├── handleTwoDecimals.js
+│   │       ├── linguisticMembershipFunctions.js
+│   │       └── text.utils.js
+│   └── vite.config.js
+├── .gitignore
+├── README.md
+├── reports
+│   └── cloc
+│       ├── by_file.csv
+│       ├── by_language.csv
+│       └── totals.csv
+└── .vscode
+    └── tasks.json
+
+88 directories, 150 files
+
+
+===== GIT FILES =====
+.dockerignore
+.gitignore
+ApiModels/api/routers/model_manifest.py
+ApiModels/api/routers/models.py
+ApiModels/app.py
+ApiModels/core/application.py
+ApiModels/legacy/README.md
+ApiModels/legacy/cmcc_model.py
+ApiModels/legacy/function_calls_example.txt
+ApiModels/legacy/mcc_model.py
+ApiModels/models/aras/__pycache__/aras_model.cpython-313.pyc
+ApiModels/models/aras/aras_model.py
+ApiModels/models/borda/__pycache__/borda_model.cpython-313.pyc
+ApiModels/models/borda/borda_model.py
+ApiModels/models/bwm/bwm_model.py
+ApiModels/models/cmcc/cmcc_model.py
+ApiModels/models/fuzzy_topsis/__pycache__/fuzzy_topsis_model.cpython-313.pyc
+ApiModels/models/fuzzy_topsis/fuzzy_topsis_model.py
+ApiModels/models/herrera_viedma_crp/__pycache__/herrera_viedma_crp_model.cpython-313.pyc
+ApiModels/models/herrera_viedma_crp/__pycache__/utils.cpython-313.pyc
+ApiModels/models/herrera_viedma_crp/herrera_viedma_crp_model.py
+ApiModels/models/herrera_viedma_crp/utils.py
+ApiModels/models/marcos/marcos_model.py
+ApiModels/models/topsis/__pycache__/topsis_model.cpython-313.pyc
+ApiModels/models/topsis/topsis_model.py
+ApiModels/registry/model_definitions.py
+ApiModels/registry/response_examples.py
+ApiModels/requirements.txt
+ApiModels/schemas/common.py
+ApiModels/schemas/model_manifest.py
+ApiModels/schemas/model_requests.py
+ApiModels/services/model_executors/aras.py
+ApiModels/services/model_executors/borda.py
+ApiModels/services/model_executors/bwm.py
+ApiModels/services/model_executors/cmcc.py
+ApiModels/services/model_executors/fuzzy_topsis.py
+ApiModels/services/model_executors/herrera_viedma_crp.py
+ApiModels/services/model_executors/marcos.py
+ApiModels/services/model_executors/responses.py
+ApiModels/services/model_executors/topsis.py
+ApiModels/services/model_manifest_service.py
+ApiModels/utils/clean_matrix.py
+ApiModels/utils/defuzzify_centroid.py
+ApiModels/utils/get_plots_graphics_from_matrices.py
+Backend/.env.production
+Backend/.gitignore
+Backend/README.md
+Backend/app.js
+Backend/bun.lockb
+Backend/controllers/admin.controller.js
+Backend/controllers/auth.controller.js
+Backend/controllers/issue.controller.js
+Backend/database/db.js
+Backend/docs/README.md
+Backend/docs/jsdoc-home.md
+Backend/jsdoc.json
+Backend/middlewares/asyncHandler.js
+Backend/middlewares/authValidations.js
+Backend/middlewares/errorHandler.js
+Backend/middlewares/refreshToken.js
+Backend/middlewares/requireAdmin.js
+Backend/middlewares/requireRefreshToken.js
+Backend/middlewares/requireToken.js
+Backend/models/Alternatives.js
+Backend/models/Consensus.js
+Backend/models/Criteria.js
+Backend/models/ExitUserIssue.js
+Backend/models/ExpressionDomain.js
+Backend/models/IssueEvaluations.js
+Backend/models/IssueExpressionDomains.js
+Backend/models/IssueModels.js
+Backend/models/IssueScenarios.js
+Backend/models/IssueStageResults.js
+Backend/models/Issues.js
+Backend/models/Notificacions.js
+Backend/models/Participations.js
+Backend/models/Users.js
+Backend/models/validators/orderedNumericArrayValidator.js
+Backend/modules/admin/admin.issueReads.js
+Backend/modules/admin/admin.users.js
+Backend/modules/auth/auth.account.js
+Backend/modules/auth/auth.emailChange.js
+Backend/modules/auth/auth.profile.js
+Backend/modules/auth/auth.session.js
+Backend/modules/issues/active/activeIssue.collections.js
+Backend/modules/issues/active/activeIssue.meta.js
+Backend/modules/issues/active/activeIssue.response.js
+Backend/modules/issues/active/activeIssue.view.js
+Backend/modules/issues/active/activeIssue.workflow.js
+Backend/modules/issues/active/index.js
+Backend/modules/issues/consensus/index.js
+Backend/modules/issues/consensus/issueConsensus.mappers.js
+Backend/modules/issues/consensus/issueConsensus.queries.js
+Backend/modules/issues/creation/index.js
+Backend/modules/issues/creation/issueCreation.context.js
+Backend/modules/issues/creation/issueCreation.criteriaWeights.js
+Backend/modules/issues/creation/issueCreation.documents.js
+Backend/modules/issues/creation/issueCreation.domains.js
+Backend/modules/issues/creation/issueCreation.input.js
+Backend/modules/issues/creation/issueCreation.model.js
+Backend/modules/issues/creation/issueCreation.participants.js
+Backend/modules/issues/creation/issueCreation.service.js
+Backend/modules/issues/evaluations/evaluation.constants.js
+Backend/modules/issues/evaluations/evaluation.lifecycle.js
+Backend/modules/issues/evaluations/evaluation.registry.js
+Backend/modules/issues/evaluations/evaluation.service.js
+Backend/modules/issues/evaluations/index.js
+Backend/modules/issues/evaluations/structures/alternativeCriteriaMatrix/index.js
+Backend/modules/issues/evaluations/structures/alternativePairwiseByCriterion/index.js
+Backend/modules/issues/evaluations/structures/bestWorstCriteria/index.js
+Backend/modules/issues/evaluations/structures/criteriaPairwiseMatrix/index.js
+Backend/modules/issues/evaluations/structures/fuzzyCriteriaWeights/index.js
+Backend/modules/issues/evaluations/structures/manualCriteriaWeights/index.js
+Backend/modules/issues/evaluations/structures/shared/alternativeEvaluation.helpers.js
+Backend/modules/issues/evaluations/structures/shared/criteriaWeighting.helpers.js
+Backend/modules/issues/expressionDomains/expressionDomain.transforms.js
+Backend/modules/issues/expressionDomains/issueDomainDetection.js
+Backend/modules/issues/expressionDomains/issueDomainSnapshots.js
+Backend/modules/issues/expressionDomains/issueExpressionDomains.js
+Backend/modules/issues/expressionDomains/linguisticMembership.functions.js
+Backend/modules/issues/finished/finishedIssue.payload.js
+Backend/modules/issues/finished/finishedIssue.pluginPayload.js
+Backend/modules/issues/issue.criteriaTree.js
+Backend/modules/issues/issue.evaluationStructure.js
+Backend/modules/issues/issue.lifecycleKind.js
+Backend/modules/issues/issue.ordering.js
+Backend/modules/issues/issue.queries.js
+Backend/modules/issues/lifecycle/index.js
+Backend/modules/issues/lifecycle/issueLifecycle.deletion.js
+Backend/modules/issues/lifecycle/issueLifecycle.exits.js
+Backend/modules/issues/lifecycle/issueLifecycle.shared.js
+Backend/modules/issues/lifecycle/issueLifecycle.stage.js
+Backend/modules/issues/modelParameters/handlers/array.parameter.js
+Backend/modules/issues/modelParameters/handlers/boolean.parameter.js
+Backend/modules/issues/modelParameters/handlers/criteriaWeights.parameter.js
+Backend/modules/issues/modelParameters/handlers/enum.parameter.js
+Backend/modules/issues/modelParameters/handlers/fuzzyArray.parameter.js
+Backend/modules/issues/modelParameters/handlers/fuzzyCriteriaWeights.parameter.js
+Backend/modules/issues/modelParameters/handlers/integer.parameter.js
+Backend/modules/issues/modelParameters/handlers/interval.parameter.js
+Backend/modules/issues/modelParameters/handlers/number.parameter.js
+Backend/modules/issues/modelParameters/handlers/string.parameter.js
+Backend/modules/issues/modelParameters/index.js
+Backend/modules/issues/modelParameters/modelParameter.errors.js
+Backend/modules/issues/modelParameters/modelParameter.registry.js
+Backend/modules/issues/modelParameters/modelParameter.shared.js
+Backend/modules/issues/modelParameters/modelParameter.validation.js
+Backend/modules/issues/notifications/index.js
+Backend/modules/issues/notifications/notification.flow.js
+Backend/modules/issues/participants/index.js
+Backend/modules/issues/participants/participantEdition.flow.js
+Backend/modules/issues/scenarios/index.js
+Backend/modules/issues/scenarios/scenario.compatibility.js
+Backend/modules/issues/scenarios/scenario.context.js
+Backend/modules/issues/scenarios/scenario.params.js
+Backend/modules/issues/scenarios/scenario.service.js
+Backend/openapi/bundled-openapi.json
+Backend/openapi/openapi.json
+Backend/package.json
+Backend/redocly.yaml
+Backend/routes/admin.route.js
+Backend/routes/auth.route.js
+Backend/routes/issue.route.js
+Backend/scripts/generate-openapi.mjs
+Backend/seeds/seedExpressionDomains.js
+Backend/seeds/seedIssueModels.js
+Backend/server.js
+Backend/services/email.service.js
+Backend/services/modelApi/modelCatalog.js
+Backend/services/modelApi/modelManifest.mapper.js
+Backend/services/modelApi/modelManifestClient.js
+Backend/services/modelApi/modelManifestDryRun.js
+Backend/services/modelApi/modelManifestSync.js
+Backend/services/modelApi/modelResponse.js
+Backend/services/token.service.js
+Backend/tsconfig.json
+Backend/utils/common/errors.js
+Backend/utils/common/ids.js
+Backend/utils/common/mongoose.js
+Backend/utils/common/responses.js
+Backend/utils/common/strings.js
+Dockerfile.apimodels
+Dockerfile.backend
+Dockerfile.frontend
+Frontend/.env.development
+Frontend/.env.production
+Frontend/.gitignore
+Frontend/README.md
+Frontend/bun.lockb
+Frontend/eslint.config.js
+Frontend/index.html
+Frontend/package.json
+Frontend/src/App.jsx
+Frontend/src/assets/eu_dark.svg
+Frontend/src/assets/eu_light.svg
+Frontend/src/assets/logo.svg
+Frontend/src/assets/react.svg
+Frontend/src/components/Account/Account.jsx
+Frontend/src/components/FuzzyPreviewChart/FuzzyPreviewChart.jsx
+Frontend/src/components/GoUpButton/GoUpButton.jsx
+Frontend/src/components/LoadingProgress/CircularLoading.jsx
+Frontend/src/components/ResponsiveNavbar/ResponsiveNavbar.jsx
+Frontend/src/components/ResponsiveNavbar/components/ResponsiveNavbarDesktopNav.jsx
+Frontend/src/components/ResponsiveNavbar/components/ResponsiveNavbarMobileNav.jsx
+Frontend/src/components/ResponsiveNavbar/components/ResponsiveNavbarUserMenu.jsx
+Frontend/src/components/ResponsiveNavbar/constants/ResponsiveNavbar.constants.js
+Frontend/src/components/ResponsiveNavbar/shared/ResponsiveNavbar.shared.jsx
+Frontend/src/components/ResponsiveNavbar/utils/ResponsiveNavbar.utils.js
+Frontend/src/components/SnackbarAlert/SnackbarAlert.jsx
+Frontend/src/components/StyledComponents/ConfirmationDialog.jsx
+Frontend/src/components/StyledComponents/GlassDialog.jsx
+Frontend/src/components/StyledComponents/GlassPaper.jsx
+Frontend/src/components/StyledComponents/GradientTabs.jsx
+Frontend/src/context/auth/auth.context.js
+Frontend/src/context/auth/auth.provider.jsx
+Frontend/src/context/issues/issues.context.js
+Frontend/src/context/issues/issues.provider.jsx
+Frontend/src/context/snackbarAlert/snackbarAlert.context.js
+Frontend/src/context/snackbarAlert/snackbarAlert.provider.jsx
+Frontend/src/features/activeIssues/components/ActiveIssuesView.jsx
+Frontend/src/features/activeIssues/components/dialogs/ActiveIssueConfirmDialog.jsx
+Frontend/src/features/activeIssues/components/drawer/config/IssueDetailsDrawer.tabs.js
+Frontend/src/features/activeIssues/components/drawer/shell/IssueDetailsDrawer.jsx
+Frontend/src/features/activeIssues/components/drawer/shell/IssueDetailsDrawer.parts.jsx
+Frontend/src/features/activeIssues/components/drawer/shell/IssueDetailsDrawer.styles.js
+Frontend/src/features/activeIssues/components/drawer/shell/IssueDetailsDrawerEmptyState.jsx
+Frontend/src/features/activeIssues/components/drawer/shell/IssueDetailsDrawerHeader.jsx
+Frontend/src/features/activeIssues/components/drawer/tabs/IssueDetailsAlternativesTab.jsx
+Frontend/src/features/activeIssues/components/drawer/tabs/IssueDetailsCriteriaTab.jsx
+Frontend/src/features/activeIssues/components/drawer/tabs/IssueDetailsOverviewTab.jsx
+Frontend/src/features/activeIssues/components/drawer/tabs/IssueDetailsTimelineTab.jsx
+Frontend/src/features/activeIssues/components/drawer/utils/issueDetailsDrawer.utils.js
+Frontend/src/features/activeIssues/components/layout/ActiveIssuesDesktopLayout.jsx
+Frontend/src/features/activeIssues/components/layout/ActiveIssuesMobileLayout.jsx
+Frontend/src/features/activeIssues/components/panels/ActiveIssuesHeader.jsx
+Frontend/src/features/activeIssues/components/panels/IssueGrid/IssueCard.jsx
+Frontend/src/features/activeIssues/components/panels/IssueGrid/IssueDeadlineBar.jsx
+Frontend/src/features/activeIssues/components/panels/IssueGrid/IssueStageStepper.jsx
+Frontend/src/features/activeIssues/components/panels/IssueGrid/IssuesGrid.jsx
+Frontend/src/features/activeIssues/components/panels/IssueGrid/styles/issuesGrid.styles.js
+Frontend/src/features/activeIssues/components/panels/IssueGrid/utils/issuesGrid.utils.js
+Frontend/src/features/activeIssues/components/panels/TaskCenter/TaskCenter.jsx
+Frontend/src/features/activeIssues/components/panels/TaskCenter/TaskCenterPanel.jsx
+Frontend/src/features/activeIssues/components/panels/TaskCenter/TaskCenterRail.jsx
+Frontend/src/features/activeIssues/components/panels/TaskCenter/styles/taskCenter.styles.js
+Frontend/src/features/activeIssues/components/panels/TaskCenter/utils/taskCenter.utils.js
+Frontend/src/features/activeIssues/components/shared/ActiveIssuesOverlays.jsx
+Frontend/src/features/activeIssues/components/shared/ActiveIssuesPill.jsx
+Frontend/src/features/activeIssues/components/shared/ActiveIssuesTinyStat.jsx
+Frontend/src/features/activeIssues/components/shared/IssueParticipationChart.jsx
+Frontend/src/features/activeIssues/components/shared/IssueTimeline.jsx
+Frontend/src/features/activeIssues/hooks/useActiveIssueActions.js
+Frontend/src/features/activeIssues/hooks/useActiveIssueConfirm.js
+Frontend/src/features/activeIssues/hooks/useActiveIssueDrawer.js
+Frontend/src/features/activeIssues/hooks/useActiveIssuesListing.js
+Frontend/src/features/activeIssues/hooks/useActiveIssuesScreenSync.js
+Frontend/src/features/activeIssues/styles/activeIssues.styles.js
+Frontend/src/features/activeIssues/utils/activeIssues.filters.js
+Frontend/src/features/activeIssues/utils/activeIssues.meta.js
+Frontend/src/features/admin/components/AdminEmptySectionPanel.jsx
+Frontend/src/features/admin/components/AdminHome.jsx
+Frontend/src/features/admin/components/AdminSectionShell.jsx
+Frontend/src/features/admin/components/AdminTag.jsx
+Frontend/src/features/admin/components/AdminView.jsx
+Frontend/src/features/admin/sections/adminExperts/AdminExpertsSection.jsx
+Frontend/src/features/admin/sections/adminExperts/adminExperts.utils.js
+Frontend/src/features/admin/sections/adminExperts/components/AdminRolePill.jsx
+Frontend/src/features/admin/sections/adminExperts/components/AdminStatusPill.jsx
+Frontend/src/features/admin/sections/adminExperts/hooks/useAdminExpertsSection.js
+Frontend/src/features/admin/sections/adminIssues/AdminIssuesSection.jsx
+Frontend/src/features/admin/sections/adminIssues/adminIssues.utils.js
+Frontend/src/features/admin/sections/adminIssues/components/AdminAddExpertsPickerDialog.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminInfoRow.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminMetaChip.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminReadOnlyAxCMatrix.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminReadOnlyPairwise.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminReadOnlyWeights.jsx
+Frontend/src/features/admin/sections/adminIssues/components/AdminStatCard.jsx
+Frontend/src/features/admin/sections/adminIssues/hooks/useAdminIssuesSection.js
+Frontend/src/features/admin/sections/adminLogs/AdminLogsSection.jsx
+Frontend/src/features/admin/sections/adminModels/AdminModelsSection.jsx
+Frontend/src/features/admin/sections/adminModels/ModelManifestSyncPanel.jsx
+Frontend/src/features/admin/sections/adminModels/components/CatalogVisibilitySwitch.jsx
+Frontend/src/features/admin/sections/adminModels/components/EmptyState.jsx
+Frontend/src/features/admin/sections/adminModels/components/FieldGrid.jsx
+Frontend/src/features/admin/sections/adminModels/components/MetricCard.jsx
+Frontend/src/features/admin/sections/adminModels/components/ModelCards.jsx
+Frontend/src/features/admin/sections/adminModels/components/ModelDetailDialog.jsx
+Frontend/src/features/admin/sections/adminModels/components/ModelsTable.jsx
+Frontend/src/features/admin/sections/adminModels/components/ParametersTable.jsx
+Frontend/src/features/admin/sections/adminModels/components/ReviewList.jsx
+Frontend/src/features/admin/sections/adminModels/components/SectionCard.jsx
+Frontend/src/features/admin/sections/adminModels/components/StatusChip.jsx
+Frontend/src/features/admin/sections/adminModels/components/TechnicalDifferencesList.jsx
+Frontend/src/features/admin/sections/adminModels/hooks/useAdminModelCatalog.js
+Frontend/src/features/admin/sections/adminModels/hooks/useModelManifestActions.js
+Frontend/src/features/admin/sections/adminModels/tabs/CatalogTab.jsx
+Frontend/src/features/admin/sections/adminModels/tabs/ManifestSyncTab.jsx
+Frontend/src/features/admin/sections/adminModels/tabs/ReviewTab.jsx
+Frontend/src/features/admin/sections/adminModels/utils/modelManifest.constants.js
+Frontend/src/features/admin/sections/adminModels/utils/modelManifest.formatters.js
+Frontend/src/features/admin/sections/adminModels/utils/modelManifest.normalizers.js
+Frontend/src/features/admin/sections/adminModels/utils/modelManifest.severity.js
+Frontend/src/features/admin/sections/adminModels/utils/modelManifest.styles.js
+Frontend/src/features/admin/sections/adminReports/AdminReportsSection.jsx
+Frontend/src/features/admin/styles/admin.styles.js
+Frontend/src/features/admin/utils/adminSections.jsx
+Frontend/src/features/auth/components/AuthLayout.jsx
+Frontend/src/features/auth/components/LogInForm.jsx
+Frontend/src/features/auth/components/SignUpForm.jsx
+Frontend/src/features/auth/constants/loginForm.constants.js
+Frontend/src/features/auth/constants/signupForm.constants.js
+Frontend/src/features/auth/styles/auth.styles.js
+Frontend/src/features/auth/utils/authStatus.utils.js
+Frontend/src/features/auth/utils/loginForm.validation.js
+Frontend/src/features/auth/utils/signupForm.validation.js
+Frontend/src/features/createIssue/components/AlternativeItem.jsx
+Frontend/src/features/createIssue/components/CreateIssueFlow.jsx
+Frontend/src/features/createIssue/components/CreateLinguisticExpressionDialog.jsx
+Frontend/src/features/createIssue/components/CriteriaItem.jsx
+Frontend/src/features/createIssue/components/CriterionAccordion.jsx
+Frontend/src/features/createIssue/components/ModelParameters.jsx
+Frontend/src/features/createIssue/components/StepperLibConnector.jsx
+Frontend/src/features/createIssue/components/ViewExpressionsDomainDialog.jsx
+Frontend/src/features/createIssue/context/createIssue.context.js
+Frontend/src/features/createIssue/context/createIssue.provider.jsx
+Frontend/src/features/createIssue/hooks/useCreateIssueFlow.js
+Frontend/src/features/createIssue/steps/AlternativesStep.jsx
+Frontend/src/features/createIssue/steps/CriteriaStep.jsx
+Frontend/src/features/createIssue/steps/ExpertsStep.jsx
+Frontend/src/features/createIssue/steps/ExpressionDomainStep.jsx
+Frontend/src/features/createIssue/steps/ModelStep.jsx
+Frontend/src/features/createIssue/steps/SummaryStep.jsx
+Frontend/src/features/createIssue/styles/createIssue.styles.js
+Frontend/src/features/createIssue/styles/createIssueStep.styles.js
+Frontend/src/features/createIssue/utils/createIssue.utils.js
+Frontend/src/features/createIssue/utils/criteriaWeighting.model.js
+Frontend/src/features/finishedIssueDialog/components/charts/AnalyticalConsensusLineChart.jsx
+Frontend/src/features/finishedIssueDialog/components/charts/AnalyticalScatterChart.jsx
+Frontend/src/features/finishedIssueDialog/components/dialog/FinishedIssueDialog.jsx
+Frontend/src/features/finishedIssueDialog/components/dialog/FinishedIssueDialogHeader.jsx
+Frontend/src/features/finishedIssueDialog/components/dialog/FinishedIssueDialogLayout.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/AnalysisSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/GraphsSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/ModelSpecificOutputSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/ModelsSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/ModelsSectionAddDialog.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/ModelsSectionParametersForm.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/RankingSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/RatingsSection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/SummarySection.jsx
+Frontend/src/features/finishedIssueDialog/components/sections/shared/ModelParamsView.jsx
+Frontend/src/features/finishedIssueDialog/components/shared/CriterionItem.jsx
+Frontend/src/features/finishedIssueDialog/components/shared/FinishedIssueDialogPrimitives.jsx
+Frontend/src/features/finishedIssueDialog/components/shared/UnsupportedEvaluationStructureAlert.jsx
+Frontend/src/features/finishedIssueDialog/context/finishedIssueDialog.context.js
+Frontend/src/features/finishedIssueDialog/context/finishedIssueDialog.provider.jsx
+Frontend/src/features/finishedIssueDialog/hooks/useFinishedIssueDialogView.js
+Frontend/src/features/finishedIssueDialog/hooks/useFinishedIssueRatingsView.js
+Frontend/src/features/finishedIssueDialog/styles/finishedIssueDialog.styles.js
+Frontend/src/features/finishedIssueDialog/utils/finishedIssueDialog.utils.js
+Frontend/src/features/finishedIssueDialog/utils/finishedIssueEvaluationStructure.js
+Frontend/src/features/finishedIssues/components/FinishedIssueRemoveDialog.jsx
+Frontend/src/features/finishedIssues/components/FinishedIssuesCards.jsx
+Frontend/src/features/finishedIssues/components/FinishedIssuesEmptyState.jsx
+Frontend/src/features/finishedIssues/components/FinishedIssuesHeader.jsx
+Frontend/src/features/finishedIssues/components/FinishedIssuesView.jsx
+Frontend/src/features/finishedIssues/hooks/useFinishedIssuesListing.js
+Frontend/src/features/finishedIssues/hooks/useFinishedIssuesView.js
+Frontend/src/features/finishedIssues/styles/finishedIssues.styles.js
+Frontend/src/features/finishedIssues/utils/finishedIssues.filters.js
+Frontend/src/features/issueAlternativeEvaluation/alternativeEvaluation.constants.js
+Frontend/src/features/issueAlternativeEvaluation/alternativeEvaluation.registry.js
+Frontend/src/features/issueAlternativeEvaluation/components/EvaluationDialogHost.jsx
+Frontend/src/features/issueAlternativeEvaluation/shared/alternativeEvaluationDialog.styles.js
+Frontend/src/features/issueAlternativeEvaluation/shared/components/AlternativeEvaluationDialogShell.jsx
+Frontend/src/features/issueAlternativeEvaluation/shared/components/AlternativeEvaluationSaveDialog.jsx
+Frontend/src/features/issueAlternativeEvaluation/shared/components/AlternativeEvaluationSubmitDialog.jsx
+Frontend/src/features/issueAlternativeEvaluation/shared/leafCriteria.utils.js
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/DirectAlternativesEvaluationDialog.jsx
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/DirectEvaluationMatrix.jsx
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/directEvaluation.mapper.js
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/directEvaluation.response.js
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/directEvaluation.validation.js
+Frontend/src/features/issueAlternativeEvaluation/structures/direct/index.js
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/PairwiseAlternativeMatrix.jsx
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/PairwiseAlternativesEvaluationDialog.jsx
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/index.js
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/pairwiseAlternatives.mapper.js
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/pairwiseAlternatives.response.js
+Frontend/src/features/issueAlternativeEvaluation/structures/pairwiseAlternatives/pairwiseAlternatives.validation.js
+Frontend/src/features/issueEvaluation/components/EvaluationDialogHost.jsx
+Frontend/src/features/issueEvaluation/evaluation.constants.js
+Frontend/src/features/issueEvaluation/evaluation.registry.js
+Frontend/src/features/issueEvaluation/services/issueEvaluation.service.js
+Frontend/src/features/issueEvaluation/shared/alternativeEvaluationDialog.styles.js
+Frontend/src/features/issueEvaluation/shared/components/AlternativeEvaluationDialogShell.jsx
+Frontend/src/features/issueEvaluation/shared/components/AlternativeEvaluationSaveDialog.jsx
+Frontend/src/features/issueEvaluation/shared/components/AlternativeEvaluationSubmitDialog.jsx
+Frontend/src/features/issueEvaluation/shared/leafCriteria.utils.js
+Frontend/src/features/issueEvaluation/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixEvaluationDialog.jsx
+Frontend/src/features/issueEvaluation/structures/alternativeCriteriaMatrix/DirectEvaluationMatrix.jsx
+Frontend/src/features/issueEvaluation/structures/alternativeCriteriaMatrix/directEvaluation.validation.js
+Frontend/src/features/issueEvaluation/structures/alternativeCriteriaMatrix/index.js
+Frontend/src/features/issueEvaluation/structures/alternativePairwiseByCriterion/AlternativePairwiseByCriterionEvaluationDialog.jsx
+Frontend/src/features/issueEvaluation/structures/alternativePairwiseByCriterion/PairwiseAlternativeMatrix.jsx
+Frontend/src/features/issueEvaluation/structures/alternativePairwiseByCriterion/index.js
+Frontend/src/features/issueEvaluation/structures/bestWorstCriteria/BestWorstCriteriaEvaluationDialog.jsx
+Frontend/src/features/issueEvaluation/structures/bestWorstCriteria/index.js
+Frontend/src/features/issueEvaluation/structures/manualCriteriaWeights/ManualCriteriaWeightsEvaluationDialog.jsx
+Frontend/src/features/issueEvaluation/structures/manualCriteriaWeights/index.js
+Frontend/src/features/issueEvaluation/styles/weightEvaluationDialog.styles.js
+Frontend/src/features/issueExperts/components/IssueExpertsDialogs.jsx
+Frontend/src/features/issueExperts/components/IssueExpertsDomainAssigments.jsx
+Frontend/src/features/issueExperts/components/IssueExpertsPill.jsx
+Frontend/src/features/issueExperts/components/IssueExpertsSection.jsx
+Frontend/src/features/issueExperts/context/issueExpertsFlow.context.js
+Frontend/src/features/issueExperts/context/issueExpertsFlow.provider.jsx
+Frontend/src/features/issueExperts/dialogs/AddExpertsDomainsDialog.jsx
+Frontend/src/features/issueExperts/dialogs/AddExpertsPickerDialog.jsx
+Frontend/src/features/issueExperts/hooks/useIssueExpertsFlow.js
+Frontend/src/features/issueExperts/services/issueExperts.service.js
+Frontend/src/features/issueExperts/styles/issueExperts.styles.js
+Frontend/src/features/issueExperts/utils/issueExperts.groups.js
+Frontend/src/features/issueExperts/utils/issueExperts.search.js
+Frontend/src/features/issueWeightEvaluation/components/IssueWeightEvaluationDialogs.jsx
+Frontend/src/features/issueWeightEvaluation/dialogs/bwm/BwmWeightsEvaluationDialog.jsx
+Frontend/src/features/issueWeightEvaluation/dialogs/manual/ManualWeightsEvaluationDialog.jsx
+Frontend/src/features/issueWeightEvaluation/registry/weightEvaluation.registry.js
+Frontend/src/features/issueWeightEvaluation/services/weightEvaluation.service.js
+Frontend/src/features/issueWeightEvaluation/styles/weightEvaluationDialog.styles.js
+Frontend/src/features/issueWeightEvaluation/utils/leafCriteria.utils.js
+Frontend/src/features/modelParameters/ModelParameterReadOnlyView.jsx
+Frontend/src/features/modelParameters/fields/array/ArrayParameterField.jsx
+Frontend/src/features/modelParameters/fields/array/array.defaults.js
+Frontend/src/features/modelParameters/fields/array/index.js
+Frontend/src/features/modelParameters/fields/criteriaWeights/CriteriaWeightsParameterField.jsx
+Frontend/src/features/modelParameters/fields/criteriaWeights/CriteriaWeightsParameterValueView.jsx
+Frontend/src/features/modelParameters/fields/criteriaWeights/criteriaWeights.defaults.js
+Frontend/src/features/modelParameters/fields/criteriaWeights/criteriaWeights.validation.js
+Frontend/src/features/modelParameters/fields/criteriaWeights/index.js
+Frontend/src/features/modelParameters/fields/enum/EnumParameterField.jsx
+Frontend/src/features/modelParameters/fields/enum/index.js
+Frontend/src/features/modelParameters/fields/fuzzyArray/FuzzyArrayParameterField.jsx
+Frontend/src/features/modelParameters/fields/fuzzyArray/fuzzyArray.defaults.js
+Frontend/src/features/modelParameters/fields/fuzzyArray/index.js
+Frontend/src/features/modelParameters/fields/fuzzyCriteriaWeights/FuzzyCriteriaWeightsParameterField.jsx
+Frontend/src/features/modelParameters/fields/fuzzyCriteriaWeights/FuzzyCriteriaWeightsParameterValueView.jsx
+Frontend/src/features/modelParameters/fields/fuzzyCriteriaWeights/fuzzyCriteriaWeights.defaults.js
+Frontend/src/features/modelParameters/fields/fuzzyCriteriaWeights/fuzzyCriteriaWeights.validation.js
+Frontend/src/features/modelParameters/fields/fuzzyCriteriaWeights/index.js
+Frontend/src/features/modelParameters/fields/interval/IntervalParameterField.jsx
+Frontend/src/features/modelParameters/fields/interval/index.js
+Frontend/src/features/modelParameters/fields/number/NumberParameterField.jsx
+Frontend/src/features/modelParameters/fields/number/index.js
+Frontend/src/features/modelParameters/index.js
+Frontend/src/features/modelParameters/modelParameter.adapters.js
+Frontend/src/features/modelParameters/modelParameter.defaults.js
+Frontend/src/features/modelParameters/modelParameter.registry.js
+Frontend/src/features/modelParameters/modelParameter.validation.js
+Frontend/src/features/notifications/components/NotificationsDrawer.jsx
+Frontend/src/features/notifications/components/NotificationsMenuItemIcon.jsx
+Frontend/src/features/notifications/hooks/useNotificationsPanel.js
+Frontend/src/features/notifications/utils/notifications.utils.js
+Frontend/src/features/settings/components/AccountSettings.jsx
+Frontend/src/features/settings/components/SettingsHeader.jsx
+Frontend/src/features/settings/components/fields/ConfirmDeleteAccountDialog.jsx
+Frontend/src/features/settings/components/fields/ConfirmPasswordDialog.jsx
+Frontend/src/features/settings/components/fields/DeleteAccountButton.jsx
+Frontend/src/features/settings/components/fields/EmailField.jsx
+Frontend/src/features/settings/components/fields/NameField.jsx
+Frontend/src/features/settings/components/fields/PasswordField.jsx
+Frontend/src/features/settings/components/fields/UniversityField.jsx
+Frontend/src/features/settings/hooks/useAccountSettings.js
+Frontend/src/features/settings/utils/validationUtils.js
+Frontend/src/main.jsx
+Frontend/src/pages/private/PrivateLayout.jsx
+Frontend/src/pages/private/activeIssues/ActiveIssuesPage.jsx
+Frontend/src/pages/private/admin/AdminPage.jsx
+Frontend/src/pages/private/admin/AdminRoute.jsx
+Frontend/src/pages/private/createIssue/CreateIssuePage.jsx
+Frontend/src/pages/private/finishedIssues/FinishedIssuesPage.jsx
+Frontend/src/services/admin.service.js
+Frontend/src/services/auth.service.js
+Frontend/src/services/issue.service.js
+Frontend/src/services/service.utils.js
+Frontend/src/styles/dashboard.css
+Frontend/src/theme/appTheme.js
+Frontend/src/theme/globalStyles.js
+Frontend/src/utils/authFetch.js
+Frontend/src/utils/criteria.utils.js
+Frontend/src/utils/domainAssignments.utils.js
+Frontend/src/utils/handleTwoDecimals.js
+Frontend/src/utils/linguisticMembershipFunctions.js
+Frontend/src/utils/text.utils.js
+Frontend/vite.config.js
+README.md
+cretevalley-docker-compose.yml
+docker-compose.yml
+reports/cloc/by_file.csv
+reports/cloc/by_language.csv
+reports/cloc/totals.csv

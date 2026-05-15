@@ -21,8 +21,8 @@ const WEIGHTS_REQUIRED_STAGES = new Set(["alternativeEvaluation", "finished"]);
 
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
-  const stage = issue?.currentStage;
-  const weights = issue?.modelParameters?.weights;
+  const stage = issue.currentStage;
+  const weights = issue.modelParameters.weights;
 
   if (criteriaCount === 0) {
     return [];
@@ -150,12 +150,12 @@ export const buildActiveIssueView = ({
   });
 
   const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.id] = Array.isArray(criteriaWeights) ? criteriaWeights[index] : null;
+    acc[node.id] = criteriaWeights === null ? null : criteriaWeights[index];
     return acc;
   }, {});
 
   const criteriaWeightsByName = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.name] = Array.isArray(criteriaWeights) ? criteriaWeights[index] : null;
+    acc[node.name] = criteriaWeights === null ? null : criteriaWeights[index];
     return acc;
   }, {});
 
@@ -267,21 +267,17 @@ export const buildActiveIssueView = ({
     }
   }
 
-  const taskItems = actions
-    .filter((action) => ACTIVE_TASK_ACTION_KEYS.includes(action.key))
-    .filter((action) => !(action.role === "admin" && !isAdminUser))
-    .filter((action) => !(action.role === "expert" && !isExpertAccepted))
-    .map((action) => ({
-      issueId,
-      issueName: issue.name,
-      stage,
-      role: action.role,
-      severity: action.severity,
-      actionKey: action.key,
-      actionLabel: action.label,
-      sortPriority: action.sortPriority,
-      deadline,
-    }));
+  const taskItems = actions.map((action) => ({
+    issueId,
+    issueName: issue.name,
+    stage,
+    role: action.role,
+    severity: action.severity,
+    actionKey: action.key,
+    actionLabel: action.label,
+    sortPriority: action.sortPriority,
+    deadline,
+  }));
 
   const isWeightEvaluationStage =
     stage === "criteriaWeighting" || stage === "weightsFinished";
@@ -328,7 +324,6 @@ export const buildActiveIssueView = ({
   }
 
   const workflowSteps = buildActiveWorkflowSteps({
-    criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
     hasAlternativeConsensus: issue.isConsensus,
   });
 
@@ -347,7 +342,7 @@ export const buildActiveIssueView = ({
       supportsConsensus: issue.supportsConsensus,
       currentStage: stage,
       ...(issue.isConsensus && {
-        consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
+        consensusMaxPhases: issue.consensusMaxPhases,
         consensusThreshold: issue.consensusThreshold,
         consensusCurrentPhase,
       }),
