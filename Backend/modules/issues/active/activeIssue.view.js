@@ -18,10 +18,7 @@ import {
 } from "./activeIssue.workflow.js";
 import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
 
-const ALTERNATIVE_EVALUATION_STAGES = new Set([
-  ISSUE_STAGES.ALTERNATIVE_EVALUATION,
-  ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
-]);
+const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus"
 
 const WEIGHTS_OPTIONAL_STAGES = new Set([
   ISSUE_STAGES.CRITERIA_WEIGHTING,
@@ -30,7 +27,6 @@ const WEIGHTS_OPTIONAL_STAGES = new Set([
 
 const WEIGHTS_REQUIRED_STAGES = new Set([
   ISSUE_STAGES.ALTERNATIVE_EVALUATION,
-  ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
   ISSUE_STAGES.FINISHED,
 ]);
 
@@ -178,6 +174,12 @@ export const buildActiveIssueView = ({
 
   const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
   const stage = issue.currentStage;
+  const uiStage = 
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
+    issue.isConsensus && issue.consensusPhase > 1
+      ? ALTERNATIVE_CONSENSUS_UI_STAGE
+      : stage;
+
   const stageMeta = ACTIVE_STAGE_META[stage];
 
   if (!stageMeta) {
@@ -200,7 +202,7 @@ export const buildActiveIssueView = ({
     !isAdminUser &&
     !hasPending &&
     ((stage === ISSUE_STAGES.WEIGHTS_FINISHED && allWeightsDone) ||
-      (ALTERNATIVE_EVALUATION_STAGES.has(stage) && allEvalsDone));
+      (stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION && allEvalsDone));
 
   const canComputeWeights =
     stage === ISSUE_STAGES.WEIGHTS_FINISHED &&
@@ -210,7 +212,7 @@ export const buildActiveIssueView = ({
     allWeightsDone;
 
   const canResolveIssue =
-    ALTERNATIVE_EVALUATION_STAGES.has(stage) &&
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
     isAdminUser &&
     !hasPending &&
     totalAccepted > 0 &&
@@ -226,7 +228,7 @@ export const buildActiveIssueView = ({
     );
 
   const canEvaluateAlternatives =
-    ALTERNATIVE_EVALUATION_STAGES.has(stage) &&
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
     isExpertAccepted &&
     acceptedParticipations.some(
       (participation) =>
@@ -397,7 +399,7 @@ export const buildActiveIssueView = ({
       actions,
       nextAction,
       ui: {
-        stage,
+        stage: uiStage,
         stageLabel: stageMeta.label,
         stageColorKey: stageMeta.colorKey,
         statusKey,
