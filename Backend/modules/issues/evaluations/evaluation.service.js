@@ -13,6 +13,7 @@ import {
 } from "./evaluation.constants.js";
 import { getIssueEvaluationStructureForStageOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
+import { sameId } from "../../../utils/common/ids.js";
 
 const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set(Object.values(ISSUE_STAGES));
 
@@ -116,7 +117,7 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
   const structure = getIssueEvaluationStructureForStageOrThrow({ issue, stage });
 
-  if (String(issue?.admin || "") !== String(userId || "")) {
+  if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Only issue admin can compute evaluation stages", {
       field: "userId",
     });
@@ -126,7 +127,7 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
 
   if (
     stage === EVALUATION_STAGES.CRITERIA_WEIGHTING &&
-    issue.currentStage !== "weightsFinished"
+    issue.currentStage !== ISSUE_STAGES.WEIGHTS_FINISHED
   ) {
     throw createBadRequestError(
       `Issue is not currently ready to compute '${stage}'`,
@@ -263,8 +264,8 @@ const maybeAdvanceIssueStageAfterSubmit = async ({ issue, stage }) => {
     (participation) => participation?.weightsCompleted === true
   );
 
-  if (allWeightsCompleted && issue.currentStage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    issue.currentStage !== ISSUE_STAGES.WEIGHTS_FINISHED
+  if (allWeightsCompleted && issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING) {
+    issue.currentStage = ISSUE_STAGES.WEIGHTS_FINISHED;
     await issue.save();
   }
 };

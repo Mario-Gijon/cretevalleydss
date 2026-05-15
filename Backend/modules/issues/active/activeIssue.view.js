@@ -5,6 +5,7 @@ import { createInternalError } from "../../../utils/common/errors.js";
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
+  ACTIVE_STATUS_KEYS,
   ACTIVE_STATUS_META,
 } from "./activeIssue.meta.js";
 import {
@@ -292,7 +293,8 @@ export const buildActiveIssueView = ({
   }));
 
   const isWeightEvaluationStage =
-    stage === ISSUE_STAGES.CRITERIA_WEIGHTING || stage === ISSUE_STAGES.WEIGHTS_FINISHED;
+    stage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
+    stage === ISSUE_STAGES.WEIGHTS_FINISHED;
 
   let completedParticipations;
   let pendingEvaluationParticipations;
@@ -414,7 +416,7 @@ export const buildActiveIssueView = ({
           computeWeights: canComputeWeights,
           resolveIssue: canResolveIssue,
           waitingAdmin,
-          waitingExperts: statusKey === ACTIVE_STATUS_META.waitingExperts.key,
+          waitingExperts: statusKey === ACTIVE_STATUS_KEYS.WAITING_EXPERTS,
         },
         modelParameters: issue.modelParameters,
       },

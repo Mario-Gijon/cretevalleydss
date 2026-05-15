@@ -5,6 +5,7 @@ export {
   EVALUATION_STAGE_VALUES,
   EVALUATION_STRUCTURE_KEYS,
   EVALUATION_STRUCTURE_KEY_VALUES,
+  ISSUE_STAGES,
 } from "./evaluation.constants.js";
 
 export {

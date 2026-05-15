@@ -1,4 +1,7 @@
-import { EVALUATION_STAGES } from "./evaluation.constants.js";
+import {
+  EVALUATION_STAGES,
+  ISSUE_STAGES,
+} from "./evaluation.constants.js";
 import {
   createBadRequestError,
   createInternalError,
@@ -124,8 +127,8 @@ export const resolveEvaluationComputeLifecycle = ({
       ...safeComputeResult,
       issueUpdates,
       nextCurrentStage: shouldFinalize
-        ? "finished"
-        : EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
+        ? ISSUE_STAGES.FINISHED
+        : ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
       computedPayload: {
         ...baseComputedPayload,
         consensusLifecycle: lifecycleMetadata,
