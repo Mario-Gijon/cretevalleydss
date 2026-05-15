@@ -96,7 +96,6 @@ const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, 
  * @param {Array<Object>} params.issueParticipations Participaciones del issue.
  * @param {Array<Object>} params.issueAlternativeDocs Alternativas del issue.
  * @param {Array<Object>} params.issueCriteriaDocs Criterios del issue.
- * @param {number} params.savedPhasesCount Número de fases de consenso ya guardadas.
  * @param {Array<Object>} [params.consensusHistoryRounds] Historial de consenso desde colección Consensus.
  * @param {Object} params.dayjsLib Instancia de dayjs.
  * @returns {Object}
@@ -108,7 +107,6 @@ export const buildActiveIssueView = ({
   issueParticipations,
   issueAlternativeDocs,
   issueCriteriaDocs,
-  savedPhasesCount,
   consensusHistoryRounds,
   dayjsLib,
 }) => {
@@ -175,7 +173,7 @@ export const buildActiveIssueView = ({
 
   decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 
-  const consensusCurrentPhase = savedPhasesCount + 1;
+  const consensusCurrentPhase = issue.currentStage;
 
   const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
   const stage = issue.currentStage;
@@ -416,7 +414,7 @@ export const buildActiveIssueView = ({
           computeWeights: canComputeWeights,
           resolveIssue: canResolveIssue,
           waitingAdmin,
-          waitingExperts: statusKey === "waitingExperts",
+          waitingExperts: statusKey === ACTIVE_STATUS_META.waitingExperts.key,
         },
         modelParameters: issue.modelParameters,
       },

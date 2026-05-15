@@ -71,12 +71,11 @@ export const ACTIVE_ACTION_META = {
 /**
  * Acciones que aparecen en el task center.
  */
-export const ACTIVE_TASK_ACTION_KEYS = [
-  "resolveIssue",
-  "computeWeights",
-  "evaluateWeights",
-  "evaluateAlternatives",
-];
+export const ACTIVE_TASK_ACTION_KEYS = Object.freeze(
+  Object.values(ACTIVE_ACTION_META)
+    .sort((a, b) => a.sortPriority - b.sortPriority)
+    .map((action) => action.key)
+);
 
 export const ACTIVE_STATUS_KEYS = Object.freeze({
   WAITING_ADMIN: "waitingAdmin",

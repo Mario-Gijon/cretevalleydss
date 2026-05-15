@@ -261,7 +261,6 @@ export const getAllActiveIssues = async (req, res) => {
     participationMap,
     alternativesMap,
     criteriaMap,
-    consensusPhaseCountMap,
     consensusHistoryByIssue,
   } = buildActiveIssueCollections({
     participations: allParticipations,
@@ -282,7 +281,6 @@ export const getAllActiveIssues = async (req, res) => {
       issueParticipations: participationMap[issueId] || [],
       issueAlternativeDocs: alternativesMap[issueId] || [],
       issueCriteriaDocs: criteriaMap[issueId] || [],
-      savedPhasesCount: consensusPhaseCountMap[issueId] || 0,
       consensusHistoryRounds: consensusHistoryByIssue[issueId] || [],
       dayjsLib: dayjs,
     });
