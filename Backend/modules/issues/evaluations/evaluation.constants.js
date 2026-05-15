@@ -1,8 +1,17 @@
-export const EVALUATION_STAGES = Object.freeze({
+export const ISSUE_STAGES = Object.freeze({
   CRITERIA_WEIGHTING: "criteriaWeighting",
+  WEIGHTS_FINISHED: "weightsFinished",
   ALTERNATIVE_EVALUATION: "alternativeEvaluation",
-  ALTERNATIVE_CONSENSUS: "alternativeConsensus"
+  ALTERNATIVE_CONSENSUS: "alternativeConsensus",
+  FINISHED: "finished",
 });
+
+export const EVALUATION_STAGES = Object.freeze({
+  CRITERIA_WEIGHTING: ISSUE_STAGES.CRITERIA_WEIGHTING,
+  ALTERNATIVE_EVALUATION: ISSUE_STAGES.ALTERNATIVE_EVALUATION,
+  ALTERNATIVE_CONSENSUS: ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
+});
+
 
 export const EVALUATION_STRUCTURE_KEYS = Object.freeze({
   ALTERNATIVE_CRITERIA_MATRIX: "alternativeCriteriaMatrix",
@@ -31,3 +40,4 @@ export const EVALUATION_STRUCTURE_KEY_VALUES = Object.freeze(
 export const CRITERIA_WEIGHTING_AGGREGATION_MODE_VALUES = Object.freeze(
   Object.values(CRITERIA_WEIGHTING_AGGREGATION_MODES)
 );
+

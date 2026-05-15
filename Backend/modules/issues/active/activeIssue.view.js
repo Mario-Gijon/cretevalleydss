@@ -5,7 +5,6 @@ import { createInternalError } from "../../../utils/common/errors.js";
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
-  ACTIVE_TASK_ACTION_KEYS,
 } from "./activeIssue.meta.js";
 import {
   buildIssueCriteriaTree,
@@ -15,24 +14,23 @@ import {
   buildDeadlineInfo,
   buildActiveWorkflowSteps,
 } from "./activeIssue.workflow.js";
+import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
 
 const ALTERNATIVE_EVALUATION_STAGES = new Set([
-  EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
+  ISSUE_STAGES.ALTERNATIVE_EVALUATION,
+  ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
 ]);
 
 const WEIGHTS_OPTIONAL_STAGES = new Set([
-  EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  "weightsFinished",
+  ISSUE_STAGES.CRITERIA_WEIGHTING,
+  ISSUE_STAGES.WEIGHTS_FINISHED,
 ]);
 
 const WEIGHTS_REQUIRED_STAGES = new Set([
-  EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
-  "finished",
+  ISSUE_STAGES.ALTERNATIVE_EVALUATION,
+  ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
+  ISSUE_STAGES.FINISHED,
 ]);
-import { EVALUATION_STAGES } from "../evaluations/evaluation.constants.js";
-
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
   const stage = issue.currentStage;

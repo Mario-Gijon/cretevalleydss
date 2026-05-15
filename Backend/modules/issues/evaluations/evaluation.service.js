@@ -42,7 +42,7 @@ const issueAcceptsEvaluationStage = ({ issue, stage }) => {
 
   return (
     stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    issue.currentStage === EVALUATION_STAGES.ALTERNATIVE_CONSENSUS_STAGE
+    issue.currentStage === EVALUATION_STAGES.ALTERNATIVE_CONSENSUS
   );
 };
 

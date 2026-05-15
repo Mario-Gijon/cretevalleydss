@@ -288,10 +288,6 @@ export const getAllActiveIssues = async (req, res) => {
     });
 
     for (const taskItem of taskItems) {
-      if (!tasksByType[taskItem.actionKey]) {
-        tasksByType[taskItem.actionKey] = [];
-      }
-
       tasksByType[taskItem.actionKey].push(taskItem);
     }
 
