@@ -66,13 +66,6 @@ export const ACTIVE_ACTION_META = {
     severity: "info",
     sortPriority: 40,
   },
-  waitingAdmin: {
-    key: "waitingAdmin",
-    label: "Waiting admin",
-    role: "expert",
-    severity: "success",
-    sortPriority: 60,
-  },
 };
 
 /**
@@ -84,3 +77,21 @@ export const ACTIVE_TASK_ACTION_KEYS = [
   "evaluateWeights",
   "evaluateAlternatives",
 ];
+
+export const ACTIVE_STATUS_KEYS = Object.freeze({
+  WAITING_ADMIN: "waitingAdmin",
+  WAITING_EXPERTS: "waitingExperts",
+});
+
+export const ACTIVE_STATUS_META = {
+  [ACTIVE_STATUS_KEYS.WAITING_ADMIN]: {
+    key: ACTIVE_STATUS_KEYS.WAITING_ADMIN,
+    label: "Waiting for admin",
+    severity: "success",
+  },
+  [ACTIVE_STATUS_KEYS.WAITING_EXPERTS]: {
+    key: ACTIVE_STATUS_KEYS.WAITING_EXPERTS,
+    label: "Waiting experts",
+    severity: "info",
+  },
+};

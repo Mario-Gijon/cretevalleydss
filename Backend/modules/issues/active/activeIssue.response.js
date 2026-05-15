@@ -1,6 +1,7 @@
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
+  ACTIVE_STATUS_META,
   ACTIVE_TASK_ACTION_KEYS,
 } from "./activeIssue.meta.js";
 
@@ -50,7 +51,10 @@ const buildStageOptions = () => [
  */
 const buildActionOptions = () => [
   { value: "all", label: "All actions" },
-  { value: "waitingExperts", label: "Waiting experts" },
+  ...Object.values(ACTIVE_STATUS_META).map((status) => ({
+    value: status.key,
+    label: status.label,
+  })),
   ...Object.values(ACTIVE_ACTION_META)
     .sort((a, b) => a.sortPriority - b.sortPriority)
     .map((action) => ({

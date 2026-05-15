@@ -5,6 +5,7 @@ import { createInternalError } from "../../../utils/common/errors.js";
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
+  ACTIVE_STATUS_META,
 } from "./activeIssue.meta.js";
 import {
   buildIssueCriteriaTree,
@@ -269,14 +270,14 @@ export const buildActiveIssueView = ({
 
   if (stage !== ISSUE_STAGES.FINISHED) {
     if (waitingAdmin) {
-      statusLabel = "Waiting for admin";
-      statusKey = "waitingAdmin";
+      statusLabel = ACTIVE_STATUS_META.waitingAdmin.label;
+      statusKey = ACTIVE_STATUS_META.waitingAdmin.key;
     } else if (nextAction) {
       statusLabel = nextAction.label;
       statusKey = nextAction.key;
     } else {
-      statusLabel = "Waiting experts";
-      statusKey = "waitingExperts";
+      statusLabel = ACTIVE_STATUS_META.waitingExperts.label;
+      statusKey = ACTIVE_STATUS_META.waitingExperts.key;
     }
   }
 
