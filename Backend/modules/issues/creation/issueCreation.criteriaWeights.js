@@ -1,6 +1,6 @@
 import {
   EVALUATION_STAGES,
-  getEvaluationStructureForStageOrThrow,
+  getEvaluationStructureOrThrow,
 } from "../evaluations/index.js";
 import {
   createBadRequestError,
@@ -564,10 +564,19 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     );
   }
 
-  getEvaluationStructureForStageOrThrow({
-    structureKey: resolvedConfig.structureKey,
-    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  });
+  const criteriaWeightingStructure = getEvaluationStructureOrThrow(
+    resolvedConfig.structureKey
+  );
+
+  if (criteriaWeightingStructure.stage !== EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+    throw createBadRequestError(
+      `Evaluation structure '${criteriaWeightingStructure.key}' does not support stage '${EVALUATION_STAGES.CRITERIA_WEIGHTING}'`,
+      {
+        code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
+        field: "criteriaWeightingConfig.mode",
+      }
+    );
+  }
 
   if (resolvedConfig.mode === "creatorFuzzy") {
     const fuzzyValueCount = resolveFuzzyValueCount(model);

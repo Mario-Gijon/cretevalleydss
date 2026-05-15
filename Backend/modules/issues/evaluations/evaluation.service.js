@@ -11,7 +11,7 @@ import {
   EVALUATION_STAGES,
   ISSUE_STAGES
 } from "./evaluation.constants.js";
-import { getIssueEvaluationStructureForStageOrThrow } from "./evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
 import { sameId } from "../../../utils/common/ids.js";
 
@@ -94,7 +94,7 @@ const getAcceptedParticipationOrThrow = async ({ issueId, userId }) => {
 
 const loadEvaluationContextOrThrow = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
-  const structure = getIssueEvaluationStructureForStageOrThrow({ issue, stage });
+  const structure = getIssueEvaluationStructureOrThrow({ issue, stage });
 
   assertIssueAcceptsStageOrThrow({ issue, stage });
 
@@ -115,7 +115,7 @@ const loadEvaluationContextOrThrow = async ({ issueId, userId, stage }) => {
 
 const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
-  const structure = getIssueEvaluationStructureForStageOrThrow({ issue, stage });
+  const structure = getIssueEvaluationStructureOrThrow({ issue, stage });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Only issue admin can compute evaluation stages", {
@@ -684,4 +684,38 @@ export const computeIssueEvaluationStage = async ({
       rawOutput: lifecycleComputeResult.rawOutput,
     },
   };
+};
+
+const getIssueEvaluationStructureOrThrow = ({ issue, stage }) => {
+  let structureKey;
+
+  if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+    structureKey = issue.criteriaWeightingStructureKey;
+  } else if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    structureKey = issue.alternativeEvaluationStructureKey;
+  } else {
+    throw createBadRequestError(`Unsupported evaluation stage: ${stage}`, {
+      code: "UNSUPPORTED_EVALUATION_STAGE",
+      field: "stage",
+    });
+  }
+
+  const structure = getEvaluationStructureOrThrow(structureKey);
+
+  if (structure.stage !== stage) {
+    throw createBadRequestError(
+      `Evaluation structure '${structure.key}' does not support stage '${stage}'`,
+      {
+        code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
+        field: "stage",
+        details: {
+          structureKey: structure.key,
+          expectedStage: structure.stage,
+          receivedStage: stage,
+        },
+      }
+    );
+  }
+
+  return structure;
 };

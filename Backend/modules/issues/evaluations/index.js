@@ -10,10 +10,7 @@ export {
 
 export {
   EVALUATION_STRUCTURE_REGISTRY,
-  getEvaluationStructureForStageOrThrow,
   getEvaluationStructureOrThrow,
-  getIssueEvaluationStructureForStageOrThrow,
-  getIssueStructureKeyForStageOrThrow,
 } from "./evaluation.registry.js";
 
 export {

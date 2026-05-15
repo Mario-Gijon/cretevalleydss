@@ -14,7 +14,7 @@ import {
 import { compareNameId } from "../issue.ordering.js";
 import {
   EVALUATION_STAGES,
-  getEvaluationStructureForStageOrThrow,
+  getEvaluationStructureOrThrow,
 } from "../evaluations/index.js";
 import {
   resolveIssueConsensusConfigOrThrow,
@@ -79,10 +79,19 @@ export const createIssueFlow = async ({
     session,
   });
 
-  getEvaluationStructureForStageOrThrow({
-    structureKey: alternativeEvaluationStructureKey,
-    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  });
+  const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
+    alternativeEvaluationStructureKey
+  );
+
+  if (alternativeEvaluationStructure.stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    throw createBadRequestError(
+      `Evaluation structure '${alternativeEvaluationStructure.key}' does not support stage '${EVALUATION_STAGES.ALTERNATIVE_EVALUATION}'`,
+      {
+        code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
+        field: "alternativeEvaluationStructureKey",
+      }
+    );
+  }
 
   const {
     isConsensus,
