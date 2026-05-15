@@ -1,4 +1,4 @@
-         
+
 import { Alternative } from "../models/Alternatives.js";
 import { Consensus } from "../models/Consensus.js";
 import { Criterion } from "../models/Criteria.js";
@@ -7,7 +7,7 @@ import { IssueModel } from "../models/IssueModels.js";
 import { Participation } from "../models/Participations.js";
 import { User } from "../models/Users.js";
 
-        
+
 import {
   getUserFinishedIssueIds,
   getVisibleActiveIssueIdsForUser,
@@ -26,7 +26,7 @@ import {
   submitIssueEvaluation,
 } from "../modules/issues/evaluations/index.js";
 
-          
+
 import {
   buildActiveIssueCollections,
   buildActiveIssueView,
@@ -63,7 +63,7 @@ import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finished
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import { createIssueFlow } from "../modules/issues/creation/index.js";
 
-                     
+
 import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
@@ -234,14 +234,11 @@ export const getAllActiveIssues = async (req, res) => {
   );
 
   if (issueIds.length === 0) {
-    const emptyPayload = buildEmptyActiveIssuesPayload();
-
-    return sendSuccess(res, "Active issues fetched successfully", {
-      issues: emptyPayload.issues,
-      tasks: emptyPayload.tasks,
-      taskCenter: emptyPayload.taskCenter,
-      filtersMeta: emptyPayload.filtersMeta,
-    });
+    return sendSuccess(
+      res,
+      "Active issues fetched successfully",
+      buildEmptyActiveIssuesPayload()
+    );
   }
 
   const adminIssueIdSet = new Set(adminIssueIds);

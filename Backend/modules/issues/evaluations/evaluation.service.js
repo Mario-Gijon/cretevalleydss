@@ -17,7 +17,7 @@ const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set([
   EVALUATION_STAGES.CRITERIA_WEIGHTING,
   "weightsFinished",
   EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS_STAGE,
+  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
   "finished",
 ]);
 
@@ -130,8 +130,8 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
   const phase = resolveCurrentConsensusPhaseOrThrow(issue);
 
   if (
-    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    !issueAcceptsEvaluationStage({ issue, stage })
+    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING &&
+    issue.currentStage !== "weightsFinished"
   ) {
     throw createBadRequestError(
       `Issue is not currently ready to compute '${stage}'`,
@@ -148,7 +148,7 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
 
   if (
     stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    issue.currentStage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION
+    !issueAcceptsEvaluationStage({ issue, stage })
   ) {
     throw createBadRequestError(
       `Issue is not currently ready to compute '${stage}'`,

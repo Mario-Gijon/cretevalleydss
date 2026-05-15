@@ -17,15 +17,21 @@ import {
 } from "./activeIssue.workflow.js";
 
 const ALTERNATIVE_EVALUATION_STAGES = new Set([
-  "alternativeEvaluation",
-  "alternativeConsensus",
+  EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
 ]);
-const WEIGHTS_OPTIONAL_STAGES = new Set(["criteriaWeighting", "weightsFinished"]);
+
+const WEIGHTS_OPTIONAL_STAGES = new Set([
+  EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  "weightsFinished",
+]);
+
 const WEIGHTS_REQUIRED_STAGES = new Set([
-  "alternativeEvaluation",
-  "alternativeConsensus",
+  EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  EVALUATION_STAGES.ALTERNATIVE_CONSENSUS,
   "finished",
 ]);
+import { EVALUATION_STAGES } from "../evaluations/evaluation.constants.js";
 
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
@@ -320,15 +326,6 @@ export const buildActiveIssueView = ({
     role = "admin";
   } else if (isExpertAccepted) {
     role = "expert";
-  }
-
-  if (!issue.criteriaWeightingStructureKey) {
-    throw createInternalError("Issue is missing criteria weighting structure", {
-      field: "criteriaWeightingStructureKey",
-      details: {
-        issueId,
-      },
-    });
   }
 
   const workflowSteps = buildActiveWorkflowSteps({

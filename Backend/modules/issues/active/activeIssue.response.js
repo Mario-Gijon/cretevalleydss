@@ -28,7 +28,6 @@ export const getEmptyTasksByType = () => ({
   computeWeights: [],
   evaluateWeights: [],
   evaluateAlternatives: [],
-  waitingAdmin: [],
 });
 
 /**
@@ -217,7 +216,6 @@ export const buildActiveIssuesResponseMeta = ({
  * @returns {Object}
  */
 export const buildEmptyActiveIssuesPayload = () => ({
-  success: true,
   issues: [],
   tasks: {
     total: 0,
