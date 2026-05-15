@@ -126,9 +126,7 @@ export const resolveEvaluationComputeLifecycle = ({
     computeResult: {
       ...safeComputeResult,
       issueUpdates,
-      nextCurrentStage: shouldFinalize
-        ? ISSUE_STAGES.FINISHED
-        : ISSUE_STAGES.ALTERNATIVE_CONSENSUS,
+      nextCurrentStage: shouldFinalize ? ISSUE_STAGES.FINISHED : null,
       computedPayload: {
         ...baseComputedPayload,
         consensusLifecycle: lifecycleMetadata,

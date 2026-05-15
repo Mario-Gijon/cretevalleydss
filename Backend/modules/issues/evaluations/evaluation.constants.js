@@ -2,7 +2,6 @@ export const ISSUE_STAGES = Object.freeze({
   CRITERIA_WEIGHTING: "criteriaWeighting",
   WEIGHTS_FINISHED: "weightsFinished",
   ALTERNATIVE_EVALUATION: "alternativeEvaluation",
-  ALTERNATIVE_CONSENSUS: "alternativeConsensus",
   FINISHED: "finished",
 });
 

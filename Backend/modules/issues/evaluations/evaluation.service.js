@@ -5,75 +5,27 @@ import { getIssueByIdOrThrow } from "../issue.queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
-  createInternalError,
 } from "../../../utils/common/errors.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
 import {
   EVALUATION_STAGES,
-  ISSUE_STAGES
+  ISSUE_STAGES,
 } from "./evaluation.constants.js";
 import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
-import { sameId } from "../../../utils/common/ids.js";
 
-const SUPPORTED_ISSUE_WORKFLOW_STAGES = new Set(Object.values(ISSUE_STAGES));
+const getStructureForIssueStage = ({ issue, stage }) => {
+  const structureKeyByStage = {
+    [EVALUATION_STAGES.CRITERIA_WEIGHTING]:
+      issue.criteriaWeightingStructureKey,
+    [EVALUATION_STAGES.ALTERNATIVE_EVALUATION]:
+      issue.alternativeEvaluationStructureKey,
+  };
 
-const assertIssueAcceptsStageOrThrow = ({ issue, stage }) => {
-  if (!issueAcceptsEvaluationStage({ issue, stage })) {
-    throw createBadRequestError(
-      `Issue is not currently accepting '${stage}' evaluations`,
-      {
-        code: "ISSUE_STAGE_NOT_ACCEPTING_EVALUATIONS",
-        field: "stage",
-        details: {
-          currentStage: issue.currentStage,
-          requestedStage: stage,
-        },
-      }
-    );
-  }
+  return getEvaluationStructureOrThrow(structureKeyByStage[stage]);
 };
 
-const issueAcceptsEvaluationStage = ({ issue, stage }) => {
-  if (issue.currentStage === stage) return true;
-
-  return (
-    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    issue.currentStage === ISSUE_STAGES.ALTERNATIVE_CONSENSUS
-  );
-};
-
-const resolveCurrentConsensusPhaseOrThrow = (issue) => {
-  const phase = issue?.consensusPhase;
-
-  if (!Number.isInteger(phase) || phase < 1) {
-    throw createInternalError("Issue consensusPhase is invalid", {
-      field: "consensusPhase",
-      details: {
-        issueId: issue?._id ?? null,
-        consensusPhase: phase ?? null,
-      },
-    });
-  }
-
-  return phase;
-};
-
-const getAcceptedParticipationOrThrow = async ({ issueId, userId }) => {
-  const acceptedCount = await Participation.countDocuments({
-    issue: issueId,
-    invitationStatus: "accepted",
-  });
-
-  if (acceptedCount === 0) {
-    throw createBadRequestError(
-      "Issue has no accepted participations for expert evaluations",
-      {
-        code: "NO_ACCEPTED_PARTICIPATIONS",
-        field: "issueId",
-      }
-    );
-  }
-
+const requireAcceptedParticipation = async ({ issueId, userId }) => {
   const participation = await Participation.findOne({
     issue: issueId,
     expert: userId,
@@ -88,34 +40,38 @@ const getAcceptedParticipationOrThrow = async ({ issueId, userId }) => {
       }
     );
   }
-
-  return participation;
 };
 
-const loadEvaluationContextOrThrow = async ({ issueId, userId, stage }) => {
+const loadEvaluationContext = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
-  const structure = getIssueEvaluationStructureOrThrow({ issue, stage });
 
-  assertIssueAcceptsStageOrThrow({ issue, stage });
+  if (issue.currentStage !== stage) {
+    throw createBadRequestError(
+      `Issue is not currently accepting '${stage}' evaluations`,
+      {
+        code: "ISSUE_STAGE_NOT_ACCEPTING_EVALUATIONS",
+        field: "stage",
+        details: {
+          currentStage: issue.currentStage,
+          requestedStage: stage,
+        },
+      }
+    );
+  }
 
-  const participation = await getAcceptedParticipationOrThrow({
+  await requireAcceptedParticipation({
     issueId: issue._id,
     userId,
   });
 
-  const phase = resolveCurrentConsensusPhaseOrThrow(issue);
-
   return {
     issue,
-    structure,
-    participation,
-    phase,
+    structure: getStructureForIssueStage({ issue, stage }),
   };
 };
 
-const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
+const loadComputeContext = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
-  const structure = getIssueEvaluationStructureOrThrow({ issue, stage });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Only issue admin can compute evaluation stages", {
@@ -123,29 +79,12 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
     });
   }
 
-  const phase = resolveCurrentConsensusPhaseOrThrow(issue);
+  const expectedCurrentStage =
+    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
+      ? ISSUE_STAGES.WEIGHTS_FINISHED
+      : stage;
 
-  if (
-    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING &&
-    issue.currentStage !== ISSUE_STAGES.WEIGHTS_FINISHED
-  ) {
-    throw createBadRequestError(
-      `Issue is not currently ready to compute '${stage}'`,
-      {
-        code: "ISSUE_STAGE_NOT_READY_TO_COMPUTE",
-        field: "stage",
-        details: {
-          currentStage: issue.currentStage,
-          requestedStage: stage,
-        },
-      }
-    );
-  }
-
-  if (
-    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
-    !issueAcceptsEvaluationStage({ issue, stage })
-  ) {
+  if (issue.currentStage !== expectedCurrentStage) {
     throw createBadRequestError(
       `Issue is not currently ready to compute '${stage}'`,
       {
@@ -161,17 +100,21 @@ const loadComputeContextOrThrow = async ({ issueId, userId, stage }) => {
 
   return {
     issue,
-    structure,
-    phase,
+    structure: getStructureForIssueStage({ issue, stage }),
   };
 };
 
-const findStoredEvaluation = async ({ issueId, userId, stage, phase }) => {
+const findStoredEvaluation = async ({
+  issueId,
+  userId,
+  stage,
+  consensusPhase,
+}) => {
   return IssueEvaluation.findOne({
     issue: issueId,
     expert: userId,
     stage,
-    consensusPhase: phase,
+    consensusPhase,
   });
 };
 
@@ -179,7 +122,7 @@ const upsertIssueEvaluation = async ({
   issueId,
   userId,
   stage,
-  phase,
+  consensusPhase,
   payload,
   completed,
   submittedAt,
@@ -189,7 +132,7 @@ const upsertIssueEvaluation = async ({
       issue: issueId,
       expert: userId,
       stage,
-      consensusPhase: phase,
+      consensusPhase,
     },
     {
       $set: {
@@ -206,8 +149,8 @@ const upsertIssueEvaluation = async ({
   );
 };
 
-const updateParticipationCompletion = async ({ issueId, userId, stage }) => {
-  const update =
+const markParticipationCompleted = async ({ issueId, userId, stage }) => {
+  const completionUpdate =
     stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
       ? { weightsCompleted: true }
       : { evaluationCompleted: true };
@@ -219,7 +162,7 @@ const updateParticipationCompletion = async ({ issueId, userId, stage }) => {
       invitationStatus: "accepted",
     },
     {
-      $set: update,
+      $set: completionUpdate,
     },
     {
       new: true,
@@ -234,11 +177,9 @@ const updateParticipationCompletion = async ({ issueId, userId, stage }) => {
       }
     );
   }
-
-  return updatedParticipation;
 };
 
-const maybeAdvanceIssueStageAfterSubmit = async ({ issue, stage }) => {
+const advanceToWeightsFinishedAfterSubmit = async ({ issue, stage }) => {
   if (stage !== EVALUATION_STAGES.CRITERIA_WEIGHTING) {
     return;
   }
@@ -250,27 +191,20 @@ const maybeAdvanceIssueStageAfterSubmit = async ({ issue, stage }) => {
     .select("weightsCompleted")
     .lean();
 
-  if (acceptedParticipations.length === 0) {
-    throw createBadRequestError(
-      "Issue has no accepted participations for expert evaluations",
-      {
-        code: "NO_ACCEPTED_PARTICIPATIONS",
-        field: "issueId",
-      }
-    );
-  }
-
   const allWeightsCompleted = acceptedParticipations.every(
-    (participation) => participation?.weightsCompleted === true
+    (participation) => participation.weightsCompleted === true
   );
 
-  if (allWeightsCompleted && issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING) {
+  if (
+    allWeightsCompleted &&
+    issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING
+  ) {
     issue.currentStage = ISSUE_STAGES.WEIGHTS_FINISHED;
     await issue.save();
   }
 };
 
-const loadAcceptedParticipationsForComputeOrThrow = async ({ issueId, stage }) => {
+const loadParticipationsForCompute = async ({ issueId, stage }) => {
   const participations = await Participation.find({
     issue: issueId,
     invitationStatus: "accepted",
@@ -288,10 +222,10 @@ const loadAcceptedParticipationsForComputeOrThrow = async ({ issueId, stage }) =
 
   const pendingParticipations = participations.filter((participation) => {
     if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-      return participation?.weightsCompleted !== true;
+      return participation.weightsCompleted !== true;
     }
 
-    return participation?.evaluationCompleted !== true;
+    return participation.evaluationCompleted !== true;
   });
 
   if (pendingParticipations.length > 0) {
@@ -303,7 +237,7 @@ const loadAcceptedParticipationsForComputeOrThrow = async ({ issueId, stage }) =
         details: {
           stage,
           pendingExpertIds: pendingParticipations.map((participation) =>
-            String(participation.expert)
+            toIdString(participation.expert)
           ),
         },
       }
@@ -313,24 +247,27 @@ const loadAcceptedParticipationsForComputeOrThrow = async ({ issueId, stage }) =
   return participations;
 };
 
-const loadCompletedEvaluationsForComputeOrThrow = async ({
+const loadEvaluationsForCompute = async ({
   issueId,
   stage,
-  phase,
+  consensusPhase,
   participations,
 }) => {
   const evaluations = await IssueEvaluation.find({
     issue: issueId,
     stage,
-    consensusPhase: phase,
+    consensusPhase,
     completed: true,
   }).populate("expert", "name email");
 
   const expectedExperts = new Set(
-    participations.map((participation) => String(participation.expert))
+    participations.map((participation) => toIdString(participation.expert))
   );
+
   const completedExperts = new Set(
-    evaluations.map((evaluation) => String(evaluation.expert?._id || evaluation.expert))
+    evaluations.map((evaluation) =>
+      toIdString(evaluation.expert._id || evaluation.expert)
+    )
   );
 
   const missingExperts = [...expectedExperts].filter(
@@ -353,90 +290,65 @@ const loadCompletedEvaluationsForComputeOrThrow = async ({
   return evaluations;
 };
 
-const resetAlternativeEvaluationCompletionForAcceptedParticipationsOrThrow =
-  async ({ issueId }) => {
-    const acceptedCount = await Participation.countDocuments({
+const resetAlternativeRoundCompletion = async (issueId) => {
+  await Participation.updateMany(
+    {
       issue: issueId,
       invitationStatus: "accepted",
-    });
-
-    if (acceptedCount === 0) {
-      throw createBadRequestError(
-        "Issue has no accepted participations for expert evaluations",
-        {
-          code: "NO_ACCEPTED_PARTICIPATIONS",
-          field: "issueId",
-        }
-      );
-    }
-
-    await Participation.updateMany(
-      {
-        issue: issueId,
-        invitationStatus: "accepted",
+    },
+    {
+      $set: {
+        evaluationCompleted: false,
       },
-      {
-        $set: {
-          evaluationCompleted: false,
-        },
-      }
-    );
-  };
-
-const normalizeComputeResult = (computeResult = {}) => {
-  return {
-    consensusMeasure: computeResult?.consensusMeasure ?? null,
-    collectivePayload: computeResult?.collectivePayload ?? {},
-    computedPayload: computeResult?.computedPayload ?? {},
-    modelExecution: computeResult?.modelExecution ?? {},
-    rawOutput: computeResult?.rawOutput ?? {},
-    issueUpdates:
-      computeResult?.issueUpdates &&
-        typeof computeResult.issueUpdates === "object" &&
-        !Array.isArray(computeResult.issueUpdates)
-        ? computeResult.issueUpdates
-        : {},
-    nextCurrentStage: computeResult?.nextCurrentStage ?? null,
-    message: computeResult?.message ?? "Evaluation stage computed successfully",
-  };
+    }
+  );
 };
 
-const applyIssueComputeUpdatesOrThrow = async ({
-  issue,
-  issueUpdates,
-  nextCurrentStage,
-}) => {
-  let changed = false;
-
-  if (issueUpdates && typeof issueUpdates === "object") {
-    Object.entries(issueUpdates).forEach(([key, value]) => {
-      issue[key] = value;
-      changed = true;
-    });
-  }
-
-  if (nextCurrentStage !== null && nextCurrentStage !== undefined) {
-    if (!SUPPORTED_ISSUE_WORKFLOW_STAGES.has(nextCurrentStage)) {
-      throw createBadRequestError(
-        `Unsupported next issue stage: ${nextCurrentStage}`,
-        {
-          code: "UNSUPPORTED_NEXT_ISSUE_STAGE",
-          field: "nextCurrentStage",
-        }
-      );
+const saveStageResult = async ({ issue, stage, computeResult }) => {
+  await IssueStageResult.findOneAndUpdate(
+    {
+      issue: issue._id,
+      stage,
+      consensusPhase: issue.consensusPhase,
+    },
+    {
+      $set: {
+        consensusMeasure: computeResult.consensusMeasure,
+        collectivePayload: computeResult.collectivePayload,
+        computedPayload: computeResult.computedPayload,
+        modelExecution: computeResult.modelExecution,
+        rawOutput: computeResult.rawOutput,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
     }
+  );
+};
 
-    issue.currentStage = nextCurrentStage;
-    changed = true;
+const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
+  const issueUpdateEntries = Object.entries(computeResult.issueUpdates);
+
+  for (const [key, value] of issueUpdateEntries) {
+    issue[key] = value;
   }
 
-  if (changed) {
+  if (computeResult.nextCurrentStage !== null) {
+    issue.currentStage = computeResult.nextCurrentStage;
+  }
+
+  if (
+    issueUpdateEntries.length > 0 ||
+    computeResult.nextCurrentStage !== null
+  ) {
     await issue.save();
   }
 };
 
 export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
-  const { issue, structure, phase } = await loadEvaluationContextOrThrow({
+  const { issue, structure } = await loadEvaluationContext({
     issueId,
     userId,
     stage,
@@ -446,36 +358,21 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     issueId: issue._id,
     userId,
     stage,
-    phase,
+    consensusPhase: issue.consensusPhase,
   });
 
-  let payload;
-
-  if (typeof structure.get === "function") {
-    payload = await structure.get({
-      storedEvaluation,
-      issueId: issue._id,
-      userId,
-      issue,
-      phase,
-    });
-  } else if (storedEvaluation) {
-    payload = storedEvaluation.payload;
-  } else if (typeof structure.init === "function") {
-    payload = await structure.init({
-      issueId: issue._id,
-      userId,
-      issue,
-      phase,
-    });
-  } else {
-    payload = {};
-  }
+  const payload = await structure.get({
+    storedEvaluation,
+    issueId: issue._id,
+    userId,
+    issue,
+    phase: issue.consensusPhase,
+  });
 
   return {
     stage,
     structureKey: structure.key,
-    consensusPhase: phase,
+    consensusPhase: issue.consensusPhase,
     payload,
     completed: storedEvaluation?.completed ?? false,
     submittedAt: storedEvaluation?.submittedAt ?? null,
@@ -488,28 +385,25 @@ export const saveIssueEvaluationDraft = async ({
   stage,
   payload,
 }) => {
-  const { issue, structure, phase } = await loadEvaluationContextOrThrow({
+  const { issue, structure } = await loadEvaluationContext({
     issueId,
     userId,
     stage,
   });
 
-  const normalizedPayload =
-    typeof structure.send === "function"
-      ? await structure.send({
-        payload,
-        issueId: issue._id,
-        userId,
-        issue,
-        phase,
-      })
-      : payload;
+  const normalizedPayload = await structure.send({
+    payload,
+    issueId: issue._id,
+    userId,
+    issue,
+    phase: issue.consensusPhase,
+  });
 
   await upsertIssueEvaluation({
     issueId: issue._id,
     userId,
     stage,
-    phase,
+    consensusPhase: issue.consensusPhase,
     payload: normalizedPayload,
     completed: false,
     submittedAt: null,
@@ -519,7 +413,7 @@ export const saveIssueEvaluationDraft = async ({
     message: "Evaluation draft saved successfully",
     stage,
     structureKey: structure.key,
-    consensusPhase: phase,
+    consensusPhase: issue.consensusPhase,
     completed: false,
   };
 };
@@ -530,46 +424,43 @@ export const submitIssueEvaluation = async ({
   stage,
   payload,
 }) => {
-  const { issue, structure, phase } = await loadEvaluationContextOrThrow({
+  const { issue, structure } = await loadEvaluationContext({
     issueId,
     userId,
     stage,
   });
 
-  const normalizedPayload =
-    typeof structure.submit === "function"
-      ? await structure.submit({
-        payload,
-        issueId: issue._id,
-        userId,
-        issue,
-        phase,
-      })
-      : payload;
+  const normalizedPayload = await structure.submit({
+    payload,
+    issueId: issue._id,
+    userId,
+    issue,
+    phase: issue.consensusPhase,
+  });
 
   await upsertIssueEvaluation({
     issueId: issue._id,
     userId,
     stage,
-    phase,
+    consensusPhase: issue.consensusPhase,
     payload: normalizedPayload,
     completed: true,
     submittedAt: new Date(),
   });
 
-  await updateParticipationCompletion({
+  await markParticipationCompleted({
     issueId: issue._id,
     userId,
     stage,
   });
 
-  await maybeAdvanceIssueStageAfterSubmit({ issue, stage });
+  await advanceToWeightsFinishedAfterSubmit({ issue, stage });
 
   return {
     message: "Evaluation submitted successfully",
     stage,
     structureKey: structure.key,
-    consensusPhase: phase,
+    consensusPhase: issue.consensusPhase,
     completed: true,
     currentStage: issue.currentStage,
   };
@@ -582,51 +473,36 @@ export const computeIssueEvaluationStage = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  const { issue, structure, phase } = await loadComputeContextOrThrow({
+  const { issue, structure } = await loadComputeContext({
     issueId,
     userId,
     stage,
   });
 
-  const participations = await loadAcceptedParticipationsForComputeOrThrow({
+  const participations = await loadParticipationsForCompute({
     issueId: issue._id,
     stage,
   });
 
-  const evaluations = await loadCompletedEvaluationsForComputeOrThrow({
+  const evaluations = await loadEvaluationsForCompute({
     issueId: issue._id,
     stage,
-    phase,
+    consensusPhase: issue.consensusPhase,
     participations,
   });
 
-  if (typeof structure.compute !== "function") {
-    throw createBadRequestError(
-      `Compute is not implemented for evaluation structure '${structure.key}'`,
-      {
-        code: "EVALUATION_STRUCTURE_COMPUTE_NOT_IMPLEMENTED",
-        field: "structureKey",
-        details: {
-          structureKey: structure.key,
-          stage,
-        },
-      }
-    );
-  }
-
-  const rawComputeResult = await structure.compute({
+  const computeResult = await structure.compute({
     issue,
     issueId: issue._id,
     userId,
     stage,
-    phase,
+    phase: issue.consensusPhase,
     evaluations,
     participations,
     apiModelsBaseUrl,
     httpClient,
   });
 
-  const computeResult = normalizeComputeResult(rawComputeResult);
   const {
     computeResult: lifecycleComputeResult,
     resetAlternativeEvaluationCompletion,
@@ -636,38 +512,19 @@ export const computeIssueEvaluationStage = async ({
     computeResult,
   });
 
-  await IssueStageResult.findOneAndUpdate(
-    {
-      issue: issue._id,
-      stage,
-      consensusPhase: phase,
-    },
-    {
-      $set: {
-        consensusMeasure: lifecycleComputeResult.consensusMeasure,
-        collectivePayload: lifecycleComputeResult.collectivePayload,
-        computedPayload: lifecycleComputeResult.computedPayload,
-        modelExecution: lifecycleComputeResult.modelExecution,
-        rawOutput: lifecycleComputeResult.rawOutput,
-      },
-    },
-    {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true,
-    }
-  );
-
-  await applyIssueComputeUpdatesOrThrow({
+  await saveStageResult({
     issue,
-    issueUpdates: lifecycleComputeResult.issueUpdates,
-    nextCurrentStage: lifecycleComputeResult.nextCurrentStage,
+    stage,
+    computeResult: lifecycleComputeResult,
+  });
+
+  await applyComputeIssueUpdates({
+    issue,
+    computeResult: lifecycleComputeResult,
   });
 
   if (resetAlternativeEvaluationCompletion) {
-    await resetAlternativeEvaluationCompletionForAcceptedParticipationsOrThrow({
-      issueId: issue._id,
-    });
+    await resetAlternativeRoundCompletion(issue._id);
   }
 
   return {
@@ -684,38 +541,4 @@ export const computeIssueEvaluationStage = async ({
       rawOutput: lifecycleComputeResult.rawOutput,
     },
   };
-};
-
-const getIssueEvaluationStructureOrThrow = ({ issue, stage }) => {
-  let structureKey;
-
-  if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    structureKey = issue.criteriaWeightingStructureKey;
-  } else if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
-    structureKey = issue.alternativeEvaluationStructureKey;
-  } else {
-    throw createBadRequestError(`Unsupported evaluation stage: ${stage}`, {
-      code: "UNSUPPORTED_EVALUATION_STAGE",
-      field: "stage",
-    });
-  }
-
-  const structure = getEvaluationStructureOrThrow(structureKey);
-
-  if (structure.stage !== stage) {
-    throw createBadRequestError(
-      `Evaluation structure '${structure.key}' does not support stage '${stage}'`,
-      {
-        code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
-        field: "stage",
-        details: {
-          structureKey: structure.key,
-          expectedStage: structure.stage,
-          receivedStage: stage,
-        },
-      }
-    );
-  }
-
-  return structure;
 };

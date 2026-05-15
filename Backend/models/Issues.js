@@ -181,7 +181,6 @@ const issueSchema = new Schema(
         "criteriaWeighting",
         "weightsFinished",
         "alternativeEvaluation",
-        "alternativeConsensus",
         "finished",
       ],
       default: "criteriaWeighting",
