@@ -180,7 +180,7 @@ export const buildActiveIssueView = ({
       ? ALTERNATIVE_CONSENSUS_UI_STAGE
       : stage;
 
-  const stageMeta = ACTIVE_STAGE_META[stage];
+  const stageMeta = ACTIVE_STAGE_META[uiStage];
 
   if (!stageMeta) {
     throw createInternalError("Unsupported active issue stage", {
