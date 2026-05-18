@@ -125,7 +125,10 @@ const mapIssueModelCatalogItem = (model = {}) => {
     apiEndpoint: model.apiEndpoint || null,
     manifestSync: model.manifestSync || null,
     isMultiCriteria: model.isMultiCriteria,
-    evaluationStructure: model.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      model.alternativeEvaluationStructureKey || null,
+    criteriaWeightingStructureKey:
+      model.criteriaWeightingStructureKey || null,
     lifecycleKind: model.lifecycleKind || null,
     apiInputFormat: model.apiInputFormat || null,
     apiOutputFormat: model.apiOutputFormat || null,

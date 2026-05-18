@@ -84,6 +84,8 @@ import AdminReadOnlyAxCMatrix from "./components/AdminReadOnlyAxCMatrix";
 import AdminReadOnlyPairwise from "./components/AdminReadOnlyPairwise";
 import AdminAddExpertsPickerDialog from "./components/AdminAddExpertsPickerDialog";
 import { useAdminIssuesSection } from "./hooks/useAdminIssuesSection";
+import { EVALUATION_STRUCTURE_KEYS } from "../../../issueEvaluation/evaluation.constants";
+import { IssueModelParametersView } from "../../../modelParameters";
 
 /**
  * Renderiza la vista administrativa de issues con filtros, detalle y acciones de gestion.
@@ -185,6 +187,15 @@ export default function AdminIssuesSection() {
   const confirmLabel = confirmLabelByKey[confirmAction?.key] || "Confirm";
   const confirmColor = confirmColorByKey[confirmAction?.key] || "info";
   const confirmIcon = confirmIconByKey[confirmAction?.key] || <InfoOutlinedIcon />;
+  const alternativeStructureLabelByKey = {
+    [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX]: "Alternative-criteria matrix",
+    [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION]:
+      "Pairwise alternatives by criterion",
+  };
+  const criteriaWeightingStructureLabelByKey = {
+    [EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS]: "Manual criteria weights",
+    [EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA]: "BWM",
+  };
 
   if (loading) {
     return <CircularLoading color="secondary" size={44} height="28vh" />;
@@ -710,7 +721,26 @@ export default function AdminIssuesSection() {
                       <AdminInfoRow label="Current admin" value={issueDetail?.admin ? `${issueDetail.admin.name} (${issueDetail.admin.email})` : "—"} />
                       <AdminInfoRow label="Model" value={issueDetail?.model?.name || "—"} />
                       <AdminInfoRow label="Stage" value={prettyStage(issueDetail)} />
-                      <AdminInfoRow label="Weighting mode" value={issueDetail?.weightingMode || "—"} />
+                      <AdminInfoRow
+                        label="Criteria weighting structure"
+                        value={
+                          criteriaWeightingStructureLabelByKey[
+                            issueDetail?.criteriaWeightingStructureKey
+                          ] ||
+                          issueDetail?.criteriaWeightingStructureKey ||
+                          "—"
+                        }
+                      />
+                      <AdminInfoRow
+                        label="Evaluation structure"
+                        value={
+                          alternativeStructureLabelByKey[
+                            issueDetail?.alternativeEvaluationStructureKey
+                          ] ||
+                          issueDetail?.alternativeEvaluationStructureKey ||
+                          "—"
+                        }
+                      />
                       <AdminInfoRow label="Creation date" value={issueDetail?.creationDate || "—"} />
                       <AdminInfoRow label="Closure date" value={issueDetail?.closureDate || "—"} />
                     </Stack>
@@ -840,25 +870,11 @@ export default function AdminIssuesSection() {
                     </Typography>
                   </Stack>
 
-                  <Box
-                    component="pre"
-                    sx={{
-                      m: 0,
-                      p: 1.2,
-                      borderRadius: 3,
-                      bgcolor: alpha(theme.palette.common.white, 0.03),
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      fontSize: 12,
-                      fontWeight: 800,
-                      color: alpha(theme.palette.common.white, 0.86),
-                      maxHeight: 280,
-                      overflow: "auto",
-                    }}
-                  >
-                    {JSON.stringify(issueDetail?.modelParameters || {}, null, 2)}
-                  </Box>
+                  <IssueModelParametersView
+                    parameters={issueDetail?.model?.parameters || []}
+                    values={issueDetail?.modelParameters || {}}
+                    leafNames={safeArray(issueDetail?.leafCriteria).map((criterion) => criterion?.name).filter(Boolean)}
+                  />
                 </Paper>
 
                 <Box
@@ -1397,7 +1413,8 @@ export default function AdminIssuesSection() {
                         </Typography>
                       </Stack>
 
-                      {expertEvaluations?.issue?.evaluationStructure === "pairwiseAlternatives" ? (
+                      {expertEvaluations?.issue?.alternativeEvaluationStructureKey ===
+                      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION ? (
                         <AdminReadOnlyPairwise data={expertEvaluations} />
                       ) : (
                         <AdminReadOnlyAxCMatrix data={expertEvaluations} />

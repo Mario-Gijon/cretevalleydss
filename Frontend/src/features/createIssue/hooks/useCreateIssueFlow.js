@@ -255,7 +255,9 @@ export const useCreateIssueFlow = () => {
   const [activeStep, setActiveStep] = useState(storedData.activeStep || 0);
   const [completed] = useState(storedData.completed || {});
   const [selectedModel, setSelectedModel] = useState(storedData.selectedModel || null);
-  const [isConsensus, setIsConsensus] = useState(storedData.isConsensus === true);
+  const [showConsensusModels, setShowConsensusModels] = useState(
+    storedData.showConsensusModels === true
+  );
   const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
   const [criteria, setCriteria] = useState(storedData.criteria || []);
   const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
@@ -284,13 +286,15 @@ export const useCreateIssueFlow = () => {
       ? storedData.criteriaWeightingConfig
       : buildDefaultCriteriaWeightingConfig(storedData.selectedModel || null)
   );
+  const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
 
   useEffect(() => {
     const dataToSave = {
       activeStep,
       completed,
       selectedModel,
-      isConsensus,
+      showConsensusModels,
+      isConsensus: effectiveIsConsensus,
       alternatives,
       criteria,
       addedExperts,
@@ -300,7 +304,7 @@ export const useCreateIssueFlow = () => {
       paramValues,
       criteriaWeightingConfig,
       closureDate: closureDate ? closureDate.toJSON() : null,
-      ...(isConsensus && {
+      ...(effectiveIsConsensus && {
         consensusMaxPhases,
         consensusThreshold,
       }),
@@ -311,7 +315,8 @@ export const useCreateIssueFlow = () => {
     activeStep,
     completed,
     selectedModel,
-    isConsensus,
+    showConsensusModels,
+    effectiveIsConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -467,7 +472,7 @@ export const useCreateIssueFlow = () => {
       issueName,
       issueDescription,
       selectedModel,
-      isConsensus,
+      isConsensus: effectiveIsConsensus,
       alternatives,
       criteria,
       addedExperts,
@@ -475,13 +480,13 @@ export const useCreateIssueFlow = () => {
       domainAssignments,
       criteriaWeightingConfig,
       paramValues,
-      ...(isConsensus && { consensusMaxPhases, consensusThreshold }),
+      ...(effectiveIsConsensus && { consensusMaxPhases, consensusThreshold }),
     };
   }, [
     issueName,
     issueDescription,
     selectedModel,
-    isConsensus,
+    effectiveIsConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -512,13 +517,7 @@ export const useCreateIssueFlow = () => {
       return;
     }
 
-    if (isConsensus && selectedModel?.supportsConsensus !== true) {
-      showSnackbarAlert(
-        "Selected model does not support consensus issues.",
-        "error"
-      );
-      return;
-    }
+    const modelRequiresConsensus = selectedModel?.supportsConsensus === true;
 
     if (!validateDomainAssigments(domainAssignments)) {
       showSnackbarAlert(
@@ -588,6 +587,7 @@ export const useCreateIssueFlow = () => {
       .map((parameter) => parameter?.key)
       .filter(Boolean);
     const issueInfoPayload = { ...allData };
+    issueInfoPayload.isConsensus = modelRequiresConsensus;
     const sanitizedParamValues = Object.entries(issueInfoPayload.paramValues || {})
       .filter(
         ([key]) =>
@@ -658,7 +658,7 @@ export const useCreateIssueFlow = () => {
     activeStep,
     completed,
     selectedModel,
-    isConsensus,
+    isConsensus: effectiveIsConsensus,
     alternatives,
     criteria,
     addedExperts,
@@ -676,9 +676,10 @@ export const useCreateIssueFlow = () => {
     domainAssignments,
     criteriaWeightingConfig,
     allData,
+    showConsensusModels,
     headerSubtitle,
     setSelectedModel,
-    setIsConsensus,
+    setShowConsensusModels,
     setAlternatives,
     setCriteria,
     setAddedExperts,

@@ -79,7 +79,10 @@ export const normalizeRowsFromCatalog = (models = []) =>
     lifecycleKind: model?.lifecycleKind || null,
     criterionTypes: asArray(model?.criterionTypes),
     safeToCreateIssueModel: null,
-    evaluationStructure: model?.evaluationStructure || null,
+    alternativeEvaluationStructureKey:
+      model?.alternativeEvaluationStructureKey || null,
+    criteriaWeightingStructureKey:
+      model?.criteriaWeightingStructureKey || null,
     isConsensus: model?.isConsensus,
     isMultiCriteria: model?.isMultiCriteria,
     supportedDomains: model?.supportedDomains || null,

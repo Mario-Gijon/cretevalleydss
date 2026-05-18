@@ -114,7 +114,14 @@ export default function ModelDetailDialog({ row, open, onClose }) {
           <SectionCard title="Capabilities">
             <FieldGrid
               rows={[
-                { label: "Evaluation structure", value: toTitle(row.evaluationStructure) },
+                {
+                  label: "Alternative structure",
+                  value: toTitle(row.alternativeEvaluationStructureKey),
+                },
+                {
+                  label: "Weighting structure",
+                  value: toTitle(row.criteriaWeightingStructureKey),
+                },
                 { label: "Consensus", value: formatBoolean(row.isConsensus) },
                 { label: "Multi criteria", value: formatBoolean(row.isMultiCriteria) },
                 { label: "Input format", value: row.apiInputFormat },

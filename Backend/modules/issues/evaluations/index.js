@@ -14,8 +14,9 @@ export {
 } from "./evaluation.registry.js";
 
 export {
-  computeIssueEvaluationStage,
   getIssueEvaluationPayload,
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
 } from "./evaluation.service.js";
+
+export { computeIssueEvaluationStage } from "./evaluation.compute.js";

@@ -2,14 +2,8 @@ import {
   EVALUATION_STAGES,
   EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
-import { IssueModel } from "../../../../../models/IssueModels.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../../../services/modelApi/modelResponse.js";
 import {
   createBadRequestError,
-  createInternalError,
 } from "../../../../../utils/common/errors.js";
 import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
 
@@ -43,22 +37,12 @@ const normalizeCellOrThrow = ({ cell, requireValue, field }) => {
   }
 
   if (!hasValue) {
-    return {
-      value: "",
-      expressionDomain: rawExpressionDomain ?? null,
-    };
-  }
-
-  if (!isPlainObject(rawExpressionDomain)) {
-    throw createBadRequestError(
-      "Comparison expressionDomain is required when value is provided",
-      { field }
-    );
+    return buildEmptyCell();
   }
 
   return {
     value: rawValue,
-    expressionDomain: rawExpressionDomain,
+    expressionDomain: rawExpressionDomain ?? null,
   };
 };
 
@@ -86,15 +70,6 @@ const buildExpectedPairsByCriterion = ({ criterionNames, alternativeNames }) => 
 
 const isNonEmptyValue = (value) =>
   !(value === "" || value === null || value === undefined);
-
-const normalizeEndpointPath = (value) => {
-  const path = String(value || "").trim();
-  if (!path) {
-    return null;
-  }
-
-  return path.startsWith("/") ? path : `/${path}`;
-};
 
 const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
   evaluations,
@@ -393,7 +368,7 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
     });
   },
 
-  async compute({ issue, evaluations, phase, apiModelsBaseUrl, httpClient }) {
+  async validateIssueCompatibility({ issue }) {
     if (issue?.isConsensus !== true) {
       throw createBadRequestError(
         "Pairwise alternative computation currently requires a consensus issue",
@@ -402,8 +377,10 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
         }
       );
     }
+  },
 
-    const { alternatives, criteria, alternativeNames, criterionNames } =
+  async validateCompletedEvaluations({ evaluations, issue }) {
+    const { alternativeNames, criterionNames } =
       await getOrderedAlternativeAndCriterionNames({ issue });
     const expectedPairsByCriterion = buildExpectedPairsByCriterion({
       criterionNames,
@@ -415,224 +392,5 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
       criterionNames,
       expectedPairsByCriterion,
     });
-
-    let model = issue?.model;
-    const hasModelRuntimeData =
-      model &&
-      typeof model === "object" &&
-      typeof model?.apiModelKey === "string" &&
-      typeof model?.apiEndpoint?.path === "string";
-
-    if (!hasModelRuntimeData) {
-      const modelId = issue?.model?._id || issue?.model;
-      model = await IssueModel.findById(modelId).lean();
-    }
-
-    if (!model) {
-      throw createBadRequestError("Selected issue model was not found", {
-        field: "model",
-      });
-    }
-
-    if (!model?.apiModelKey) {
-      throw createBadRequestError("Issue model is missing apiModelKey", {
-        field: "apiModelKey",
-      });
-    }
-
-    const endpointPath = normalizeEndpointPath(model?.apiEndpoint?.path);
-    if (!endpointPath) {
-      throw createBadRequestError("Issue model is missing apiEndpoint.path", {
-        field: "apiEndpoint.path",
-      });
-    }
-
-    if (
-      model?.alternativeEvaluationStructureKey !==
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION
-    ) {
-      throw createBadRequestError(
-        "Issue model does not support alternativePairwiseByCriterion structure",
-        {
-          field: "alternativeEvaluationStructureKey",
-        }
-      );
-    }
-
-    const requestPayload = {
-      modelParameters: issue?.modelParameters || {},
-      evaluations: evaluations.map((evaluation) => ({
-        expert: {
-          id: String(evaluation?.expert?._id || evaluation?.expert || ""),
-          name: evaluation?.expert?.name || "",
-          email: evaluation?.expert?.email || "",
-        },
-        payload: evaluation?.payload || {},
-      })),
-      context: {
-        issue: {
-          id: String(issue?._id || ""),
-          name: issue?.name || "",
-        },
-        alternatives: alternatives.map((alternative) => ({
-          id: String(alternative?._id || ""),
-          name: alternative?.name || "",
-        })),
-        criteria: criteria.map((criterion) => ({
-          id: String(criterion?._id || ""),
-          name: criterion?.name || "",
-          type: criterion?.type || "",
-        })),
-        weights: Array.isArray(issue?.modelParameters?.weights)
-          ? issue.modelParameters.weights
-          : [],
-        consensusPhase: phase,
-        previousStageResult: null,
-      },
-    };
-
-    let response;
-    try {
-      response = await httpClient.post(
-        `${apiModelsBaseUrl}${endpointPath}`,
-        requestPayload
-      );
-    } catch (error) {
-      throw createModelApiRequestError(
-        error,
-        "Alternative pairwise model execution failed"
-      );
-    }
-
-    const result = unwrapModelApiResponse(
-      response,
-      "Alternative pairwise model execution failed"
-    );
-
-    if (!isPlainObject(result)) {
-      throw createInternalError("ApiModels response payload must be an object", {
-        field: "data",
-      });
-    }
-
-    const requiredKeys = [
-      "ranking",
-      "rankedWithScores",
-      "scoresByAlternative",
-      "matrixUsed",
-      "collectivePayload",
-      "plotsGraphic",
-      "consensusMeasure",
-      "rawOutput",
-    ];
-
-    const missingKeys = requiredKeys.filter(
-      (key) => !Object.prototype.hasOwnProperty.call(result, key)
-    );
-    if (missingKeys.length > 0) {
-      throw createInternalError(
-        "ApiModels response is missing required canonical output fields",
-        {
-          field: "data",
-          details: {
-            missingKeys,
-          },
-        }
-      );
-    }
-
-    if (!Array.isArray(result.ranking)) {
-      throw createInternalError("ApiModels response field 'ranking' must be an array", {
-        field: "ranking",
-      });
-    }
-
-    if (!Array.isArray(result.rankedWithScores)) {
-      throw createInternalError(
-        "ApiModels response field 'rankedWithScores' must be an array",
-        {
-          field: "rankedWithScores",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.scoresByAlternative)) {
-      throw createInternalError(
-        "ApiModels response field 'scoresByAlternative' must be an object",
-        {
-          field: "scoresByAlternative",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.matrixUsed)) {
-      throw createInternalError(
-        "ApiModels response field 'matrixUsed' must be an object",
-        {
-          field: "matrixUsed",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.collectivePayload)) {
-      throw createInternalError(
-        "ApiModels response field 'collectivePayload' must be an object",
-        {
-          field: "collectivePayload",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.plotsGraphic)) {
-      throw createInternalError(
-        "ApiModels response field 'plotsGraphic' must be an object",
-        {
-          field: "plotsGraphic",
-        }
-      );
-    }
-
-    if (
-      typeof result.consensusMeasure !== "number" ||
-      !Number.isFinite(result.consensusMeasure)
-    ) {
-      throw createInternalError(
-        "ApiModels response field 'consensusMeasure' must be a finite number",
-        {
-          field: "consensusMeasure",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.rawOutput)) {
-      throw createInternalError(
-        "ApiModels response field 'rawOutput' must be an object",
-        {
-          field: "rawOutput",
-        }
-      );
-    }
-
-    return {
-      message: `Consensus round ${phase} for '${issue.name}' computed successfully.`,
-      consensusMeasure: result.consensusMeasure,
-      collectivePayload: result.collectivePayload || {},
-      computedPayload: {
-        ranking: result.ranking,
-        rankedWithScores: result.rankedWithScores,
-        scoresByAlternative: result.scoresByAlternative,
-        matrixUsed: result.matrixUsed || {},
-        plotsGraphic: result.plotsGraphic || {},
-      },
-      modelExecution: {
-        kind: "apiModels",
-        structureKey:
-          EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION,
-        apiModelKey: model.apiModelKey,
-        apiEndpointPath: endpointPath,
-        executedAt: new Date(),
-      },
-      rawOutput: result.rawOutput || result,
-    };
   },
 });

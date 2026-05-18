@@ -1,6 +1,8 @@
 from typing import Any
+import math
 
 from fastapi.responses import JSONResponse
+import numpy as np
 
 from models.herrera_viedma_crp.herrera_viedma_crp_model import run_herrera_viedma
 from schemas.model_requests import GenericModelExecutionRequest
@@ -45,6 +47,39 @@ def _as_list(value: Any) -> list[Any]:
             return list(converted)
 
     raise ValueError("Expected a list-compatible value")
+
+
+def _to_json_compatible(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): _to_json_compatible(item)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, (list, tuple)):
+        return [_to_json_compatible(item) for item in value]
+
+    if isinstance(value, np.ndarray):
+        return _to_json_compatible(value.tolist())
+
+    if isinstance(value, np.integer):
+        return int(value)
+
+    if isinstance(value, np.floating):
+        numeric_value = float(value)
+        return numeric_value if math.isfinite(numeric_value) else None
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    if isinstance(value, int) or value is None or isinstance(value, str) or isinstance(value, bool):
+        return value
+
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return _to_json_compatible(tolist())
+
+    return str(value)
 
 
 def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list[float]:
@@ -209,7 +244,9 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
 
 def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict[str, Any]:
-    rankings_history = _as_list(run_result.get("alternatives_rankings"))
+    safe_run_result = _to_json_compatible(run_result)
+
+    rankings_history = _as_list(safe_run_result.get("alternatives_rankings"))
     if len(rankings_history) == 0:
         raise ValueError("Herrera-Viedma output is missing alternatives_rankings")
 
@@ -222,20 +259,20 @@ def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict
             raise ValueError("Herrera-Viedma collective ranking contains out-of-range index")
         ranking.append(alternative_names[alternative_index])
 
-    collective_scores = _as_list(run_result.get("collective_scores"))
+    collective_scores = _as_list(safe_run_result.get("collective_scores"))
     scores_by_alternative = {
         alternative_names[index]: float(score)
         for index, score in enumerate(collective_scores)
         if index < len(alternative_names)
     }
 
-    consensus_measure = _finite_number(run_result.get("cm"), "cm")
+    consensus_measure = _finite_number(safe_run_result.get("cm"), "cm")
 
-    collective_evaluations = run_result.get("collective_evaluations")
+    collective_evaluations = safe_run_result.get("collective_evaluations")
     if not isinstance(collective_evaluations, dict):
         collective_evaluations = {}
 
-    plots_graphic = run_result.get("plots_graphic")
+    plots_graphic = safe_run_result.get("plots_graphic")
     if not isinstance(plots_graphic, dict):
         plots_graphic = {}
 
@@ -254,7 +291,7 @@ def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict
         },
         "plotsGraphic": plots_graphic,
         "consensusMeasure": consensus_measure,
-        "rawOutput": run_result,
+        "rawOutput": safe_run_result,
     }
 
 

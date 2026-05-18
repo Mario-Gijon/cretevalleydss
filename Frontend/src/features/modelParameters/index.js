@@ -22,3 +22,5 @@ export {
   validateCriteriaWeightsValue,
   validateCriteriaWeightsParameterValue,
 } from "./modelParameter.validation";
+
+export { IssueModelParametersView } from "./IssueModelParametersView";

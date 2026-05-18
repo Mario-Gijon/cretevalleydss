@@ -33,7 +33,7 @@ const WEIGHTS_REQUIRED_STAGES = new Set([
 const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
   const criteriaCount = orderedLeafCriteria.length;
   const stage = issue.currentStage;
-  const weights = issue.modelParameters.weights;
+  const weights = issue.modelParameters?.weights;
 
   if (criteriaCount === 0) {
     return [];

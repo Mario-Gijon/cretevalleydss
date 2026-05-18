@@ -170,22 +170,11 @@ const normalizeFiniteNumber = (value) => {
 };
 
 export const resolveIssueConsensusConfigOrThrow = ({
-  isConsensusRequested,
   supportsConsensus,
   consensusThreshold,
   consensusMaxPhases,
 }) => {
-  const isConsensus = isConsensusRequested === true;
-
-  if (isConsensus && supportsConsensus !== true) {
-    throw createBadRequestError(
-      "Selected model does not support consensus for this issue",
-      {
-        code: "CONSENSUS_NOT_SUPPORTED_BY_MODEL",
-        field: "isConsensus",
-      }
-    );
-  }
+  const isConsensus = supportsConsensus === true;
 
   if (!isConsensus) {
     return {

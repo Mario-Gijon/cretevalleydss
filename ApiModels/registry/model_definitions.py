@@ -294,7 +294,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         supported_domains=["linguistic"],
         criterion_types=["max", "min"],
         parameters=[
-            """ {
+            {
                 "key": "weights",
                 "label": "Fuzzy criteria weights",
                 "type": "fuzzyArray",
@@ -312,7 +312,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "ui": {
                     "component": "fuzzyCriteriaWeights",
                 },
-            } """
+            }
         ],
     ),
     ModelDefinition(

@@ -63,7 +63,14 @@ export default function ModelCards({
                 rows={[
                   { label: "Catalog", value: getCatalogVisibilityLabel(row) },
                   { label: "Lifecycle", value: toTitle(row.lifecycleKind) },
-                  { label: "Structure", value: toTitle(row.evaluationStructure) },
+                  {
+                    label: "Alternative structure",
+                    value: toTitle(row.alternativeEvaluationStructureKey),
+                  },
+                  {
+                    label: "Weighting structure",
+                    value: toTitle(row.criteriaWeightingStructureKey),
+                  },
                   { label: "Input", value: row.apiInputFormat },
                   { label: "Output", value: row.apiOutputFormat },
                   { label: "Issue model", value: formatBoolean(row.isIssueModel) },

@@ -119,15 +119,15 @@ export const getRemainingTime = (closureDate) => {
  * Filtra modelos por soporte de consenso y texto de búsqueda.
  *
  * @param {object[]} models Modelos disponibles.
- * @param {boolean} isConsensus Indica si el issue se creará con consenso.
+ * @param {boolean} showConsensusModels Indica si se muestran modelos de consenso.
  * @param {string} searchQuery Texto de búsqueda.
  * @returns {object[]}
  */
-export const filterModels = (models, isConsensus, searchQuery) => {
+export const filterModels = (models, showConsensusModels, searchQuery) => {
   return models.filter((model) => {
-    const matchesConsensus = isConsensus
+    const matchesConsensus = showConsensusModels
       ? model.supportsConsensus === true
-      : true;
+      : model.supportsConsensus !== true;
     const matchesSearch = model.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());

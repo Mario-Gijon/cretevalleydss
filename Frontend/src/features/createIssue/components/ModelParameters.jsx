@@ -462,7 +462,7 @@ export const ModelParameters = ({
             }
             disabled={isSingleCriterion}
           >
-            Manual by experts
+            Manual
           </Button>
           <Button
             variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? "contained" : "outlined"}

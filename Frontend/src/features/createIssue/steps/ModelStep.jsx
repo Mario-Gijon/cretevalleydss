@@ -36,33 +36,20 @@ export const ModelStep = () => {
   const {
     selectedModel,
     setSelectedModel,
-    isConsensus,
-    setIsConsensus,
+    showConsensusModels,
+    setShowConsensusModels,
     criteria,
   } = useCreateIssueContext();
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredModels = useMemo(
-    () => filterModels(models, isConsensus, searchQuery),
-    [models, isConsensus, searchQuery]
+    () => filterModels(models, showConsensusModels, searchQuery),
+    [models, showConsensusModels, searchQuery]
   );
 
   const handleConsensus = () => {
-    if (isConsensus) {
-      setIsConsensus(false);
-      return;
-    }
-
-    if (selectedModel && selectedModel.supportsConsensus !== true) {
-      showSnackbarAlert(
-        "Selected model does not support consensus issues.",
-        "error"
-      );
-      return;
-    }
-
-    setIsConsensus(true);
+    setShowConsensusModels((previous) => !previous);
   };
 
   const handleSelectModel = (model) => {
@@ -77,14 +64,6 @@ export const ModelStep = () => {
       }
     }
 
-    if (isConsensus && model.supportsConsensus !== true) {
-      showSnackbarAlert(
-        "This model does not support consensus issues.",
-        "error"
-      );
-      return;
-    }
-
     setSelectedModel(model);
   };
 
@@ -97,7 +76,7 @@ export const ModelStep = () => {
       >
         <ToggleButton
           value="consensus"
-          selected={isConsensus}
+          selected={showConsensusModels}
           onChange={handleConsensus}
           color="secondary"
           size="small"

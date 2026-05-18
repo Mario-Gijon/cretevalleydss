@@ -7,12 +7,7 @@ import {
   getOrderedAlternativeAndCriterionNames,
   serializeIssueExpressionDomainSnapshot,
 } from "../shared/alternativeEvaluation.helpers.js";
-import { IssueModel } from "../../../../../models/IssueModels.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../../../services/modelApi/modelResponse.js";
-import { createBadRequestError, createInternalError } from "../../../../../utils/common/errors.js";
+import { createBadRequestError } from "../../../../../utils/common/errors.js";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -314,7 +309,7 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
     });
   },
 
-  async compute({ issue, evaluations, phase, apiModelsBaseUrl, httpClient }) {
+  async validateIssueCompatibility({ issue }) {
     if (issue?.isConsensus === true) {
       throw createBadRequestError(
         "Consensus alternative matrix computation is not implemented yet",
@@ -323,186 +318,5 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
         }
       );
     }
-
-    const { alternatives, criteria } =
-      await getOrderedAlternativeAndCriterionNames({ issue });
-
-    let model = issue?.model;
-
-    const hasModelRuntimeData =
-      model &&
-      typeof model === "object" &&
-      typeof model?.apiModelKey === "string" &&
-      typeof model?.apiEndpoint?.path === "string";
-
-    if (!hasModelRuntimeData) {
-      const modelId = issue?.model?._id || issue?.model;
-      model = await IssueModel.findById(modelId).lean();
-    }
-
-    if (!model) {
-      throw createBadRequestError("Selected issue model was not found", {
-        field: "model",
-      });
-    }
-
-    if (!model?.apiModelKey) {
-      throw createBadRequestError("Issue model is missing apiModelKey", {
-        field: "apiModelKey",
-      });
-    }
-
-    if (!model?.apiEndpoint?.path) {
-      throw createBadRequestError("Issue model is missing apiEndpoint.path", {
-        field: "apiEndpoint.path",
-      });
-    }
-
-    if (
-      model?.alternativeEvaluationStructureKey !==
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX
-    ) {
-      throw createBadRequestError(
-        "Issue model does not support alternativeCriteriaMatrix structure",
-        {
-          field: "alternativeEvaluationStructureKey",
-        }
-      );
-    }
-
-    const endpointPath = model.apiEndpoint.path.startsWith("/")
-      ? model.apiEndpoint.path
-      : `/${model.apiEndpoint.path}`;
-
-    const requestPayload = {
-      modelParameters: issue?.modelParameters || {},
-      evaluations: evaluations.map((evaluation) => ({
-        expert: {
-          id: String(evaluation?.expert?._id || evaluation?.expert || ""),
-          name: evaluation?.expert?.name || "",
-          email: evaluation?.expert?.email || "",
-        },
-        payload: evaluation?.payload || {},
-      })),
-      context: {
-        issue: {
-          id: String(issue?._id || ""),
-          name: issue?.name || "",
-        },
-        alternatives: alternatives.map((alternative) => ({
-          id: String(alternative?._id || ""),
-          name: alternative?.name || "",
-        })),
-        criteria: criteria.map((criterion) => ({
-          id: String(criterion?._id || ""),
-          name: criterion?.name || "",
-          type: criterion?.type || "",
-        })),
-        weights: Array.isArray(issue?.modelParameters?.weights)
-          ? issue.modelParameters.weights
-          : [],
-        consensusPhase: phase,
-        previousStageResult: null,
-      },
-    };
-
-    let response;
-    try {
-      response = await httpClient.post(
-        `${apiModelsBaseUrl}${endpointPath}`,
-        requestPayload
-      );
-    } catch (error) {
-      throw createModelApiRequestError(
-        error,
-        "Alternative evaluation model execution failed"
-      );
-    }
-
-    const result = unwrapModelApiResponse(
-      response,
-      "Alternative evaluation model execution failed"
-    );
-
-    if (!isPlainObject(result)) {
-      throw createInternalError("ApiModels response payload must be an object", {
-        field: "data",
-      });
-    }
-
-    const requiredKeys = [
-      "ranking",
-      "rankedWithScores",
-      "scoresByAlternative",
-      "matrixUsed",
-      "collectivePayload",
-      "plotsGraphic",
-      "rawOutput",
-    ];
-
-    const missingKeys = requiredKeys.filter(
-      (key) => !Object.prototype.hasOwnProperty.call(result, key)
-    );
-
-    if (missingKeys.length > 0) {
-      throw createInternalError(
-        "ApiModels response is missing required canonical output fields",
-        {
-          field: "data",
-          details: {
-            missingKeys,
-          },
-        }
-      );
-    }
-
-    if (!Array.isArray(result.ranking)) {
-      throw createInternalError("ApiModels response field 'ranking' must be an array", {
-        field: "ranking",
-      });
-    }
-
-    if (!Array.isArray(result.rankedWithScores)) {
-      throw createInternalError(
-        "ApiModels response field 'rankedWithScores' must be an array",
-        {
-          field: "rankedWithScores",
-        }
-      );
-    }
-
-    if (!isPlainObject(result.scoresByAlternative)) {
-      throw createInternalError(
-        "ApiModels response field 'scoresByAlternative' must be an object",
-        {
-          field: "scoresByAlternative",
-        }
-      );
-    }
-
-    return {
-      message: `Issue '${issue.name}' computed successfully.`,
-      consensusMeasure: result.consensusMeasure ?? null,
-      collectivePayload: result.collectivePayload ?? {},
-      computedPayload: {
-        ranking: result.ranking,
-        rankedWithScores: result.rankedWithScores,
-        scoresByAlternative: result.scoresByAlternative,
-        matrixUsed: result.matrixUsed ?? {},
-        plotsGraphic: result.plotsGraphic ?? {},
-      },
-      modelExecution: {
-        kind: "apiModels",
-        structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
-        apiModelKey: model.apiModelKey,
-        apiEndpointPath: endpointPath,
-        executedAt: new Date(),
-      },
-      rawOutput: result.rawOutput ?? result,
-      issueUpdates: {
-        active: false,
-      },
-      nextCurrentStage: "finished",
-    };
   },
 });

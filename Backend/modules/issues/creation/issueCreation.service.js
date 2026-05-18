@@ -79,6 +79,13 @@ export const createIssueFlow = async ({
     session,
   });
 
+  const baseModelParameters =
+    normalizedModelParameters &&
+    typeof normalizedModelParameters === "object" &&
+    !Array.isArray(normalizedModelParameters)
+      ? normalizedModelParameters
+      : {};
+
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     alternativeEvaluationStructureKey
   );
@@ -98,7 +105,6 @@ export const createIssueFlow = async ({
     consensusThreshold,
     consensusMaxPhases,
   } = resolveIssueConsensusConfigOrThrow({
-    isConsensusRequested: input.isConsensus,
     supportsConsensus: modelSupportsConsensus,
     consensusThreshold: input.consensusThreshold,
     consensusMaxPhases: input.consensusMaxPhases,
@@ -128,7 +134,7 @@ export const createIssueFlow = async ({
     currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
     consensusMaxPhases,
     consensusThreshold,
-    modelParameters: normalizedModelParameters,
+    modelParameters: baseModelParameters,
   });
 
   await issue.save({ session });
@@ -187,7 +193,7 @@ export const createIssueFlow = async ({
 
   if (Array.isArray(resolvedCriteriaWeighting.modelWeights)) {
     issue.modelParameters = {
-      ...(issue.modelParameters || {}),
+      ...issue.modelParameters,
       weights: resolvedCriteriaWeighting.modelWeights,
     };
   }

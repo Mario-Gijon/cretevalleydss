@@ -32,7 +32,7 @@ const TABLE_HEADINGS = [
   "Model",
   "Key",
   "Lifecycle",
-  "Structure",
+  "Alternative structure",
   "Input",
   "Output",
   "Issue model",
@@ -122,7 +122,7 @@ export default function ModelsTable({
 
                 <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
-                    {toTitle(row.evaluationStructure)}
+                    {toTitle(row.alternativeEvaluationStructureKey)}
                   </Typography>
                 </TableCell>
 

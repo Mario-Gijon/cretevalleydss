@@ -205,6 +205,7 @@ const issueSchema = new Schema(
   },
   {
     timestamps: true,
+    minimize: false,
   }
 );
 

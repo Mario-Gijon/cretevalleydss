@@ -68,41 +68,6 @@ const SummarySection = () => {
 
         <Row label="Model" value={selectedModelNameView} />
 
-        {hasSummaryParams ? (
-          <SummaryAccordionRow
-            label="Model params"
-            open={openConsensusInfoList}
-            onToggle={() => setOpenConsensusInfoList((value) => !value)}
-          >
-            <Stack spacing={1}>
-              <ModelParamsView
-                parameters={summaryParamsForViewer}
-                values={summaryResolvedParams}
-                leafNames={leafNames}
-              />
-              {shouldShowRaw ? (
-                <Box
-                  component="pre"
-                  sx={{
-                    m: 0,
-                    p: 1.25,
-                    borderRadius: 3,
-                    bgcolor: alpha(theme.palette.background.paper, 0.08),
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: alpha("#fff", 0.9),
-                  }}
-                >
-                  {paramsPretty}
-                </Box>
-              ) : null}
-            </Stack>
-          </SummaryAccordionRow>
-        ) : null}
-
         {Array.isArray(viewIssue?.summary?.criteria) &&
         viewIssue.summary.criteria.length > 1 ? (
           <SummaryAccordionRow

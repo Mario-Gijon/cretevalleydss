@@ -29,6 +29,7 @@ import {
   IssueDetailsDrawerKeyValueRow,
 } from "../shell/IssueDetailsDrawer.parts";
 import IssueParticipationChart from "../../shared/IssueParticipationChart";
+import { IssueModelParametersView } from "../../../../modelParameters";
 
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
   manualCriteriaWeights: "Manual criteria weights",
@@ -62,7 +63,7 @@ const IssueDetailsOverviewTab = ({
   drawerAction,
   DrawerActionIcon,
   deadlineLabel,
-  modelParamsList,
+  leafNames,
   totalExperts,
   pendingExperts,
   participatedExperts,
@@ -377,17 +378,11 @@ const IssueDetailsOverviewTab = ({
         </AccordionSummary>
 
         <AccordionDetails sx={{ pt: 0 }}>
-          {modelParamsList.length === 0 ? (
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              No model parameters defined for this issue.
-            </Typography>
-          ) : (
-            <Stack spacing={1.05}>
-              {modelParamsList.map((row) => (
-                <IssueDetailsDrawerKeyValueRow key={row.k} k={row.k} v={row.v} />
-              ))}
-            </Stack>
-          )}
+          <IssueModelParametersView
+            parameters={selectedIssue?.model?.parameters || []}
+            values={selectedIssue?.modelParameters || selectedIssue?.ui?.modelParameters || {}}
+            leafNames={leafNames}
+          />
         </AccordionDetails>
       </Accordion>
 

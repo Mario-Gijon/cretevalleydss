@@ -1278,7 +1278,11 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
   const scatterPlotByPhase = Array(issue.consensusPhase || 0).fill(null);
   for (const stageResult of alternativeStageResults) {
     const phase = Number(stageResult.consensusPhase);
-    const plotsGraphic = enrichedPlotsGraphic;
+    const phaseEvaluations = completedByPhase.get(phase) || [];
+    const plotsGraphic = enrichPlotsGraphicWithExpertLabels({
+      plotsGraphic: stageResult?.computedPayload?.plotsGraphic || {},
+      evaluations: phaseEvaluations,
+    });
     if (
       Number.isInteger(phase) &&
       phase > 0 &&
