@@ -1,5 +1,6 @@
 import { Issue } from "../../../models/Issues.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../models/IssueModels.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
@@ -189,61 +190,14 @@ const validateEvaluationCoverageOrThrow = ({
 };
 
 const buildScenarioParametersOrThrow = ({
-  issue,
   targetModel,
   paramOverrides,
   criteria,
   alternatives,
 }) => {
-  const issueModelParameters =
-    issue?.modelParameters && typeof issue.modelParameters === "object"
-      ? issue.modelParameters
-      : {};
-
-  const issueWeights = issueModelParameters.weights;
-  if (!Array.isArray(issueWeights)) {
-    throw createBadRequestError("Issue model weights are required for scenario execution", {
-      field: "modelParameters.weights",
-    });
-  }
-
-  if (issueWeights.length !== criteria.length) {
-    throw createBadRequestError(
-      "Issue model weights length must match the number of leaf criteria",
-      {
-        field: "modelParameters.weights",
-        details: {
-          expected: criteria.length,
-          received: issueWeights.length,
-        },
-      }
-    );
-  }
-
   const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
-  const { parameterKeys, criteriaWeightsParameterKey } =
-    getModelParameterMetadata(targetModel);
-
-  const baseIssueParameters = Object.fromEntries(
-    Object.entries(issueModelParameters).filter(([key]) => parameterKeys.has(key))
-  );
-
-  const hasWeightsOverride = Boolean(
-    criteriaWeightsParameterKey &&
-      Object.prototype.hasOwnProperty.call(
-        normalizedOverrides,
-        criteriaWeightsParameterKey
-      )
-  );
-
-  if (criteriaWeightsParameterKey && !hasWeightsOverride) {
-    baseIssueParameters[criteriaWeightsParameterKey] = issueWeights;
-  }
-
-  const rawScenarioParams = {
-    ...baseIssueParameters,
-    ...normalizedOverrides,
-  };
+  const { criteriaWeightsParameterKey } = getModelParameterMetadata(targetModel);
+  const rawScenarioParams = normalizedOverrides;
 
   const normalizedScenarioParameters =
     validateAndNormalizeModelParametersOrThrow({
@@ -255,9 +209,9 @@ const buildScenarioParametersOrThrow = ({
 
   const resolvedWeights = criteriaWeightsParameterKey
     ? normalizedScenarioParameters[criteriaWeightsParameterKey]
-    : issueWeights;
+    : null;
 
-  if (!Array.isArray(resolvedWeights)) {
+  if (criteriaWeightsParameterKey && !Array.isArray(resolvedWeights)) {
     throw createBadRequestError(
       "Scenario model parameters must include criteria weights as an array",
       {
@@ -266,7 +220,10 @@ const buildScenarioParametersOrThrow = ({
     );
   }
 
-  if (resolvedWeights.length !== criteria.length) {
+  if (
+    criteriaWeightsParameterKey &&
+    resolvedWeights.length !== criteria.length
+  ) {
     throw createBadRequestError(
       "Scenario model weights length must match the number of leaf criteria",
       {
@@ -282,7 +239,7 @@ const buildScenarioParametersOrThrow = ({
   return {
     paramsUsed: normalizedScenarioParameters,
     normalizedParams: normalizedScenarioParameters,
-    weightsUsed: resolvedWeights,
+    weightsUsed: Array.isArray(resolvedWeights) ? resolvedWeights : [],
   };
 };
 
@@ -311,10 +268,18 @@ export const getCreateScenarioContext = async ({
 
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
   const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
+  const issueDomainSnapshots = await IssueExpressionDomain.find({
+    issue: issue._id,
+  })
+    .select("_id name type numericRange membershipFunction")
+    .lean();
 
   validateScenarioModelCompatibilityOrThrow({
     issue,
     targetRuntimeSnapshot,
+    issueDomainSnapshots,
+    targetModel,
+    targetModelSupportedDomains: targetModel?.supportedDomains || null,
   });
 
   const { latestAlternativeResult, phase } =
@@ -371,7 +336,6 @@ export const getCreateScenarioContext = async ({
 
   const { paramsUsed, normalizedParams, weightsUsed } =
     buildScenarioParametersOrThrow({
-      issue,
       targetModel,
       paramOverrides,
       criteria,
@@ -443,6 +407,12 @@ export const getCreateScenarioContext = async ({
     context: scenarioExecutionContext,
   };
 
+  const usedDomainTypes = new Set(
+    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot?.type).filter(Boolean)
+  );
+  const domainType =
+    usedDomainTypes.size === 1 ? Array.from(usedDomainTypes)[0] : null;
+
   return {
     issue,
     targetModel,
@@ -452,7 +422,7 @@ export const getCreateScenarioContext = async ({
     participations,
     completedEvaluations,
     latestAlternativeResult,
-    domainType: null,
+    domainType,
     paramsUsed,
     normalizedParams,
     weightsUsed,

@@ -85,6 +85,28 @@ class ModelDefinition:
             )
 
 
+def build_crisp_criteria_weights_parameter() -> dict[str, Any]:
+    return {
+        "key": "weights",
+        "label": "Criteria weights",
+        "type": "array",
+        "scope": "perCriterion",
+        "semanticRole": "criteriaWeights",
+        "required": True,
+        "default": "equal",
+        "restrictions": {
+            "min": 0,
+            "max": 1,
+            "ordered": None,
+            "length": "matchCriteria",
+            "allowed": None,
+        },
+        "ui": {
+            "component": "criteriaWeights",
+        },
+    }
+
+
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         api_model_key="herrera_viedma_crp",
@@ -119,6 +141,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=[],
         parameters=[
+            build_crisp_criteria_weights_parameter(),
             {
                 "key": "ag_lq",
                 "label": "Agreement interval",
@@ -200,6 +223,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         is_multi_criteria=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
+        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="borda",
@@ -264,6 +288,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         is_multi_criteria=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
+        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="fuzzy_topsis",
@@ -346,6 +371,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         is_multi_criteria=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
+        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="bwm",

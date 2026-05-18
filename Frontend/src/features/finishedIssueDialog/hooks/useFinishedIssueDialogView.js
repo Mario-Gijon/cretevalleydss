@@ -379,12 +379,16 @@ export const useFinishedIssueDialogView = ({
     return versionLabel ? `${modelName} · ${versionLabel}` : modelName;
   };
 
-  const useSchemaAdd = Boolean(Array.isArray(availableModels) && availableModels.length);
+  const useSchemaAdd = Array.isArray(availableModelsRaw);
 
   const selectedModelFromSchema = useMemo(() => {
     if (!useSchemaAdd) return null;
     return availableModels.find((model) => model?.id === selectedModelId) || null;
   }, [useSchemaAdd, availableModels, selectedModelId]);
+  const selectedModelCompatible = useMemo(
+    () => (selectedModelFromSchema ? isModelCompatible(selectedModelFromSchema) : false),
+    [selectedModelFromSchema]
+  );
 
   const openAddDialog = async () => {
     setAddOpen(true);
@@ -429,11 +433,24 @@ export const useFinishedIssueDialogView = ({
     setScenarioParamValues(defaults);
   }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames]);
 
+  const restoreScenarioDefaults = () => {
+    if (!selectedModelFromSchema) return;
+    const defaults = buildParamsResolved({
+      model: selectedModelFromSchema,
+      leafCount: leafNames.length,
+    });
+    setScenarioParamValues(defaults);
+  };
+
   const handleAddModelRun = async () => {
     if (!selectedIssue?.id) return;
 
     if (!selectedModelId) {
       showSnackbarAlert("Please select a model.", "warning");
+      return;
+    }
+    if (useSchemaAdd && selectedModelFromSchema && !selectedModelCompatible) {
+      showSnackbarAlert("Selected model is not compatible with this issue scenario.", "error");
       return;
     }
 
@@ -718,6 +735,8 @@ export const useFinishedIssueDialogView = ({
         availableModels,
         modelsCatalog,
         selectedModelFromSchema,
+        selectedModelCompatible,
+        restoreScenarioDefaults,
         scenarioParamValues,
         setScenarioParamValues,
         leafNames,

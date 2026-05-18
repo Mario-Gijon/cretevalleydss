@@ -14,72 +14,11 @@ import {
   createModelApiRequestError,
   unwrapModelApiResponse,
 } from "../../../services/modelApi/modelResponse.js";
-import { EVALUATION_STRUCTURE_KEYS } from "../evaluations/evaluation.constants.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const normalizeResultOrThrow = ({ result }) => {
-  if (!isPlainObject(result)) {
-    throw createInternalError("Scenario model execution result must be an object", {
+  if (result === null || result === undefined) {
+    throw createInternalError("Scenario model execution result is required", {
       field: "result",
-    });
-  }
-
-  if (!Array.isArray(result.ranking)) {
-    throw createInternalError("Scenario result field 'ranking' must be an array", {
-      field: "ranking",
-    });
-  }
-
-  if (!Array.isArray(result.rankedWithScores)) {
-    throw createInternalError(
-      "Scenario result field 'rankedWithScores' must be an array",
-      {
-        field: "rankedWithScores",
-      }
-    );
-  }
-
-  if (!isPlainObject(result.scoresByAlternative)) {
-    throw createInternalError(
-      "Scenario result field 'scoresByAlternative' must be an object",
-      {
-        field: "scoresByAlternative",
-      }
-    );
-  }
-
-  if (!isPlainObject(result.matrixUsed)) {
-    throw createInternalError("Scenario result field 'matrixUsed' must be an object", {
-      field: "matrixUsed",
-    });
-  }
-
-  if (!Object.prototype.hasOwnProperty.call(result, "consensusMeasure")) {
-    throw createInternalError(
-      "Scenario result field 'consensusMeasure' is required",
-      {
-        field: "consensusMeasure",
-      }
-    );
-  }
-
-  const collectivePayload = isPlainObject(result.collectivePayload)
-    ? result.collectivePayload
-    : {};
-  const plotsGraphic = isPlainObject(result.plotsGraphic)
-    ? result.plotsGraphic
-    : {};
-
-  const rawOutput =
-    result.rawOutput === undefined || result.rawOutput === null
-      ? {}
-      : result.rawOutput;
-
-  if (!isPlainObject(rawOutput) && !Array.isArray(rawOutput)) {
-    throw createInternalError("Scenario result field 'rawOutput' must be an object", {
-      field: "rawOutput",
     });
   }
 
@@ -89,20 +28,20 @@ const normalizeResultOrThrow = ({ result }) => {
       rankedWithScores: result.rankedWithScores,
       scoresByAlternative: result.scoresByAlternative,
       matrixUsed: result.matrixUsed,
-      collectivePayload,
-      plotsGraphic,
-      consensusMeasure: result.consensusMeasure ?? null,
-      rawOutput,
+      collectivePayload: result.collectivePayload,
+      plotsGraphic: result.plotsGraphic,
+      consensusMeasure: result.consensusMeasure,
+      rawOutput: result.rawOutput,
     },
     computedPayload: {
       ranking: result.ranking,
       rankedWithScores: result.rankedWithScores,
       scoresByAlternative: result.scoresByAlternative,
       matrixUsed: result.matrixUsed,
-      plotsGraphic,
+      plotsGraphic: result.plotsGraphic,
     },
-    collectivePayload,
-    rawOutput,
+    collectivePayload: result.collectivePayload,
+    rawOutput: result.rawOutput,
   };
 };
 
@@ -143,7 +82,8 @@ export const createIssueScenarioFlow = async ({
 
   const modelExecution = {
     kind: "apiModels",
-    structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
+    structureKey:
+      context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
     apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
     apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint.path,
     executedAt: new Date(),

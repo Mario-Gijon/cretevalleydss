@@ -1,5 +1,6 @@
 import { IssueModel } from "../../../models/IssueModels.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { Participation } from "../../../models/Participations.js";
@@ -21,6 +22,7 @@ import {
   buildDefaultsResolved,
   mergeParamsResolved,
 } from "../scenarios/scenario.params.js";
+import { buildScenarioCompatibilityMetadata } from "../scenarios/scenario.compatibility.js";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -648,33 +650,51 @@ const enrichPlotsGraphicWithExpertLabels = ({
 };
 
 const buildAvailableModelsPayload = ({
+  issue,
   allModels,
   issueAlternativeEvaluationStructureKey,
+  issueDomainSnapshots,
   leafCount,
 }) => {
-  return allModels.map((modelDoc) => ({
-    id: toIdString(modelDoc._id),
-    name: modelDoc.name,
-    alternativeEvaluationStructureKey:
-      modelDoc.alternativeEvaluationStructureKey || null,
-    criteriaWeightingStructureKey:
-      modelDoc.criteriaWeightingStructureKey || null,
-    supportsConsensus: modelDoc.supportsConsensus === true,
-    isMultiCriteria: modelDoc.isMultiCriteria,
-    smallDescription: modelDoc.smallDescription,
-    moreInfoUrl: modelDoc.moreInfoUrl,
-    parameters: modelDoc.parameters,
-    defaultsResolved: buildDefaultsResolved({
-      modelDoc,
-      leafCount,
-    }),
-    compatibility: {
-      alternativeEvaluationStructure:
-        modelDoc.alternativeEvaluationStructureKey ===
-        issueAlternativeEvaluationStructureKey,
-      domain: true,
-    },
-  }));
+  return allModels.map((modelDoc) => {
+    const metadata = buildScenarioCompatibilityMetadata({
+      issue,
+      targetModel: modelDoc,
+      issueDomainSnapshots,
+    });
+
+    return {
+      id: toIdString(modelDoc._id),
+      name: modelDoc.name,
+      alternativeEvaluationStructureKey:
+        modelDoc.alternativeEvaluationStructureKey || null,
+      criteriaWeightingStructureKey:
+        modelDoc.criteriaWeightingStructureKey || null,
+      supportsConsensus: modelDoc.supportsConsensus === true,
+      isMultiCriteria: modelDoc.isMultiCriteria,
+      smallDescription: modelDoc.smallDescription,
+      moreInfoUrl: modelDoc.moreInfoUrl,
+      parameters: modelDoc.parameters,
+      defaultsResolved: buildDefaultsResolved({
+        modelDoc,
+        leafCount,
+      }),
+      scenarioCompatibility: {
+        compatible: metadata.compatible,
+        reasons: metadata.reasons,
+        structureMatches: metadata.structureMatches,
+        domainsMatch: metadata.domainsMatch,
+        consensusModeMatches: metadata.consensusModeMatches,
+        sameModel: metadata.sameModel,
+      },
+      compatibility: {
+        alternativeEvaluationStructure:
+          modelDoc.alternativeEvaluationStructureKey ===
+          issueAlternativeEvaluationStructureKey,
+        domain: metadata.domainsMatch,
+      },
+    };
+  });
 };
 
 const normalizeConsensusPhaseOrThrow = ({ value, issueId, stage }) => {
@@ -857,6 +877,7 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     criteria,
     participations,
     allModels,
+    issueDomainSnapshots,
   ] = await Promise.all([
     IssueEvaluation.find({
       issue: issue._id,
@@ -884,8 +905,6 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
       .lean(),
     IssueModel.find({
       isIssueModel: true,
-      alternativeEvaluationStructureKey:
-        issue.alternativeEvaluationStructureKey,
       $or: [
         { manifestSync: { $exists: false } },
         { "manifestSync.isStale": { $exists: false } },
@@ -893,8 +912,11 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
       ],
     })
       .select(
-        "_id name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus isMultiCriteria smallDescription moreInfoUrl parameters"
+        "_id name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus isMultiCriteria smallDescription moreInfoUrl parameters supportedDomains"
       )
+      .lean(),
+    IssueExpressionDomain.find({ issue: issue._id })
+      .select("_id name type numericRange membershipFunction")
       .lean(),
   ]);
 
@@ -988,9 +1010,11 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
   });
   const domainType = null;
   const availableModels = buildAvailableModelsPayload({
+    issue,
     allModels,
     issueAlternativeEvaluationStructureKey:
       issue.alternativeEvaluationStructureKey,
+    issueDomainSnapshots,
     leafCount,
   });
 
@@ -1091,6 +1115,8 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     criteria,
     participations,
     allCompletedAlternativeEvaluations,
+    allModels,
+    issueDomainSnapshots,
   ] = await Promise.all([
     getOrderedAlternativesDb({
       issueId: issue._id,
@@ -1115,6 +1141,21 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       completed: true,
     })
       .populate("expert", "email name")
+      .lean(),
+    IssueModel.find({
+      isIssueModel: true,
+      $or: [
+        { manifestSync: { $exists: false } },
+        { "manifestSync.isStale": { $exists: false } },
+        { "manifestSync.isStale": false },
+      ],
+    })
+      .select(
+        "_id name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus isMultiCriteria smallDescription moreInfoUrl parameters supportedDomains"
+      )
+      .lean(),
+    IssueExpressionDomain.find({ issue: issue._id })
+      .select("_id name type numericRange membershipFunction")
       .lean(),
   ]);
 
@@ -1266,6 +1307,14 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     defaultsResolved: baseDefaultsResolved,
     savedParams: baseParamsSaved,
   });
+  const availableModels = buildAvailableModelsPayload({
+    issue,
+    allModels,
+    issueAlternativeEvaluationStructureKey:
+      issue.alternativeEvaluationStructureKey,
+    issueDomainSnapshots,
+    leafCount,
+  });
 
   const latestRound = consensusRounds[consensusRounds.length - 1];
   const latestRanking =
@@ -1351,7 +1400,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
         paramsSaved: baseParamsSaved,
         paramsResolved: baseParamsResolved,
       },
-      availableModels: [],
+      availableModels,
     },
   };
 };

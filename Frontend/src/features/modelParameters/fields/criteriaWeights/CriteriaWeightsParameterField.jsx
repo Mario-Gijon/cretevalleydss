@@ -34,6 +34,8 @@ export const CriteriaWeightsParameterField = ({
 }) => {
   const restrictions = parameter?.restrictions || {};
   const defaultValue = parameter?.default;
+  const canChooseWeightingStructure =
+    typeof setCriteriaWeightingStructureKey === "function";
   const length =
     getParameterExpectedLength(parameter, leafCriteria.length) ??
     restrictions?.length ?? 2;
@@ -66,7 +68,7 @@ export const CriteriaWeightsParameterField = ({
       <Stack pb={1} direction="row" spacing={2} alignItems="center">
         <Typography variant="body1">{paramLabel}:</Typography>
 
-        {leafCriteria.length >= 2 && (
+        {leafCriteria.length >= 2 && canChooseWeightingStructure && (
           <ButtonGroup color="secondary" size="small">
             <Button
               key={MANUAL_CRITERIA_WEIGHTS}
@@ -103,6 +105,20 @@ export const CriteriaWeightsParameterField = ({
           <Typography variant="body2">
             Since there is only one criterion, its weight is fixed to <b>1</b>.
           </Typography>
+          <Stack spacing={0.5} alignItems="center">
+            <Typography variant="caption">
+              {leafCriteria[0]?.name ?? "Criterion"}
+            </Typography>
+            <TextField
+              type="number"
+              color="info"
+              size="small"
+              value={1}
+              disabled
+              inputProps={{ min: 1, max: 1, step: 1, readOnly: true }}
+              sx={{ width: 80 }}
+            />
+          </Stack>
         </Stack>
       ) : criteriaWeightingStructureKey === MANUAL_CRITERIA_WEIGHTS ? (
         <Stack direction="row" flexWrap="wrap" gap={2}>
@@ -131,7 +147,8 @@ export const CriteriaWeightsParameterField = ({
             </Stack>
           ))}
         </Stack>
-      ) : criteriaWeightingStructureKey === BEST_WORST_CRITERIA ? (
+      ) : canChooseWeightingStructure &&
+        criteriaWeightingStructureKey === BEST_WORST_CRITERIA ? (
         <Typography variant="body2" fontStyle="italic" color="text.secondary">
           Best-Worst preferences will be collected from experts during the criteria
           weighting evaluation stage.

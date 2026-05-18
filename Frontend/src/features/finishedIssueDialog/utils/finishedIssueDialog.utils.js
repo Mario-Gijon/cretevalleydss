@@ -188,6 +188,11 @@ export const stripWeightsDeep = (value) => stripWeights(value);
 const filterOutWeightsParam = (param) =>
   Boolean(param) && param?.ui?.component !== "criteriaWeights";
 
+const isCriteriaWeightsParameter = (parameter) =>
+  parameter?.ui?.component === "criteriaWeights" ||
+  parameter?.semanticRole === "criteriaWeights" ||
+  parameter?.key === "weights";
+
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
  *
@@ -406,11 +411,17 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
  * @returns {boolean}
  */
 export const isModelCompatible = (model) => {
+  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
+    return model.scenarioCompatibility.compatible === true;
+  }
+
   const evalCompat = getEvaluationCompatibilityFlag(model);
   const domainCompat = model?.compatibility?.domain;
+  const consensusCompatible = model?.supportsConsensus !== true;
 
   if (evalCompat === false) return false;
   if (domainCompat === false) return false;
+  if (!consensusCompatible) return false;
 
   return true;
 };
@@ -423,12 +434,22 @@ export const isModelCompatible = (model) => {
  * @returns {string}
  */
 export const getCompatReason = (model, domainType) => {
+  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
+    const reasons = Array.isArray(model.scenarioCompatibility.reasons)
+      ? model.scenarioCompatibility.reasons.filter(Boolean)
+      : [];
+    return reasons.join(" · ");
+  }
+
   const reasons = [];
   const evalCompat = getEvaluationCompatibilityFlag(model);
 
   if (evalCompat === false) reasons.push("Evaluation structure mismatch");
   if (model?.compatibility?.domain === false) {
     reasons.push(domainType ? `No ${domainType} support` : "Domain not supported");
+  }
+  if (model?.supportsConsensus === true) {
+    reasons.push("Consensus scenarios are not supported");
   }
 
   return reasons.join(" · ");
@@ -462,18 +483,30 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     if (param.type === "number") out[key] = param.default ?? "";
 
     if (param.type === "array") {
-      const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 2;
+      const len =
+        getParameterExpectedLength(param, leafCount) ??
+        param?.restrictions?.length ??
+        2;
       const base = Array.isArray(param.default) ? param.default : [];
       const count = Number(len) || 2;
-      const isWeightsByCriteria = param?.ui?.component === "criteriaWeights";
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
 
-      if (isWeightsByCriteria && Array.isArray(baseIssueWeights) && baseIssueWeights.length === count) {
-        out[key] = ensureArrayLen(baseIssueWeights, count, "");
+      if (isWeightsByCriteria && safeLeafCount === 1) {
+        out[key] = [1];
         continue;
       }
 
       if (isWeightsByCriteria && param?.default === "equal" && count > 0) {
         out[key] = ensureArrayLen(equalWeights, count, "");
+        continue;
+      }
+
+      if (
+        isWeightsByCriteria &&
+        Array.isArray(baseIssueWeights) &&
+        baseIssueWeights.length === count
+      ) {
+        out[key] = ensureArrayLen(baseIssueWeights, count, "");
         continue;
       }
 
@@ -527,12 +560,28 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
     }
 
     if (type === "array") {
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 2);
+      const count = Number(len) || 2;
 
-      const arr = ensureArrayLen(values?.[name] ?? def ?? [], Number(len) || 2, "");
+      if (isWeightsByCriteria && Number(leafCount) === 1) {
+        out[name] = [1];
+        continue;
+      }
+
+      const fallbackDefault =
+        isWeightsByCriteria && def === "equal" && count > 0
+          ? Array.from({ length: count }, () => 1 / count)
+          : def;
+
+      const arr = ensureArrayLen(
+        values?.[name] ?? fallbackDefault ?? [],
+        count,
+        ""
+      );
       const parsed = arr.map((item) => (item === "" || item == null ? null : Number(item)));
       if (parsed.some((item) => item == null || !Number.isFinite(item))) continue;
 
@@ -614,18 +663,29 @@ export const validateParams = ({ model, values, leafCount }) => {
     }
 
     if (type === "array") {
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 2);
+      const count = Number(len) || 2;
+
+      if (isWeightsByCriteria && Number(leafCount) === 1) {
+        continue;
+      }
+
+      const fallbackDefault =
+        isWeightsByCriteria && param.default === "equal" && count > 0
+          ? Array.from({ length: count }, () => 1 / count)
+          : param.default;
 
       const arr = ensureArrayLen(
         Array.isArray(value)
           ? value
-          : Array.isArray(param.default)
-            ? param.default
+          : Array.isArray(fallbackDefault)
+            ? fallbackDefault
             : [],
-        Number(len) || 2,
+        count,
         ""
       );
 

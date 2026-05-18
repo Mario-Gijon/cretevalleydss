@@ -3,7 +3,6 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { EVALUATION_STRUCTURE_KEYS } from "../evaluations/evaluation.constants.js";
 
 const normalizeEndpointPath = (value) => {
   const normalizedPath = String(value || "").trim();
@@ -68,9 +67,132 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   };
 };
 
+const normalizeSupportedDomainFlags = (modelSupportedDomains) => ({
+  numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
+  numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
+  linguisticMembershipFunctions: Array.isArray(modelSupportedDomains?.linguistic)
+    ? modelSupportedDomains.linguistic
+        .map((item) => String(item || "").trim().toLowerCase())
+        .filter(Boolean)
+    : [],
+});
+
+const isNumericDiscreteDomainSnapshot = (domainSnapshot) => {
+  const step = domainSnapshot?.numericRange?.step;
+  return Number.isFinite(step) && step > 0;
+};
+
+const isDomainSnapshotSupportedByModel = ({
+  domainSnapshot,
+  supportedDomainFlags,
+}) => {
+  if (domainSnapshot?.type === "numeric") {
+    return isNumericDiscreteDomainSnapshot(domainSnapshot)
+      ? supportedDomainFlags.numericDiscrete
+      : supportedDomainFlags.numericContinuous;
+  }
+
+  if (domainSnapshot?.type === "linguistic") {
+    const membershipFunction = String(domainSnapshot?.membershipFunction || "")
+      .trim()
+      .toLowerCase();
+    return (
+      membershipFunction.length > 0 &&
+      supportedDomainFlags.linguisticMembershipFunctions.includes(membershipFunction)
+    );
+  }
+
+  return false;
+};
+
+export const getUnsupportedIssueDomainsForModel = ({
+  issueDomainSnapshots,
+  modelSupportedDomains,
+}) => {
+  const supportedDomainFlags = normalizeSupportedDomainFlags(modelSupportedDomains);
+  const domainSnapshots = Array.isArray(issueDomainSnapshots)
+    ? issueDomainSnapshots
+    : [];
+
+  return domainSnapshots.filter(
+    (domainSnapshot) =>
+      !isDomainSnapshotSupportedByModel({
+        domainSnapshot,
+        supportedDomainFlags,
+      })
+  );
+};
+
+const buildConsensusModeMatches = ({ issue, targetSupportsConsensus }) => {
+  if (issue?.isConsensus === true) {
+    return targetSupportsConsensus === true;
+  }
+  return targetSupportsConsensus !== true;
+};
+
+export const buildScenarioCompatibilityMetadata = ({
+  issue,
+  targetModel,
+  issueDomainSnapshots,
+}) => {
+  const issueAlternativeEvaluationStructureKey = String(
+    issue?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetAlternativeEvaluationStructureKey = String(
+    targetModel?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetSupportsConsensus = targetModel?.supportsConsensus === true;
+
+  const structureMatches =
+    targetAlternativeEvaluationStructureKey ===
+    issueAlternativeEvaluationStructureKey;
+  const consensusModeMatches = buildConsensusModeMatches({
+    issue,
+    targetSupportsConsensus,
+  });
+  const unsupportedDomains = getUnsupportedIssueDomainsForModel({
+    issueDomainSnapshots,
+    modelSupportedDomains: targetModel?.supportedDomains || null,
+  });
+  const domainsMatch = unsupportedDomains.length === 0;
+  const targetModelId = toIdString(targetModel?._id);
+  const issueModelId = toIdString(issue?.model?._id || issue?.model);
+  const sameModel =
+    Boolean(targetModelId && issueModelId && targetModelId === issueModelId);
+
+  const reasons = [];
+  if (!structureMatches) {
+    reasons.push("Alternative evaluation structure does not match the issue");
+  }
+  if (!consensusModeMatches) {
+    reasons.push("Consensus mode does not match the issue");
+  }
+  if (!domainsMatch) {
+    reasons.push("Expression domains used by the issue are not supported");
+  }
+
+  return {
+    compatible: structureMatches && domainsMatch && consensusModeMatches,
+    reasons,
+    structureMatches,
+    domainsMatch,
+    consensusModeMatches,
+    sameModel,
+    unsupportedDomains: unsupportedDomains.map((domainSnapshot) => ({
+      id: toIdString(domainSnapshot?._id),
+      name: domainSnapshot?.name || null,
+      type: domainSnapshot?.type || null,
+      membershipFunction: domainSnapshot?.membershipFunction || null,
+    })),
+  };
+};
+
 export const validateScenarioModelCompatibilityOrThrow = ({
   issue,
   targetRuntimeSnapshot,
+  issueDomainSnapshots,
+  targetModel,
+  targetModelSupportedDomains,
 }) => {
   if (issue?.currentStage !== "finished") {
     throw createBadRequestError(
@@ -90,46 +212,33 @@ export const validateScenarioModelCompatibilityOrThrow = ({
     );
   }
 
-  if (issue?.isConsensus === true) {
-    throw createBadRequestError(
-      "Consensus scenarios are not implemented for plugin model runs",
-      {
-        field: "isConsensus",
-      }
-    );
-  }
+  const compatibility = buildScenarioCompatibilityMetadata({
+    issue,
+    targetModel: {
+      ...targetModel,
+      alternativeEvaluationStructureKey:
+        targetRuntimeSnapshot?.targetAlternativeEvaluationStructureKey,
+      supportsConsensus: targetRuntimeSnapshot?.targetSupportsConsensus === true,
+      supportedDomains: targetModelSupportedDomains,
+    },
+    issueDomainSnapshots,
+  });
 
-  const issueAlternativeEvaluationStructureKey = String(
-    issue?.alternativeEvaluationStructureKey || ""
-  ).trim();
-
-  if (
-    issueAlternativeEvaluationStructureKey !==
-    EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX
-  ) {
+  if (!compatibility.compatible) {
     throw createBadRequestError(
-      "Only alternativeCriteriaMatrix scenarios are supported in this phase",
-      {
-        field: "alternativeEvaluationStructureKey",
-        details: {
-          alternativeEvaluationStructureKey: issueAlternativeEvaluationStructureKey || null,
-        },
-      }
-    );
-  }
-
-  if (
-    targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey !==
-    issueAlternativeEvaluationStructureKey
-  ) {
-    throw createBadRequestError(
-      "Incompatible model: alternative evaluation structure does not match this issue",
+      "Incompatible model for this scenario issue",
       {
         field: "targetModelId",
         details: {
-          issueAlternativeEvaluationStructureKey,
-          targetAlternativeEvaluationStructureKey:
-            targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+          scenarioCompatibility: {
+            compatible: compatibility.compatible,
+            reasons: compatibility.reasons,
+            structureMatches: compatibility.structureMatches,
+            domainsMatch: compatibility.domainsMatch,
+            consensusModeMatches: compatibility.consensusModeMatches,
+            sameModel: compatibility.sameModel,
+          },
+          unsupportedDomains: compatibility.unsupportedDomains,
         },
       }
     );

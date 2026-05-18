@@ -83,13 +83,18 @@ def _to_json_compatible(value: Any) -> Any:
 
 
 def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list[float]:
+    if criteria_count == 1:
+        return [1.0]
+
     context = payload.context or {}
     model_parameters = payload.modelParameters or {}
 
     raw_weights = context.get("weights") or model_parameters.get("weights") or []
 
     if len(raw_weights) == 0:
-        raise ValueError("weights are required for Herrera-Viedma CRP")
+        raise ValueError(
+            "weights are required for Herrera-Viedma CRP when multiple criteria are used"
+        )
 
     if len(raw_weights) != criteria_count:
         raise ValueError("weights length must match the number of criteria")
