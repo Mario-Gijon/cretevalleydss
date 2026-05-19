@@ -1,0 +1,2392 @@
+===== git status =====
+ M Frontend/src/features/createIssue/components/CriteriaItem.jsx
+ M Frontend/src/features/createIssue/components/ModelParameters.jsx
+ M Frontend/src/features/createIssue/hooks/useCreateIssueFlow.js
+ M Frontend/src/features/createIssue/steps/CriteriaStep.jsx
+ M Frontend/src/features/createIssue/steps/SummaryStep.jsx
+?? Frontend/src/features/createIssue/components/criteria/
+
+===== CriteriaStep.jsx =====
+import { useMemo, useState } from "react";
+import {
+  Button,
+  TextField,
+  List,
+  Collapse,
+  Stack,
+  Divider,
+  DialogContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  Box,
+} from "@mui/material";
+import { TransitionGroup } from "react-transition-group";
+import AddIcon from "@mui/icons-material/Add";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { useTheme } from "@mui/material/styles";
+
+import {
+  countLeafCriteria,
+  removeCriteriaItemRecursively,
+  validateCriterion,
+} from "../../../utils/criteria.utils";
+import { CriteriaItem } from "../components/CriteriaItem";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import { useCreateIssueContext } from "../context/createIssue.context";
+import {
+  createIssueStepContainerSx,
+  getCreateIssueSoftTopAuroraDialogPaperSx,
+  getCreateIssueRowDividerSx,
+  getCreateIssueStepEmptyStateSx,
+  getCreateIssueStepInputSx,
+  getCreateIssueStepScrollableSx,
+} from "../styles/createIssueStep.styles";
+import { modelUsesCriteriaWeights } from "../utils/criteriaWeighting.model";
+import { CriteriaWeightingPanel } from "../components/criteria/CriteriaWeightingPanel";
+
+const applyTypeToBranch = (criterion, type) => ({
+  ...criterion,
+  type,
+  children: Array.isArray(criterion?.children)
+    ? criterion.children.map((child) => applyTypeToBranch(child, type))
+    : [],
+});
+
+const updateCriterionWithInheritance = ({
+  items,
+  editingCriterion,
+  nextName,
+  nextType,
+  showCriterionTypes,
+  isRootCriterion,
+}) => {
+  const visit = (nodes) =>
+    nodes.map((node) => {
+      if (node?.name === editingCriterion?.name) {
+        if (showCriterionTypes && isRootCriterion) {
+          const typedBranch = applyTypeToBranch(node, nextType);
+          return {
+            ...typedBranch,
+            name: nextName,
+          };
+        }
+
+        return {
+          ...node,
+          name: nextName,
+        };
+      }
+
+      const children = Array.isArray(node?.children) ? node.children : [];
+      if (children.length > 0) {
+        return {
+          ...node,
+          children: visit(children),
+        };
+      }
+
+      return node;
+    });
+
+  return visit(Array.isArray(items) ? items : []);
+};
+
+export const CriteriaStep = () => {
+  const theme = useTheme();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
+  const {
+    criteria,
+    setCriteria,
+    selectedModel,
+    criteriaWeightingConfig,
+    setCriteriaWeightingConfig,
+    setDefaultModelParams,
+    domainAssignments,
+  } = useCreateIssueContext();
+
+  const isMultiCriteria = selectedModel?.isMultiCriteria;
+  const showCriterionTypes = selectedModel?.usesCriterionTypes === true;
+  const showCriteriaWeighting = modelUsesCriteriaWeights(selectedModel);
+
+  const [inputValue, setInputValue] = useState("");
+  const [inputError, setInputError] = useState("");
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedParent, setSelectedParent] = useState(null);
+
+  const [childInputValue, setChildInputValue] = useState("");
+  const [childInputError, setChildInputError] = useState(false);
+
+  const [openItems, setOpenItems] = useState({});
+  const [selectedType, setSelectedType] = useState("benefit");
+
+  const [editingCriterion, setEditingCriterion] = useState(null);
+  const [editCriterionValue, setEditCriterionValue] = useState("");
+  const [editCriterionType, setEditCriterionType] = useState("benefit");
+  const [editBlur, setEditBlur] = useState(true);
+  const [editCriterionError, setEditCriterionError] = useState("");
+  const [openRemoveCriterionDialog, setOpenRemoveCriterionDialog] = useState(false);
+  const [criterionToRemove, setCriterionToRemove] = useState(null);
+
+  const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
+  const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
+
+  const handleEditCriterion = (item) => {
+    setEditingCriterion(item);
+    setEditCriterionValue(item.name);
+    setEditCriterionType(item.type || "benefit");
+  };
+
+  const handleSaveCriterionEdit = () => {
+    const error = validateCriterion(editCriterionValue, criteria, editingCriterion);
+    if (error) {
+      setEditCriterionError(error);
+      return;
+    }
+
+    const trimmedName = editCriterionValue.trim();
+    const isRootCriterion = (criteria || []).some(
+      (criterion) => criterion?.name === editingCriterion?.name
+    );
+
+    setCriteria((previous) =>
+      updateCriterionWithInheritance({
+        items: previous,
+        editingCriterion,
+        nextName: trimmedName,
+        nextType: editCriterionType || "benefit",
+        showCriterionTypes,
+        isRootCriterion,
+      })
+    );
+
+    setEditingCriterion(null);
+    setEditCriterionError("");
+    setEditBlur(true);
+  };
+
+  const handleAddCriteria = () => {
+    if (!inputValue.trim()) return;
+
+    if (!isMultiCriteria) {
+      const leaves = countLeafCriteria(criteria);
+      if (leaves >= 1) {
+        showSnackbarAlert("This model only allows one leaf criterion", "warning");
+        return;
+      }
+    }
+
+    const error = validateCriterion(inputValue, criteria);
+    if (error) {
+      setInputError(error);
+      return;
+    }
+
+    setCriteria((previous) => [
+      ...previous,
+      { name: inputValue.trim(), type: showCriterionTypes ? selectedType : "benefit", children: [] },
+    ]);
+    setInputValue("");
+    setInputError(false);
+  };
+
+  const handleAskRemoveCriteria = (item) => {
+    setCriterionToRemove(item);
+    setOpenRemoveCriterionDialog(true);
+  };
+
+  const handleCancelRemoveCriteria = () => {
+    setOpenRemoveCriterionDialog(false);
+    setCriterionToRemove(null);
+  };
+
+  const handleConfirmRemoveCriteria = () => {
+    if (!criterionToRemove) return;
+
+    setCriteria((previous) => removeCriteriaItemRecursively(previous, criterionToRemove));
+    handleCancelRemoveCriteria();
+  };
+
+  const handleToggle = (itemName) => {
+    setOpenItems((previous) => ({ ...previous, [itemName]: !previous[itemName] }));
+  };
+
+  const handleAddChild = () => {
+    if (!childInputValue.trim()) return;
+
+    if (!isMultiCriteria) {
+      const tempCriteria = JSON.parse(JSON.stringify(criteria));
+
+      const addChildSim = (items) =>
+        items.map((item) => {
+          if (item.name === selectedParent.name) {
+            return {
+              ...item,
+              children: [
+                ...item.children,
+                {
+                  name: childInputValue.trim(),
+                  type: selectedParent?.type || "benefit",
+                  children: [],
+                },
+              ],
+            };
+          }
+
+          if (item.children?.length) {
+            return { ...item, children: addChildSim(item.children) };
+          }
+
+          return item;
+        });
+
+      const simulated = addChildSim(tempCriteria);
+      const leavesAfter = countLeafCriteria(simulated);
+      if (leavesAfter > 1) {
+        showSnackbarAlert("This model only allows one leaf criterion", "warning");
+        return;
+      }
+    }
+
+    const error = validateCriterion(childInputValue, criteria);
+    if (error) {
+      setChildInputError(error);
+      return;
+    }
+
+    const addChild = (items) =>
+      items.map((item) => {
+        if (item.name === selectedParent.name) {
+          return {
+            ...item,
+            children: [
+              ...item.children,
+
+===== CriteriaItem.jsx =====
+import { Chip, Collapse, IconButton, List, ListItem, ListItemText, MenuItem, Select, Stack, TextField } from "@mui/material";
+import { Fragment } from "react";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import EditIcon from "@mui/icons-material/Edit";
+
+export const CriteriaItem = ({
+  item,
+  level = 0,
+  editingCriterion,
+  editCriterionValue,
+  setEditCriterionValue,
+  editBlur,
+  handleSaveCriterionEdit,
+  editCriterionError,
+  editCriterionType,
+  setEditCriterionType,
+  setEditBlur,
+  handleEditCriterion,
+  handleToggle,
+  openItems,
+  setSelectedParent,
+  handleRemoveCriteria,
+  setOpenDialog,
+  showCriterionTypes = true,
+}) => {
+
+  const hasChildren = item.children && item.children.length > 0;
+  const isFirstLevel = level === 0;
+
+  return (
+    <>
+      <ListItem key={item.name} sx={{ pl: { xs: 0, sm: level * 2 + 2 } }}>
+        <ListItemText
+          primary={
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              {editingCriterion?.name === item.name ? (
+                <>
+                  <TextField
+                    variant="standard"
+                    value={editCriterionValue}
+                    onChange={(e) => setEditCriterionValue(e.target.value)}
+                    onBlur={!editBlur && handleSaveCriterionEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveCriterionEdit();
+                    }}
+                    autoFocus
+                    fullWidth
+                    color="secondary"
+                    error={!!editCriterionError}
+                    helperText={editCriterionError}
+                    InputProps={{
+                      endAdornment: (
+                        <IconButton onClick={handleSaveCriterionEdit} color="secondary" size="small">
+                          <EditIcon color="warning" />
+                        </IconButton>
+                      ),
+                    }}
+                  />
+                  {isFirstLevel && showCriterionTypes ? (
+                    <Select
+                      value={editCriterionType}
+                      onChange={(e) => setEditCriterionType(e.target.value)}
+                      onBlur={handleSaveCriterionEdit}
+                      onClick={() => setEditBlur(false)}
+                      size="small"
+                      sx={{ minWidth: 100 }}
+                    >
+                      <MenuItem value="cost">Cost</MenuItem>
+                      <MenuItem value="benefit">Benefit</MenuItem>
+                    </Select>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <span>{item.name}</span>
+                  {isFirstLevel && showCriterionTypes ? (
+                    <Chip
+                      variant="outlined"
+                      label={item.type === "cost" ? "Cost" : "Benefit"}
+                      color={item.type === "cost" ? "error" : "success"}
+                      size="small"
+                    />
+                  ) : null}
+                </>
+              )}
+            </Stack>
+          }
+        />
+        {hasChildren && (
+          <IconButton onClick={() => handleToggle(item.name)}>
+            {openItems[item.name] ? <ExpandLess /> : <ExpandMore />}
+          </IconButton>
+        )}
+        <Stack direction={"row"} spacing={0.5}>
+          <IconButton edge="end" aria-label="add child" onClick={() => { setSelectedParent(item); setOpenDialog(true); }}>
+            <AddCircleIcon color="info" />
+          </IconButton>
+          <IconButton edge="end" aria-label="edit" onClick={() => handleEditCriterion(item)} title="Edit">
+            <EditIcon color="warning" />
+          </IconButton>
+          <IconButton edge="end" aria-label="delete" title="Delete" onClick={() => handleRemoveCriteria(item)}>
+            <DeleteIcon color="error" />
+          </IconButton>
+        </Stack>
+      </ListItem>
+
+      {hasChildren && (
+        <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
+          <List disablePadding>
+            {item.children.map((child, index) => (
+              <Fragment key={index}>
+                <CriteriaItem
+                  item={child}
+                  level={level + 1}
+                  editingCriterion={editingCriterion}
+                  editCriterionValue={editCriterionValue}
+                  setEditCriterionValue={setEditCriterionValue}
+                  editBlur={editBlur}
+                  handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  editCriterionError={editCriterionError}
+                  editCriterionType={editCriterionType}
+                  setEditCriterionType={setEditCriterionType}
+                  setEditBlur={setEditBlur}
+                  handleEditCriterion={handleEditCriterion}
+                  handleToggle={handleToggle}
+                  openItems={openItems}
+                  setSelectedParent={setSelectedParent}
+                  handleRemoveCriteria={handleRemoveCriteria}
+                  setOpenDialog={setOpenDialog}
+                  showCriterionTypes={showCriterionTypes}
+                />
+              </Fragment>
+            ))}
+          </List>
+        </Collapse >
+      )}
+    </>
+  );
+};
+
+===== CriteriaWeightingPanel.jsx =====
+import { useEffect, useMemo } from "react";
+import { Alert, Button, ButtonGroup, Stack, Typography } from "@mui/material";
+
+import { getLeafCriteria } from "../../../../utils/criteria.utils";
+import { useIssuesDataContext } from "../../../../context/issues/issues.context";
+import {
+  isFuzzyCriteriaWeightModel,
+  modelUsesCriteriaWeights,
+  resolveFuzzyCriteriaWeightValueCount,
+} from "../../utils/criteriaWeighting.model";
+import {
+  CRITERIA_WEIGHTING_MODES,
+  buildConfigByMode,
+  collectLeafCriteriaByRoot,
+  isDeepEqual,
+  normalizeBwmPayload,
+  normalizeFuzzyWeightsByRoot,
+  normalizeManualWeightsByRoot,
+  normalizeMode,
+  resolveAssignedDomainIds,
+} from "./criteriaWeighting.helpers";
+import { ManualCriteriaWeightsEditor } from "./ManualCriteriaWeightsEditor";
+import { FuzzyCriteriaWeightsEditor } from "./FuzzyCriteriaWeightsEditor";
+import { BwmCriteriaWeightsEditor } from "./BwmCriteriaWeightsEditor";
+
+export const CriteriaWeightingPanel = ({
+  selectedModel,
+  criteria,
+  criteriaWeightingConfig,
+  setCriteriaWeightingConfig,
+  setDefaultModelParams,
+  domainAssignments,
+}) => {
+  const { globalDomains, expressionDomains } = useIssuesDataContext();
+
+  const modelUsesWeights = modelUsesCriteriaWeights(selectedModel);
+  const isFuzzyModel = isFuzzyCriteriaWeightModel(selectedModel);
+
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(Array.isArray(criteria) ? criteria : []),
+    [criteria]
+  );
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const leafByRoot = useMemo(
+    () => collectLeafCriteriaByRoot(Array.isArray(criteria) ? criteria : []),
+    [criteria]
+  );
+  const isSingleCriterion = leafCriteria.length === 1;
+
+  const assignedDomainIds = useMemo(
+    () => resolveAssignedDomainIds(domainAssignments),
+    [domainAssignments]
+  );
+  const assignedDomains = useMemo(() => {
+    const domainById = new Map(
+      [...(Array.isArray(globalDomains) ? globalDomains : []), ...(Array.isArray(expressionDomains) ? expressionDomains : [])]
+        .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
+        .filter(([id]) => id.length > 0)
+    );
+
+    return assignedDomainIds
+      .map((domainId) => domainById.get(domainId))
+      .filter(Boolean);
+  }, [assignedDomainIds, expressionDomains, globalDomains]);
+
+  const fuzzyValueCount = isFuzzyModel
+    ? resolveFuzzyCriteriaWeightValueCount(assignedDomains)
+    : null;
+
+  const mode = normalizeMode(criteriaWeightingConfig?.mode);
+
+  const updateConfig = (nextConfig, options = {}) => {
+    const markDirty = options?.markDirty === true;
+    if (markDirty && typeof setDefaultModelParams === "function") {
+      setDefaultModelParams(false);
+    }
+    setCriteriaWeightingConfig?.(nextConfig);
+  };
+
+  useEffect(() => {
+    if (!setCriteriaWeightingConfig) return;
+    if (!modelUsesWeights) return;
+
+    if (isFuzzyModel) {
+      if (mode !== CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
+        setCriteriaWeightingConfig(
+          buildConfigByMode({
+            mode: CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY,
+            leafCriteria,
+          })
+        );
+      }
+      return;
+    }
+
+    if (isSingleCriterion) {
+      if (mode !== CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
+        setCriteriaWeightingConfig(
+          buildConfigByMode({
+            mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
+            leafCriteria,
+          })
+        );
+      }
+      return;
+    }
+
+    if (!criteriaWeightingConfig || !criteriaWeightingConfig.mode) {
+      setCriteriaWeightingConfig(
+        buildConfigByMode({
+          mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+          leafCriteria,
+        })
+      );
+    }
+  }, [
+    criteriaWeightingConfig,
+    isFuzzyModel,
+    isSingleCriterion,
+    leafCriteria,
+    mode,
+    modelUsesWeights,
+    setCriteriaWeightingConfig,
+  ]);
+
+  useEffect(() => {
+    if (!setCriteriaWeightingConfig) return;
+    if (!modelUsesWeights) return;
+    if (!criteriaWeightingConfig?.mode) return;
+
+    if (mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
+      const sourceWeights = criteriaWeightingConfig?.payload?.weightsByCriterion;
+      const normalizedWeights = normalizeManualWeightsByRoot({
+        sourceWeights,
+        leafByRoot,
+        totalLeafCount: criterionNames.length,
+      });
+
+      if (isDeepEqual(sourceWeights || {}, normalizedWeights)) {
+        return;
+      }
+
+      setCriteriaWeightingConfig({
+        ...criteriaWeightingConfig,
+        payload: {
+          ...(criteriaWeightingConfig.payload || {}),
+          weightsByCriterion: normalizedWeights,
+        },
+      });
+      return;
+    }
+
+    if (mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
+      const sourceWeights = criteriaWeightingConfig?.payload?.weightsByCriterion;
+      const normalizedWeights = normalizeFuzzyWeightsByRoot({
+        sourceWeights,
+        leafByRoot,
+        fuzzyValueCount,
+        totalLeafCount: criterionNames.length,
+      });
+
+      if (isDeepEqual(sourceWeights || {}, normalizedWeights)) {
+        return;
+      }
+
+      setCriteriaWeightingConfig({
+        ...criteriaWeightingConfig,
+        payload: {
+          ...(criteriaWeightingConfig.payload || {}),
+          weightsByCriterion: normalizedWeights,
+        },
+      });
+      return;
+    }
+
+    if (mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
+      const normalizedPayload = normalizeBwmPayload({
+        payload: criteriaWeightingConfig?.payload,
+        criterionNames,
+      });
+
+      if (isDeepEqual(criteriaWeightingConfig?.payload || {}, normalizedPayload)) {
+        return;
+      }
+
+      setCriteriaWeightingConfig({
+        ...criteriaWeightingConfig,
+        payload: normalizedPayload,
+      });
+    }
+  }, [
+    criteriaWeightingConfig,
+    criterionNames,
+    fuzzyValueCount,
+    leafByRoot,
+    mode,
+    modelUsesWeights,
+    setCriteriaWeightingConfig,
+  ]);
+
+  if (!modelUsesWeights) {
+    return null;
+  }
+
+  const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
+
+  return (
+    <Stack spacing={1.25} sx={{ p: 1.5, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 2 }}>
+      <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+        Criteria weights
+      </Typography>
+
+      <ButtonGroup color="secondary" size="small" sx={{ flexWrap: "wrap" }}>
+        {isFuzzyModel ? (
+          <Button variant="contained">Fuzzy criteria weights</Button>
+        ) : (
+          <>
+            <Button
+              variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL ? "contained" : "outlined"}
+              onClick={() =>
+                updateConfig(
+                  buildConfigByMode({
+                    mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
+                    leafCriteria,
+                  }),
+                  { markDirty: true }
+                )
+              }
+            >
+              Manual
+            </Button>
+
+            <Button
+              variant={mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ? "contained" : "outlined"}
+              onClick={() =>
+                updateConfig(
+                  buildConfigByMode({
+                    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+                    leafCriteria,
+                  }),
+                  { markDirty: true }
+                )
+              }
+              disabled={isSingleCriterion}
+            >
+              Manual by experts
+            </Button>
+
+            <Button
+              variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? "contained" : "outlined"}
+              onClick={() =>
+                updateConfig(
+                  buildConfigByMode({
+                    mode: CRITERIA_WEIGHTING_MODES.CREATOR_BWM,
+                    leafCriteria,
+                  }),
+                  { markDirty: true }
+                )
+              }
+              disabled={isSingleCriterion}
+            >
+              BWM
+            </Button>
+
+            <Button
+              variant={mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM ? "contained" : "outlined"}
+              onClick={() =>
+                updateConfig(
+                  buildConfigByMode({
+                    mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
+                    leafCriteria,
+                  }),
+                  { markDirty: true }
+                )
+              }
+              disabled={isSingleCriterion}
+            >
+              BWM by experts
+            </Button>
+
+            <Button disabled>BWM simulated consensus</Button>
+          </>
+        )}
+      </ButtonGroup>
+
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ? (
+        <Alert severity="info">
+          Criteria weights will be collected from experts and aggregated before alternative evaluation.
+        </Alert>
+      ) : null}
+
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM ? (
+        <Alert severity="info">
+          BWM preferences will be collected from experts and aggregated before alternative evaluation.
+        </Alert>
+      ) : null}
+
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC ? (
+        <Alert severity="warning">
+          Simulated consensus for BWM will be available later.
+        </Alert>
+      ) : null}
+
+      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL ? (
+        <ManualCriteriaWeightsEditor
+          criterionNames={criterionNames}
+          weightsByCriterion={safeConfig?.payload?.weightsByCriterion || {}}
+          isSingleCriterion={isSingleCriterion}
+          onWeightChange={(criterionName, value) => {
+            updateConfig(
+              {
+                ...safeConfig,
+                payload: {
+                  ...(safeConfig?.payload || {}),
+                  weightsByCriterion: {
+                    ...(safeConfig?.payload?.weightsByCriterion || {}),
+                    [criterionName]: value,
+                  },
+                },
+              },
+
+===== ManualCriteriaWeightsEditor.jsx =====
+import { Stack, TextField, Typography } from "@mui/material";
+
+const EPSILON = 0.001;
+
+export const ManualCriteriaWeightsEditor = ({
+  criterionNames,
+  weightsByCriterion,
+  onWeightChange,
+  isSingleCriterion,
+}) => {
+  const safeNames = Array.isArray(criterionNames) ? criterionNames : [];
+  const values = safeNames.map((criterionName) => weightsByCriterion?.[criterionName]);
+  const parsedValues = values.map((value) => Number(value));
+  const allNumeric = parsedValues.every((value) => Number.isFinite(value));
+  const total = allNumeric
+    ? parsedValues.reduce((sum, value) => sum + value, 0)
+    : null;
+  const isValidSum = Number.isFinite(total) ? Math.abs(total - 1) <= EPSILON : false;
+
+  return (
+    <Stack spacing={1}>
+      <Stack direction="row" flexWrap="wrap" gap={2}>
+        {safeNames.map((criterionName) => {
+          const currentValue = isSingleCriterion
+            ? 1
+            : (weightsByCriterion?.[criterionName] ?? "");
+
+          return (
+            <Stack key={criterionName} spacing={0.5} alignItems="center">
+              <Typography variant="caption">{criterionName}</Typography>
+              <TextField
+                type="number"
+                color="info"
+                size="small"
+                value={currentValue}
+                disabled={isSingleCriterion}
+                onChange={(event) => {
+                  if (isSingleCriterion) return;
+                  const value = event.target.value;
+                  const parsed = value === "" ? "" : Number(value);
+                  onWeightChange(
+                    criterionName,
+                    parsed === "" || Number.isNaN(parsed)
+                      ? ""
+                      : Math.max(0, Math.min(1, parsed))
+                  );
+                }}
+                inputProps={{ min: 0, max: 1, step: 0.1 }}
+                sx={{ width: 90 }}
+              />
+            </Stack>
+          );
+        })}
+      </Stack>
+
+      {isSingleCriterion ? (
+        <Typography variant="caption" color="text.secondary">
+          Single leaf criterion uses weight 1.
+        </Typography>
+      ) : (
+        <Typography
+          variant="caption"
+          color={isValidSum ? "text.secondary" : "error"}
+          sx={{ fontWeight: 700 }}
+        >
+          {allNumeric
+            ? `Weights sum: ${total.toFixed(4)}${isValidSum ? "" : " (must be 1)"}`
+            : "All leaf weights must be numeric and sum to 1."}
+        </Typography>
+      )}
+    </Stack>
+  );
+};
+
+export default ManualCriteriaWeightsEditor;
+
+===== FuzzyCriteriaWeightsEditor.jsx =====
+import { Alert, Stack, TextField, Typography } from "@mui/material";
+
+import {
+  buildDefaultFuzzyWeightVector,
+} from "../../utils/criteriaWeighting.model";
+import { formatDisplayNumber } from "./criteriaWeighting.helpers";
+
+export const FuzzyCriteriaWeightsEditor = ({
+  criterionNames,
+  fuzzyValueCount,
+  weightsByCriterion,
+  onVectorChange,
+  isSingleCriterion,
+}) => {
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
+    return (
+      <Alert severity="warning">
+        Fuzzy criteria weights require a consistent linguistic value count in assigned domains.
+      </Alert>
+    );
+  }
+
+  return (
+    <Stack spacing={1}>
+      <Typography variant="caption" color="text.secondary">
+        Enter fuzzy weights with non-decreasing values in [0, 1].
+      </Typography>
+
+      <Stack spacing={1.2}>
+        {(criterionNames || []).map((criterionName) => {
+          const fallbackVector = isSingleCriterion
+            ? Array.from({ length: fuzzyValueCount }, () => 1)
+            : buildDefaultFuzzyWeightVector(fuzzyValueCount);
+
+          const currentVector = weightsByCriterion?.[criterionName];
+          const vector = Array.isArray(currentVector)
+            ? currentVector
+            : fallbackVector;
+
+          return (
+            <Stack key={criterionName} spacing={0.5}>
+              <Typography variant="caption">{criterionName}</Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {Array.from({ length: fuzzyValueCount }).map((_, index) => (
+                  <TextField
+                    key={`${criterionName}-${index}`}
+                    type="number"
+                    color="info"
+                    size="small"
+                    value={vector?.[index] === "" ? "" : formatDisplayNumber(vector?.[index])}
+                    disabled={isSingleCriterion}
+                    onChange={(event) => {
+                      if (isSingleCriterion) return;
+                      const value = event.target.value;
+                      const parsed = value === "" ? "" : Number(value);
+                      const nextVector = Array.from(
+                        { length: fuzzyValueCount },
+                        (_, vectorIndex) => {
+                          const sourceValue = vector?.[vectorIndex];
+                          return Number.isFinite(Number(sourceValue))
+                            ? Number(sourceValue)
+                            : fallbackVector[vectorIndex];
+                        }
+                      );
+
+                      nextVector[index] =
+                        parsed === "" || Number.isNaN(parsed) ? "" : parsed;
+
+                      onVectorChange(criterionName, nextVector);
+                    }}
+                    inputProps={{ min: 0, max: 1, step: 0.01 }}
+                    sx={{ width: 90 }}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+};
+
+export default FuzzyCriteriaWeightsEditor;
+
+===== BwmCriteriaWeightsEditor.jsx =====
+import { MenuItem, Stack, TextField, Typography } from "@mui/material";
+
+export const BwmCriteriaWeightsEditor = ({
+  criterionNames,
+  payload,
+  onPayloadChange,
+}) => {
+  const bwmPayload = payload || {};
+
+  return (
+    <Stack spacing={1}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+        <TextField
+          select
+          size="small"
+          label="Best criterion"
+          value={bwmPayload.bestCriterion || ""}
+          onChange={(event) => {
+            const bestCriterion = event.target.value;
+            onPayloadChange({
+              ...bwmPayload,
+              bestCriterion,
+              bestToOthers: {
+                ...(bwmPayload.bestToOthers || {}),
+                [bestCriterion]: 1,
+              },
+            });
+          }}
+          sx={{ minWidth: 220 }}
+        >
+          {(criterionNames || []).map((criterionName) => (
+            <MenuItem key={criterionName} value={criterionName}>
+              {criterionName}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          size="small"
+          label="Worst criterion"
+          value={bwmPayload.worstCriterion || ""}
+          onChange={(event) => {
+            const worstCriterion = event.target.value;
+            onPayloadChange({
+              ...bwmPayload,
+              worstCriterion,
+              othersToWorst: {
+                ...(bwmPayload.othersToWorst || {}),
+                [worstCriterion]: 1,
+              },
+            });
+          }}
+          sx={{ minWidth: 220 }}
+        >
+          {(criterionNames || []).map((criterionName) => (
+            <MenuItem key={criterionName} value={criterionName}>
+              {criterionName}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      <Typography variant="caption" color="text.secondary">
+        Set values from 1 to 9. Self comparisons must be 1.
+      </Typography>
+
+      <Stack direction="row" flexWrap="wrap" gap={2}>
+        {(criterionNames || []).map((criterionName) => (
+          <Stack key={criterionName} spacing={0.5} alignItems="center">
+            <Typography variant="caption">Best vs {criterionName}</Typography>
+            <TextField
+              type="number"
+              size="small"
+              color="info"
+              value={bwmPayload?.bestToOthers?.[criterionName] ?? ""}
+              disabled={criterionName === bwmPayload.bestCriterion}
+              onChange={(event) => {
+                const value = event.target.value;
+                const parsed = value === "" ? "" : Number(value);
+                onPayloadChange({
+                  ...bwmPayload,
+                  bestToOthers: {
+                    ...(bwmPayload.bestToOthers || {}),
+                    [criterionName]:
+                      criterionName === bwmPayload.bestCriterion
+                        ? 1
+                        : parsed === "" || Number.isNaN(parsed)
+                          ? ""
+                          : Math.max(1, Math.min(9, parsed)),
+                  },
+                });
+              }}
+              inputProps={{ min: 1, max: 9, step: 1 }}
+              sx={{ width: 100 }}
+            />
+          </Stack>
+        ))}
+      </Stack>
+
+      <Stack direction="row" flexWrap="wrap" gap={2}>
+        {(criterionNames || []).map((criterionName) => (
+          <Stack key={criterionName} spacing={0.5} alignItems="center">
+            <Typography variant="caption">{criterionName} vs Worst</Typography>
+            <TextField
+              type="number"
+              size="small"
+              color="info"
+              value={bwmPayload?.othersToWorst?.[criterionName] ?? ""}
+              disabled={criterionName === bwmPayload.worstCriterion}
+              onChange={(event) => {
+                const value = event.target.value;
+                const parsed = value === "" ? "" : Number(value);
+                onPayloadChange({
+                  ...bwmPayload,
+                  othersToWorst: {
+                    ...(bwmPayload.othersToWorst || {}),
+                    [criterionName]:
+                      criterionName === bwmPayload.worstCriterion
+                        ? 1
+                        : parsed === "" || Number.isNaN(parsed)
+                          ? ""
+                          : Math.max(1, Math.min(9, parsed)),
+                  },
+                });
+              }}
+              inputProps={{ min: 1, max: 9, step: 1 }}
+              sx={{ width: 100 }}
+            />
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
+  );
+};
+
+export default BwmCriteriaWeightsEditor;
+
+===== criteriaWeighting.helpers.js =====
+import { buildDefaultFuzzyWeightVector } from "../../utils/criteriaWeighting.model";
+
+export const CRITERIA_WEIGHTING_MODES = Object.freeze({
+  CREATOR_FUZZY: "creatorFuzzy",
+  CREATOR_MANUAL: "creatorManual",
+  EXPERT_MANUAL: "expertManual",
+  CREATOR_BWM: "creatorBwm",
+  EXPERT_BWM: "expertBwm",
+  EXPERT_BWM_CMCC: "expertBwmCmcc",
+});
+
+export const normalizeMode = (mode) =>
+  typeof mode === "string" && mode.trim()
+    ? mode.trim()
+    : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
+
+export const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+export const isDeepEqual = (left, right) => {
+  if (left === right) return true;
+
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false;
+    return left.every((item, index) => isDeepEqual(item, right[index]));
+  }
+
+  if (isPlainObject(left) && isPlainObject(right)) {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) return false;
+    return leftKeys.every((key) => isDeepEqual(left[key], right[key]));
+  }
+
+  return false;
+};
+
+export const buildEqualWeightsByCriterion = (leafCriteria) => {
+  const criterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
+
+  if (criterionNames.length === 0) {
+    return {};
+  }
+
+  const baseWeight = Number((1 / criterionNames.length).toFixed(6));
+  const weightsByCriterion = {};
+
+  let consumed = 0;
+  criterionNames.forEach((criterionName, index) => {
+    if (index === criterionNames.length - 1) {
+      weightsByCriterion[criterionName] = Number((1 - consumed).toFixed(6));
+      return;
+    }
+
+    weightsByCriterion[criterionName] = baseWeight;
+    consumed += baseWeight;
+  });
+
+  return weightsByCriterion;
+};
+
+export const buildDefaultBwmPayload = (leafCriteria) => {
+  const criterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
+  const bestCriterion = criterionNames[0] || "";
+  const worstCriterion =
+    criterionNames.length > 1
+      ? criterionNames[criterionNames.length - 1]
+      : criterionNames[0] || "";
+
+  const bestToOthers = criterionNames.reduce((accumulator, criterionName) => {
+    accumulator[criterionName] = criterionName === bestCriterion ? 1 : "";
+    return accumulator;
+  }, {});
+
+  const othersToWorst = criterionNames.reduce((accumulator, criterionName) => {
+    accumulator[criterionName] = criterionName === worstCriterion ? 1 : "";
+    return accumulator;
+  }, {});
+
+  return {
+    bestCriterion,
+    worstCriterion,
+    bestToOthers,
+    othersToWorst,
+  };
+};
+
+export const buildConfigByMode = ({ mode, leafCriteria }) => {
+  const resolvedMode = normalizeMode(mode);
+
+  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
+    return {
+      mode: resolvedMode,
+      source: "creator",
+      method: "fuzzy",
+      aggregationMode: "none",
+      structureKey: "fuzzyCriteriaWeights",
+      payload: {},
+    };
+  }
+
+  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
+    return {
+      mode: resolvedMode,
+      source: "creator",
+      method: "manual",
+      aggregationMode: "none",
+      structureKey: "manualCriteriaWeights",
+      payload: {
+        weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
+      },
+    };
+  }
+
+  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
+    return {
+      mode: resolvedMode,
+      source: "creator",
+      method: "bwm",
+      aggregationMode: "none",
+      structureKey: "bestWorstCriteria",
+      payload: buildDefaultBwmPayload(leafCriteria),
+    };
+  }
+
+  if (resolvedMode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM) {
+    return {
+      mode: resolvedMode,
+      source: "experts",
+      method: "bwm",
+      aggregationMode: "bwmMean",
+      structureKey: "bestWorstCriteria",
+      payload: {},
+    };
+  }
+
+  if (resolvedMode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC) {
+    return {
+      mode: resolvedMode,
+      source: "experts",
+      method: "bwm",
+      aggregationMode: "cmccSimulation",
+      structureKey: "bestWorstCriteria",
+      payload: {},
+    };
+  }
+
+  return {
+    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+    source: "experts",
+    method: "manual",
+    aggregationMode: "mean",
+    structureKey: "manualCriteriaWeights",
+    payload: {},
+  };
+};
+
+export const formatDisplayNumber = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "";
+  return parsed.toFixed(2);
+};
+
+export const resolveAssignedDomainIds = (domainAssignments) => {
+  const expertsAssignments = domainAssignments?.experts;
+  if (!isPlainObject(expertsAssignments)) {
+    return [];
+  }
+
+  const domainIds = new Set();
+
+  for (const expertAssignments of Object.values(expertsAssignments)) {
+    const alternativesBlock = expertAssignments?.alternatives;
+    if (!isPlainObject(alternativesBlock)) continue;
+
+    for (const alternativeValue of Object.values(alternativesBlock)) {
+      const criteriaBlock = alternativeValue?.criteria;
+      if (!isPlainObject(criteriaBlock)) continue;
+
+      for (const domainId of Object.values(criteriaBlock)) {
+        const normalized = String(domainId || "").trim();
+        if (normalized) {
+          domainIds.add(normalized);
+        }
+      }
+    }
+  }
+
+  return Array.from(domainIds);
+};
+
+export const collectLeafCriteriaByRoot = (criteria) => {
+  const byRoot = {};
+
+  const collectLeaves = (nodes = [], rootName) => {
+    for (const node of nodes) {
+      const children = Array.isArray(node?.children) ? node.children : [];
+      if (children.length === 0) {
+        if (!byRoot[rootName]) byRoot[rootName] = [];
+        byRoot[rootName].push(node);
+        continue;
+      }
+
+      collectLeaves(children, rootName);
+    }
+  };
+
+  for (const rootCriterion of Array.isArray(criteria) ? criteria : []) {
+    const rootName = rootCriterion?.name;
+    if (!rootName) continue;
+    collectLeaves([rootCriterion], rootName);
+  }
+
+  return byRoot;
+};
+
+const buildEqualValues = ({ count, total }) => {
+  if (!Number.isInteger(count) || count <= 0) return [];
+  const safeTotal = Number.isFinite(total) && total > 0 ? total : 1;
+  const base = Number((safeTotal / count).toFixed(6));
+  const values = Array.from({ length: count }, () => base);
+  values[count - 1] = Number((safeTotal - base * (count - 1)).toFixed(6));
+  return values;
+};
+
+export const normalizeManualWeightsByRoot = ({
+  sourceWeights,
+  leafByRoot,
+  totalLeafCount,
+}) => {
+  const source = isPlainObject(sourceWeights) ? sourceWeights : {};
+  const normalized = {};
+
+  const rootEntries = Object.entries(leafByRoot || {});
+  for (const [rootName, leaves] of rootEntries) {
+    const leafNames = leaves.map((criterion) => criterion?.name).filter(Boolean);
+    if (leafNames.length === 0) continue;
+
+    if (totalLeafCount === 1) {
+      normalized[leafNames[0]] = 1;
+      continue;
+    }
+
+    const hasAllCurrentLeafKeys = leafNames.every((leafName) =>
+      Object.prototype.hasOwnProperty.call(source, leafName)
+    );
+
+    if (hasAllCurrentLeafKeys) {
+      leafNames.forEach((leafName) => {
+        normalized[leafName] = source[leafName];
+      });
+      continue;
+    }
+
+    const branchBudgetFromCurrentLeaves = leafNames.reduce((sum, leafName) => {
+      const value = Number(source[leafName]);
+      return Number.isFinite(value) ? sum + value : sum;
+    }, 0);
+
+    const previousRootValue = Number(source[rootName]);
+    const fallbackBudget =
+      Number.isFinite(branchBudgetFromCurrentLeaves) && branchBudgetFromCurrentLeaves > 0
+        ? branchBudgetFromCurrentLeaves
+        : Number.isFinite(previousRootValue) && previousRootValue > 0
+          ? previousRootValue
+          : (1 / Math.max(totalLeafCount, 1)) * leafNames.length;
+
+    const branchDefaults = buildEqualValues({
+      count: leafNames.length,
+      total: fallbackBudget,
+    });
+
+    leafNames.forEach((leafName, index) => {
+      normalized[leafName] = branchDefaults[index];
+    });
+  }
+
+  return normalized;
+};
+
+export const normalizeFuzzyWeightsByRoot = ({
+  sourceWeights,
+  leafByRoot,
+  fuzzyValueCount,
+  totalLeafCount,
+}) => {
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
+    return {};
+  }
+
+  const source = isPlainObject(sourceWeights) ? sourceWeights : {};
+  const normalized = {};
+  const rootEntries = Object.entries(leafByRoot || {});
+
+  for (const [rootName, leaves] of rootEntries) {
+    const leafNames = leaves.map((criterion) => criterion?.name).filter(Boolean);
+    if (leafNames.length === 0) continue;
+
+    const defaultVector =
+      totalLeafCount === 1
+        ? Array.from({ length: fuzzyValueCount }, () => 1)
+        : buildDefaultFuzzyWeightVector(fuzzyValueCount);
+
+    const hasAllValid = leafNames.every((leafName) => {
+      const vector = source[leafName];
+      return (
+        Array.isArray(vector) &&
+        vector.length === fuzzyValueCount &&
+        vector.every((item) => Number.isFinite(Number(item)))
+      );
+    });
+
+    leafNames.forEach((leafName) => {
+      const vector = source[leafName];
+      normalized[leafName] = hasAllValid
+        ? vector.map(Number)
+        : [...defaultVector];
+    });
+
+    const staleRootVector = source[rootName];
+    const hasFiniteStaleRootVector =
+      Array.isArray(staleRootVector) &&
+      staleRootVector.length === fuzzyValueCount &&
+      staleRootVector.every((item) => Number.isFinite(Number(item)));
+    if (!hasAllValid && hasFiniteStaleRootVector) {
+      leafNames.forEach((leafName) => {
+        normalized[leafName] = staleRootVector.map(Number);
+      });
+    }
+  }
+
+  return normalized;
+};
+
+export const normalizeBwmPayload = ({ payload, criterionNames }) => {
+  const safePayload = isPlainObject(payload) ? payload : {};
+  const defaults = buildDefaultBwmPayload(
+    (criterionNames || []).map((name) => ({ name }))
+  );
+
+  const validNames = criterionNames.filter(Boolean);
+  const firstName = validNames[0] || "";
+  const lastName = validNames.length > 1 ? validNames[validNames.length - 1] : firstName;
+
+  let bestCriterion =
+    typeof safePayload.bestCriterion === "string" && validNames.includes(safePayload.bestCriterion)
+      ? safePayload.bestCriterion
+      : defaults.bestCriterion || firstName;
+
+  let worstCriterion =
+    typeof safePayload.worstCriterion === "string" && validNames.includes(safePayload.worstCriterion)
+      ? safePayload.worstCriterion
+      : defaults.worstCriterion || lastName;
+
+  if (validNames.length > 1 && bestCriterion === worstCriterion) {
+    worstCriterion = validNames.find((name) => name !== bestCriterion) || worstCriterion;
+
+===== ModelParameters.jsx =====
+import { useEffect, useMemo, useRef } from "react";
+import { Stack, Typography, ToggleButton } from "@mui/material";
+
+import { getLeafCriteria } from "../../../utils/criteria.utils";
+import { resolveModelParameterAdapter } from "../../modelParameters";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+
+export const ModelParameters = ({
+  selectedModel,
+  allData,
+  paramValues,
+  setParamValues,
+  defaultModelParams,
+  setDefaultModelParams,
+  handleDefaultChange,
+  showValidationErrors = false,
+}) => {
+  const { showSnackbarAlert } = useSnackbarAlertContext();
+  const hasShownUnsupportedRef = useRef(false);
+
+  const leafCriteria = useMemo(() => {
+    if (!Array.isArray(allData?.criteria)) return [];
+    return getLeafCriteria(allData.criteria);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(allData?.criteria)]);
+
+  const hasUnsupportedParameters = useMemo(
+    () =>
+      (selectedModel?.parameters || []).some((parameter) => {
+        const { isSupported } = resolveModelParameterAdapter(parameter);
+        return !isSupported;
+      }),
+    [selectedModel?.parameters]
+  );
+
+  useEffect(() => {
+    if (!hasUnsupportedParameters) {
+      hasShownUnsupportedRef.current = false;
+      return;
+    }
+
+    if (hasShownUnsupportedRef.current) return;
+    showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
+    hasShownUnsupportedRef.current = true;
+  }, [hasUnsupportedParameters, showSnackbarAlert]);
+
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }} alignItems="center">
+        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+          Model parameters:
+        </Typography>
+
+        <ToggleButton
+          value="default"
+          selected={defaultModelParams}
+          onChange={handleDefaultChange}
+          color="secondary"
+          size="small"
+        >
+          Default
+        </ToggleButton>
+      </Stack>
+
+      <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
+        {(selectedModel?.parameters || []).map((parameter, index) => {
+          const paramKey = parameter?.key;
+          if (!paramKey) return null;
+
+          const paramLabel = parameter?.label || paramKey || "Parameter";
+          const { adapter, registryKey } = resolveModelParameterAdapter(parameter);
+          const FieldComponent = adapter?.FieldComponent || null;
+
+          if (!FieldComponent) {
+            return (
+              <Stack key={`${paramKey}-${index}`} spacing={1} sx={{ minWidth: 260 }}>
+                <Typography variant="body1">{paramLabel}:</Typography>
+                <Typography variant="caption" color="error">
+                  Unsupported parameter renderer for `{registryKey}`.
+                </Typography>
+              </Stack>
+            );
+          }
+
+          return (
+            <Stack key={`${paramKey}-${index}`}>
+              <FieldComponent
+                parameter={parameter}
+                paramKey={paramKey}
+                paramLabel={paramLabel}
+                paramValues={paramValues}
+                setParamValues={setParamValues}
+                defaultModelParams={defaultModelParams}
+                setDefaultModelParams={setDefaultModelParams}
+                leafCriteria={leafCriteria}
+                showValidationErrors={showValidationErrors}
+              />
+            </Stack>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+};
+
+export default ModelParameters;
+
+===== SummaryStep.jsx =====
+import { useMemo, useState } from "react";
+import {
+  Stack,
+  Typography,
+  Box,
+  TextField,
+  Chip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  ToggleButton,
+  Grid2 as Grid,
+  Divider,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import "dayjs/locale/en-gb";
+
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { CriterionAccordion } from "../components/CriterionAccordion";
+import { ModelParameters } from "../components/ModelParameters";
+import { useCreateIssueContext } from "../context/createIssue.context";
+
+import {
+  getRemainingTime,
+  setDefaults,
+} from "../utils/createIssue.utils";
+import { buildDefaultCriteriaWeightingConfig } from "../utils/criteriaWeighting.model";
+import { groupDomainData } from "../../../utils/domainAssignments.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
+import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
+import {
+  getCreateIssueSummaryAccordionSx,
+  getCreateIssueSummaryAlternativeItemSx,
+  getCreateIssueSummaryDomainHeaderCellSx,
+  getCreateIssueSummaryDomainTableContainerSx,
+  getCreateIssueSummaryExpertChipSx,
+  getCreateIssueSummaryUnlimitedToggleSx,
+} from "../styles/createIssueStep.styles";
+
+dayjs.extend(duration);
+dayjs.extend(customParseFormat);
+
+const KVRow = ({ k, v }) => (
+  <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
+    <Typography
+      variant="caption"
+      sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}
+    >
+      {k}
+    </Typography>
+    <Typography variant="body2" sx={{ fontWeight: 850, wordBreak: "break-word" }}>
+      {v ?? "—"}
+    </Typography>
+  </Stack>
+);
+
+export const SummaryStep = () => {
+  const theme = useTheme();
+  const { globalDomains, expressionDomains } = useIssuesDataContext();
+  const {
+    allData,
+    issueName,
+    issueDescription,
+    issueNameError,
+    issueDescriptionError,
+    handleValidateIssueName,
+    handleValidateIssueDescription,
+    closureDate,
+    setClosureDate,
+    closureDateError,
+    handleClosureDateError,
+    consensusMaxPhases,
+    setConsensusMaxPhases,
+    consensusThreshold,
+    setConsensusThreshold,
+    paramValues,
+    setParamValues,
+    defaultModelParams,
+    setDefaultModelParams,
+    hasAttemptedCreateIssue,
+    setHasAttemptedCreateIssue,
+    setCriteriaWeightingConfig,
+  } = useCreateIssueContext();
+
+  const [unlimited, setUnlimited] = useState(consensusMaxPhases === null);
+  const [openCalendar, setOpenCalendar] = useState(false);
+
+  const {
+    selectedModel,
+    isConsensus,
+    alternatives,
+    criteria,
+    addedExperts,
+    domainAssignments,
+  } = allData;
+
+  const domainNameMap = useMemo(
+    () =>
+      Object.fromEntries(
+        [...globalDomains, ...expressionDomains].map((domain) => [domain._id, domain.name])
+      ),
+    [globalDomains, expressionDomains]
+  );
+
+  const groupedData = useMemo(
+    () => groupDomainData(domainAssignments),
+    [domainAssignments]
+  );
+
+  const handleDefaultChange = () => {
+    const leafCriteria = getLeafCriteria(criteria);
+    setParamValues(
+      setDefaults({
+        selectedModel,
+        criteria: leafCriteria,
+      })
+    );
+    setCriteriaWeightingConfig(
+      buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
+    );
+    setDefaultModelParams(true);
+    setHasAttemptedCreateIssue(false);
+  };
+
+  if (
+    !selectedModel ||
+    addedExperts.length === 0 ||
+    alternatives.length === 0 ||
+    criteria.length === 0 ||
+    !domainAssignments?.experts ||
+    Object.keys(domainAssignments.experts).length === 0
+  ) {
+    return (
+      <Typography pt={8} variant="h5">
+        You must finish previous steps
+      </Typography>
+    );
+  }
+
+  const accordionSx = getCreateIssueSummaryAccordionSx(theme);
+  const domainHeaderCellSx = getCreateIssueSummaryDomainHeaderCellSx(theme);
+
+  const sectionHeader = (title, right) => (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center", width: "100%" }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 980, flex: 1 }}>
+        {title}
+      </Typography>
+      {right}
+    </Stack>
+  );
+
+  return (
+    <Box>
+      <Stack spacing={1.25} sx={{ position: "relative", zIndex: 1 }}>
+        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader("Basic info", null)}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Grid container spacing={1.4}>
+              <Grid item size={{ xs: 12, md: 5 }}>
+                <TextField
+                  label="Issue name"
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  fullWidth
+                  autoComplete="off"
+                  value={issueName}
+                  onChange={(event) => handleValidateIssueName(event.target.value)}
+                  error={Boolean(issueNameError)}
+                  helperText={issueNameError || " "}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" && handleValidateIssueName(event.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item size={{ xs: 12, md: 7 }}>
+                <TextField
+                  label="Description"
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  fullWidth
+                  autoComplete="off"
+                  value={issueDescription}
+                  onChange={(event) => handleValidateIssueDescription(event.target.value)}
+                  error={Boolean(issueDescriptionError)}
+                  helperText={issueDescriptionError ? "Invalid description" : " "}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" &&
+                    handleValidateIssueDescription(event.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item size={{ xs: 12, md: 12 }}>
+                <Stack spacing={1}>
+                  <KVRow k="Model" v={selectedModel?.name} />
+                  <KVRow
+                    k="Consensus"
+                    v={isConsensus ? "Enabled" : "Disabled"}
+                  />
+                </Stack>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+
+        <Divider />
+
+        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader(
+              "Alternatives",
+              <ActiveIssuesPill tone="info">{alternatives.length}</ActiveIssuesPill>
+            )}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Stack spacing={0.8}>
+              {alternatives.map((alternative, index) => (
+                <Box
+                  key={`${alternative}_${index}`}
+                  sx={getCreateIssueSummaryAlternativeItemSx(theme)}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 950 }}>
+                    {alternative}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+
+        <Divider />
+
+        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader(
+              "Criteria",
+              <ActiveIssuesPill tone="info">{criteria.length}</ActiveIssuesPill>
+            )}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Stack spacing={0.8}>
+              {criteria.map((criterion, index) => (
+                <CriterionAccordion key={index} criterion={criterion} />
+              ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+
+        <Divider />
+
+        <Accordion disableGutters elevation={0} sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader(
+              "Experts",
+              <ActiveIssuesPill tone="warning">{addedExperts.length}</ActiveIssuesPill>
+            )}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              {addedExperts.map((expert, index) => (
+                <Chip
+                  key={index}
+                  variant="outlined"
+                  label={expert}
+                  size="small"
+                  sx={getCreateIssueSummaryExpertChipSx(theme)}
+                />
+              ))}
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+
+        <Divider />
+
+        <Accordion disableGutters elevation={0} sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader("Model parameters", null)}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <ModelParameters
+              selectedModel={selectedModel}
+              allData={allData}
+              paramValues={paramValues}
+              setParamValues={setParamValues}
+              defaultModelParams={defaultModelParams}
+              setDefaultModelParams={setDefaultModelParams}
+              handleDefaultChange={handleDefaultChange}
+              showValidationErrors={hasAttemptedCreateIssue}
+            />
+          </AccordionDetails>
+        </Accordion>
+
+        <Divider />
+
+        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {sectionHeader("Scheduling", null)}
+          </AccordionSummary>
+
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Grid container spacing={1.4} alignItems="center">
+              <Grid item size={isConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.2}
+                  alignItems="flex-start"
+                >
+                  <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
+                    <DatePicker
+                      label="Closure date"
+                      value={closureDate}
+                      minDate={dayjs().add(2, "day")}
+                      onChange={(newValue) => {
+                        setClosureDate(newValue);
+                        handleClosureDateError(newValue);
+                      }}
+                      openTo="day"
+                      open={openCalendar}
+                      onOpen={() => setOpenCalendar(true)}
+                      onClose={() => setOpenCalendar(false)}
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          color: "secondary",
+                          error: closureDateError,
+                          onClick: () => setOpenCalendar(true),
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 900, mt: { xs: 0.25, sm: 1 } }}
+                  >
+
+===== useCreateIssueFlow.js =====
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+import { createIssue } from "../../../services/issue.service";
+import {
+  readStoredCreateIssueData,
+  setDefaults,
+  steps,
+  updateParamValues,
+  validateIssueDescription,
+  validateIssueName,
+} from "../utils/createIssue.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
+import {
+  buildInitialAssignments,
+  validateDomainAssigments,
+} from "../../../utils/domainAssignments.utils";
+import {
+  buildDefaultCriteriaWeightingConfig,
+  buildDefaultFuzzyWeightVector,
+  isFuzzyCriteriaWeightModel,
+  modelUsesCriteriaWeights,
+} from "../utils/criteriaWeighting.model";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+
+const LOCAL_STORAGE_KEY = "prevCreateIssueData";
+const CRITERIA_WEIGHTING_MODES = Object.freeze({
+  CREATOR_FUZZY: "creatorFuzzy",
+  CREATOR_MANUAL: "creatorManual",
+  EXPERT_MANUAL: "expertManual",
+  CREATOR_BWM: "creatorBwm",
+  EXPERT_BWM: "expertBwm",
+  EXPERT_BWM_CMCC: "expertBwmCmcc",
+});
+
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const buildDefaultFuzzyWeightsByCriterion = ({
+  leafCriteria,
+  fuzzyValueCount,
+}) => {
+  const names = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2 || names.length === 0) {
+    return {};
+  }
+
+  const isSingleCriterion = names.length === 1;
+  const baseVector = isSingleCriterion
+    ? Array.from({ length: fuzzyValueCount }, () => 1)
+    : buildDefaultFuzzyWeightVector(fuzzyValueCount);
+
+  return names.reduce((accumulator, criterionName) => {
+    accumulator[criterionName] = [...baseVector];
+    return accumulator;
+  }, {});
+};
+
+const isCriteriaWeightingConfigOnDefault = ({
+  selectedModel,
+  criteriaWeightingConfig,
+  leafCriteria,
+  fuzzyValueCount,
+}) => {
+  const expectedDefault = buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria);
+  if (!modelUsesCriteriaWeights(selectedModel)) {
+    return criteriaWeightingConfig == null;
+  }
+  if (!isPlainObject(criteriaWeightingConfig) || !isPlainObject(expectedDefault)) {
+    return false;
+  }
+
+  if (!isFuzzyCriteriaWeightModel(selectedModel)) {
+    const leafNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+      .map((criterion) => criterion?.name)
+      .filter(Boolean);
+
+    if (leafNames.length === 1) {
+      const onlyLeaf = leafNames[0];
+      const isCreatorManualForSingleLeaf =
+        criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
+        criteriaWeightingConfig.source === "creator" &&
+        criteriaWeightingConfig.method === "manual" &&
+        criteriaWeightingConfig.aggregationMode === "none" &&
+        criteriaWeightingConfig.structureKey === "manualCriteriaWeights" &&
+        (isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, {}) ||
+          isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, { [onlyLeaf]: 1 }));
+
+      if (isCreatorManualForSingleLeaf) {
+        return true;
+      }
+    }
+
+    return isDeepEqual(criteriaWeightingConfig, expectedDefault);
+  }
+
+  const expectedFuzzyWeights = buildDefaultFuzzyWeightsByCriterion({
+    leafCriteria,
+    fuzzyValueCount,
+  });
+  const currentFuzzyWeights = criteriaWeightingConfig?.payload?.weightsByCriterion;
+  const fuzzyWeightsOnDefault =
+    isDeepEqual(currentFuzzyWeights || {}, {}) ||
+    isDeepEqual(currentFuzzyWeights || {}, expectedFuzzyWeights);
+
+  return (
+    criteriaWeightingConfig.mode === expectedDefault.mode &&
+    criteriaWeightingConfig.source === expectedDefault.source &&
+    criteriaWeightingConfig.method === expectedDefault.method &&
+    criteriaWeightingConfig.aggregationMode === expectedDefault.aggregationMode &&
+    criteriaWeightingConfig.structureKey === expectedDefault.structureKey &&
+    fuzzyWeightsOnDefault
+  );
+};
+
+const resolveAssignedFuzzyValueCount = ({
+  domainAssignments,
+  globalDomains,
+  expressionDomains,
+}) => {
+  const expertsAssignments = domainAssignments?.experts;
+  if (!isPlainObject(expertsAssignments)) {
+    return null;
+  }
+
+  const domainDocs = [
+    ...(Array.isArray(globalDomains) ? globalDomains : []),
+    ...(Array.isArray(expressionDomains) ? expressionDomains : []),
+  ];
+  const domainById = new Map(
+    domainDocs
+      .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
+      .filter(([id]) => id.length > 0)
+  );
+
+  const assignedDomainIds = new Set();
+
+  for (const expertAssignments of Object.values(expertsAssignments)) {
+    const alternativesBlock = expertAssignments?.alternatives;
+    if (!isPlainObject(alternativesBlock)) continue;
+
+    for (const alternativeValue of Object.values(alternativesBlock)) {
+      const criteriaBlock = alternativeValue?.criteria;
+      if (!isPlainObject(criteriaBlock)) continue;
+
+      for (const domainId of Object.values(criteriaBlock)) {
+        const normalizedId = String(domainId || "").trim();
+        if (normalizedId) {
+          assignedDomainIds.add(normalizedId);
+        }
+      }
+    }
+  }
+
+  const valueCounts = new Set();
+  for (const domainId of assignedDomainIds) {
+    const domain = domainById.get(domainId);
+    if (domain?.type !== "linguistic") continue;
+
+    const valueCount = Number(domain?.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      return null;
+    }
+
+    valueCounts.add(valueCount);
+  }
+
+  return valueCounts.size === 1 ? Array.from(valueCounts)[0] : null;
+};
+
+const validateCreatorManualConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
+  const payload = criteriaWeightingConfig?.payload;
+  const weightsByCriterion = payload?.weightsByCriterion;
+
+  if (!isPlainObject(weightsByCriterion)) {
+    return "Manual mode requires weights by criterion.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const expectedKeySet = new Set(criterionNames);
+
+  const unknownKeys = Object.keys(weightsByCriterion).filter(
+    (criterionName) => !expectedKeySet.has(criterionName)
+  );
+  if (unknownKeys.length > 0) {
+    return `Unknown criteria in manual weights: ${unknownKeys.join(", ")}`;
+  }
+
+  const weights = criterionNames.map((criterionName) =>
+    Number(weightsByCriterion[criterionName])
+  );
+
+  if (weights.some((value) => !Number.isFinite(value))) {
+    return "Manual mode requires numeric weights for all criteria.";
+  }
+
+  if (weights.some((value) => value < 0 || value > 1)) {
+    return "Manual weights must be between 0 and 1.";
+  }
+
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (Math.abs(total - 1) > 0.001) {
+    return "Manual weights must sum to 1.";
+  }
+
+  return null;
+};
+
+const validateCreatorBwmConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
+  const payload = criteriaWeightingConfig?.payload;
+  if (!isPlainObject(payload)) {
+    return "BWM mode requires payload data.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const criterionNameSet = new Set(criterionNames);
+
+  const bestCriterion = typeof payload.bestCriterion === "string"
+    ? payload.bestCriterion.trim()
+    : "";
+  const worstCriterion = typeof payload.worstCriterion === "string"
+    ? payload.worstCriterion.trim()
+    : "";
+
+  if (!bestCriterion || !criterionNameSet.has(bestCriterion)) {
+    return "BWM mode requires a valid best criterion.";
+  }
+
+  if (!worstCriterion || !criterionNameSet.has(worstCriterion)) {
+    return "BWM mode requires a valid worst criterion.";
+  }
+
+  if (criterionNames.length > 1 && bestCriterion === worstCriterion) {
+    return "Best and worst criterion must be different.";
+  }
+
+  const bestToOthers = payload.bestToOthers;
+  const othersToWorst = payload.othersToWorst;
+  if (!isPlainObject(bestToOthers) || !isPlainObject(othersToWorst)) {
+    return "BWM mode requires best-to-others and others-to-worst values.";
+  }
+
+  for (const criterionName of criterionNames) {
+    const bestValue = Number(bestToOthers[criterionName]);
+    const worstValue = Number(othersToWorst[criterionName]);
+
+    if (!Number.isFinite(bestValue) || bestValue < 1 || bestValue > 9) {
+      return `BWM best-to-others for '${criterionName}' must be between 1 and 9.`;
+    }
+
+    if (!Number.isFinite(worstValue) || worstValue < 1 || worstValue > 9) {
+      return `BWM others-to-worst for '${criterionName}' must be between 1 and 9.`;
+    }
+  }
+
+  if (Number(bestToOthers[bestCriterion]) !== 1) {
+    return "BWM requires best-to-others[bestCriterion] = 1.";
+  }
+
+  if (Number(othersToWorst[worstCriterion]) !== 1) {
+    return "BWM requires others-to-worst[worstCriterion] = 1.";
+  }
+
+  return null;
+};
+
+const validateCreatorFuzzyConfig = ({
+  criteriaWeightingConfig,
+  leafCriteria,
+  fuzzyValueCount,
+}) => {
+  const payload = criteriaWeightingConfig?.payload;
+  const weightsByCriterion = payload?.weightsByCriterion;
+
+  if (!isPlainObject(weightsByCriterion)) {
+    return "Fuzzy criteria weights are required.";
+  }
+
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
+    return "Fuzzy criteria weights require a consistent linguistic value count.";
+  }
+
+  for (const criterionName of criterionNames) {
+    const vector = weightsByCriterion[criterionName];
+    if (!Array.isArray(vector) || vector.length !== fuzzyValueCount) {
+      return `Fuzzy weight for '${criterionName}' must contain ${fuzzyValueCount} values.`;
+    }
+
+    const numericVector = vector.map(Number);
+    if (numericVector.some((item) => !Number.isFinite(item))) {
+      return `Fuzzy weight for '${criterionName}' must contain valid numbers.`;
+    }
+
+    if (numericVector.some((item) => item < 0 || item > 1)) {
+      return `Fuzzy weight for '${criterionName}' must stay within [0, 1].`;
+    }
+
+    for (let index = 1; index < numericVector.length; index += 1) {
+      if (numericVector[index] < numericVector[index - 1]) {
+        return `Fuzzy weight for '${criterionName}' must be non-decreasing.`;
+      }
+    }
+  }
+
+  return null;
+};
+
+dayjs.extend(utc);
+
+const isDeepEqual = (left, right) => {
+  if (left === right) return true;
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false;
+    return left.every((item, index) => isDeepEqual(item, right[index]));
+  }
+  if (
+    left &&
+    right &&
+    typeof left === "object" &&
+    typeof right === "object" &&
+    !Array.isArray(left) &&
+    !Array.isArray(right)
+  ) {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) return false;
+    return leftKeys.every((key) => isDeepEqual(left[key], right[key]));
+  }
+  return false;
+};
+
+/**
+ * Gestiona el estado y reglas del flujo createIssue.
+ *
+ * Mantiene fuera del componente de presentación toda la lógica de
+ * persistencia local, validaciones, efectos derivados y creación final.
+ *
+ * @returns {Object}
+ */
+export const useCreateIssueFlow = () => {
+  const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } =
+    useIssuesDataContext();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
+  const navigate = useNavigate();
+
+  const storedData = useMemo(
+    () => readStoredCreateIssueData(LOCAL_STORAGE_KEY),
+    []
+  );
+
+  const [activeStep, setActiveStep] = useState(storedData.activeStep || 0);
+  const [completed] = useState(storedData.completed || {});
+  const [selectedModel, setSelectedModel] = useState(storedData.selectedModel || null);
+  const [showConsensusModels, setShowConsensusModels] = useState(
+    storedData.showConsensusModels === true
+  );
+  const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
+  const [criteria, setCriteria] = useState(storedData.criteria || []);
+  const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
+  const [issueName, setIssueName] = useState(storedData.issueName || "");
+  const [issueDescription, setIssueDescription] = useState(
+    storedData.issueDescription || ""
+  );
+  const [issueNameError, setIssueNameError] = useState("");
+  const [issueDescriptionError, setIssueDescriptionError] = useState(false);
+  const [closureDate, setClosureDate] = useState(null);
+  const [closureDateError, setClosureDateError] = useState(false);
+  const [consensusMaxPhases, setConsensusMaxPhases] = useState(
+    storedData.consensusMaxPhases || 3
+  );
+  const [consensusThreshold, setConsensusThreshold] = useState(
+    storedData.consensusThreshold || 0.7
+  );
+  const [paramValues, setParamValues] = useState(storedData.paramValues || {});
+  const [defaultModelParams, setDefaultModelParams] = useState(true);
+  const [hasAttemptedCreateIssue, setHasAttemptedCreateIssue] = useState(false);
+  const [domainAssignments, setDomainAssignments] = useState(
+    storedData.domainAssignments || {}
+  );
+  const [criteriaWeightingConfig, setCriteriaWeightingConfig] = useState(
+    isPlainObject(storedData.criteriaWeightingConfig)
+      ? storedData.criteriaWeightingConfig
+      : buildDefaultCriteriaWeightingConfig(storedData.selectedModel || null)
+  );
+  const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
+
+  useEffect(() => {
+    const dataToSave = {
+      activeStep,
+      completed,
+      selectedModel,
+      showConsensusModels,
+      isConsensus: effectiveIsConsensus,
+      alternatives,
+      criteria,
+      addedExperts,
+      issueName,
+      issueDescription,
+      domainAssignments,
+      paramValues,
+      criteriaWeightingConfig,
+      closureDate: closureDate ? closureDate.toJSON() : null,
+      ...(effectiveIsConsensus && {
+        consensusMaxPhases,
+        consensusThreshold,
+      }),
+    };
+
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+  }, [
+    activeStep,
+    completed,
+    selectedModel,
+    showConsensusModels,
+    effectiveIsConsensus,
+    alternatives,
+    criteria,
+    addedExperts,
+    issueName,
+    issueDescription,
+    closureDate,
+    consensusMaxPhases,
+    consensusThreshold,
+    domainAssignments,
+    paramValues,
+    criteriaWeightingConfig,
+  ]);
+
+  useEffect(() => {
+    if (selectedModel) {
+      const leafCriteria = getLeafCriteria(criteria);
+      try {
+        setParamValues(
+          setDefaults({
+            selectedModel,
+            criteria: leafCriteria,
+          })
+        );
+      } catch {
+        showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
+        return;
+      }
+      setDefaultModelParams(true);
+      setHasAttemptedCreateIssue(false);
+      setCriteriaWeightingConfig(
+        buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
+      );
+      return;
+    }
+    setCriteriaWeightingConfig(buildDefaultCriteriaWeightingConfig(selectedModel, []));
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel]);
+
+  useEffect(() => {
+    if (addedExperts.length > 0 && alternatives.length > 0 && criteria.length > 0) {
+      setDomainAssignments((previous) =>
+        buildInitialAssignments(
+          addedExperts,
+          alternatives,
+          getLeafCriteria(criteria),
+          previous,
+          selectedModel,
+          globalDomains,
+          expressionDomains
+        )
+      );
+    }
+  }, [
+    addedExperts,
+    alternatives,
+    criteria,
+    selectedModel,
+    globalDomains,
+    expressionDomains,
+  ]);
+
+  useEffect(() => {
+    setParamValues((previous) =>
+      updateParamValues(previous, selectedModel, getLeafCriteria(criteria))
+    );
+  }, [criteria, selectedModel]);
+
+  useEffect(() => {
+    if (!selectedModel) {
+      if (defaultModelParams !== true) setDefaultModelParams(true);
+      return;
+    }
+
+    const leafCriteria = getLeafCriteria(criteria);
+    const fuzzyValueCount = resolveAssignedFuzzyValueCount({
+      domainAssignments,
+      globalDomains,
+      expressionDomains,
+    });
+    let defaults = {};
+    try {
+      defaults = setDefaults({
+        selectedModel,
+        criteria: leafCriteria,
+      });
+    } catch {
+      return;
+    }
+
+    const parameterKeys = (selectedModel?.parameters || [])
+      .map((parameter) => parameter?.key)
+      .filter(Boolean);
+
+    const areParamsOnDefault = parameterKeys.every((key) =>
+      isDeepEqual(paramValues?.[key], defaults?.[key])
+    );
+    const isCriteriaWeightingOnDefault = isCriteriaWeightingConfigOnDefault({

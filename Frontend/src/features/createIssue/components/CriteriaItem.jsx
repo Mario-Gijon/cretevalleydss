@@ -24,7 +24,7 @@ export const CriteriaItem = ({
   setSelectedParent,
   handleRemoveCriteria,
   setOpenDialog,
-
+  showCriterionTypes = true,
 }) => {
 
   const hasChildren = item.children && item.children.length > 0;
@@ -59,7 +59,7 @@ export const CriteriaItem = ({
                       ),
                     }}
                   />
-                  {isFirstLevel && (
+                  {isFirstLevel && showCriterionTypes ? (
                     <Select
                       value={editCriterionType}
                       onChange={(e) => setEditCriterionType(e.target.value)}
@@ -71,19 +71,19 @@ export const CriteriaItem = ({
                       <MenuItem value="cost">Cost</MenuItem>
                       <MenuItem value="benefit">Benefit</MenuItem>
                     </Select>
-                  )}
+                  ) : null}
                 </>
               ) : (
                 <>
                   <span>{item.name}</span>
-                  {isFirstLevel && (
+                  {isFirstLevel && showCriterionTypes ? (
                     <Chip
                       variant="outlined"
                       label={item.type === "cost" ? "Cost" : "Benefit"}
                       color={item.type === "cost" ? "error" : "success"}
                       size="small"
                     />
-                  )}
+                  ) : null}
                 </>
               )}
             </Stack>
@@ -130,6 +130,7 @@ export const CriteriaItem = ({
                   setSelectedParent={setSelectedParent}
                   handleRemoveCriteria={handleRemoveCriteria}
                   setOpenDialog={setOpenDialog}
+                  showCriterionTypes={showCriterionTypes}
                 />
               </Fragment>
             ))}
@@ -139,4 +140,3 @@ export const CriteriaItem = ({
     </>
   );
 };
-

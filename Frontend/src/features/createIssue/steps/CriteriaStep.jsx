@@ -23,7 +23,6 @@ import { useTheme } from "@mui/material/styles";
 import {
   countLeafCriteria,
   removeCriteriaItemRecursively,
-  updateCriterion,
   validateCriterion,
 } from "../../../utils/criteria.utils";
 import { CriteriaItem } from "../components/CriteriaItem";
@@ -39,12 +38,72 @@ import {
   getCreateIssueStepInputSx,
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
+import { modelUsesCriteriaWeights } from "../utils/criteriaWeighting.model";
+import { CriteriaWeightingPanel } from "../components/criteria/CriteriaWeightingPanel";
+
+const applyTypeToBranch = (criterion, type) => ({
+  ...criterion,
+  type,
+  children: Array.isArray(criterion?.children)
+    ? criterion.children.map((child) => applyTypeToBranch(child, type))
+    : [],
+});
+
+const updateCriterionWithInheritance = ({
+  items,
+  editingCriterion,
+  nextName,
+  nextType,
+  showCriterionTypes,
+  isRootCriterion,
+}) => {
+  const visit = (nodes) =>
+    nodes.map((node) => {
+      if (node?.name === editingCriterion?.name) {
+        if (showCriterionTypes && isRootCriterion) {
+          const typedBranch = applyTypeToBranch(node, nextType);
+          return {
+            ...typedBranch,
+            name: nextName,
+          };
+        }
+
+        return {
+          ...node,
+          name: nextName,
+        };
+      }
+
+      const children = Array.isArray(node?.children) ? node.children : [];
+      if (children.length > 0) {
+        return {
+          ...node,
+          children: visit(children),
+        };
+      }
+
+      return node;
+    });
+
+  return visit(Array.isArray(items) ? items : []);
+};
 
 export const CriteriaStep = () => {
   const theme = useTheme();
   const { showSnackbarAlert } = useSnackbarAlertContext();
-  const { criteria, setCriteria, selectedModel } = useCreateIssueContext();
+  const {
+    criteria,
+    setCriteria,
+    selectedModel,
+    criteriaWeightingConfig,
+    setCriteriaWeightingConfig,
+    setDefaultModelParams,
+    domainAssignments,
+  } = useCreateIssueContext();
+
   const isMultiCriteria = selectedModel?.isMultiCriteria;
+  const showCriterionTypes = selectedModel?.usesCriterionTypes === true;
+  const showCriteriaWeighting = modelUsesCriteriaWeights(selectedModel);
 
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState("");
@@ -60,7 +119,7 @@ export const CriteriaStep = () => {
 
   const [editingCriterion, setEditingCriterion] = useState(null);
   const [editCriterionValue, setEditCriterionValue] = useState("");
-  const [editCriterionType, setEditCriterionType] = useState("");
+  const [editCriterionType, setEditCriterionType] = useState("benefit");
   const [editBlur, setEditBlur] = useState(true);
   const [editCriterionError, setEditCriterionError] = useState("");
   const [openRemoveCriterionDialog, setOpenRemoveCriterionDialog] = useState(false);
@@ -72,7 +131,7 @@ export const CriteriaStep = () => {
   const handleEditCriterion = (item) => {
     setEditingCriterion(item);
     setEditCriterionValue(item.name);
-    setEditCriterionType(item.type);
+    setEditCriterionType(item.type || "benefit");
   };
 
   const handleSaveCriterionEdit = () => {
@@ -82,14 +141,22 @@ export const CriteriaStep = () => {
       return;
     }
 
-    setCriteria((previous) =>
-      updateCriterion(
-        previous,
-        editingCriterion,
-        editCriterionValue.trim(),
-        editCriterionType
-      )
+    const trimmedName = editCriterionValue.trim();
+    const isRootCriterion = (criteria || []).some(
+      (criterion) => criterion?.name === editingCriterion?.name
     );
+
+    setCriteria((previous) =>
+      updateCriterionWithInheritance({
+        items: previous,
+        editingCriterion,
+        nextName: trimmedName,
+        nextType: editCriterionType || "benefit",
+        showCriterionTypes,
+        isRootCriterion,
+      })
+    );
+
     setEditingCriterion(null);
     setEditCriterionError("");
     setEditBlur(true);
@@ -114,7 +181,7 @@ export const CriteriaStep = () => {
 
     setCriteria((previous) => [
       ...previous,
-      { name: inputValue.trim(), type: selectedType, children: [] },
+      { name: inputValue.trim(), type: showCriterionTypes ? selectedType : "benefit", children: [] },
     ]);
     setInputValue("");
     setInputError(false);
@@ -156,7 +223,7 @@ export const CriteriaStep = () => {
                 ...item.children,
                 {
                   name: childInputValue.trim(),
-                  type: selectedParent.type,
+                  type: selectedParent?.type || "benefit",
                   children: [],
                 },
               ],
@@ -193,7 +260,7 @@ export const CriteriaStep = () => {
               ...item.children,
               {
                 name: childInputValue.trim(),
-                type: selectedParent.type,
+                type: selectedParent?.type || "benefit",
                 children: [],
               },
             ],
@@ -224,98 +291,118 @@ export const CriteriaStep = () => {
         </Typography>
       </Stack>
 
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.25}
-        alignItems={{ xs: "stretch", sm: "flex-start" }}
-      >
-        <TextField
-          variant="outlined"
-          placeholder="Criterion"
-          autoComplete="off"
-          size="small"
-          value={inputValue}
-          onChange={(event) => {
-            setInputValue(event.target.value);
-            setInputError(false);
-          }}
-          onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
-          error={Boolean(inputError)}
-          helperText={inputError}
-          color="info"
-          sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
-        />
-
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel color="info">Type</InputLabel>
-          <Select
-            value={selectedType}
-            onChange={(event) => setSelectedType(event.target.value)}
-            label="Type"
-            color="info"
-            sx={getCreateIssueStepInputSx(theme)}
+      <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems="flex-start">
+        <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0, width: "100%" }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.25}
+            alignItems={{ xs: "stretch", sm: "flex-start" }}
           >
-            <MenuItem value="benefit">Benefit</MenuItem>
-            <MenuItem value="cost">Cost</MenuItem>
-          </Select>
-        </FormControl>
+            <TextField
+              variant="outlined"
+              placeholder="Criterion"
+              autoComplete="off"
+              size="small"
+              value={inputValue}
+              onChange={(event) => {
+                setInputValue(event.target.value);
+                setInputError(false);
+              }}
+              onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
+              error={Boolean(inputError)}
+              helperText={inputError}
+              color="info"
+              sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+            />
 
-        <Button
-          startIcon={<AddIcon />}
-          color="info"
-          variant="outlined"
-          onClick={handleAddCriteria}
-          disabled={!inputValue.trim()}
-        >
-          Add
-        </Button>
+            {showCriterionTypes ? (
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel color="info">Type</InputLabel>
+                <Select
+                  value={selectedType}
+                  onChange={(event) => setSelectedType(event.target.value)}
+                  label="Type"
+                  color="info"
+                  sx={getCreateIssueStepInputSx(theme)}
+                >
+                  <MenuItem value="benefit">Benefit</MenuItem>
+                  <MenuItem value="cost">Cost</MenuItem>
+                </Select>
+              </FormControl>
+            ) : null}
+
+            <Button
+              startIcon={<AddIcon />}
+              color="info"
+              variant="outlined"
+              onClick={handleAddCriteria}
+              disabled={!inputValue.trim()}
+            >
+              Add
+            </Button>
+          </Stack>
+
+          {criteria.length === 0 ? (
+            <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
+              <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                No criteria yet. Add at least 1 leaf criterion.
+              </Typography>
+            </Box>
+          ) : (
+            <List
+              disablePadding
+              sx={{
+                ...getCreateIssueStepScrollableSx(theme, "52vh"),
+                overflow: "hidden",
+                overflowY: "auto",
+                minHeight: 0,
+              }}
+            >
+              <TransitionGroup>
+                {reversed.map((item, index) => (
+                  <Collapse key={item.name}>
+                    <CriteriaItem
+                      item={item}
+                      editingCriterion={editingCriterion}
+                      editCriterionValue={editCriterionValue}
+                      setEditCriterionValue={setEditCriterionValue}
+                      editBlur={editBlur}
+                      handleSaveCriterionEdit={handleSaveCriterionEdit}
+                      editCriterionError={editCriterionError}
+                      editCriterionType={editCriterionType}
+                      setEditCriterionType={setEditCriterionType}
+                      setEditBlur={setEditBlur}
+                      handleEditCriterion={handleEditCriterion}
+                      handleToggle={handleToggle}
+                      openItems={openItems}
+                      setSelectedParent={setSelectedParent}
+                      handleRemoveCriteria={handleAskRemoveCriteria}
+                      setOpenDialog={setOpenDialog}
+                      showCriterionTypes={showCriterionTypes}
+                    />
+                    {index !== reversed.length - 1 ? (
+                      <Divider sx={getCreateIssueRowDividerSx(theme)} />
+                    ) : null}
+                  </Collapse>
+                ))}
+              </TransitionGroup>
+            </List>
+          )}
+        </Stack>
+
+        {showCriteriaWeighting ? (
+          <Stack sx={{ width: { xs: "100%", lg: 470 }, minWidth: 0, flexShrink: 0 }}>
+            <CriteriaWeightingPanel
+              selectedModel={selectedModel}
+              criteria={criteria}
+              criteriaWeightingConfig={criteriaWeightingConfig}
+              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+              setDefaultModelParams={setDefaultModelParams}
+              domainAssignments={domainAssignments}
+            />
+          </Stack>
+        ) : null}
       </Stack>
-
-      {criteria.length === 0 ? (
-        <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
-          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-            No criteria yet. Add at least 1 leaf criterion.
-          </Typography>
-        </Box>
-      ) : (
-        <List
-          disablePadding
-          sx={{
-            ...getCreateIssueStepScrollableSx(theme, "52vh"),
-            overflow: "hidden",
-            overflowY: "auto",
-            minHeight: 0,
-          }}
-        >
-          <TransitionGroup>
-            {reversed.map((item, index) => (
-              <Collapse key={item.name}>
-                <CriteriaItem
-                  item={item}
-                  editingCriterion={editingCriterion}
-                  editCriterionValue={editCriterionValue}
-                  setEditCriterionValue={setEditCriterionValue}
-                  editBlur={editBlur}
-                  handleSaveCriterionEdit={handleSaveCriterionEdit}
-                  editCriterionError={editCriterionError}
-                  editCriterionType={editCriterionType}
-                  setEditCriterionType={setEditCriterionType}
-                  setEditBlur={setEditBlur}
-                  handleEditCriterion={handleEditCriterion}
-                  handleToggle={handleToggle}
-                  openItems={openItems}
-                  setSelectedParent={setSelectedParent}
-                  handleRemoveCriteria={handleAskRemoveCriteria}
-                  setOpenDialog={setOpenDialog}
-                />
-                {index !== reversed.length - 1 ? (
-                  <Divider sx={getCreateIssueRowDividerSx(theme)} />
-                ) : null}
-              </Collapse>
-            ))}
-          </TransitionGroup>
-        </List>
-      )}
 
       <GlassDialog
         open={openDialog}

@@ -94,7 +94,6 @@ export const SummaryStep = () => {
     setDefaultModelParams,
     hasAttemptedCreateIssue,
     setHasAttemptedCreateIssue,
-    criteriaWeightingConfig,
     setCriteriaWeightingConfig,
   } = useCreateIssueContext();
 
@@ -312,8 +311,6 @@ export const SummaryStep = () => {
               setDefaultModelParams={setDefaultModelParams}
               handleDefaultChange={handleDefaultChange}
               showValidationErrors={hasAttemptedCreateIssue}
-              criteriaWeightingConfig={criteriaWeightingConfig}
-              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
             />
           </AccordionDetails>
         </Accordion>

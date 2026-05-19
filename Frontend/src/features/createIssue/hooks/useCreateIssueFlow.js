@@ -77,6 +77,26 @@ const isCriteriaWeightingConfigOnDefault = ({
   }
 
   if (!isFuzzyCriteriaWeightModel(selectedModel)) {
+    const leafNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+      .map((criterion) => criterion?.name)
+      .filter(Boolean);
+
+    if (leafNames.length === 1) {
+      const onlyLeaf = leafNames[0];
+      const isCreatorManualForSingleLeaf =
+        criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
+        criteriaWeightingConfig.source === "creator" &&
+        criteriaWeightingConfig.method === "manual" &&
+        criteriaWeightingConfig.aggregationMode === "none" &&
+        criteriaWeightingConfig.structureKey === "manualCriteriaWeights" &&
+        (isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, {}) ||
+          isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, { [onlyLeaf]: 1 }));
+
+      if (isCreatorManualForSingleLeaf) {
+        return true;
+      }
+    }
+
     return isDeepEqual(criteriaWeightingConfig, expectedDefault);
   }
 
