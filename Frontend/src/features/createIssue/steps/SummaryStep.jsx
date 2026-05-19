@@ -39,6 +39,7 @@ import {
   getRemainingTime,
   setDefaults,
 } from "../utils/createIssue.utils";
+import { buildDefaultCriteriaWeightingConfig } from "../utils/criteriaWeighting.model";
 import { groupDomainData } from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
@@ -123,11 +124,15 @@ export const SummaryStep = () => {
   );
 
   const handleDefaultChange = () => {
+    const leafCriteria = getLeafCriteria(criteria);
     setParamValues(
       setDefaults({
         selectedModel,
-        criteria: getLeafCriteria(criteria),
+        criteria: leafCriteria,
       })
+    );
+    setCriteriaWeightingConfig(
+      buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
     );
     setDefaultModelParams(true);
     setHasAttemptedCreateIssue(false);

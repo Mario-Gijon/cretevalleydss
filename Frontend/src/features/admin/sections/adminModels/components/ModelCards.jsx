@@ -68,8 +68,12 @@ export default function ModelCards({
                     value: toTitle(row.alternativeEvaluationStructureKey),
                   },
                   {
-                    label: "Weighting structure",
-                    value: toTitle(row.criteriaWeightingStructureKey),
+                    label: "Uses criteria weights",
+                    value: formatBoolean(row.usesCriteriaWeights),
+                  },
+                  {
+                    label: "Uses fuzzy weights",
+                    value: formatBoolean(row.usesFuzzyCriteriaWeights),
                   },
                   { label: "Input", value: row.apiInputFormat },
                   { label: "Output", value: row.apiOutputFormat },

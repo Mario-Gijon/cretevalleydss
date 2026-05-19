@@ -11,36 +11,20 @@ import { validateAndNormalizeFuzzyCriteriaWeightsParameter } from "./handlers/fu
 import { normalizeNonEmptyString } from "./modelParameter.shared.js";
 
 export const MODEL_PARAMETER_HANDLER_REGISTRY = new Map([
-  ["number:global", validateAndNormalizeNumberParameter],
-  ["integer:global", validateAndNormalizeIntegerParameter],
-  ["boolean:global", validateAndNormalizeBooleanParameter],
-  ["string:global", validateAndNormalizeStringParameter],
-  ["enum:global", validateAndNormalizeEnumParameter],
-  ["interval:global", validateAndNormalizeIntervalParameter],
-  ["array:global", validateAndNormalizeArrayParameter],
-  ["array:perCriterion", validateAndNormalizeArrayParameter],
-  ["fuzzyArray:global", validateAndNormalizeFuzzyArrayParameter],
-  ["fuzzyArray:perCriterion", validateAndNormalizeFuzzyArrayParameter],
+  ["numberGlobal", validateAndNormalizeNumberParameter],
+  ["integerGlobal", validateAndNormalizeIntegerParameter],
+  ["booleanGlobal", validateAndNormalizeBooleanParameter],
+  ["stringGlobal", validateAndNormalizeStringParameter],
+  ["selectGlobal", validateAndNormalizeEnumParameter],
+  ["intervalGlobal", validateAndNormalizeIntervalParameter],
+  ["arrayGlobal", validateAndNormalizeArrayParameter],
+  ["arrayPerCriterion", validateAndNormalizeArrayParameter],
+  ["fuzzyArrayGlobal", validateAndNormalizeFuzzyArrayParameter],
+  ["fuzzyArrayPerCriterion", validateAndNormalizeFuzzyArrayParameter],
   ["criteriaWeights", validateAndNormalizeCriteriaWeightsParameter],
   ["fuzzyCriteriaWeights", validateAndNormalizeFuzzyCriteriaWeightsParameter],
 ]);
 
 export const resolveHandlerKey = (parameter) => {
-  const semanticRole = normalizeNonEmptyString(parameter?.semanticRole);
-  const parameterType = normalizeNonEmptyString(parameter?.type);
-  const scope = normalizeNonEmptyString(parameter?.scope);
-
-  if (semanticRole === "criteriaWeights" && parameterType === "fuzzyArray") {
-    return "fuzzyCriteriaWeights";
-  }
-
-  if (semanticRole === "criteriaWeights") {
-    return "criteriaWeights";
-  }
-
-  if (!parameterType || !scope) {
-    return null;
-  }
-
-  return `${parameterType}:${scope}`;
+  return normalizeNonEmptyString(parameter?.handlerKey);
 };

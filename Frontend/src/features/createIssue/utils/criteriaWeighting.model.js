@@ -1,39 +1,53 @@
-export const isFuzzyCriteriaWeightModel = (model) => {
-  const apiModelKey = String(model?.apiModelKey || "").trim().toLowerCase();
-  if (apiModelKey === "fuzzy_topsis") {
-    return true;
+export const modelUsesCriteriaWeights = (model) =>
+  model?.usesCriteriaWeights === true;
+
+export const isFuzzyCriteriaWeightModel = (model) =>
+  modelUsesCriteriaWeights(model) && model?.usesFuzzyCriteriaWeights === true;
+
+export const buildDefaultCriteriaWeightingConfig = (selectedModel, _leafCriteria = []) => {
+  if (!modelUsesCriteriaWeights(selectedModel)) {
+    return null;
   }
 
-  const criteriaWeightParameter = (Array.isArray(model?.parameters)
-    ? model.parameters
-    : []
-  ).find((parameter) => parameter?.semanticRole === "criteriaWeights");
+  if (isFuzzyCriteriaWeightModel(selectedModel)) {
+    return {
+      mode: "creatorFuzzy",
+      source: "creator",
+      method: "fuzzy",
+      aggregationMode: "none",
+      structureKey: "fuzzyCriteriaWeights",
+      payload: {},
+    };
+  }
 
-  return criteriaWeightParameter?.type === "fuzzyArray";
+  return {
+    mode: "expertManual",
+    source: "experts",
+    method: "manual",
+    aggregationMode: "mean",
+    structureKey: "manualCriteriaWeights",
+    payload: {},
+  };
 };
 
-export const resolveFuzzyCriteriaWeightValueCount = (model) => {
-  const criteriaWeightParameter = (Array.isArray(model?.parameters)
-    ? model.parameters
-    : []
-  ).find((parameter) => parameter?.semanticRole === "criteriaWeights");
+export const resolveFuzzyCriteriaWeightValueCount = (domains = []) => {
+  const linguisticDomains = (Array.isArray(domains) ? domains : []).filter(
+    (domain) => domain?.type === "linguistic"
+  );
+  const valueCounts = Array.from(
+    new Set(
+      linguisticDomains
+        .map((domain) => Number(domain?.valueCount))
+        .filter((valueCount) => Number.isInteger(valueCount) && valueCount >= 2)
+    )
+  );
 
-  const restrictionsLength = Number(criteriaWeightParameter?.restrictions?.length);
-  if (Number.isInteger(restrictionsLength) && restrictionsLength >= 2) {
-    return restrictionsLength;
-  }
-
-  const explicitCount = Number(criteriaWeightParameter?.valueCount);
-  if (Number.isInteger(explicitCount) && explicitCount >= 2) {
-    return explicitCount;
-  }
-
-  return 3;
+  return valueCounts.length === 1 ? valueCounts[0] : null;
 };
 
 export const buildDefaultFuzzyWeightVector = (valueCount) => {
   if (!Number.isInteger(valueCount) || valueCount <= 1) {
-    return [0.25, 0.5, 0.75];
+    return [];
   }
 
   const min = 0.25;
@@ -44,4 +58,3 @@ export const buildDefaultFuzzyWeightVector = (valueCount) => {
     Number((min + step * index).toFixed(10))
   );
 };
-

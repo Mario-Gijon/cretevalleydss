@@ -102,8 +102,6 @@ export const createIssueScenarioFlow = async ({
     targetVersionLabel: context.targetRuntimeSnapshot.targetVersionLabel,
     targetAlternativeEvaluationStructureKey:
       context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
-    targetCriteriaWeightingStructureKey:
-      context.targetRuntimeSnapshot.targetCriteriaWeightingStructureKey,
     targetSupportsConsensus: context.targetRuntimeSnapshot.targetSupportsConsensus,
     alternativeEvaluationStructureKey: context.issue.alternativeEvaluationStructureKey,
     criteriaWeightingStructureKey: context.issue.criteriaWeightingStructureKey,
@@ -156,7 +154,6 @@ const mapScenarioListItem = (scenario) => ({
     null,
   criteriaWeightingStructureKey:
     scenario?.criteriaWeightingStructureKey ||
-    scenario?.targetCriteriaWeightingStructureKey ||
     null,
   status: scenario?.status || null,
   createdAt: scenario?.createdAt || null,
@@ -178,7 +175,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModel targetModelName targetVersionLabel domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey targetCriteriaWeightingStructureKey status createdAt createdBy"
+      "_id name targetModel targetModelName targetVersionLabel domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey status createdAt createdBy"
     )
     .populate("createdBy", "email name")
     .lean();
@@ -201,8 +198,6 @@ const mapScenarioDetail = (scenarioDoc) => ({
   targetVersionLabel: scenarioDoc?.targetVersionLabel || null,
   targetAlternativeEvaluationStructureKey:
     scenarioDoc?.targetAlternativeEvaluationStructureKey || null,
-  targetCriteriaWeightingStructureKey:
-    scenarioDoc?.targetCriteriaWeightingStructureKey || null,
   targetSupportsConsensus: scenarioDoc?.targetSupportsConsensus === true,
   alternativeEvaluationStructureKey:
     scenarioDoc?.alternativeEvaluationStructureKey || null,

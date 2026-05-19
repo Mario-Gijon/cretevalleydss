@@ -197,10 +197,6 @@ const buildModelRow = ({
       manifestProjection?.alternativeEvaluationStructureKey ??
       mongoModel?.alternativeEvaluationStructureKey ??
       null,
-    criteriaWeightingStructureKey:
-      manifestProjection?.criteriaWeightingStructureKey ??
-      mongoModel?.criteriaWeightingStructureKey ??
-      null,
     supportsConsensus:
       manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
     modelFamilyKey:
@@ -211,6 +207,18 @@ const buildModelRow = ({
       manifestProjection?.versionLabel ?? mongoModel?.versionLabel ?? null,
     isMultiCriteria:
       manifestProjection?.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
+    usesCriteriaWeights:
+      manifestProjection?.usesCriteriaWeights ??
+      mongoModel?.usesCriteriaWeights ??
+      null,
+    usesFuzzyCriteriaWeights:
+      manifestProjection?.usesFuzzyCriteriaWeights ??
+      mongoModel?.usesFuzzyCriteriaWeights ??
+      null,
+    usesCriterionTypes:
+      manifestProjection?.usesCriterionTypes ??
+      mongoModel?.usesCriterionTypes ??
+      null,
     supportedDomains: manifestProjection
       ? normalizeSupportedDomains(manifestProjection.supportedDomains)
       : normalizeSupportedDomains(mongoModel?.supportedDomains),

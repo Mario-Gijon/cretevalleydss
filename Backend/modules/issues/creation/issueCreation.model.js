@@ -77,6 +77,34 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       value: model?.supportsConsensus,
     });
   }
+  if (typeof model?.usesCriteriaWeights !== "boolean") {
+    runtimeErrors.push({
+      field: "usesCriteriaWeights",
+      message: "must be boolean",
+      value: model?.usesCriteriaWeights,
+    });
+  }
+  if (typeof model?.usesFuzzyCriteriaWeights !== "boolean") {
+    runtimeErrors.push({
+      field: "usesFuzzyCriteriaWeights",
+      message: "must be boolean",
+      value: model?.usesFuzzyCriteriaWeights,
+    });
+  }
+  if (typeof model?.usesCriterionTypes !== "boolean") {
+    runtimeErrors.push({
+      field: "usesCriterionTypes",
+      message: "must be boolean",
+      value: model?.usesCriterionTypes,
+    });
+  }
+  if (typeof model?.isMultiCriteria !== "boolean") {
+    runtimeErrors.push({
+      field: "isMultiCriteria",
+      message: "must be boolean",
+      value: model?.isMultiCriteria,
+    });
+  }
 
   const modelFamilyKey = normalizeNonEmptyString(model?.modelFamilyKey);
   if (!modelFamilyKey) {
@@ -131,10 +159,11 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
     },
     alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey: normalizeNonEmptyString(
-      model?.criteriaWeightingStructureKey
-    ),
     supportsConsensus: model?.supportsConsensus === true,
+    usesCriteriaWeights: model?.usesCriteriaWeights === true,
+    usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: model?.usesCriterionTypes === true,
+    isMultiCriteria: model?.isMultiCriteria === true,
     modelFamilyKey,
     modelVersion,
     versionLabel,

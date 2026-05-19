@@ -27,6 +27,55 @@ import {
 import dayjs from "dayjs";
 import axios from "axios";
 
+const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
+  model,
+  domainDocs,
+}) => {
+  if (model?.usesFuzzyCriteriaWeights !== true) {
+    return null;
+  }
+
+  const linguisticDomains = (Array.isArray(domainDocs) ? domainDocs : []).filter(
+    (domain) => domain?.type === "linguistic"
+  );
+
+  if (linguisticDomains.length === 0) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require linguistic expression domains",
+      {
+        field: "domainAssignments",
+      }
+    );
+  }
+
+  const valueCounts = new Set();
+
+  for (const domain of linguisticDomains) {
+    const valueCount = Number(domain?.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      throw createBadRequestError(
+        "Fuzzy criteria weights require a valid linguistic valueCount",
+        {
+          field: "domainAssignments",
+        }
+      );
+    }
+
+    valueCounts.add(valueCount);
+  }
+
+  if (valueCounts.size !== 1) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require consistent linguistic valueCount across issue domains",
+      {
+        field: "domainAssignments",
+      }
+    );
+  }
+
+  return Array.from(valueCounts)[0];
+};
+
 /**
  * Crea un nuevo issue con alternativas, criterios, snapshots y participaciones.
  *
@@ -118,7 +167,7 @@ export const createIssueFlow = async ({
     modelFamilyKey,
     modelVersion,
     versionLabel,
-    criteriaWeightingStructureKey: "manualCriteriaWeights",
+    criteriaWeightingStructureKey: null,
     criteriaWeightingAggregationMode: "none",
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
@@ -131,7 +180,10 @@ export const createIssueFlow = async ({
     closureDate: input.closureDate
       ? dayjs(input.closureDate).format("DD-MM-YYYY")
       : null,
-    currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+    currentStage:
+      model?.usesCriteriaWeights === true
+        ? EVALUATION_STAGES.CRITERIA_WEIGHTING
+        : EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     consensusMaxPhases,
     consensusThreshold,
     modelParameters: baseModelParameters,
@@ -159,6 +211,15 @@ export const createIssueFlow = async ({
     });
   }
 
+  if (model?.isMultiCriteria !== true && leafCriteria.length > 1) {
+    throw createBadRequestError(
+      "Selected model does not support multiple criteria",
+      {
+        field: "criteria",
+      }
+    );
+  }
+
   issue.alternativeOrder = createdAlternatives
     .slice()
     .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
@@ -175,12 +236,35 @@ export const createIssueFlow = async ({
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const isSingleLeafCriterion = criterionNames.length === 1;
 
+  const { usedDomainIds } =
+    buildExpertAssignmentDomainMap({
+      uniqueExpertEmails: input.uniqueExpertEmails,
+      normalizedAssignmentsByExpert: input.normalizedAssignmentsByExpert,
+      expertByEmail,
+      createdAlternatives,
+      leafCriteria,
+      uniqueAlternativeNames: input.uniqueAlternativeNames,
+    });
+
+  const domainDocs = await loadAccessibleExpressionDomains({
+    domainIdList: usedDomainIds,
+    userId: adminUserId,
+    modelSupportedDomains: model?.supportedDomains || null,
+    session,
+  });
+
+  const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({
+    model,
+    domainDocs,
+  });
+
   const resolvedCriteriaWeighting =
     await resolveCriteriaWeightingConfigOrThrow({
       criteriaWeightingConfig: input.criteriaWeightingConfig,
       criterionNames,
       isSingleLeafCriterion,
       model,
+      fuzzyValueCount: fuzzyCriteriaWeightValueCount,
       apiModelsBaseUrl,
       httpClient,
     });
@@ -210,23 +294,6 @@ export const createIssueFlow = async ({
     admin,
     adminEmail,
     isCriteriaWeightingRequired,
-    session,
-  });
-
-  const { usedDomainIds } =
-    buildExpertAssignmentDomainMap({
-      uniqueExpertEmails: input.uniqueExpertEmails,
-      normalizedAssignmentsByExpert: input.normalizedAssignmentsByExpert,
-      expertByEmail,
-      createdAlternatives,
-      leafCriteria,
-      uniqueAlternativeNames: input.uniqueAlternativeNames,
-    });
-
-  const domainDocs = await loadAccessibleExpressionDomains({
-    domainIdList: usedDomainIds,
-    userId: adminUserId,
-    modelSupportedDomains: model?.supportedDomains || null,
     session,
   });
 

@@ -22,6 +22,9 @@ const countLeafCriteria = (nodes) => {
   return count;
 };
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 /**
  * Obtiene el numero de criterios hoja del issue.
  *
@@ -186,12 +189,11 @@ export const stripWeights = (obj) => {
 export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
-  Boolean(param) && param?.ui?.component !== "criteriaWeights";
+  Boolean(param) &&
+  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.handlerKey);
 
 const isCriteriaWeightsParameter = (parameter) =>
-  parameter?.ui?.component === "criteriaWeights" ||
-  parameter?.semanticRole === "criteriaWeights" ||
-  parameter?.key === "weights";
+  parameter?.handlerKey === "criteriaWeights";
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -201,6 +203,62 @@ const isCriteriaWeightsParameter = (parameter) =>
  */
 export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
+
+const resolveScenarioModelParameters = (model) =>
+  filterOutWeightsParams(Array.isArray(model?.parameters) ? model.parameters : []);
+
+const resolveFuzzyWeightsValueCount = (model) => {
+  const valueCount = Number(model?.fuzzyWeightsValueCount);
+  return Number.isInteger(valueCount) && valueCount >= 2 ? valueCount : null;
+};
+
+const buildSyntheticWeightsParameter = (model) => {
+  if (model?.usesCriteriaWeights !== true) {
+    return null;
+  }
+
+  if (model?.usesFuzzyCriteriaWeights === true) {
+    return {
+      key: "weights",
+      label: "Fuzzy criteria weights",
+      type: "fuzzyArray",
+      scope: "perCriterion",
+      handlerKey: "fuzzyCriteriaWeights",
+      required: true,
+      default: "equal",
+      restrictions: {
+        min: 0,
+        max: 1,
+        ordered: "nonDecreasing",
+        length: resolveFuzzyWeightsValueCount(model),
+        allowed: null,
+      },
+    };
+  }
+
+  return {
+    key: "weights",
+    label: "Criteria weights",
+    type: "array",
+    scope: "perCriterion",
+    handlerKey: "criteriaWeights",
+    required: true,
+    default: "equal",
+    restrictions: {
+      min: 0,
+      max: 1,
+      ordered: null,
+      length: "matchCriteria",
+      allowed: null,
+    },
+  };
+};
+
+const getScenarioParameterDefinitions = (model) => {
+  const params = resolveScenarioModelParameters(model);
+  const syntheticWeights = buildSyntheticWeightsParameter(model);
+  return syntheticWeights ? [...params, syntheticWeights] : params;
+};
 
 /**
  * Quita datos de pesos de la definicion de modelo.
@@ -213,7 +271,7 @@ export const omitWeightsFromModel = (model) => {
 
   return {
     ...model,
-    parameters: filterOutWeightsParams(model.parameters),
+    parameters: resolveScenarioModelParameters(model),
     defaultsResolved: stripWeightsDeep(model.defaultsResolved),
   };
 };
@@ -297,6 +355,64 @@ export const ensureArrayLen = (arr, len, filler = "") => {
   if (next.length < len) return [...next, ...Array(len - next.length).fill(filler)];
   if (next.length > len) return next.slice(0, len);
   return next;
+};
+
+const normalizeValueType = (parameter) =>
+  String(parameter?.valueType || "").trim().toLowerCase();
+
+const parseByValueType = (rawValue, valueType) => {
+  if (rawValue === "" || rawValue === null || rawValue === undefined) return null;
+
+  if (valueType === "number" || valueType === "integer") {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (valueType === "boolean") {
+    if (rawValue === true || rawValue === false) return rawValue;
+    const normalized = String(rawValue).trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+    return null;
+  }
+
+  return rawValue;
+};
+
+const enumValueIsAllowed = ({ value, allowed, valueType }) => {
+  if (!Array.isArray(allowed) || allowed.length === 0) return true;
+
+  if (valueType === "number" || valueType === "integer") {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return false;
+    return allowed.some((allowedValue) => Number(allowedValue) === numericValue);
+  }
+
+  return allowed.some((allowedValue) => allowedValue === value);
+};
+
+const parseIntervalPair = (value) => {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const left = Number(value[0]);
+  const right = Number(value[1]);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+  return [left, right];
+};
+
+const validateIntervalByRestrictions = ({ pair, restrictions }) => {
+  if (!Array.isArray(pair) || pair.length !== 2) return false;
+  const [left, right] = pair;
+  const min = restrictions?.min;
+  const max = restrictions?.max;
+
+  if (min != null && (left < Number(min) || right < Number(min))) return false;
+  if (max != null && (left > Number(max) || right > Number(max))) return false;
+
+  const ordered = restrictions?.ordered;
+  if (ordered === "strictIncreasing" && !(left < right)) return false;
+  if (ordered === "nonDecreasing" && !(left <= right)) return false;
+
+  return true;
 };
 
 /**
@@ -464,9 +580,9 @@ export const getCompatReason = (model, domainType) => {
  * @returns {Object}
  */
 export const buildParamsResolved = ({ model, leafCount }) => {
-  if (model?.defaultsResolved) return stripWeightsDeep(model.defaultsResolved);
-
-  const out = {};
+  const out = isPlainObject(model?.defaultsResolved)
+    ? stripWeightsDeep(model.defaultsResolved)
+    : {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   const equalWeights = safeLeafCount > 0
     ? Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount)
@@ -476,11 +592,19 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     ? model.baseIssueWeights
     : null;
 
-  for (const param of model?.parameters || []) {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const key = param?.key;
     if (!key) continue;
 
     if (param.type === "number") out[key] = param.default ?? "";
+
+    if (param.type === "enum") out[key] = param.default ?? "";
+
+    if (param.type === "interval") {
+      const min = param?.restrictions?.min ?? "";
+      const max = param?.restrictions?.max ?? "";
+      out[key] = ensureArrayLen(Array.isArray(param.default) ? param.default : [min, max], 2, "");
+    }
 
     if (param.type === "array") {
       const len =
@@ -514,11 +638,32 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     }
 
     if (param.type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(param?.restrictions?.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        safeLeafCount === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        out[key] = [Array.from({ length: fuzzyValueCount }, () => 1)];
+        continue;
+      }
+
       const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 1;
       const count = Number(len) || 1;
+      const vectorLength =
+        Number.isInteger(Number(param?.restrictions?.length)) &&
+        Number(param.restrictions.length) >= 2
+          ? Number(param.restrictions.length)
+          : 3;
       const base = Array.isArray(param.default) ? param.default : [];
-      const filled = ensureArrayLen(base, count, ["", "", ""]).map((triple) =>
-        Array.isArray(triple) && triple.length === 3 ? triple : ["", "", ""]
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
+      const filled = ensureArrayLen(base, count, fillerVector).map((vector) =>
+        Array.isArray(vector) && vector.length === vectorLength
+          ? vector
+          : [...fillerVector]
       );
       out[key] = filled;
     }
@@ -536,7 +681,7 @@ export const buildParamsResolved = ({ model, leafCount }) => {
 export const cleanParamsForSend = ({ model, values, leafCount }) => {
   const out = {};
 
-  for (const param of model?.parameters || []) {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
     const type = param.type;
@@ -591,32 +736,81 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
       continue;
     }
 
+    if (type === "enum") {
+      const valueType = normalizeValueType(param);
+      const raw = values?.[name];
+      const value = raw === "" || raw == null ? def : raw;
+      const parsed = parseByValueType(value, valueType);
+      if (parsed == null) continue;
+
+      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
+        continue;
+      }
+
+      out[name] = parsed;
+      continue;
+    }
+
+    if (type === "interval") {
+      const fallback = Array.isArray(def)
+        ? def
+        : [restrictions.min ?? "", restrictions.max ?? ""];
+      const source = values?.[name] ?? fallback;
+      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
+      if (!parsed) continue;
+      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) continue;
+      out[name] = parsed;
+      continue;
+    }
+
     if (type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        Number(leafCount) === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        out[name] = [Array.from({ length: fuzzyValueCount }, () => 1)];
+        continue;
+      }
+
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 1);
+      const vectorLength =
+        Number.isInteger(Number(restrictions.length)) &&
+        Number(restrictions.length) >= 2
+          ? Number(restrictions.length)
+          : 3;
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
 
       const triples = ensureArrayLen(
         values?.[name] ?? def ?? [],
         Number(len) || 1,
-        ["", "", ""]
+        fillerVector
       );
 
-      const parsed = triples.map((triple) => {
-        const safeTriple = Array.isArray(triple) ? triple : ["", "", ""];
-        return safeTriple.map((item) => (item === "" || item == null ? null : Number(item)));
+      const parsed = triples.map((vector) => {
+        const safeVector =
+          Array.isArray(vector) && vector.length === vectorLength
+            ? vector
+            : fillerVector;
+        return safeVector.map((item) => (item === "" || item == null ? null : Number(item)));
       });
 
-      if (parsed.some((triple) => triple.some((item) => item == null || !Number.isFinite(item)))) {
+      if (parsed.some((vector) => vector.some((item) => item == null || !Number.isFinite(item)))) {
         continue;
       }
 
-      out[name] = parsed.map(([l, m, u]) => [
-        clamp(l, restrictions.min ?? null, restrictions.max ?? null),
-        clamp(m, restrictions.min ?? null, restrictions.max ?? null),
-        clamp(u, restrictions.min ?? null, restrictions.max ?? null),
-      ]);
+      out[name] = parsed.map((vector) =>
+        vector.map((item) =>
+          clamp(item, restrictions.min ?? null, restrictions.max ?? null)
+        )
+      );
     }
   }
 
@@ -630,7 +824,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  * @returns {{ok: boolean, msg?: string}}
  */
 export const validateParams = ({ model, values, leafCount }) => {
-  for (const param of model?.parameters || []) {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
     const type = param.type;
@@ -658,6 +852,57 @@ export const validateParams = ({ model, values, leafCount }) => {
       }
       if (restrictions.max != null && parsed > restrictions.max) {
         return { ok: false, msg: `Parameter '${name}' must be ≤ ${restrictions.max}.` };
+      }
+      continue;
+    }
+
+    if (type === "enum") {
+      const valueType = normalizeValueType(param);
+      const raw = value === "" || value == null ? param.default : value;
+      const parsed = parseByValueType(raw, valueType);
+
+      if ((value === "" || value == null) && param?.required && parsed == null) {
+        return { ok: false, msg: `Parameter '${name}' is required.` };
+      }
+
+      if (parsed == null) continue;
+
+      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be one of: ${(restrictions.allowed || []).join(", ")}.`,
+        };
+      }
+      continue;
+    }
+
+    if (type === "interval") {
+      const fallback = Array.isArray(param.default)
+        ? param.default
+        : [restrictions.min ?? "", restrictions.max ?? ""];
+      const source = value == null ? fallback : value;
+      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
+
+      if (!parsed) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be an array of 2 finite numbers.`,
+        };
+      }
+
+      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) {
+        if (restrictions.ordered === "strictIncreasing") {
+          return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
+        }
+        if (restrictions.ordered === "nonDecreasing") {
+          return { ok: false, msg: `Parameter '${name}' must satisfy left ≤ right.` };
+        }
+        if (restrictions.min != null) {
+          return { ok: false, msg: `Parameter '${name}' must be ≥ ${restrictions.min}.` };
+        }
+        if (restrictions.max != null) {
+          return { ok: false, msg: `Parameter '${name}' must be ≤ ${restrictions.max}.` };
+        }
       }
       continue;
     }
@@ -724,10 +969,28 @@ export const validateParams = ({ model, values, leafCount }) => {
     }
 
     if (type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        Number(leafCount) === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        continue;
+      }
+
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 1);
+      const vectorLength =
+        Number.isInteger(Number(restrictions.length)) &&
+        Number(restrictions.length) >= 2
+          ? Number(restrictions.length)
+          : 3;
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
 
       const triples = ensureArrayLen(
         Array.isArray(value)
@@ -736,16 +999,16 @@ export const validateParams = ({ model, values, leafCount }) => {
             ? param.default
             : [],
         Number(len) || 1,
-        ["", "", ""]
+        fillerVector
       );
 
       for (let index = 0; index < triples.length; index += 1) {
         const triple = triples[index];
 
-        if (!Array.isArray(triple) || triple.length !== 3) {
+        if (!Array.isArray(triple) || triple.length !== vectorLength) {
           return {
             ok: false,
-            msg: `Parameter '${name}' must be an array of triples.`,
+            msg: `Parameter '${name}' must be an array of vectors with length ${vectorLength}.`,
           };
         }
 
@@ -757,11 +1020,32 @@ export const validateParams = ({ model, values, leafCount }) => {
           };
         }
 
-        const [l, m, u] = numbers;
-        if (l > m || m > u) {
+        for (let vectorIndex = 1; vectorIndex < numbers.length; vectorIndex += 1) {
+          if (numbers[vectorIndex] < numbers[vectorIndex - 1]) {
+            return {
+              ok: false,
+              msg: `Parameter '${name}' requires non-decreasing fuzzy vectors.`,
+            };
+          }
+        }
+
+        if (
+          restrictions.min != null &&
+          numbers.some((item) => item < Number(restrictions.min))
+        ) {
           return {
             ok: false,
-            msg: `Parameter '${name}' requires l ≤ m ≤ u.`,
+            msg: `Parameter '${name}' must be ≥ ${restrictions.min}.`,
+          };
+        }
+
+        if (
+          restrictions.max != null &&
+          numbers.some((item) => item > Number(restrictions.max))
+        ) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must be ≤ ${restrictions.max}.`,
           };
         }
       }

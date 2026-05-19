@@ -81,9 +81,10 @@ export const normalizeRowsFromCatalog = (models = []) =>
     safeToCreateIssueModel: null,
     alternativeEvaluationStructureKey:
       model?.alternativeEvaluationStructureKey || null,
-    criteriaWeightingStructureKey:
-      model?.criteriaWeightingStructureKey || null,
-    isConsensus: model?.isConsensus,
+    usesCriteriaWeights: model?.usesCriteriaWeights === true,
+    usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: model?.usesCriterionTypes === true,
+    isConsensus: model?.supportsConsensus === true,
     isMultiCriteria: model?.isMultiCriteria,
     supportedDomains: model?.supportedDomains || null,
     endpoint: model?.apiEndpoint || null,

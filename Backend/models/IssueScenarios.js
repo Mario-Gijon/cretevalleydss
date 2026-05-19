@@ -74,11 +74,6 @@ const issueScenarioSchema = new Schema(
       required: true,
       trim: true,
     },
-    targetCriteriaWeightingStructureKey: {
-      type: String,
-      default: null,
-      trim: true,
-    },
     targetSupportsConsensus: {
       type: Boolean,
       default: false,

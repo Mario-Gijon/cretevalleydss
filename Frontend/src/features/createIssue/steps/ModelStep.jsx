@@ -17,7 +17,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { filterModels } from "../utils/createIssue.utils";
-import { countLeafCriteria } from "../../../utils/criteria.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useCreateIssueContext } from "../context/createIssue.context";
@@ -53,15 +53,10 @@ export const ModelStep = () => {
   };
 
   const handleSelectModel = (model) => {
-    if (!model.isMultiCriteria) {
-      const leafCount = countLeafCriteria(criteria);
-      if (leafCount > 1) {
-        showSnackbarAlert(
-          "This model only allows one criterion. Please reduce your criteria first.",
-          "error"
-        );
-        return;
-      }
+    const leafCriteria = getLeafCriteria(criteria);
+    if (model?.isMultiCriteria !== true && leafCriteria.length > 1) {
+      showSnackbarAlert("This model does not support multiple criteria.", "error");
+      return;
     }
 
     setSelectedModel(model);

@@ -61,9 +61,11 @@ class ModelDefinition:
     is_issue_model: bool = True
 
     alternative_evaluation_structure_key: str | None = None
-    criteria_weighting_structure_key: str | None = None
     supports_consensus: bool = False
     is_multi_criteria: bool | None = None
+    uses_criteria_weights: bool = False
+    uses_fuzzy_criteria_weights: bool = False
+    uses_criterion_types: bool = False
 
     supported_domains: list[str] = field(default_factory=list)
     criterion_types: list[str] = field(default_factory=list)
@@ -83,28 +85,6 @@ class ModelDefinition:
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "alternative_evaluation_structure_key for issue models."
             )
-
-
-def build_crisp_criteria_weights_parameter() -> dict[str, Any]:
-    return {
-        "key": "weights",
-        "label": "Criteria weights",
-        "type": "array",
-        "scope": "perCriterion",
-        "semanticRole": "criteriaWeights",
-        "required": True,
-        "default": "equal",
-        "restrictions": {
-            "min": 0,
-            "max": 1,
-            "ordered": None,
-            "length": "matchCriteria",
-            "allowed": None,
-        },
-        "ui": {
-            "component": "criteriaWeights",
-        },
-    }
 
 
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
@@ -135,17 +115,20 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativePairwiseByCriterion",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=True,
         is_multi_criteria=False,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=[],
         parameters=[
-            build_crisp_criteria_weights_parameter(),
             {
                 "key": "ag_lq",
                 "label": "Agreement interval",
                 "type": "interval",
+                "scope": "global",
+                "handlerKey": "intervalGlobal",
                 "required": True,
                 "default": [0.3, 0.8],
                 "restrictions": {
@@ -160,6 +143,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "ex_lq",
                 "label": "Expert interval",
                 "type": "interval",
+                "scope": "global",
+                "handlerKey": "intervalGlobal",
                 "required": True,
                 "default": [0.5, 1],
                 "restrictions": {
@@ -173,7 +158,10 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             {
                 "key": "b",
                 "label": "B selector",
-                "type": "number",
+                "type": "enum",
+                "valueType": "number",
+                "scope": "global",
+                "handlerKey": "selectGlobal",
                 "required": True,
                 "default": 1,
                 "restrictions": {
@@ -186,6 +174,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "beta",
                 "label": "Beta",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": True,
                 "default": 0.8,
                 "restrictions": {"min": 0, "max": 1, "allowed": None},
@@ -218,12 +208,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
-        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="borda",
@@ -251,11 +242,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=False,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=["max", "min"],
+        criterion_types=[],
     ),
     ModelDefinition(
         api_model_key="aras",
@@ -283,12 +276,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
-        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="fuzzy_topsis",
@@ -313,32 +307,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=True,
+        uses_criterion_types=True,
         supported_domains=["linguistic"],
         criterion_types=["max", "min"],
-        parameters=[
-            {
-                "key": "weights",
-                "label": "Fuzzy criteria weights",
-                "type": "fuzzyArray",
-                "scope": "perCriterion",
-                "semanticRole": "criteriaWeights",
-                "required": True,
-                "default": "equal",
-                "restrictions": {
-                    "min": 0,
-                    "max": 1,
-                    "ordered": "nonDecreasing",
-                    "length": 3,
-                    "allowed": None,
-                },
-                "ui": {
-                    "component": "fuzzyCriteriaWeights",
-                },
-            }
-        ],
     ),
     ModelDefinition(
         api_model_key="marcos",
@@ -366,12 +341,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
-        criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
         criterion_types=["max", "min"],
-        parameters=[build_crisp_criteria_weights_parameter()],
     ),
     ModelDefinition(
         api_model_key="bwm",
@@ -398,9 +374,11 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         more_info_url=None,
         is_issue_model=False,
         alternative_evaluation_structure_key=None,
-        criteria_weighting_structure_key=None,
         supports_consensus=False,
         is_multi_criteria=True,
+        uses_criteria_weights=False,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
         supported_domains=[],
         criterion_types=[],
         parameters=[
@@ -408,6 +386,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "eps_penalty",
                 "label": "Epsilon penalty",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": False,
                 "default": 1,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -439,9 +419,11 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         more_info_url=None,
         is_issue_model=False,
         alternative_evaluation_structure_key=None,
-        criteria_weighting_structure_key=None,
         supports_consensus=False,
         is_multi_criteria=None,
+        uses_criteria_weights=False,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
         supported_domains=[],
         criterion_types=[],
         parameters=[
@@ -449,6 +431,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "eps",
                 "label": "Epsilon",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": False,
                 "default": None,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -457,6 +441,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "mu0",
                 "label": "Mu 0",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": False,
                 "default": None,
                 "restrictions": {"min": 0, "max": 1, "allowed": None},
@@ -465,6 +451,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "lower_bound",
                 "label": "Lower bound",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": False,
                 "default": 0,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -473,6 +461,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "key": "upper_bound",
                 "label": "Upper bound",
                 "type": "number",
+                "scope": "global",
+                "handlerKey": "numberGlobal",
                 "required": False,
                 "default": 1,
                 "restrictions": {"min": None, "max": None, "allowed": None},

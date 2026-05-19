@@ -15,8 +15,10 @@ import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbar
 import {
   buildDefaultFuzzyWeightVector,
   isFuzzyCriteriaWeightModel,
+  modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
 } from "../utils/criteriaWeighting.model";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
 
 const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",
@@ -71,6 +73,34 @@ const isDeepEqual = (left, right) => {
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+const resolveAssignedDomainIds = (domainAssignments) => {
+  const expertsAssignments = domainAssignments?.experts;
+  if (!isPlainObject(expertsAssignments)) {
+    return [];
+  }
+
+  const domainIds = new Set();
+
+  for (const expertAssignments of Object.values(expertsAssignments)) {
+    const alternativesBlock = expertAssignments?.alternatives;
+    if (!isPlainObject(alternativesBlock)) continue;
+
+    for (const alternativeValue of Object.values(alternativesBlock)) {
+      const criteriaBlock = alternativeValue?.criteria;
+      if (!isPlainObject(criteriaBlock)) continue;
+
+      for (const domainId of Object.values(criteriaBlock)) {
+        const normalized = String(domainId || "").trim();
+        if (normalized) {
+          domainIds.add(normalized);
+        }
+      }
+    }
+  }
+
+  return Array.from(domainIds);
+};
 
 const buildEqualWeightsByCriterion = (leafCriteria) => {
   const criterionNames = leafCriteria
@@ -209,6 +239,7 @@ export const ModelParameters = ({
   setCriteriaWeightingConfig,
 }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const { globalDomains, expressionDomains } = useIssuesDataContext();
   const hasShownUnsupportedRef = useRef(false);
 
   const leafCriteria = useMemo(() => {
@@ -221,19 +252,35 @@ export const ModelParameters = ({
   const hasUnsupportedParameters = useMemo(
     () =>
       (selectedModel?.parameters || []).some((parameter) => {
-        if (parameter?.semanticRole === "criteriaWeights") {
-          return false;
-        }
         const { isSupported } = resolveModelParameterAdapter(parameter);
         return !isSupported;
       }),
     [selectedModel?.parameters]
   );
 
+  const modelUsesWeights = modelUsesCriteriaWeights(selectedModel);
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
   const isFuzzyModel = isFuzzyCriteriaWeightModel(selectedModel);
-  const fuzzyValueCount = resolveFuzzyCriteriaWeightValueCount(selectedModel);
+  const assignedDomainIds = useMemo(
+    () => resolveAssignedDomainIds(allData?.domainAssignments),
+    [allData?.domainAssignments]
+  );
+  const assignedDomains = useMemo(() => {
+    const domainById = new Map(
+      [...(Array.isArray(globalDomains) ? globalDomains : []), ...(Array.isArray(expressionDomains) ? expressionDomains : [])]
+        .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
+        .filter(([id]) => id.length > 0)
+    );
+    return assignedDomainIds
+      .map((domainId) => domainById.get(domainId))
+      .filter(Boolean);
+  }, [assignedDomainIds, expressionDomains, globalDomains]);
+  const fuzzyValueCount = isFuzzyModel
+    ? resolveFuzzyCriteriaWeightValueCount(assignedDomains)
+    : null;
   const isSingleCriterion = leafCriteria.length === 1;
+  const shouldRenderCriteriaWeightsSection =
+    selectedModel?.isMultiCriteria === true && modelUsesWeights;
   const criterionNames = leafCriteria
     .map((criterion) => criterion?.name)
     .filter(Boolean);
@@ -241,6 +288,7 @@ export const ModelParameters = ({
 
   useEffect(() => {
     if (!setCriteriaWeightingConfig) return;
+    if (!modelUsesWeights) return;
     if (isFuzzyModel) {
       if (mode !== CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
         setCriteriaWeightingConfig(
@@ -268,33 +316,43 @@ export const ModelParameters = ({
     if (!criteriaWeightingConfig || !criteriaWeightingConfig.mode) {
       setCriteriaWeightingConfig(
         buildConfigByMode({
-          mode: selectedModel?.criteriaWeightingStructureKey === "bestWorstCriteria"
-            ? CRITERIA_WEIGHTING_MODES.EXPERT_BWM
-            : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+          mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
           leafCriteria,
         })
       );
     }
   }, [
     criteriaWeightingConfig,
+    modelUsesWeights,
     isFuzzyModel,
     isSingleCriterion,
     leafCriteria,
     mode,
-    selectedModel?.criteriaWeightingStructureKey,
     setCriteriaWeightingConfig,
   ]);
 
   useEffect(() => {
     if (!setCriteriaWeightingConfig) return;
+    if (!modelUsesWeights) return;
     if (!criteriaWeightingConfig?.mode) return;
 
     if (mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
       const sourceWeights = criteriaWeightingConfig?.payload?.weightsByCriterion;
-      const normalizedWeights = buildDefaultFuzzyWeightsByCriterion(
-        leafCriteria,
-        fuzzyValueCount
-      );
+      const normalizedWeights =
+        isSingleCriterion &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+          ? criterionNames.reduce((accumulator, criterionName) => {
+              accumulator[criterionName] = Array.from(
+                { length: fuzzyValueCount },
+                () => 1
+              );
+              return accumulator;
+            }, {})
+          : buildDefaultFuzzyWeightsByCriterion(
+              leafCriteria,
+              fuzzyValueCount
+            );
 
       for (const criterionName of criterionNames) {
         const candidate = sourceWeights?.[criterionName];
@@ -386,12 +444,18 @@ export const ModelParameters = ({
     criterionNames,
     criteriaWeightingConfig,
     fuzzyValueCount,
+    isSingleCriterion,
     leafCriteria,
     mode,
+    modelUsesWeights,
     setCriteriaWeightingConfig,
   ]);
 
-  const updateConfig = (nextConfig) => {
+  const updateConfig = (nextConfig, options = {}) => {
+    const markDirty = options?.markDirty === true;
+    if (markDirty && typeof setDefaultModelParams === "function") {
+      setDefaultModelParams(false);
+    }
     setCriteriaWeightingConfig?.(nextConfig);
   };
 
@@ -424,27 +488,29 @@ export const ModelParameters = ({
         </ToggleButton>
       </Stack>
 
-      <Stack spacing={1.25} sx={{ p: 1.5, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 2 }}>
-        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-          Criteria weights
-        </Typography>
+      {shouldRenderCriteriaWeightsSection ? (
+        <Stack spacing={1.25} sx={{ p: 1.5, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 2 }}>
+          <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+            Criteria weights
+          </Typography>
 
         <ButtonGroup color="secondary" size="small" sx={{ flexWrap: "wrap" }}>
-          {isFuzzyModel ? (
+          {/* {isFuzzyModel ? (
             <Button variant="contained">
               Fuzzy criteria weights
             </Button>
-          ) : null}
+          ) : null} */}
           {!isFuzzyModel ? (
             <>
-            <Button
+          <Button
             variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL ? "contained" : "outlined"}
             onClick={() =>
               updateConfig(
                 buildConfigByMode({
                   mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
                   leafCriteria,
-                })
+                }),
+                { markDirty: true }
               )
             }
           >
@@ -457,12 +523,13 @@ export const ModelParameters = ({
                 buildConfigByMode({
                   mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
                   leafCriteria,
-                })
+                }),
+                { markDirty: true }
               )
             }
             disabled={isSingleCriterion}
           >
-            Manual
+            Manual by experts
           </Button>
           <Button
             variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? "contained" : "outlined"}
@@ -471,7 +538,8 @@ export const ModelParameters = ({
                 buildConfigByMode({
                   mode: CRITERIA_WEIGHTING_MODES.CREATOR_BWM,
                   leafCriteria,
-                })
+                }),
+                { markDirty: true }
               )
             }
             disabled={isSingleCriterion}
@@ -485,7 +553,8 @@ export const ModelParameters = ({
                 buildConfigByMode({
                   mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
                   leafCriteria,
-                })
+                }),
+                { markDirty: true }
               )
             }
             disabled={isSingleCriterion}
@@ -513,9 +582,15 @@ export const ModelParameters = ({
 
         {mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY ? (
           <Stack spacing={1}>
-            <Typography variant="caption" color="text.secondary">
-              Enter fuzzy weights with non-decreasing values in [0, 1].
-            </Typography>
+            {!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2 ? (
+              <Alert severity="warning">
+                Fuzzy criteria weights require a consistent linguistic value count in assigned domains.
+              </Alert>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                Enter fuzzy weights with non-decreasing values in [0, 1].
+              </Typography>
+            )}
             <Stack spacing={1.2}>
               {criterionNames.map((criterionName) => {
                 const fallbackVector = buildDefaultFuzzyWeightVector(fuzzyValueCount);
@@ -536,7 +611,9 @@ export const ModelParameters = ({
                           color="info"
                           size="small"
                           value={vector?.[index] === "" ? "" : formatDisplayNumber(vector?.[index])}
+                          disabled={isSingleCriterion}
                           onChange={(event) => {
+                            if (isSingleCriterion) return;
                             const value = event.target.value;
                             const parsed = value === "" ? "" : Number(value);
                             const nextVector = Array.from(
@@ -561,7 +638,7 @@ export const ModelParameters = ({
                                   [criterionName]: nextVector,
                                 },
                               },
-                            });
+                            }, { markDirty: true });
                           }}
                           inputProps={{ min: 0, max: 1, step: 0.01 }}
                           sx={{ width: 90 }}
@@ -604,7 +681,7 @@ export const ModelParameters = ({
                                 : Math.max(0, Math.min(1, parsed)),
                           },
                         },
-                      });
+                      }, { markDirty: true });
                     }}
                     inputProps={{ min: 0, max: 1, step: 0.1 }}
                     sx={{ width: 90 }}
@@ -635,7 +712,7 @@ export const ModelParameters = ({
                         [bestCriterion]: 1,
                       },
                     },
-                  });
+                  }, { markDirty: true });
                 }}
                 sx={{ minWidth: 220 }}
               >
@@ -663,7 +740,7 @@ export const ModelParameters = ({
                         [worstCriterion]: 1,
                       },
                     },
-                  });
+                  }, { markDirty: true });
                 }}
                 sx={{ minWidth: 220 }}
               >
@@ -706,7 +783,7 @@ export const ModelParameters = ({
                                 : Math.max(1, Math.min(9, parsed)),
                           },
                         },
-                      });
+                      }, { markDirty: true });
                     }}
                     inputProps={{ min: 1, max: 9, step: 1 }}
                     sx={{ width: 100 }}
@@ -742,7 +819,7 @@ export const ModelParameters = ({
                                 : Math.max(1, Math.min(9, parsed)),
                           },
                         },
-                      });
+                      }, { markDirty: true });
                     }}
                     inputProps={{ min: 1, max: 9, step: 1 }}
                     sx={{ width: 100 }}
@@ -758,13 +835,11 @@ export const ModelParameters = ({
             Simulated consensus for BWM will be available later.
           </Alert>
         ) : null}
-      </Stack>
+        </Stack>
+      ) : null}
 
-      <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
+        <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
         {(selectedModel?.parameters || []).map((parameter, index) => {
-          if (parameter?.semanticRole === "criteriaWeights") {
-            return null;
-          }
           const paramKey = parameter?.key;
           if (!paramKey) return null;
 

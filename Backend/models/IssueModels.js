@@ -108,12 +108,17 @@ const parameterSchema = new Schema(
       type: String,
       required: true,
     },
+    valueType: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     scope: {
       type: String,
       trim: true,
       default: null,
     },
-    semanticRole: {
+    handlerKey: {
       type: String,
       trim: true,
       default: null,
@@ -126,10 +131,6 @@ const parameterSchema = new Schema(
       type: Schema.Types.Mixed,
     },
     restrictions: {
-      type: Schema.Types.Mixed,
-      default: null,
-    },
-    ui: {
       type: Schema.Types.Mixed,
       default: null,
     },
@@ -256,12 +257,19 @@ const issueModelSchema = new Schema({
     trim: true,
     required: true,
   },
-  criteriaWeightingStructureKey: {
-    type: String,
-    trim: true,
-    default: null,
-  },
   supportsConsensus: {
+    type: Boolean,
+    default: false,
+  },
+  usesCriteriaWeights: {
+    type: Boolean,
+    default: false,
+  },
+  usesFuzzyCriteriaWeights: {
+    type: Boolean,
+    default: false,
+  },
+  usesCriterionTypes: {
     type: Boolean,
     default: false,
   },

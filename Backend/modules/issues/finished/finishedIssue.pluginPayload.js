@@ -656,6 +656,17 @@ const buildAvailableModelsPayload = ({
   issueDomainSnapshots,
   leafCount,
 }) => {
+  const linguisticValueCounts = Array.from(
+    new Set(
+      (Array.isArray(issueDomainSnapshots) ? issueDomainSnapshots : [])
+        .filter((domain) => domain?.type === "linguistic")
+        .map((domain) => Number(domain?.valueCount))
+        .filter((valueCount) => Number.isInteger(valueCount) && valueCount >= 2)
+    )
+  );
+  const fuzzyWeightsValueCount =
+    linguisticValueCounts.length === 1 ? linguisticValueCounts[0] : null;
+
   return allModels.map((modelDoc) => {
     const metadata = buildScenarioCompatibilityMetadata({
       issue,
@@ -668,15 +679,20 @@ const buildAvailableModelsPayload = ({
       name: modelDoc.name,
       alternativeEvaluationStructureKey:
         modelDoc.alternativeEvaluationStructureKey || null,
-      criteriaWeightingStructureKey:
-        modelDoc.criteriaWeightingStructureKey || null,
       supportsConsensus: modelDoc.supportsConsensus === true,
       isMultiCriteria: modelDoc.isMultiCriteria,
+      usesCriteriaWeights: modelDoc.usesCriteriaWeights === true,
+      usesFuzzyCriteriaWeights: modelDoc.usesFuzzyCriteriaWeights === true,
+      usesCriterionTypes: modelDoc.usesCriterionTypes === true,
+      fuzzyWeightsValueCount,
       smallDescription: modelDoc.smallDescription,
       moreInfoUrl: modelDoc.moreInfoUrl,
       parameters: modelDoc.parameters,
       defaultsResolved: buildDefaultsResolved({
-        modelDoc,
+        modelDoc: {
+          ...modelDoc,
+          fuzzyWeightsValueCount,
+        },
         leafCount,
       }),
       scenarioCompatibility: {
@@ -912,11 +928,11 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
       ],
     })
       .select(
-        "_id name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus isMultiCriteria smallDescription moreInfoUrl parameters supportedDomains"
+        "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains"
       )
       .lean(),
     IssueExpressionDomain.find({ issue: issue._id })
-      .select("_id name type numericRange membershipFunction")
+      .select("_id name type numericRange membershipFunction valueCount")
       .lean(),
   ]);
 
@@ -1151,11 +1167,11 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       ],
     })
       .select(
-        "_id name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus isMultiCriteria smallDescription moreInfoUrl parameters supportedDomains"
+        "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains"
       )
       .lean(),
     IssueExpressionDomain.find({ issue: issue._id })
-      .select("_id name type numericRange membershipFunction")
+      .select("_id name type numericRange membershipFunction valueCount")
       .lean(),
   ]);
 

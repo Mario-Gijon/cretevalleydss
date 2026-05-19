@@ -40,7 +40,9 @@ const ensureLen = (arr, len, filler = null) => {
 export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const resolved = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
-  const modelParameters = modelDoc.parameters;
+  const modelParameters = Array.isArray(modelDoc?.parameters)
+    ? modelDoc.parameters
+    : [];
 
   for (const parameter of modelParameters) {
     const { type, default: defaultValue } = parameter;
@@ -60,10 +62,13 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
         (defaultValue.length || 2);
 
       const isCriteriaWeights =
-        normalizeNonEmptyString(parameter.semanticRole) === "criteriaWeights";
+        ["criteriaWeights", "fuzzyCriteriaWeights"].includes(
+          normalizeNonEmptyString(parameter.handlerKey)
+        );
 
       if (
         isCriteriaWeights &&
+        typeof defaultValue === "string" &&
         defaultValue.trim().toLowerCase() === "equal" &&
         safeLeafCount > 0
       ) {
@@ -92,6 +97,28 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
     }
 
     resolved[name] = defaultValue;
+  }
+
+  if (modelDoc?.usesCriteriaWeights === true && safeLeafCount > 0) {
+    if (modelDoc?.usesFuzzyCriteriaWeights === true) {
+      const fuzzyValueCount = Number(modelDoc?.fuzzyWeightsValueCount);
+      if (Number.isInteger(fuzzyValueCount) && fuzzyValueCount >= 2) {
+        if (safeLeafCount === 1) {
+          resolved.weights = [Array.from({ length: fuzzyValueCount }, () => 1)];
+        } else {
+          resolved.weights = Array.from({ length: safeLeafCount }, () =>
+            Array.from({ length: fuzzyValueCount }, () => "")
+          );
+        }
+      }
+    } else {
+      if (safeLeafCount === 1) {
+        resolved.weights = [1];
+      } else {
+        const equalWeight = 1 / safeLeafCount;
+        resolved.weights = Array.from({ length: safeLeafCount }, () => equalWeight);
+      }
+    }
   }
 
   return resolved;

@@ -67,48 +67,10 @@ const ensureCriteriaNamesOrThrow = (criterionNames) => {
   }
 };
 
-const isFuzzyCriteriaWeightModel = (model) => {
-  const apiModelKey = normalizeNonEmptyString(model?.apiModelKey)?.toLowerCase();
-  if (apiModelKey === "fuzzy_topsis") {
-    return true;
-  }
+const usesCriteriaWeights = (model) => model?.usesCriteriaWeights === true;
 
-  const criteriaWeightParameter = (Array.isArray(model?.parameters)
-    ? model.parameters
-    : []
-  ).find(
-    (parameter) =>
-      normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights"
-  );
-
-  if (!criteriaWeightParameter) {
-    return false;
-  }
-
-  return normalizeNonEmptyString(criteriaWeightParameter?.type) === "fuzzyArray";
-};
-
-const resolveFuzzyValueCount = (model) => {
-  const criteriaWeightParameter = (Array.isArray(model?.parameters)
-    ? model.parameters
-    : []
-  ).find(
-    (parameter) =>
-      normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights"
-  );
-
-  const restrictionsLength = Number(criteriaWeightParameter?.restrictions?.length);
-  if (Number.isInteger(restrictionsLength) && restrictionsLength >= 2) {
-    return restrictionsLength;
-  }
-
-  const valueCount = Number(criteriaWeightParameter?.valueCount);
-  if (Number.isInteger(valueCount) && valueCount >= 2) {
-    return valueCount;
-  }
-
-  return 3;
-};
+const usesFuzzyCriteriaWeights = (model) =>
+  usesCriteriaWeights(model) && model?.usesFuzzyCriteriaWeights === true;
 
 const normalizeCreatorFuzzyWeightsOrThrow = ({
   payload,
@@ -532,13 +494,24 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   criterionNames,
   isSingleLeafCriterion,
   model,
+  fuzzyValueCount = null,
   apiModelsBaseUrl,
   httpClient,
 }) => {
   ensureCriteriaNamesOrThrow(criterionNames);
 
+  if (!usesCriteriaWeights(model)) {
+    return {
+      criteriaWeightingStructureKey: null,
+      criteriaWeightingAggregationMode: "none",
+      modelWeights: null,
+      currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      isCriteriaWeightingRequired: false,
+    };
+  }
+
   const resolvedConfig = resolveModeConfigOrThrow(criteriaWeightingConfig);
-  const fuzzyModel = isFuzzyCriteriaWeightModel(model);
+  const fuzzyModel = usesFuzzyCriteriaWeights(model);
 
   if (fuzzyModel && resolvedConfig.mode !== "creatorFuzzy") {
     throw createBadRequestError("Fuzzy models require fuzzy criteria weights", {
@@ -579,7 +552,25 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   if (resolvedConfig.mode === "creatorFuzzy") {
-    const fuzzyValueCount = resolveFuzzyValueCount(model);
+    if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
+      throw createBadRequestError(
+        "Fuzzy criteria weights require a valid linguistic valueCount from issue domains",
+        {
+          field: "criteriaWeightingConfig.mode",
+        }
+      );
+    }
+
+    if (isSingleLeafCriterion) {
+      return {
+        criteriaWeightingStructureKey: resolvedConfig.structureKey,
+        criteriaWeightingAggregationMode: "none",
+        modelWeights: [Array.from({ length: fuzzyValueCount }, () => 1)],
+        currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        isCriteriaWeightingRequired: false,
+      };
+    }
+
     const modelWeights = normalizeCreatorFuzzyWeightsOrThrow({
       payload: resolvedConfig.payload,
       criterionNames,
@@ -596,10 +587,15 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   if (isSingleLeafCriterion) {
+    const fixedWeights =
+      fuzzyModel && Number.isInteger(fuzzyValueCount) && fuzzyValueCount >= 2
+        ? [Array.from({ length: fuzzyValueCount }, () => 1)]
+        : [1];
+
     return {
       criteriaWeightingStructureKey: resolvedConfig.structureKey,
       criteriaWeightingAggregationMode: "none",
-      modelWeights: [1],
+      modelWeights: fixedWeights,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
     };

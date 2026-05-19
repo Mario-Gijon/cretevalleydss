@@ -20,9 +20,6 @@ def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]
     normalized = dict(parameter)
     normalized["scope"] = normalized.get("scope") or "global"
 
-    if normalized.get("semanticRole") is None:
-        normalized.pop("semanticRole", None)
-
     return normalized
 
 
@@ -86,9 +83,11 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "extendDescription": model.extend_description,
         "moreInfoUrl": model.more_info_url,
         "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
-        "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
         "supportsConsensus": model.supports_consensus,
         "isMultiCriteria": model.is_multi_criteria,
+        "usesCriteriaWeights": model.uses_criteria_weights,
+        "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
+        "usesCriterionTypes": model.uses_criterion_types,
         "supportedDomains": _build_supported_domains(model.supported_domains),
         "criterionTypes": list(model.criterion_types) if model.criterion_types else None,
         "parameters": _build_parameters(model),

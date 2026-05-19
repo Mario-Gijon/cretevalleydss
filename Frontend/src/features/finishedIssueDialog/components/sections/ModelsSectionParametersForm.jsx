@@ -4,6 +4,63 @@ import { resolveModelParameterAdapter } from "../../../modelParameters";
 
 const SCENARIO_CRITERIA_WEIGHTING_KEY = "manualCriteriaWeights";
 
+const buildScenarioFormParameters = (model) => {
+  const baseParameters = (Array.isArray(model?.parameters) ? model.parameters : []).filter(
+    (parameter) =>
+      !["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.handlerKey)
+  );
+
+  if (model?.usesCriteriaWeights !== true) {
+    return baseParameters;
+  }
+
+  if (model?.usesFuzzyCriteriaWeights === true) {
+    const fuzzyValueCount = Number(model?.fuzzyWeightsValueCount);
+    return [
+      ...baseParameters,
+      {
+        key: "weights",
+        label: "Fuzzy criteria weights",
+        type: "fuzzyArray",
+        scope: "perCriterion",
+        handlerKey: "fuzzyCriteriaWeights",
+        required: true,
+        default: "equal",
+        restrictions: {
+          min: 0,
+          max: 1,
+          ordered: "nonDecreasing",
+          length:
+            Number.isInteger(fuzzyValueCount) && fuzzyValueCount >= 2
+              ? fuzzyValueCount
+              : null,
+          allowed: null,
+        },
+      },
+    ];
+  }
+
+  return [
+    ...baseParameters,
+    {
+      key: "weights",
+      label: "Criteria weights",
+      type: "array",
+      scope: "perCriterion",
+      handlerKey: "criteriaWeights",
+      required: true,
+      default: "equal",
+      restrictions: {
+        min: 0,
+        max: 1,
+        ordered: null,
+        length: "matchCriteria",
+        allowed: null,
+      },
+    },
+  ];
+};
+
 const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) => {
   if (!model) {
     return (
@@ -13,7 +70,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
     );
   }
 
-  const params = Array.isArray(model?.parameters) ? model.parameters : [];
+  const params = buildScenarioFormParameters(model);
   if (params.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -36,27 +93,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
         if (!paramKey) return null;
 
         const paramLabel = parameter?.label || paramKey;
-        let renderParameter = parameter;
-        let { adapter, registryKey } = resolveModelParameterAdapter(renderParameter);
-
-        // Some model snapshots may omit `ui.component` for criteria weights.
-        // Keep scenario editing strict by forcing the canonical weights renderer.
-        if (
-          !adapter?.FieldComponent &&
-          (parameter?.semanticRole === "criteriaWeights" || paramKey === "weights")
-        ) {
-          renderParameter = {
-            ...parameter,
-            scope: parameter?.scope || "perCriterion",
-            ui: {
-              ...(parameter?.ui && typeof parameter.ui === "object" ? parameter.ui : {}),
-              component: parameter?.type === "fuzzyArray"
-                ? "fuzzyCriteriaWeights"
-                : "criteriaWeights",
-            },
-          };
-          ({ adapter, registryKey } = resolveModelParameterAdapter(renderParameter));
-        }
+        const { adapter, registryKey } = resolveModelParameterAdapter(parameter);
         const FieldComponent = adapter?.FieldComponent || null;
 
         if (!FieldComponent) {
@@ -75,7 +112,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
         return (
           <FieldComponent
             key={`${paramKey}-${index}`}
-            parameter={renderParameter}
+            parameter={parameter}
             paramKey={paramKey}
             paramLabel={paramLabel}
             paramValues={values || {}}

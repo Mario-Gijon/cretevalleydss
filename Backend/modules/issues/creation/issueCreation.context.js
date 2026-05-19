@@ -3,7 +3,6 @@ import { User } from "../../../models/Users.js";
 import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "../modelParameters/index.js";
 import {
   validateIssueModelRuntimeConfigOrThrow,
-  normalizeNonEmptyString,
 } from "./issueCreation.model.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
@@ -11,27 +10,12 @@ import {
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 
-const stripCriteriaWeightParameterValues = ({ model, paramValues }) => {
+const stripCriteriaWeightParameterValues = ({ paramValues }) => {
   const rawParamValues =
     paramValues && typeof paramValues === "object" && !Array.isArray(paramValues)
       ? paramValues
       : {};
   const normalized = { ...rawParamValues };
-
-  const criteriaWeightParameterKeys = (Array.isArray(model?.parameters)
-    ? model.parameters
-    : []
-  )
-    .filter(
-      (parameter) =>
-        normalizeNonEmptyString(parameter?.semanticRole) === "criteriaWeights" &&
-        normalizeNonEmptyString(parameter?.key)
-    )
-    .map((parameter) => parameter.key);
-
-  for (const parameterKey of criteriaWeightParameterKeys) {
-    delete normalized[parameterKey];
-  }
 
   delete normalized.weights;
 
@@ -71,17 +55,17 @@ export const loadCreateIssueActorsAndModel = async ({
     apiModelKey,
     apiEndpoint,
     alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey,
     supportsConsensus,
+    usesCriteriaWeights,
+    usesFuzzyCriteriaWeights,
+    usesCriterionTypes,
+    isMultiCriteria,
     modelFamilyKey,
     modelVersion,
     versionLabel,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
-  const sanitizedParamValues = stripCriteriaWeightParameterValues({
-    model: existingModel,
-    paramValues,
-  });
+  const sanitizedParamValues = stripCriteriaWeightParameterValues({ paramValues });
 
   const normalizedModelParameters = validateAndNormalizeModelParametersSharedOrThrow({
     model: existingModel,
@@ -91,7 +75,6 @@ export const loadCreateIssueActorsAndModel = async ({
   });
   const normalizedModelParametersWithoutCriteriaWeights =
     stripCriteriaWeightParameterValues({
-      model: existingModel,
       paramValues: normalizedModelParameters,
     });
 
@@ -130,8 +113,11 @@ export const loadCreateIssueActorsAndModel = async ({
     apiModelKey,
     apiEndpoint,
     alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey,
     supportsConsensus,
+    usesCriteriaWeights,
+    usesFuzzyCriteriaWeights,
+    usesCriterionTypes,
+    isMultiCriteria,
     modelFamilyKey,
     modelVersion,
     versionLabel,

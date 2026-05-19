@@ -133,7 +133,7 @@ const issueSchema = new Schema(
     criteriaWeightingStructureKey: {
       type: String,
       trim: true,
-      required: true,
+      default: null,
     },
     criteriaWeightingAggregationMode: {
       type: String,

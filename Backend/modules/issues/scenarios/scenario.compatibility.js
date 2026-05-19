@@ -18,11 +18,12 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   const targetAlternativeEvaluationStructureKey = String(
     targetModel?.alternativeEvaluationStructureKey || ""
   ).trim();
-  const targetCriteriaWeightingStructureKey =
-    targetModel?.criteriaWeightingStructureKey == null
-      ? null
-      : String(targetModel.criteriaWeightingStructureKey).trim() || null;
   const targetSupportsConsensus = targetModel?.supportsConsensus === true;
+  const targetUsesCriteriaWeights = targetModel?.usesCriteriaWeights === true;
+  const targetUsesFuzzyCriteriaWeights =
+    targetModel?.usesFuzzyCriteriaWeights === true;
+  const targetUsesCriterionTypes = targetModel?.usesCriterionTypes === true;
+  const targetIsMultiCriteria = targetModel?.isMultiCriteria === true;
   const targetModelFamilyKey = String(targetModel?.modelFamilyKey || "").trim();
   const targetModelVersion = String(targetModel?.modelVersion || "").trim();
   const targetVersionLabel = String(targetModel?.versionLabel || "").trim();
@@ -59,8 +60,11 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       operationId: targetModel?.apiEndpoint?.operationId || null,
     },
     targetAlternativeEvaluationStructureKey,
-    targetCriteriaWeightingStructureKey,
     targetSupportsConsensus,
+    targetUsesCriteriaWeights,
+    targetUsesFuzzyCriteriaWeights,
+    targetUsesCriterionTypes,
+    targetIsMultiCriteria,
     targetModelFamilyKey,
     targetModelVersion,
     targetVersionLabel,

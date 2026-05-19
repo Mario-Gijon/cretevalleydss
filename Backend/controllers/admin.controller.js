@@ -127,8 +127,10 @@ const mapIssueModelCatalogItem = (model = {}) => {
     isMultiCriteria: model.isMultiCriteria,
     alternativeEvaluationStructureKey:
       model.alternativeEvaluationStructureKey || null,
-    criteriaWeightingStructureKey:
-      model.criteriaWeightingStructureKey || null,
+    usesCriteriaWeights: model.usesCriteriaWeights === true,
+    usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: model.usesCriterionTypes === true,
+    supportsConsensus: model.supportsConsensus === true,
     lifecycleKind: model.lifecycleKind || null,
     apiInputFormat: model.apiInputFormat || null,
     apiOutputFormat: model.apiOutputFormat || null,

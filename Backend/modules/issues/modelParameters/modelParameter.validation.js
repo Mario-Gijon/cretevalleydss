@@ -55,8 +55,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
   for (const parameter of modelParameters) {
     const parameterKey = resolveParameterKey(parameter);
     const parameterType = normalizeNonEmptyString(parameter?.type);
-    const parameterScope = normalizeNonEmptyString(parameter?.scope);
-    const semanticRole = normalizeNonEmptyString(parameter?.semanticRole);
+    const parameterHandlerKey = normalizeNonEmptyString(parameter?.handlerKey);
 
     if (!parameterKey) {
       addError({
@@ -78,10 +77,10 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (semanticRole !== "criteriaWeights" && !parameterScope) {
+    if (!parameterHandlerKey) {
       addError({
         parameter: parameterKey,
-        message: "manifest parameter is missing required 'scope'",
+        message: "manifest parameter is missing required 'handlerKey'",
         value: parameter,
       });
       continue;

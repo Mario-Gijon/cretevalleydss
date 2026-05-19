@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Stack, Typography, TextField } from "@mui/material";
 
 const getParameterExpectedLength = (parameter, leafCount) => {
@@ -23,12 +24,17 @@ const toEditableFuzzyInput = (value, min = 0, max = 1) => {
   return num;
 };
 
-const isTriangle = (triangle) =>
+const isFuzzyVector = (triangle, vectorLength) =>
   Array.isArray(triangle) &&
-  triangle.length === 3 &&
+  triangle.length === vectorLength &&
   triangle.every((item) => Number.isFinite(Number(item)));
 
-const buildDisplayValues = ({ currentValues, defaultModelParams, isEqualDefault }) => {
+const buildDisplayValues = ({
+  currentValues,
+  defaultModelParams,
+  isEqualDefault,
+  vectorLength,
+}) => {
   if (!defaultModelParams || !isEqualDefault) {
     return currentValues;
   }
@@ -38,14 +44,14 @@ const buildDisplayValues = ({ currentValues, defaultModelParams, isEqualDefault 
   }
 
   const firstTriangle = currentValues[0];
-  if (!isTriangle(firstTriangle)) {
+  if (!isFuzzyVector(firstTriangle, vectorLength)) {
     return currentValues;
   }
 
   const roundedFirst = firstTriangle.map((item) => formatTwoDecimals(item));
 
   return currentValues.map((triangle) => {
-    if (!isTriangle(triangle)) return triangle;
+    if (!isFuzzyVector(triangle, vectorLength)) return triangle;
     return roundedFirst;
   });
 };
@@ -61,20 +67,48 @@ export const FuzzyCriteriaWeightsParameterField = ({
   leafCriteria,
 }) => {
   const restrictions = parameter?.restrictions || {};
-  const length =
+  const criteriaLength =
     getParameterExpectedLength(parameter, leafCriteria.length) ??
-    restrictions?.length ??
+    leafCriteria.length ??
     1;
+  const vectorLength =
+    Number.isInteger(Number(restrictions?.length)) && Number(restrictions.length) >= 2
+      ? Number(restrictions.length)
+      : 3;
 
   const currentValues =
-    Array.isArray(paramValues[paramKey]) && paramValues[paramKey].length === length
+    Array.isArray(paramValues[paramKey]) && paramValues[paramKey].length === criteriaLength
       ? paramValues[paramKey]
-      : Array.from({ length }, () => ["", "", ""]);
+      : Array.from({ length: criteriaLength }, () =>
+          Array.from({ length: vectorLength }, () => "")
+        );
+
+  useEffect(() => {
+    if (leafCriteria.length !== 1) return;
+    if (!Number.isInteger(vectorLength) || vectorLength < 2) return;
+
+    const currentSingle = Array.isArray(paramValues[paramKey])
+      ? paramValues[paramKey][0]
+      : null;
+    const expected = Array.from({ length: vectorLength }, () => 1);
+    const matchesExpected =
+      Array.isArray(currentSingle) &&
+      currentSingle.length === vectorLength &&
+      currentSingle.every((value, index) => Number(value) === expected[index]);
+
+    if (!matchesExpected) {
+      setParamValues((previous) => ({
+        ...previous,
+        [paramKey]: [expected],
+      }));
+    }
+  }, [leafCriteria.length, paramKey, paramValues, setParamValues, vectorLength]);
 
   const displayValues = buildDisplayValues({
     currentValues,
     defaultModelParams,
     isEqualDefault: parameter?.default === "equal",
+    vectorLength,
   });
 
   return (
@@ -87,16 +121,20 @@ export const FuzzyCriteriaWeightsParameterField = ({
               {leafCriteria[index]?.name ?? `C${index + 1}`}
             </Typography>
             <Stack direction="row" spacing={1}>
-              {["l", "m", "u"].map((label, tripleIndex) => (
+              {Array.from({ length: vectorLength }).map((_, tripleIndex) => (
                 <TextField
                   key={tripleIndex}
                   type="number"
                   size="small"
-                  label={label}
+                  label={vectorLength === 3 ? ["l", "m", "u"][tripleIndex] : `${tripleIndex + 1}`}
                   value={triple?.[tripleIndex] ?? ""}
+                  disabled={leafCriteria.length === 1}
                   onChange={(e) => {
+                    if (leafCriteria.length === 1) return;
                     const newTriples = currentValues.map((triangle) =>
-                      Array.isArray(triangle) ? [...triangle] : ["", "", ""]
+                      Array.isArray(triangle)
+                        ? [...triangle]
+                        : Array.from({ length: vectorLength }, () => "")
                     );
 
                     const parsed = toEditableFuzzyInput(
@@ -106,7 +144,10 @@ export const FuzzyCriteriaWeightsParameterField = ({
                     );
 
                     if (!Array.isArray(newTriples[index])) {
-                      newTriples[index] = ["", "", ""];
+                      newTriples[index] = Array.from(
+                        { length: vectorLength },
+                        () => ""
+                      );
                     }
 
                     newTriples[index][tripleIndex] = parsed;

@@ -11,7 +11,28 @@ export const EnumParameterField = ({
 }) => {
   const restrictions = parameter?.restrictions || {};
   const defaultValue = parameter?.default;
+  const valueType = String(parameter?.valueType || "").trim().toLowerCase();
   const allowed = Array.isArray(restrictions?.allowed) ? restrictions.allowed : [];
+  const normalizeInputValue = (rawValue) => {
+    if (valueType === "number") {
+      const parsed = Number(rawValue);
+      return Number.isFinite(parsed) ? parsed : rawValue;
+    }
+
+    if (valueType === "integer") {
+      const parsed = Number(rawValue);
+      return Number.isInteger(parsed) ? parsed : rawValue;
+    }
+
+    if (valueType === "boolean") {
+      if (rawValue === true || rawValue === false) return rawValue;
+      const normalized = String(rawValue).trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+
+    return rawValue;
+  };
 
   if (parameter?.type === "boolean") {
     return (
@@ -24,7 +45,7 @@ export const EnumParameterField = ({
           onChange={(e) => {
             setParamValues((prev) => ({
               ...prev,
-              [paramKey]: e.target.value,
+              [paramKey]: normalizeInputValue(e.target.value),
             }));
             if (defaultModelParams) setDefaultModelParams(false);
           }}
@@ -48,7 +69,7 @@ export const EnumParameterField = ({
           onChange={(e) => {
             setParamValues((prev) => ({
               ...prev,
-              [paramKey]: e.target.value,
+              [paramKey]: normalizeInputValue(e.target.value),
             }));
             if (defaultModelParams) setDefaultModelParams(false);
           }}
@@ -73,7 +94,7 @@ export const EnumParameterField = ({
         onChange={(e) => {
           setParamValues((prev) => ({
             ...prev,
-            [paramKey]: e.target.value,
+            [paramKey]: normalizeInputValue(e.target.value),
           }));
           if (defaultModelParams) setDefaultModelParams(false);
         }}

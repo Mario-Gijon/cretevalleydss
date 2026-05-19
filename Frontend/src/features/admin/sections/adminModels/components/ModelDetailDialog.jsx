@@ -119,8 +119,16 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                   value: toTitle(row.alternativeEvaluationStructureKey),
                 },
                 {
-                  label: "Weighting structure",
-                  value: toTitle(row.criteriaWeightingStructureKey),
+                  label: "Uses criteria weights",
+                  value: formatBoolean(row.usesCriteriaWeights),
+                },
+                {
+                  label: "Uses fuzzy criteria weights",
+                  value: formatBoolean(row.usesFuzzyCriteriaWeights),
+                },
+                {
+                  label: "Uses criterion types",
+                  value: formatBoolean(row.usesCriterionTypes),
                 },
                 { label: "Consensus", value: formatBoolean(row.isConsensus) },
                 { label: "Multi criteria", value: formatBoolean(row.isMultiCriteria) },

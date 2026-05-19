@@ -98,12 +98,12 @@ export const normalizeParameter = (parameter = {}) => {
     label: normalizeNonEmptyString(parameter?.label),
     description: normalizeNonEmptyString(parameter?.description),
     type: normalizeNonEmptyString(parameter?.type),
+    valueType: normalizeNonEmptyString(parameter?.valueType),
     scope: normalizeNonEmptyString(parameter?.scope),
-    semanticRole: normalizeNonEmptyString(parameter?.semanticRole),
+    handlerKey: normalizeNonEmptyString(parameter?.handlerKey),
     required: parameter?.required === true,
     default: hasOwn(parameter, "default") ? parameter.default : null,
     restrictions: normalizeDynamicObject(parameter?.restrictions),
-    ui: normalizeDynamicObject(parameter?.ui),
   };
 };
 
@@ -168,6 +168,7 @@ const validateManifestParameters = (manifestModel) => {
     const parameterPath = `parameters[${index}]`;
     const key = normalizeNonEmptyString(parameter?.key);
     const type = normalizeNonEmptyString(parameter?.type);
+    const handlerKey = normalizeNonEmptyString(parameter?.handlerKey);
 
     if (!key) {
       errors.push(`${parameterPath}.key`);
@@ -181,6 +182,10 @@ const validateManifestParameters = (manifestModel) => {
 
     if (!type) {
       errors.push(`${parameterPath}.type`);
+    }
+
+    if (!handlerKey) {
+      errors.push(`${parameterPath}.handlerKey`);
     }
   });
 
@@ -213,6 +218,15 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.isMultiCriteria !== "boolean") {
     missingFields.push("isMultiCriteria");
   }
+  if (typeof manifestModel?.usesCriteriaWeights !== "boolean") {
+    missingFields.push("usesCriteriaWeights");
+  }
+  if (typeof manifestModel?.usesFuzzyCriteriaWeights !== "boolean") {
+    missingFields.push("usesFuzzyCriteriaWeights");
+  }
+  if (typeof manifestModel?.usesCriterionTypes !== "boolean") {
+    missingFields.push("usesCriterionTypes");
+  }
 
   missingFields.push(...validateManifestParameters(manifestModel));
 
@@ -235,11 +249,11 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   alternativeEvaluationStructureKey: normalizeNonEmptyString(
     manifestModel?.alternativeEvaluationStructureKey
   ),
-  criteriaWeightingStructureKey: normalizeNonEmptyString(
-    manifestModel?.criteriaWeightingStructureKey
-  ),
   supportsConsensus: manifestModel?.supportsConsensus === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
+  usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
+  usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
+  usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
   criterionTypes: normalizeCriterionTypes(manifestModel?.criterionTypes),
   parameters: normalizeParameters(manifestModel?.parameters),

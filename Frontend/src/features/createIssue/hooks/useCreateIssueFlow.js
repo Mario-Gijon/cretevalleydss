@@ -18,8 +18,10 @@ import {
   validateDomainAssigments,
 } from "../../../utils/domainAssignments.utils";
 import {
+  buildDefaultCriteriaWeightingConfig,
+  buildDefaultFuzzyWeightVector,
   isFuzzyCriteriaWeightModel,
-  resolveFuzzyCriteriaWeightValueCount,
+  modelUsesCriteriaWeights,
 } from "../utils/criteriaWeighting.model";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
@@ -35,43 +37,122 @@ const CRITERIA_WEIGHTING_MODES = Object.freeze({
 });
 
 
-const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
-  if (isFuzzyCriteriaWeightModel(selectedModel)) {
-    return {
-      mode: CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY,
-      source: "creator",
-      method: "fuzzy",
-      aggregationMode: "none",
-      structureKey: "fuzzyCriteriaWeights",
-      payload: {},
-    };
-  }
-
-  const preferredStructureKey = selectedModel?.criteriaWeightingStructureKey;
-
-  if (preferredStructureKey === "bestWorstCriteria") {
-    return {
-      mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
-      source: "experts",
-      method: "bwm",
-      aggregationMode: "bwmMean",
-      structureKey: "bestWorstCriteria",
-      payload: {},
-    };
-  }
-
-  return {
-    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
-    source: "experts",
-    method: "manual",
-    aggregationMode: "mean",
-    structureKey: "manualCriteriaWeights",
-    payload: {},
-  };
-};
-
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+const buildDefaultFuzzyWeightsByCriterion = ({
+  leafCriteria,
+  fuzzyValueCount,
+}) => {
+  const names = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2 || names.length === 0) {
+    return {};
+  }
+
+  const isSingleCriterion = names.length === 1;
+  const baseVector = isSingleCriterion
+    ? Array.from({ length: fuzzyValueCount }, () => 1)
+    : buildDefaultFuzzyWeightVector(fuzzyValueCount);
+
+  return names.reduce((accumulator, criterionName) => {
+    accumulator[criterionName] = [...baseVector];
+    return accumulator;
+  }, {});
+};
+
+const isCriteriaWeightingConfigOnDefault = ({
+  selectedModel,
+  criteriaWeightingConfig,
+  leafCriteria,
+  fuzzyValueCount,
+}) => {
+  const expectedDefault = buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria);
+  if (!modelUsesCriteriaWeights(selectedModel)) {
+    return criteriaWeightingConfig == null;
+  }
+  if (!isPlainObject(criteriaWeightingConfig) || !isPlainObject(expectedDefault)) {
+    return false;
+  }
+
+  if (!isFuzzyCriteriaWeightModel(selectedModel)) {
+    return isDeepEqual(criteriaWeightingConfig, expectedDefault);
+  }
+
+  const expectedFuzzyWeights = buildDefaultFuzzyWeightsByCriterion({
+    leafCriteria,
+    fuzzyValueCount,
+  });
+  const currentFuzzyWeights = criteriaWeightingConfig?.payload?.weightsByCriterion;
+  const fuzzyWeightsOnDefault =
+    isDeepEqual(currentFuzzyWeights || {}, {}) ||
+    isDeepEqual(currentFuzzyWeights || {}, expectedFuzzyWeights);
+
+  return (
+    criteriaWeightingConfig.mode === expectedDefault.mode &&
+    criteriaWeightingConfig.source === expectedDefault.source &&
+    criteriaWeightingConfig.method === expectedDefault.method &&
+    criteriaWeightingConfig.aggregationMode === expectedDefault.aggregationMode &&
+    criteriaWeightingConfig.structureKey === expectedDefault.structureKey &&
+    fuzzyWeightsOnDefault
+  );
+};
+
+const resolveAssignedFuzzyValueCount = ({
+  domainAssignments,
+  globalDomains,
+  expressionDomains,
+}) => {
+  const expertsAssignments = domainAssignments?.experts;
+  if (!isPlainObject(expertsAssignments)) {
+    return null;
+  }
+
+  const domainDocs = [
+    ...(Array.isArray(globalDomains) ? globalDomains : []),
+    ...(Array.isArray(expressionDomains) ? expressionDomains : []),
+  ];
+  const domainById = new Map(
+    domainDocs
+      .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
+      .filter(([id]) => id.length > 0)
+  );
+
+  const assignedDomainIds = new Set();
+
+  for (const expertAssignments of Object.values(expertsAssignments)) {
+    const alternativesBlock = expertAssignments?.alternatives;
+    if (!isPlainObject(alternativesBlock)) continue;
+
+    for (const alternativeValue of Object.values(alternativesBlock)) {
+      const criteriaBlock = alternativeValue?.criteria;
+      if (!isPlainObject(criteriaBlock)) continue;
+
+      for (const domainId of Object.values(criteriaBlock)) {
+        const normalizedId = String(domainId || "").trim();
+        if (normalizedId) {
+          assignedDomainIds.add(normalizedId);
+        }
+      }
+    }
+  }
+
+  const valueCounts = new Set();
+  for (const domainId of assignedDomainIds) {
+    const domain = domainById.get(domainId);
+    if (domain?.type !== "linguistic") continue;
+
+    const valueCount = Number(domain?.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      return null;
+    }
+
+    valueCounts.add(valueCount);
+  }
+
+  return valueCounts.size === 1 ? Array.from(valueCounts)[0] : null;
+};
 
 const validateCreatorManualConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
   const payload = criteriaWeightingConfig?.payload;
@@ -172,7 +253,7 @@ const validateCreatorBwmConfig = ({ criteriaWeightingConfig, leafCriteria }) => 
 const validateCreatorFuzzyConfig = ({
   criteriaWeightingConfig,
   leafCriteria,
-  selectedModel,
+  fuzzyValueCount,
 }) => {
   const payload = criteriaWeightingConfig?.payload;
   const weightsByCriterion = payload?.weightsByCriterion;
@@ -182,7 +263,9 @@ const validateCreatorFuzzyConfig = ({
   }
 
   const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
-  const fuzzyValueCount = resolveFuzzyCriteriaWeightValueCount(selectedModel);
+  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
+    return "Fuzzy criteria weights require a consistent linguistic value count.";
+  }
 
   for (const criterionName of criterionNames) {
     const vector = weightsByCriterion[criterionName];
@@ -331,12 +414,13 @@ export const useCreateIssueFlow = () => {
   ]);
 
   useEffect(() => {
-    if (selectedModel && selectedModel.parameters) {
+    if (selectedModel) {
+      const leafCriteria = getLeafCriteria(criteria);
       try {
         setParamValues(
           setDefaults({
             selectedModel,
-            criteria: getLeafCriteria(criteria),
+            criteria: leafCriteria,
           })
         );
       } catch {
@@ -345,10 +429,12 @@ export const useCreateIssueFlow = () => {
       }
       setDefaultModelParams(true);
       setHasAttemptedCreateIssue(false);
+      setCriteriaWeightingConfig(
+        buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
+      );
+      return;
     }
-    setCriteriaWeightingConfig(
-      buildDefaultCriteriaWeightingConfig(selectedModel)
-    );
+    setCriteriaWeightingConfig(buildDefaultCriteriaWeightingConfig(selectedModel, []));
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModel]);
@@ -383,12 +469,17 @@ export const useCreateIssueFlow = () => {
   }, [criteria, selectedModel]);
 
   useEffect(() => {
-    if (!selectedModel?.parameters) {
+    if (!selectedModel) {
       if (defaultModelParams !== true) setDefaultModelParams(true);
       return;
     }
 
     const leafCriteria = getLeafCriteria(criteria);
+    const fuzzyValueCount = resolveAssignedFuzzyValueCount({
+      domainAssignments,
+      globalDomains,
+      expressionDomains,
+    });
     let defaults = {};
     try {
       defaults = setDefaults({
@@ -399,18 +490,34 @@ export const useCreateIssueFlow = () => {
       return;
     }
 
-    const parameterKeys = (selectedModel.parameters || [])
+    const parameterKeys = (selectedModel?.parameters || [])
       .map((parameter) => parameter?.key)
       .filter(Boolean);
 
-    const isOnDefault = parameterKeys.every((key) =>
+    const areParamsOnDefault = parameterKeys.every((key) =>
       isDeepEqual(paramValues?.[key], defaults?.[key])
     );
+    const isCriteriaWeightingOnDefault = isCriteriaWeightingConfigOnDefault({
+      selectedModel,
+      criteriaWeightingConfig,
+      leafCriteria,
+      fuzzyValueCount,
+    });
+    const isOnDefault = areParamsOnDefault && isCriteriaWeightingOnDefault;
 
     if (isOnDefault !== defaultModelParams) {
       setDefaultModelParams(isOnDefault);
     }
-  }, [criteria, defaultModelParams, paramValues, selectedModel]);
+  }, [
+    criteria,
+    criteriaWeightingConfig,
+    defaultModelParams,
+    domainAssignments,
+    expressionDomains,
+    globalDomains,
+    paramValues,
+    selectedModel,
+  ]);
 
   useEffect(() => {
     if (hasAttemptedCreateIssue) {
@@ -528,12 +635,23 @@ export const useCreateIssueFlow = () => {
     }
 
     const leafCriteria = getLeafCriteria(criteria);
-    if (!criteriaWeightingConfig || typeof criteriaWeightingConfig !== "object") {
-      showSnackbarAlert("Criteria weighting configuration is required.", "error");
+    if (selectedModel?.isMultiCriteria !== true && leafCriteria.length > 1) {
+      showSnackbarAlert("This model does not support multiple criteria.", "error");
       return;
     }
 
-    if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC) {
+    const modelNeedsCriteriaWeights = modelUsesCriteriaWeights(selectedModel);
+    if (modelNeedsCriteriaWeights) {
+      if (!criteriaWeightingConfig || typeof criteriaWeightingConfig !== "object") {
+        showSnackbarAlert("Criteria weighting configuration is required.", "error");
+        return;
+      }
+    }
+
+    if (
+      modelNeedsCriteriaWeights &&
+      criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC
+    ) {
       showSnackbarAlert(
         "Simulated consensus for BWM will be available later.",
         "error"
@@ -541,11 +659,19 @@ export const useCreateIssueFlow = () => {
       return;
     }
 
-    if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
+    if (
+      modelNeedsCriteriaWeights &&
+      criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
+    ) {
+      const fuzzyValueCount = resolveAssignedFuzzyValueCount({
+        domainAssignments,
+        globalDomains,
+        expressionDomains,
+      });
       const fuzzyValidationError = validateCreatorFuzzyConfig({
         criteriaWeightingConfig,
         leafCriteria,
-        selectedModel,
+        fuzzyValueCount,
       });
       if (fuzzyValidationError) {
         showSnackbarAlert(fuzzyValidationError, "error");
@@ -553,7 +679,7 @@ export const useCreateIssueFlow = () => {
       }
     }
 
-    if (leafCriteria.length > 1) {
+    if (modelNeedsCriteriaWeights && leafCriteria.length > 1) {
       if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
         const manualValidationError = validateCreatorManualConfig({
           criteriaWeightingConfig,
@@ -579,20 +705,10 @@ export const useCreateIssueFlow = () => {
 
     setLoading(true);
 
-    const modelParameters = Array.isArray(selectedModel?.parameters)
-      ? selectedModel.parameters
-      : [];
-    const criteriaWeightParameterKeys = modelParameters
-      .filter((parameter) => parameter?.semanticRole === "criteriaWeights")
-      .map((parameter) => parameter?.key)
-      .filter(Boolean);
     const issueInfoPayload = { ...allData };
     issueInfoPayload.isConsensus = modelRequiresConsensus;
     const sanitizedParamValues = Object.entries(issueInfoPayload.paramValues || {})
-      .filter(
-        ([key]) =>
-          key !== "weights" && !criteriaWeightParameterKeys.includes(key)
-      )
+      .filter(([key]) => key !== "weights")
       .reduce((accumulator, [key, value]) => {
         accumulator[key] = value;
         return accumulator;
