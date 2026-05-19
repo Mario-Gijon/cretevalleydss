@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   Typography,
+  ToggleButton,
   Box,
 } from "@mui/material";
 import { TransitionGroup } from "react-transition-group";
@@ -22,6 +23,7 @@ import { useTheme } from "@mui/material/styles";
 
 import {
   countLeafCriteria,
+  getLeafCriteria,
   removeCriteriaItemRecursively,
   validateCriterion,
 } from "../../../utils/criteria.utils";
@@ -38,8 +40,40 @@ import {
   getCreateIssueStepInputSx,
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
-import { modelUsesCriteriaWeights } from "../utils/criteriaWeighting.model";
-import { CriteriaWeightingPanel } from "../components/criteria/CriteriaWeightingPanel";
+import {
+  isFuzzyCriteriaWeightModel,
+  modelUsesCriteriaWeights,
+  resolveFuzzyCriteriaWeightValueCount,
+} from "../utils/criteriaWeighting.model";
+import {
+  CRITERIA_WEIGHTING_MODES,
+  normalizeMode,
+  resolveAssignedDomainIds,
+} from "../utils/criteriaWeighting.helpers";
+import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { CriteriaWeightingPanel } from "../components/criteriaWeighting/CriteriaWeightingPanel";
+
+const WEIGHT_DECIMALS = 3;
+const WEIGHT_SUM_TOLERANCE = 0.01;
+
+const roundCriterionWeight = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? Number(parsed.toFixed(WEIGHT_DECIMALS))
+    : "";
+};
+
+const buildRoundedEqualWeights = (criterionNames) => {
+  const names = Array.isArray(criterionNames) ? criterionNames.filter(Boolean) : [];
+  if (names.length === 0) return {};
+
+  const equalWeight = roundCriterionWeight(1 / names.length);
+
+  return names.reduce((acc, criterionName) => {
+    acc[criterionName] = equalWeight;
+    return acc;
+  }, {});
+};
 
 const applyTypeToBranch = (criterion, type) => ({
   ...criterion,
@@ -91,6 +125,7 @@ const updateCriterionWithInheritance = ({
 export const CriteriaStep = () => {
   const theme = useTheme();
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const { globalDomains, expressionDomains } = useIssuesDataContext();
   const {
     criteria,
     setCriteria,
@@ -104,6 +139,7 @@ export const CriteriaStep = () => {
   const isMultiCriteria = selectedModel?.isMultiCriteria;
   const showCriterionTypes = selectedModel?.usesCriterionTypes === true;
   const showCriteriaWeighting = modelUsesCriteriaWeights(selectedModel);
+  const isFuzzyModel = isFuzzyCriteriaWeightModel(selectedModel);
 
   const [inputValue, setInputValue] = useState("");
   const [inputError, setInputError] = useState("");
@@ -127,6 +163,127 @@ export const CriteriaStep = () => {
 
   const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
   const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
+  const leafCriteria = useMemo(() => getLeafCriteria(criteria), [criteria]);
+  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const isSingleCriterion = criterionNames.length === 1;
+
+  const assignedDomainIds = useMemo(
+    () => resolveAssignedDomainIds(domainAssignments),
+    [domainAssignments]
+  );
+  const assignedDomains = useMemo(() => {
+    const domainById = new Map(
+      [...(Array.isArray(globalDomains) ? globalDomains : []), ...(Array.isArray(expressionDomains) ? expressionDomains : [])]
+        .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
+        .filter(([id]) => id.length > 0)
+    );
+
+    return assignedDomainIds
+      .map((domainId) => domainById.get(domainId))
+      .filter(Boolean);
+  }, [assignedDomainIds, expressionDomains, globalDomains]);
+  const fuzzyValueCount = isFuzzyModel
+    ? resolveFuzzyCriteriaWeightValueCount(assignedDomains)
+    : null;
+
+  const mode = normalizeMode(criteriaWeightingConfig?.mode);
+  const weightsByCriterion = criteriaWeightingConfig?.payload?.weightsByCriterion || {};
+
+  const creatorWeightMode =
+    showCriteriaWeighting && mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL
+      ? "manual"
+      : showCriteriaWeighting && isFuzzyModel && mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
+        ? "fuzzy"
+        : null;
+
+  const manualWeightStatus = useMemo(() => {
+    if (creatorWeightMode !== "manual") return null;
+
+    const values = criterionNames.map((criterionName) =>
+      Number(weightsByCriterion?.[criterionName])
+    );
+
+    const allNumeric = values.every((value) => Number.isFinite(value));
+    if (!allNumeric) {
+      return {
+        valid: false,
+        total: null,
+        label: "Weights sum: incomplete · must be 1",
+      };
+    }
+
+    const total = values.reduce((sum, value) => sum + value, 0);
+    const valid = Math.abs(total - 1) <= WEIGHT_SUM_TOLERANCE;
+
+    return {
+      valid,
+      total,
+      label: valid
+        ? `Weights sum: ${total.toFixed(4)}`
+        : `Weights sum: ${total.toFixed(4)} · must be 1`,
+    };
+  }, [creatorWeightMode, criterionNames, weightsByCriterion]);
+
+  const equalWeightsActive = useMemo(() => {
+    if (creatorWeightMode !== "manual") return false;
+    if (criterionNames.length === 0) return false;
+
+    const equalWeights = buildRoundedEqualWeights(criterionNames);
+
+    return criterionNames.every((criterionName) => {
+      const current = Number(weightsByCriterion?.[criterionName]);
+      const expected = Number(equalWeights?.[criterionName]);
+
+      return (
+        Number.isFinite(current) &&
+        Number.isFinite(expected) &&
+        Math.abs(current - expected) <= 0.0005
+      );
+    });
+  }, [creatorWeightMode, criterionNames, weightsByCriterion]);
+
+  const updateWeightsConfigFromUser = (nextConfig) => {
+    if (typeof setDefaultModelParams === "function") {
+      setDefaultModelParams(false);
+    }
+    setCriteriaWeightingConfig?.(nextConfig);
+  };
+
+  const handleManualWeightChange = (criterionName, value) => {
+    updateWeightsConfigFromUser({
+      ...(criteriaWeightingConfig || {}),
+      payload: {
+        ...(criteriaWeightingConfig?.payload || {}),
+        weightsByCriterion: {
+          ...(criteriaWeightingConfig?.payload?.weightsByCriterion || {}),
+          [criterionName]: value === "" ? "" : roundCriterionWeight(value),
+        },
+      },
+    });
+  };
+
+  const handleSetEqualWeights = () => {
+    updateWeightsConfigFromUser({
+      ...(criteriaWeightingConfig || {}),
+      payload: {
+        ...(criteriaWeightingConfig?.payload || {}),
+        weightsByCriterion: buildRoundedEqualWeights(criterionNames),
+      },
+    });
+  };
+
+  const handleFuzzyWeightChange = (criterionName, nextVector) => {
+    updateWeightsConfigFromUser({
+      ...(criteriaWeightingConfig || {}),
+      payload: {
+        ...(criteriaWeightingConfig?.payload || {}),
+        weightsByCriterion: {
+          ...(criteriaWeightingConfig?.payload?.weightsByCriterion || {}),
+          [criterionName]: nextVector,
+        },
+      },
+    });
+  };
 
   const handleEditCriterion = (item) => {
     setEditingCriterion(item);
@@ -291,118 +448,160 @@ export const CriteriaStep = () => {
         </Typography>
       </Stack>
 
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems="flex-start">
-        <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0, width: "100%" }}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.25}
-            alignItems={{ xs: "stretch", sm: "flex-start" }}
+      {showCriteriaWeighting ? (
+        <CriteriaWeightingPanel
+          selectedModel={selectedModel}
+          criteria={criteria}
+          criteriaWeightingConfig={criteriaWeightingConfig}
+          setCriteriaWeightingConfig={setCriteriaWeightingConfig}
+          setDefaultModelParams={setDefaultModelParams}
+          domainAssignments={domainAssignments}
+        />
+      ) : null}
+
+      {creatorWeightMode === "manual" && criterionNames.length > 1 ? (
+        <Stack direction="row" justifyContent="flex-end">
+          <ToggleButton
+            value="equalWeights"
+            selected={equalWeightsActive}
+            onClick={handleSetEqualWeights}
+            size="small"
+            color="info"
+            sx={{
+              px: 1.4,
+              py: 0.55,
+              borderColor: equalWeightsActive
+                ? "rgba(75, 210, 207, 0.72)"
+                : "rgba(255,255,255,0.16)",
+              color: equalWeightsActive ? "info.main" : "text.secondary",
+              fontWeight: 900,
+              fontSize: 11,
+              letterSpacing: 0.25,
+              textTransform: "uppercase",
+              "&.Mui-selected": {
+                color: "info.main",
+                backgroundColor: "rgba(75, 210, 207, 0.10)",
+              },
+              "&.Mui-selected:hover": {
+                backgroundColor: "rgba(75, 210, 207, 0.14)",
+              },
+            }}
           >
-            <TextField
-              variant="outlined"
-              placeholder="Criterion"
-              autoComplete="off"
-              size="small"
-              value={inputValue}
-              onChange={(event) => {
-                setInputValue(event.target.value);
-                setInputError(false);
-              }}
-              onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
-              error={Boolean(inputError)}
-              helperText={inputError}
-              color="info"
-              sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
-            />
-
-            {showCriterionTypes ? (
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel color="info">Type</InputLabel>
-                <Select
-                  value={selectedType}
-                  onChange={(event) => setSelectedType(event.target.value)}
-                  label="Type"
-                  color="info"
-                  sx={getCreateIssueStepInputSx(theme)}
-                >
-                  <MenuItem value="benefit">Benefit</MenuItem>
-                  <MenuItem value="cost">Cost</MenuItem>
-                </Select>
-              </FormControl>
-            ) : null}
-
-            <Button
-              startIcon={<AddIcon />}
-              color="info"
-              variant="outlined"
-              onClick={handleAddCriteria}
-              disabled={!inputValue.trim()}
-            >
-              Add
-            </Button>
-          </Stack>
-
-          {criteria.length === 0 ? (
-            <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
-              <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                No criteria yet. Add at least 1 leaf criterion.
-              </Typography>
-            </Box>
-          ) : (
-            <List
-              disablePadding
-              sx={{
-                ...getCreateIssueStepScrollableSx(theme, "52vh"),
-                overflow: "hidden",
-                overflowY: "auto",
-                minHeight: 0,
-              }}
-            >
-              <TransitionGroup>
-                {reversed.map((item, index) => (
-                  <Collapse key={item.name}>
-                    <CriteriaItem
-                      item={item}
-                      editingCriterion={editingCriterion}
-                      editCriterionValue={editCriterionValue}
-                      setEditCriterionValue={setEditCriterionValue}
-                      editBlur={editBlur}
-                      handleSaveCriterionEdit={handleSaveCriterionEdit}
-                      editCriterionError={editCriterionError}
-                      editCriterionType={editCriterionType}
-                      setEditCriterionType={setEditCriterionType}
-                      setEditBlur={setEditBlur}
-                      handleEditCriterion={handleEditCriterion}
-                      handleToggle={handleToggle}
-                      openItems={openItems}
-                      setSelectedParent={setSelectedParent}
-                      handleRemoveCriteria={handleAskRemoveCriteria}
-                      setOpenDialog={setOpenDialog}
-                      showCriterionTypes={showCriterionTypes}
-                    />
-                    {index !== reversed.length - 1 ? (
-                      <Divider sx={getCreateIssueRowDividerSx(theme)} />
-                    ) : null}
-                  </Collapse>
-                ))}
-              </TransitionGroup>
-            </List>
-          )}
+            Equal weights
+          </ToggleButton>
         </Stack>
+      ) : null}
 
-        {showCriteriaWeighting ? (
-          <Stack sx={{ width: { xs: "100%", lg: 470 }, minWidth: 0, flexShrink: 0 }}>
-            <CriteriaWeightingPanel
-              selectedModel={selectedModel}
-              criteria={criteria}
-              criteriaWeightingConfig={criteriaWeightingConfig}
-              setCriteriaWeightingConfig={setCriteriaWeightingConfig}
-              setDefaultModelParams={setDefaultModelParams}
-              domainAssignments={domainAssignments}
-            />
-          </Stack>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.25}
+        alignItems={{ xs: "stretch", sm: "flex-start" }}
+      >
+        <TextField
+          variant="outlined"
+          placeholder="Criterion"
+          autoComplete="off"
+          size="small"
+          value={inputValue}
+          onChange={(event) => {
+            setInputValue(event.target.value);
+            setInputError(false);
+          }}
+          onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
+          error={Boolean(inputError)}
+          helperText={inputError}
+          color="info"
+          sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+        />
+
+        {showCriterionTypes ? (
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel color="info">Type</InputLabel>
+            <Select
+              value={selectedType}
+              onChange={(event) => setSelectedType(event.target.value)}
+              label="Type"
+              color="info"
+              sx={getCreateIssueStepInputSx(theme)}
+            >
+              <MenuItem value="benefit">Benefit</MenuItem>
+              <MenuItem value="cost">Cost</MenuItem>
+            </Select>
+          </FormControl>
         ) : null}
+
+        <Button
+          startIcon={<AddIcon />}
+          color="info"
+          variant="outlined"
+          onClick={handleAddCriteria}
+          disabled={!inputValue.trim()}
+        >
+          Add
+        </Button>
       </Stack>
+
+      {criteria.length === 0 ? (
+        <Box sx={getCreateIssueStepEmptyStateSx(theme)}>
+          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+            No criteria yet. Add at least 1 leaf criterion.
+          </Typography>
+        </Box>
+      ) : (
+        <List
+          disablePadding
+          sx={{
+            ...getCreateIssueStepScrollableSx(theme, "52vh"),
+            overflow: "hidden",
+            overflowY: "auto",
+            minHeight: 0,
+          }}
+        >
+          <TransitionGroup>
+            {reversed.map((item, index) => (
+              <Collapse key={item.name}>
+                <CriteriaItem
+                  item={item}
+                  editingCriterion={editingCriterion}
+                  editCriterionValue={editCriterionValue}
+                  setEditCriterionValue={setEditCriterionValue}
+                  editBlur={editBlur}
+                  handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  editCriterionError={editCriterionError}
+                  editCriterionType={editCriterionType}
+                  setEditCriterionType={setEditCriterionType}
+                  setEditBlur={setEditBlur}
+                  handleEditCriterion={handleEditCriterion}
+                  handleToggle={handleToggle}
+                  openItems={openItems}
+                  setSelectedParent={setSelectedParent}
+                  handleRemoveCriteria={handleAskRemoveCriteria}
+                  setOpenDialog={setOpenDialog}
+                  showCriterionTypes={showCriterionTypes}
+                  creatorWeightMode={creatorWeightMode}
+                  isSingleCriterion={isSingleCriterion}
+                  fuzzyValueCount={fuzzyValueCount}
+                  weightsByCriterion={weightsByCriterion}
+                  onManualWeightChange={handleManualWeightChange}
+                  onFuzzyVectorChange={handleFuzzyWeightChange}
+                />
+                {index !== reversed.length - 1 ? (
+                  <Divider sx={getCreateIssueRowDividerSx(theme)} />
+                ) : null}
+              </Collapse>
+            ))}
+          </TransitionGroup>
+        </List>
+      )}
+
+      {manualWeightStatus ? (
+        <Typography
+          variant="caption"
+          sx={{ color: manualWeightStatus.valid ? "text.secondary" : "error.main", fontWeight: 800 }}
+        >
+          {manualWeightStatus.label}
+        </Typography>
+      ) : null}
 
       <GlassDialog
         open={openDialog}
@@ -493,3 +692,5 @@ export const CriteriaStep = () => {
     </Stack>
   );
 };
+
+export default CriteriaStep;

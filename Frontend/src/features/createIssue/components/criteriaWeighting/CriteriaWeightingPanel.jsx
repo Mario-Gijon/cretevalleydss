@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Alert, Button, ButtonGroup, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
@@ -18,9 +18,8 @@ import {
   normalizeManualWeightsByRoot,
   normalizeMode,
   resolveAssignedDomainIds,
-} from "./criteriaWeighting.helpers";
-import { ManualCriteriaWeightsEditor } from "./ManualCriteriaWeightsEditor";
-import { FuzzyCriteriaWeightsEditor } from "./FuzzyCriteriaWeightsEditor";
+} from "../../utils/criteriaWeighting.helpers";
+import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import { BwmCriteriaWeightsEditor } from "./BwmCriteriaWeightsEditor";
 
 export const CriteriaWeightingPanel = ({
@@ -40,20 +39,29 @@ export const CriteriaWeightingPanel = ({
     () => getLeafCriteria(Array.isArray(criteria) ? criteria : []),
     [criteria]
   );
-  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+
+  const criterionNames = leafCriteria
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
+
   const leafByRoot = useMemo(
     () => collectLeafCriteriaByRoot(Array.isArray(criteria) ? criteria : []),
     [criteria]
   );
+
   const isSingleCriterion = leafCriteria.length === 1;
 
   const assignedDomainIds = useMemo(
     () => resolveAssignedDomainIds(domainAssignments),
     [domainAssignments]
   );
+
   const assignedDomains = useMemo(() => {
     const domainById = new Map(
-      [...(Array.isArray(globalDomains) ? globalDomains : []), ...(Array.isArray(expressionDomains) ? expressionDomains : [])]
+      [
+        ...(Array.isArray(globalDomains) ? globalDomains : []),
+        ...(Array.isArray(expressionDomains) ? expressionDomains : []),
+      ]
         .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
         .filter(([id]) => id.length > 0)
     );
@@ -205,83 +213,128 @@ export const CriteriaWeightingPanel = ({
   const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
 
   return (
-    <Stack spacing={1.25} sx={{ p: 1.5, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 2 }}>
-      <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-        Criteria weights
-      </Typography>
+    <Stack
+      spacing={1.15}
+      sx={{
+        p: 1.25,
+        border: "1px solid rgba(255,255,255,0.10)",
+        borderRadius: 2,
+        background:
+          "linear-gradient(135deg, rgba(75, 210, 207, 0.045), rgba(255,255,255,0.012))",
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={0.8}
+        alignItems={{ xs: "flex-start", sm: "baseline" }}
+      >
+        <Typography variant="body1" sx={{ fontWeight: 950 }}>
+          Criteria weighting
+        </Typography>
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          Choose how criterion weights are produced.
+        </Typography>
+      </Stack>
 
-      <ButtonGroup color="secondary" size="small" sx={{ flexWrap: "wrap" }}>
-        {isFuzzyModel ? (
-          <Button variant="contained">Fuzzy criteria weights</Button>
-        ) : (
-          <>
-            <Button
-              variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL ? "contained" : "outlined"}
-              onClick={() =>
-                updateConfig(
-                  buildConfigByMode({
-                    mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
-                    leafCriteria,
-                  }),
-                  { markDirty: true }
-                )
-              }
-            >
-              Manual
-            </Button>
+      {isFuzzyModel ? (
+        <Box
+          sx={{
+            p: 1.15,
+            borderRadius: 1.8,
+            border: "1px solid rgba(75, 210, 207, 0.75)",
+            background:
+              "linear-gradient(135deg, rgba(75, 210, 207, 0.13), rgba(75, 210, 207, 0.035))",
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 950 }}>
+            Fuzzy criteria weights
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 750 }}>
+            Set fuzzy weights using the selected expression domain.
+          </Typography>
 
-            <Button
-              variant={mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ? "contained" : "outlined"}
-              onClick={() =>
-                updateConfig(
-                  buildConfigByMode({
-                    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
-                    leafCriteria,
-                  }),
-                  { markDirty: true }
-                )
-              }
-              disabled={isSingleCriterion}
-            >
-              Manual by experts
-            </Button>
+          {!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2 ? (
+            <Alert severity="warning" sx={{ mt: 0.9 }}>
+              Fuzzy criteria weights require a consistent linguistic value count in assigned domains.
+            </Alert>
+          ) : null}
+        </Box>
+      ) : (
+        <Stack
+          sx={{
+            display: "grid",
+            gap: 0.75,
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(4, minmax(0, 1fr))",
+            },
+          }}
+        >
+          <CriteriaWeightingMethodCard
+            title="Manual"
+            description="Set weights now"
+            selected={mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL}
+            onClick={() =>
+              updateConfig(
+                buildConfigByMode({
+                  mode: CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL,
+                  leafCriteria,
+                }),
+                { markDirty: true }
+              )
+            }
+          />
 
-            <Button
-              variant={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? "contained" : "outlined"}
-              onClick={() =>
-                updateConfig(
-                  buildConfigByMode({
-                    mode: CRITERIA_WEIGHTING_MODES.CREATOR_BWM,
-                    leafCriteria,
-                  }),
-                  { markDirty: true }
-                )
-              }
-              disabled={isSingleCriterion}
-            >
-              BWM
-            </Button>
+          <CriteriaWeightingMethodCard
+            title="Manual by experts"
+            description="Experts evaluate later"
+            selected={mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL}
+            disabled={isSingleCriterion}
+            onClick={() =>
+              updateConfig(
+                buildConfigByMode({
+                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+                  leafCriteria,
+                }),
+                { markDirty: true }
+              )
+            }
+          />
 
-            <Button
-              variant={mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM ? "contained" : "outlined"}
-              onClick={() =>
-                updateConfig(
-                  buildConfigByMode({
-                    mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
-                    leafCriteria,
-                  }),
-                  { markDirty: true }
-                )
-              }
-              disabled={isSingleCriterion}
-            >
-              BWM by experts
-            </Button>
+          <CriteriaWeightingMethodCard
+            title="BWM"
+            description="Best-worst now"
+            selected={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM}
+            disabled={isSingleCriterion}
+            onClick={() =>
+              updateConfig(
+                buildConfigByMode({
+                  mode: CRITERIA_WEIGHTING_MODES.CREATOR_BWM,
+                  leafCriteria,
+                }),
+                { markDirty: true }
+              )
+            }
+          />
 
-            <Button disabled>BWM simulated consensus</Button>
-          </>
-        )}
-      </ButtonGroup>
+          <CriteriaWeightingMethodCard
+            title="BWM by experts"
+            description="Experts complete later"
+            selected={mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM}
+            disabled={isSingleCriterion}
+            onClick={() =>
+              updateConfig(
+                buildConfigByMode({
+                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
+                  leafCriteria,
+                }),
+                { markDirty: true }
+              )
+            }
+          />
+        </Stack>
+      )}
 
       {mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ? (
         <Alert severity="info">
@@ -293,59 +346,6 @@ export const CriteriaWeightingPanel = ({
         <Alert severity="info">
           BWM preferences will be collected from experts and aggregated before alternative evaluation.
         </Alert>
-      ) : null}
-
-      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC ? (
-        <Alert severity="warning">
-          Simulated consensus for BWM will be available later.
-        </Alert>
-      ) : null}
-
-      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL ? (
-        <ManualCriteriaWeightsEditor
-          criterionNames={criterionNames}
-          weightsByCriterion={safeConfig?.payload?.weightsByCriterion || {}}
-          isSingleCriterion={isSingleCriterion}
-          onWeightChange={(criterionName, value) => {
-            updateConfig(
-              {
-                ...safeConfig,
-                payload: {
-                  ...(safeConfig?.payload || {}),
-                  weightsByCriterion: {
-                    ...(safeConfig?.payload?.weightsByCriterion || {}),
-                    [criterionName]: value,
-                  },
-                },
-              },
-              { markDirty: true }
-            );
-          }}
-        />
-      ) : null}
-
-      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY ? (
-        <FuzzyCriteriaWeightsEditor
-          criterionNames={criterionNames}
-          fuzzyValueCount={fuzzyValueCount}
-          weightsByCriterion={safeConfig?.payload?.weightsByCriterion || {}}
-          isSingleCriterion={isSingleCriterion}
-          onVectorChange={(criterionName, nextVector) => {
-            updateConfig(
-              {
-                ...safeConfig,
-                payload: {
-                  ...(safeConfig?.payload || {}),
-                  weightsByCriterion: {
-                    ...(safeConfig?.payload?.weightsByCriterion || {}),
-                    [criterionName]: nextVector,
-                  },
-                },
-              },
-              { markDirty: true }
-            );
-          }}
-        />
       ) : null}
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? (

@@ -4,7 +4,7 @@ export const modelUsesCriteriaWeights = (model) =>
 export const isFuzzyCriteriaWeightModel = (model) =>
   modelUsesCriteriaWeights(model) && model?.usesFuzzyCriteriaWeights === true;
 
-export const buildDefaultCriteriaWeightingConfig = (selectedModel, _leafCriteria = []) => {
+export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
   if (!modelUsesCriteriaWeights(selectedModel)) {
     return null;
   }

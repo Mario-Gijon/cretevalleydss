@@ -32,7 +32,10 @@ import "dayjs/locale/en-gb";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriterionAccordion } from "../components/CriterionAccordion";
-import { ModelParameters } from "../components/ModelParameters";
+import {
+  getRenderableNormalModelParameters,
+  ModelParameters,
+} from "../components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
 import {
@@ -120,6 +123,10 @@ export const SummaryStep = () => {
   const groupedData = useMemo(
     () => groupDomainData(domainAssignments),
     [domainAssignments]
+  );
+  const hasNormalModelParameters = useMemo(
+    () => getRenderableNormalModelParameters(selectedModel).length > 0,
+    [selectedModel]
   );
 
   const handleDefaultChange = () => {
@@ -294,26 +301,30 @@ export const SummaryStep = () => {
           </AccordionDetails>
         </Accordion>
 
-        <Divider />
+        {hasNormalModelParameters ? (
+          <>
+            <Divider />
 
-        <Accordion disableGutters elevation={0} sx={accordionSx}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            {sectionHeader("Model parameters", null)}
-          </AccordionSummary>
+            <Accordion disableGutters elevation={0} sx={accordionSx}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                {sectionHeader("Model parameters", null)}
+              </AccordionSummary>
 
-          <AccordionDetails sx={{ pt: 0 }}>
-            <ModelParameters
-              selectedModel={selectedModel}
-              allData={allData}
-              paramValues={paramValues}
-              setParamValues={setParamValues}
-              defaultModelParams={defaultModelParams}
-              setDefaultModelParams={setDefaultModelParams}
-              handleDefaultChange={handleDefaultChange}
-              showValidationErrors={hasAttemptedCreateIssue}
-            />
-          </AccordionDetails>
-        </Accordion>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <ModelParameters
+                  selectedModel={selectedModel}
+                  allData={allData}
+                  paramValues={paramValues}
+                  setParamValues={setParamValues}
+                  defaultModelParams={defaultModelParams}
+                  setDefaultModelParams={setDefaultModelParams}
+                  handleDefaultChange={handleDefaultChange}
+                  showValidationErrors={hasAttemptedCreateIssue}
+                />
+              </AccordionDetails>
+            </Accordion>
+          </>
+        ) : null}
 
         <Divider />
 

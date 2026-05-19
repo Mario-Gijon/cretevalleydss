@@ -9,63 +9,72 @@ export const BwmCriteriaWeightsEditor = ({
 
   return (
     <Stack spacing={1}>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-        <TextField
-          select
-          size="small"
-          label="Best criterion"
-          value={bwmPayload.bestCriterion || ""}
-          onChange={(event) => {
-            const bestCriterion = event.target.value;
-            onPayloadChange({
-              ...bwmPayload,
-              bestCriterion,
-              bestToOthers: {
-                ...(bwmPayload.bestToOthers || {}),
-                [bestCriterion]: 1,
-              },
-            });
-          }}
-          sx={{ minWidth: 220 }}
-        >
-          {(criterionNames || []).map((criterionName) => (
-            <MenuItem key={criterionName} value={criterionName}>
-              {criterionName}
-            </MenuItem>
-          ))}
-        </TextField>
+      <Stack spacing={0.9} sx={{ p: 1, borderRadius: 1.4, border: "1px solid rgba(255,255,255,0.12)" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          Criterion anchors
+        </Typography>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+          <TextField
+            select
+            size="small"
+            label="Best criterion"
+            value={bwmPayload.bestCriterion || ""}
+            onChange={(event) => {
+              const bestCriterion = event.target.value;
+              onPayloadChange({
+                ...bwmPayload,
+                bestCriterion,
+                bestToOthers: {
+                  ...(bwmPayload.bestToOthers || {}),
+                  [bestCriterion]: 1,
+                },
+              });
+            }}
+            sx={{ minWidth: 220 }}
+          >
+            {(criterionNames || []).map((criterionName) => (
+              <MenuItem key={criterionName} value={criterionName}>
+                {criterionName}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <TextField
-          select
-          size="small"
-          label="Worst criterion"
-          value={bwmPayload.worstCriterion || ""}
-          onChange={(event) => {
-            const worstCriterion = event.target.value;
-            onPayloadChange({
-              ...bwmPayload,
-              worstCriterion,
-              othersToWorst: {
-                ...(bwmPayload.othersToWorst || {}),
-                [worstCriterion]: 1,
-              },
-            });
-          }}
-          sx={{ minWidth: 220 }}
-        >
-          {(criterionNames || []).map((criterionName) => (
-            <MenuItem key={criterionName} value={criterionName}>
-              {criterionName}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            select
+            size="small"
+            label="Worst criterion"
+            value={bwmPayload.worstCriterion || ""}
+            onChange={(event) => {
+              const worstCriterion = event.target.value;
+              onPayloadChange({
+                ...bwmPayload,
+                worstCriterion,
+                othersToWorst: {
+                  ...(bwmPayload.othersToWorst || {}),
+                  [worstCriterion]: 1,
+                },
+              });
+            }}
+            sx={{ minWidth: 220 }}
+          >
+            {(criterionNames || []).map((criterionName) => (
+              <MenuItem key={criterionName} value={criterionName}>
+                {criterionName}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </Stack>
 
       <Typography variant="caption" color="text.secondary">
         Set values from 1 to 9. Self comparisons must be 1.
       </Typography>
 
-      <Stack direction="row" flexWrap="wrap" gap={2}>
+      <Stack spacing={0.9} sx={{ p: 1, borderRadius: 1.4, border: "1px solid rgba(255,255,255,0.12)" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          Best-to-others
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={2}>
         {(criterionNames || []).map((criterionName) => (
           <Stack key={criterionName} spacing={0.5} alignItems="center">
             <Typography variant="caption">Best vs {criterionName}</Typography>
@@ -97,8 +106,13 @@ export const BwmCriteriaWeightsEditor = ({
           </Stack>
         ))}
       </Stack>
+      </Stack>
 
-      <Stack direction="row" flexWrap="wrap" gap={2}>
+      <Stack spacing={0.9} sx={{ p: 1, borderRadius: 1.4, border: "1px solid rgba(255,255,255,0.12)" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          Others-to-worst
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={2}>
         {(criterionNames || []).map((criterionName) => (
           <Stack key={criterionName} spacing={0.5} alignItems="center">
             <Typography variant="caption">{criterionName} vs Worst</Typography>
@@ -129,6 +143,7 @@ export const BwmCriteriaWeightsEditor = ({
             />
           </Stack>
         ))}
+      </Stack>
       </Stack>
     </Stack>
   );
