@@ -114,6 +114,46 @@ const DirectEvaluationMatrix = ({
     );
   };
 
+  const renderCellWithCollective = ({ leftContent, collectiveValue }) => (
+    <Stack
+      direction="row"
+      alignItems="center"
+      sx={{
+        width: "100%",
+        height: "100%",
+        minWidth: 0,
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {leftContent}
+      </Box>
+      {hasCollectiveValue(collectiveValue) ? (
+        <Box
+          sx={{
+            ml: 1,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+          }}
+        >
+          {renderCollectiveChip(collectiveValue)}
+        </Box>
+      ) : null}
+    </Stack>
+  );
+
   const columns = [
     {
       field: "id",
@@ -150,24 +190,17 @@ const DirectEvaluationMatrix = ({
 
         if (domainType === "numeric") {
           const userValue = value;
-          return (
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ width: "100%" }}
-            >
-              {userValue !== null && userValue !== "" ? userValue : ""}
-              {renderCollectiveChip(collectiveValue)}
-            </Stack>
-          );
+          return renderCellWithCollective({
+            leftContent: userValue !== null && userValue !== "" ? userValue : "",
+            collectiveValue,
+          });
         }
 
         if (domainType === "linguistic") {
           const labels = domain.linguisticLabels || domain.labels || [];
 
-          return (
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
+          return renderCellWithCollective({
+            leftContent: (
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Select
                   size="small"
@@ -197,26 +230,22 @@ const DirectEvaluationMatrix = ({
                   ))}
                 </Select>
               </Box>
-              {renderCollectiveChip(collectiveValue)}
-            </Stack>
-          );
+            ),
+            collectiveValue,
+          });
         }
 
         if (domainType) {
-          return (
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
-              <span>{`Unsupported domain type: ${domain.type}`}</span>
-              {renderCollectiveChip(collectiveValue)}
-            </Stack>
-          );
+          return renderCellWithCollective({
+            leftContent: `Unsupported domain type: ${domain.type}`,
+            collectiveValue,
+          });
         }
 
-        return (
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%" }}>
-            <span>{formatDisplayValue(value ?? "")}</span>
-            {renderCollectiveChip(collectiveValue)}
-          </Stack>
-        );
+        return renderCellWithCollective({
+          leftContent: formatDisplayValue(value ?? ""),
+          collectiveValue,
+        });
       },
     })),
   ];

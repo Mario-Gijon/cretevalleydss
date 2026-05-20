@@ -160,9 +160,34 @@ export const useFinishedIssueRatingsView = ({
     return collective || null;
   }, [showCollective, selectedExpert, activeCriterion, phaseRatings]);
 
+  const canShowCollective = useMemo(() => {
+    const sharedCollective = phaseRatings?.collectiveEvaluations;
+    const localizedCollective = phaseRatings?.collectiveEvaluationsLocalizedByExpert;
+
+    if (sharedCollective !== null && sharedCollective !== undefined) {
+      if (Array.isArray(sharedCollective)) {
+        return sharedCollective.length > 0;
+      }
+      if (typeof sharedCollective === "object") {
+        return Object.keys(sharedCollective).length > 0;
+      }
+      return true;
+    }
+
+    if (
+      localizedCollective &&
+      typeof localizedCollective === "object" &&
+      Object.keys(localizedCollective).length > 0
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [phaseRatings]);
+
   useEffect(() => {
-    setShowCollective(false);
-  }, [viewIssue, currentPhaseIndex]);
+    setShowCollective(canShowCollective);
+  }, [viewIssue, currentPhaseIndex, canShowCollective]);
 
   return {
     evaluationStructure,
@@ -176,6 +201,7 @@ export const useFinishedIssueRatingsView = ({
     showCriterionSelector,
     showCollective,
     setShowCollective,
+    canShowCollective,
     evaluations,
     collectiveEvaluations,
     unsupportedEvaluationStructure,

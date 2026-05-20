@@ -27,7 +27,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const addedExperts = Array.isArray(issueInfo.addedExperts)
     ? issueInfo.addedExperts
     : [];
-  const domainAssignments = issueInfo.domainAssignments;
+  const expressionDomainConfig = issueInfo.expressionDomainConfig;
   const closureDate = issueInfo.closureDate;
   const consensusMaxPhases = issueInfo.consensusMaxPhases;
   const consensusThreshold = issueInfo.consensusThreshold;
@@ -75,23 +75,41 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  if (
-    !domainAssignments ||
-    typeof domainAssignments !== "object" ||
-    !domainAssignments.experts ||
-    typeof domainAssignments.experts !== "object"
-  ) {
-    throw createBadRequestError("domainAssignments.experts is required", {
-      field: "domainAssignments",
+  if (!expressionDomainConfig || typeof expressionDomainConfig !== "object") {
+    throw createBadRequestError("expressionDomainConfig is required", {
+      field: "expressionDomainConfig",
     });
   }
 
-  const normalizedAssignmentsByExpert = Object.fromEntries(
-    Object.entries(domainAssignments.experts).map(([email, value]) => [
-      normalizeEmail(email),
-      value,
-    ])
-  );
+  const mode = normalizeString(expressionDomainConfig.mode);
+  if (mode !== "global" && mode !== "byCriterion") {
+    throw createBadRequestError("expressionDomainConfig.mode must be 'global' or 'byCriterion'", {
+      field: "expressionDomainConfig",
+    });
+  }
+
+  const normalizedExpressionDomainConfig =
+    mode === "global"
+      ? {
+        mode,
+        globalDomainId: normalizeString(expressionDomainConfig.globalDomainId),
+      }
+      : {
+        mode,
+        domainsByCriterion:
+            expressionDomainConfig.domainsByCriterion &&
+            typeof expressionDomainConfig.domainsByCriterion === "object" &&
+            !Array.isArray(expressionDomainConfig.domainsByCriterion)
+              ? Object.fromEntries(
+                Object.entries(expressionDomainConfig.domainsByCriterion).map(
+                  ([criterionName, domainId]) => [
+                    normalizeString(criterionName),
+                    normalizeString(domainId),
+                  ]
+                )
+              )
+              : null,
+      };
 
   return {
     issueName,
@@ -101,7 +119,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     isConsensus,
     criteria,
     uniqueExpertEmails,
-    normalizedAssignmentsByExpert,
+    expressionDomainConfig: normalizedExpressionDomainConfig,
     closureDate,
     consensusMaxPhases,
     consensusThreshold,

@@ -19,7 +19,7 @@ import {
 export const useFinishedIssuesListing = ({ finishedIssues = [] }) => {
   const [query, setQuery] = useState("");
   const [searchBy, setSearchBy] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
+  const [sortBy, setSortBy] = useState("finalizationDate");
 
   /**
    * Lista base filtrada antes de aplicar la ordenación.

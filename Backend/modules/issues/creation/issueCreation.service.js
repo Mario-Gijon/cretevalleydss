@@ -3,7 +3,7 @@ import { createIssueDomainSnapshots } from "../expressionDomains/issueDomainSnap
 import { normalizeCreateIssueInput } from "./issueCreation.input.js";
 import { loadCreateIssueActorsAndModel } from "./issueCreation.context.js";
 import {
-  buildExpertAssignmentDomainMap,
+  resolveExpressionDomainConfigByLeafCriteriaOrThrow,
   loadAccessibleExpressionDomains,
 } from "./issueCreation.domains.js";
 import { createIssueParticipationsAndNotifications } from "./issueCreation.participants.js";
@@ -43,7 +43,7 @@ const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
     throw createBadRequestError(
       "Fuzzy criteria weights require linguistic expression domains",
       {
-        field: "domainAssignments",
+        field: "expressionDomainConfig",
       }
     );
   }
@@ -56,7 +56,7 @@ const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
       throw createBadRequestError(
         "Fuzzy criteria weights require a valid linguistic valueCount",
         {
-          field: "domainAssignments",
+          field: "expressionDomainConfig",
         }
       );
     }
@@ -68,7 +68,7 @@ const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
     throw createBadRequestError(
       "Fuzzy criteria weights require consistent linguistic valueCount across issue domains",
       {
-        field: "domainAssignments",
+        field: "expressionDomainConfig",
       }
     );
   }
@@ -236,14 +236,10 @@ export const createIssueFlow = async ({
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const isSingleLeafCriterion = criterionNames.length === 1;
 
-  const { usedDomainIds } =
-    buildExpertAssignmentDomainMap({
-      uniqueExpertEmails: input.uniqueExpertEmails,
-      normalizedAssignmentsByExpert: input.normalizedAssignmentsByExpert,
-      expertByEmail,
-      createdAlternatives,
+  const { usedDomainIds, domainIdByCriterionName } =
+    resolveExpressionDomainConfigByLeafCriteriaOrThrow({
+      expressionDomainConfig: input.expressionDomainConfig,
       leafCriteria,
-      uniqueAlternativeNames: input.uniqueAlternativeNames,
     });
 
   const domainDocs = await loadAccessibleExpressionDomains({
@@ -297,11 +293,44 @@ export const createIssueFlow = async ({
     session,
   });
 
-  await createIssueDomainSnapshots({
+  const snapshotIdBySourceDomainId = await createIssueDomainSnapshots({
     issueId: issue._id,
     domainDocs,
     session,
   });
+
+  for (const leafCriterion of leafCriteria) {
+    const criterionName = String(leafCriterion?.name || "").trim();
+    const sourceDomainId = domainIdByCriterionName.get(criterionName);
+    const snapshotId = snapshotIdBySourceDomainId.get(sourceDomainId);
+
+    if (!snapshotId) {
+      throw createBadRequestError(
+        `Missing IssueExpressionDomain snapshot for criterion '${criterionName}'`,
+        {
+          field: "expressionDomainConfig",
+        }
+      );
+    }
+
+    leafCriterion.expressionDomain = snapshotId;
+    await leafCriterion.save({ session });
+  }
+
+  const missingExpressionDomain = leafCriteria.find(
+    (leafCriterion) => !leafCriterion?.expressionDomain
+  );
+  if (missingExpressionDomain) {
+    throw createBadRequestError(
+      "Each leaf criterion must have an expression domain snapshot",
+      {
+        field: "expressionDomainConfig",
+        details: {
+          criterionName: String(missingExpressionDomain?.name || ""),
+        },
+      }
+    );
+  }
 
   return {
     issueName: input.issueName,

@@ -43,7 +43,9 @@ import {
   setDefaults,
 } from "../utils/createIssue.utils";
 import { buildDefaultCriteriaWeightingConfig } from "../utils/criteriaWeighting.model";
-import { groupDomainData } from "../../../utils/domainAssignments.utils";
+import {
+  getExpressionDomainAssignmentsByCriterion,
+} from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
 import {
@@ -109,7 +111,7 @@ export const SummaryStep = () => {
     alternatives,
     criteria,
     addedExperts,
-    domainAssignments,
+    expressionDomainConfig,
   } = allData;
 
   const domainNameMap = useMemo(
@@ -120,9 +122,13 @@ export const SummaryStep = () => {
     [globalDomains, expressionDomains]
   );
 
-  const groupedData = useMemo(
-    () => groupDomainData(domainAssignments),
-    [domainAssignments]
+  const domainAssignmentsByCriterion = useMemo(
+    () =>
+      getExpressionDomainAssignmentsByCriterion({
+        expressionDomainConfig,
+        leafCriteria: getLeafCriteria(criteria),
+      }),
+    [criteria, expressionDomainConfig]
   );
   const hasNormalModelParameters = useMemo(
     () => getRenderableNormalModelParameters(selectedModel).length > 0,
@@ -148,9 +154,7 @@ export const SummaryStep = () => {
     !selectedModel ||
     addedExperts.length === 0 ||
     alternatives.length === 0 ||
-    criteria.length === 0 ||
-    !domainAssignments?.experts ||
-    Object.keys(domainAssignments.experts).length === 0
+    criteria.length === 0
   ) {
     return (
       <Typography pt={8} variant="h5">
@@ -470,53 +474,40 @@ export const SummaryStep = () => {
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
-            <TableContainer sx={getCreateIssueSummaryDomainTableContainerSx(theme)}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    {["Expert", "Alternative", "Criterion", "Domain"].map((header) => (
-                      <TableCell key={header} sx={domainHeaderCellSx}>
-                        {header}
-                      </TableCell>
+            {expressionDomainConfig?.mode === "global" ? (
+              <Stack spacing={0.5}>
+                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                  Global
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                  {domainNameMap[expressionDomainConfig?.globalDomainId] || "undefined"}
+                </Typography>
+              </Stack>
+            ) : (
+              <TableContainer sx={getCreateIssueSummaryDomainTableContainerSx(theme)}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      {["Criterion", "Domain"].map((header) => (
+                        <TableCell key={header} sx={domainHeaderCellSx}>
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {Object.entries(domainAssignmentsByCriterion).map(([criterionName, domainId]) => (
+                      <TableRow key={criterionName} hover>
+                        <TableCell sx={{ fontWeight: 850 }}>{criterionName}</TableCell>
+                        <TableCell sx={{ fontWeight: 850 }}>
+                          {domainNameMap[domainId] || "undefined"}
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {Object.entries(groupedData).map(([expert, alternativesObject]) => {
-                    const expertRowSpan = Object.values(alternativesObject).reduce(
-                      (sum, rows) => sum + rows.length,
-                      0
-                    );
-
-                    return Object.entries(alternativesObject).map(
-                      ([alternative, criteriaArray], alternativeIndex) => {
-                        const alternativeRowSpan = criteriaArray.length;
-
-                        return criteriaArray.map(({ criterion, dataType }, criterionIndex) => (
-                          <TableRow key={`${expert}-${alternative}-${criterion}`} hover>
-                            {alternativeIndex === 0 && criterionIndex === 0 && (
-                              <TableCell rowSpan={expertRowSpan} sx={{ fontWeight: 850 }}>
-                                {expert}
-                              </TableCell>
-                            )}
-                            {criterionIndex === 0 && (
-                              <TableCell rowSpan={alternativeRowSpan} sx={{ fontWeight: 850 }}>
-                                {alternative}
-                              </TableCell>
-                            )}
-                            <TableCell sx={{ fontWeight: 850 }}>{criterion}</TableCell>
-                            <TableCell sx={{ fontWeight: 850 }}>
-                              {domainNameMap[dataType] || "undefined"}
-                            </TableCell>
-                          </TableRow>
-                        ));
-                      }
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </AccordionDetails>
         </Accordion>
       </Stack>

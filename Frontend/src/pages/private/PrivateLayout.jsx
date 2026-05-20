@@ -34,8 +34,9 @@ const PrivateLayout = () => {
           sx={{ justifyContent: "center", alignItems: "stretch", width: "100%" }}
         >
           <Container
-            maxWidth="xxl"
+            maxWidth={false}
             sx={{
+              maxWidth: 2900,
               paddingTop: { xs: 8, sm: 9, md: 10 },
               minHeight: { xs: "60vh", sm: "80vh", md: "86vh" },
               px: { xs: 0, sm: 2 },

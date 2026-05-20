@@ -25,6 +25,26 @@ const issueStageResultSchema = new Schema(
       type: Number,
       default: null,
     },
+    ranking: {
+      type: [Schema.Types.Mixed],
+      default: [],
+    },
+    rankedWithScores: {
+      type: [Schema.Types.Mixed],
+      default: [],
+    },
+    scoresByAlternative: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    collectiveEvaluations: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    plotsGraphic: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
     collectivePayload: {
       type: Schema.Types.Mixed,
       default: {},

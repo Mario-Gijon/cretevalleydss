@@ -13,18 +13,89 @@ const isPlainObject = (value) =>
 const buildComparisonKey = (alternativeA, alternativeB) =>
   `${alternativeA}::${alternativeB}`;
 
-const buildEmptyCell = () => ({
+const buildEmptyCell = (expressionDomain = null) => ({
   value: "",
-  expressionDomain: null,
+  expressionDomain,
 });
 
-const normalizeCellOrThrow = ({ cell, requireValue, field }) => {
+const normalizeText = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const validateCellValueByDomainOrThrow = ({
+  value,
+  expressionDomain,
+  field,
+}) => {
+  const domainType = expressionDomain?.type;
+
+  if (domainType === "numeric") {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      throw createBadRequestError("Pairwise value must be numeric", { field });
+    }
+
+    const min = expressionDomain?.numericRange?.min;
+    const max = expressionDomain?.numericRange?.max;
+
+    if (Number.isFinite(min) && numericValue < min) {
+      throw createBadRequestError(
+        `Pairwise value must be greater than or equal to ${min}`,
+        { field }
+      );
+    }
+
+    if (Number.isFinite(max) && numericValue > max) {
+      throw createBadRequestError(
+        `Pairwise value must be lower than or equal to ${max}`,
+        { field }
+      );
+    }
+
+    return numericValue;
+  }
+
+  if (domainType === "linguistic") {
+    const labelValue = normalizeText(value);
+    const allowedLabels = Array.isArray(expressionDomain?.linguisticLabels)
+      ? expressionDomain.linguisticLabels
+          .map((entry) => normalizeText(entry?.label))
+          .filter(Boolean)
+      : [];
+
+    if (allowedLabels.length === 0) {
+      throw createBadRequestError(
+        "Linguistic expression domain does not define labels",
+        { field }
+      );
+    }
+
+    if (!allowedLabels.includes(labelValue)) {
+      throw createBadRequestError(
+        "Linguistic pairwise value must match one of the configured labels",
+        { field }
+      );
+    }
+
+    return labelValue;
+  }
+
+  throw createBadRequestError(
+    `Unsupported expression domain type: ${String(domainType || "unknown")}`,
+    { field }
+  );
+};
+
+const normalizeCellOrThrow = ({
+  cell,
+  requireValue,
+  field,
+  expectedExpressionDomain,
+}) => {
   if (!isPlainObject(cell)) {
     throw createBadRequestError("Comparison cell must be an object", { field });
   }
 
   const rawValue = cell.value;
-  const rawExpressionDomain = cell.expressionDomain;
   const hasValue = !(rawValue === "" || rawValue === null || rawValue === undefined);
 
   if (requireValue && !hasValue) {
@@ -37,20 +108,30 @@ const normalizeCellOrThrow = ({ cell, requireValue, field }) => {
   }
 
   if (!hasValue) {
-    return buildEmptyCell();
+    return buildEmptyCell(expectedExpressionDomain);
   }
 
-  return {
+  const normalizedValue = validateCellValueByDomainOrThrow({
     value: rawValue,
-    expressionDomain: rawExpressionDomain ?? null,
+    expressionDomain: expectedExpressionDomain,
+    field,
+  });
+
+  return {
+    value: normalizedValue,
+    expressionDomain: expectedExpressionDomain,
   };
 };
 
-const buildExpectedPairsByCriterion = ({ criterionNames, alternativeNames }) => {
+const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) => {
   const expectedPairsByCriterion = {};
 
-  for (const criterionName of criterionNames) {
-    expectedPairsByCriterion[criterionName] = [];
+  for (const criterion of criteria) {
+    const criterionName = String(criterion?.name || "");
+    expectedPairsByCriterion[criterionName] = {
+      pairs: [],
+      expressionDomain: criterion?.expressionDomain || null,
+    };
 
     for (const alternativeA of alternativeNames) {
       for (const alternativeB of alternativeNames) {
@@ -58,7 +139,7 @@ const buildExpectedPairsByCriterion = ({ criterionNames, alternativeNames }) => 
           continue;
         }
 
-        expectedPairsByCriterion[criterionName].push(
+        expectedPairsByCriterion[criterionName].pairs.push(
           buildComparisonKey(alternativeA, alternativeB)
         );
       }
@@ -115,7 +196,7 @@ const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
         );
       }
 
-      const expectedPairs = expectedPairsByCriterion[criterionName];
+      const expectedPairs = expectedPairsByCriterion[criterionName]?.pairs || [];
       const expectedPairSet = new Set(expectedPairs);
 
       const unknownPairKeys = Object.keys(criterionComparisons).filter(
@@ -150,19 +231,12 @@ const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
           );
         }
 
-        const numericValue = Number(cell.value);
-        if (!Number.isFinite(numericValue)) {
-          throw createBadRequestError(
-            "Completed pairwise evaluation contains non-numeric comparison values",
-            {
-              field: "payload.comparisonsByCriterion",
-              details: {
-                criterionName,
-                pairKey,
-              },
-            }
-          );
-        }
+        validateCellValueByDomainOrThrow({
+          value: cell.value,
+          expressionDomain:
+            expectedPairsByCriterion[criterionName]?.expressionDomain || null,
+          field: "payload.comparisonsByCriterion",
+        });
       }
     }
   }
@@ -199,10 +273,10 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
     );
   }
 
-  const { alternativeNames, criterionNames } =
+  const { alternativeNames, criteria, criterionNames } =
     await getOrderedAlternativeAndCriterionNames({ issue });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-    criterionNames,
+    criteria,
     alternativeNames,
   });
 
@@ -223,7 +297,9 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
   const comparisonsByCriterion = {};
 
   for (const criterionName of criterionNames) {
-    const expectedPairs = expectedPairsByCriterion[criterionName];
+    const expectedPairsMeta = expectedPairsByCriterion[criterionName];
+    const expectedPairs = expectedPairsMeta.pairs;
+    const expectedExpressionDomain = expectedPairsMeta.expressionDomain;
     const expectedPairSet = new Set(expectedPairs);
     const incomingComparisons = payload.comparisonsByCriterion[criterionName];
 
@@ -262,11 +338,12 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
 
         criterionComparisons[pairKey] =
           cell === undefined
-            ? buildEmptyCell()
+            ? buildEmptyCell(expectedExpressionDomain)
             : normalizeCellOrThrow({
                 cell,
                 requireValue,
                 field: "payload.comparisonsByCriterion",
+                expectedExpressionDomain,
               });
 
         return criterionComparisons;
@@ -281,10 +358,10 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
 };
 
 const buildGetPayload = async ({ storedEvaluation, issue }) => {
-  const { alternativeNames, criterionNames } =
+  const { alternativeNames, criteria, criterionNames } =
     await getOrderedAlternativeAndCriterionNames({ issue });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-    criterionNames,
+    criteria,
     alternativeNames,
   });
 
@@ -297,7 +374,9 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
   const comparisonsByCriterion = {};
 
   for (const criterionName of criterionNames) {
-    const expectedPairs = expectedPairsByCriterion[criterionName];
+    const expectedPairsMeta = expectedPairsByCriterion[criterionName];
+    const expectedPairs = expectedPairsMeta.pairs;
+    const expectedExpressionDomain = expectedPairsMeta.expressionDomain;
     const storedCriterionComparisons = isPlainObject(
       storedComparisonsByCriterion[criterionName]
     )
@@ -309,7 +388,10 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
         const storedCell = storedCriterionComparisons[pairKey];
 
         if (!isPlainObject(storedCell)) {
-          criterionComparisons[pairKey] = buildEmptyCell();
+          criterionComparisons[pairKey] = {
+            ...buildEmptyCell(),
+            expressionDomain: expectedExpressionDomain,
+          };
           return criterionComparisons;
         }
 
@@ -320,7 +402,7 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
             storedCell.value === undefined
               ? ""
               : storedCell.value,
-          expressionDomain: storedCell.expressionDomain ?? null,
+          expressionDomain: expectedExpressionDomain,
         };
 
         return criterionComparisons;
@@ -380,10 +462,10 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
   },
 
   async validateCompletedEvaluations({ evaluations, issue }) {
-    const { alternativeNames, criterionNames } =
+    const { alternativeNames, criteria, criterionNames } =
       await getOrderedAlternativeAndCriterionNames({ issue });
     const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-      criterionNames,
+      criteria,
       alternativeNames,
     });
 

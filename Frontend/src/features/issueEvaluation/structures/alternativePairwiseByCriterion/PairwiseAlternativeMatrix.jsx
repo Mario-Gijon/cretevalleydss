@@ -1,5 +1,5 @@
 import { DataGrid } from "@mui/x-data-grid";
-import { Chip, Stack, useTheme } from "@mui/material";
+import { Box, Chip, Stack, useTheme } from "@mui/material";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {
@@ -222,25 +222,51 @@ const PairwiseAlternativeMatrix = ({
         return (
           <Stack
             direction="row"
-            justifyContent="space-between"
             alignItems="center"
+            sx={{
+              width: "100%",
+              height: "100%",
+              minWidth: 0,
+            }}
           >
-            {isDiagonal ? "Neutral" : userValue == null ? "" : userValue}
+            <Box
+              component="span"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {isDiagonal ? "Neutral" : userValue == null ? "" : userValue}
+            </Box>
 
-            {collectiveValue != null && collectiveValue !== "" && !isDiagonal && (
-              <Chip
-                label={collectiveValue}
-                variant="outlined"
-                color="info"
-                size="small"
+            {collectiveValue != null && collectiveValue !== "" && !isDiagonal ? (
+              <Box
                 sx={{
-                  ml: 1.5,
-                  fontSize: "0.75rem",
-                  height: 20,
-                  pointerEvents: "none",
+                  ml: 1,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
                 }}
-              />
-            )}
+              >
+                <Chip
+                  label={collectiveValue}
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  sx={{
+                    fontSize: "0.75rem",
+                    height: 20,
+                    pointerEvents: "none",
+                  }}
+                />
+              </Box>
+            ) : null}
           </Stack>
         );
       },

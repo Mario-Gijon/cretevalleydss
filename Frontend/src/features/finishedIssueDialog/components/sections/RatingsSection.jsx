@@ -24,7 +24,6 @@ const RatingsSection = () => {
 
   const {
     viewIssue,
-    currentPhaseIndex,
     selectedExpert,
     setSelectedExpert,
     selectedCriterion,
@@ -34,6 +33,7 @@ const RatingsSection = () => {
     showCriterionSelector,
     showCollective,
     setShowCollective,
+    canShowCollective,
     evaluations,
     collectiveEvaluations,
     leafNames,
@@ -105,7 +105,7 @@ const RatingsSection = () => {
 
           <Box sx={{ flex: 1 }} />
 
-          {viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations ? (
+          {canShowCollective ? (
             <ToggleButton
               selected={showCollective}
               onChange={() => setShowCollective((value) => !value)}
@@ -120,7 +120,7 @@ const RatingsSection = () => {
                 },
               }}
             >
-              Show collective
+              {showCollective ? "Hide collective" : "Show collective"}
             </ToggleButton>
           ) : null}
         </Stack>

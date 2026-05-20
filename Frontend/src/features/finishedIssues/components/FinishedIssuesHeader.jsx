@@ -58,7 +58,7 @@ const FinishedIssuesHeader = ({
   const sortOptions = useMemo(
     () => [
       { value: "name", label: "Name" },
-      { value: "finalizationDate", label: "Deadline date" },
+      { value: "finalizationDate", label: "Finished date" },
       { value: "creationDate", label: "Creation date" },
     ],
     []

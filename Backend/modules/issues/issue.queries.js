@@ -1,5 +1,4 @@
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { Participation } from "../../models/Participations.js";
 import {
@@ -99,29 +98,6 @@ export const getNextConsensusPhase = async (issueId) => {
   }
 
   return phase;
-};
-
-/**
- * Obtiene el snapshot por defecto de un issue, priorizando dominios numéricos.
- *
- * @param {string|Object} issueId Id del issue.
- * @returns {Promise<Object|null>}
- */
-export const getDefaultIssueSnapshot = async (issueId) => {
-  const numericSnapshot = await IssueExpressionDomain.findOne({
-    issue: issueId,
-    type: "numeric",
-  })
-    .sort({ createdAt: 1 })
-    .lean();
-
-  if (numericSnapshot) {
-    return numericSnapshot;
-  }
-
-  return IssueExpressionDomain.findOne({ issue: issueId })
-    .sort({ createdAt: 1 })
-    .lean();
 };
 
 /**

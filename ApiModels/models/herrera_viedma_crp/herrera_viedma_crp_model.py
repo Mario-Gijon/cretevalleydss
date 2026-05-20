@@ -13,7 +13,7 @@ from models.herrera_viedma_crp.utils import (
     calcular_medidas_proximidad,
     calcular_pesos_OWA,
     calcular_QGDD,
-    conjunto_solucion,
+    conjunto_solucion_desde_scores,
     detectar_cambios,
     expertos_mas_alejados,
     get_plots_graphics,
@@ -61,7 +61,7 @@ def run_herrera_viedma(
         alternatives_rankings[index] = np.argsort(qgdd)[::-1]
 
     collective_scores = qgdd_list[-1]
-    solution_set = conjunto_solucion(alternatives_rankings[-1])
+    solution_set = conjunto_solucion_desde_scores(collective_scores)
 
     differences_rankings = calcular_diferencia_rankings(alternatives_rankings)
     consensus_degree_exp_alt = calcular_consenso_exp_alt(differences_rankings, b)

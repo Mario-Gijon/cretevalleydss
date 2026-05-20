@@ -1,4 +1,5 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 import { getIssueByIdOrThrow } from "../issue.queries.js";
 import {
@@ -20,6 +21,38 @@ const getStructureForIssueStage = ({ issue, stage }) => {
   };
 
   return getEvaluationStructureOrThrow(structureKeyByStage[stage]);
+};
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const loadPreviousCollectiveReference = async ({ issue, stage }) => {
+  if (stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    return null;
+  }
+
+  const currentConsensusPhase = Number(issue?.consensusPhase);
+  if (!Number.isInteger(currentConsensusPhase) || currentConsensusPhase <= 1) {
+    return null;
+  }
+
+  const previousConsensusPhase = currentConsensusPhase - 1;
+  const previousStageResult = await IssueStageResult.findOne({
+    issue: issue?._id,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    consensusPhase: previousConsensusPhase,
+  }).lean();
+
+  if (!previousStageResult) {
+    return null;
+  }
+
+  return {
+    consensusPhase: previousConsensusPhase,
+    collectiveEvaluations: isPlainObject(previousStageResult.collectiveEvaluations)
+      ? previousStageResult.collectiveEvaluations
+      : {},
+  };
 };
 
 const requireAcceptedParticipation = async ({ issueId, userId }) => {
@@ -191,11 +224,17 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     phase: issue.consensusPhase,
   });
 
+  const collectiveReference = await loadPreviousCollectiveReference({
+    issue,
+    stage,
+  });
+
   return {
     stage,
     structureKey: structure.key,
     consensusPhase: issue.consensusPhase,
     payload,
+    collectiveReference,
     completed: storedEvaluation?.completed ?? false,
     submittedAt: storedEvaluation?.submittedAt ?? null,
   };

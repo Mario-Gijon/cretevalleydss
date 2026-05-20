@@ -171,7 +171,14 @@ export const sortFinishedIssues = (issues, sortBy) => {
   };
 
   const finalizationTimestamp = (issue) =>
-    parseIssueDateDDMMYYYY(issue?.closureDate);
+    (() => {
+      const fromFinishedAt = new Date(issue?.finishedAt || 0).getTime();
+      if (Number.isFinite(fromFinishedAt) && fromFinishedAt > 0) {
+        return fromFinishedAt;
+      }
+
+      return 0;
+    })();
 
   if (sortBy === "creationDate") {
     return list.sort((a, b) => {
@@ -182,29 +189,36 @@ export const sortFinishedIssues = (issues, sortBy) => {
   }
 
   if (sortBy === "finalizationDate") {
-    const withDeadline = [];
-    const withoutDeadline = [];
+    const withFinishedAt = [];
+    const withoutFinishedAt = [];
 
     list.forEach((issue) => {
       const timestamp = finalizationTimestamp(issue);
       if (timestamp > 0) {
-        withDeadline.push({ issue, timestamp });
+        const updatedAt = new Date(issue?.updatedAt || 0).getTime();
+        withFinishedAt.push({
+          issue,
+          timestamp,
+          updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+        });
         return;
       }
-      withoutDeadline.push(issue);
+      withoutFinishedAt.push(issue);
     });
 
-    withDeadline.sort((a, b) => {
-      const diff = a.timestamp - b.timestamp;
+    withFinishedAt.sort((a, b) => {
+      const diff = b.timestamp - a.timestamp;
       if (diff !== 0) return diff;
+      const updatedDiff = b.updatedAt - a.updatedAt;
+      if (updatedDiff !== 0) return updatedDiff;
       return compareByName(a.issue, b.issue);
     });
 
-    withoutDeadline.sort(compareByName);
+    withoutFinishedAt.sort(compareByName);
 
     return [
-      ...withDeadline.map((entry) => entry.issue),
-      ...withoutDeadline,
+      ...withFinishedAt.map((entry) => entry.issue),
+      ...withoutFinishedAt,
     ];
   }
 

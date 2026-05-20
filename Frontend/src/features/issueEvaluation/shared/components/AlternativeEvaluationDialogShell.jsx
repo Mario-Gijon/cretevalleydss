@@ -8,6 +8,7 @@ import {
   Avatar,
   Box,
   Typography,
+  ToggleButton,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
@@ -19,6 +20,7 @@ import {
   auroraBg,
   softIconBtnSx,
 } from "../alternativeEvaluationDialog.styles.js";
+import ExpressionDomainSummaryButton from "../../components/ExpressionDomainSummaryButton";
 
 /**
  * Shell compartido para los diálogos de evaluación de alternativas.
@@ -38,6 +40,11 @@ import {
  * @param {React.ReactNode} props.children
  * @param {React.ReactNode|null} [props.actions=null]
  * @param {Object} [props.contentSx]
+ * @param {Array<Object>} [props.criteria=[]]
+ * @param {boolean} [props.showExpressionDomains=false]
+ * @param {boolean} [props.showCollectiveControl=false]
+ * @param {boolean} [props.collectiveVisible=false]
+ * @param {Function|null} [props.onToggleCollective=null]
  * @returns {JSX.Element}
  */
 const AlternativeEvaluationDialogShell = ({
@@ -52,6 +59,11 @@ const AlternativeEvaluationDialogShell = ({
   children,
   actions = null,
   contentSx = {},
+  criteria = [],
+  showExpressionDomains = false,
+  showCollectiveControl = false,
+  collectiveVisible = false,
+  onToggleCollective = null,
 }) => {
   const theme = useTheme();
 
@@ -115,9 +127,28 @@ const AlternativeEvaluationDialogShell = ({
               </Stack>
             </Stack>
 
-            <IconButton onClick={onClose} sx={softIconBtnSx(theme)}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {showExpressionDomains ? (
+                <ExpressionDomainSummaryButton criteria={criteria} />
+              ) : null}
+              {showCollectiveControl ? (
+                <ToggleButton
+                  selected={collectiveVisible}
+                  onChange={() => onToggleCollective?.()}
+                  color="secondary"
+                  size="small"
+                  sx={{
+                    borderRadius: 2.5,
+                    fontWeight: 850,
+                  }}
+                >
+                  {collectiveVisible ? "Hide collective" : "Show collective"}
+                </ToggleButton>
+              ) : null}
+              <IconButton onClick={onClose} sx={softIconBtnSx(theme)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
           </Stack>
         </Box>
 

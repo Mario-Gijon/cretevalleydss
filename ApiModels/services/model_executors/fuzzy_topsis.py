@@ -208,10 +208,41 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
         "weights": _weights(payload, len(criteria)),
         "criterion_types": [_criterion_type(item.get("type")) for item in criteria],
         "alternative_names": alternative_names,
+        "criterion_names": criterion_names,
     }
 
 
-def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict[str, Any]:
+def _normalize_collective_evaluations(
+    *,
+    collective_matrix: Any,
+    alternative_names: list[str],
+    criterion_names: list[str],
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(collective_matrix, list):
+        return {}
+
+    collective_evaluations: dict[str, dict[str, Any]] = {}
+
+    for row_index, alternative_name in enumerate(alternative_names):
+        row = collective_matrix[row_index] if row_index < len(collective_matrix) else None
+        if not isinstance(row, list):
+            continue
+
+        collective_evaluations[alternative_name] = {}
+        for criterion_index, criterion_name in enumerate(criterion_names):
+            collective_evaluations[alternative_name][criterion_name] = (
+                row[criterion_index] if criterion_index < len(row) else ""
+            )
+
+    return collective_evaluations
+
+
+def _output(
+    *,
+    run_result: dict[str, Any],
+    alternative_names: list[str],
+    criterion_names: list[str],
+) -> dict[str, Any]:
     ranking_indexes = run_result.get("collective_ranking")
     collective_scores = run_result.get("collective_scores")
 
@@ -240,10 +271,11 @@ def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict
             for name in ranking
         ],
         "scoresByAlternative": scores_by_alternative,
-        "matrixUsed": run_result.get("matrix_used") or {},
-        "collectivePayload": {
-            "collectiveMatrix": run_result.get("collective_matrix") or [],
-        },
+        "collectiveEvaluations": _normalize_collective_evaluations(
+            collective_matrix=run_result.get("collective_matrix"),
+            alternative_names=alternative_names,
+            criterion_names=criterion_names,
+        ),
         "plotsGraphic": run_result.get("plots_graphic") or {},
         "consensusMeasure": None,
         "rawOutput": run_result,
@@ -267,6 +299,7 @@ def execute_fuzzy_topsis(
             _output(
                 run_result=results,
                 alternative_names=execution_input["alternative_names"],
+                criterion_names=execution_input["criterion_names"],
             ),
         )
     except Exception as error:

@@ -19,6 +19,9 @@ import {
   getOrderedLeafCriteriaDb,
 } from "../issues/issue.ordering.js";
 import {
+  buildExpressionDomainConfigFromLeafCriteriaOrThrow,
+} from "../issues/expressionDomains/issueDomainConfig.js";
+import {
   EVALUATION_STRUCTURE_KEYS,
 } from "../issues/evaluations/evaluation.constants.js";
 
@@ -299,7 +302,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     getOrderedLeafCriteriaDb({
       issueId,
       issueDoc: issue,
-      select: "_id name type isLeaf parentCriterion",
+      select: "_id name type isLeaf parentCriterion expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issueId }).lean(),
@@ -469,6 +472,11 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   const totalFilledEvaluationCells = Array.from(
     evaluationAggMap.values()
   ).reduce((accumulator, row) => accumulator + (row.filledDocs || 0), 0);
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteria,
+      field: "expressionDomain",
+    });
 
   const acceptedExpertsWithWeightsDone = acceptedExperts.filter(
     (item) => item.weightsCompleted
@@ -525,6 +533,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       finalWeights: finalWeightsByName,
       finalWeightsById,
       modelParameters: issue.modelParameters,
+      expressionDomainConfig,
       snapshots: snapshotsSummary,
       consensus: {
         rounds: consensusDocs.length,

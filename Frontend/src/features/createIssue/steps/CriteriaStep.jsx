@@ -133,7 +133,7 @@ export const CriteriaStep = () => {
     criteriaWeightingConfig,
     setCriteriaWeightingConfig,
     setDefaultModelParams,
-    domainAssignments,
+    expressionDomainConfig,
   } = useCreateIssueContext();
 
   const isMultiCriteria = selectedModel?.isMultiCriteria;
@@ -168,8 +168,12 @@ export const CriteriaStep = () => {
   const isSingleCriterion = criterionNames.length === 1;
 
   const assignedDomainIds = useMemo(
-    () => resolveAssignedDomainIds(domainAssignments),
-    [domainAssignments]
+    () =>
+      resolveAssignedDomainIds({
+        expressionDomainConfig,
+        leafCriteria,
+      }),
+    [expressionDomainConfig, leafCriteria]
   );
   const assignedDomains = useMemo(() => {
     const domainById = new Map(
@@ -187,6 +191,7 @@ export const CriteriaStep = () => {
     : null;
 
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const weightsByCriterion = criteriaWeightingConfig?.payload?.weightsByCriterion || {};
 
   const creatorWeightMode =
@@ -455,7 +460,7 @@ export const CriteriaStep = () => {
           criteriaWeightingConfig={criteriaWeightingConfig}
           setCriteriaWeightingConfig={setCriteriaWeightingConfig}
           setDefaultModelParams={setDefaultModelParams}
-          domainAssignments={domainAssignments}
+          expressionDomainConfig={expressionDomainConfig}
         />
       ) : null}
 

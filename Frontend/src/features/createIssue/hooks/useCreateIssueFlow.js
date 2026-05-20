@@ -14,8 +14,10 @@ import {
 } from "../utils/createIssue.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import {
-  buildInitialAssignments,
-  validateDomainAssigments,
+  buildInitialExpressionDomainConfig,
+  resolveAssignedDomainIdsFromExpressionDomainConfig,
+  resolveExpressionDomainOptions,
+  validateExpressionDomainConfig,
 } from "../../../utils/domainAssignments.utils";
 import {
   buildDefaultCriteriaWeightingConfig,
@@ -39,6 +41,40 @@ const CRITERIA_WEIGHTING_MODES = Object.freeze({
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+const normalizeStoredConsensusThreshold = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const normalizeStoredConsensusMaxPhases = (value) => {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+
+  return null;
+};
 
 const buildDefaultFuzzyWeightsByCriterion = ({
   leafCriteria,
@@ -120,12 +156,17 @@ const isCriteriaWeightingConfigOnDefault = ({
 };
 
 const resolveAssignedFuzzyValueCount = ({
-  domainAssignments,
+  expressionDomainConfig,
+  leafCriteria,
   globalDomains,
   expressionDomains,
 }) => {
-  const expertsAssignments = domainAssignments?.experts;
-  if (!isPlainObject(expertsAssignments)) {
+  const assignedDomainIds = resolveAssignedDomainIdsFromExpressionDomainConfig({
+    expressionDomainConfig,
+    leafCriteria,
+  });
+
+  if (!assignedDomainIds.length) {
     return null;
   }
 
@@ -138,25 +179,6 @@ const resolveAssignedFuzzyValueCount = ({
       .map((domain) => [String(domain?.id || domain?._id || "").trim(), domain])
       .filter(([id]) => id.length > 0)
   );
-
-  const assignedDomainIds = new Set();
-
-  for (const expertAssignments of Object.values(expertsAssignments)) {
-    const alternativesBlock = expertAssignments?.alternatives;
-    if (!isPlainObject(alternativesBlock)) continue;
-
-    for (const alternativeValue of Object.values(alternativesBlock)) {
-      const criteriaBlock = alternativeValue?.criteria;
-      if (!isPlainObject(criteriaBlock)) continue;
-
-      for (const domainId of Object.values(criteriaBlock)) {
-        const normalizedId = String(domainId || "").trim();
-        if (normalizedId) {
-          assignedDomainIds.add(normalizedId);
-        }
-      }
-    }
-  }
 
   const valueCounts = new Set();
   for (const domainId of assignedDomainIds) {
@@ -372,17 +394,30 @@ export const useCreateIssueFlow = () => {
   const [issueDescriptionError, setIssueDescriptionError] = useState(false);
   const [closureDate, setClosureDate] = useState(null);
   const [closureDateError, setClosureDateError] = useState(false);
+  const storedConsensusMaxPhases = normalizeStoredConsensusMaxPhases(
+    storedData.consensusMaxPhases
+  );
+  const storedConsensusThreshold = normalizeStoredConsensusThreshold(
+    storedData.consensusThreshold
+  );
   const [consensusMaxPhases, setConsensusMaxPhases] = useState(
-    storedData.consensusMaxPhases || 3
+    storedConsensusMaxPhases === null || storedConsensusMaxPhases > 0
+      ? storedConsensusMaxPhases ?? 3
+      : 3
   );
   const [consensusThreshold, setConsensusThreshold] = useState(
-    storedData.consensusThreshold || 0.7
+    storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7
   );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   const [hasAttemptedCreateIssue, setHasAttemptedCreateIssue] = useState(false);
-  const [domainAssignments, setDomainAssignments] = useState(
-    storedData.domainAssignments || {}
+  const [expressionDomainConfig, setExpressionDomainConfig] = useState(
+    isPlainObject(storedData.expressionDomainConfig)
+      ? storedData.expressionDomainConfig
+      : {
+        mode: "global",
+        globalDomainId: "",
+      }
   );
   const [criteriaWeightingConfig, setCriteriaWeightingConfig] = useState(
     isPlainObject(storedData.criteriaWeightingConfig)
@@ -403,7 +438,7 @@ export const useCreateIssueFlow = () => {
       addedExperts,
       issueName,
       issueDescription,
-      domainAssignments,
+      expressionDomainConfig,
       paramValues,
       criteriaWeightingConfig,
       closureDate: closureDate ? closureDate.toJSON() : null,
@@ -428,7 +463,7 @@ export const useCreateIssueFlow = () => {
     closureDate,
     consensusMaxPhases,
     consensusThreshold,
-    domainAssignments,
+    expressionDomainConfig,
     paramValues,
     criteriaWeightingConfig,
   ]);
@@ -460,27 +495,17 @@ export const useCreateIssueFlow = () => {
   }, [selectedModel]);
 
   useEffect(() => {
-    if (addedExperts.length > 0 && alternatives.length > 0 && criteria.length > 0) {
-      setDomainAssignments((previous) =>
-        buildInitialAssignments(
-          addedExperts,
-          alternatives,
-          getLeafCriteria(criteria),
-          previous,
-          selectedModel,
-          globalDomains,
-          expressionDomains
-        )
-      );
-    }
-  }, [
-    addedExperts,
-    alternatives,
-    criteria,
-    selectedModel,
-    globalDomains,
-    expressionDomains,
-  ]);
+    const leafCriteria = getLeafCriteria(criteria);
+    setExpressionDomainConfig((previous) =>
+      buildInitialExpressionDomainConfig({
+        selectedModel,
+        leafCriteria,
+        currentConfig: previous,
+        globalDomains,
+        expressionDomains,
+      })
+    );
+  }, [criteria, expressionDomains, globalDomains, selectedModel]);
 
   useEffect(() => {
     setParamValues((previous) =>
@@ -496,7 +521,8 @@ export const useCreateIssueFlow = () => {
 
     const leafCriteria = getLeafCriteria(criteria);
     const fuzzyValueCount = resolveAssignedFuzzyValueCount({
-      domainAssignments,
+      expressionDomainConfig,
+      leafCriteria,
       globalDomains,
       expressionDomains,
     });
@@ -532,7 +558,7 @@ export const useCreateIssueFlow = () => {
     criteria,
     criteriaWeightingConfig,
     defaultModelParams,
-    domainAssignments,
+    expressionDomainConfig,
     expressionDomains,
     globalDomains,
     paramValues,
@@ -604,7 +630,7 @@ export const useCreateIssueFlow = () => {
       criteria,
       addedExperts,
       closureDate: closureDate ? dayjs(closureDate).startOf("day").toDate() : null,
-      domainAssignments,
+      expressionDomainConfig,
       criteriaWeightingConfig,
       paramValues,
       ...(effectiveIsConsensus && { consensusMaxPhases, consensusThreshold }),
@@ -618,7 +644,7 @@ export const useCreateIssueFlow = () => {
     criteria,
     addedExperts,
     closureDate,
-    domainAssignments,
+    expressionDomainConfig,
     criteriaWeightingConfig,
     paramValues,
     consensusMaxPhases,
@@ -646,9 +672,21 @@ export const useCreateIssueFlow = () => {
 
     const modelRequiresConsensus = selectedModel?.supportsConsensus === true;
 
-    if (!validateDomainAssigments(domainAssignments)) {
+    const { validDomainIdSet } = resolveExpressionDomainOptions(
+      selectedModel,
+      globalDomains,
+      expressionDomains
+    );
+
+    if (
+      !validateExpressionDomainConfig({
+        expressionDomainConfig,
+        leafCriteria: getLeafCriteria(criteria),
+        validDomainIdSet,
+      })
+    ) {
       showSnackbarAlert(
-        "You must assign an expression domain to all criteria before creating the issue.",
+        "You must assign a compatible expression domain to every leaf criterion before creating the issue.",
         "error"
       );
       return;
@@ -657,6 +695,44 @@ export const useCreateIssueFlow = () => {
     const leafCriteria = getLeafCriteria(criteria);
     if (selectedModel?.isMultiCriteria !== true && leafCriteria.length > 1) {
       showSnackbarAlert("This model does not support multiple criteria.", "error");
+      return;
+    }
+
+    const rawConsensusThreshold = consensusThreshold;
+    const normalizedConsensusThreshold = Number(rawConsensusThreshold);
+    if (
+      modelRequiresConsensus &&
+      (
+        rawConsensusThreshold === "" ||
+        !Number.isFinite(normalizedConsensusThreshold) ||
+        normalizedConsensusThreshold < 0 ||
+        normalizedConsensusThreshold > 1
+      )
+    ) {
+      showSnackbarAlert(
+        "Consensus threshold must be a finite number between 0 and 1.",
+        "error"
+      );
+      return;
+    }
+
+    const normalizedConsensusMaxPhases =
+      consensusMaxPhases === null || consensusMaxPhases === undefined || consensusMaxPhases === ""
+        ? null
+        : Number(consensusMaxPhases);
+    if (
+      modelRequiresConsensus &&
+      normalizedConsensusMaxPhases !== null &&
+      (
+        !Number.isFinite(normalizedConsensusMaxPhases) ||
+        !Number.isInteger(normalizedConsensusMaxPhases) ||
+        normalizedConsensusMaxPhases <= 0
+      )
+    ) {
+      showSnackbarAlert(
+        "Max consensus rounds must be a positive integer or unlimited.",
+        "error"
+      );
       return;
     }
 
@@ -684,7 +760,8 @@ export const useCreateIssueFlow = () => {
       criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
     ) {
       const fuzzyValueCount = resolveAssignedFuzzyValueCount({
-        domainAssignments,
+        expressionDomainConfig,
+        leafCriteria,
         globalDomains,
         expressionDomains,
       });
@@ -727,6 +804,10 @@ export const useCreateIssueFlow = () => {
 
     const issueInfoPayload = { ...allData };
     issueInfoPayload.isConsensus = modelRequiresConsensus;
+    if (modelRequiresConsensus) {
+      issueInfoPayload.consensusThreshold = normalizedConsensusThreshold;
+      issueInfoPayload.consensusMaxPhases = normalizedConsensusMaxPhases;
+    }
     const sanitizedParamValues = Object.entries(issueInfoPayload.paramValues || {})
       .filter(([key]) => key !== "weights")
       .reduce((accumulator, [key, value]) => {
@@ -742,8 +823,11 @@ export const useCreateIssueFlow = () => {
 
     if (result.success) {
       setIssueCreated(result);
-      setLoading(false);
-      navigate("/dashboard");
+      /* localStorage.removeItem(LOCAL_STORAGE_KEY); */
+      navigate("/dashboard", { replace: true });
+      window.requestAnimationFrame(() => {
+        setLoading(false);
+      });
       return;
     }
 
@@ -809,7 +893,7 @@ export const useCreateIssueFlow = () => {
     paramValues,
     defaultModelParams,
     hasAttemptedCreateIssue,
-    domainAssignments,
+    expressionDomainConfig,
     criteriaWeightingConfig,
     allData,
     showConsensusModels,
@@ -825,7 +909,7 @@ export const useCreateIssueFlow = () => {
     setParamValues,
     setDefaultModelParams,
     setHasAttemptedCreateIssue,
-    setDomainAssignments,
+    setExpressionDomainConfig,
     setCriteriaWeightingConfig,
     handleValidateIssueName,
     handleValidateIssueDescription,

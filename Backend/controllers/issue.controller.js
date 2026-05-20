@@ -253,7 +253,12 @@ export const getAllActiveIssues = async (req, res) => {
         .populate("expert", "email")
         .lean(),
       Alternative.find({ issue: { $in: issueIds } }).lean(),
-      Criterion.find({ issue: { $in: issueIds } }).lean(),
+      Criterion.find({ issue: { $in: issueIds } })
+        .populate(
+          "expressionDomain",
+          "name type numericRange valueCount linguisticLabels"
+        )
+        .lean(),
       Consensus.find({ issue: { $in: issueIds } }).lean(),
     ]);
 
@@ -409,6 +414,7 @@ export const getAllFinishedIssues = async (req, res) => {
   const issues = await Issue.find({ _id: { $in: issueIds } })
     .populate("model", "name")
     .populate("admin", "email")
+    .sort({ finishedAt: -1, updatedAt: -1 })
     .lean();
 
   const formattedIssues = issues.map((issue) => ({
@@ -417,7 +423,9 @@ export const getAllFinishedIssues = async (req, res) => {
     description: issue.description,
     creationDate: issue.creationDate,
     createdAt: issue.createdAt ?? null,
+    updatedAt: issue.updatedAt ?? null,
     closureDate: issue.closureDate ?? null,
+    finishedAt: issue.finishedAt ?? null,
     isAdmin: sameId(issue.admin?._id, userId),
   }));
 

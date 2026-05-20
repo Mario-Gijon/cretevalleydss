@@ -7,6 +7,7 @@ import { Schema, model } from "mongoose";
 import { Alternative } from "./Alternatives.js";
 import { Consensus } from "./Consensus.js";
 import { Criterion } from "./Criteria.js";
+import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 import { Participation } from "./Participations.js";
 import { IssueEvaluation } from "./IssueEvaluations.js";
 
@@ -26,6 +27,7 @@ import { IssueEvaluation } from "./IssueEvaluations.js";
  * @property {boolean} active Indica si el issue sigue activo.
  * @property {string|null} creationDate Fecha funcional de creación.
  * @property {string|null} closureDate Fecha funcional de cierre.
+ * @property {Date|null} finishedAt Fecha real de finalización del issue.
  * @property {*} modelParameters Parámetros efectivos del modelo.
  * @property {string} currentStage Etapa actual del flujo.
  * @property {Array<*>} alternativeOrder Orden persistido de alternativas.
@@ -54,6 +56,7 @@ import { IssueEvaluation } from "./IssueEvaluations.js";
  * - `currentStage`: fase actual del flujo del issue.
  * - `active`: indica si el issue sigue activo o ya ha finalizado.
  * - `creationDate` y `closureDate`: fechas funcionales de dominio.
+ * - `finishedAt`: fecha real en la que el issue pasó a finalizado.
  *
  * Auditoría:
  * - El schema usa `timestamps`, por lo que también mantiene `createdAt`
@@ -171,6 +174,10 @@ const issueSchema = new Schema(
       type: String,
       default: null,
     },
+    finishedAt: {
+      type: Date,
+      default: null,
+    },
     modelParameters: {
       type: Schema.Types.Mixed,
       default: {},
@@ -221,6 +228,7 @@ async function removeIssueDependencies(next) {
     await Promise.all([
       Alternative.deleteMany({ issue: this._id }),
       Criterion.deleteMany({ issue: this._id }),
+      IssueExpressionDomain.deleteMany({ issue: this._id }),
       IssueEvaluation.deleteMany({ issue: this._id }),
       Participation.deleteMany({ issue: this._id }),
       Consensus.deleteMany({ issue: this._id }),

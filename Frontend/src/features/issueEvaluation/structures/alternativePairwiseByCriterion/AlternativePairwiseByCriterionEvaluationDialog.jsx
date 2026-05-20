@@ -2,33 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
-  Chip,
-  IconButton,
   Stack,
-  Tab,
-  Tabs,
-  Tooltip,
-  Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import GridOnOutlinedIcon from "@mui/icons-material/GridOnOutlined";
-import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix";
+import CriterionCompactSelector from "./CriterionCompactSelector";
 import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import {
-  pillTabsSx,
-  metaChipSx,
   sectionSx,
-  softIconBtnSx,
 } from "../../shared/alternativeEvaluationDialog.styles";
 import {
   fetchIssueEvaluation,
@@ -40,6 +30,8 @@ import { EVALUATION_STAGES } from "../../evaluation.constants";
 const buildPairKey = (altA, altB) => `${altA}::${altB}`;
 
 const buildEmptyCell = () => ({ value: "", domain: null });
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const buildMatrixFromCanonical = ({ alternatives, criterionNames, comparisonsByCriterion }) => {
   const result = {};
@@ -158,6 +150,145 @@ const validatePairwisePayload = ({ alternatives, criterionNames, evaluations, al
   return null;
 };
 
+const buildCollectiveRowsFromMatrix = ({ matrix, alternatives }) => {
+  if (!Array.isArray(matrix)) {
+    return null;
+  }
+
+  const rows = [];
+
+  for (let rowIndex = 0; rowIndex < alternatives.length; rowIndex += 1) {
+    const rowAlternative = alternatives[rowIndex];
+    const sourceRow = matrix[rowIndex];
+    if (!Array.isArray(sourceRow)) {
+      continue;
+    }
+
+    const row = { id: rowAlternative };
+
+    for (let colIndex = 0; colIndex < alternatives.length; colIndex += 1) {
+      const colAlternative = alternatives[colIndex];
+
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          expressionDomain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      row[colAlternative] = {
+        value: sourceRow[colIndex] ?? "",
+        expressionDomain: null,
+      };
+    }
+
+    rows.push(row);
+  }
+
+  return rows.length > 0 ? rows : null;
+};
+
+const buildCollectiveRowsFromPairMap = ({ criterionPairs, alternatives }) => {
+  if (!isPlainObject(criterionPairs)) {
+    return null;
+  }
+
+  const rows = [];
+
+  for (const rowAlternative of alternatives) {
+    const row = { id: rowAlternative };
+
+    for (const colAlternative of alternatives) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          expressionDomain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      const pairKey = buildPairKey(rowAlternative, colAlternative);
+      const cell = criterionPairs[pairKey];
+      const value =
+        cell !== null && typeof cell === "object" && !Array.isArray(cell)
+          ? cell.value
+          : cell;
+
+      row[colAlternative] = {
+        value:
+          value === null || value === undefined || value === ""
+            ? ""
+            : value,
+        expressionDomain: null,
+      };
+    }
+
+    rows.push(row);
+  }
+
+  return rows.length > 0 ? rows : null;
+};
+
+const resolveCollectiveEvaluationsByCriterion = ({
+  collectiveReference,
+  criterionNames,
+  alternatives,
+}) => {
+  if (!isPlainObject(collectiveReference)) {
+    return null;
+  }
+
+  const source = isPlainObject(collectiveReference.collectiveEvaluations)
+    ? collectiveReference.collectiveEvaluations
+    : null;
+
+  if (!source) {
+    return null;
+  }
+
+  const output = {};
+
+  for (const criterionName of criterionNames) {
+    const criterionCollective = source[criterionName];
+
+    if (
+      Array.isArray(criterionCollective) &&
+      criterionCollective.length > 0 &&
+      isPlainObject(criterionCollective[0]) &&
+      "id" in criterionCollective[0]
+    ) {
+      output[criterionName] = criterionCollective;
+      continue;
+    }
+
+    if (Array.isArray(criterionCollective)) {
+      const mappedRows = buildCollectiveRowsFromMatrix({
+        matrix: criterionCollective,
+        alternatives,
+      });
+      if (mappedRows) {
+        output[criterionName] = mappedRows;
+      }
+      continue;
+    }
+
+    if (isPlainObject(criterionCollective)) {
+      const mappedRows = buildCollectiveRowsFromPairMap({
+        criterionPairs: criterionCollective,
+        alternatives,
+      });
+      if (mappedRows) {
+        output[criterionName] = mappedRows;
+      }
+    }
+  }
+
+  return Object.keys(output).length > 0 ? output : null;
+};
+
 const AlternativePairwiseByCriterionEvaluationDialog = ({
   issue,
   isOpen,
@@ -174,6 +305,8 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [collectiveVisible, setCollectiveVisible] = useState(false);
+  const [collectiveEvaluationsByCriterion, setCollectiveEvaluationsByCriterion] = useState(null);
 
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
@@ -195,11 +328,26 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
         const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.ALTERNATIVE_EVALUATION);
         const comparisonsByCriterion = response?.data?.payload?.comparisonsByCriterion || {};
         const merged = buildMatrixFromCanonical({ alternatives, criterionNames, comparisonsByCriterion });
+        const collectiveReference = response?.data?.collectiveReference || null;
+        const resolvedCollectiveByCriterion = resolveCollectiveEvaluationsByCriterion({
+          collectiveReference,
+          criterionNames,
+          alternatives,
+        });
         setEvaluations(merged);
+        setCollectiveEvaluationsByCriterion(resolvedCollectiveByCriterion);
+        setCollectiveVisible(
+          Boolean(
+            resolvedCollectiveByCriterion &&
+              Object.keys(resolvedCollectiveByCriterion).length > 0
+          )
+        );
         setInitialEvaluations(JSON.stringify(merged));
       } catch {
         const merged = buildMatrixFromCanonical({ alternatives, criterionNames, comparisonsByCriterion: {} });
         setEvaluations(merged);
+        setCollectiveEvaluationsByCriterion(null);
+        setCollectiveVisible(false);
         setInitialEvaluations(JSON.stringify(merged));
       } finally {
         setLoading(false);
@@ -307,15 +455,6 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
     showSnackbarAlert(response?.message || "Error submitting evaluation", "error");
   };
 
-  const criterionMeta = useMemo(() => {
-    if (!currentCriterion) return null;
-    return {
-      name: currentCriterion.name,
-      typeLabel: currentCriterion.type ? String(currentCriterion.type) : "",
-      pathLabel: Array.isArray(currentCriterion.path) ? currentCriterion.path.join(" > ") : "",
-    };
-  }, [currentCriterion]);
-
   return (
     <>
       <AlternativeEvaluationDialogShell
@@ -326,6 +465,14 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
         icon={GridOnOutlinedIcon}
         title="Alternative evaluation"
         subtitle={issue?.name || ""}
+        criteria={leafCriteria}
+        showExpressionDomains
+        showCollectiveControl={
+          isPlainObject(collectiveEvaluationsByCriterion) &&
+          Object.keys(collectiveEvaluationsByCriterion).length > 0
+        }
+        collectiveVisible={collectiveVisible}
+        onToggleCollective={() => setCollectiveVisible((value) => !value)}
         contentSx={{ p: { xs: 1.5, sm: 2 } }}
         actions={
           <>
@@ -340,52 +487,30 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
         }
       >
         <Stack spacing={1.25} sx={{ maxWidth: 1200, mx: "auto" }}>
-          {leafCriteria.length > 1 && (
-            <Box sx={{ ...sectionSx(theme), overflow: "hidden" }}>
-              <Tabs value={currentCriterionIndex} onChange={(_, value) => setCurrentCriterionIndex(value)} variant="scrollable" sx={pillTabsSx(theme)}>
-                {leafCriteria.map((criterion, index) => (
-                  <Tab key={criterion.name} label={criterion.name} value={index} />
-                ))}
-              </Tabs>
-            </Box>
-          )}
-
           <Box sx={{ ...sectionSx(theme), p: { xs: 1, sm: 1.5 } }}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1.25 }}>
-              <Chip label={criterionMeta?.name || "—"} color="secondary" size="small" sx={metaChipSx(theme)} />
-              {criterionMeta?.typeLabel ? <Chip label={criterionMeta.typeLabel} size="small" sx={metaChipSx(theme)} /> : null}
-              {criterionMeta?.pathLabel ? <Tooltip title={criterionMeta.pathLabel}><Chip label="Path" size="small" sx={metaChipSx(theme)} /></Tooltip> : null}
-
-              <Box sx={{ flex: 1 }} />
-
-              <IconButton
-                size="small"
-                sx={softIconBtnSx(theme)}
-                disabled={currentCriterionIndex <= 0}
-                onClick={() => setCurrentCriterionIndex((prev) => Math.max(0, prev - 1))}
-              >
-                <ArrowBackIosIcon fontSize="inherit" />
-              </IconButton>
-
-              <Typography variant="caption" sx={{ fontWeight: 900, minWidth: 56, textAlign: "center" }}>
-                {leafCriteria.length ? `${currentCriterionIndex + 1}/${leafCriteria.length}` : "0/0"}
-              </Typography>
-
-              <IconButton
-                size="small"
-                sx={softIconBtnSx(theme)}
-                disabled={currentCriterionIndex >= leafCriteria.length - 1}
-                onClick={() => setCurrentCriterionIndex((prev) => Math.min(leafCriteria.length - 1, prev + 1))}
-              >
-                <ArrowForwardIosIcon fontSize="inherit" />
-              </IconButton>
-            </Stack>
+            <CriterionCompactSelector
+              criteria={leafCriteria}
+              currentIndex={currentCriterionIndex}
+              onSelectCriterion={(index) => setCurrentCriterionIndex(index)}
+              onPreviousCriterion={() =>
+                setCurrentCriterionIndex((prev) => Math.max(0, prev - 1))
+              }
+              onNextCriterion={() =>
+                setCurrentCriterionIndex((prev) =>
+                  Math.min(leafCriteria.length - 1, prev + 1)
+                )
+              }
+            />
 
             <PairwiseAlternativeMatrix
               alternatives={alternatives}
               evaluations={evaluations[criterionId] || []}
               setEvaluations={updateMatrix}
-              collectiveEvaluations={[]}
+              collectiveEvaluations={
+                collectiveVisible
+                  ? collectiveEvaluationsByCriterion?.[criterionId] || []
+                  : []
+              }
             />
           </Box>
         </Stack>

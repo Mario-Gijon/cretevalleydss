@@ -1,29 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Avatar,
-  Backdrop,
   Box,
   Button,
-  DialogActions,
-  DialogContent,
-  Divider,
-  IconButton,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import { alpha, useTheme } from "@mui/material/styles";
-import CloseIcon from "@mui/icons-material/Close";
+import { useTheme } from "@mui/material/styles";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
-import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
-import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
-import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
@@ -34,11 +21,12 @@ import {
 } from "../../services/issueEvaluation.service";
 import { EVALUATION_STAGES } from "../../evaluation.constants";
 import {
-  auroraBg,
   inputSx,
   sectionSx,
-  softIconBtnSx,
 } from "../../styles/weightEvaluationDialog.styles";
+import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
+import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
+import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
 
 const sumWeights = (criterionNames, valuesByCriterion) =>
   criterionNames.reduce((sum, name) => sum + Number(valuesByCriterion[name] ?? 0), 0);
@@ -70,7 +58,6 @@ const ManualCriteriaWeightsEvaluationDialog = ({
   setOpenIssueDialog,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
@@ -203,156 +190,91 @@ const ManualCriteriaWeightsEvaluationDialog = ({
 
   return (
     <>
-      {loading && (
-        <Backdrop open={loading} sx={{ zIndex: 999999 }}>
-          <CircularLoading color="secondary" size={50} height="50vh" />
-        </Backdrop>
-      )}
-
-      <GlassDialog
+      <AlternativeEvaluationDialogShell
         open={isOpen}
         onClose={handleCloseRequest}
-        fullScreen={isMobile}
-        fullWidth
+        loading={loading}
         maxWidth="md"
-        PaperProps={{ elevation: 0 }}
+        icon={TollOutlinedIcon}
+        title="Criteria weights"
+        subtitle={issue?.name || ""}
+        contentSx={{ p: { xs: 1.5, sm: 2.2 } }}
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteSweepOutlinedIcon />}
+              onClick={handleClear}
+            >
+              Clear all
+            </Button>
+
+            <Box sx={{ flex: 1 }} />
+
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<PublishOutlinedIcon />}
+              onClick={() => {
+                const validationError = validateSubmit();
+                if (validationError) {
+                  showSnackbarAlert(validationError, "error");
+                  return;
+                }
+                setOpenSubmitDialog(true);
+              }}
+            >
+              Submit
+            </Button>
+          </>
+        }
       >
-        <Box
-          sx={{
-            ...auroraBg(theme, 0.18),
-            borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.10)}`,
-          }}
-        >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.6 }}>
-            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-              <Avatar
-                sx={{
-                  width: 44,
-                  height: 44,
-                  bgcolor: alpha(theme.palette.info.main, 0.12),
-                  color: "info.main",
-                  border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-                }}
-              >
-                <TollOutlinedIcon />
-              </Avatar>
-              <Stack spacing={0.15} sx={{ minWidth: 0 }}>
-                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
-                  Criteria weights
-                </Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-                  {issue?.name}
-                </Typography>
-              </Stack>
+        <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
+          <Box sx={sectionSx(theme)}>
+            <Stack spacing={1.25}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
+                Rate each criterion between 0 and 1
+              </Typography>
+
+              {criterionNames.map((name) => (
+                <TextField
+                  key={name}
+                  label={name}
+                  type="number"
+                  size="small"
+                  color="info"
+                  value={weightsByCriterion[name] ?? ""}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    setWeightsByCriterion((prev) => ({
+                      ...prev,
+                      [name]: raw === "" ? "" : Number(raw),
+                    }));
+                  }}
+                  inputProps={{ min: 0, max: 1, step: 0.01 }}
+                  sx={inputSx(theme)}
+                />
+              ))}
             </Stack>
-            <IconButton onClick={handleCloseRequest} sx={softIconBtnSx(theme)}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        </Box>
+          </Box>
+        </Stack>
+      </AlternativeEvaluationDialogShell>
 
-        <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
-
-        <DialogContent sx={{ p: { xs: 1.5, sm: 2.2 } }}>
-          <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
-            <Box sx={sectionSx(theme)}>
-              <Stack spacing={1.25}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
-                  Rate each criterion between 0 and 1
-                </Typography>
-
-                {criterionNames.map((name) => (
-                  <TextField
-                    key={name}
-                    label={name}
-                    type="number"
-                    size="small"
-                    color="info"
-                    value={weightsByCriterion[name] ?? ""}
-                    onChange={(event) => {
-                      const raw = event.target.value;
-                      setWeightsByCriterion((prev) => ({
-                        ...prev,
-                        [name]: raw === "" ? "" : Number(raw),
-                      }));
-                    }}
-                    inputProps={{ min: 0, max: 1, step: 0.01 }}
-                    sx={inputSx(theme)}
-                  />
-                ))}
-              </Stack>
-            </Box>
-          </Stack>
-        </DialogContent>
-
-        <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
-
-        <DialogActions sx={{ px: 2, py: 1.2, justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
-          <Button variant="outlined" color="error" startIcon={<DeleteSweepOutlinedIcon />} onClick={handleClear}>
-            Clear all
-          </Button>
-
-          <Box sx={{ flex: 1 }} />
-
-          <Button variant="outlined" color="warning" startIcon={<SaveOutlinedIcon />} onClick={handleSave}>
-            Save draft
-          </Button>
-
-          <Button variant="outlined" color="success" startIcon={<PublishOutlinedIcon />} onClick={() => setOpenSubmitDialog(true)}>
-            Submit
-          </Button>
-        </DialogActions>
-      </GlassDialog>
-
-      <ConfirmationDialog
+      <AlternativeEvaluationSaveDialog
         open={openSaveDialog}
         onClose={() => setOpenSaveDialog(false)}
-        title="Save draft"
-        subtitle="You have unsaved changes. Save draft before closing?"
-        tone="warning"
-        actions={[
-          {
-            id: "exit",
-            label: "Exit",
-            color: "inherit",
-            onClick: () => {
-              setOpenSaveDialog(false);
-              setIsOpen(false);
-            },
-          },
-          {
-            id: "save",
-            label: "Save",
-            color: "warning",
-            variant: "contained",
-            icon: <SaveOutlinedIcon />,
-            onClick: handleSave,
-          },
-        ]}
+        onSave={handleSave}
+        onExit={() => {
+          setOpenSaveDialog(false);
+          setIsOpen(false);
+        }}
       />
 
-      <ConfirmationDialog
+      <AlternativeEvaluationSubmitDialog
         open={openSubmitDialog}
         onClose={() => setOpenSubmitDialog(false)}
-        title="Submit evaluation"
-        subtitle="Submit criteria weights now?"
-        tone="success"
-        actions={[
-          {
-            id: "cancel",
-            label: "Cancel",
-            color: "inherit",
-            onClick: () => setOpenSubmitDialog(false),
-          },
-          {
-            id: "submit",
-            label: "Submit",
-            color: "success",
-            variant: "contained",
-            icon: <ExitToAppOutlinedIcon />,
-            onClick: handleSubmit,
-          },
-        ]}
+        onSubmit={handleSubmit}
       />
     </>
   );

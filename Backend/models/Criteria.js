@@ -69,6 +69,11 @@ const criterionSchema = new Schema({
     type: Boolean,
     required: true,
   },
+  expressionDomain: {
+    type: Schema.Types.ObjectId,
+    ref: "IssueExpressionDomain",
+    default: null,
+  },
 });
 
 

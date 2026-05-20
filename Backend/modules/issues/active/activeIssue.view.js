@@ -1,6 +1,9 @@
 import { orderDocsByIdList } from "../issue.ordering.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
+import {
+  buildExpressionDomainConfigFromLeafCriteriaOrThrow,
+} from "../expressionDomains/issueDomainConfig.js";
 
 import {
   ACTIVE_ACTION_META,
@@ -151,6 +154,17 @@ export const buildActiveIssueView = ({
     issueCriteriaDocs,
     issue
   );
+  const orderedLeafCriteriaWithDomain = orderDocsByIdList(
+    (Array.isArray(issueCriteriaDocs) ? issueCriteriaDocs : []).filter(
+      (criterion) => criterion?.isLeaf === true
+    ),
+    issue.leafCriteriaOrder
+  );
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteriaWithDomain,
+      field: "expressionDomain",
+    });
 
   const criteriaWeights = getEffectiveCriteriaWeightsForActiveView({
     issue,
@@ -388,6 +402,7 @@ export const buildActiveIssueView = ({
       consensusHistory: consensusHistoryRounds,
       consensusRounds: consensusHistoryRounds,
       modelParameters: issue.modelParameters,
+      expressionDomainConfig,
       myParticipation: myParticipation
         ? {
           invitationStatus: myParticipation.invitationStatus,

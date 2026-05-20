@@ -25,6 +25,22 @@ import { EVALUATION_STAGES } from "../../evaluation.constants";
 const buildKey = (alternativeName, criterionName) => `${alternativeName}::${criterionName}`;
 
 const buildEmptyCell = () => ({ value: "", domain: null });
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const normalizeCellForPayload = (cell) => {
+  if (cell !== null && typeof cell === "object" && !Array.isArray(cell)) {
+    return {
+      value: cell?.value ?? "",
+      expressionDomain: cell?.domain ?? null,
+    };
+  }
+
+  return {
+    value: cell ?? "",
+    expressionDomain: null,
+  };
+};
 
 const fromCanonicalCellsToMatrix = ({ alternatives, criterionNames, cells }) => {
   const matrix = {};
@@ -50,10 +66,8 @@ const toCanonicalCellsPayload = ({ alternatives, criterionNames, evaluations }) 
   for (const alternativeName of alternatives) {
     for (const criterionName of criterionNames) {
       const cell = evaluations?.[alternativeName]?.[criterionName] || buildEmptyCell();
-      cells[buildKey(alternativeName, criterionName)] = {
-        value: cell?.value ?? "",
-        expressionDomain: cell?.domain ?? null,
-      };
+      cells[buildKey(alternativeName, criterionName)] =
+        normalizeCellForPayload(cell);
     }
   }
 
@@ -77,6 +91,16 @@ const buildClearedMatrix = ({ alternatives, criterionNames, evaluations }) => {
   return cleared;
 };
 
+const resolveCollectiveEvaluations = ({
+  collectiveReference,
+}) => {
+  if (!isPlainObject(collectiveReference)) {
+    return null;
+  }
+  const collectiveEvaluations = collectiveReference.collectiveEvaluations;
+  return isPlainObject(collectiveEvaluations) ? collectiveEvaluations : null;
+};
+
 const AlternativeCriteriaMatrixEvaluationDialog = ({
   issue,
   isOpen,
@@ -94,6 +118,8 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
   const [initialEvaluations, setInitialEvaluations] = useState(null);
   const [pendingSubmitEvaluations, setPendingSubmitEvaluations] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [collectiveVisible, setCollectiveVisible] = useState(false);
+  const [collectiveEvaluations, setCollectiveEvaluations] = useState(null);
   const matrixRef = useRef(null);
   const evaluationsRef = useRef(evaluations);
 
@@ -129,11 +155,24 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
         const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.ALTERNATIVE_EVALUATION);
         const cells = response?.data?.payload?.cells || {};
         const merged = fromCanonicalCellsToMatrix({ alternatives, criterionNames, cells });
+        const reference = response?.data?.collectiveReference || null;
+        const resolvedCollectiveEvaluations = resolveCollectiveEvaluations({
+          collectiveReference: reference,
+        });
         setEvaluations(merged);
+        setCollectiveEvaluations(resolvedCollectiveEvaluations);
+        setCollectiveVisible(
+          Boolean(
+            resolvedCollectiveEvaluations &&
+              Object.keys(resolvedCollectiveEvaluations).length > 0
+          )
+        );
         setInitialEvaluations(JSON.stringify(merged));
       } catch {
         const merged = fromCanonicalCellsToMatrix({ alternatives, criterionNames, cells: {} });
         setEvaluations(merged);
+        setCollectiveEvaluations(null);
+        setCollectiveVisible(false);
         setInitialEvaluations(JSON.stringify(merged));
       } finally {
         setLoading(false);
@@ -243,6 +282,14 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
         icon={TableChartOutlinedIcon}
         title="Alternative evaluation"
         subtitle={issue?.name || ""}
+        criteria={leafCriteria}
+        showExpressionDomains
+        showCollectiveControl={
+          isPlainObject(collectiveEvaluations) &&
+          Object.keys(collectiveEvaluations).length > 0
+        }
+        collectiveVisible={collectiveVisible}
+        onToggleCollective={() => setCollectiveVisible((value) => !value)}
         contentSx={{ p: { xs: 1.5, sm: 2.2 } }}
         actions={
           <>
@@ -264,7 +311,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
               criteria={criterionNames.slice().sort()}
               evaluations={evaluations}
               setEvaluations={setEvaluations}
-              collectiveEvaluations={null}
+              collectiveEvaluations={collectiveVisible ? collectiveEvaluations : null}
             />
           )}
         </Box>

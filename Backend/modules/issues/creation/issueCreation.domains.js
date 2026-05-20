@@ -2,89 +2,116 @@ import { ExpressionDomain } from "../../../models/ExpressionDomain.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 /**
- * Construye el mapa experto+alternativa+criterio -> dominio fuente
- * y devuelve los ids de dominios utilizados.
+ * Resuelve la configuración de dominios para criterios hoja.
  *
  * @param {object} params Parámetros de entrada.
- * @param {string[]} params.uniqueExpertEmails Correos de expertos.
- * @param {Object} params.normalizedAssignmentsByExpert Asignaciones por experto.
- * @param {Map<string, Object>} params.expertByEmail Usuarios por email.
- * @param {Array<Object>} params.createdAlternatives Alternativas creadas.
+ * @param {object} params.expressionDomainConfig Configuración recibida del frontend.
  * @param {Array<Object>} params.leafCriteria Criterios hoja creados.
- * @param {string[]} params.uniqueAlternativeNames Nombres de alternativas.
- * @returns {Object}
+ * @returns {{ usedDomainIds: string[], domainIdByCriterionName: Map<string, string> }}
  */
-export const buildExpertAssignmentDomainMap = ({
-  uniqueExpertEmails,
-  normalizedAssignmentsByExpert,
-  expertByEmail,
-  createdAlternatives,
+export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
+  expressionDomainConfig,
   leafCriteria,
-  uniqueAlternativeNames,
 }) => {
-  const alternativeByName = new Map(
-    createdAlternatives.map((alternative) => [alternative.name, alternative])
-  );
+  const mode = String(expressionDomainConfig?.mode || "").trim();
+  const leafCriterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => String(criterion?.name || "").trim())
+    .filter(Boolean);
 
-  const sourceDomainByEvaluationKey = new Map();
+  if (leafCriterionNames.length === 0) {
+    throw createBadRequestError("At least one leaf criterion is required", {
+      field: "expressionDomainConfig",
+    });
+  }
+
+  if (mode !== "global" && mode !== "byCriterion") {
+    throw createBadRequestError("expressionDomainConfig.mode must be 'global' or 'byCriterion'", {
+      field: "expressionDomainConfig",
+    });
+  }
+
+  const domainIdByCriterionName = new Map();
   const usedDomainIds = new Set();
 
-  for (const email of uniqueExpertEmails) {
-    const expertUser = expertByEmail.get(email);
-    const expertAssignments = normalizedAssignmentsByExpert[email];
+  if (mode === "global") {
+    const globalDomainId = toIdString(expressionDomainConfig?.globalDomainId);
+    if (!globalDomainId) {
+      throw createBadRequestError("expressionDomainConfig.globalDomainId is required", {
+        field: "expressionDomainConfig",
+      });
+    }
 
-    if (!expertAssignments || typeof expertAssignments !== "object") {
+    for (const criterionName of leafCriterionNames) {
+      domainIdByCriterionName.set(criterionName, globalDomainId);
+    }
+    usedDomainIds.add(globalDomainId);
+
+    return {
+      usedDomainIds: Array.from(usedDomainIds),
+      domainIdByCriterionName,
+    };
+  }
+
+  const rawDomainsByCriterion = expressionDomainConfig?.domainsByCriterion;
+  if (!isPlainObject(rawDomainsByCriterion)) {
+    throw createBadRequestError("expressionDomainConfig.domainsByCriterion is required", {
+      field: "expressionDomainConfig",
+    });
+  }
+
+  const providedCriterionNames = Object.keys(rawDomainsByCriterion)
+    .map((name) => String(name || "").trim())
+    .filter(Boolean);
+  const expectedCriterionNameSet = new Set(leafCriterionNames);
+
+  const missingCriterionNames = leafCriterionNames.filter(
+    (criterionName) => !providedCriterionNames.includes(criterionName)
+  );
+  if (missingCriterionNames.length > 0) {
+    throw createBadRequestError("Missing expression domains for some leaf criteria", {
+      field: "expressionDomainConfig",
+      details: {
+        missingCriteria: missingCriterionNames,
+      },
+    });
+  }
+
+  const unknownCriterionNames = providedCriterionNames.filter(
+    (criterionName) => !expectedCriterionNameSet.has(criterionName)
+  );
+  if (unknownCriterionNames.length > 0) {
+    throw createBadRequestError("expressionDomainConfig contains unknown criteria", {
+      field: "expressionDomainConfig",
+      details: {
+        unknownCriteria: unknownCriterionNames,
+      },
+    });
+  }
+
+  for (const criterionName of leafCriterionNames) {
+    const rawDomainId = rawDomainsByCriterion[criterionName];
+    const domainId = toIdString(rawDomainId);
+
+    if (!domainId) {
       throw createBadRequestError(
-        `Missing domain assignments for expert '${email}'`,
+        `Missing domain id for criterion '${criterionName}'`,
         {
-          field: "domainAssignments",
+          field: "expressionDomainConfig",
         }
       );
     }
 
-    const alternativesBlock = expertAssignments.alternatives || {};
-    const expertId = toIdString(expertUser?._id);
-
-    for (const alternativeName of uniqueAlternativeNames) {
-      const alternativeDoc = alternativeByName.get(alternativeName);
-      const criteriaBlock = alternativesBlock[alternativeName]?.criteria || {};
-
-      if (!alternativeDoc) {
-        throw createBadRequestError(
-          `Alternative '${alternativeName}' not found while building assignments`,
-          {
-            field: "domainAssignments",
-          }
-        );
-      }
-
-      const alternativeId = toIdString(alternativeDoc._id);
-
-      for (const leafCriterion of leafCriteria) {
-        const domainId = toIdString(criteriaBlock[leafCriterion.name]);
-
-        if (!domainId) {
-          throw createBadRequestError(
-            `Missing domain assignment for criterion '${leafCriterion.name}' (expert ${email}, alternative ${alternativeName})`,
-            {
-              field: "domainAssignments",
-            }
-          );
-        }
-
-        const criterionId = toIdString(leafCriterion._id);
-        const evaluationKey = `${expertId}_${alternativeId}_${criterionId}`;
-
-        sourceDomainByEvaluationKey.set(evaluationKey, domainId);
-        usedDomainIds.add(domainId);
-      }
-    }
+    domainIdByCriterionName.set(criterionName, domainId);
+    usedDomainIds.add(domainId);
   }
 
   return {
     usedDomainIds: Array.from(usedDomainIds),
-    sourceDomainByEvaluationKey,
+    domainIdByCriterionName,
   };
 };
 
@@ -186,7 +213,7 @@ export const loadAccessibleExpressionDomains = async ({
     throw createBadRequestError(
       `ExpressionDomain not found or not accessible: ${missingDomains.join(", ")}`,
       {
-        field: "domainAssignments",
+        field: "expressionDomainConfig",
       }
     );
   }
@@ -204,7 +231,7 @@ export const loadAccessibleExpressionDomains = async ({
     throw createBadRequestError(
       "Some assigned expression domains are not compatible with the selected model",
       {
-        field: "domainAssignments",
+        field: "expressionDomainConfig",
         details: {
           unsupportedDomainIds: unsupportedDomains.map((domain) =>
             toIdString(domain._id)

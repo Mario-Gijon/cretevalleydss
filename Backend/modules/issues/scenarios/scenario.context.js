@@ -19,6 +19,9 @@ import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { normalizeScenarioParamOverridesOrThrow } from "./scenario.params.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
 import {
+  buildExpressionDomainAssignmentsByCriterionOrThrow,
+} from "../expressionDomains/issueDomainConfig.js";
+import {
   buildTargetModelRuntimeSnapshotOrThrow,
   validateScenarioModelCompatibilityOrThrow,
 } from "./scenario.compatibility.js";
@@ -447,20 +450,6 @@ export const getCreateScenarioContext = async ({
 
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
   const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
-  const issueDomainSnapshots = await IssueExpressionDomain.find({
-    issue: issue._id,
-  })
-    .select("_id name type numericRange membershipFunction valueCount")
-    .lean();
-
-  validateScenarioModelCompatibilityOrThrow({
-    issue,
-    targetRuntimeSnapshot,
-    issueDomainSnapshots,
-    targetModel,
-    targetModelSupportedDomains: targetModel?.supportedDomains || null,
-  });
-
   const { latestAlternativeResult, phase } =
     await resolveLatestAlternativeResultOrThrow({ issue });
 
@@ -489,7 +478,7 @@ export const getCreateScenarioContext = async ({
       getOrderedLeafCriteriaDb({
         issueId: issue._id,
         issueDoc: issue,
-        select: "_id name type",
+        select: "_id name type expressionDomain",
         lean: true,
       }),
     ]);
@@ -505,6 +494,28 @@ export const getCreateScenarioContext = async ({
       field: "criteria",
     });
   }
+
+  const domainAssignmentsByCriterion =
+    buildExpressionDomainAssignmentsByCriterionOrThrow({
+      leafCriteria: criteria,
+      field: "expressionDomain",
+    });
+  const issueDomainSnapshotIds = Array.from(
+    new Set(Object.values(domainAssignmentsByCriterion))
+  );
+  const issueDomainSnapshots = await IssueExpressionDomain.find({
+    _id: { $in: issueDomainSnapshotIds },
+  })
+    .select("_id name type numericRange membershipFunction valueCount")
+    .lean();
+
+  validateScenarioModelCompatibilityOrThrow({
+    issue,
+    targetRuntimeSnapshot,
+    issueDomainSnapshots,
+    targetModel,
+    targetModelSupportedDomains: targetModel?.supportedDomains || null,
+  });
 
   validateEvaluationCoverageOrThrow({
     issue,

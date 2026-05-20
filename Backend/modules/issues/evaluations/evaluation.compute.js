@@ -170,7 +170,11 @@ const saveStageResult = async ({ issue, stage, computeResult }) => {
     {
       $set: {
         consensusMeasure: computeResult.consensusMeasure,
-        collectivePayload: computeResult.collectivePayload,
+        ranking: computeResult.ranking,
+        rankedWithScores: computeResult.rankedWithScores,
+        scoresByAlternative: computeResult.scoresByAlternative,
+        collectiveEvaluations: computeResult.collectiveEvaluations,
+        plotsGraphic: computeResult.plotsGraphic,
         computedPayload: computeResult.computedPayload,
         modelExecution: computeResult.modelExecution,
         rawOutput: computeResult.rawOutput,
@@ -186,6 +190,7 @@ const saveStageResult = async ({ issue, stage, computeResult }) => {
 
 const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
   const issueUpdateEntries = Object.entries(computeResult.issueUpdates);
+  let didSetFinishedAt = false;
 
   for (const [key, value] of issueUpdateEntries) {
     issue[key] = value;
@@ -196,8 +201,18 @@ const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
   }
 
   if (
+    issue.currentStage === ISSUE_STAGES.FINISHED &&
+    issue.active === false &&
+    !issue.finishedAt
+  ) {
+    issue.finishedAt = new Date();
+    didSetFinishedAt = true;
+  }
+
+  if (
     issueUpdateEntries.length > 0 ||
-    computeResult.nextCurrentStage !== null
+    computeResult.nextCurrentStage !== null ||
+    didSetFinishedAt
   ) {
     await issue.save();
   }
@@ -348,8 +363,12 @@ export const computeIssueEvaluationStage = async ({
     consensusPhase: issue.consensusPhase,
     currentStage: issue.currentStage,
     result: {
+      ranking: lifecycleComputeResult.ranking,
+      rankedWithScores: lifecycleComputeResult.rankedWithScores,
+      scoresByAlternative: lifecycleComputeResult.scoresByAlternative,
+      collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
+      plotsGraphic: lifecycleComputeResult.plotsGraphic,
       consensusMeasure: lifecycleComputeResult.consensusMeasure,
-      collectivePayload: lifecycleComputeResult.collectivePayload,
       computedPayload: lifecycleComputeResult.computedPayload,
       modelExecution: lifecycleComputeResult.modelExecution,
       rawOutput: lifecycleComputeResult.rawOutput,

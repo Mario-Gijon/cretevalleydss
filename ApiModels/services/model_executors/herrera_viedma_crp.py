@@ -170,7 +170,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
                 for col_alternative in alternative_names:
                     if row_alternative == col_alternative:
-                        row.append(0.0)
+                        row.append(0.5)
                         continue
 
                     pair_key = f"{row_alternative}::{col_alternative}"
@@ -219,7 +219,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
                 for column_index in range(alternatives_count):
                     if row_index == column_index:
-                        row.append(0.0)
+                        row.append(0.5)
                         continue
 
                     aggregated_value = 0.0
@@ -248,7 +248,54 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     }
 
 
-def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict[str, Any]:
+def _normalize_pairwise_collective_evaluations(
+    *,
+    source: Any,
+    alternative_names: list[str],
+    criterion_names: list[str],
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(source, dict):
+        return {}
+
+    matrix_by_criterion_name: dict[str, Any] = {}
+    for criterion_name in criterion_names:
+        candidate = source.get(criterion_name)
+        if isinstance(candidate, list):
+            matrix_by_criterion_name[criterion_name] = candidate
+
+    if len(matrix_by_criterion_name) == 0 and len(criterion_names) > 0:
+        preference_matrix = source.get("preference")
+        if isinstance(preference_matrix, list):
+            matrix_by_criterion_name[criterion_names[0]] = preference_matrix
+
+    collective_evaluations: dict[str, dict[str, Any]] = {}
+
+    for criterion_name, matrix in matrix_by_criterion_name.items():
+        criterion_pairs: dict[str, Any] = {}
+
+        for row_index, row_alternative in enumerate(alternative_names):
+            row = matrix[row_index] if row_index < len(matrix) else None
+            if not isinstance(row, list):
+                continue
+
+            for col_index, col_alternative in enumerate(alternative_names):
+                if row_alternative == col_alternative:
+                    continue
+
+                pair_key = f"{row_alternative}::{col_alternative}"
+                criterion_pairs[pair_key] = row[col_index] if col_index < len(row) else ""
+
+        collective_evaluations[criterion_name] = criterion_pairs
+
+    return collective_evaluations
+
+
+def _output(
+    *,
+    run_result: dict[str, Any],
+    alternative_names: list[str],
+    criterion_names: list[str],
+) -> dict[str, Any]:
     safe_run_result = _to_json_compatible(run_result)
 
     rankings_history = _as_list(safe_run_result.get("alternatives_rankings"))
@@ -288,12 +335,11 @@ def _output(*, run_result: dict[str, Any], alternative_names: list[str]) -> dict
             for name in ranking
         ],
         "scoresByAlternative": scores_by_alternative,
-        "matrixUsed": {
-            "collectiveEvaluations": collective_evaluations,
-        },
-        "collectivePayload": {
-            "collectiveEvaluations": collective_evaluations,
-        },
+        "collectiveEvaluations": _normalize_pairwise_collective_evaluations(
+            source=collective_evaluations,
+            alternative_names=alternative_names,
+            criterion_names=criterion_names,
+        ),
         "plotsGraphic": plots_graphic,
         "consensusMeasure": consensus_measure,
         "rawOutput": safe_run_result,
@@ -306,8 +352,17 @@ def execute_herrera_viedma(
     try:
         execution_input = _input(payload)
         model_parameters = payload.modelParameters or {}
+        context = payload.context or {}
+        issue_context = context.get("issue") if isinstance(context, dict) else {}
+        if not isinstance(issue_context, dict):
+            issue_context = {}
 
-        consensus_threshold = float(model_parameters.get("consensusThreshold", 0.7))
+        consensus_threshold = float(
+            issue_context.get(
+                "consensusThreshold",
+                model_parameters.get("consensusThreshold", 0.7),
+            )
+        )
 
         results = run_herrera_viedma(
             execution_input["matrices"],
@@ -324,6 +379,7 @@ def execute_herrera_viedma(
             _output(
                 run_result=results,
                 alternative_names=execution_input["alternative_names"],
+                criterion_names=execution_input["criterion_names"],
             ),
         )
     except Exception as error:

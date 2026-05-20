@@ -83,6 +83,11 @@ export const resolveEvaluationComputeLifecycle = ({
   const consensusReached = consensusMeasure >= threshold;
   const maxPhasesReached = currentConsensusPhase >= maxPhases;
   const shouldFinalize = consensusReached || maxPhasesReached;
+  const lifecycleMessage = consensusReached
+    ? "Consensus threshold reached. The issue has been finalized."
+    : maxPhasesReached
+      ? "Maximum consensus rounds reached. The issue has been finalized."
+      : "Consensus threshold was not reached. A new consensus round will start.";
 
   const finalizationReason = consensusReached
     ? "consensusReached"
@@ -125,6 +130,7 @@ export const resolveEvaluationComputeLifecycle = ({
   return {
     computeResult: {
       ...safeComputeResult,
+      message: lifecycleMessage,
       issueUpdates,
       nextCurrentStage: shouldFinalize ? ISSUE_STAGES.FINISHED : null,
       computedPayload: {

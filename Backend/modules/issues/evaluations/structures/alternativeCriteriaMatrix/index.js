@@ -3,9 +3,7 @@ import {
   EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import {
-  getDefaultIssueExpressionDomainSnapshotOrThrow,
   getOrderedAlternativeAndCriterionNames,
-  serializeIssueExpressionDomainSnapshot,
 } from "../shared/alternativeEvaluation.helpers.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 
@@ -22,18 +20,6 @@ const buildEmptyCell = (expressionDomain = null) => ({
 
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
-
-const normalizeExpressionDomainOrThrow = ({ expressionDomain, field }) => {
-  const serialized = serializeIssueExpressionDomainSnapshot(expressionDomain);
-
-  if (!serialized || !serialized.type || !serialized.name) {
-    throw createBadRequestError("Cell expressionDomain is invalid", {
-      field,
-    });
-  }
-
-  return serialized;
-};
 
 const validateCellValueByDomainOrThrow = ({
   value,
@@ -103,20 +89,14 @@ const normalizeCellOrThrow = ({
   cell,
   requireValue,
   field,
-  defaultExpressionDomain,
+  expectedExpressionDomain,
 }) => {
   if (!isPlainObject(cell)) {
     throw createBadRequestError("Cell must be an object", { field });
   }
 
   const rawValue = cell.value;
-  const rawExpressionDomain = cell.expressionDomain;
   const hasValue = !(rawValue === "" || rawValue === null || rawValue === undefined);
-  const hydratedExpressionDomain = normalizeExpressionDomainOrThrow({
-    expressionDomain:
-      isPlainObject(rawExpressionDomain) ? rawExpressionDomain : defaultExpressionDomain,
-    field,
-  });
 
   if (!hasValue) {
     if (requireValue) {
@@ -127,32 +107,40 @@ const normalizeCellOrThrow = ({
 
     return {
       value: "",
-      expressionDomain: hydratedExpressionDomain,
+      expressionDomain: expectedExpressionDomain,
     };
   }
 
   const normalizedValue = validateCellValueByDomainOrThrow({
     value: rawValue,
-    expressionDomain: hydratedExpressionDomain,
+    expressionDomain: expectedExpressionDomain,
     field,
   });
 
   return {
     value: normalizedValue,
-    expressionDomain: hydratedExpressionDomain,
+    expressionDomain: expectedExpressionDomain,
   };
 };
 
-const buildExpectedCellKeys = ({ alternativeNames, criterionNames }) => {
+const buildExpectedCellMetadata = ({ alternativeNames, criteria }) => {
   const expectedKeys = [];
+  const expressionDomainByCellKey = new Map();
 
   for (const alternativeName of alternativeNames) {
-    for (const criterionName of criterionNames) {
-      expectedKeys.push(buildCellKey(alternativeName, criterionName));
+    for (const criterion of criteria) {
+      const criterionName = String(criterion?.name || "");
+      const expressionDomain = criterion?.expressionDomain || null;
+      const cellKey = buildCellKey(alternativeName, criterionName);
+      expectedKeys.push(cellKey);
+      expressionDomainByCellKey.set(cellKey, expressionDomain);
     }
   }
 
-  return expectedKeys;
+  return {
+    expectedKeys,
+    expressionDomainByCellKey,
+  };
 };
 
 const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
@@ -180,13 +168,12 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
     });
   }
 
-  const { alternativeNames, criterionNames } =
+  const { alternativeNames, criteria } =
     await getOrderedAlternativeAndCriterionNames({ issue });
-  const defaultExpressionDomain =
-    await getDefaultIssueExpressionDomainSnapshotOrThrow({ issue });
-  const expectedCellKeys = buildExpectedCellKeys({
+  const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
+    buildExpectedCellMetadata({
     alternativeNames,
-    criterionNames,
+    criteria,
   });
   const expectedCellKeySet = new Set(expectedCellKeys);
 
@@ -203,15 +190,16 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
 
   const cells = expectedCellKeys.reduce((accumulator, cellKey) => {
     const cell = payload.cells[cellKey];
+    const expectedExpressionDomain = expressionDomainByCellKey.get(cellKey);
 
     accumulator[cellKey] =
       cell === undefined
-        ? buildEmptyCell(defaultExpressionDomain)
+        ? buildEmptyCell(expectedExpressionDomain)
         : normalizeCellOrThrow({
             cell,
             requireValue,
             field: "payload.cells",
-            defaultExpressionDomain,
+            expectedExpressionDomain,
           });
 
     return accumulator;
@@ -223,13 +211,12 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
 };
 
 const buildGetPayload = async ({ storedEvaluation, issue }) => {
-  const { alternativeNames, criterionNames } =
+  const { alternativeNames, criteria } =
     await getOrderedAlternativeAndCriterionNames({ issue });
-  const defaultExpressionDomain =
-    await getDefaultIssueExpressionDomainSnapshotOrThrow({ issue });
-  const expectedCellKeys = buildExpectedCellKeys({
+  const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
+    buildExpectedCellMetadata({
     alternativeNames,
-    criterionNames,
+    criteria,
   });
 
   const storedCells = isPlainObject(storedEvaluation?.payload?.cells)
@@ -238,22 +225,15 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
 
   const cells = expectedCellKeys.reduce((accumulator, cellKey) => {
     const storedCell = storedCells[cellKey];
+    const expectedExpressionDomain = expressionDomainByCellKey.get(cellKey);
 
     if (!isPlainObject(storedCell)) {
       accumulator[cellKey] = {
         value: "",
-        expressionDomain: defaultExpressionDomain,
+        expressionDomain: expectedExpressionDomain,
       };
       return accumulator;
     }
-
-    const hydratedExpressionDomain = normalizeExpressionDomainOrThrow({
-      expressionDomain:
-        isPlainObject(storedCell.expressionDomain)
-          ? storedCell.expressionDomain
-          : defaultExpressionDomain,
-      field: "payload.cells",
-    });
 
     accumulator[cellKey] = {
       value:
@@ -263,10 +243,10 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
           ? ""
           : validateCellValueByDomainOrThrow({
               value: storedCell.value,
-              expressionDomain: hydratedExpressionDomain,
+              expressionDomain: expectedExpressionDomain,
               field: "payload.cells",
             }),
-      expressionDomain: hydratedExpressionDomain,
+      expressionDomain: expectedExpressionDomain,
     };
 
     return accumulator;

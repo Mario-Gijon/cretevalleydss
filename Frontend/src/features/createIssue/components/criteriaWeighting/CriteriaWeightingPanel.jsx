@@ -28,7 +28,7 @@ export const CriteriaWeightingPanel = ({
   criteriaWeightingConfig,
   setCriteriaWeightingConfig,
   setDefaultModelParams,
-  domainAssignments,
+  expressionDomainConfig,
 }) => {
   const { globalDomains, expressionDomains } = useIssuesDataContext();
 
@@ -52,8 +52,12 @@ export const CriteriaWeightingPanel = ({
   const isSingleCriterion = leafCriteria.length === 1;
 
   const assignedDomainIds = useMemo(
-    () => resolveAssignedDomainIds(domainAssignments),
-    [domainAssignments]
+    () =>
+      resolveAssignedDomainIds({
+        expressionDomainConfig,
+        leafCriteria,
+      }),
+    [expressionDomainConfig, leafCriteria]
   );
 
   const assignedDomains = useMemo(() => {

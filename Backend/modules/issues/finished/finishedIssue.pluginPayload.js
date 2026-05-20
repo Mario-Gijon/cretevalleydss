@@ -23,6 +23,9 @@ import {
   mergeParamsResolved,
 } from "../scenarios/scenario.params.js";
 import { buildScenarioCompatibilityMetadata } from "../scenarios/scenario.compatibility.js";
+import {
+  buildExpressionDomainConfigFromLeafCriteriaOrThrow,
+} from "../expressionDomains/issueDomainConfig.js";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -118,13 +121,13 @@ const normalizeRankingEntry = ({ entry, scoresByAlternative }) => {
 };
 
 const buildRankingPayloadOrThrow = ({ stageResult }) => {
-  const computedPayload = isPlainObject(stageResult?.computedPayload)
-    ? stageResult.computedPayload
+  const rankingSource = Array.isArray(stageResult?.ranking)
+    ? stageResult.ranking
     : null;
 
-  if (!computedPayload) {
-    throw createInternalError("IssueStageResult computedPayload is required", {
-      field: "computedPayload",
+  if (!Array.isArray(rankingSource)) {
+    throw createInternalError("IssueStageResult ranking is required", {
+      field: "ranking",
       details: {
         issueId: toIdString(stageResult?.issue),
         stage: stageResult?.stage,
@@ -133,38 +136,30 @@ const buildRankingPayloadOrThrow = ({ stageResult }) => {
     });
   }
 
-  if (!Array.isArray(computedPayload.ranking)) {
-    throw createInternalError("IssueStageResult computedPayload.ranking is required", {
-      field: "computedPayload.ranking",
-      details: {
-        issueId: toIdString(stageResult?.issue),
-        stage: stageResult?.stage,
-        consensusPhase: stageResult?.consensusPhase,
-      },
-    });
-  }
-
-  const rankedWithScoresSource = Array.isArray(computedPayload.rankedWithScores)
-    ? computedPayload.rankedWithScores
+  const rankedWithScoresSource = Array.isArray(stageResult?.rankedWithScores)
+    ? stageResult.rankedWithScores
     : [];
 
-  const rankingSource =
-    rankedWithScoresSource.length > 0
-      ? rankedWithScoresSource
-      : computedPayload.ranking;
+  const scoresByAlternative = isPlainObject(stageResult?.scoresByAlternative)
+    ? stageResult.scoresByAlternative
+    : {};
 
-  const ranking = rankingSource
+  const rankingInput = rankedWithScoresSource.length > 0
+    ? rankedWithScoresSource
+    : rankingSource;
+
+  const ranking = rankingInput
     .map((entry) =>
       normalizeRankingEntry({
         entry,
-        scoresByAlternative: computedPayload.scoresByAlternative,
+        scoresByAlternative,
       })
     )
     .filter(Boolean);
 
   if (ranking.length === 0) {
     throw createInternalError("IssueStageResult ranking output is empty", {
-      field: "computedPayload.ranking",
+      field: "ranking",
       details: {
         issueId: toIdString(stageResult?.issue),
         stage: stageResult?.stage,
@@ -176,72 +171,12 @@ const buildRankingPayloadOrThrow = ({ stageResult }) => {
   return ranking;
 };
 
-const getCollectiveMatrixCandidate = ({ stageResult }) => {
-  const collectiveFromPayload = stageResult?.collectivePayload?.collectiveMatrix;
-  if (Array.isArray(collectiveFromPayload)) {
-    return collectiveFromPayload;
-  }
-
-  const matrixUsed = stageResult?.computedPayload?.matrixUsed;
-  if (Array.isArray(matrixUsed?.collectiveMatrix)) {
-    return matrixUsed.collectiveMatrix;
-  }
-
-  if (Array.isArray(matrixUsed?.collective_matrix)) {
-    return matrixUsed.collective_matrix;
-  }
-
-  const rawOutput = stageResult?.rawOutput;
-  if (Array.isArray(rawOutput?.collective_matrix)) {
-    return rawOutput.collective_matrix;
-  }
-
-  if (Array.isArray(rawOutput?.matrix_used?.collective_matrix)) {
-    return rawOutput.matrix_used.collective_matrix;
-  }
-
-  return null;
-};
-
 const buildCollectiveMatrixEvaluations = ({
   stageResult,
-  alternativeNames,
-  criterionNames,
 }) => {
-  const collectiveMatrix = getCollectiveMatrixCandidate({ stageResult });
-
-  if (!Array.isArray(collectiveMatrix) || collectiveMatrix.length === 0) {
-    return {};
-  }
-
-  const collectiveEvaluations = {};
-
-  for (
-    let alternativeIndex = 0;
-    alternativeIndex < alternativeNames.length;
-    alternativeIndex += 1
-  ) {
-    const alternativeName = alternativeNames[alternativeIndex];
-    const row = collectiveMatrix[alternativeIndex];
-
-    if (!Array.isArray(row)) {
-      continue;
-    }
-
-    collectiveEvaluations[alternativeName] = {};
-
-    for (
-      let criterionIndex = 0;
-      criterionIndex < criterionNames.length;
-      criterionIndex += 1
-    ) {
-      const criterionName = criterionNames[criterionIndex];
-      collectiveEvaluations[alternativeName][criterionName] =
-        row[criterionIndex] ?? "";
-    }
-  }
-
-  return collectiveEvaluations;
+  return isPlainObject(stageResult?.collectiveEvaluations)
+    ? stageResult.collectiveEvaluations
+    : {};
 };
 
 const buildExpertAlternativeRatingsOrThrow = ({
@@ -454,19 +389,62 @@ const buildExpertPairwiseRatingsOrThrow = ({
 };
 
 const resolveCollectivePairwiseSource = (stageResult) => {
-  if (isPlainObject(stageResult?.collectivePayload?.collectiveEvaluations)) {
-    return stageResult.collectivePayload.collectiveEvaluations;
-  }
+  return isPlainObject(stageResult?.collectiveEvaluations)
+    ? stageResult.collectiveEvaluations
+    : null;
+};
 
-  if (isPlainObject(stageResult?.computedPayload?.matrixUsed?.collectiveEvaluations)) {
-    return stageResult.computedPayload.matrixUsed.collectiveEvaluations;
+const resolveCollectivePairwiseMatrixForCriterion = ({
+  source,
+  criterionName,
+}) => {
+  const byCriterion = source?.[criterionName];
+  if (Array.isArray(byCriterion)) {
+    return byCriterion;
   }
-
-  if (isPlainObject(stageResult?.rawOutput?.collective_evaluations)) {
-    return stageResult.rawOutput.collective_evaluations;
-  }
-
   return null;
+};
+
+const buildCollectivePairwiseRowsFromPairMap = ({
+  criterionPairs,
+  alternativeNames,
+}) => {
+  if (!isPlainObject(criterionPairs)) {
+    return null;
+  }
+
+  const rows = [];
+
+  for (const rowAlternative of alternativeNames) {
+    const row = { id: rowAlternative };
+
+    for (const colAlternative of alternativeNames) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          expressionDomain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      const pairKey = buildPairKey(rowAlternative, colAlternative);
+      const cell = criterionPairs[pairKey];
+      const value = isPlainObject(cell) ? cell.value : cell;
+
+      row[colAlternative] = {
+        value:
+          value === null || value === undefined || value === ""
+            ? ""
+            : value,
+        expressionDomain: null,
+      };
+    }
+
+    rows.push(row);
+  }
+
+  return rows.length > 0 ? rows : null;
 };
 
 const buildCollectivePairwiseEvaluations = ({
@@ -482,7 +460,24 @@ const buildCollectivePairwiseEvaluations = ({
   const collectiveEvaluations = {};
 
   for (const criterionName of criterionNames) {
-    const matrix = source[criterionName];
+    const criterionCollective = source?.[criterionName];
+
+    if (isPlainObject(criterionCollective)) {
+      const rowsFromPairMap = buildCollectivePairwiseRowsFromPairMap({
+        criterionPairs: criterionCollective,
+        alternativeNames,
+      });
+
+      if (rowsFromPairMap) {
+        collectiveEvaluations[criterionName] = rowsFromPairMap;
+      }
+      continue;
+    }
+
+    const matrix = resolveCollectivePairwiseMatrixForCriterion({
+      source,
+      criterionName,
+    });
     if (!Array.isArray(matrix)) {
       continue;
     }
@@ -794,16 +789,6 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
     stage: stageResult?.stage,
   });
 
-  if (!isPlainObject(stageResult?.computedPayload)) {
-    throw createInternalError("IssueStageResult computedPayload is required", {
-      field: "computedPayload",
-      details: {
-        issueId: toIdString(stageResult?.issue),
-        phase,
-      },
-    });
-  }
-
   if (
     typeof stageResult?.consensusMeasure !== "number" ||
     !Number.isFinite(stageResult.consensusMeasure)
@@ -818,6 +803,9 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
   }
 
   const ranking = buildRankingPayloadOrThrow({ stageResult });
+  const collectiveEvaluations = isPlainObject(stageResult?.collectiveEvaluations)
+    ? stageResult.collectiveEvaluations
+    : null;
   const lifecycle = isPlainObject(stageResult?.computedPayload?.consensusLifecycle)
     ? stageResult.computedPayload.consensusLifecycle
     : {};
@@ -836,8 +824,13 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
     maxPhasesReached,
     finalizationReason,
     modelExecution: buildModelExecutionPayload(stageResult),
-    computedPayload: stageResult.computedPayload || {},
-    collectivePayload: stageResult.collectivePayload || {},
+    collectiveEvaluations,
+    scoresByAlternative: isPlainObject(stageResult?.scoresByAlternative)
+      ? stageResult.scoresByAlternative
+      : {},
+    plotsGraphic: isPlainObject(stageResult?.plotsGraphic)
+      ? stageResult.plotsGraphic
+      : {},
     rawOutput: stageResult.rawOutput || {},
     ranking,
   };
@@ -912,7 +905,7 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name type",
+      select: "_id name type expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issue._id }).lean(),
@@ -1024,6 +1017,11 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     defaultsResolved: baseDefaultsResolved,
     savedParams: baseParamsSaved,
   });
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteria,
+      field: "expressionDomain",
+    });
   const domainType = null;
   const availableModels = buildAvailableModelsPayload({
     issue,
@@ -1036,7 +1034,7 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
 
   const modelExecution = buildModelExecutionPayload(latestAlternativeResult);
   const enrichedLatestPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-    plotsGraphic: latestAlternativeResult?.computedPayload?.plotsGraphic || {},
+    plotsGraphic: latestAlternativeResult?.plotsGraphic || {},
     evaluations: completedAlternativeEvaluations,
   });
 
@@ -1046,7 +1044,7 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     rankedAlternatives: ranking,
     plotsGraphic: enrichedLatestPlotsGraphic,
     scoresByAlternative:
-      latestAlternativeResult?.computedPayload?.scoresByAlternative || {},
+      latestAlternativeResult?.scoresByAlternative || {},
     consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
   };
 
@@ -1080,6 +1078,7 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     modelParams: {
       leafCriteria,
       domainType,
+      expressionDomainConfig,
       base: {
         modelId: toIdString(model._id),
         modelName: model.name,
@@ -1096,7 +1095,245 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
   };
 };
 
-const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
+const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
+  const latestAlternativeResult = await IssueStageResult.findOne({
+    issue: issue._id,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  })
+    .sort({ consensusPhase: -1 })
+    .lean();
+
+  if (!latestAlternativeResult) {
+    throw createInternalError(
+      "Finished issue requires an alternative evaluation stage result",
+      {
+        field: "stageResult",
+        details: {
+          issueId: toIdString(issue?._id),
+          stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        },
+      }
+    );
+  }
+
+  const phase = normalizeConsensusPhaseOrThrow({
+    value: latestAlternativeResult?.consensusPhase,
+    issueId: issue?._id,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  });
+
+  const [
+    completedAlternativeEvaluations,
+    alternatives,
+    orderedLeafCriteria,
+    criteria,
+    participations,
+    allModels,
+    issueDomainSnapshots,
+  ] = await Promise.all([
+    IssueEvaluation.find({
+      issue: issue._id,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      consensusPhase: phase,
+      completed: true,
+    })
+      .populate("expert", "email name")
+      .lean(),
+    getOrderedAlternativesDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    }),
+    getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name type expressionDomain",
+      lean: true,
+    }),
+    Criterion.find({ issue: issue._id }).lean(),
+    Participation.find({ issue: issue._id })
+      .populate("expert", "email name")
+      .lean(),
+    IssueModel.find({
+      isIssueModel: true,
+      $or: [
+        { manifestSync: { $exists: false } },
+        { "manifestSync.isStale": { $exists: false } },
+        { "manifestSync.isStale": false },
+      ],
+    })
+      .select(
+        "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains"
+      )
+      .lean(),
+    IssueExpressionDomain.find({ issue: issue._id })
+      .select("_id name type numericRange membershipFunction valueCount")
+      .lean(),
+  ]);
+
+  const acceptedParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "accepted"
+  );
+
+  if (alternatives.length === 0) {
+    throw createInternalError("Finished issue alternatives are required", {
+      field: "alternatives",
+      details: {
+        issueId: toIdString(issue?._id),
+      },
+    });
+  }
+
+  if (orderedLeafCriteria.length === 0) {
+    throw createInternalError("Finished issue leaf criteria are required", {
+      field: "criteria",
+      details: {
+        issueId: toIdString(issue?._id),
+      },
+    });
+  }
+
+  validateAcceptedEvaluationCoverageOrThrow({
+    acceptedParticipations,
+    completedEvaluations: completedAlternativeEvaluations,
+    issue,
+    phase,
+  });
+
+  const model = await ensureModelOrThrow({ issue });
+  const leafCount = orderedLeafCriteria.length;
+  const leafCriteria = orderedLeafCriteria.map((criterion) => ({
+    id: toIdString(criterion._id),
+    name: criterion.name,
+    type: criterion.type,
+  }));
+  const alternativeNames = alternatives.map((alternative) => alternative.name);
+  const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+
+  const ranking = buildRankingPayloadOrThrow({
+    stageResult: latestAlternativeResult,
+  });
+
+  const expertEvaluations = buildExpertPairwiseRatingsOrThrow({
+    evaluations: completedAlternativeEvaluations,
+    alternativeNames,
+    criterionNames,
+    issueId: issue._id,
+    phase,
+  });
+
+  const collectiveEvaluations = buildCollectivePairwiseEvaluations({
+    stageResult: latestAlternativeResult,
+    alternativeNames,
+    criterionNames,
+  });
+
+  const experts = buildParticipationsSummary({
+    participations,
+    completedEvaluations: completedAlternativeEvaluations,
+  });
+
+  const summary = buildSummarySection({
+    issue,
+    model,
+    criteria,
+    orderedLeafCriteria,
+    alternatives,
+    experts,
+    consensusInfo: null,
+  });
+
+  const baseDefaultsResolved = buildDefaultsResolved({
+    modelDoc: model,
+    leafCount,
+  });
+
+  const baseParamsSaved = issue.modelParameters || {};
+  const baseParamsResolved = mergeParamsResolved({
+    defaultsResolved: baseDefaultsResolved,
+    savedParams: baseParamsSaved,
+  });
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteria,
+      field: "expressionDomain",
+    });
+  const availableModels = buildAvailableModelsPayload({
+    issue,
+    allModels,
+    issueAlternativeEvaluationStructureKey:
+      issue.alternativeEvaluationStructureKey,
+    issueDomainSnapshots,
+    leafCount,
+  });
+
+  const modelExecution = buildModelExecutionPayload(latestAlternativeResult);
+  const enrichedLatestPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
+    plotsGraphic: latestAlternativeResult?.plotsGraphic || {},
+    evaluations: completedAlternativeEvaluations,
+  });
+
+  const consensusDetails = {
+    modelExecution,
+    rawOutput: latestAlternativeResult?.rawOutput || {},
+    rankedAlternatives: ranking,
+    plotsGraphic: enrichedLatestPlotsGraphic,
+    scoresByAlternative:
+      latestAlternativeResult?.scoresByAlternative || {},
+    consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
+  };
+
+  return {
+    summary,
+    alternativesRankings: [
+      {
+        phase,
+        ranking,
+      },
+    ],
+    expertsRatings: {
+      [phase]: {
+        consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
+        collectiveEvaluations,
+        collectiveEvaluationsLocalizedByExpert: null,
+        expertEvaluations,
+      },
+    },
+    analyticalGraphs:
+      isPlainObject(enrichedLatestPlotsGraphic) &&
+      Object.keys(enrichedLatestPlotsGraphic).length > 0
+        ? {
+            plotsGraphic: enrichedLatestPlotsGraphic,
+          }
+        : null,
+    consensusDetails,
+    modelExecution,
+    consensus: [],
+    consensusHistory: [],
+    consensusRounds: [],
+    scenarios: [],
+    modelParams: {
+      leafCriteria,
+      domainType: null,
+      expressionDomainConfig,
+      base: {
+        modelId: toIdString(model._id),
+        modelName: model.name,
+        alternativeEvaluationStructureKey:
+          issue.alternativeEvaluationStructureKey,
+        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+        supportsConsensus: issue.supportsConsensus === true,
+        parameters: model.parameters,
+        paramsSaved: baseParamsSaved,
+        paramsResolved: baseParamsResolved,
+      },
+      availableModels,
+    },
+  };
+};
+
+const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
   const alternativeStageResults = await IssueStageResult.find({
     issue: issue._id,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
@@ -1143,7 +1380,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name type",
+      select: "_id name type expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issue._id }).lean(),
@@ -1258,7 +1495,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     });
 
     const enrichedPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-      plotsGraphic: stageResult?.computedPayload?.plotsGraphic || {},
+      plotsGraphic: stageResult?.plotsGraphic || {},
       evaluations: phaseEvaluations,
     });
 
@@ -1266,10 +1503,336 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       stageResult,
       threshold: issue.consensusThreshold,
     });
-    round.computedPayload = {
-      ...(round.computedPayload || {}),
-      plotsGraphic: enrichedPlotsGraphic,
+    round.plotsGraphic = enrichedPlotsGraphic;
+
+    const expertEvaluations = buildExpertAlternativeRatingsOrThrow({
+      evaluations: phaseEvaluations,
+      alternativeNames,
+      criterionNames,
+      issueId: issue._id,
+      phase,
+    });
+
+    const collectiveEvaluations = buildCollectiveMatrixEvaluations({
+      stageResult,
+    });
+    const collectiveEvaluationsPayload =
+      Object.keys(collectiveEvaluations).length > 0
+        ? collectiveEvaluations
+        : null;
+
+    expertsRatings[phase] = {
+      consensusMeasure: round.consensusMeasure,
+      collectiveEvaluations: collectiveEvaluationsPayload,
+      expertEvaluations,
     };
+
+    alternativesRankings.push({
+      phase,
+      ranking: round.ranking,
+    });
+
+    consensusRounds.push(round);
+  }
+
+  const summary = buildSummarySection({
+    issue,
+    model,
+    criteria,
+    orderedLeafCriteria,
+    alternatives,
+    experts,
+    consensusInfo: buildConsensusInfo({
+      issue,
+      consensusRounds,
+    }),
+  });
+
+  const baseDefaultsResolved = buildDefaultsResolved({
+    modelDoc: model,
+    leafCount,
+  });
+
+  const baseParamsSaved = issue.modelParameters || {};
+  const baseParamsResolved = mergeParamsResolved({
+    defaultsResolved: baseDefaultsResolved,
+    savedParams: baseParamsSaved,
+  });
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteria,
+      field: "expressionDomain",
+    });
+  const availableModels = buildAvailableModelsPayload({
+    issue,
+    allModels,
+    issueAlternativeEvaluationStructureKey:
+      issue.alternativeEvaluationStructureKey,
+    issueDomainSnapshots,
+    leafCount,
+  });
+
+  const latestRound = consensusRounds[consensusRounds.length - 1];
+  const latestRanking =
+    alternativesRankings[alternativesRankings.length - 1]?.ranking || [];
+
+  const modelExecution = latestRound?.modelExecution || {
+    rawOutput: latestRound?.rawOutput || {},
+  };
+
+  const scatterPlotByPhase = Array(issue.consensusPhase || 0).fill(null);
+  for (const stageResult of alternativeStageResults) {
+    const phase = Number(stageResult.consensusPhase);
+    const phaseEvaluations = completedByPhase.get(phase) || [];
+    const plotsGraphic = enrichPlotsGraphicWithExpertLabels({
+      plotsGraphic: stageResult?.plotsGraphic || {},
+      evaluations: phaseEvaluations,
+    });
+    if (
+      Number.isInteger(phase) &&
+      phase > 0 &&
+      isPlainObject(plotsGraphic) &&
+      Object.keys(plotsGraphic).length > 0
+    ) {
+      scatterPlotByPhase[phase - 1] = plotsGraphic;
+    }
+  }
+
+  const hasScatterData = scatterPlotByPhase.some(
+    (entry) => isPlainObject(entry) && Object.keys(entry).length > 0
+  );
+
+  const consensusLineSeries = consensusRounds.map((round) => ({
+    phase: round.phase,
+    consensusMeasure: round.consensusMeasure,
+    threshold: issue.consensusThreshold ?? null,
+  }));
+
+  const latestPhaseEvaluations =
+    completedByPhase.get(Number(latestRound?.phase)) || [];
+  const latestRoundPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
+    plotsGraphic: latestRound?.plotsGraphic || {},
+    evaluations: latestPhaseEvaluations,
+  });
+
+  return {
+    summary,
+    alternativesRankings,
+    expertsRatings,
+    analyticalGraphs: {
+      ...(hasScatterData ? { scatterPlot: scatterPlotByPhase } : {}),
+      consensusLevelLineChart: {
+        labels: consensusLineSeries.map((entry) => `Round ${entry.phase}`),
+        data: consensusLineSeries.map((entry) => entry.consensusMeasure),
+        threshold: issue.consensusThreshold ?? null,
+        series: consensusLineSeries,
+      },
+    },
+    consensusDetails: {
+      modelExecution,
+      rawOutput: latestRound?.rawOutput || {},
+      rankedAlternatives: latestRanking,
+      plotsGraphic: latestRoundPlotsGraphic,
+      scoresByAlternative:
+        latestRound?.scoresByAlternative || {},
+      consensusMeasure: latestRound?.consensusMeasure ?? null,
+    },
+    modelExecution,
+    consensus: consensusRounds,
+    consensusHistory: consensusRounds,
+    consensusRounds,
+    scenarios: [],
+    modelParams: {
+      leafCriteria,
+      domainType: null,
+      expressionDomainConfig,
+      base: {
+        modelId: toIdString(model._id),
+        modelName: model.name,
+        alternativeEvaluationStructureKey:
+          issue.alternativeEvaluationStructureKey,
+        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+        supportsConsensus: issue.supportsConsensus === true,
+        parameters: model.parameters,
+        paramsSaved: baseParamsSaved,
+        paramsResolved: baseParamsResolved,
+      },
+      availableModels,
+    },
+  };
+};
+
+const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
+  const alternativeStageResults = await IssueStageResult.find({
+    issue: issue._id,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  })
+    .sort({ consensusPhase: 1 })
+    .lean();
+
+  if (!Array.isArray(alternativeStageResults) || alternativeStageResults.length === 0) {
+    throw createInternalError(
+      "Finished consensus issue requires alternative evaluation stage results",
+      {
+        field: "stageResults",
+        details: {
+          issueId: toIdString(issue?._id),
+          stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        },
+      }
+    );
+  }
+
+  const phaseList = alternativeStageResults.map((stageResult) =>
+    normalizeConsensusPhaseOrThrow({
+      value: stageResult?.consensusPhase,
+      issueId: issue?._id,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    })
+  );
+
+  const [
+    alternatives,
+    orderedLeafCriteria,
+    criteria,
+    participations,
+    allCompletedAlternativeEvaluations,
+    allModels,
+    issueDomainSnapshots,
+  ] = await Promise.all([
+    getOrderedAlternativesDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name",
+      lean: true,
+    }),
+    getOrderedLeafCriteriaDb({
+      issueId: issue._id,
+      issueDoc: issue,
+      select: "_id name type expressionDomain",
+      lean: true,
+    }),
+    Criterion.find({ issue: issue._id }).lean(),
+    Participation.find({ issue: issue._id })
+      .populate("expert", "email name")
+      .lean(),
+    IssueEvaluation.find({
+      issue: issue._id,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      consensusPhase: { $in: phaseList },
+      completed: true,
+    })
+      .populate("expert", "email name")
+      .lean(),
+    IssueModel.find({
+      isIssueModel: true,
+      $or: [
+        { manifestSync: { $exists: false } },
+        { "manifestSync.isStale": { $exists: false } },
+        { "manifestSync.isStale": false },
+      ],
+    })
+      .select(
+        "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains"
+      )
+      .lean(),
+    IssueExpressionDomain.find({ issue: issue._id })
+      .select("_id name type numericRange membershipFunction valueCount")
+      .lean(),
+  ]);
+
+  if (alternatives.length === 0) {
+    throw createInternalError("Finished issue alternatives are required", {
+      field: "alternatives",
+      details: {
+        issueId: toIdString(issue?._id),
+      },
+    });
+  }
+
+  if (orderedLeafCriteria.length === 0) {
+    throw createInternalError("Finished issue leaf criteria are required", {
+      field: "criteria",
+      details: {
+        issueId: toIdString(issue?._id),
+      },
+    });
+  }
+
+  const acceptedParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "accepted"
+  );
+
+  const completedByPhase = allCompletedAlternativeEvaluations.reduce(
+    (accumulator, evaluation) => {
+      const phase = Number(evaluation?.consensusPhase);
+      if (!Number.isInteger(phase) || phase < 1) {
+        return accumulator;
+      }
+
+      if (!accumulator.has(phase)) {
+        accumulator.set(phase, []);
+      }
+
+      accumulator.get(phase).push(evaluation);
+      return accumulator;
+    },
+    new Map()
+  );
+
+  const model = await ensureModelOrThrow({ issue });
+  const leafCount = orderedLeafCriteria.length;
+  const leafCriteria = orderedLeafCriteria.map((criterion) => ({
+    id: toIdString(criterion._id),
+    name: criterion.name,
+    type: criterion.type,
+  }));
+  const alternativeNames = alternatives.map((alternative) => alternative.name);
+  const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+
+  const experts = buildParticipationsSummary({
+    participations,
+    completedEvaluations: allCompletedAlternativeEvaluations,
+  });
+
+  const consensusRounds = [];
+  const alternativesRankings = [];
+  const expertsRatings = {};
+
+  for (const stageResult of alternativeStageResults) {
+    const phase = Number(stageResult.consensusPhase);
+    const phaseEvaluations = completedByPhase.get(phase) || [];
+
+    if (phaseEvaluations.length === 0) {
+      throw createInternalError(
+        "Completed alternative evaluations are missing for a consensus phase",
+        {
+          field: "evaluations",
+          details: {
+            issueId: toIdString(issue?._id),
+            phase,
+          },
+        }
+      );
+    }
+
+    validateAcceptedEvaluationCoverageOrThrow({
+      acceptedParticipations,
+      completedEvaluations: phaseEvaluations,
+      issue,
+      phase,
+    });
+
+    const enrichedPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
+      plotsGraphic: stageResult?.plotsGraphic || {},
+      evaluations: phaseEvaluations,
+    });
+
+    const round = buildConsensusRoundPayloadOrThrow({
+      stageResult,
+      threshold: issue.consensusThreshold,
+    });
+    round.plotsGraphic = enrichedPlotsGraphic;
 
     const expertEvaluations = buildExpertPairwiseRatingsOrThrow({
       evaluations: phaseEvaluations,
@@ -1323,6 +1886,11 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     defaultsResolved: baseDefaultsResolved,
     savedParams: baseParamsSaved,
   });
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteria,
+      field: "expressionDomain",
+    });
   const availableModels = buildAvailableModelsPayload({
     issue,
     allModels,
@@ -1345,7 +1913,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     const phase = Number(stageResult.consensusPhase);
     const phaseEvaluations = completedByPhase.get(phase) || [];
     const plotsGraphic = enrichPlotsGraphicWithExpertLabels({
-      plotsGraphic: stageResult?.computedPayload?.plotsGraphic || {},
+      plotsGraphic: stageResult?.plotsGraphic || {},
       evaluations: phaseEvaluations,
     });
     if (
@@ -1371,7 +1939,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
   const latestPhaseEvaluations =
     completedByPhase.get(Number(latestRound?.phase)) || [];
   const latestRoundPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-    plotsGraphic: latestRound?.computedPayload?.plotsGraphic || {},
+    plotsGraphic: latestRound?.plotsGraphic || {},
     evaluations: latestPhaseEvaluations,
   });
 
@@ -1394,7 +1962,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       rankedAlternatives: latestRanking,
       plotsGraphic: latestRoundPlotsGraphic,
       scoresByAlternative:
-        latestRound?.computedPayload?.scoresByAlternative || {},
+        latestRound?.scoresByAlternative || {},
       consensusMeasure: latestRound?.consensusMeasure ?? null,
     },
     modelExecution,
@@ -1405,6 +1973,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     modelParams: {
       leafCriteria,
       domainType: null,
+      expressionDomainConfig,
       base: {
         modelId: toIdString(model._id),
         modelName: model.name,
@@ -1430,17 +1999,10 @@ export const supportsPluginFinishedIssuePayload = (issue) => {
   }
 
   const structureKey = issue?.alternativeEvaluationStructureKey;
-
-  const isMatrixNonConsensus =
-    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX &&
-    issue?.isConsensus !== true;
-
-  const isPairwiseConsensus =
-    structureKey ===
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION &&
-    issue?.isConsensus === true;
-
-  return isMatrixNonConsensus || isPairwiseConsensus;
+  return (
+    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX ||
+    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION
+  );
 };
 
 export const buildPluginFinishedIssuePayload = async ({ issue }) => {
@@ -1460,6 +2022,21 @@ export const buildPluginFinishedIssuePayload = async ({ issue }) => {
     issue?.isConsensus !== true
   ) {
     return buildNonConsensusMatrixFinishedPayload({ issue });
+  }
+
+  if (
+    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX &&
+    issue?.isConsensus === true
+  ) {
+    return buildConsensusMatrixFinishedPayload({ issue });
+  }
+
+  if (
+    structureKey ===
+      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION &&
+    issue?.isConsensus !== true
+  ) {
+    return buildNonConsensusPairwiseFinishedPayload({ issue });
   }
 
   if (

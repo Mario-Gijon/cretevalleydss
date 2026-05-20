@@ -2,8 +2,9 @@ import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../../../issue.ordering.js";
-import { getDefaultIssueSnapshot } from "../../../issue.queries.js";
+import { IssueExpressionDomain } from "../../../../../models/IssueExpressionDomains.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
+import { toIdString } from "../../../../../utils/common/ids.js";
 
 export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
   const [alternatives, criteria] = await Promise.all([
@@ -16,7 +17,7 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     getOrderedLeafCriteriaDb({
       issueId: issue?._id,
       issueDoc: issue,
-      select: "_id name type",
+      select: "_id name type expressionDomain",
       lean: true,
     }),
   ]);
@@ -33,11 +34,67 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     });
   }
 
+  const criteriaWithMissingSnapshot = criteria.filter(
+    (criterion) => !toIdString(criterion?.expressionDomain)
+  );
+  if (criteriaWithMissingSnapshot.length > 0) {
+    throw createBadRequestError("Each leaf criterion must have an expression domain snapshot", {
+      field: "expressionDomain",
+      details: {
+        missingCriteria: criteriaWithMissingSnapshot.map((criterion) =>
+          String(criterion?.name || "")
+        ),
+      },
+    });
+  }
+  const snapshotIds = Array.from(
+    new Set(criteria.map((criterion) => toIdString(criterion?.expressionDomain)).filter(Boolean))
+  );
+
+  const snapshots = await IssueExpressionDomain.find({
+    _id: { $in: snapshotIds },
+  }).lean();
+  const snapshotById = new Map(
+    snapshots
+      .map((snapshot) => [toIdString(snapshot?._id), snapshot])
+      .filter(([snapshotId]) => Boolean(snapshotId))
+  );
+
+  const criteriaWithExpressionDomain = criteria.map((criterion) => {
+    const snapshotId = toIdString(criterion?.expressionDomain);
+    const snapshot = snapshotById.get(snapshotId);
+    const serialized = serializeIssueExpressionDomainSnapshot(snapshot);
+
+    if (!serialized || !serialized.type) {
+      throw createBadRequestError(
+        `Expression domain snapshot is missing or invalid for criterion '${String(criterion?.name || "")}'`,
+        {
+          field: "expressionDomain",
+        }
+      );
+    }
+
+    return {
+      ...criterion,
+      expressionDomain: serialized,
+    };
+  });
+
+  const criterionDomainByName = new Map(
+    criteriaWithExpressionDomain.map((criterion) => [
+      String(criterion?.name || ""),
+      criterion.expressionDomain,
+    ])
+  );
+
   return {
     alternatives,
-    criteria,
+    criteria: criteriaWithExpressionDomain,
+    criterionDomainByName,
     alternativeNames: alternatives.map((alternative) => String(alternative?.name || "")),
-    criterionNames: criteria.map((criterion) => String(criterion?.name || "")),
+    criterionNames: criteriaWithExpressionDomain.map((criterion) =>
+      String(criterion?.name || "")
+    ),
   };
 };
 
@@ -89,22 +146,4 @@ export const serializeIssueExpressionDomainSnapshot = (snapshot) => {
     valuesMode:
       typeof snapshot?.valuesMode === "string" ? snapshot.valuesMode : null,
   };
-};
-
-export const getDefaultIssueExpressionDomainSnapshotOrThrow = async ({ issue }) => {
-  const snapshot = await getDefaultIssueSnapshot(issue?._id);
-  if (!snapshot) {
-    throw createBadRequestError("This issue has no expression domain snapshots", {
-      field: "expressionDomain",
-    });
-  }
-
-  const serialized = serializeIssueExpressionDomainSnapshot(snapshot);
-  if (!serialized) {
-    throw createBadRequestError("Issue expression domain snapshot is invalid", {
-      field: "expressionDomain",
-    });
-  }
-
-  return serialized;
 };

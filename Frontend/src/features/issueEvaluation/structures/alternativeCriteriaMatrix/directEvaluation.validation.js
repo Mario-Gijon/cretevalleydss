@@ -11,6 +11,20 @@ export const validateDirectEvaluations = (
   evaluations,
   { leafCriteria = [], allowEmpty = false } = {}
 ) => {
+  const normalizeCell = (cell) => {
+    if (cell !== null && typeof cell === "object" && !Array.isArray(cell)) {
+      return {
+        value: cell.value,
+        domain: cell.domain ?? null,
+      };
+    }
+
+    return {
+      value: cell,
+      domain: null,
+    };
+  };
+
   const alignToStep = ({ value, min, max, step }) => {
     if (!Number.isFinite(step) || step <= 0) {
       return Math.round(value * 100) / 100;
@@ -41,7 +55,9 @@ export const validateDirectEvaluations = (
         continue;
       }
 
-      const { value, domain } = criteriaEvaluations[criterionName] || {};
+      const { value, domain } = normalizeCell(
+        criteriaEvaluations[criterionName]
+      );
       const domainType = String(domain?.type || "").trim().toLowerCase();
 
       if (!allowEmpty) {
@@ -116,13 +132,6 @@ export const validateDirectEvaluations = (
             };
             break;
           }
-        } else {
-          firstInvalidCell = {
-            alternative: alternativeName,
-            criterion: criterionName,
-            message: `Unsupported expression domain type '${domain?.type || "unknown"}'.`,
-          };
-          break;
         }
       }
     }
