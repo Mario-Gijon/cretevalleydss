@@ -250,7 +250,7 @@ export const useFinishedIssueDialogView = ({
       const response = unwrap(await getIssueScenarioById(runKey));
       const scenario = response?.scenario || response || null;
 
-      if (!scenario?.outputs?.standardResult && !scenario?.outputs?.computedPayload) {
+      if (!scenario?.outputs?.standardResult) {
         showSnackbarAlert("Scenario results not available yet.", "warning");
         return null;
       }

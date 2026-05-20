@@ -45,13 +45,9 @@ const issueStageResultSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
-    collectivePayload: {
+    consensusLifecycle: {
       type: Schema.Types.Mixed,
-      default: {},
-    },
-    computedPayload: {
-      type: Schema.Types.Mixed,
-      default: {},
+      default: null,
     },
     modelExecution: {
       type: Schema.Types.Mixed,

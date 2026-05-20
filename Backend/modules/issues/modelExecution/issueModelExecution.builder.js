@@ -128,7 +128,7 @@ export const buildIssueModelExecutionResult = ({
     scoresByAlternative: result.scoresByAlternative,
     collectiveEvaluations: result.collectiveEvaluations,
     plotsGraphic: result.plotsGraphic,
-    computedPayload: {},
+    consensusLifecycle: null,
     modelExecution: {
       kind: "apiModels",
       structureKey,

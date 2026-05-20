@@ -179,14 +179,6 @@ const issueScenarioSchema = new Schema(
         type: Schema.Types.Mixed,
         default: {},
       },
-      computedPayload: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
-      collectivePayload: {
-        type: Schema.Types.Mixed,
-        default: {},
-      },
       modelExecution: {
         type: Schema.Types.Mixed,
         default: {},

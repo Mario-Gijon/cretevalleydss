@@ -806,8 +806,8 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
   const collectiveEvaluations = isPlainObject(stageResult?.collectiveEvaluations)
     ? stageResult.collectiveEvaluations
     : null;
-  const lifecycle = isPlainObject(stageResult?.computedPayload?.consensusLifecycle)
-    ? stageResult.computedPayload.consensusLifecycle
+  const lifecycle = isPlainObject(stageResult?.consensusLifecycle)
+    ? stageResult.consensusLifecycle
     : {};
 
   const consensusReached =

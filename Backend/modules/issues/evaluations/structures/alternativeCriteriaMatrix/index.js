@@ -289,14 +289,4 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
     });
   },
 
-  async validateIssueCompatibility({ issue }) {
-    if (issue?.isConsensus === true) {
-      throw createBadRequestError(
-        "Consensus alternative matrix computation is not implemented yet",
-        {
-          field: "isConsensus",
-        }
-      );
-    }
-  },
 });

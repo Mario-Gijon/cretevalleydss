@@ -1098,14 +1098,11 @@ const buildRankingFromRawOutput = ({ rawOutput, alternativesByIndex }) => {
 const normalizeScenarioRanking = ({
   scenario,
   standardResult,
-  computedPayload,
   rawOutput,
   alternativesByIndex,
 }) => {
-  const fromRankedWithScores = Array.isArray(computedPayload?.rankedWithScores)
-    ? computedPayload.rankedWithScores
-    : Array.isArray(standardResult?.rankedWithScores)
-      ? standardResult.rankedWithScores
+  const fromRankedWithScores = Array.isArray(standardResult?.rankedWithScores)
+    ? standardResult.rankedWithScores
     : [];
   if (fromRankedWithScores.length) return fromRankedWithScores;
 
@@ -1136,13 +1133,11 @@ const normalizeScenarioRanking = ({
   }
 
   const scoresByAlternative =
-    computedPayload?.scoresByAlternative ||
     standardResult?.scoresByAlternative ||
     scenario?.outputs?.scoresByAlternative ||
     scenario?.result?.scoresByAlternative ||
     null;
   const rankingByName =
-    computedPayload?.ranking ||
     standardResult?.ranking ||
     scenario?.outputs?.ranking ||
     scenario?.result?.ranking ||
@@ -1158,44 +1153,6 @@ const normalizeScenarioRanking = ({
   return buildRankingFromRawOutput({ rawOutput, alternativesByIndex });
 };
 
-const buildCollectiveEvaluationsFromCollectivePayload = ({
-  collectivePayload,
-  alternativeNames,
-  criterionNames,
-}) => {
-  if (!collectivePayload || typeof collectivePayload !== "object") {
-    return null;
-  }
-
-  if (
-    collectivePayload.collectiveEvaluations &&
-    typeof collectivePayload.collectiveEvaluations === "object"
-  ) {
-    return collectivePayload.collectiveEvaluations;
-  }
-
-  const matrix = collectivePayload.collectiveMatrix;
-  if (!Array.isArray(matrix) || !alternativeNames.length || !criterionNames.length) {
-    return null;
-  }
-
-  const output = {};
-
-  for (let altIndex = 0; altIndex < alternativeNames.length; altIndex += 1) {
-    const alternativeName = alternativeNames[altIndex];
-    const row = matrix[altIndex];
-    if (!Array.isArray(row)) continue;
-
-    output[alternativeName] = {};
-
-    for (let criterionIndex = 0; criterionIndex < criterionNames.length; criterionIndex += 1) {
-      output[alternativeName][criterionNames[criterionIndex]] = row[criterionIndex] ?? "";
-    }
-  }
-
-  return Object.keys(output).length > 0 ? output : null;
-};
-
 /**
  * Proyecta un escenario de simulacion sobre la estructura base del issue.
  *
@@ -1207,8 +1164,6 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
   const scenarioOutputs = scenario?.outputs || {};
   const standardResult = scenarioOutputs?.standardResult || {};
-  const computedPayload = scenarioOutputs?.computedPayload || {};
-  const collectivePayload = scenarioOutputs?.collectivePayload || {};
   const modelExecutionOutput = scenarioOutputs?.modelExecution || null;
   const scenarioRawOutput =
     scenarioOutputs?.rawOutput ??
@@ -1222,19 +1177,17 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
     ? out.summary.alternatives
     : [];
-  const criterionNames = getLeafCriteriaNamesFallback(out?.summary?.criteria || []);
   const normalizedRanking = normalizeScenarioRanking({
     scenario,
     standardResult,
-    computedPayload,
     rawOutput: scenarioRawOutput,
     alternativesByIndex,
   });
-  const collectiveEvaluations = buildCollectiveEvaluationsFromCollectivePayload({
-    collectivePayload,
-    alternativeNames: alternativesByIndex,
-    criterionNames,
-  });
+  const collectiveEvaluations =
+    standardResult?.collectiveEvaluations &&
+    typeof standardResult.collectiveEvaluations === "object"
+      ? standardResult.collectiveEvaluations
+      : null;
 
   out.summary = {
     ...(out.summary || {}),
@@ -1270,12 +1223,8 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   out.consensusDetails = {
     modelExecution: modelExecutionOutput,
     rankedAlternatives: normalizedRanking,
-    plotsGraphic:
-      computedPayload?.plotsGraphic || standardResult?.plotsGraphic || {},
-    scoresByAlternative:
-      computedPayload?.scoresByAlternative ||
-      standardResult?.scoresByAlternative ||
-      {},
+    plotsGraphic: standardResult?.plotsGraphic || {},
+    scoresByAlternative: standardResult?.scoresByAlternative || {},
   };
   out.modelExecution =
     modelExecutionOutput ||
@@ -1287,7 +1236,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     outputs: scenarioOutputs,
   };
 
-  const scatterPlot = computedPayload?.plotsGraphic || standardResult?.plotsGraphic;
+  const scatterPlot = standardResult?.plotsGraphic;
   const normalizedPlotsGraphic = normalizePlotsGraphic(scatterPlot);
   if (normalizedPlotsGraphic) {
     out.analyticalGraphs = {

@@ -567,8 +567,15 @@ export const computeIssueWeightsAdmin = async (req, res) => {
     {
       currentStage: result.currentStage,
       consensusPhase: result.consensusPhase,
-      computedPayload: result.computedPayload ?? null,
-      modelExecution: result.modelExecution ?? null,
+      ranking: result.result?.ranking ?? [],
+      rankedWithScores: result.result?.rankedWithScores ?? [],
+      scoresByAlternative: result.result?.scoresByAlternative ?? {},
+      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
+      plotsGraphic: result.result?.plotsGraphic ?? {},
+      consensusMeasure: result.result?.consensusMeasure ?? null,
+      consensusLifecycle: result.result?.consensusLifecycle ?? null,
+      modelExecution: result.result?.modelExecution ?? null,
+      rawOutput: result.result?.rawOutput ?? {},
     },
   );
 };
@@ -598,8 +605,15 @@ export const resolveIssueAdmin = async (req, res) => {
       finished,
       currentStage: result.currentStage,
       consensusPhase: result.consensusPhase,
-      computedPayload: result.computedPayload ?? null,
-      modelExecution: result.modelExecution ?? null,
+      ranking: result.result?.ranking ?? [],
+      rankedWithScores: result.result?.rankedWithScores ?? [],
+      scoresByAlternative: result.result?.scoresByAlternative ?? {},
+      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
+      plotsGraphic: result.result?.plotsGraphic ?? {},
+      consensusMeasure: result.result?.consensusMeasure ?? null,
+      consensusLifecycle: result.result?.consensusLifecycle ?? null,
+      modelExecution: result.result?.modelExecution ?? null,
+      rawOutput: result.result?.rawOutput ?? {},
     },
   );
 };

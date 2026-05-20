@@ -370,14 +370,12 @@ export const bestWorstCriteriaStructure = Object.freeze({
     return {
       message: `Criteria weights for '${issue.name}' successfully computed.`,
       consensusMeasure: null,
-      collectivePayload: {
-        expertsData,
-        criteriaOrder: criterionNames,
-      },
-      computedPayload: {
-        weights: normalizedWeights,
-        criteriaOrder: criterionNames,
-      },
+      consensusLifecycle: null,
+      ranking: [],
+      rankedWithScores: [],
+      scoresByAlternative: {},
+      collectiveEvaluations: {},
+      plotsGraphic: {},
       modelExecution: {
         kind: "apiModels",
         structureKey: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,

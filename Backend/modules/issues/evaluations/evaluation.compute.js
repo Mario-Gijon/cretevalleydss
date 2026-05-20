@@ -175,7 +175,7 @@ const saveStageResult = async ({ issue, stage, computeResult }) => {
         scoresByAlternative: computeResult.scoresByAlternative,
         collectiveEvaluations: computeResult.collectiveEvaluations,
         plotsGraphic: computeResult.plotsGraphic,
-        computedPayload: computeResult.computedPayload,
+        consensusLifecycle: computeResult.consensusLifecycle ?? null,
         modelExecution: computeResult.modelExecution,
         rawOutput: computeResult.rawOutput,
       },
@@ -258,10 +258,6 @@ const computeAlternativeEvaluationStage = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  if (typeof structure?.validateIssueCompatibility === "function") {
-    await structure.validateIssueCompatibility({ issue });
-  }
-
   if (typeof structure?.validateCompletedEvaluations === "function") {
     await structure.validateCompletedEvaluations({ evaluations, issue });
   }
@@ -369,7 +365,7 @@ export const computeIssueEvaluationStage = async ({
       collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
       plotsGraphic: lifecycleComputeResult.plotsGraphic,
       consensusMeasure: lifecycleComputeResult.consensusMeasure,
-      computedPayload: lifecycleComputeResult.computedPayload,
+      consensusLifecycle: lifecycleComputeResult.consensusLifecycle ?? null,
       modelExecution: lifecycleComputeResult.modelExecution,
       rawOutput: lifecycleComputeResult.rawOutput,
     },

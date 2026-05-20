@@ -450,17 +450,6 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
     });
   },
 
-  async validateIssueCompatibility({ issue }) {
-    if (issue?.isConsensus !== true) {
-      throw createBadRequestError(
-        "Pairwise alternative computation currently requires a consensus issue",
-        {
-          field: "isConsensus",
-        }
-      );
-    }
-  },
-
   async validateCompletedEvaluations({ evaluations, issue }) {
     const { alternativeNames, criteria, criterionNames } =
       await getOrderedAlternativeAndCriterionNames({ issue });

@@ -245,14 +245,12 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     return {
       message: "Criteria weights computed successfully",
       consensusMeasure: null,
-      collectivePayload: {
-        weightsByCriterion: averagedWeightsByCriterion,
-        criteriaOrder: criterionNames,
-      },
-      computedPayload: {
-        weights: normalizedWeights,
-        criteriaOrder: criterionNames,
-      },
+      consensusLifecycle: null,
+      ranking: [],
+      rankedWithScores: [],
+      scoresByAlternative: {},
+      collectiveEvaluations: {},
+      plotsGraphic: {},
       modelExecution: {
         kind: "local",
         structureKey: EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS,

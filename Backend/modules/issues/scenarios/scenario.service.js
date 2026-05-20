@@ -27,20 +27,12 @@ const normalizeResultOrThrow = ({ result }) => {
       ranking: result.ranking,
       rankedWithScores: result.rankedWithScores,
       scoresByAlternative: result.scoresByAlternative,
-      matrixUsed: result.matrixUsed,
-      collectivePayload: result.collectivePayload,
+      collectiveEvaluations: result.collectiveEvaluations,
       plotsGraphic: result.plotsGraphic,
       consensusMeasure: result.consensusMeasure,
+      consensusLifecycle: result.consensusLifecycle ?? null,
       rawOutput: result.rawOutput,
     },
-    computedPayload: {
-      ranking: result.ranking,
-      rankedWithScores: result.rankedWithScores,
-      scoresByAlternative: result.scoresByAlternative,
-      matrixUsed: result.matrixUsed,
-      plotsGraphic: result.plotsGraphic,
-    },
-    collectivePayload: result.collectivePayload,
     rawOutput: result.rawOutput,
   };
 };
@@ -75,8 +67,6 @@ export const createIssueScenarioFlow = async ({
 
   const {
     standardResult,
-    computedPayload,
-    collectivePayload,
     rawOutput,
   } = normalizeResultOrThrow({ result: rawResult });
 
@@ -129,8 +119,6 @@ export const createIssueScenarioFlow = async ({
     },
     outputs: {
       standardResult,
-      computedPayload,
-      collectivePayload,
       modelExecution,
       rawOutput,
     },

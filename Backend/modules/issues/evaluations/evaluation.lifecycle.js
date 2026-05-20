@@ -113,10 +113,6 @@ export const resolveEvaluationComputeLifecycle = ({
   const baseIssueUpdates = isPlainObject(safeComputeResult.issueUpdates)
     ? { ...safeComputeResult.issueUpdates }
     : {};
-  const baseComputedPayload = isPlainObject(safeComputeResult.computedPayload)
-    ? { ...safeComputeResult.computedPayload }
-    : {};
-
   const issueUpdates = shouldFinalize
     ? {
       ...baseIssueUpdates,
@@ -133,10 +129,7 @@ export const resolveEvaluationComputeLifecycle = ({
       message: lifecycleMessage,
       issueUpdates,
       nextCurrentStage: shouldFinalize ? ISSUE_STAGES.FINISHED : null,
-      computedPayload: {
-        ...baseComputedPayload,
-        consensusLifecycle: lifecycleMetadata,
-      },
+      consensusLifecycle: lifecycleMetadata,
     },
     lifecycleMetadata,
     resetAlternativeEvaluationCompletion: !shouldFinalize,
