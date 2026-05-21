@@ -34,7 +34,6 @@ import { IssueModelParametersView } from "../../../../modelParameters";
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
   manualCriteriaWeights: "Manual criteria weights",
   bestWorstCriteria: "BWM",
-  fuzzyCriteriaWeights: "Fuzzy criteria weights",
 };
 
 const ALTERNATIVE_STRUCTURE_LABELS = {

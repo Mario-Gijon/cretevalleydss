@@ -1,5 +1,4 @@
-import { Box, Divider, List, Stack, Typography } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Divider, List, Stack, Typography } from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import { CriterionItem } from "../shared/CriterionItem";
@@ -9,7 +8,6 @@ import {
   SectionCard,
   SummaryAccordionRow,
 } from "../shared/FinishedIssueDialogPrimitives";
-import ModelParamsView from "./shared/ModelParamsView";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 
 /**
@@ -18,37 +16,23 @@ import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog
  * @returns {JSX.Element}
  */
 const SummarySection = () => {
-  const theme = useTheme();
-
   const { summarySection } = useFinishedIssueDialogContext();
 
   const {
     viewIssue,
     selectedModelNameView,
-    paramsPretty,
-    summaryParamsForViewer,
-    summaryResolvedParams,
-    leafNames,
     openDescriptionList,
     setOpenDescriptionList,
     openCriteriaList,
     setOpenCriteriaList,
     openAlternativeList,
     setOpenAlternativesList,
-    openConsensusInfoList,
-    setOpenConsensusInfoList,
     openExpertsList,
     setOpenExpertsList,
     totalExperts,
     participated,
     notAccepted,
   } = summarySection;
-  const hasSummaryParams =
-    (Array.isArray(summaryParamsForViewer) && summaryParamsForViewer.length > 0) ||
-    (summaryResolvedParams &&
-      typeof summaryResolvedParams === "object" &&
-      Object.keys(summaryResolvedParams).length > 0);
-  const shouldShowRaw = Boolean(paramsPretty) && paramsPretty !== "{}";
 
   return (
     <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>

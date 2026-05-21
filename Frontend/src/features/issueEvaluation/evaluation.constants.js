@@ -8,5 +8,4 @@ export const EVALUATION_STRUCTURE_KEYS = Object.freeze({
   ALTERNATIVE_PAIRWISE_BY_CRITERION: "alternativePairwiseByCriterion",
   MANUAL_CRITERIA_WEIGHTS: "manualCriteriaWeights",
   BEST_WORST_CRITERIA: "bestWorstCriteria",
-  CRITERIA_PAIRWISE_MATRIX: "criteriaPairwiseMatrix",
 });

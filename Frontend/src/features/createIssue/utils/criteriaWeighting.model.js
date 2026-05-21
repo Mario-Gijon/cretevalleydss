@@ -15,7 +15,7 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
       source: "creator",
       method: "fuzzy",
       aggregationMode: "none",
-      structureKey: "fuzzyCriteriaWeights",
+      structureKey: null,
       payload: {},
     };
   }

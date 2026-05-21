@@ -98,7 +98,7 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
       source: "creator",
       method: "fuzzy",
       aggregationMode: "none",
-      structureKey: "fuzzyCriteriaWeights",
+      structureKey: null,
       payload: {},
     };
   }
