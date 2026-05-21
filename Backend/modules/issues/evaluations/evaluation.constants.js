@@ -16,8 +16,6 @@ export const EVALUATION_STRUCTURE_KEYS = Object.freeze({
   ALTERNATIVE_PAIRWISE_BY_CRITERION: "alternativePairwiseByCriterion",
   MANUAL_CRITERIA_WEIGHTS: "manualCriteriaWeights",
   BEST_WORST_CRITERIA: "bestWorstCriteria",
-  FUZZY_CRITERIA_WEIGHTS: "fuzzyCriteriaWeights",
-  CRITERIA_PAIRWISE_MATRIX: "criteriaPairwiseMatrix",
 });
 
 export const CRITERIA_WEIGHTING_AGGREGATION_MODES = Object.freeze({
@@ -38,4 +36,3 @@ export const EVALUATION_STRUCTURE_KEY_VALUES = Object.freeze(
 export const CRITERIA_WEIGHTING_AGGREGATION_MODE_VALUES = Object.freeze(
   Object.values(CRITERIA_WEIGHTING_AGGREGATION_MODES)
 );
-

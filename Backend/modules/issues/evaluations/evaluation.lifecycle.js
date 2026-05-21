@@ -13,6 +13,9 @@ const isPlainObject = (value) =>
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
 
+const isPositiveInteger = (value) =>
+  Number.isInteger(value) && value > 0;
+
 export const resolveEvaluationComputeLifecycle = ({
   issue,
   stage,
@@ -59,7 +62,8 @@ export const resolveEvaluationComputeLifecycle = ({
   }
 
   const maxPhases = issue?.consensusMaxPhases;
-  if (!Number.isInteger(maxPhases) || maxPhases < 1) {
+  const hasMaxPhaseLimit = maxPhases !== null && maxPhases !== undefined;
+  if (hasMaxPhaseLimit && !isPositiveInteger(maxPhases)) {
     throw createInternalError("Issue consensusMaxPhases is invalid", {
       field: "consensusMaxPhases",
       details: {
@@ -81,7 +85,8 @@ export const resolveEvaluationComputeLifecycle = ({
   }
 
   const consensusReached = consensusMeasure >= threshold;
-  const maxPhasesReached = currentConsensusPhase >= maxPhases;
+  const maxPhasesReached =
+    hasMaxPhaseLimit && currentConsensusPhase >= maxPhases;
   const shouldFinalize = consensusReached || maxPhasesReached;
   const lifecycleMessage = consensusReached
     ? "Consensus threshold reached. The issue has been finalized."
@@ -107,6 +112,7 @@ export const resolveEvaluationComputeLifecycle = ({
     currentConsensusPhase,
     nextConsensusPhase,
     threshold,
+    maxPhases: hasMaxPhaseLimit ? maxPhases : null,
     consensusMeasure,
   };
 
@@ -129,7 +135,6 @@ export const resolveEvaluationComputeLifecycle = ({
       message: lifecycleMessage,
       issueUpdates,
       nextCurrentStage: shouldFinalize ? ISSUE_STAGES.FINISHED : null,
-      consensusLifecycle: lifecycleMetadata,
     },
     lifecycleMetadata,
     resetAlternativeEvaluationCompletion: !shouldFinalize,

@@ -366,15 +366,23 @@ export const bestWorstCriteriaStructure = Object.freeze({
       weights: results?.weights,
       criterionCount: criterionNames.length,
     });
+    const normalizedWeightsByCriterion = criterionNames.reduce(
+      (accumulator, criterionName, index) => {
+        accumulator[criterionName] = normalizedWeights[index];
+        return accumulator;
+      },
+      {}
+    );
 
     return {
       message: `Criteria weights for '${issue.name}' successfully computed.`,
       consensusMeasure: null,
-      consensusLifecycle: null,
       ranking: [],
       rankedWithScores: [],
       scoresByAlternative: {},
-      collectiveEvaluations: {},
+      collectiveEvaluations: {
+        weightsByCriterion: normalizedWeightsByCriterion,
+      },
       plotsGraphic: {},
       modelExecution: {
         kind: "apiModels",

@@ -10,6 +10,10 @@ import { Criterion } from "./Criteria.js";
 import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 import { Participation } from "./Participations.js";
 import { IssueEvaluation } from "./IssueEvaluations.js";
+import { IssueStageResult } from "./IssueStageResults.js";
+import { IssueScenario } from "./IssueScenarios.js";
+import { Notification } from "./Notificacions.js";
+import { ExitUserIssue } from "./ExitUserIssue.js";
 
 
 /**
@@ -64,7 +68,9 @@ import { IssueEvaluation } from "./IssueEvaluations.js";
  *
  * Comportamiento:
  * - Antes de eliminar un issue mediante `remove`, se eliminan en cascada
- *   alternativas, criterios, evaluaciones, participaciones y consensos asociados.
+ *   documentos asociados del issue (alternativas, criterios, evaluaciones,
+ *   resultados de etapa, escenarios, participaciones, consensos, notificaciones
+ *   y salidas de visibilidad).
  */
 
 /**
@@ -230,8 +236,12 @@ async function removeIssueDependencies(next) {
       Criterion.deleteMany({ issue: this._id }),
       IssueExpressionDomain.deleteMany({ issue: this._id }),
       IssueEvaluation.deleteMany({ issue: this._id }),
+      IssueStageResult.deleteMany({ issue: this._id }),
+      IssueScenario.deleteMany({ issue: this._id }),
       Participation.deleteMany({ issue: this._id }),
       Consensus.deleteMany({ issue: this._id }),
+      Notification.deleteMany({ issue: this._id }),
+      ExitUserIssue.deleteMany({ issue: this._id }),
     ]);
 
     next();

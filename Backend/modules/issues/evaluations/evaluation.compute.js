@@ -160,7 +160,31 @@ const resetAlternativeRoundCompletion = async (issueId) => {
   );
 };
 
-const saveStageResult = async ({ issue, stage, computeResult }) => {
+const withConsensusLifecycleInModelExecution = ({
+  modelExecution,
+  consensusLifecycle,
+}) => {
+  const normalizedModelExecution =
+    modelExecution && typeof modelExecution === "object" && !Array.isArray(modelExecution)
+      ? { ...modelExecution }
+      : {};
+
+  if (consensusLifecycle === null || consensusLifecycle === undefined) {
+    return normalizedModelExecution;
+  }
+
+  return {
+    ...normalizedModelExecution,
+    consensusLifecycle,
+  };
+};
+
+const saveStageResult = async ({
+  issue,
+  stage,
+  computeResult,
+  lifecycleMetadata = null,
+}) => {
   await IssueStageResult.findOneAndUpdate(
     {
       issue: issue._id,
@@ -175,8 +199,10 @@ const saveStageResult = async ({ issue, stage, computeResult }) => {
         scoresByAlternative: computeResult.scoresByAlternative,
         collectiveEvaluations: computeResult.collectiveEvaluations,
         plotsGraphic: computeResult.plotsGraphic,
-        consensusLifecycle: computeResult.consensusLifecycle ?? null,
-        modelExecution: computeResult.modelExecution,
+        modelExecution: withConsensusLifecycleInModelExecution({
+          modelExecution: computeResult.modelExecution,
+          consensusLifecycle: lifecycleMetadata,
+        }),
         rawOutput: computeResult.rawOutput,
       },
     },
@@ -330,6 +356,7 @@ export const computeIssueEvaluationStage = async ({
 
   const {
     computeResult: lifecycleComputeResult,
+    lifecycleMetadata,
     resetAlternativeEvaluationCompletion,
   } = resolveEvaluationComputeLifecycle({
     issue,
@@ -341,6 +368,7 @@ export const computeIssueEvaluationStage = async ({
     issue,
     stage,
     computeResult: lifecycleComputeResult,
+    lifecycleMetadata,
   });
 
   await applyComputeIssueUpdates({
@@ -365,7 +393,7 @@ export const computeIssueEvaluationStage = async ({
       collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
       plotsGraphic: lifecycleComputeResult.plotsGraphic,
       consensusMeasure: lifecycleComputeResult.consensusMeasure,
-      consensusLifecycle: lifecycleComputeResult.consensusLifecycle ?? null,
+      consensusLifecycle: lifecycleMetadata ?? null,
       modelExecution: lifecycleComputeResult.modelExecution,
       rawOutput: lifecycleComputeResult.rawOutput,
     },

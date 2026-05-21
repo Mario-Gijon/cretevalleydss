@@ -45,10 +45,6 @@ const issueStageResultSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
-    consensusLifecycle: {
-      type: Schema.Types.Mixed,
-      default: null,
-    },
     modelExecution: {
       type: Schema.Types.Mixed,
       default: {},

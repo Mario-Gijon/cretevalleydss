@@ -241,15 +241,23 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     const normalizedWeights = criterionNames.map(
       (criterionName) => averagedWeightsByCriterion[criterionName] / totalAverage
     );
+    const normalizedWeightsByCriterion = criterionNames.reduce(
+      (accumulator, criterionName, index) => {
+        accumulator[criterionName] = normalizedWeights[index];
+        return accumulator;
+      },
+      {}
+    );
 
     return {
       message: "Criteria weights computed successfully",
       consensusMeasure: null,
-      consensusLifecycle: null,
       ranking: [],
       rankedWithScores: [],
       scoresByAlternative: {},
-      collectiveEvaluations: {},
+      collectiveEvaluations: {
+        weightsByCriterion: normalizedWeightsByCriterion,
+      },
       plotsGraphic: {},
       modelExecution: {
         kind: "local",

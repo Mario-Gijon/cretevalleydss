@@ -3,16 +3,12 @@ import { alternativeCriteriaMatrixStructure } from "./structures/alternativeCrit
 import { alternativePairwiseByCriterionStructure } from "./structures/alternativePairwiseByCriterion/index.js";
 import { manualCriteriaWeightsStructure } from "./structures/manualCriteriaWeights/index.js";
 import { bestWorstCriteriaStructure } from "./structures/bestWorstCriteria/index.js";
-import { fuzzyCriteriaWeightsStructure } from "./structures/fuzzyCriteriaWeights/index.js";
-import { criteriaPairwiseMatrixStructure } from "./structures/criteriaPairwiseMatrix/index.js";
 
 const EVALUATION_STRUCTURES = [
   alternativeCriteriaMatrixStructure,
   alternativePairwiseByCriterionStructure,
   manualCriteriaWeightsStructure,
   bestWorstCriteriaStructure,
-  fuzzyCriteriaWeightsStructure,
-  criteriaPairwiseMatrixStructure,
 ];
 
 export const EVALUATION_STRUCTURE_REGISTRY = Object.freeze(
