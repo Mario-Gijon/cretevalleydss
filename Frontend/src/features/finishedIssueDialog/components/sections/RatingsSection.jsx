@@ -16,6 +16,7 @@ import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
+import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
 
 /**
  * Ratings section of the finished issue dialog.
@@ -121,6 +122,20 @@ const RatingsSection = () => {
     const formatted = formatNumericWeight(rawValue);
 
     return formatted ?? "—";
+  };
+
+  const evaluationContext = {
+    issue: viewIssue,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    structureKey: ratingsSection.evaluationStructure || "",
+    alternatives: viewIssue?.summary?.alternatives || [],
+    criteria: leafNames || [],
+    payload: evaluations,
+    setPayload: () => {},
+    collectivePayload: collectiveEvaluations || {},
+    permitEdit: false,
+    selectedCriterion,
+    setSelectedCriterion,
   };
 
   return (
@@ -283,14 +298,7 @@ const RatingsSection = () => {
 
         <Divider sx={{ opacity: 0.14 }} />
 
-        <Matrix
-          alternatives={viewIssue?.summary?.alternatives || []}
-          criteria={leafNames || []}
-          evaluations={evaluations}
-          setEvaluations={() => { }}
-          collectiveEvaluations={collectiveEvaluations || {}}
-          permitEdit={false}
-        />
+        <Matrix evaluationContext={evaluationContext} />
       </Stack>
     </SectionCard>
   );

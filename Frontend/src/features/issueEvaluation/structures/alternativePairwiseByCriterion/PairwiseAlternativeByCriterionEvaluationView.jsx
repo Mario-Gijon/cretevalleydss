@@ -1,23 +1,51 @@
-import { Paper, Stack, Typography } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Stack, Typography } from "@mui/material";
 
 import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const PairwiseAlternativeByCriterionEvaluationView = ({
-  alternatives = [],
-  criterionNames = [],
-  evaluationsByCriterion = {},
-  collectiveEvaluationsByCriterion = {},
-  permitEdit = false,
-}) => {
-  const theme = useTheme();
+const resolveCriterionName = (criterionEntry) => {
+  if (typeof criterionEntry === "string") {
+    return criterionEntry;
+  }
+
+  if (criterionEntry && typeof criterionEntry === "object") {
+    return String(criterionEntry.name || "").trim();
+  }
+
+  return "";
+};
+
+const PairwiseAlternativeByCriterionEvaluationView = ({ evaluationContext }) => {
+  const {
+    alternatives = [],
+    criteria = [],
+    payload,
+    setPayload,
+    collectivePayload = {},
+    permitEdit = false,
+    selectedCriterion,
+  } = evaluationContext || {};
+
+  const criteriaFromContext = Array.isArray(criteria)
+    ? criteria.map(resolveCriterionName).filter(Boolean)
+    : [];
+
+  const evaluationsByCriterion = isPlainObject(payload) ? payload : {};
+  const collectiveEvaluationsByCriterion = isPlainObject(collectivePayload)
+    ? collectivePayload
+    : {};
+
   const resolvedCriteria =
-    Array.isArray(criterionNames) && criterionNames.length > 0
-      ? criterionNames
+    criteriaFromContext.length > 0
+      ? criteriaFromContext
       : Object.keys(isPlainObject(evaluationsByCriterion) ? evaluationsByCriterion : {});
+
+  const visibleCriteria =
+    selectedCriterion && resolvedCriteria.includes(selectedCriterion)
+      ? [selectedCriterion]
+      : resolvedCriteria;
 
   if (resolvedCriteria.length === 0) {
     return (
@@ -29,29 +57,29 @@ const PairwiseAlternativeByCriterionEvaluationView = ({
 
   return (
     <Stack spacing={1.2}>
-      {resolvedCriteria.map((criterionName) => (
-        <Paper
-          key={criterionName}
-          elevation={0}
-          sx={{
-            p: 1,
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-            bgcolor: alpha(theme.palette.common.white, 0.02),
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 0.85 }}>
+      {visibleCriteria.map((criterionName) => (
+        <Stack key={criterionName} spacing={0.75}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
             {criterionName}
           </Typography>
 
           <PairwiseAlternativeMatrix
             alternatives={alternatives}
             evaluations={evaluationsByCriterion?.[criterionName] || []}
-            setEvaluations={() => {}}
+            setEvaluations={(nextRows) => {
+              if (!permitEdit) {
+                return;
+              }
+
+              setPayload?.((previous) => ({
+                ...(isPlainObject(previous) ? previous : {}),
+                [criterionName]: nextRows,
+              }));
+            }}
             collectiveEvaluations={collectiveEvaluationsByCriterion?.[criterionName] || []}
             permitEdit={permitEdit}
           />
-        </Paper>
+        </Stack>
       ))}
     </Stack>
   );

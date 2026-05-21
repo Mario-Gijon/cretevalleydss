@@ -20,7 +20,10 @@ import {
   saveIssueEvaluation,
   submitIssueEvaluationPayload,
 } from "../../services/issueEvaluation.service";
-import { EVALUATION_STAGES } from "../../evaluation.constants";
+import {
+  EVALUATION_STAGES,
+  EVALUATION_STRUCTURE_KEYS,
+} from "../../evaluation.constants";
 
 const buildKey = (alternativeName, criterionName) => `${alternativeName}::${criterionName}`;
 
@@ -130,6 +133,27 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
   const alternatives = useMemo(() => issue?.alternatives || [], [issue?.alternatives]);
+  const evaluationContext = useMemo(
+    () => ({
+      issue,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
+      alternatives,
+      criteria: criterionNames.slice().sort(),
+      payload: evaluations,
+      setPayload: setEvaluations,
+      collectivePayload: collectiveVisible ? collectiveEvaluations || {} : {},
+      permitEdit: true,
+    }),
+    [
+      issue,
+      alternatives,
+      criterionNames,
+      evaluations,
+      collectiveVisible,
+      collectiveEvaluations,
+    ]
+  );
 
   const flushPendingGridEdit = async () => {
     if (matrixRef.current?.flushPendingEdits) {
@@ -307,11 +331,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
           {issue && !loading && (
             <DirectEvaluationMatrix
               ref={matrixRef}
-              alternatives={alternatives}
-              criteria={criterionNames.slice().sort()}
-              evaluations={evaluations}
-              setEvaluations={setEvaluations}
-              collectiveEvaluations={collectiveVisible ? collectiveEvaluations : null}
+              evaluationContext={evaluationContext}
             />
           )}
         </Box>

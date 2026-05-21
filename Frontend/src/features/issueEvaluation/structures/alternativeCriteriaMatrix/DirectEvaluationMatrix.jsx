@@ -7,22 +7,18 @@ import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.ut
  * Matriz de evaluación directa alternativa x criterio.
  *
  * @param {Object} props
- * @param {string[]} props.alternatives
- * @param {string[]} props.criteria
- * @param {Object} props.evaluations
- * @param {Function} props.setEvaluations
- * @param {Object} props.collectiveEvaluations
- * @param {boolean} [props.permitEdit=true]
+ * @param {Object} props.evaluationContext
  * @returns {JSX.Element}
  */
-const DirectEvaluationMatrix = ({
-  alternatives,
-  criteria,
-  evaluations,
-  setEvaluations,
-  collectiveEvaluations,
-  permitEdit = true,
-}, ref) => {
+const DirectEvaluationMatrix = ({ evaluationContext }, ref) => {
+  const {
+    alternatives = [],
+    criteria = [],
+    payload,
+    setPayload,
+    collectivePayload = {},
+    permitEdit = true,
+  } = evaluationContext || {};
   const theme = useTheme();
   const apiRef = useGridApiRef();
 
@@ -176,9 +172,9 @@ const DirectEvaluationMatrix = ({
       renderCell: (params) => {
         const rowId = params.row.id;
         const critName = params.field;
-        const cell = evaluations?.[rowId]?.[critName];
+        const cell = payload?.[rowId]?.[critName];
         const collectiveValue = getCollectiveDisplayValue(
-          collectiveEvaluations?.[rowId]?.[critName]
+          collectivePayload?.[rowId]?.[critName]
         );
 
         if (cell == null) {
@@ -218,10 +214,10 @@ const DirectEvaluationMatrix = ({
                   onChange={(event) => {
                     const newValue = event.target.value;
 
-                    setEvaluations((prev) => ({
+                    setPayload?.((prev) => ({
                       ...prev,
                       [rowId]: {
-                        ...(prev[rowId] || {}),
+                        ...(prev?.[rowId] || {}),
                         [critName]: { value: newValue, domain },
                       },
                     }));
@@ -321,10 +317,10 @@ const DirectEvaluationMatrix = ({
 
     const resultRow = { ...newRow, [changedField]: nextCell };
 
-    setEvaluations((prev) => ({
+    setPayload?.((prev) => ({
       ...prev,
       [resultRow.id]: {
-        ...(prev[resultRow.id] || {}),
+        ...(prev?.[resultRow.id] || {}),
         [changedField]: nextCell,
       },
     }));
@@ -337,7 +333,7 @@ const DirectEvaluationMatrix = ({
 
     criteria.forEach((criterion) => {
       row[criterion] =
-        evaluations?.[alternative]?.[criterion] ?? { value: "", domain: null };
+        payload?.[alternative]?.[criterion] ?? { value: "", domain: null };
     });
 
     return row;
@@ -362,7 +358,7 @@ const DirectEvaluationMatrix = ({
           try {
             apiRef.current.stopCellEditMode({ id, field });
           } catch (error) {
-            console.log(error)
+            console.log(error);
           }
         });
 

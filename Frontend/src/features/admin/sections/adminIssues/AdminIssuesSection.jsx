@@ -1416,17 +1416,30 @@ export default function AdminIssuesSection() {
                         </Typography>
                       ) : (
                         <Box sx={{ maxWidth: "100%", overflowX: "auto" }}>
+                          {(() => {
+                            const evaluationContext = {
+                              issue: issueDetail,
+                              stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+                              structureKey:
+                                expertEvaluations?.issue
+                                  ?.alternativeEvaluationStructureKey || "",
+                              alternatives: alternativeNamesForReview,
+                              criteria: criterionNamesForReview,
+                              payload: expertEvaluations?.evaluations || {},
+                              setPayload: () => {},
+                              collectivePayload:
+                                expertEvaluations?.collectiveEvaluations || {},
+                              permitEdit: false,
+                              selectedCriterion: "",
+                              setSelectedCriterion: () => {},
+                            };
+
+                            return (
                           <AlternativeEvaluationComponent
-                            alternatives={alternativeNamesForReview}
-                            criteria={criterionNamesForReview}
-                            criterionNames={criterionNamesForReview}
-                            evaluations={expertEvaluations?.evaluations || {}}
-                            evaluationsByCriterion={expertEvaluations?.evaluations || {}}
-                            collectiveEvaluations={expertEvaluations?.collectiveEvaluations || null}
-                            collectiveEvaluationsByCriterion={expertEvaluations?.collectiveEvaluations || {}}
-                            setEvaluations={() => {}}
-                            permitEdit={false}
+                            evaluationContext={evaluationContext}
                           />
+                            );
+                          })()}
                         </Box>
                       )}
                     </Paper>

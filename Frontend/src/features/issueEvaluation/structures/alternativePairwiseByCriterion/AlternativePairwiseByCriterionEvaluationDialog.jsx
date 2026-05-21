@@ -11,8 +11,8 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
-import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix";
 import CriterionCompactSelector from "./CriterionCompactSelector";
+import PairwiseAlternativeByCriterionEvaluationView from "./PairwiseAlternativeByCriterionEvaluationView";
 import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
@@ -25,7 +25,10 @@ import {
   saveIssueEvaluation,
   submitIssueEvaluationPayload,
 } from "../../services/issueEvaluation.service";
-import { EVALUATION_STAGES } from "../../evaluation.constants";
+import {
+  EVALUATION_STAGES,
+  EVALUATION_STRUCTURE_KEYS,
+} from "../../evaluation.constants";
 
 const buildPairKey = (altA, altB) => `${altA}::${altB}`;
 
@@ -318,6 +321,32 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
 
   const currentCriterion = leafCriteria[currentCriterionIndex] || leafCriteria[0] || null;
   const criterionId = currentCriterion?.name;
+  const evaluationContext = useMemo(
+    () => ({
+      issue,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION,
+      alternatives,
+      criteria: criterionNames,
+      payload: evaluations,
+      setPayload: setEvaluations,
+      collectivePayload: collectiveVisible
+        ? collectiveEvaluationsByCriterion || {}
+        : {},
+      permitEdit: true,
+      selectedCriterion: criterionId || "",
+      setSelectedCriterion: () => {},
+    }),
+    [
+      issue,
+      alternatives,
+      criterionNames,
+      evaluations,
+      collectiveVisible,
+      collectiveEvaluationsByCriterion,
+      criterionId,
+    ]
+  );
 
   useEffect(() => {
     if (!isOpen || !issue?.id) return;
@@ -356,11 +385,6 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
 
     fetchCurrentEvaluations();
   }, [isOpen, issue?.id, alternatives, criterionNames]);
-
-  const updateMatrix = (updatedRows) => {
-    if (!criterionId) return;
-    setEvaluations((prev) => ({ ...prev, [criterionId]: updatedRows }));
-  };
 
   const handleClearAll = () => {
     setEvaluations(buildClearedMatrices({ alternatives, criterionNames, evaluations }));
@@ -502,15 +526,8 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
               }
             />
 
-            <PairwiseAlternativeMatrix
-              alternatives={alternatives}
-              evaluations={evaluations[criterionId] || []}
-              setEvaluations={updateMatrix}
-              collectiveEvaluations={
-                collectiveVisible
-                  ? collectiveEvaluationsByCriterion?.[criterionId] || []
-                  : []
-              }
+            <PairwiseAlternativeByCriterionEvaluationView
+              evaluationContext={evaluationContext}
             />
           </Box>
         </Stack>

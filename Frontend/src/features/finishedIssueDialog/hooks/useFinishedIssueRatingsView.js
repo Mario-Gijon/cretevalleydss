@@ -92,11 +92,6 @@ export const useFinishedIssueRatingsView = ({
     [criterionList, hasSingleCriterion]
   );
 
-  const activeCriterion = useMemo(
-    () => selectedCriterion || criterionList[0] || "",
-    [selectedCriterion, criterionList]
-  );
-
   useEffect(() => {
     if (!selectedExpert || !expertList.includes(selectedExpert)) {
       const newExpert = expertList[0] || "";
@@ -121,20 +116,8 @@ export const useFinishedIssueRatingsView = ({
       return null;
     }
 
-    const selected = phaseRatings.expertEvaluations[selectedExpert];
-
-    if (
-      activeCriterion &&
-      selected &&
-      typeof selected === "object" &&
-      !Array.isArray(selected) &&
-      Array.isArray(selected[activeCriterion])
-    ) {
-      return selected[activeCriterion] || null;
-    }
-
-    return selected || null;
-  }, [selectedExpert, activeCriterion, phaseRatings]);
+    return phaseRatings.expertEvaluations[selectedExpert] || null;
+  }, [selectedExpert, phaseRatings]);
 
   const criteriaWeightsEvaluation = useMemo(() => {
     if (!selectedExpert || !phaseRatings) {
@@ -172,17 +155,8 @@ export const useFinishedIssueRatingsView = ({
       return null;
     }
 
-    if (
-      activeCriterion &&
-      typeof collective === "object" &&
-      !Array.isArray(collective) &&
-      Array.isArray(collective[activeCriterion])
-    ) {
-      return collective[activeCriterion] || null;
-    }
-
     return collective || null;
-  }, [showCollective, selectedExpert, activeCriterion, phaseRatings]);
+  }, [showCollective, selectedExpert, phaseRatings]);
 
   const canShowCollective = useMemo(() => {
     const sharedCollective = phaseRatings?.collectiveEvaluations;
