@@ -10,6 +10,19 @@ const isFiniteOrNull = (value) =>
 const normalizeNonEmptyString = (value) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
+const normalizeModelParameters = (modelParameters) =>
+  isPlainObject(modelParameters) ? modelParameters : {};
+
+const normalizeEvaluationsPayload = (evaluations) =>
+  evaluations.map((evaluation) => ({
+    expert: {
+      id: String(evaluation.expert._id),
+      name: evaluation.expert.name,
+      email: evaluation.expert.email,
+    },
+    payload: evaluation.payload,
+  }));
+
 const validateRankedAlternativesOrThrow = (rankedAlternatives) => {
   if (!Array.isArray(rankedAlternatives) || rankedAlternatives.length === 0) {
     throw createInternalError(
@@ -117,15 +130,8 @@ export const buildIssueModelRequestPayload = async ({
     await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
-    modelParameters: issue.modelParameters,
-    evaluations: evaluations.map((evaluation) => ({
-      expert: {
-        id: String(evaluation.expert._id),
-        name: evaluation.expert.name,
-        email: evaluation.expert.email,
-      },
-      payload: evaluation.payload,
-    })),
+    modelParameters: normalizeModelParameters(issue.modelParameters),
+    evaluations: normalizeEvaluationsPayload(evaluations),
     context: {
       issue: {
         id: String(issue._id),
@@ -160,6 +166,46 @@ export const buildIssueModelRequestPayload = async ({
   };
 };
 
+export const buildCriteriaWeightingRequestPayload = async ({
+  issue,
+  structureKey,
+  evaluations,
+  phase,
+}) => {
+  const { criteria } = await getOrderedAlternativeAndCriterionNames({ issue });
+
+  return {
+    modelParameters: normalizeModelParameters(issue.modelParameters),
+    evaluations: normalizeEvaluationsPayload(evaluations),
+    context: {
+      issue: {
+        id: String(issue._id),
+        name: issue.name,
+        consensusThreshold:
+          typeof issue?.consensusThreshold === "number" &&
+          Number.isFinite(issue.consensusThreshold)
+            ? issue.consensusThreshold
+            : null,
+        consensusMaxPhases:
+          Number.isInteger(issue?.consensusMaxPhases) && issue.consensusMaxPhases > 0
+            ? issue.consensusMaxPhases
+            : null,
+      },
+      criteria: criteria.map((criterion) => ({
+        id: String(criterion._id),
+        name: criterion.name,
+        type: criterion.type,
+      })),
+      consensusPhase: phase,
+      previousStageResult: null,
+      structure: {
+        key: structureKey,
+        stage: "criteriaWeighting",
+      },
+    },
+  };
+};
+
 export const buildIssueModelExecutionResult = ({
   issue,
   message,
@@ -186,5 +232,81 @@ export const buildIssueModelExecutionResult = ({
     rawOutput: result.rawOutput,
     issueUpdates,
     nextCurrentStage,
+  };
+};
+
+export const buildCriteriaWeightingExecutionResult = ({
+  issue,
+  result,
+  structureKey,
+  message,
+}) => {
+  if (!isPlainObject(result)) {
+    throw createInternalError("Criteria weighting execution result must be an object", {
+      field: "result",
+    });
+  }
+
+  const normalizedMessage = normalizeNonEmptyString(message ?? result.message);
+  if (!normalizedMessage) {
+    throw createInternalError("Criteria weighting execution message is required", {
+      field: "message",
+    });
+  }
+
+  if (!isPlainObject(result.weightsByCriterion)) {
+    throw createInternalError(
+      "Criteria weighting result.weightsByCriterion must be an object",
+      {
+        field: "result.weightsByCriterion",
+      }
+    );
+  }
+
+  if (!isPlainObject(result.collectiveEvaluations)) {
+    throw createInternalError(
+      "Criteria weighting result.collectiveEvaluations must be an object",
+      {
+        field: "result.collectiveEvaluations",
+      }
+    );
+  }
+
+  if (!isFiniteOrNull(result.consensusMeasure)) {
+    throw createInternalError(
+      "Criteria weighting result.consensusMeasure must be finite or null",
+      {
+        field: "result.consensusMeasure",
+      }
+    );
+  }
+
+  if (!isPlainObject(result.rawOutput)) {
+    throw createInternalError(
+      "Criteria weighting result.rawOutput must be an object",
+      {
+        field: "result.rawOutput",
+      }
+    );
+  }
+
+  const modelExecution = isPlainObject(result.modelExecution)
+    ? result.modelExecution
+    : {};
+
+  return {
+    message: normalizedMessage,
+    consensusMeasure: result.consensusMeasure ?? null,
+    weightsByCriterion: result.weightsByCriterion,
+    collectiveEvaluations: result.collectiveEvaluations,
+    modelExecution: {
+      kind: modelExecution.kind || "unknown",
+      structureKey,
+      apiModelKey: issue?.apiModelKey || null,
+      executedAt: modelExecution.executedAt || new Date(),
+      ...modelExecution,
+      structureKey,
+    },
+    rawOutput: result.rawOutput,
   };
 };

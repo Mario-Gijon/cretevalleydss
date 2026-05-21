@@ -1,1 +1,4 @@
-export { executeAlternativeEvaluationModel } from "./issueModelExecution.service.js";
+export {
+  executeAlternativeEvaluationModel,
+  executeCriteriaWeightingModel,
+} from "./issueModelExecution.service.js";

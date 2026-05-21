@@ -13,7 +13,10 @@ import {
 } from "./evaluation.constants.js";
 import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
-import { executeAlternativeEvaluationModel } from "../modelExecution/index.js";
+import {
+  executeAlternativeEvaluationModel,
+  executeCriteriaWeightingModel,
+} from "../modelExecution/index.js";
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
 
 const hasOwn = (value, key) =>
@@ -432,31 +435,23 @@ const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
 const computeCriteriaWeightingStage = async ({
   structure,
   issue,
-  issueId,
-  userId,
-  stage,
   evaluations,
-  participations,
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  if (typeof structure?.compute !== "function") {
-    throw createBadRequestError(
-      `Evaluation structure '${structure?.key || "unknown"}' does not support compute`,
-      {
-        field: "structure.compute",
-      }
-    );
+  if (typeof structure?.validateBeforeCompute === "function") {
+    await structure.validateBeforeCompute({
+      issue,
+      evaluations,
+      phase: issue.consensusPhase,
+    });
   }
 
-  return structure.compute({
+  return executeCriteriaWeightingModel({
     issue,
-    issueId,
-    userId,
-    stage,
-    phase: issue.consensusPhase,
+    structureKey: structure.key,
     evaluations,
-    participations,
+    phase: issue.consensusPhase,
     apiModelsBaseUrl,
     httpClient,
   });
@@ -527,11 +522,7 @@ export const computeIssueEvaluationStage = async ({
       ? await computeCriteriaWeightingStage({
         structure,
         issue,
-        issueId: issue._id,
-        userId,
-        stage,
         evaluations,
-        participations,
         apiModelsBaseUrl,
         httpClient,
       })

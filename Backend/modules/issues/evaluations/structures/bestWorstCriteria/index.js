@@ -3,10 +3,6 @@ import {
   EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../../../services/modelApi/modelResponse.js";
 import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
 
 const isPlainObject = (value) =>
@@ -225,88 +221,6 @@ const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
   };
 };
 
-const buildExpertsDataOrThrow = ({ evaluations, criterionNames }) => {
-  const expertsData = {};
-
-  for (const evaluation of evaluations) {
-    const payload = evaluation?.payload;
-
-    if (!isPlainObject(payload)) {
-      continue;
-    }
-
-    const normalized = {
-      bestCriterion: normalizeText(payload.bestCriterion),
-      worstCriterion: normalizeText(payload.worstCriterion),
-      bestToOthers: payload.bestToOthers,
-      othersToWorst: payload.othersToWorst,
-    };
-
-    validateSubmittedBwmPayloadOrThrow({
-      criterionNames,
-      payload: normalized,
-    });
-
-    const mic = criterionNames.map((criterionName) =>
-      Number(normalized.bestToOthers[criterionName])
-    );
-    const lic = criterionNames.map((criterionName) =>
-      Number(normalized.othersToWorst[criterionName])
-    );
-
-    if (
-      mic.some((value) => !Number.isFinite(value)) ||
-      lic.some((value) => !Number.isFinite(value))
-    ) {
-      continue;
-    }
-
-    const expertRef = evaluation?.expert;
-    const expertKey = normalizeText(expertRef?.email)
-      ? expertRef.email
-      : `expert_${String(expertRef?._id || expertRef || "unknown")}`;
-
-    expertsData[expertKey] = {
-      mic,
-      lic,
-    };
-  }
-
-  if (Object.keys(expertsData).length === 0) {
-    throw createBadRequestError("Incomplete BWM data from experts", {
-      field: "payload",
-    });
-  }
-
-  return expertsData;
-};
-
-const normalizeBwmWeightsOrThrow = ({ weights, criterionCount }) => {
-  if (!Array.isArray(weights) || weights.length < criterionCount) {
-    throw createBadRequestError("ApiModels BWM output does not contain valid weights", {
-      field: "result.weights",
-    });
-  }
-
-  const baseWeights = weights.slice(0, criterionCount).map(Number);
-
-  if (baseWeights.some((value) => !Number.isFinite(value))) {
-    throw createBadRequestError("ApiModels BWM output contains invalid weights", {
-      field: "result.weights",
-    });
-  }
-
-  const total = baseWeights.reduce((sum, value) => sum + value, 0);
-
-  if (!(total > 0)) {
-    throw createBadRequestError("ApiModels BWM output weights cannot be normalized", {
-      field: "result.weights",
-    });
-  }
-
-  return baseWeights.map((value) => value / total);
-};
-
 export const bestWorstCriteriaStructure = Object.freeze({
   key: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
@@ -341,54 +255,5 @@ export const bestWorstCriteriaStructure = Object.freeze({
     }
 
     return normalized.payload;
-  },
-
-  async compute({ issue, evaluations, apiModelsBaseUrl, httpClient }) {
-    const { criterionNames } = await getOrderedCriterionNames({ issue });
-
-    const expertsData = buildExpertsDataOrThrow({
-      evaluations,
-      criterionNames,
-    });
-
-    let response;
-
-    try {
-      response = await httpClient.post(`${apiModelsBaseUrl}/bwm`, {
-        experts_data: expertsData,
-        eps_penalty: 1,
-      });
-    } catch (error) {
-      throw createModelApiRequestError(error, "Failed to compute BWM weights");
-    }
-
-    const results = unwrapModelApiResponse(response, "Failed to compute BWM weights");
-    const normalizedWeights = normalizeBwmWeightsOrThrow({
-      weights: results?.weights,
-      criterionCount: criterionNames.length,
-    });
-    const normalizedWeightsByCriterion = criterionNames.reduce(
-      (accumulator, criterionName, index) => {
-        accumulator[criterionName] = normalizedWeights[index];
-        return accumulator;
-      },
-      {}
-    );
-
-    return {
-      message: `Criteria weights for '${issue.name}' successfully computed.`,
-      consensusMeasure: null,
-      weightsByCriterion: normalizedWeightsByCriterion,
-      collectiveEvaluations: {
-        weightsByCriterion: normalizedWeightsByCriterion,
-      },
-      modelExecution: {
-        kind: "apiModels",
-        structureKey: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
-        apiEndpointPath: "/bwm",
-        executedAt: new Date(),
-      },
-      rawOutput: results,
-    };
   },
 });
