@@ -24,7 +24,6 @@ const AdminReadOnlyWeights = ({
   data,
   leafCriteria = [],
   finalWeights = {},
-  showFinalWeights = false,
 }) => {
   const theme = useTheme();
 
@@ -79,11 +78,9 @@ const AdminReadOnlyWeights = ({
                 <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
                   Expert weight
                 </TableCell>
-                {showFinalWeights ? (
-                  <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
-                    Final weight
-                  </TableCell>
-                ) : null}
+                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
+                  Final weight
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -112,13 +109,11 @@ const AdminReadOnlyWeights = ({
                                 : "Unavailable"}
                       </Typography>
                     </TableCell>
-                    {showFinalWeights ? (
-                      <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                        <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                          {formatWeightValue(finalWeights?.[criterionName])}
-                        </Typography>
-                      </TableCell>
-                    ) : null}
+                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                      <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                        {formatWeightValue(finalWeights?.[criterionName])}
+                      </Typography>
+                    </TableCell>
                   </TableRow>
                 );
               })}

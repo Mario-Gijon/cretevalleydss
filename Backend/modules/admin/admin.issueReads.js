@@ -10,6 +10,7 @@ import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { IssueScenario } from "../../models/IssueScenarios.js";
+import { IssueStageResult } from "../../models/IssueStageResults.js";
 import { Participation } from "../../models/Participations.js";
 
 
@@ -1050,6 +1051,159 @@ const buildAdminExpertParticipationPayload = (participation) => {
 const buildAdminExpertIdentityPayload = (expert, fallbackId) =>
   buildParticipantExpertPayload(expert, fallbackId);
 
+const buildPairKey = (alternativeA, alternativeB) =>
+  `${alternativeA}::${alternativeB}`;
+
+const buildCollectiveValueCell = (value) => ({
+  value:
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? value.value
+      : value,
+  expressionDomain: null,
+});
+
+const buildNeutralCollectiveCell = () => ({
+  value: "Neutral",
+  expressionDomain: null,
+  isNeutralFallback: true,
+});
+
+const buildCollectivePairwiseRowsFromPairMap = ({
+  criterionPairs,
+  orderedAlternatives,
+}) => {
+  if (!isPlainObject(criterionPairs)) {
+    return null;
+  }
+
+  return orderedAlternatives.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+
+    for (const colAlternative of orderedAlternatives) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildNeutralCollectiveCell();
+        continue;
+      }
+
+      row[colAlternative] = buildCollectiveValueCell(
+        criterionPairs[buildPairKey(rowAlternative, colAlternative)]
+      );
+    }
+
+    return row;
+  });
+};
+
+const buildCollectivePairwiseRowsFromMatrix = ({
+  criterionMatrix,
+  orderedAlternatives,
+}) => {
+  if (!Array.isArray(criterionMatrix)) {
+    return null;
+  }
+
+  return orderedAlternatives.map((rowAlternative, rowIndex) => {
+    const row = { id: rowAlternative };
+    const sourceRow = Array.isArray(criterionMatrix[rowIndex])
+      ? criterionMatrix[rowIndex]
+      : [];
+
+    for (const [colIndex, colAlternative] of orderedAlternatives.entries()) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildNeutralCollectiveCell();
+        continue;
+      }
+
+      row[colAlternative] = buildCollectiveValueCell(sourceRow[colIndex]);
+    }
+
+    return row;
+  });
+};
+
+const buildCollectivePairwiseRowsFromRows = ({
+  criterionRows,
+  orderedAlternatives,
+}) => {
+  if (!Array.isArray(criterionRows)) {
+    return null;
+  }
+
+  const rowMap = new Map(
+    criterionRows
+      .filter((row) => isPlainObject(row) && typeof row.id === "string")
+      .map((row) => [row.id, row])
+  );
+
+  if (rowMap.size === 0) {
+    return null;
+  }
+
+  return orderedAlternatives.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+    const sourceRow = rowMap.get(rowAlternative) || {};
+
+    for (const colAlternative of orderedAlternatives) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildNeutralCollectiveCell();
+        continue;
+      }
+
+      row[colAlternative] = buildCollectiveValueCell(sourceRow[colAlternative]);
+    }
+
+    return row;
+  });
+};
+
+const normalizeAdminPairwiseCollectiveEvaluations = ({
+  source,
+  orderedAlternatives,
+  orderedLeafCriteria,
+}) => {
+  if (!isPlainObject(source)) {
+    return null;
+  }
+
+  const normalized = {};
+
+  for (const criterion of orderedLeafCriteria) {
+    const criterionName = criterion?.name;
+    if (!criterionName) {
+      continue;
+    }
+
+    const criterionSource = source[criterionName];
+    let rows = null;
+
+    if (Array.isArray(criterionSource)) {
+      rows =
+        criterionSource.length > 0 &&
+          isPlainObject(criterionSource[0]) &&
+          "id" in criterionSource[0]
+          ? buildCollectivePairwiseRowsFromRows({
+            criterionRows: criterionSource,
+            orderedAlternatives,
+          })
+          : buildCollectivePairwiseRowsFromMatrix({
+            criterionMatrix: criterionSource,
+            orderedAlternatives,
+          });
+    } else if (isPlainObject(criterionSource)) {
+      rows = buildCollectivePairwiseRowsFromPairMap({
+        criterionPairs: criterionSource,
+        orderedAlternatives,
+      });
+    }
+
+    if (rows) {
+      normalized[criterionName] = rows;
+    }
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : null;
+};
+
 /**
  * Obtiene las evaluaciones de un experto en modo solo lectura para admin.
  *
@@ -1103,7 +1257,7 @@ export const getIssueExpertEvaluationsPayload = async ({
   const [
     expert,
     participation,
-    latestConsensus,
+    latestAlternativeStageResult,
     orderedAlternatives,
     orderedLeafCriteria,
     evaluationDoc,
@@ -1112,7 +1266,12 @@ export const getIssueExpertEvaluationsPayload = async ({
       .select("name email role university accountConfirm")
       .lean(),
     Participation.findOne({ issue: issueId, expert: expertId }).lean(),
-    Consensus.findOne({ issue: issueId }).sort({ phase: -1 }).lean(),
+    IssueStageResult.findOne({
+      issue: issueId,
+      stage: "alternativeEvaluation",
+    })
+      .sort({ consensusPhase: -1 })
+      .lean(),
     getOrderedAlternativesDb({
       issueId,
       issueDoc: issue,
@@ -1144,6 +1303,8 @@ export const getIssueExpertEvaluationsPayload = async ({
   const evaluationPayload = evaluationDoc?.payload || {};
   const lastEvaluationAt = evaluationDoc?.submittedAt || null;
   const consensusPhase = evaluationDoc?.consensusPhase ?? null;
+  const collectiveSource =
+    latestAlternativeStageResult?.collectiveEvaluations || null;
 
   const usesPairwiseAlternatives =
     alternativeEvaluationStructureKey ===
@@ -1159,6 +1320,12 @@ export const getIssueExpertEvaluationsPayload = async ({
     );
 
     let filledCells = 0;
+    const normalizedPairwiseCollectiveEvaluations =
+      normalizeAdminPairwiseCollectiveEvaluations({
+        source: collectiveSource,
+        orderedAlternatives: orderedAlternativeNames,
+        orderedLeafCriteria,
+      });
 
     for (const criterion of orderedLeafCriteria) {
       const criterionComparisons =
@@ -1216,7 +1383,7 @@ export const getIssueExpertEvaluationsPayload = async ({
         lastEvaluationAt,
       },
       evaluations,
-      collectiveEvaluations: latestConsensus?.collectiveEvaluations,
+      collectiveEvaluations: normalizedPairwiseCollectiveEvaluations,
     };
   }
 
@@ -1266,7 +1433,9 @@ export const getIssueExpertEvaluationsPayload = async ({
       lastEvaluationAt,
     },
     evaluations,
-    collectiveEvaluations: latestConsensus?.collectiveEvaluations,
+    collectiveEvaluations: isPlainObject(collectiveSource)
+      ? collectiveSource
+      : null,
   };
 };
 

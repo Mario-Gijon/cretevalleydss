@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Avatar,
   Backdrop,
@@ -15,6 +15,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  ToggleButton,
   Table,
   TableBody,
   TableCell,
@@ -96,7 +97,7 @@ import { IssueModelParametersView } from "../../../modelParameters";
  * @returns {JSX.Element}
  */
 export default function AdminIssuesSection() {
-  const [showFinalWeights, setShowFinalWeights] = useState(false);
+  const [showExpertCollective, setShowExpertCollective] = useState(false);
   const {
     theme,
     isMdDown,
@@ -212,6 +213,26 @@ export default function AdminIssuesSection() {
   const criterionNamesForReview = safeArray(issueDetail?.leafCriteria)
     .map((criterion) => criterion?.name)
     .filter(Boolean);
+  const shouldShowExpertWeights =
+    safeArray(issueDetail?.leafCriteria).length > 1;
+  const hasExpertCollectiveEvaluations = Array.isArray(
+    expertEvaluations?.collectiveEvaluations
+  )
+    ? expertEvaluations.collectiveEvaluations.length > 0
+    : expertEvaluations?.collectiveEvaluations &&
+      typeof expertEvaluations.collectiveEvaluations === "object"
+      ? Object.keys(expertEvaluations.collectiveEvaluations).length > 0
+      : expertEvaluations?.collectiveEvaluations != null;
+
+  useEffect(() => {
+    setShowExpertCollective(false);
+  }, [selectedExpertId, expertEvaluations?.issue?.id]);
+
+  useEffect(() => {
+    if (!hasExpertCollectiveEvaluations) {
+      setShowExpertCollective(false);
+    }
+  }, [hasExpertCollectiveEvaluations]);
 
   if (loading) {
     return <CircularLoading color="secondary" size={44} height="28vh" />;
@@ -706,7 +727,7 @@ export default function AdminIssuesSection() {
                         label="Criteria weighting structure"
                         value={
                           criteriaWeightingStructureLabelByKey[
-                            issueDetail?.criteriaWeightingStructureKey
+                          issueDetail?.criteriaWeightingStructureKey
                           ] ||
                           issueDetail?.criteriaWeightingStructureKey ||
                           "—"
@@ -716,7 +737,7 @@ export default function AdminIssuesSection() {
                         label="Evaluation structure"
                         value={
                           alternativeStructureLabelByKey[
-                            issueDetail?.alternativeEvaluationStructureKey
+                          issueDetail?.alternativeEvaluationStructureKey
                           ] ||
                           issueDetail?.alternativeEvaluationStructureKey ||
                           "—"
@@ -1332,42 +1353,35 @@ export default function AdminIssuesSection() {
                       sx={{
                         display: "grid",
                         gap: 1.1,
-                        gridTemplateColumns: { xs: "1fr", xl: "0.92fr 1.08fr" },
+                        gridTemplateColumns: shouldShowExpertWeights
+                          ? { xs: "1fr", xl: "0.92fr 1.08fr" }
+                          : "1fr",
                       }}
                     >
-                      <Paper elevation={0} sx={detailCardSx(theme)}>
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1}
-                          alignItems={{ xs: "stretch", sm: "center" }}
-                          justifyContent="space-between"
-                          sx={{ mb: 1 }}
-                        >
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <RuleOutlinedIcon fontSize="small" />
-                            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
-                              Weights
-                            </Typography>
+                      {shouldShowExpertWeights ? (
+                        <Paper elevation={0} sx={detailCardSx(theme)}>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            alignItems={{ xs: "stretch", sm: "center" }}
+                            justifyContent="space-between"
+                            sx={{ mb: 1 }}
+                          >
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <RuleOutlinedIcon fontSize="small" />
+                              <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                                Weights
+                              </Typography>
+                            </Stack>
                           </Stack>
 
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => setShowFinalWeights((value) => !value)}
-                            sx={{ textTransform: "none", fontWeight: 850, borderRadius: 2.5 }}
-                          >
-                            {showFinalWeights ? "Hide final weights" : "Show final weights"}
-                          </Button>
-                        </Stack>
-
-                        <AdminReadOnlyWeights
-                          data={expertWeights}
-                          leafCriteria={safeArray(issueDetail?.leafCriteria)}
-                          finalWeights={issueDetail?.finalWeights || {}}
-                          showFinalWeights={showFinalWeights}
-                        />
-                      </Paper>
+                          <AdminReadOnlyWeights
+                            data={expertWeights}
+                            leafCriteria={safeArray(issueDetail?.leafCriteria)}
+                            finalWeights={issueDetail?.finalWeights || {}}
+                          />
+                        </Paper>
+                      ) : null}
 
                       <Paper elevation={0} sx={detailCardSx(theme)}>
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -1401,13 +1415,34 @@ export default function AdminIssuesSection() {
                           </Typography>
                         </Stack>
 
-                        <ExpressionDomainSummaryButton
-                          criteria={safeArray(issueDetail?.leafCriteria).map((criterion) => ({
-                            isLeaf: true,
-                            name: criterion?.name || "—",
-                            expressionDomain: criterion?.expressionDomain || null,
-                          }))}
-                        />
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <ExpressionDomainSummaryButton
+                            criteria={safeArray(issueDetail?.leafCriteria).map((criterion) => ({
+                              isLeaf: true,
+                              name: criterion?.name || "—",
+                              expressionDomain: criterion?.expressionDomain || null,
+                            }))}
+                          />
+                          {hasExpertCollectiveEvaluations ? (
+                            <ToggleButton
+                              value="collective"
+                              selected={showExpertCollective}
+                              onChange={() =>
+                                setShowExpertCollective((value) => !value)
+                              }
+                              color="secondary"
+                              size="small"
+                              sx={{
+                                borderRadius: 2.5,
+                                textTransform: "none",
+                                fontWeight: 850,
+                                px: 1.2,
+                              }}
+                            >
+                              {showExpertCollective ? "Hide collective" : "Show collective"}
+                            </ToggleButton>
+                          ) : null}
+                        </Stack>
                       </Stack>
 
                       {!AlternativeEvaluationComponent ? (
@@ -1426,18 +1461,21 @@ export default function AdminIssuesSection() {
                               alternatives: alternativeNamesForReview,
                               criteria: criterionNamesForReview,
                               payload: expertEvaluations?.evaluations || {},
-                              setPayload: () => {},
+                              setPayload: () => { },
                               collectivePayload:
-                                expertEvaluations?.collectiveEvaluations || {},
+                                showExpertCollective &&
+                                  hasExpertCollectiveEvaluations
+                                  ? expertEvaluations?.collectiveEvaluations || {}
+                                  : {},
                               permitEdit: false,
                               selectedCriterion: "",
-                              setSelectedCriterion: () => {},
+                              setSelectedCriterion: () => { },
                             };
 
                             return (
-                          <AlternativeEvaluationComponent
-                            evaluationContext={evaluationContext}
-                          />
+                              <AlternativeEvaluationComponent
+                                evaluationContext={evaluationContext}
+                              />
                             );
                           })()}
                         </Box>

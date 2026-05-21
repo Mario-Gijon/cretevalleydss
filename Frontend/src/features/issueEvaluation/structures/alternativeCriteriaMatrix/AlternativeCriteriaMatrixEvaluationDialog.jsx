@@ -139,7 +139,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
       alternatives,
-      criteria: criterionNames.slice().sort(),
+      criteria: criterionNames,
       payload: evaluations,
       setPayload: setEvaluations,
       collectivePayload: collectiveVisible ? collectiveEvaluations || {} : {},
