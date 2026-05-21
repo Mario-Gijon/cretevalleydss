@@ -14,14 +14,14 @@ import {
   buildConfigByMode,
   collectLeafCriteriaByRoot,
   isDeepEqual,
-  normalizeBwmPayload,
   normalizeFuzzyWeightsByRoot,
   normalizeManualWeightsByRoot,
   normalizeMode,
   resolveAssignedDomainIds,
 } from "../../utils/criteriaWeighting.helpers";
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
-import { BwmCriteriaWeightsEditor } from "./BwmCriteriaWeightsEditor";
+import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,
@@ -109,6 +109,17 @@ export const CriteriaWeightingPanel = ({
       }) || null
     );
   }, [availableCriteriaWeightingModels, criteriaWeightingConfig]);
+  const selectedCriteriaWeightingStructureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey:
+          selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey || "",
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      }),
+    [selectedApiCriteriaWeightingModel]
+  );
+  const SelectedCreationComponent =
+    selectedCriteriaWeightingStructureEntry?.CreationComponent || null;
 
   const updateConfig = (nextConfig, options = {}) => {
     const markDirty = options?.markDirty === true;
@@ -214,33 +225,13 @@ export const CriteriaWeightingPanel = ({
       return;
     }
 
-    if (
-      mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
-      selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey ===
-        "bestWorstCriteria"
-    ) {
-      const normalizedPayload = normalizeBwmPayload({
-        payload: criteriaWeightingConfig?.payload,
-        criterionNames,
-      });
-
-      if (isDeepEqual(criteriaWeightingConfig?.payload || {}, normalizedPayload)) {
-        return;
-      }
-
-      setCriteriaWeightingConfig({
-        ...criteriaWeightingConfig,
-        payload: normalizedPayload,
-      });
-    }
   }, [
     criteriaWeightingConfig,
-    criterionNames,
+    criterionNames.length,
     fuzzyValueCount,
     leafByRoot,
     mode,
     modelUsesWeights,
-    selectedApiCriteriaWeightingModel,
     setCriteriaWeightingConfig,
   ]);
 
@@ -412,22 +403,33 @@ export const CriteriaWeightingPanel = ({
         </Alert>
       ) : null}
 
-      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
-      selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey ===
-        "bestWorstCriteria" ? (
-        <BwmCriteriaWeightsEditor
-          criterionNames={criterionNames}
-          payload={safeConfig?.payload || {}}
-          onPayloadChange={(payload) => {
-            updateConfig(
-              {
-                ...safeConfig,
-                payload,
-              },
-              { markDirty: true }
-            );
-          }}
-        />
+      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
+        SelectedCreationComponent ? (
+          <SelectedCreationComponent
+            creationContext={{
+              criteria,
+              leafCriteria,
+              criterionNames,
+              payload: safeConfig?.payload || {},
+              setPayload: (payload) =>
+                updateConfig(
+                  {
+                    ...safeConfig,
+                    payload,
+                  },
+                  { markDirty: true }
+                ),
+              criteriaWeightingModel: selectedApiCriteriaWeightingModel,
+              structureKey:
+                selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey || "",
+            }}
+          />
+        ) : (
+          <Alert severity="warning">
+            This criteria weighting model cannot be computed during issue creation
+            because its structure does not expose a creation editor.
+          </Alert>
+        )
       ) : null}
     </Stack>
   );

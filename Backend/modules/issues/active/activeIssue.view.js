@@ -357,7 +357,6 @@ export const buildActiveIssueView = ({
       description: issue.description,
       model: issue.model,
       criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-      criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
       alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,
@@ -421,7 +420,6 @@ export const buildActiveIssueView = ({
         statusLabel,
         deadline,
         criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-        criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
         alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
         hasCriteriaWeighting:
           stage === ISSUE_STAGES.CRITERIA_WEIGHTING || stage === ISSUE_STAGES.WEIGHTS_FINISHED,

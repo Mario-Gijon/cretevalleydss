@@ -60,34 +60,6 @@ export const buildEqualWeightsByCriterion = (leafCriteria) => {
   return weightsByCriterion;
 };
 
-export const buildDefaultBwmPayload = (leafCriteria) => {
-  const criterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion) => criterion?.name)
-    .filter(Boolean);
-  const bestCriterion = criterionNames[0] || "";
-  const worstCriterion =
-    criterionNames.length > 1
-      ? criterionNames[criterionNames.length - 1]
-      : criterionNames[0] || "";
-
-  const bestToOthers = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = criterionName === bestCriterion ? 1 : "";
-    return accumulator;
-  }, {});
-
-  const othersToWorst = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = criterionName === worstCriterion ? 1 : "";
-    return accumulator;
-  }, {});
-
-  return {
-    bestCriterion,
-    worstCriterion,
-    bestToOthers,
-    othersToWorst,
-  };
-};
-
 export const buildConfigByMode = ({ mode, leafCriteria }) => {
   const resolvedMode = normalizeMode(mode);
 
@@ -96,7 +68,6 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
       mode: resolvedMode,
       source: "creator",
       method: "fuzzy",
-      aggregationMode: "none",
       structureKey: null,
       payload: {},
     };
@@ -107,7 +78,6 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
       mode: resolvedMode,
       source: "creator",
       method: "manual",
-      aggregationMode: "none",
       structureKey: "manualCriteriaWeights",
       payload: {
         weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
@@ -119,28 +89,13 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
     mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
     source: "experts",
     method: "manual",
-    aggregationMode: "mean",
     structureKey: "manualCriteriaWeights",
     payload: {},
   };
 };
 
-const resolveApiModelAggregationMode = (structureKey) => {
-  void structureKey;
-  return "mean";
-};
-
-const buildDefaultPayloadForApiModel = ({ structureKey, leafCriteria }) => {
-  if (structureKey === "bestWorstCriteria") {
-    return buildDefaultBwmPayload(leafCriteria);
-  }
-
-  return {};
-};
-
 export const buildApiCriteriaWeightingConfig = ({
   mode,
-  leafCriteria,
   criteriaWeightingModel,
 }) => {
   const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
@@ -156,16 +111,11 @@ export const buildApiCriteriaWeightingConfig = ({
       : CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
     source: isCreatorMode ? "creator" : "experts",
     method: "apiModel",
-    aggregationMode: isCreatorMode
-      ? "none"
-      : resolveApiModelAggregationMode(structureKey),
     structureKey: structureKey || null,
     criteriaWeightingModelId: modelId || null,
     criteriaWeightingModelKey: modelKey || null,
     criteriaWeightingParameters: {},
-    payload: isCreatorMode
-      ? buildDefaultPayloadForApiModel({ structureKey, leafCriteria })
-      : {},
+    payload: {},
   };
 };
 
@@ -355,58 +305,4 @@ export const normalizeFuzzyWeightsByRoot = ({
   }
 
   return normalized;
-};
-
-export const normalizeBwmPayload = ({ payload, criterionNames }) => {
-  const safePayload = isPlainObject(payload) ? payload : {};
-  const defaults = buildDefaultBwmPayload(
-    (criterionNames || []).map((name) => ({ name }))
-  );
-
-  const validNames = criterionNames.filter(Boolean);
-  const firstName = validNames[0] || "";
-  const lastName = validNames.length > 1 ? validNames[validNames.length - 1] : firstName;
-
-  let bestCriterion =
-    typeof safePayload.bestCriterion === "string" && validNames.includes(safePayload.bestCriterion)
-      ? safePayload.bestCriterion
-      : defaults.bestCriterion || firstName;
-
-  let worstCriterion =
-    typeof safePayload.worstCriterion === "string" && validNames.includes(safePayload.worstCriterion)
-      ? safePayload.worstCriterion
-      : defaults.worstCriterion || lastName;
-
-  if (validNames.length > 1 && bestCriterion === worstCriterion) {
-    worstCriterion = validNames.find((name) => name !== bestCriterion) || worstCriterion;
-  }
-
-  const bestToOthers = {};
-  const othersToWorst = {};
-
-  for (const criterionName of validNames) {
-    const sourceBest = Number(safePayload?.bestToOthers?.[criterionName]);
-    const sourceWorst = Number(safePayload?.othersToWorst?.[criterionName]);
-
-    bestToOthers[criterionName] =
-      criterionName === bestCriterion
-        ? 1
-        : Number.isFinite(sourceBest)
-          ? Math.max(1, Math.min(9, sourceBest))
-          : "";
-
-    othersToWorst[criterionName] =
-      criterionName === worstCriterion
-        ? 1
-        : Number.isFinite(sourceWorst)
-          ? Math.max(1, Math.min(9, sourceWorst))
-          : "";
-  }
-
-  return {
-    bestCriterion,
-    worstCriterion,
-    bestToOthers,
-    othersToWorst,
-  };
 };

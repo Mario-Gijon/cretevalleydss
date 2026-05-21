@@ -175,13 +175,6 @@ const issueSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
-    criteriaWeightingAggregationMode: {
-      type: String,
-      trim: true,
-      enum: ["none", "mean", "bwmMean", "cmccSimulation"],
-      required: true,
-      default: "none",
-    },
     alternativeEvaluationStructureKey: {
       type: String,
       trim: true,

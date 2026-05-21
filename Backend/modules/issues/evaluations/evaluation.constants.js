@@ -18,21 +18,10 @@ export const EVALUATION_STRUCTURE_KEYS = Object.freeze({
   BEST_WORST_CRITERIA: "bestWorstCriteria",
 });
 
-export const CRITERIA_WEIGHTING_AGGREGATION_MODES = Object.freeze({
-  NONE: "none",
-  MEAN: "mean",
-  BWM_MEAN: "bwmMean",
-  CMCC_SIMULATION: "cmccSimulation",
-});
-
 export const EVALUATION_STAGE_VALUES = Object.freeze(
   Object.values(EVALUATION_STAGES)
 );
 
 export const EVALUATION_STRUCTURE_KEY_VALUES = Object.freeze(
   Object.values(EVALUATION_STRUCTURE_KEYS)
-);
-
-export const CRITERIA_WEIGHTING_AGGREGATION_MODE_VALUES = Object.freeze(
-  Object.values(CRITERIA_WEIGHTING_AGGREGATION_MODES)
 );

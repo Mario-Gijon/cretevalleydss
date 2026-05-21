@@ -343,7 +343,6 @@ export const buildCriteriaWeightingExecutionResult = ({
       kind: normalizedExecutionKind,
       structureKey,
       executedAt: result.modelExecution.executedAt || new Date(),
-      structureKey,
     },
     rawOutput: result.rawOutput,
   };

@@ -172,7 +172,6 @@ export const createIssueFlow = async ({
     criteriaWeightingApiModelKey: null,
     criteriaWeightingApiEndpoint: null,
     criteriaWeightingParameters: {},
-    criteriaWeightingAggregationMode: "none",
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
     consensusPhase: 1,
@@ -281,8 +280,6 @@ export const createIssueFlow = async ({
     resolvedCriteriaWeighting.criteriaWeightingApiEndpoint || null;
   issue.criteriaWeightingParameters =
     resolvedCriteriaWeighting.criteriaWeightingParameters || {};
-  issue.criteriaWeightingAggregationMode =
-    resolvedCriteriaWeighting.criteriaWeightingAggregationMode;
   issue.currentStage = resolvedCriteriaWeighting.currentStage;
 
   if (Array.isArray(resolvedCriteriaWeighting.modelWeights)) {

@@ -1,12 +1,4 @@
-import {
-  CRITERIA_WEIGHTING_AGGREGATION_MODE_VALUES,
-  CRITERIA_WEIGHTING_AGGREGATION_MODES,
-} from "../evaluations/index.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-
-const SUPPORTED_CRITERIA_WEIGHTING_AGGREGATION_MODES = new Set(
-  CRITERIA_WEIGHTING_AGGREGATION_MODE_VALUES
-);
 
 export const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") {
@@ -268,26 +260,6 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
     modelVersion,
     versionLabel,
   };
-};
-
-export const resolveCriteriaWeightingAggregationModeOrThrow = (value) => {
-  const normalizedMode = normalizeNonEmptyString(value);
-
-  if (!normalizedMode) {
-    return CRITERIA_WEIGHTING_AGGREGATION_MODES.NONE;
-  }
-
-  if (!SUPPORTED_CRITERIA_WEIGHTING_AGGREGATION_MODES.has(normalizedMode)) {
-    throw createBadRequestError(
-      `Unsupported criteria weighting aggregation mode: ${normalizedMode}`,
-      {
-        code: "UNSUPPORTED_CRITERIA_WEIGHTING_AGGREGATION_MODE",
-        field: "criteriaWeightingAggregationMode",
-      }
-    );
-  }
-
-  return normalizedMode;
 };
 
 const normalizeFiniteNumber = (value) => {

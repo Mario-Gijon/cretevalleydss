@@ -122,7 +122,6 @@ const isCriteriaWeightingConfigOnDefault = ({
         criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
         criteriaWeightingConfig.source === "creator" &&
         criteriaWeightingConfig.method === "manual" &&
-        criteriaWeightingConfig.aggregationMode === "none" &&
         criteriaWeightingConfig.structureKey === "manualCriteriaWeights" &&
         (isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, {}) ||
           isDeepEqual(criteriaWeightingConfig?.payload?.weightsByCriterion || {}, { [onlyLeaf]: 1 }));
@@ -148,7 +147,6 @@ const isCriteriaWeightingConfigOnDefault = ({
     criteriaWeightingConfig.mode === expectedDefault.mode &&
     criteriaWeightingConfig.source === expectedDefault.source &&
     criteriaWeightingConfig.method === expectedDefault.method &&
-    criteriaWeightingConfig.aggregationMode === expectedDefault.aggregationMode &&
     criteriaWeightingConfig.structureKey === expectedDefault.structureKey &&
     fuzzyWeightsOnDefault
   );
@@ -228,64 +226,6 @@ const validateCreatorManualConfig = ({ criteriaWeightingConfig, leafCriteria }) 
   const total = weights.reduce((sum, value) => sum + value, 0);
   if (Math.abs(total - 1) > 0.001) {
     return "Manual weights must sum to 1.";
-  }
-
-  return null;
-};
-
-const validateCreatorBwmConfig = ({ criteriaWeightingConfig, leafCriteria }) => {
-  const payload = criteriaWeightingConfig?.payload;
-  if (!isPlainObject(payload)) {
-    return "BWM mode requires payload data.";
-  }
-
-  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
-  const criterionNameSet = new Set(criterionNames);
-
-  const bestCriterion = typeof payload.bestCriterion === "string"
-    ? payload.bestCriterion.trim()
-    : "";
-  const worstCriterion = typeof payload.worstCriterion === "string"
-    ? payload.worstCriterion.trim()
-    : "";
-
-  if (!bestCriterion || !criterionNameSet.has(bestCriterion)) {
-    return "BWM mode requires a valid best criterion.";
-  }
-
-  if (!worstCriterion || !criterionNameSet.has(worstCriterion)) {
-    return "BWM mode requires a valid worst criterion.";
-  }
-
-  if (criterionNames.length > 1 && bestCriterion === worstCriterion) {
-    return "Best and worst criterion must be different.";
-  }
-
-  const bestToOthers = payload.bestToOthers;
-  const othersToWorst = payload.othersToWorst;
-  if (!isPlainObject(bestToOthers) || !isPlainObject(othersToWorst)) {
-    return "BWM mode requires best-to-others and others-to-worst values.";
-  }
-
-  for (const criterionName of criterionNames) {
-    const bestValue = Number(bestToOthers[criterionName]);
-    const worstValue = Number(othersToWorst[criterionName]);
-
-    if (!Number.isFinite(bestValue) || bestValue < 1 || bestValue > 9) {
-      return `BWM best-to-others for '${criterionName}' must be between 1 and 9.`;
-    }
-
-    if (!Number.isFinite(worstValue) || worstValue < 1 || worstValue > 9) {
-      return `BWM others-to-worst for '${criterionName}' must be between 1 and 9.`;
-    }
-  }
-
-  if (Number(bestToOthers[bestCriterion]) !== 1) {
-    return "BWM requires best-to-others[bestCriterion] = 1.";
-  }
-
-  if (Number(othersToWorst[worstCriterion]) !== 1) {
-    return "BWM requires others-to-worst[worstCriterion] = 1.";
   }
 
   return null;
@@ -776,19 +716,6 @@ export const useCreateIssueFlow = () => {
         }
       }
 
-      if (
-        criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
-        criteriaWeightingConfig?.structureKey === "bestWorstCriteria"
-      ) {
-        const bwmValidationError = validateCreatorBwmConfig({
-          criteriaWeightingConfig,
-          leafCriteria,
-        });
-        if (bwmValidationError) {
-          showSnackbarAlert(bwmValidationError, "error");
-          return;
-        }
-      }
     }
 
     setLoading(true);

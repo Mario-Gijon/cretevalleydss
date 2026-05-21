@@ -553,7 +553,6 @@ const buildSummarySection = ({
     closureDate: issue.closureDate,
     alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
     criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-    criteriaWeightingAggregationMode: issue.criteriaWeightingAggregationMode,
     isConsensus: issue?.isConsensus === true,
     consensusInfo,
     experts,
@@ -762,12 +761,26 @@ const resolveFinalCriteriaWeightsOrThrow = async ({
   });
 };
 
-const resolveExpertWeightingRequired = (issue) =>
-  Boolean(
-    issue?.criteriaWeightingStructureKey &&
-      issue?.criteriaWeightingAggregationMode &&
-      issue.criteriaWeightingAggregationMode !== "none"
-  );
+const resolveExpertWeightingRequired = ({
+  issue,
+  participations,
+  criteriaWeightingEvaluationsByExpertId,
+}) => {
+  if (!issue?.criteriaWeightingStructureKey) {
+    return false;
+  }
+
+  if (
+    criteriaWeightingEvaluationsByExpertId &&
+    criteriaWeightingEvaluationsByExpertId.size > 0
+  ) {
+    return true;
+  }
+
+  return Array.isArray(participations)
+    ? participations.some((participation) => participation?.weightsCompleted === true)
+    : false;
+};
 
 const buildExpertWeightsByCriterionForManual = ({
   payload,
@@ -797,7 +810,11 @@ const buildCriteriaWeightsEvaluationByExpert = ({
   criteriaWeightingEvaluationsByExpertId,
   criterionNames,
 }) => {
-  const isRequired = resolveExpertWeightingRequired(issue);
+  const isRequired = resolveExpertWeightingRequired({
+    issue,
+    participations,
+    criteriaWeightingEvaluationsByExpertId,
+  });
   const mapByExpertEmail = {};
 
   for (const participation of participations) {

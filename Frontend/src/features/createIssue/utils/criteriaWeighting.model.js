@@ -14,7 +14,6 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
       mode: "creatorFuzzy",
       source: "creator",
       method: "fuzzy",
-      aggregationMode: "none",
       structureKey: null,
       payload: {},
     };
@@ -24,7 +23,6 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
     mode: "expertManual",
     source: "experts",
     method: "manual",
-    aggregationMode: "mean",
     structureKey: "manualCriteriaWeights",
     payload: {},
   };

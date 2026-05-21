@@ -41,13 +41,6 @@ const ALTERNATIVE_STRUCTURE_LABELS = {
   alternativePairwiseByCriterion: "Pairwise alternatives by criterion",
 };
 
-const CRITERIA_WEIGHTING_AGGREGATION_MODE_LABELS = {
-  none: "No aggregation",
-  mean: "Expert mean aggregation",
-  bwmMean: "Expert BWM aggregation",
-  cmccSimulation: "CMCC simulation",
-};
-
 /**
  * Pestaña Overview del drawer de detalles del issue.
  *
@@ -313,14 +306,6 @@ const IssueDetailsOverviewTab = ({
                 CRITERIA_WEIGHTING_STRUCTURE_LABELS[
                   selectedIssue?.criteriaWeightingStructureKey
                 ] || selectedIssue?.criteriaWeightingStructureKey || "—"
-              }
-            />
-            <IssueDetailsDrawerKeyValueRow
-              k="Criteria weighting aggregation mode"
-              v={
-                CRITERIA_WEIGHTING_AGGREGATION_MODE_LABELS[
-                  selectedIssue?.criteriaWeightingAggregationMode
-                ] || selectedIssue?.criteriaWeightingAggregationMode || "—"
               }
             />
             <IssueDetailsDrawerKeyValueRow
