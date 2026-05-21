@@ -16,11 +16,11 @@ import { EVALUATION_STAGES } from "../../evaluation.constants";
 import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
-import BestWorstCriteriaPayloadEditor, {
+import BestWorstCriteriaView, {
   buildEmptyBestWorstCriteriaPayload,
   normalizeBestWorstCriteriaDraftPayload,
   validateBestWorstCriteriaPayload,
-} from "./BestWorstCriteriaPayloadEditor";
+} from "./BestWorstCriteriaView";
 
 const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIssueDialog }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -176,7 +176,7 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
           </>
         }
       >
-        <BestWorstCriteriaPayloadEditor
+        <BestWorstCriteriaView
           criterionNames={criterionNames}
           payload={bwmPayload}
           setPayload={setBwmPayload}

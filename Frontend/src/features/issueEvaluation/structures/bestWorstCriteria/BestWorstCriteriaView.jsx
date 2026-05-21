@@ -6,6 +6,7 @@ const isPlainObject = (value) =>
 const isValidBwmScaleValue = (value) =>
   Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 9;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const buildEmptyBestWorstCriteriaPayload = (criterionNames) => ({
   bestCriterion: "",
   worstCriterion: "",
@@ -23,6 +24,7 @@ export const buildEmptyBestWorstCriteriaPayload = (criterionNames) => ({
   ),
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const normalizeBestWorstCriteriaDraftPayload = ({
   criterionNames,
   payload,
@@ -82,6 +84,7 @@ export const normalizeBestWorstCriteriaDraftPayload = ({
   return normalized;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const validateBestWorstCriteriaPayload = ({ criterionNames, payload }) => {
   const names = (Array.isArray(criterionNames) ? criterionNames : []).filter(
     Boolean
@@ -125,15 +128,21 @@ const normalizeScaleInput = (value) => {
   return null;
 };
 
-const BestWorstCriteriaPayloadEditor = ({
-  criterionNames,
-  payload,
-  setPayload,
+const BestWorstCriteriaView = ({
+  creationContext = null,
+  criterionNames: directCriterionNames,
+  payload: directPayload,
+  setPayload: directSetPayload,
   disabled = false,
 }) => {
-  const names = (Array.isArray(criterionNames) ? criterionNames : []).filter(
-    Boolean
-  );
+  const criterionNamesSource = Array.isArray(directCriterionNames)
+    ? directCriterionNames
+    : Array.isArray(creationContext?.criterionNames)
+      ? creationContext.criterionNames
+      : [];
+  const payload = directPayload ?? creationContext?.payload ?? {};
+  const setPayload = directSetPayload ?? creationContext?.setPayload;
+  const names = criterionNamesSource.filter(Boolean);
 
   const normalizedPayload = normalizeBestWorstCriteriaDraftPayload({
     criterionNames: names,
@@ -289,6 +298,14 @@ const BestWorstCriteriaPayloadEditor = ({
     );
   }
 
+  if (typeof setPayload !== "function") {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        Criteria weighting payload is not editable in this context.
+      </Typography>
+    );
+  }
+
   return (
     <Stack spacing={1.25} sx={{pt:1.5}}>
 
@@ -389,4 +406,4 @@ const BestWorstCriteriaPayloadEditor = ({
   );
 };
 
-export default BestWorstCriteriaPayloadEditor;
+export default BestWorstCriteriaView;

@@ -12,7 +12,7 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import CriterionCompactSelector from "./CriterionCompactSelector";
-import PairwiseAlternativeByCriterionEvaluationView from "./PairwiseAlternativeByCriterionEvaluationView";
+import AlternativePairwiseByCriterionView from "./AlternativePairwiseByCriterionView";
 import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
@@ -526,7 +526,7 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
               }
             />
 
-            <PairwiseAlternativeByCriterionEvaluationView
+            <AlternativePairwiseByCriterionView
               evaluationContext={evaluationContext}
             />
           </Box>

@@ -205,8 +205,8 @@ export default function AdminIssuesSection() {
     structureKey: expertEvaluations?.issue?.alternativeEvaluationStructureKey,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
-  const AlternativeEvaluationComponent =
-    alternativeEvaluationStructureEntry?.EvaluationComponent || null;
+  const AlternativeEvaluationViewComponent =
+    alternativeEvaluationStructureEntry?.View || null;
   const alternativeNamesForReview = safeArray(issueDetail?.alternatives)
     .map((alternative) => alternative?.name)
     .filter(Boolean);
@@ -1445,7 +1445,7 @@ export default function AdminIssuesSection() {
                         </Stack>
                       </Stack>
 
-                      {!AlternativeEvaluationComponent ? (
+                      {!AlternativeEvaluationViewComponent ? (
                         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
                           Evaluation structure does not expose a reusable renderer.
                         </Typography>
@@ -1473,7 +1473,7 @@ export default function AdminIssuesSection() {
                             };
 
                             return (
-                              <AlternativeEvaluationComponent
+                              <AlternativeEvaluationViewComponent
                                 evaluationContext={evaluationContext}
                               />
                             );

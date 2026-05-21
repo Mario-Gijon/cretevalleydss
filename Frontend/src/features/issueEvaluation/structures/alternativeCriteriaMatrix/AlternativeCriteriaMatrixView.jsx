@@ -10,7 +10,7 @@ import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.ut
  * @param {Object} props.evaluationContext
  * @returns {JSX.Element}
  */
-const DirectEvaluationMatrix = ({ evaluationContext }, ref) => {
+const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
   const {
     alternatives = [],
     criteria = [],
@@ -417,4 +417,4 @@ const DirectEvaluationMatrix = ({ evaluationContext }, ref) => {
   );
 };
 
-export default forwardRef(DirectEvaluationMatrix);
+export default forwardRef(AlternativeCriteriaMatrixView);

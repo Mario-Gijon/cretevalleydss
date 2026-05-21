@@ -8,7 +8,7 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
-import DirectEvaluationMatrix from "../alternativeCriteriaMatrix/DirectEvaluationMatrix";
+import AlternativeCriteriaMatrixView from "./AlternativeCriteriaMatrixView";
 import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
@@ -329,7 +329,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
       >
         <Box sx={{ ...sectionSx(theme), maxWidth: 1400, mx: "auto", p: { xs: 1, sm: 1.5 } }}>
           {issue && !loading && (
-            <DirectEvaluationMatrix
+            <AlternativeCriteriaMatrixView
               ref={matrixRef}
               evaluationContext={evaluationContext}
             />

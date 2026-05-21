@@ -53,7 +53,7 @@ export const useFinishedIssueRatingsView = ({
     [evaluationStructure]
   );
 
-  const Matrix = structureEntry?.EvaluationComponent ?? null;
+  const Matrix = structureEntry?.View ?? null;
   const unsupportedEvaluationStructure = Boolean(evaluationStructure) && !Matrix;
 
   const phaseRatings = useMemo(

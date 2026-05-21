@@ -17,7 +17,7 @@ const resolveCriterionName = (criterionEntry) => {
   return "";
 };
 
-const PairwiseAlternativeByCriterionEvaluationView = ({ evaluationContext }) => {
+const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
   const {
     alternatives = [],
     criteria = [],
@@ -85,4 +85,4 @@ const PairwiseAlternativeByCriterionEvaluationView = ({ evaluationContext }) => 
   );
 };
 
-export default PairwiseAlternativeByCriterionEvaluationView;
+export default AlternativePairwiseByCriterionView;
