@@ -302,7 +302,6 @@ export const buildCriteriaWeightingExecutionResult = ({
     modelExecution: {
       kind: modelExecution.kind || "unknown",
       structureKey,
-      apiModelKey: issue?.apiModelKey || null,
       executedAt: modelExecution.executedAt || new Date(),
       ...modelExecution,
       structureKey,

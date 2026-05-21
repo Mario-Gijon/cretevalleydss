@@ -11,7 +11,6 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from schemas.model_requests import (
-    BwmRequest,
     CmccRequest,
     GenericModelExecutionRequest,
 )
@@ -345,7 +344,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         api_model_key="bwm",
         api_endpoint_path="/bwm",
-        request_model=BwmRequest,
+        request_model=GenericModelExecutionRequest,
         handler=execute_bwm,
         summary="Execute BWM",
         description=("Executes the Best-Worst Method using expert comparison data."),
