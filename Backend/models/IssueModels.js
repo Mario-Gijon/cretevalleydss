@@ -177,10 +177,21 @@ const issueModelSchema = new Schema({
     required: true,
     default: false,
   },
+  isCriteriaWeightingModel: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
   visibleInIssueCreation: {
     type: Boolean,
     default: function resolveDefaultVisibility() {
       return this.isIssueModel === true;
+    },
+  },
+  visibleInCriteriaWeighting: {
+    type: Boolean,
+    default: function resolveDefaultCriteriaWeightingVisibility() {
+      return this.isCriteriaWeightingModel === true;
     },
   },
   apiEndpoint: {
@@ -255,7 +266,15 @@ const issueModelSchema = new Schema({
   alternativeEvaluationStructureKey: {
     type: String,
     trim: true,
-    required: true,
+    required: function resolveAlternativeStructureRequirement() {
+      return this.isIssueModel === true;
+    },
+    default: null,
+  },
+  criteriaWeightingStructureKey: {
+    type: String,
+    trim: true,
+    default: null,
   },
   supportsConsensus: {
     type: Boolean,

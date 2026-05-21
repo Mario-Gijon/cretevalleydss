@@ -10,7 +10,6 @@ import {
 } from "./issueModelExecution.builder.js";
 import { EVALUATION_STRUCTURE_KEYS } from "../evaluations/evaluation.constants.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { resolveCriteriaWeightingApiEndpointOrThrow } from "./criteriaWeightingApiEndpoints.js";
 
 const computeManualCriteriaWeights = ({ structureKey, requestPayload }) => {
   const criterionNames = requestPayload.context.criteria.map(
@@ -86,8 +85,26 @@ const executeCriteriaWeightingApiModel = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  const { apiModelKey, apiEndpointPath } =
-    resolveCriteriaWeightingApiEndpointOrThrow(structureKey);
+  const apiEndpointPath = String(issue?.criteriaWeightingApiEndpoint?.path || "").trim();
+  const apiModelKey = String(issue?.criteriaWeightingApiModelKey || "").trim();
+
+  if (!apiEndpointPath) {
+    throw createBadRequestError(
+      "Issue does not define a criteria weighting ApiModels endpoint path",
+      {
+        field: "issue.criteriaWeightingApiEndpoint.path",
+      }
+    );
+  }
+
+  if (!apiModelKey) {
+    throw createBadRequestError(
+      "Issue does not define a criteria weighting ApiModels model key",
+      {
+        field: "issue.criteriaWeightingApiModelKey",
+      }
+    );
+  }
 
   let response;
   try {
@@ -108,9 +125,8 @@ const executeCriteriaWeightingApiModel = async ({
   );
 
   return buildCriteriaWeightingExecutionResult({
-    issue,
     structureKey,
-    message: normalizedResult?.message,
+    message: result?.message,
     result,
   });
 };
@@ -178,7 +194,6 @@ export const executeCriteriaWeightingModel = async ({
     });
 
     return buildCriteriaWeightingExecutionResult({
-      issue,
       structureKey,
       message: result.message,
       result,

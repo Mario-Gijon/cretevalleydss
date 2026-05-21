@@ -121,12 +121,16 @@ const mapIssueModelCatalogItem = (model = {}) => {
     name: model.name,
     apiModelKey: model.apiModelKey || null,
     isIssueModel: model.isIssueModel === true,
+    isCriteriaWeightingModel: model.isCriteriaWeightingModel === true,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
+    visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint || null,
     manifestSync: model.manifestSync || null,
     isMultiCriteria: model.isMultiCriteria,
     alternativeEvaluationStructureKey:
       model.alternativeEvaluationStructureKey || null,
+    criteriaWeightingStructureKey:
+      model.criteriaWeightingStructureKey || null,
     usesCriteriaWeights: model.usesCriteriaWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
@@ -158,12 +162,15 @@ const mapIssueModelCatalogItem = (model = {}) => {
  */
 const getModelCatalogSortRank = (model = {}) => {
   const visibleInIssueCreation = model.visibleInIssueCreation !== false;
+  const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
   const stale = model?.manifestSync?.isStale === true;
 
   if (visibleInIssueCreation && !stale) return 0;
   if (visibleInIssueCreation) return 1;
+  if (visibleInCriteriaWeighting && !stale) return 2;
+  if (visibleInCriteriaWeighting) return 3;
 
-  return 2;
+  return 4;
 };
 
 /**
@@ -216,7 +223,7 @@ export const getModelCatalogAdmin = async (_req, res) => {
  */
 export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   const { id } = req.params || {};
-  const { visibleInIssueCreation } = req.body || {};
+  const { visibleInIssueCreation, visibleInCriteriaWeighting } = req.body || {};
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid model id is required", {
@@ -224,15 +231,31 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
     });
   }
 
-  if (typeof visibleInIssueCreation !== "boolean") {
-    throw createBadRequestError("visibleInIssueCreation must be boolean", {
-      field: "visibleInIssueCreation",
-    });
+  const hasIssueVisibility = typeof visibleInIssueCreation === "boolean";
+  const hasCriteriaVisibility =
+    typeof visibleInCriteriaWeighting === "boolean";
+
+  if (!hasIssueVisibility && !hasCriteriaVisibility) {
+    throw createBadRequestError(
+      "visibleInIssueCreation or visibleInCriteriaWeighting must be boolean",
+      {
+        field: "visibleInIssueCreation",
+      }
+    );
+  }
+
+  const visibilityUpdate = {};
+  if (hasIssueVisibility) {
+    visibilityUpdate.visibleInIssueCreation = visibleInIssueCreation;
+  }
+  if (hasCriteriaVisibility) {
+    visibilityUpdate.visibleInCriteriaWeighting =
+      visibleInCriteriaWeighting;
   }
 
   const model = await IssueModel.findByIdAndUpdate(
     id,
-    { $set: { visibleInIssueCreation } },
+    { $set: visibilityUpdate },
     { new: true, runValidators: true }
   )
     .select("-__v")

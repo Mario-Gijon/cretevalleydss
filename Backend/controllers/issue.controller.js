@@ -79,12 +79,21 @@ export const modelsInfo = async (req, res) => {
   const models = await IssueModel.find({
     $and: [
       {
-        isIssueModel: true,
-      },
-      {
         $or: [
-          { visibleInIssueCreation: { $exists: false } },
-          { visibleInIssueCreation: { $ne: false } },
+          {
+            isIssueModel: true,
+            $or: [
+              { visibleInIssueCreation: { $exists: false } },
+              { visibleInIssueCreation: { $ne: false } },
+            ],
+          },
+          {
+            isCriteriaWeightingModel: true,
+            $or: [
+              { visibleInCriteriaWeighting: { $exists: false } },
+              { visibleInCriteriaWeighting: { $ne: false } },
+            ],
+          },
         ],
       },
       {
@@ -98,8 +107,15 @@ export const modelsInfo = async (req, res) => {
   })
     .select("-__v")
     .lean();
+  const issueModels = models.filter((model) => model?.isIssueModel === true);
+  const criteriaWeightingModels = models.filter(
+    (model) => model?.isCriteriaWeightingModel === true
+  );
 
-  return sendSuccess(res, "Models fetched successfully", models);
+  return sendSuccess(res, "Models fetched successfully", {
+    models: issueModels,
+    criteriaWeightingModels,
+  });
 };
 
 /**

@@ -140,8 +140,12 @@ export const normalizeSupportedDomains = (supportedDomains) => {
 };
 
 export const getSyncBlockerReason = (manifestModel) => {
-  if (manifestModel?.isIssueModel !== true) {
-    return "Model is not marked as issue model";
+  const isIssueModel = manifestModel?.isIssueModel === true;
+  const isCriteriaWeightingModel =
+    manifestModel?.isCriteriaWeightingModel === true;
+
+  if (!isIssueModel && !isCriteriaWeightingModel) {
+    return "Model is not marked as issue model or criteria weighting model";
   }
 
   return null;
@@ -151,6 +155,7 @@ export const buildSkippedManifestModel = (manifestModel, reason) => ({
   apiModelKey: manifestModel?.apiModelKey ?? null,
   displayName: manifestModel?.displayName ?? null,
   isIssueModel: manifestModel?.isIssueModel === true,
+  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
   reason,
 });
 
@@ -198,19 +203,34 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const alternativeEvaluationStructureKey = normalizeNonEmptyString(
     manifestModel?.alternativeEvaluationStructureKey
   );
+  const criteriaWeightingStructureKey = normalizeNonEmptyString(
+    manifestModel?.criteriaWeightingStructureKey
+  );
   const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
   const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
   const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
+  const isIssueModel = manifestModel?.isIssueModel === true;
+  const isCriteriaWeightingModel =
+    manifestModel?.isCriteriaWeightingModel === true;
 
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
-  if (!alternativeEvaluationStructureKey) {
+  if (isIssueModel && !alternativeEvaluationStructureKey) {
     missingFields.push("alternativeEvaluationStructureKey");
+  }
+  if (isCriteriaWeightingModel && !criteriaWeightingStructureKey) {
+    missingFields.push("criteriaWeightingStructureKey");
   }
   if (!modelFamilyKey) missingFields.push("modelFamilyKey");
   if (!modelVersion) missingFields.push("modelVersion");
   if (!versionLabel) missingFields.push("versionLabel");
+  if (typeof manifestModel?.isIssueModel !== "boolean") {
+    missingFields.push("isIssueModel");
+  }
+  if (typeof manifestModel?.isCriteriaWeightingModel !== "boolean") {
+    missingFields.push("isCriteriaWeightingModel");
+  }
 
   if (typeof manifestModel?.isMultiCriteria !== "boolean") {
     missingFields.push("isMultiCriteria");
@@ -237,6 +257,10 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   modelVersion: normalizeNonEmptyString(manifestModel?.modelVersion),
   versionLabel: normalizeNonEmptyString(manifestModel?.versionLabel),
   isIssueModel: manifestModel?.isIssueModel === true,
+  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  visibleInIssueCreation: manifestModel?.isIssueModel === true,
+  visibleInCriteriaWeighting:
+    manifestModel?.isCriteriaWeightingModel === true,
   apiEndpoint: normalizeEndpoint(manifestModel?.apiEndpoint, {
     emptyValue: null,
   }),
@@ -245,6 +269,9 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
   alternativeEvaluationStructureKey: normalizeNonEmptyString(
     manifestModel?.alternativeEvaluationStructureKey
+  ),
+  criteriaWeightingStructureKey: normalizeNonEmptyString(
+    manifestModel?.criteriaWeightingStructureKey
   ),
   supportsConsensus: manifestModel?.supportsConsensus === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,

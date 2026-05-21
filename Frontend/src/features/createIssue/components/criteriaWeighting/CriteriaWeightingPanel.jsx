@@ -10,6 +10,7 @@ import {
 } from "../../utils/criteriaWeighting.model";
 import {
   CRITERIA_WEIGHTING_MODES,
+  buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   collectLeafCriteriaByRoot,
   isDeepEqual,
@@ -30,7 +31,8 @@ export const CriteriaWeightingPanel = ({
   setDefaultModelParams,
   expressionDomainConfig,
 }) => {
-  const { globalDomains, expressionDomains } = useIssuesDataContext();
+  const { globalDomains, expressionDomains, criteriaWeightingModels } =
+    useIssuesDataContext();
 
   const modelUsesWeights = modelUsesCriteriaWeights(selectedModel);
   const isFuzzyModel = isFuzzyCriteriaWeightModel(selectedModel);
@@ -80,6 +82,33 @@ export const CriteriaWeightingPanel = ({
     : null;
 
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
+  const availableCriteriaWeightingModels = useMemo(
+    () =>
+      (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : []).filter(
+        (modelItem) => modelItem?.isCriteriaWeightingModel === true
+      ),
+    [criteriaWeightingModels]
+  );
+  const selectedApiCriteriaWeightingModel = useMemo(() => {
+    const selectedModelId = String(
+      criteriaWeightingConfig?.criteriaWeightingModelId || ""
+    ).trim();
+    const selectedModelKey = String(
+      criteriaWeightingConfig?.criteriaWeightingModelKey || ""
+    ).trim();
+
+    return (
+      availableCriteriaWeightingModels.find((modelItem) => {
+        const modelId = String(modelItem?._id || modelItem?.id || "").trim();
+        const modelKey = String(modelItem?.apiModelKey || "").trim();
+
+        return (
+          (selectedModelId && modelId && modelId === selectedModelId) ||
+          (selectedModelKey && modelKey && modelKey === selectedModelKey)
+        );
+      }) || null
+    );
+  }, [availableCriteriaWeightingModels, criteriaWeightingConfig]);
 
   const updateConfig = (nextConfig, options = {}) => {
     const markDirty = options?.markDirty === true;
@@ -185,7 +214,11 @@ export const CriteriaWeightingPanel = ({
       return;
     }
 
-    if (mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
+    if (
+      mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+      selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey ===
+        "bestWorstCriteria"
+    ) {
       const normalizedPayload = normalizeBwmPayload({
         payload: criteriaWeightingConfig?.payload,
         criterionNames,
@@ -207,6 +240,7 @@ export const CriteriaWeightingPanel = ({
     leafByRoot,
     mode,
     modelUsesWeights,
+    selectedApiCriteriaWeightingModel,
     setCriteriaWeightingConfig,
   ]);
 
@@ -306,37 +340,63 @@ export const CriteriaWeightingPanel = ({
             }
           />
 
-          <CriteriaWeightingMethodCard
-            title="BWM"
-            description="Best-worst now"
-            selected={mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM}
-            disabled={isSingleCriterion}
-            onClick={() =>
-              updateConfig(
-                buildConfigByMode({
-                  mode: CRITERIA_WEIGHTING_MODES.CREATOR_BWM,
-                  leafCriteria,
-                }),
-                { markDirty: true }
-              )
-            }
-          />
+          {availableCriteriaWeightingModels.map((criteriaModel) => {
+            const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
+            const selected =
+              mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+              (String(safeConfig?.criteriaWeightingModelId || "").trim() === modelId ||
+                String(safeConfig?.criteriaWeightingModelKey || "").trim() ===
+                  String(criteriaModel?.apiModelKey || "").trim());
 
-          <CriteriaWeightingMethodCard
-            title="BWM by experts"
-            description="Experts complete later"
-            selected={mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM}
-            disabled={isSingleCriterion}
-            onClick={() =>
-              updateConfig(
-                buildConfigByMode({
-                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_BWM,
-                  leafCriteria,
-                }),
-                { markDirty: true }
-              )
-            }
-          />
+            return (
+              <CriteriaWeightingMethodCard
+                key={`${String(modelId || criteriaModel?.apiModelKey)}-creator`}
+                title={criteriaModel?.name || criteriaModel?.displayName || "Model"}
+                description="Compute now"
+                selected={selected}
+                disabled={isSingleCriterion}
+                onClick={() =>
+                  updateConfig(
+                    buildApiCriteriaWeightingConfig({
+                      mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
+                      leafCriteria,
+                      criteriaWeightingModel: criteriaModel,
+                    }),
+                    { markDirty: true }
+                  )
+                }
+              />
+            );
+          })}
+
+          {availableCriteriaWeightingModels.map((criteriaModel) => {
+            const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
+            const selected =
+              mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
+              (String(safeConfig?.criteriaWeightingModelId || "").trim() === modelId ||
+                String(safeConfig?.criteriaWeightingModelKey || "").trim() ===
+                  String(criteriaModel?.apiModelKey || "").trim());
+
+            return (
+              <CriteriaWeightingMethodCard
+                key={`${String(modelId || criteriaModel?.apiModelKey)}-expert`}
+                title={`${criteriaModel?.name || criteriaModel?.displayName || "Model"} by experts`}
+                description="Experts evaluate later"
+                selected={selected}
+                disabled={isSingleCriterion}
+                onClick={() =>
+                  updateConfig(
+                    buildApiCriteriaWeightingConfig({
+                      mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
+                      leafCriteria,
+                      criteriaWeightingModel: criteriaModel,
+                    }),
+                    { markDirty: true }
+                  )
+                }
+              />
+            );
+          })}
         </Stack>
       )}
 
@@ -346,13 +406,15 @@ export const CriteriaWeightingPanel = ({
         </Alert>
       ) : null}
 
-      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM ? (
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL ? (
         <Alert severity="info">
-          BWM preferences will be collected from experts and aggregated before alternative evaluation.
+          Preferences will be collected from experts and aggregated before alternative evaluation.
         </Alert>
       ) : null}
 
-      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM ? (
+      {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+      selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey ===
+        "bestWorstCriteria" ? (
         <BwmCriteriaWeightsEditor
           criterionNames={criterionNames}
           payload={safeConfig?.payload || {}}

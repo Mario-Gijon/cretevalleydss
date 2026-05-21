@@ -74,6 +74,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "modelVersion": model.model_version,
         "versionLabel": model.version_label,
         "isIssueModel": model.is_issue_model,
+        "isCriteriaWeightingModel": model.is_criteria_weighting_model,
         "apiEndpoint": {
             "method": "POST",
             "path": model.api_endpoint_path,
@@ -83,6 +84,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "extendDescription": model.extend_description,
         "moreInfoUrl": model.more_info_url,
         "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
+        "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
         "supportsConsensus": model.supports_consensus,
         "isMultiCriteria": model.is_multi_criteria,
         "usesCriteriaWeights": model.uses_criteria_weights,

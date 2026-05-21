@@ -33,6 +33,12 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const consensusThreshold = issueInfo.consensusThreshold;
   const paramValues = issueInfo.paramValues || {};
   const criteriaWeightingConfig = issueInfo.criteriaWeightingConfig;
+  const criteriaWeightingParameters =
+    issueInfo.criteriaWeightingParameters &&
+    typeof issueInfo.criteriaWeightingParameters === "object" &&
+    !Array.isArray(issueInfo.criteriaWeightingParameters)
+      ? issueInfo.criteriaWeightingParameters
+      : {};
 
   if (!issueName) {
     throw createBadRequestError("Issue name is required", {
@@ -125,5 +131,6 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     consensusThreshold,
     paramValues,
     criteriaWeightingConfig,
+    criteriaWeightingParameters,
   };
 };

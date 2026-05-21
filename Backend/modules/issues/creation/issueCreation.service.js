@@ -168,6 +168,10 @@ export const createIssueFlow = async ({
     modelVersion,
     versionLabel,
     criteriaWeightingStructureKey: null,
+    criteriaWeightingModel: null,
+    criteriaWeightingApiModelKey: null,
+    criteriaWeightingApiEndpoint: null,
+    criteriaWeightingParameters: {},
     criteriaWeightingAggregationMode: "none",
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
@@ -257,16 +261,26 @@ export const createIssueFlow = async ({
   const resolvedCriteriaWeighting =
     await resolveCriteriaWeightingConfigOrThrow({
       criteriaWeightingConfig: input.criteriaWeightingConfig,
+      criteriaWeightingParameters: input.criteriaWeightingParameters,
       criterionNames,
       isSingleLeafCriterion,
       model,
       fuzzyValueCount: fuzzyCriteriaWeightValueCount,
       apiModelsBaseUrl,
       httpClient,
+      session,
     });
 
   issue.criteriaWeightingStructureKey =
     resolvedCriteriaWeighting.criteriaWeightingStructureKey;
+  issue.criteriaWeightingModel =
+    resolvedCriteriaWeighting.criteriaWeightingModel?._id || null;
+  issue.criteriaWeightingApiModelKey =
+    resolvedCriteriaWeighting.criteriaWeightingApiModelKey || null;
+  issue.criteriaWeightingApiEndpoint =
+    resolvedCriteriaWeighting.criteriaWeightingApiEndpoint || null;
+  issue.criteriaWeightingParameters =
+    resolvedCriteriaWeighting.criteriaWeightingParameters || {};
   issue.criteriaWeightingAggregationMode =
     resolvedCriteriaWeighting.criteriaWeightingAggregationMode;
   issue.currentStage = resolvedCriteriaWeighting.currentStage;

@@ -58,8 +58,10 @@ class ModelDefinition:
     version_label: str = "v1"
     more_info_url: str | None = None
     is_issue_model: bool = True
+    is_criteria_weighting_model: bool = False
 
     alternative_evaluation_structure_key: str | None = None
+    criteria_weighting_structure_key: str | None = None
     supports_consensus: bool = False
     is_multi_criteria: bool | None = None
     uses_criteria_weights: bool = False
@@ -82,6 +84,12 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "alternative_evaluation_structure_key for issue models."
+            )
+
+        if self.is_criteria_weighting_model and not self.criteria_weighting_structure_key:
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires "
+                "criteria_weighting_structure_key for criteria weighting models."
             )
 
 
@@ -365,25 +373,16 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         version_label="v1",
         more_info_url=None,
         is_issue_model=False,
+        is_criteria_weighting_model=True,
         alternative_evaluation_structure_key=None,
+        criteria_weighting_structure_key="bestWorstCriteria",
         supports_consensus=False,
         is_multi_criteria=True,
         uses_criteria_weights=False,
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=False,
         supported_domains=[],
-        parameters=[
-            {
-                "key": "eps_penalty",
-                "label": "Epsilon penalty",
-                "type": "number",
-                "scope": "global",
-                "parameterStructureKey": "numberGlobal",
-                "required": False,
-                "default": 1,
-                "restrictions": {"min": None, "max": None, "allowed": None},
-            }
-        ],
+        parameters=[],
     ),
     ModelDefinition(
         api_model_key="cmcc",

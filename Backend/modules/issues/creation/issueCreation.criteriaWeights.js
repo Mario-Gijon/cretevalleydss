@@ -2,6 +2,8 @@ import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
 } from "../evaluations/index.js";
+import { IssueModel } from "../../../models/IssueModels.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
 import {
   createBadRequestError,
   createInternalError,
@@ -13,6 +15,7 @@ import {
 import {
   normalizeNonEmptyString,
   resolveCriteriaWeightingAggregationModeOrThrow,
+  validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./issueCreation.model.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
@@ -30,23 +33,17 @@ const MODE_CONFIGS = Object.freeze({
     aggregationMode: "mean",
     structureKey: "manualCriteriaWeights",
   }),
-  creatorBwm: Object.freeze({
+  creatorApiModel: Object.freeze({
     source: "creator",
-    method: "bwm",
+    method: "apiModel",
     aggregationMode: "none",
-    structureKey: "bestWorstCriteria",
+    structureKey: null,
   }),
-  expertBwm: Object.freeze({
+  expertApiModel: Object.freeze({
     source: "experts",
-    method: "bwm",
-    aggregationMode: "bwmMean",
-    structureKey: "bestWorstCriteria",
-  }),
-  expertBwmCmcc: Object.freeze({
-    source: "experts",
-    method: "bwm",
-    aggregationMode: "cmccSimulation",
-    structureKey: "bestWorstCriteria",
+    method: "apiModel",
+    aggregationMode: "mean",
+    structureKey: null,
   }),
   creatorFuzzy: Object.freeze({
     source: "creator",
@@ -271,7 +268,7 @@ const normalizeBwmComparisonsMapOrThrow = ({
 const normalizeCreatorBwmPayloadOrThrow = ({ payload, criterionNames }) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError(
-      "criteriaWeightingConfig.payload must be an object for creatorBwm mode",
+      "criteriaWeightingConfig.payload must be an object for creator-side BWM",
       {
         field: "criteriaWeightingConfig.payload",
       }
@@ -336,30 +333,6 @@ const normalizeCreatorBwmPayloadOrThrow = ({ payload, criterionNames }) => {
   };
 };
 
-const normalizeBwmResultWeightsOrThrow = ({ weights, criterionCount }) => {
-  if (!Array.isArray(weights) || weights.length < criterionCount) {
-    throw createBadRequestError("ApiModels BWM output does not contain valid weights", {
-      field: "criteriaWeightingConfig.payload",
-    });
-  }
-
-  const baseWeights = weights.slice(0, criterionCount).map(Number);
-  if (baseWeights.some((value) => !Number.isFinite(value))) {
-    throw createBadRequestError("ApiModels BWM output contains invalid weights", {
-      field: "criteriaWeightingConfig.payload",
-    });
-  }
-
-  const total = baseWeights.reduce((sum, value) => sum + value, 0);
-  if (!(total > 0)) {
-    throw createBadRequestError("ApiModels BWM output weights cannot be normalized", {
-      field: "criteriaWeightingConfig.payload",
-    });
-  }
-
-  return baseWeights.map((value) => value / total);
-};
-
 const resolveModeConfigOrThrow = (rawConfig) => {
   if (!isPlainObject(rawConfig)) {
     throw createBadRequestError("criteriaWeightingConfig is required", {
@@ -413,7 +386,11 @@ const resolveModeConfigOrThrow = (rawConfig) => {
     );
   }
 
-  if (structureKey && structureKey !== modeConfig.structureKey) {
+  if (
+    structureKey &&
+    modeConfig.structureKey &&
+    structureKey !== modeConfig.structureKey
+  ) {
     throw createBadRequestError(
       `criteriaWeightingConfig.structureKey must be '${modeConfig.structureKey}' for mode '${mode}'`,
       {
@@ -433,12 +410,63 @@ const resolveModeConfigOrThrow = (rawConfig) => {
     structureKey: modeConfig.structureKey,
     aggregationMode: resolvedAggregationMode,
     payload: isPlainObject(rawConfig.payload) ? rawConfig.payload : {},
+    criteriaWeightingModelKey: normalizeNonEmptyString(
+      rawConfig.criteriaWeightingModelKey
+    ),
+    criteriaWeightingModelId: normalizeNonEmptyString(
+      rawConfig.criteriaWeightingModelId
+    ),
   };
 };
 
-const resolveCreatorBwmWeightsOrThrow = async ({
+const loadCriteriaWeightingModelOrThrow = async ({
+  resolvedConfig,
+  session,
+}) => {
+  const selectedModelId = resolvedConfig.criteriaWeightingModelId;
+  const selectedModelKey = resolvedConfig.criteriaWeightingModelKey;
+
+  if (!selectedModelId && !selectedModelKey) {
+    throw createBadRequestError(
+      "criteriaWeightingConfig.criteriaWeightingModelId or criteriaWeightingConfig.criteriaWeightingModelKey is required",
+      {
+        field: "criteriaWeightingConfig.criteriaWeightingModelId",
+      }
+    );
+  }
+
+  const query = {
+    isCriteriaWeightingModel: true,
+    $or: [
+      { visibleInCriteriaWeighting: { $exists: false } },
+      { visibleInCriteriaWeighting: { $ne: false } },
+    ],
+  };
+
+  if (selectedModelId) {
+    query._id = selectedModelId;
+  } else {
+    query.apiModelKey = selectedModelKey;
+  }
+
+  const criteriaWeightingModel = await IssueModel.findOne(query).session(session);
+  if (!criteriaWeightingModel) {
+    throw createBadRequestError("Selected criteria weighting model does not exist", {
+      field: selectedModelId
+        ? "criteriaWeightingConfig.criteriaWeightingModelId"
+        : "criteriaWeightingConfig.criteriaWeightingModelKey",
+    });
+  }
+
+  return criteriaWeightingModel;
+};
+
+const resolveCreatorCriteriaWeightingModelWeightsOrThrow = async ({
   payload,
   criterionNames,
+  criteriaWeightingModel,
+  criteriaWeightingRuntime,
+  criteriaWeightingParameters,
   apiModelsBaseUrl,
   httpClient,
 }) => {
@@ -454,49 +482,123 @@ const resolveCreatorBwmWeightsOrThrow = async ({
     });
   }
 
-  const normalizedPayload = normalizeCreatorBwmPayloadOrThrow({
-    payload,
-    criterionNames,
-  });
-
-  const expertsData = {
-    creator: {
-      mic: criterionNames.map(
-        (criterionName) => Number(normalizedPayload.bestToOthers[criterionName])
-      ),
-      lic: criterionNames.map(
-        (criterionName) => Number(normalizedPayload.othersToWorst[criterionName])
-      ),
-    },
-  };
+  const normalizedPayload = payload;
 
   const normalizedBaseUrl = apiModelsBaseUrl.replace(/\/+$/g, "");
 
   let response;
   try {
-    response = await httpClient.post(`${normalizedBaseUrl}/bwm`, {
-      experts_data: expertsData,
-      eps_penalty: 1,
-    });
+    response = await httpClient.post(
+      `${normalizedBaseUrl}${criteriaWeightingRuntime.apiEndpoint.path}`,
+      {
+        modelParameters: criteriaWeightingParameters,
+        evaluations: [
+          {
+            expert: {
+              id: "creator",
+              name: "Creator",
+              email: "creator@local",
+            },
+            payload: normalizedPayload,
+          },
+        ],
+        context: {
+          issue: {
+            id: "preview",
+            name: "Issue creation preview",
+            consensusThreshold: null,
+            consensusMaxPhases: null,
+          },
+          criteria: criterionNames.map((criterionName, index) => ({
+            id: String(index + 1),
+            name: criterionName,
+            type: null,
+          })),
+          consensusPhase: 1,
+          previousStageResult: null,
+          structure: {
+            key: criteriaWeightingRuntime.criteriaWeightingStructureKey,
+            stage: "criteriaWeighting",
+          },
+        },
+      }
+    );
   } catch (error) {
-    throw createModelApiRequestError(error, "Failed to compute BWM weights");
+    throw createModelApiRequestError(
+      error,
+      `Failed to compute ${criteriaWeightingModel.name} weights`
+    );
   }
 
-  const result = unwrapModelApiResponse(response, "Failed to compute BWM weights");
-  return normalizeBwmResultWeightsOrThrow({
-    weights: result?.weights,
-    criterionCount: criterionNames.length,
+  const result = unwrapModelApiResponse(
+    response,
+    `Failed to compute ${criteriaWeightingModel.name} weights`
+  );
+
+  const weightsByCriterion = result?.weightsByCriterion;
+  if (!isPlainObject(weightsByCriterion)) {
+    throw createBadRequestError(
+      `${criteriaWeightingModel.name} output does not contain weightsByCriterion`,
+      {
+        field: "criteriaWeightingConfig.payload",
+      }
+    );
+  }
+
+  const weights = criterionNames.map((criterionName) => {
+    const numeric = Number(weightsByCriterion[criterionName]);
+    if (!Number.isFinite(numeric)) {
+      throw createBadRequestError(
+        `${criteriaWeightingModel.name} output contains invalid weight for '${criterionName}'`,
+        {
+          field: "criteriaWeightingConfig.payload",
+        }
+      );
+    }
+    return numeric;
+  });
+
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (!(total > 0)) {
+    throw createBadRequestError(
+      `${criteriaWeightingModel.name} output weights cannot be normalized`,
+      {
+        field: "criteriaWeightingConfig.payload",
+      }
+    );
+  }
+
+  return weights.map((value) => value / total);
+};
+
+const validateCriteriaWeightingParametersOrThrow = ({
+  criteriaWeightingModel,
+  criteriaWeightingParameters,
+  criterionNames,
+}) => {
+  return validateAndNormalizeModelParametersOrThrow({
+    model: criteriaWeightingModel,
+    paramValues: isPlainObject(criteriaWeightingParameters)
+      ? criteriaWeightingParameters
+      : {},
+    criteriaNodes: criterionNames.map((criterionName) => ({
+      name: criterionName,
+      children: [],
+    })),
+    alternativesCount: null,
   });
 };
 
 export const resolveCriteriaWeightingConfigOrThrow = async ({
   criteriaWeightingConfig,
+  criteriaWeightingParameters,
   criterionNames,
   isSingleLeafCriterion,
   model,
   fuzzyValueCount = null,
   apiModelsBaseUrl,
   httpClient,
+  session,
 }) => {
   ensureCriteriaNamesOrThrow(criterionNames);
 
@@ -504,6 +606,10 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     return {
       criteriaWeightingStructureKey: null,
       criteriaWeightingAggregationMode: "none",
+      criteriaWeightingModel: null,
+      criteriaWeightingApiModelKey: null,
+      criteriaWeightingApiEndpoint: null,
+      criteriaWeightingParameters: {},
       modelWeights: null,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
@@ -528,18 +634,32 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     );
   }
 
-  if (resolvedConfig.mode === "expertBwmCmcc") {
-    throw createBadRequestError(
-      "BWM simulated consensus is not implemented yet",
-      {
-        field: "criteriaWeightingConfig.mode",
-      }
-    );
+  let criteriaWeightingModel = null;
+  let criteriaWeightingRuntime = null;
+  let normalizedCriteriaWeightingParameters = {};
+
+  if (resolvedConfig.method === "apiModel") {
+    criteriaWeightingModel = await loadCriteriaWeightingModelOrThrow({
+      resolvedConfig,
+      session,
+    });
+    criteriaWeightingRuntime =
+      validateCriteriaWeightingModelRuntimeConfigOrThrow(criteriaWeightingModel);
+    normalizedCriteriaWeightingParameters = validateCriteriaWeightingParametersOrThrow({
+      criteriaWeightingModel,
+      criteriaWeightingParameters,
+      criterionNames,
+    });
   }
 
-  if (resolvedConfig.structureKey) {
+  const resolvedStructureKey =
+    resolvedConfig.method === "apiModel"
+      ? criteriaWeightingRuntime.criteriaWeightingStructureKey
+      : resolvedConfig.structureKey;
+
+  if (resolvedStructureKey) {
     const criteriaWeightingStructure = getEvaluationStructureOrThrow(
-      resolvedConfig.structureKey
+      resolvedStructureKey
     );
 
     if (criteriaWeightingStructure.stage !== EVALUATION_STAGES.CRITERIA_WEIGHTING) {
@@ -565,8 +685,12 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
     if (isSingleLeafCriterion) {
       return {
-        criteriaWeightingStructureKey: resolvedConfig.structureKey,
+        criteriaWeightingStructureKey: resolvedStructureKey,
         criteriaWeightingAggregationMode: "none",
+        criteriaWeightingModel: null,
+        criteriaWeightingApiModelKey: null,
+        criteriaWeightingApiEndpoint: null,
+        criteriaWeightingParameters: {},
         modelWeights: [Array.from({ length: fuzzyValueCount }, () => 1)],
         currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
         isCriteriaWeightingRequired: false,
@@ -580,8 +704,12 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     });
 
     return {
-      criteriaWeightingStructureKey: resolvedConfig.structureKey,
+      criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingAggregationMode: "none",
+      criteriaWeightingModel: null,
+      criteriaWeightingApiModelKey: null,
+      criteriaWeightingApiEndpoint: null,
+      criteriaWeightingParameters: {},
       modelWeights,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
@@ -595,8 +723,15 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
         : [1];
 
     return {
-      criteriaWeightingStructureKey: resolvedConfig.structureKey,
+      criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingAggregationMode: "none",
+      criteriaWeightingModel,
+      criteriaWeightingApiModelKey: criteriaWeightingRuntime?.apiModelKey || null,
+      criteriaWeightingApiEndpoint: criteriaWeightingRuntime?.apiEndpoint || null,
+      criteriaWeightingParameters:
+        resolvedConfig.method === "apiModel"
+          ? normalizedCriteriaWeightingParameters
+          : {},
       modelWeights: fixedWeights,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
@@ -605,8 +740,15 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
   if (resolvedConfig.source === "experts") {
     return {
-      criteriaWeightingStructureKey: resolvedConfig.structureKey,
+      criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingAggregationMode: resolvedConfig.aggregationMode,
+      criteriaWeightingModel,
+      criteriaWeightingApiModelKey: criteriaWeightingRuntime?.apiModelKey || null,
+      criteriaWeightingApiEndpoint: criteriaWeightingRuntime?.apiEndpoint || null,
+      criteriaWeightingParameters:
+        resolvedConfig.method === "apiModel"
+          ? normalizedCriteriaWeightingParameters
+          : {},
       modelWeights: null,
       currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       isCriteriaWeightingRequired: true,
@@ -620,13 +762,29 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       payload: resolvedConfig.payload,
       criterionNames,
     });
-  } else if (resolvedConfig.method === "bwm") {
-    modelWeights = await resolveCreatorBwmWeightsOrThrow({
-      payload: resolvedConfig.payload,
-      criterionNames,
-      apiModelsBaseUrl,
-      httpClient,
-    });
+  } else if (resolvedConfig.method === "apiModel") {
+    if (resolvedStructureKey === "bestWorstCriteria") {
+      const normalizedBwmPayload = normalizeCreatorBwmPayloadOrThrow({
+        payload: resolvedConfig.payload,
+        criterionNames,
+      });
+      modelWeights = await resolveCreatorCriteriaWeightingModelWeightsOrThrow({
+        payload: normalizedBwmPayload,
+        criterionNames,
+        criteriaWeightingModel,
+        criteriaWeightingRuntime,
+        criteriaWeightingParameters: normalizedCriteriaWeightingParameters,
+        apiModelsBaseUrl,
+        httpClient,
+      });
+    } else {
+      throw createBadRequestError(
+        `Creator-side execution is not supported for criteria weighting structure '${resolvedStructureKey}'`,
+        {
+          field: "criteriaWeightingConfig.mode",
+        }
+      );
+    }
   } else {
     throw createBadRequestError(
       `Unsupported criteria weighting method: ${resolvedConfig.method}`,
@@ -637,8 +795,15 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   return {
-    criteriaWeightingStructureKey: resolvedConfig.structureKey,
+    criteriaWeightingStructureKey: resolvedStructureKey,
     criteriaWeightingAggregationMode: "none",
+    criteriaWeightingModel,
+    criteriaWeightingApiModelKey: criteriaWeightingRuntime?.apiModelKey || null,
+    criteriaWeightingApiEndpoint: criteriaWeightingRuntime?.apiEndpoint || null,
+    criteriaWeightingParameters:
+      resolvedConfig.method === "apiModel"
+        ? normalizedCriteriaWeightingParameters
+        : {},
     modelWeights,
     currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     isCriteriaWeightingRequired: false,

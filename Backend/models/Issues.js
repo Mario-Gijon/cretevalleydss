@@ -144,6 +144,37 @@ const issueSchema = new Schema(
       trim: true,
       default: null,
     },
+    criteriaWeightingModel: {
+      type: Schema.Types.ObjectId,
+      ref: "IssueModel",
+      default: null,
+    },
+    criteriaWeightingApiModelKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    criteriaWeightingApiEndpoint: {
+      method: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      path: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      operationId: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+    },
+    criteriaWeightingParameters: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
     criteriaWeightingAggregationMode: {
       type: String,
       trim: true,

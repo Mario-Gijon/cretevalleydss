@@ -175,7 +175,7 @@ export const buildCriteriaWeightingRequestPayload = async ({
   const { criteria } = await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
-    modelParameters: normalizeModelParameters(issue.modelParameters),
+    modelParameters: normalizeModelParameters(issue.criteriaWeightingParameters),
     evaluations: normalizeEvaluationsPayload(evaluations),
     context: {
       issue: {
@@ -236,7 +236,6 @@ export const buildIssueModelExecutionResult = ({
 };
 
 export const buildCriteriaWeightingExecutionResult = ({
-  issue,
   result,
   structureKey,
   message,
@@ -290,9 +289,49 @@ export const buildCriteriaWeightingExecutionResult = ({
     );
   }
 
-  const modelExecution = isPlainObject(result.modelExecution)
-    ? result.modelExecution
-    : {};
+  if (!isPlainObject(result.modelExecution)) {
+    throw createInternalError(
+      "Criteria weighting result.modelExecution must be an object",
+      {
+        field: "result.modelExecution",
+      }
+    );
+  }
+
+  const normalizedExecutionKind = normalizeNonEmptyString(result.modelExecution.kind);
+  if (!normalizedExecutionKind) {
+    throw createInternalError(
+      "Criteria weighting result.modelExecution.kind is required",
+      {
+        field: "result.modelExecution.kind",
+      }
+    );
+  }
+
+  if (normalizedExecutionKind === "apiModels") {
+    const apiModelKey = normalizeNonEmptyString(result.modelExecution.apiModelKey);
+    const apiEndpointPath = normalizeNonEmptyString(
+      result.modelExecution.apiEndpointPath
+    );
+
+    if (!apiModelKey) {
+      throw createInternalError(
+        "Criteria weighting apiModels execution requires modelExecution.apiModelKey",
+        {
+          field: "result.modelExecution.apiModelKey",
+        }
+      );
+    }
+
+    if (!apiEndpointPath) {
+      throw createInternalError(
+        "Criteria weighting apiModels execution requires modelExecution.apiEndpointPath",
+        {
+          field: "result.modelExecution.apiEndpointPath",
+        }
+      );
+    }
+  }
 
   return {
     message: normalizedMessage,
@@ -300,10 +339,10 @@ export const buildCriteriaWeightingExecutionResult = ({
     weightsByCriterion: result.weightsByCriterion,
     collectiveEvaluations: result.collectiveEvaluations,
     modelExecution: {
-      kind: modelExecution.kind || "unknown",
+      ...result.modelExecution,
+      kind: normalizedExecutionKind,
       structureKey,
-      executedAt: modelExecution.executedAt || new Date(),
-      ...modelExecution,
+      executedAt: result.modelExecution.executedAt || new Date(),
       structureKey,
     },
     rawOutput: result.rawOutput,

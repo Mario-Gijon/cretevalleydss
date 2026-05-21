@@ -33,9 +33,8 @@ const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",
   CREATOR_MANUAL: "creatorManual",
   EXPERT_MANUAL: "expertManual",
-  CREATOR_BWM: "creatorBwm",
-  EXPERT_BWM: "expertBwm",
-  EXPERT_BWM_CMCC: "expertBwmCmcc",
+  CREATOR_API_MODEL: "creatorApiModel",
+  EXPERT_API_MODEL: "expertApiModel",
 });
 
 
@@ -746,17 +745,6 @@ export const useCreateIssueFlow = () => {
 
     if (
       modelNeedsCriteriaWeights &&
-      criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC
-    ) {
-      showSnackbarAlert(
-        "Simulated consensus for BWM will be available later.",
-        "error"
-      );
-      return;
-    }
-
-    if (
-      modelNeedsCriteriaWeights &&
       criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY
     ) {
       const fuzzyValueCount = resolveAssignedFuzzyValueCount({
@@ -788,7 +776,10 @@ export const useCreateIssueFlow = () => {
         }
       }
 
-      if (criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
+      if (
+        criteriaWeightingConfig.mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
+        criteriaWeightingConfig?.structureKey === "bestWorstCriteria"
+      ) {
         const bwmValidationError = validateCreatorBwmConfig({
           criteriaWeightingConfig,
           leafCriteria,
@@ -815,6 +806,12 @@ export const useCreateIssueFlow = () => {
         return accumulator;
       }, {});
     issueInfoPayload.paramValues = sanitizedParamValues;
+    issueInfoPayload.criteriaWeightingParameters =
+      criteriaWeightingConfig?.criteriaWeightingParameters &&
+      typeof criteriaWeightingConfig.criteriaWeightingParameters === "object" &&
+      !Array.isArray(criteriaWeightingConfig.criteriaWeightingParameters)
+        ? criteriaWeightingConfig.criteriaWeightingParameters
+        : {};
 
     const result = await createIssue({
       ...issueInfoPayload,

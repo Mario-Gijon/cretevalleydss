@@ -4,9 +4,8 @@ export const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",
   CREATOR_MANUAL: "creatorManual",
   EXPERT_MANUAL: "expertManual",
-  CREATOR_BWM: "creatorBwm",
-  EXPERT_BWM: "expertBwm",
-  EXPERT_BWM_CMCC: "expertBwmCmcc",
+  CREATOR_API_MODEL: "creatorApiModel",
+  EXPERT_API_MODEL: "expertApiModel",
 });
 
 export const normalizeMode = (mode) =>
@@ -116,39 +115,6 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
     };
   }
 
-  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_BWM) {
-    return {
-      mode: resolvedMode,
-      source: "creator",
-      method: "bwm",
-      aggregationMode: "none",
-      structureKey: "bestWorstCriteria",
-      payload: buildDefaultBwmPayload(leafCriteria),
-    };
-  }
-
-  if (resolvedMode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM) {
-    return {
-      mode: resolvedMode,
-      source: "experts",
-      method: "bwm",
-      aggregationMode: "bwmMean",
-      structureKey: "bestWorstCriteria",
-      payload: {},
-    };
-  }
-
-  if (resolvedMode === CRITERIA_WEIGHTING_MODES.EXPERT_BWM_CMCC) {
-    return {
-      mode: resolvedMode,
-      source: "experts",
-      method: "bwm",
-      aggregationMode: "cmccSimulation",
-      structureKey: "bestWorstCriteria",
-      payload: {},
-    };
-  }
-
   return {
     mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
     source: "experts",
@@ -156,6 +122,50 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
     aggregationMode: "mean",
     structureKey: "manualCriteriaWeights",
     payload: {},
+  };
+};
+
+const resolveApiModelAggregationMode = (structureKey) => {
+  void structureKey;
+  return "mean";
+};
+
+const buildDefaultPayloadForApiModel = ({ structureKey, leafCriteria }) => {
+  if (structureKey === "bestWorstCriteria") {
+    return buildDefaultBwmPayload(leafCriteria);
+  }
+
+  return {};
+};
+
+export const buildApiCriteriaWeightingConfig = ({
+  mode,
+  leafCriteria,
+  criteriaWeightingModel,
+}) => {
+  const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
+  const structureKey = String(
+    criteriaWeightingModel?.criteriaWeightingStructureKey || ""
+  ).trim();
+  const modelId = String(criteriaWeightingModel?._id || criteriaWeightingModel?.id || "").trim();
+  const modelKey = String(criteriaWeightingModel?.apiModelKey || "").trim();
+
+  return {
+    mode: isCreatorMode
+      ? CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL
+      : CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
+    source: isCreatorMode ? "creator" : "experts",
+    method: "apiModel",
+    aggregationMode: isCreatorMode
+      ? "none"
+      : resolveApiModelAggregationMode(structureKey),
+    structureKey: structureKey || null,
+    criteriaWeightingModelId: modelId || null,
+    criteriaWeightingModelKey: modelKey || null,
+    criteriaWeightingParameters: {},
+    payload: isCreatorMode
+      ? buildDefaultPayloadForApiModel({ structureKey, leafCriteria })
+      : {},
   };
 };
 
