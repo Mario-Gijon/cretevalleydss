@@ -191,7 +191,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     return {
         "matrices": matrices,
         "weights": _weights(payload, len(criteria)),
-        "criterion_types": [_criterion_type(item.get("type")) for item in criteria],
+        "criterion_directions": [_criterion_type(item.get("type")) for item in criteria],
         "alternative_names": alternative_names,
         "criterion_names": criterion_names,
     }
@@ -237,20 +237,24 @@ def _output(
         raise ValueError("ARAS output is missing collective_scores")
 
     ranking = [alternative_names[int(index)] for index in ranking_indexes]
+    if len(ranking) == 0:
+        raise ValueError("ARAS output collective_ranking is empty")
 
-    scores_by_alternative = {
-        alternative_names[index]: float(score)
-        for index, score in enumerate(collective_scores)
-        if index < len(alternative_names)
-    }
+    ranked_alternatives = []
+    for rank_position, alternative_name in enumerate(ranking, start=1):
+        alternative_index = alternative_names.index(alternative_name)
+        score = collective_scores[alternative_index]
+        ranked_alternatives.append(
+            {
+                "alternativeId": None,
+                "name": alternative_name,
+                "score": float(score),
+                "rank": rank_position,
+            }
+        )
 
     return {
-        "ranking": ranking,
-        "rankedWithScores": [
-            {"name": name, "score": scores_by_alternative.get(name)}
-            for name in ranking
-        ],
-        "scoresByAlternative": scores_by_alternative,
+        "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_collective_evaluations(
             collective_matrix=run_result.get("collective_matrix"),
             alternative_names=alternative_names,
@@ -269,7 +273,7 @@ def execute_aras(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSON
         results = run_aras(
             execution_input["matrices"],
             weights=execution_input["weights"],
-            criterion_type=execution_input["criterion_types"],
+            criterion_type=execution_input["criterion_directions"],
         )
 
         return success_response(

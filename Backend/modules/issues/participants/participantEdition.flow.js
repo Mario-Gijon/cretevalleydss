@@ -141,7 +141,7 @@ const addExpertsToActiveIssue = async ({
     if (existingParticipation) continue;
 
     const isAdminExpert = sameId(expertUser._id, userId);
-    const weightsCompleted = !weightsStageIsOpen || leafCriteria.length === 1;
+    const weightsCompleted = leafCriteria.length === 1;
 
     await Participation.create({
       issue: issue._id,

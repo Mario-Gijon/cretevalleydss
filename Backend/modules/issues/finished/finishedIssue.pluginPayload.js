@@ -87,47 +87,14 @@ const ensureModelOrThrow = async ({ issue }) => {
   return loadedModel;
 };
 
-const normalizeRankingEntry = ({ entry, scoresByAlternative }) => {
-  if (typeof entry === "string" && entry.trim()) {
-    return {
-      name: entry,
-      score: isPlainObject(scoresByAlternative)
-        ? scoresByAlternative[entry] ?? null
-        : null,
-    };
-  }
-
-  if (!isPlainObject(entry)) {
-    return null;
-  }
-
-  const name =
-    typeof entry.name === "string" && entry.name.trim()
-      ? entry.name
-      : typeof entry.alternative === "string" && entry.alternative.trim()
-      ? entry.alternative
-      : null;
-
-  if (!name) {
-    return null;
-  }
-
-  const score = entry.score ?? entry.value ?? entry.weightedScore ?? null;
-
-  return {
-    name,
-    score,
-  };
-};
-
-const buildRankingPayloadOrThrow = ({ stageResult }) => {
-  const rankingSource = Array.isArray(stageResult?.ranking)
-    ? stageResult.ranking
+const buildRankedAlternativesPayloadOrThrow = ({ stageResult }) => {
+  const rankedAlternatives = Array.isArray(stageResult?.rankedAlternatives)
+    ? stageResult.rankedAlternatives
     : null;
 
-  if (!Array.isArray(rankingSource)) {
-    throw createInternalError("IssueStageResult ranking is required", {
-      field: "ranking",
+  if (!Array.isArray(rankedAlternatives) || rankedAlternatives.length === 0) {
+    throw createInternalError("IssueStageResult rankedAlternatives is required", {
+      field: "rankedAlternatives",
       details: {
         issueId: toIdString(stageResult?.issue),
         stage: stageResult?.stage,
@@ -136,39 +103,47 @@ const buildRankingPayloadOrThrow = ({ stageResult }) => {
     });
   }
 
-  const rankedWithScoresSource = Array.isArray(stageResult?.rankedWithScores)
-    ? stageResult.rankedWithScores
-    : [];
+  return rankedAlternatives.map((entry, index) => {
+    if (!isPlainObject(entry)) {
+      throw createInternalError("Invalid rankedAlternatives entry", {
+        field: `rankedAlternatives[${index}]`,
+      });
+    }
 
-  const scoresByAlternative = isPlainObject(stageResult?.scoresByAlternative)
-    ? stageResult.scoresByAlternative
-    : {};
+    const name =
+      typeof entry.name === "string" && entry.name.trim()
+        ? entry.name.trim()
+        : null;
+    if (!name) {
+      throw createInternalError("rankedAlternatives entry requires name", {
+        field: `rankedAlternatives[${index}].name`,
+      });
+    }
 
-  const rankingInput = rankedWithScoresSource.length > 0
-    ? rankedWithScoresSource
-    : rankingSource;
+    const score = Number(entry.score);
+    if (!Number.isFinite(score)) {
+      throw createInternalError("rankedAlternatives entry requires finite score", {
+        field: `rankedAlternatives[${index}].score`,
+      });
+    }
 
-  const ranking = rankingInput
-    .map((entry) =>
-      normalizeRankingEntry({
-        entry,
-        scoresByAlternative,
-      })
-    )
-    .filter(Boolean);
+    const rank = Number(entry.rank);
+    if (!Number.isInteger(rank) || rank <= 0) {
+      throw createInternalError("rankedAlternatives entry requires positive rank", {
+        field: `rankedAlternatives[${index}].rank`,
+      });
+    }
 
-  if (ranking.length === 0) {
-    throw createInternalError("IssueStageResult ranking output is empty", {
-      field: "ranking",
-      details: {
-        issueId: toIdString(stageResult?.issue),
-        stage: stageResult?.stage,
-        consensusPhase: stageResult?.consensusPhase,
-      },
-    });
-  }
+    const alternativeId =
+      typeof entry.alternativeId === "string" ? entry.alternativeId : null;
 
-  return ranking;
+    return {
+      alternativeId,
+      name,
+      score,
+      rank,
+    };
+  });
 };
 
 const buildCollectiveMatrixEvaluations = ({
@@ -596,6 +571,287 @@ const buildModelExecutionPayload = (stageResult) => {
   };
 };
 
+const resolveCriteriaWeightingPhase = async ({ issueId }) => {
+  const latestCriteriaWeightingResult = await IssueStageResult.findOne({
+    issue: issueId,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  })
+    .sort({ consensusPhase: -1 })
+    .lean();
+
+  if (!latestCriteriaWeightingResult) {
+    return null;
+  }
+
+  return normalizeConsensusPhaseOrThrow({
+    value: latestCriteriaWeightingResult.consensusPhase,
+    issueId,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  });
+};
+
+const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
+  issue,
+  orderedLeafCriteria,
+}) => {
+  const stageResult = await IssueStageResult.findOne({
+    issue: issue._id,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  })
+    .sort({ consensusPhase: -1 })
+    .lean();
+
+  if (!stageResult) {
+    return null;
+  }
+
+  const sourceWeightsByCriterion = isPlainObject(stageResult?.weightsByCriterion)
+    ? stageResult.weightsByCriterion
+    : isPlainObject(stageResult?.collectiveEvaluations?.weightsByCriterion)
+      ? stageResult.collectiveEvaluations.weightsByCriterion
+      : null;
+
+  if (!isPlainObject(sourceWeightsByCriterion)) {
+    return null;
+  }
+
+  const weights = orderedLeafCriteria.map((criterion) => {
+    const criterionName = criterion.name;
+    const rawWeight = sourceWeightsByCriterion[criterionName];
+    const weight = Number(rawWeight);
+
+    if (!Number.isFinite(weight)) {
+      throw createInternalError(
+        `Criteria weighting stage result has invalid weight for criterion '${criterionName}'`,
+        {
+          field: "collectiveEvaluations.weightsByCriterion",
+          details: {
+            issueId: toIdString(issue?._id),
+            criterionName,
+          },
+        }
+      );
+    }
+
+    return {
+      criterionId: toIdString(criterion._id),
+      criterionName,
+      weight,
+    };
+  });
+
+  const weightsByCriterion = weights.reduce((accumulator, entry) => {
+    accumulator[entry.criterionName] = entry.weight;
+    return accumulator;
+  }, {});
+
+  return {
+    source: "criteriaWeightingStageResult",
+    weightsByCriterion,
+    weights,
+  };
+};
+
+const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
+  issue,
+  orderedLeafCriteria,
+  modelUsesWeights,
+}) => {
+  const leafCount = orderedLeafCriteria.length;
+  const sourceWeights = Array.isArray(issue?.modelParameters?.weights)
+    ? issue.modelParameters.weights
+    : null;
+
+  if (!sourceWeights) {
+    if (leafCount === 1) {
+      const criterion = orderedLeafCriteria[0];
+      const weights = [
+        {
+          criterionId: toIdString(criterion._id),
+          criterionName: criterion.name,
+          weight: 1,
+        },
+      ];
+
+      return {
+        source: "modelParameters",
+        weightsByCriterion: {
+          [criterion.name]: 1,
+        },
+        weights,
+      };
+    }
+
+    if (modelUsesWeights) {
+      throw createInternalError("Finished issue is missing final criteria weights", {
+        field: "modelParameters.weights",
+        details: {
+          issueId: toIdString(issue?._id),
+          criteriaCount: leafCount,
+        },
+      });
+    }
+
+    return {
+      source: "modelParameters",
+      weightsByCriterion: {},
+      weights: [],
+    };
+  }
+
+  if (sourceWeights.length < leafCount) {
+    throw createInternalError("Finished issue modelParameters.weights is incomplete", {
+      field: "modelParameters.weights",
+      details: {
+        issueId: toIdString(issue?._id),
+        expectedCount: leafCount,
+        receivedCount: sourceWeights.length,
+      },
+    });
+  }
+
+  const weights = orderedLeafCriteria.map((criterion, index) => {
+    const weight = Number(sourceWeights[index]);
+    if (!Number.isFinite(weight)) {
+      throw createInternalError("Finished issue modelParameters.weights is invalid", {
+        field: `modelParameters.weights[${index}]`,
+        details: {
+          issueId: toIdString(issue?._id),
+          criterionName: criterion.name,
+        },
+      });
+    }
+
+    return {
+      criterionId: toIdString(criterion._id),
+      criterionName: criterion.name,
+      weight,
+    };
+  });
+
+  const weightsByCriterion = weights.reduce((accumulator, entry) => {
+    accumulator[entry.criterionName] = entry.weight;
+    return accumulator;
+  }, {});
+
+  return {
+    source: "modelParameters",
+    weightsByCriterion,
+    weights,
+  };
+};
+
+const resolveFinalCriteriaWeightsOrThrow = async ({
+  issue,
+  orderedLeafCriteria,
+  modelUsesWeights,
+}) => {
+  const fromStageResult = await resolveFinalCriteriaWeightsFromStageResultOrNull({
+    issue,
+    orderedLeafCriteria,
+  });
+
+  if (fromStageResult) {
+    return fromStageResult;
+  }
+
+  return resolveFinalCriteriaWeightsFromModelParamsOrThrow({
+    issue,
+    orderedLeafCriteria,
+    modelUsesWeights,
+  });
+};
+
+const resolveExpertWeightingRequired = (issue) =>
+  Boolean(
+    issue?.criteriaWeightingStructureKey &&
+      issue?.criteriaWeightingAggregationMode &&
+      issue.criteriaWeightingAggregationMode !== "none"
+  );
+
+const buildExpertWeightsByCriterionForManual = ({
+  payload,
+  criterionNames,
+}) => {
+  const weightsSource = payload?.weightsByCriterion;
+  if (!isPlainObject(weightsSource)) {
+    return null;
+  }
+
+  const weightsByCriterion = {};
+  for (const criterionName of criterionNames) {
+    const rawValue = weightsSource[criterionName];
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) {
+      return null;
+    }
+    weightsByCriterion[criterionName] = numericValue;
+  }
+
+  return weightsByCriterion;
+};
+
+const buildCriteriaWeightsEvaluationByExpert = ({
+  issue,
+  participations,
+  criteriaWeightingEvaluationsByExpertId,
+  criterionNames,
+}) => {
+  const isRequired = resolveExpertWeightingRequired(issue);
+  const mapByExpertEmail = {};
+
+  for (const participation of participations) {
+    const expertId = toIdString(participation?.expert?._id || participation?.expert);
+    const expertEmailRaw = participation?.expert?.email;
+    const expertEmail =
+      typeof expertEmailRaw === "string" && expertEmailRaw.trim()
+        ? expertEmailRaw.trim()
+        : `expert_${expertId || "unknown"}`;
+
+    if (!isRequired) {
+      mapByExpertEmail[expertEmail] = {
+        status: "notRequired",
+        structureKey: issue.criteriaWeightingStructureKey || null,
+        payload: null,
+        weightsByCriterion: null,
+      };
+      continue;
+    }
+
+    const evaluation = criteriaWeightingEvaluationsByExpertId.get(expertId);
+
+    if (!evaluation) {
+      mapByExpertEmail[expertEmail] = {
+        status: "notSubmitted",
+        structureKey: issue.criteriaWeightingStructureKey || null,
+        payload: null,
+        weightsByCriterion: null,
+      };
+      continue;
+    }
+
+    const status = evaluation.completed === true ? "submitted" : "draft";
+    const payload = isPlainObject(evaluation.payload) ? evaluation.payload : {};
+    const weightsByCriterion =
+      issue.criteriaWeightingStructureKey ===
+      EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS
+        ? buildExpertWeightsByCriterionForManual({
+          payload,
+          criterionNames,
+        })
+        : null;
+
+    mapByExpertEmail[expertEmail] = {
+      status,
+      structureKey: issue.criteriaWeightingStructureKey || null,
+      payload,
+      weightsByCriterion,
+    };
+  }
+
+  return mapByExpertEmail;
+};
+
 const enrichPlotsGraphicWithExpertLabels = ({
   plotsGraphic,
   evaluations,
@@ -802,7 +1058,7 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
     });
   }
 
-  const ranking = buildRankingPayloadOrThrow({ stageResult });
+  const rankedAlternatives = buildRankedAlternativesPayloadOrThrow({ stageResult });
   const collectiveEvaluations = isPlainObject(stageResult?.collectiveEvaluations)
     ? stageResult.collectiveEvaluations
     : null;
@@ -825,14 +1081,11 @@ const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
     finalizationReason,
     modelExecution: buildModelExecutionPayload(stageResult),
     collectiveEvaluations,
-    scoresByAlternative: isPlainObject(stageResult?.scoresByAlternative)
-      ? stageResult.scoresByAlternative
-      : {},
     plotsGraphic: isPlainObject(stageResult?.plotsGraphic)
       ? stageResult.plotsGraphic
       : {},
     rawOutput: stageResult.rawOutput || {},
-    ranking,
+    rankedAlternatives,
   };
 };
 
@@ -878,9 +1131,13 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     issueId: issue?._id,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
+  const criteriaWeightingPhase = await resolveCriteriaWeightingPhase({
+    issueId: issue._id,
+  });
 
   const [
     completedAlternativeEvaluations,
+    criteriaWeightingEvaluations,
     alternatives,
     orderedLeafCriteria,
     criteria,
@@ -896,6 +1153,15 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     })
       .populate("expert", "email name")
       .lean(),
+    criteriaWeightingPhase
+      ? IssueEvaluation.find({
+        issue: issue._id,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        consensusPhase: criteriaWeightingPhase,
+      })
+        .populate("expert", "email name")
+        .lean()
+      : Promise.resolve([]),
     getOrderedAlternativesDb({
       issueId: issue._id,
       issueDoc: issue,
@@ -959,6 +1225,11 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
   });
 
   const model = await ensureModelOrThrow({ issue });
+  const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
+    issue,
+    orderedLeafCriteria,
+    modelUsesWeights: model?.usesCriteriaWeights === true,
+  });
 
   const leafCount = orderedLeafCriteria.length;
   const leafCriteria = orderedLeafCriteria.map((criterion) => ({
@@ -967,12 +1238,18 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     type: criterion.type,
   }));
 
-  const ranking = buildRankingPayloadOrThrow({
+  const rankedAlternatives = buildRankedAlternativesPayloadOrThrow({
     stageResult: latestAlternativeResult,
   });
 
   const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const criteriaWeightingEvaluationsByExpertId = new Map(
+    criteriaWeightingEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
 
   const expertEvaluations = buildExpertAlternativeRatingsOrThrow({
     evaluations: completedAlternativeEvaluations,
@@ -1041,10 +1318,8 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
   const consensusDetails = {
     modelExecution,
     rawOutput: latestAlternativeResult?.rawOutput || {},
-    rankedAlternatives: ranking,
+    rankedAlternatives,
     plotsGraphic: enrichedLatestPlotsGraphic,
-    scoresByAlternative:
-      latestAlternativeResult?.scoresByAlternative || {},
     consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
   };
 
@@ -1053,15 +1328,22 @@ const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     alternativesRankings: [
       {
         phase,
-        ranking,
+        rankedAlternatives,
       },
     ],
     expertsRatings: {
       [phase]: {
         collectiveEvaluations: collectiveEvaluationsPayload,
         expertEvaluations,
+        criteriaWeightsEvaluationByExpert: buildCriteriaWeightsEvaluationByExpert({
+          issue,
+          participations,
+          criteriaWeightingEvaluationsByExpertId,
+          criterionNames,
+        }),
       },
     },
+    finalCriteriaWeights,
     analyticalGraphs:
       isPlainObject(enrichedLatestPlotsGraphic) &&
       Object.keys(enrichedLatestPlotsGraphic).length > 0
@@ -1121,9 +1403,13 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
     issueId: issue?._id,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
+  const criteriaWeightingPhase = await resolveCriteriaWeightingPhase({
+    issueId: issue._id,
+  });
 
   const [
     completedAlternativeEvaluations,
+    criteriaWeightingEvaluations,
     alternatives,
     orderedLeafCriteria,
     criteria,
@@ -1139,6 +1425,15 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
     })
       .populate("expert", "email name")
       .lean(),
+    criteriaWeightingPhase
+      ? IssueEvaluation.find({
+        issue: issue._id,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        consensusPhase: criteriaWeightingPhase,
+      })
+        .populate("expert", "email name")
+        .lean()
+      : Promise.resolve([]),
     getOrderedAlternativesDb({
       issueId: issue._id,
       issueDoc: issue,
@@ -1202,6 +1497,11 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
   });
 
   const model = await ensureModelOrThrow({ issue });
+  const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
+    issue,
+    orderedLeafCriteria,
+    modelUsesWeights: model?.usesCriteriaWeights === true,
+  });
   const leafCount = orderedLeafCriteria.length;
   const leafCriteria = orderedLeafCriteria.map((criterion) => ({
     id: toIdString(criterion._id),
@@ -1210,8 +1510,14 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
   }));
   const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const criteriaWeightingEvaluationsByExpertId = new Map(
+    criteriaWeightingEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
 
-  const ranking = buildRankingPayloadOrThrow({
+  const rankedAlternatives = buildRankedAlternativesPayloadOrThrow({
     stageResult: latestAlternativeResult,
   });
 
@@ -1277,10 +1583,8 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
   const consensusDetails = {
     modelExecution,
     rawOutput: latestAlternativeResult?.rawOutput || {},
-    rankedAlternatives: ranking,
+    rankedAlternatives,
     plotsGraphic: enrichedLatestPlotsGraphic,
-    scoresByAlternative:
-      latestAlternativeResult?.scoresByAlternative || {},
     consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
   };
 
@@ -1289,7 +1593,7 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
     alternativesRankings: [
       {
         phase,
-        ranking,
+        rankedAlternatives,
       },
     ],
     expertsRatings: {
@@ -1298,8 +1602,15 @@ const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
         collectiveEvaluations,
         collectiveEvaluationsLocalizedByExpert: null,
         expertEvaluations,
+        criteriaWeightsEvaluationByExpert: buildCriteriaWeightsEvaluationByExpert({
+          issue,
+          participations,
+          criteriaWeightingEvaluationsByExpertId,
+          criterionNames,
+        }),
       },
     },
+    finalCriteriaWeights,
     analyticalGraphs:
       isPlainObject(enrichedLatestPlotsGraphic) &&
       Object.keys(enrichedLatestPlotsGraphic).length > 0
@@ -1361,6 +1672,9 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     })
   );
+  const criteriaWeightingPhase = await resolveCriteriaWeightingPhase({
+    issueId: issue._id,
+  });
 
   const [
     alternatives,
@@ -1368,6 +1682,7 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     criteria,
     participations,
     allCompletedAlternativeEvaluations,
+    criteriaWeightingEvaluations,
     allModels,
     issueDomainSnapshots,
   ] = await Promise.all([
@@ -1395,6 +1710,15 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     })
       .populate("expert", "email name")
       .lean(),
+    criteriaWeightingPhase
+      ? IssueEvaluation.find({
+        issue: issue._id,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        consensusPhase: criteriaWeightingPhase,
+      })
+        .populate("expert", "email name")
+        .lean()
+      : Promise.resolve([]),
     IssueModel.find({
       isIssueModel: true,
       $or: [
@@ -1452,6 +1776,11 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
   );
 
   const model = await ensureModelOrThrow({ issue });
+  const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
+    issue,
+    orderedLeafCriteria,
+    modelUsesWeights: model?.usesCriteriaWeights === true,
+  });
   const leafCount = orderedLeafCriteria.length;
   const leafCriteria = orderedLeafCriteria.map((criterion) => ({
     id: toIdString(criterion._id),
@@ -1460,6 +1789,12 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
   }));
   const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const criteriaWeightingEvaluationsByExpertId = new Map(
+    criteriaWeightingEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
 
   const experts = buildParticipationsSummary({
     participations,
@@ -1525,11 +1860,17 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
       consensusMeasure: round.consensusMeasure,
       collectiveEvaluations: collectiveEvaluationsPayload,
       expertEvaluations,
+      criteriaWeightsEvaluationByExpert: buildCriteriaWeightsEvaluationByExpert({
+        issue,
+        participations,
+        criteriaWeightingEvaluationsByExpertId,
+        criterionNames,
+      }),
     };
 
     alternativesRankings.push({
       phase,
-      ranking: round.ranking,
+      rankedAlternatives: round.rankedAlternatives,
     });
 
     consensusRounds.push(round);
@@ -1573,8 +1914,8 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
   });
 
   const latestRound = consensusRounds[consensusRounds.length - 1];
-  const latestRanking =
-    alternativesRankings[alternativesRankings.length - 1]?.ranking || [];
+  const latestRankedAlternatives =
+    alternativesRankings[alternativesRankings.length - 1]?.rankedAlternatives || [];
 
   const modelExecution = latestRound?.modelExecution || {
     rawOutput: latestRound?.rawOutput || {},
@@ -1619,6 +1960,7 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     summary,
     alternativesRankings,
     expertsRatings,
+    finalCriteriaWeights,
     analyticalGraphs: {
       ...(hasScatterData ? { scatterPlot: scatterPlotByPhase } : {}),
       consensusLevelLineChart: {
@@ -1631,10 +1973,8 @@ const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     consensusDetails: {
       modelExecution,
       rawOutput: latestRound?.rawOutput || {},
-      rankedAlternatives: latestRanking,
+      rankedAlternatives: latestRankedAlternatives,
       plotsGraphic: latestRoundPlotsGraphic,
-      scoresByAlternative:
-        latestRound?.scoresByAlternative || {},
       consensusMeasure: latestRound?.consensusMeasure ?? null,
     },
     modelExecution,
@@ -1690,6 +2030,9 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     })
   );
+  const criteriaWeightingPhase = await resolveCriteriaWeightingPhase({
+    issueId: issue._id,
+  });
 
   const [
     alternatives,
@@ -1697,6 +2040,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     criteria,
     participations,
     allCompletedAlternativeEvaluations,
+    criteriaWeightingEvaluations,
     allModels,
     issueDomainSnapshots,
   ] = await Promise.all([
@@ -1724,6 +2068,15 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     })
       .populate("expert", "email name")
       .lean(),
+    criteriaWeightingPhase
+      ? IssueEvaluation.find({
+        issue: issue._id,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        consensusPhase: criteriaWeightingPhase,
+      })
+        .populate("expert", "email name")
+        .lean()
+      : Promise.resolve([]),
     IssueModel.find({
       isIssueModel: true,
       $or: [
@@ -1781,6 +2134,11 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
   );
 
   const model = await ensureModelOrThrow({ issue });
+  const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
+    issue,
+    orderedLeafCriteria,
+    modelUsesWeights: model?.usesCriteriaWeights === true,
+  });
   const leafCount = orderedLeafCriteria.length;
   const leafCriteria = orderedLeafCriteria.map((criterion) => ({
     id: toIdString(criterion._id),
@@ -1789,6 +2147,12 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
   }));
   const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const criteriaWeightingEvaluationsByExpertId = new Map(
+    criteriaWeightingEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
 
   const experts = buildParticipationsSummary({
     participations,
@@ -1853,11 +2217,17 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       collectiveEvaluations,
       collectiveEvaluationsLocalizedByExpert: null,
       expertEvaluations,
+      criteriaWeightsEvaluationByExpert: buildCriteriaWeightsEvaluationByExpert({
+        issue,
+        participations,
+        criteriaWeightingEvaluationsByExpertId,
+        criterionNames,
+      }),
     };
 
     alternativesRankings.push({
       phase,
-      ranking: round.ranking,
+      rankedAlternatives: round.rankedAlternatives,
     });
 
     consensusRounds.push(round);
@@ -1901,8 +2271,8 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
   });
 
   const latestRound = consensusRounds[consensusRounds.length - 1];
-  const latestRanking =
-    alternativesRankings[alternativesRankings.length - 1]?.ranking || [];
+  const latestRankedAlternatives =
+    alternativesRankings[alternativesRankings.length - 1]?.rankedAlternatives || [];
 
   const modelExecution = latestRound?.modelExecution || {
     rawOutput: latestRound?.rawOutput || {},
@@ -1947,6 +2317,7 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     summary,
     alternativesRankings,
     expertsRatings,
+    finalCriteriaWeights,
     analyticalGraphs: {
       ...(hasScatterData ? { scatterPlot: scatterPlotByPhase } : {}),
       consensusLevelLineChart: {
@@ -1959,10 +2330,8 @@ const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     consensusDetails: {
       modelExecution,
       rawOutput: latestRound?.rawOutput || {},
-      rankedAlternatives: latestRanking,
+      rankedAlternatives: latestRankedAlternatives,
       plotsGraphic: latestRoundPlotsGraphic,
-      scoresByAlternative:
-        latestRound?.scoresByAlternative || {},
       consensusMeasure: latestRound?.consensusMeasure ?? null,
     },
     modelExecution,

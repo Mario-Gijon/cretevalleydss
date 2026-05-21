@@ -89,7 +89,6 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
         "usesCriterionTypes": model.uses_criterion_types,
         "supportedDomains": _build_supported_domains(model.supported_domains),
-        "criterionTypes": list(model.criterion_types) if model.criterion_types else None,
         "parameters": _build_parameters(model),
         "request": {
             "contentType": "application/json",

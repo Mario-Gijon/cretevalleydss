@@ -172,7 +172,7 @@ def _borda_input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 
     return {
         "matrices": matrices,
-        "criterion_types": [_criterion_type(item.get("type")) for item in criteria],
+        "criterion_directions": [_criterion_type(item.get("type")) for item in criteria],
         "alternative_names": alternative_names,
         "criterion_names": criterion_names,
     }
@@ -230,18 +230,22 @@ def _borda_output(
             break
         scores_by_alternative[alternative_names[index]] = float(score)
 
-    ranked_with_scores = [
-        {
-            "name": alternative_name,
-            "score": scores_by_alternative.get(alternative_name),
-        }
-        for alternative_name in ranking
-    ]
+    if len(ranking) == 0:
+        raise ValueError("Borda output collective_ranking is empty")
+
+    ranked_alternatives = []
+    for rank_position, alternative_name in enumerate(ranking, start=1):
+        ranked_alternatives.append(
+            {
+                "alternativeId": None,
+                "name": alternative_name,
+                "score": float(scores_by_alternative[alternative_name]),
+                "rank": rank_position,
+            }
+        )
 
     return {
-        "ranking": ranking,
-        "rankedWithScores": ranked_with_scores,
-        "scoresByAlternative": scores_by_alternative,
+        "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_collective_evaluations(
             collective_matrix=run_result.get("collective_matrix"),
             alternative_names=alternative_names,
@@ -261,7 +265,7 @@ def execute_borda(
 
         results = run_borda(
             execution_input["matrices"],
-            criterion_type=execution_input["criterion_types"],
+            criterion_type=execution_input["criterion_directions"],
         )
 
         return success_response(

@@ -7,7 +7,7 @@ const SCENARIO_CRITERIA_WEIGHTING_KEY = "manualCriteriaWeights";
 const buildScenarioFormParameters = (model) => {
   const baseParameters = (Array.isArray(model?.parameters) ? model.parameters : []).filter(
     (parameter) =>
-      !["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.handlerKey)
+      !["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey)
   );
 
   if (model?.usesCriteriaWeights !== true) {
@@ -23,7 +23,7 @@ const buildScenarioFormParameters = (model) => {
         label: "Fuzzy criteria weights",
         type: "fuzzyArray",
         scope: "perCriterion",
-        handlerKey: "fuzzyCriteriaWeights",
+        parameterStructureKey: "fuzzyCriteriaWeights",
         required: true,
         default: "equal",
         restrictions: {
@@ -47,7 +47,7 @@ const buildScenarioFormParameters = (model) => {
       label: "Criteria weights",
       type: "array",
       scope: "perCriterion",
-      handlerKey: "criteriaWeights",
+      parameterStructureKey: "criteriaWeights",
       required: true,
       default: "equal",
       restrictions: {
@@ -61,7 +61,12 @@ const buildScenarioFormParameters = (model) => {
   ];
 };
 
-const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) => {
+const ModelsSectionParametersForm = ({
+  model,
+  values,
+  setValues,
+  leafCriteria,
+}) => {
   if (!model) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -79,12 +84,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
     );
   }
 
-  const leafCriteria = Array.isArray(leafNames)
-    ? leafNames.map((name, index) => ({
-        _id: `leaf-${index}`,
-        name,
-      }))
-    : [];
+  const resolvedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
 
   return (
     <Stack spacing={2}>
@@ -119,7 +119,7 @@ const ModelsSectionParametersForm = ({ model, values, setValues, leafNames }) =>
             setParamValues={setValues}
             defaultModelParams={false}
             setDefaultModelParams={() => {}}
-            leafCriteria={leafCriteria}
+            leafCriteria={resolvedLeafCriteria}
             criteriaWeightingStructureKey={SCENARIO_CRITERIA_WEIGHTING_KEY}
             setCriteriaWeightingStructureKey={undefined}
             showValidationErrors

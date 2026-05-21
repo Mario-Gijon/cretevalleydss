@@ -529,6 +529,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         id: toIdString(criterion._id),
         name: criterion.name,
         type: criterion.type,
+        expressionDomain: formatIssueSnapshotDomain(criterion.expressionDomain),
       })),
       finalWeights: finalWeightsByName,
       finalWeightsById,
@@ -990,6 +991,9 @@ const orderObjectByKeys = (obj, orderedKeys) => {
   return orderedObject;
 };
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 /**
  * Formatea un snapshot de dominio de expresión para consumo del frontend admin.
  *
@@ -1325,7 +1329,7 @@ export const getIssueExpertWeightsPayload = async ({
       getOrderedLeafCriteriaDb({
         issueId,
         issueDoc: issue,
-        select: "_id name type",
+        select: "_id name type expressionDomain",
         lean: true,
       }),
       IssueEvaluation.findOne({
@@ -1346,6 +1350,7 @@ export const getIssueExpertWeightsPayload = async ({
   const leafNames = orderedLeafCriteria.map((criterion) => criterion.name);
 
   const resolvedWeights =
+    Array.isArray(issue?.modelParameters?.weights) &&
     issue.modelParameters.weights.length
       ? leafNames.reduce((accumulator, name, index) => {
         accumulator[name] = issue.modelParameters.weights[index];
@@ -1355,7 +1360,7 @@ export const getIssueExpertWeightsPayload = async ({
 
   const manualWeights = weightDoc
     ? orderObjectByKeys(weightDoc.payload?.weightsByCriterion ?? {}, leafNames)
-    : orderObjectByKeys({}, leafNames);
+    : null;
 
   const weightBwmData = weightDoc?.payload || {};
   const bwm = {
@@ -1369,17 +1374,31 @@ export const getIssueExpertWeightsPayload = async ({
 
   if (leafNames.length === 1) {
     kind = "singleLeaf";
-  } else if (issue.weightingMode === "consensus") {
-    kind = "manualConsensus";
   } else if (
-    ["bwm", "consensusBwm", "simulatedConsensusBwm"].includes(
-      issue.weightingMode
-    )
+    issue.criteriaWeightingStructureKey ===
+    EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS
   ) {
-    kind = "bwm";
-  } else if (issue.modelParameters.weights.length) {
-    kind = "directWeights";
+    kind = "manualCriteriaWeights";
+  } else if (
+    issue.criteriaWeightingStructureKey ===
+    EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA
+  ) {
+    kind = "bestWorstCriteria";
+  } else if (!issue.criteriaWeightingStructureKey) {
+    kind = "notRequired";
   }
+
+  const criteriaWeightsStatus = !issue.criteriaWeightingStructureKey
+    ? "notRequired"
+    : !weightDoc
+      ? "notSubmitted"
+      : weightDoc.completed === true
+        ? "submitted"
+        : "draft";
+
+  const hasManualWeightsByCriterion = isPlainObject(
+    weightDoc?.payload?.weightsByCriterion
+  );
 
   return {
     issue: {
@@ -1405,7 +1424,25 @@ export const getIssueExpertWeightsPayload = async ({
     participation: buildAdminExpertParticipationPayload(participation),
     weights: {
       kind,
+      status: criteriaWeightsStatus,
+      structureKey: issue.criteriaWeightingStructureKey || null,
+      structureLabel:
+        kind === "manualCriteriaWeights"
+          ? "Manual weights"
+          : kind === "bestWorstCriteria"
+            ? "Best-worst weights"
+            : kind === "singleLeaf"
+              ? "Single criterion weights"
+              : kind === "notRequired"
+                ? "Not required"
+                : "Criteria weights",
       leafCriteria: leafNames,
+      leafCriteriaDetailed: orderedLeafCriteria.map((criterion) => ({
+        criterionId: toIdString(criterion._id),
+        criterionName: criterion.name,
+        type: criterion.type || null,
+        expressionDomain: formatIssueSnapshotDomain(criterion.expressionDomain),
+      })),
       singleLeafAutoWeights:
         leafNames.length === 1
           ? {
@@ -1413,7 +1450,7 @@ export const getIssueExpertWeightsPayload = async ({
           }
           : null,
       resolvedWeights,
-      manualWeights,
+      manualWeights: hasManualWeightsByCriterion ? manualWeights : null,
       bwm,
       docMeta: weightDoc
         ? {

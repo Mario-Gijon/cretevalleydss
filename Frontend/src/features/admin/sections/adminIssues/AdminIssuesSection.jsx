@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Avatar,
   Backdrop,
@@ -35,7 +36,6 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import CloseIcon from "@mui/icons-material/Close";
@@ -80,11 +80,14 @@ import AdminMetaChip from "./components/AdminMetaChip";
 import AdminInfoRow from "./components/AdminInfoRow";
 import AdminStatCard from "./components/AdminStatCard";
 import AdminReadOnlyWeights from "./components/AdminReadOnlyWeights";
-import AdminReadOnlyAxCMatrix from "./components/AdminReadOnlyAxCMatrix";
-import AdminReadOnlyPairwise from "./components/AdminReadOnlyPairwise";
 import AdminAddExpertsPickerDialog from "./components/AdminAddExpertsPickerDialog";
+import ExpressionDomainSummaryButton from "../../../issueEvaluation/components/ExpressionDomainSummaryButton";
 import { useAdminIssuesSection } from "./hooks/useAdminIssuesSection";
-import { EVALUATION_STRUCTURE_KEYS } from "../../../issueEvaluation/evaluation.constants";
+import {
+  EVALUATION_STAGES,
+  EVALUATION_STRUCTURE_KEYS,
+} from "../../../issueEvaluation/evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
 import { IssueModelParametersView } from "../../../modelParameters";
 
 /**
@@ -93,6 +96,7 @@ import { IssueModelParametersView } from "../../../modelParameters";
  * @returns {JSX.Element}
  */
 export default function AdminIssuesSection() {
+  const [showFinalWeights, setShowFinalWeights] = useState(false);
   const {
     theme,
     isMdDown,
@@ -196,6 +200,18 @@ export default function AdminIssuesSection() {
     [EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS]: "Manual criteria weights",
     [EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA]: "BWM",
   };
+  const alternativeEvaluationStructureEntry = getEvaluationStructureEntryForStage({
+    structureKey: expertEvaluations?.issue?.alternativeEvaluationStructureKey,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  });
+  const AlternativeEvaluationComponent =
+    alternativeEvaluationStructureEntry?.EvaluationComponent || null;
+  const alternativeNamesForReview = safeArray(issueDetail?.alternatives)
+    .map((alternative) => alternative?.name)
+    .filter(Boolean);
+  const criterionNamesForReview = safeArray(issueDetail?.leafCriteria)
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
 
   if (loading) {
     return <CircularLoading color="secondary" size={44} height="28vh" />;
@@ -616,22 +632,6 @@ export default function AdminIssuesSection() {
                     {issueDetail?.name || selectedIssueRow?.name || "Issue detail"}
                   </Typography>
 
-                  <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                    <AdminMetaChip tone={issueDetail?.active ? "warning" : "success"}>
-                      {issueDetail?.active ? "Active" : "Finished"}
-                    </AdminMetaChip>
-                    <AdminMetaChip tone={stageTone(issueDetail?.currentStage)}>
-                      {prettyStage(issueDetail)}
-                    </AdminMetaChip>
-                    {issueDetail?.isConsensus ? (
-                      <AdminMetaChip tone="secondary">Consensus</AdminMetaChip>
-                    ) : (
-                      <AdminMetaChip tone="info">No consensus</AdminMetaChip>
-                    )}
-                    {issueDetail?.model?.name ? (
-                      <AdminMetaChip tone="info">{issueDetail.model.name}</AdminMetaChip>
-                    ) : null}
-                  </Stack>
                 </Stack>
               </Stack>
 
@@ -681,25 +681,6 @@ export default function AdminIssuesSection() {
 
             {detailTab === 0 ? (
               <Stack spacing={1.25}>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gap: 1,
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "repeat(2, minmax(0, 1fr))",
-                      xl: "repeat(6, minmax(0, 1fr))",
-                    },
-                  }}
-                >
-                  <AdminStatCard icon={<AssignmentIcon />} label="Alternatives" value={issueDetail?.metrics?.totalAlternatives || 0} tone="info" />
-                  <AdminStatCard icon={<CategoryIcon />} label="Leaf criteria" value={issueDetail?.metrics?.totalLeafCriteria || 0} tone="info" />
-                  <AdminStatCard icon={<PeopleAltIcon />} label="Experts" value={issueDetail?.metrics?.totalExperts || 0} tone="warning" />
-                  <AdminStatCard icon={<AnalyticsOutlinedIcon />} label="Consensus rounds" value={issueDetail?.consensus?.rounds || 0} tone="secondary" />
-                  <AdminStatCard icon={<CompareArrowsIcon />} label="Scenarios" value={safeArray(issueDetail?.scenarios).length} tone="secondary" />
-                  <AdminStatCard icon={<FactCheckOutlinedIcon />} label="Filled cells" value={issueDetail?.metrics?.totalFilledEvaluationCells || 0} tone="success" />
-                </Box>
-
                 <Box
                   sx={{
                     display: "grid",
@@ -770,24 +751,6 @@ export default function AdminIssuesSection() {
                       <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
                         Creator actions
                       </Typography>
-                    </Stack>
-
-                    <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.25 }}>
-                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canEditExperts ? "success" : "info"}>
-                        Edit experts: {issueDetail?.creatorActionsState?.canEditExperts ? "yes" : "no"}
-                      </AdminMetaChip>
-
-                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canRemoveIssue ? "success" : "info"}>
-                        Remove issue: {issueDetail?.creatorActionsState?.canRemoveIssue ? "yes" : "no"}
-                      </AdminMetaChip>
-
-                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canComputeWeights ? "warning" : "info"}>
-                        Compute weights: {issueDetail?.creatorActionsState?.canComputeWeights ? "ready" : "not ready"}
-                      </AdminMetaChip>
-
-                      <AdminMetaChip tone={issueDetail?.creatorActionsState?.canResolveIssue ? "warning" : "info"}>
-                        Resolve issue: {issueDetail?.creatorActionsState?.canResolveIssue ? "ready" : "not ready"}
-                      </AdminMetaChip>
                     </Stack>
 
                     <Stack spacing={1}>
@@ -1327,6 +1290,7 @@ export default function AdminIssuesSection() {
                         sx={{
                           borderRadius: 3,
                           bgcolor: alpha(theme.palette.common.white, 0.04),
+                          minWidth: { xs: "100%", md: 340 },
                         }}
                       >
                         {issueExpertsProgress.map((row) => (
@@ -1345,12 +1309,6 @@ export default function AdminIssuesSection() {
                       <Stack direction="row" flexWrap="wrap" gap={1}>
                         <AdminMetaChip tone={selectedExpertProgress?.currentParticipant ? "success" : "error"}>
                           {selectedExpertProgress?.currentParticipant ? "Current participant" : "Exited"}
-                        </AdminMetaChip>
-                        <AdminMetaChip tone={selectedExpertProgress?.weightsCompleted ? "success" : "warning"}>
-                          Weights: {selectedExpertProgress?.weightsCompleted ? "completed" : "pending"}
-                        </AdminMetaChip>
-                        <AdminMetaChip tone={selectedExpertProgress?.evaluationCompleted ? "success" : "warning"}>
-                          Evaluations: {selectedExpertProgress?.evaluationCompleted ? "submitted" : "draft / pending"}
                         </AdminMetaChip>
                         <AdminMetaChip tone={getProgressTone(selectedExpertProgress?.progress?.evaluationProgressPct || 0)}>
                           Progress: {selectedExpertProgress?.progress?.evaluationProgressPct || 0}%
@@ -1378,14 +1336,37 @@ export default function AdminIssuesSection() {
                       }}
                     >
                       <Paper elevation={0} sx={detailCardSx(theme)}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                          <RuleOutlinedIcon fontSize="small" />
-                          <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
-                            Weights
-                          </Typography>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          justifyContent="space-between"
+                          sx={{ mb: 1 }}
+                        >
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <RuleOutlinedIcon fontSize="small" />
+                            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                              Weights
+                            </Typography>
+                          </Stack>
+
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() => setShowFinalWeights((value) => !value)}
+                            sx={{ textTransform: "none", fontWeight: 850, borderRadius: 2.5 }}
+                          >
+                            {showFinalWeights ? "Hide final weights" : "Show final weights"}
+                          </Button>
                         </Stack>
 
-                        <AdminReadOnlyWeights data={expertWeights} />
+                        <AdminReadOnlyWeights
+                          data={expertWeights}
+                          leafCriteria={safeArray(issueDetail?.leafCriteria)}
+                          finalWeights={issueDetail?.finalWeights || {}}
+                          showFinalWeights={showFinalWeights}
+                        />
                       </Paper>
 
                       <Paper elevation={0} sx={detailCardSx(theme)}>
@@ -1406,18 +1387,47 @@ export default function AdminIssuesSection() {
                     </Box>
 
                     <Paper elevation={0} sx={detailCardSx(theme)}>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                        <AnalyticsOutlinedIcon fontSize="small" />
-                        <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
-                          Evaluations
-                        </Typography>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "stretch", sm: "center" }}
+                        justifyContent="space-between"
+                        sx={{ mb: 1 }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <AnalyticsOutlinedIcon fontSize="small" />
+                          <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                            Evaluations
+                          </Typography>
+                        </Stack>
+
+                        <ExpressionDomainSummaryButton
+                          criteria={safeArray(issueDetail?.leafCriteria).map((criterion) => ({
+                            isLeaf: true,
+                            name: criterion?.name || "—",
+                            expressionDomain: criterion?.expressionDomain || null,
+                          }))}
+                        />
                       </Stack>
 
-                      {expertEvaluations?.issue?.alternativeEvaluationStructureKey ===
-                      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION ? (
-                        <AdminReadOnlyPairwise data={expertEvaluations} />
+                      {!AlternativeEvaluationComponent ? (
+                        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                          Evaluation structure does not expose a reusable renderer.
+                        </Typography>
                       ) : (
-                        <AdminReadOnlyAxCMatrix data={expertEvaluations} />
+                        <Box sx={{ maxWidth: "100%", overflowX: "auto" }}>
+                          <AlternativeEvaluationComponent
+                            alternatives={alternativeNamesForReview}
+                            criteria={criterionNamesForReview}
+                            criterionNames={criterionNamesForReview}
+                            evaluations={expertEvaluations?.evaluations || {}}
+                            evaluationsByCriterion={expertEvaluations?.evaluations || {}}
+                            collectiveEvaluations={expertEvaluations?.collectiveEvaluations || null}
+                            collectiveEvaluationsByCriterion={expertEvaluations?.collectiveEvaluations || {}}
+                            setEvaluations={() => {}}
+                            permitEdit={false}
+                          />
+                        </Box>
                       )}
                     </Paper>
                   </>

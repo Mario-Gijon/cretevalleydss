@@ -12,6 +12,21 @@ import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const EVALUATION_SAVE_MODES = Object.freeze({
+  DRAFT: "draft",
+  SUBMIT: "submit",
+});
+
+const validateSaveModeOrThrow = (mode) => {
+  if (mode === EVALUATION_SAVE_MODES.DRAFT || mode === EVALUATION_SAVE_MODES.SUBMIT) {
+    return;
+  }
+
+  throw createBadRequestError("Unsupported evaluation save mode", {
+    field: "mode",
+  });
+};
+
 const normalizeText = (value) => {
   if (typeof value !== "string") {
     return "";
@@ -295,18 +310,6 @@ const normalizeBwmWeightsOrThrow = ({ weights, criterionCount }) => {
 export const bestWorstCriteriaStructure = Object.freeze({
   key: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-
-  async init({ issue }) {
-    const { criterionNames } = await getOrderedCriterionNames({ issue });
-
-    return {
-      bestCriterion: "",
-      worstCriterion: "",
-      bestToOthers: buildEmptyComparisons(criterionNames),
-      othersToWorst: buildEmptyComparisons(criterionNames),
-    };
-  },
-
   async get({ storedEvaluation, issue }) {
     const { criterionNames } = await getOrderedCriterionNames({ issue });
 
@@ -325,19 +328,17 @@ export const bestWorstCriteriaStructure = Object.freeze({
     });
   },
 
-  async send({ payload, issue }) {
+  async save({ payload, issue, mode }) {
+    validateSaveModeOrThrow(mode);
+
     const normalized = await normalizePayloadOrThrow({ payload, issue });
 
-    return normalized.payload;
-  },
-
-  async submit({ payload, issue }) {
-    const normalized = await normalizePayloadOrThrow({ payload, issue });
-
-    validateSubmittedBwmPayloadOrThrow({
-      criterionNames: normalized.criterionNames,
-      payload: normalized.payload,
-    });
+    if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
+      validateSubmittedBwmPayloadOrThrow({
+        criterionNames: normalized.criterionNames,
+        payload: normalized.payload,
+      });
+    }
 
     return normalized.payload;
   },
@@ -377,13 +378,10 @@ export const bestWorstCriteriaStructure = Object.freeze({
     return {
       message: `Criteria weights for '${issue.name}' successfully computed.`,
       consensusMeasure: null,
-      ranking: [],
-      rankedWithScores: [],
-      scoresByAlternative: {},
+      weightsByCriterion: normalizedWeightsByCriterion,
       collectiveEvaluations: {
         weightsByCriterion: normalizedWeightsByCriterion,
       },
-      plotsGraphic: {},
       modelExecution: {
         kind: "apiModels",
         structureKey: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
@@ -391,13 +389,6 @@ export const bestWorstCriteriaStructure = Object.freeze({
         executedAt: new Date(),
       },
       rawOutput: results,
-      issueUpdates: {
-        modelParameters: {
-          ...(issue?.modelParameters || {}),
-          weights: normalizedWeights,
-        },
-      },
-      nextCurrentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     };
   },
 });

@@ -1,6 +1,6 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import {
-  countLeafCriteriaNodes,
+  extractLeafCriteriaMetadata,
   getValueType,
   isMissingParameterValue,
   normalizeNonEmptyString,
@@ -11,8 +11,8 @@ import {
   throwUnknownModelParametersError,
 } from "./modelParameter.errors.js";
 import {
-  MODEL_PARAMETER_HANDLER_REGISTRY,
-  resolveHandlerKey,
+  MODEL_PARAMETER_STRUCTURE_REGISTRY,
+  resolveParameterStructureKey,
 } from "./modelParameter.registry.js";
 
 export const validateAndNormalizeModelParametersOrThrow = ({
@@ -23,7 +23,8 @@ export const validateAndNormalizeModelParametersOrThrow = ({
 }) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
   const modelParameters = Array.isArray(model?.parameters) ? model.parameters : [];
-  const leafCriteriaCount = countLeafCriteriaNodes(criteriaNodes);
+  const leafCriteria = extractLeafCriteriaMetadata(criteriaNodes);
+  const leafCriteriaCount = leafCriteria.length;
   const resolvedAlternativesCount =
     Number.isInteger(alternativesCount) && alternativesCount >= 0
       ? alternativesCount
@@ -55,7 +56,9 @@ export const validateAndNormalizeModelParametersOrThrow = ({
   for (const parameter of modelParameters) {
     const parameterKey = resolveParameterKey(parameter);
     const parameterType = normalizeNonEmptyString(parameter?.type);
-    const parameterHandlerKey = normalizeNonEmptyString(parameter?.handlerKey);
+    const parameterStructureKey = normalizeNonEmptyString(
+      parameter?.parameterStructureKey
+    );
 
     if (!parameterKey) {
       addError({
@@ -77,10 +80,10 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       continue;
     }
 
-    if (!parameterHandlerKey) {
+    if (!parameterStructureKey) {
       addError({
         parameter: parameterKey,
-        message: "manifest parameter is missing required 'handlerKey'",
+        message: "manifest parameter is missing required 'parameterStructureKey'",
         value: parameter,
       });
       continue;
@@ -124,21 +127,21 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       }
     }
 
-    const handlerKey = resolveHandlerKey(parameter);
-    if (!handlerKey) {
+    const parameterStructureKey = resolveParameterStructureKey(parameter);
+    if (!parameterStructureKey) {
       addError({
         parameter: parameterKey,
-        message: "cannot resolve handler key from parameter manifest",
+        message: "cannot resolve parameterStructureKey from parameter manifest",
         value,
       });
       continue;
     }
 
-    const handler = MODEL_PARAMETER_HANDLER_REGISTRY.get(handlerKey);
+    const handler = MODEL_PARAMETER_STRUCTURE_REGISTRY.get(parameterStructureKey);
     if (!handler) {
       addError({
         parameter: parameterKey,
-        message: `uses unsupported parameter handler '${handlerKey}'`,
+        message: `uses unsupported parameter structure '${parameterStructureKey}'`,
         value,
       });
       continue;
@@ -150,6 +153,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       context: {
         modelName,
         leafCriteriaCount,
+        leafCriteria,
         alternativesCount: resolvedAlternativesCount,
       },
     });

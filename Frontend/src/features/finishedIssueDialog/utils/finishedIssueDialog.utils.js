@@ -25,6 +25,12 @@ const countLeafCriteria = (nodes) => {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
 /**
  * Obtiene el numero de criterios hoja del issue.
  *
@@ -190,10 +196,10 @@ export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
-  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.handlerKey);
+  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey);
 
 const isCriteriaWeightsParameter = (parameter) =>
-  parameter?.handlerKey === "criteriaWeights";
+  parameter?.parameterStructureKey === "criteriaWeights";
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -223,7 +229,7 @@ const buildSyntheticWeightsParameter = (model) => {
       label: "Fuzzy criteria weights",
       type: "fuzzyArray",
       scope: "perCriterion",
-      handlerKey: "fuzzyCriteriaWeights",
+      parameterStructureKey: "fuzzyCriteriaWeights",
       required: true,
       default: "equal",
       restrictions: {
@@ -241,7 +247,7 @@ const buildSyntheticWeightsParameter = (model) => {
     label: "Criteria weights",
     type: "array",
     scope: "perCriterion",
-    handlerKey: "criteriaWeights",
+    parameterStructureKey: "criteriaWeights",
     required: true,
     default: "equal",
     restrictions: {
@@ -571,6 +577,127 @@ export const getCompatReason = (model, domainType) => {
   return reasons.join(" · ");
 };
 
+const resolveCriterionMapLeafRows = (leafCriteria = []) => {
+  if (!Array.isArray(leafCriteria)) {
+    return [];
+  }
+
+  return leafCriteria
+    .map((criterion, index) => {
+      const key = normalizeNonEmptyString(
+        criterion?.id || criterion?._id
+      );
+      const name =
+        normalizeNonEmptyString(criterion?.name) || `Criterion ${index + 1}`;
+
+      if (!key) {
+        return null;
+      }
+
+      return { key, name };
+    })
+    .filter(Boolean);
+};
+
+const parseCriterionMapValueByRestrictions = ({ rawValue, restrictions }) => {
+  const valueType = normalizeNonEmptyString(restrictions?.valueType) || "number";
+
+  if (valueType === "number") {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    if (
+      typeof restrictions?.min === "number" &&
+      parsed < Number(restrictions.min)
+    ) {
+      return null;
+    }
+
+    if (
+      typeof restrictions?.max === "number" &&
+      parsed > Number(restrictions.max)
+    ) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  if (valueType === "enum") {
+    const allowed = Array.isArray(restrictions?.allowed)
+      ? restrictions.allowed
+      : [];
+    if (!allowed.length) {
+      return null;
+    }
+
+    const allNumbers = allowed.every(
+      (item) => typeof item === "number" && Number.isFinite(item)
+    );
+    if (allNumbers) {
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+      return allowed.includes(parsed) ? parsed : null;
+    }
+
+    const allStrings = allowed.every((item) => typeof item === "string");
+    if (allStrings) {
+      if (typeof rawValue !== "string") {
+        return null;
+      }
+      const normalized = rawValue.trim();
+      return allowed.includes(normalized) ? normalized : null;
+    }
+
+    return allowed.some((item) => Object.is(item, rawValue)) ? rawValue : null;
+  }
+
+  return null;
+};
+
+const buildCriterionMapFromDefaults = ({ param, leafCriteria }) => {
+  const rows = resolveCriterionMapLeafRows(leafCriteria);
+  const restrictions = isPlainObject(param?.restrictions)
+    ? param.restrictions
+    : {};
+  const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+
+  const out = {};
+
+  for (const row of rows) {
+    let seed = null;
+    if (isPlainObject(param?.default) && Object.prototype.hasOwnProperty.call(param.default, row.key)) {
+      seed = param.default[row.key];
+    } else if (!isPlainObject(param?.default)) {
+      seed = param.default;
+    }
+
+    if (!requiredForEachCriterion && (seed === null || seed === undefined || seed === "")) {
+      continue;
+    }
+
+    const normalized = parseCriterionMapValueByRestrictions({
+      rawValue: seed,
+      restrictions,
+    });
+
+    if (normalized !== null) {
+      out[row.key] = normalized;
+      continue;
+    }
+
+    if (requiredForEachCriterion) {
+      out[row.key] = seed ?? "";
+    }
+  }
+
+  return out;
+};
+
 /**
  * Construye valores resueltos a partir del schema del modelo.
  *
@@ -579,7 +706,7 @@ export const getCompatReason = (model, domainType) => {
  * @param {number} params.leafCount Numero de criterios hoja.
  * @returns {Object}
  */
-export const buildParamsResolved = ({ model, leafCount }) => {
+export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => {
   const out = isPlainObject(model?.defaultsResolved)
     ? stripWeightsDeep(model.defaultsResolved)
     : {};
@@ -638,7 +765,7 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     }
 
     if (param.type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
       const fuzzyValueCount =
         Number(param?.restrictions?.length) || resolveFuzzyWeightsValueCount(model);
       if (
@@ -667,6 +794,10 @@ export const buildParamsResolved = ({ model, leafCount }) => {
       );
       out[key] = filled;
     }
+
+    if (param.type === "criterionMap") {
+      out[key] = buildCriterionMapFromDefaults({ param, leafCriteria });
+    }
   }
 
   return out;
@@ -678,7 +809,12 @@ export const buildParamsResolved = ({ model, leafCount }) => {
  * @param {Object} params Parametros de entrada.
  * @returns {Object}
  */
-export const cleanParamsForSend = ({ model, values, leafCount }) => {
+export const cleanParamsForSend = ({
+  model,
+  values,
+  leafCount,
+  leafCriteria = [],
+}) => {
   const out = {};
 
   for (const param of getScenarioParameterDefinitions(model)) {
@@ -764,7 +900,7 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
     }
 
     if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
       const fuzzyValueCount =
         Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
       if (
@@ -811,6 +947,39 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
           clamp(item, restrictions.min ?? null, restrictions.max ?? null)
         )
       );
+      continue;
+    }
+
+    if (type === "criterionMap") {
+      const rows = resolveCriterionMapLeafRows(leafCriteria);
+      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+      const source = isPlainObject(values?.[name]) ? values[name] : {};
+      const next = {};
+
+      for (const row of rows) {
+        const hasValue = Object.prototype.hasOwnProperty.call(source, row.key);
+        if (!hasValue) {
+          if (!requiredForEachCriterion) {
+            continue;
+          }
+          next[row.key] = "";
+          continue;
+        }
+
+        const normalized = parseCriterionMapValueByRestrictions({
+          rawValue: source[row.key],
+          restrictions,
+        });
+
+        if (normalized === null) {
+          continue;
+        }
+
+        next[row.key] = normalized;
+      }
+
+      out[name] = next;
+      continue;
     }
   }
 
@@ -823,7 +992,12 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  * @param {Object} params Parametros de entrada.
  * @returns {{ok: boolean, msg?: string}}
  */
-export const validateParams = ({ model, values, leafCount }) => {
+export const validateParams = ({
+  model,
+  values,
+  leafCount,
+  leafCriteria = [],
+}) => {
   for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
@@ -969,7 +1143,7 @@ export const validateParams = ({ model, values, leafCount }) => {
     }
 
     if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.handlerKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
       const fuzzyValueCount =
         Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
       if (
@@ -1050,6 +1224,61 @@ export const validateParams = ({ model, values, leafCount }) => {
         }
       }
     }
+
+    if (type === "criterionMap") {
+      const rows = resolveCriterionMapLeafRows(leafCriteria);
+      const source = values?.[name];
+      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+
+      if (!isPlainObject(source)) {
+        if (requiredForEachCriterion) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must be an object keyed by criterion.`,
+          };
+        }
+        continue;
+      }
+
+      const allowedKeys = new Set(rows.map((row) => row.key));
+      const unknown = Object.keys(source).find((key) => !allowedKeys.has(key));
+      if (unknown) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' contains unknown criterion key '${unknown}'.`,
+        };
+      }
+
+      if (requiredForEachCriterion) {
+        const missing = rows.find(
+          (row) => !Object.prototype.hasOwnProperty.call(source, row.key)
+        );
+        if (missing) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' is missing '${missing.name}'.`,
+          };
+        }
+      }
+
+      for (const row of rows) {
+        if (!Object.prototype.hasOwnProperty.call(source, row.key)) {
+          continue;
+        }
+
+        const normalized = parseCriterionMapValueByRestrictions({
+          rawValue: source[row.key],
+          restrictions,
+        });
+
+        if (normalized === null) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' has invalid value for '${row.name}'.`,
+          };
+        }
+      }
+    }
   }
 
   return { ok: true };
@@ -1060,97 +1289,31 @@ const deepClone = (value) =>
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 
-const toScoreOrNull = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const buildRankingFromRawOutput = ({ rawOutput, alternativesByIndex }) => {
-  const rankingIndexes = Array.isArray(rawOutput?.collective_ranking)
-    ? rawOutput.collective_ranking
-    : [];
-  const scores = Array.isArray(rawOutput?.collective_scores)
-    ? rawOutput.collective_scores
-    : [];
-
-  if (!rankingIndexes.length || !Array.isArray(alternativesByIndex) || !alternativesByIndex.length) {
-    return [];
-  }
-
-  return rankingIndexes
-    .map((rankIndex) => {
-      const index = Number(rankIndex);
-      if (!Number.isInteger(index) || index < 0 || index >= alternativesByIndex.length) {
-        return null;
-      }
-
-      const alternative = alternativesByIndex[index];
-      if (!alternative?.name) return null;
-
-      return {
-        name: alternative.name,
-        score: toScoreOrNull(scores[index]),
-      };
-    })
-    .filter(Boolean);
-};
-
-const normalizeScenarioRanking = ({
-  scenario,
-  standardResult,
-  rawOutput,
-  alternativesByIndex,
-}) => {
-  const fromRankedWithScores = Array.isArray(standardResult?.rankedWithScores)
-    ? standardResult.rankedWithScores
-    : [];
-  if (fromRankedWithScores.length) return fromRankedWithScores;
-
+const normalizeScenarioRanking = ({ standardResult }) => {
   const fromRankedAlternatives = Array.isArray(standardResult?.rankedAlternatives)
     ? standardResult.rankedAlternatives
     : [];
-  if (fromRankedAlternatives.length) {
-    const objectShape = fromRankedAlternatives.every(
-      (item) => item && typeof item === "object" && item.name
-    );
-    if (objectShape) return fromRankedAlternatives;
-    return fromRankedAlternatives
-      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
-      .filter(Boolean);
-  }
+  if (!fromRankedAlternatives.length) return [];
 
-  const scenarioRanking = scenario?.outputs?.ranking || scenario?.result?.ranking;
-  if (Array.isArray(scenarioRanking) && scenarioRanking.length) {
-    return scenarioRanking
-      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
-      .filter(Boolean);
-  }
+  return fromRankedAlternatives
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      if (typeof entry.name !== "string" || !entry.name.trim()) return null;
+      const score = Number(entry.score);
+      if (!Number.isFinite(score)) return null;
+      const rank = Number(entry.rank);
+      if (!Number.isInteger(rank) || rank <= 0) return null;
 
-  const scenarioRankedWithScores =
-    scenario?.outputs?.rankedWithScores || scenario?.result?.rankedWithScores;
-  if (Array.isArray(scenarioRankedWithScores) && scenarioRankedWithScores.length) {
-    return scenarioRankedWithScores;
-  }
-
-  const scoresByAlternative =
-    standardResult?.scoresByAlternative ||
-    scenario?.outputs?.scoresByAlternative ||
-    scenario?.result?.scoresByAlternative ||
-    null;
-  const rankingByName =
-    standardResult?.ranking ||
-    scenario?.outputs?.ranking ||
-    scenario?.result?.ranking ||
-    null;
-  if (Array.isArray(rankingByName) && rankingByName.length && scoresByAlternative && typeof scoresByAlternative === "object") {
-    return rankingByName
-      .map((name) => (typeof name === "string" && name.trim()
-        ? { name: name.trim(), score: toScoreOrNull(scoresByAlternative[name]) }
-        : null))
-      .filter(Boolean);
-  }
-
-  return buildRankingFromRawOutput({ rawOutput, alternativesByIndex });
+      return {
+        alternativeId:
+          typeof entry.alternativeId === "string" ? entry.alternativeId : null,
+        name: entry.name.trim(),
+        score,
+        rank,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.rank - right.rank);
 };
 
 /**
@@ -1174,15 +1337,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     scenario?.targetAlternativeEvaluationStructureKey ||
     scenario?.alternativeEvaluationStructureKey ||
     null;
-  const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
-    ? out.summary.alternatives
-    : [];
-  const normalizedRanking = normalizeScenarioRanking({
-    scenario,
-    standardResult,
-    rawOutput: scenarioRawOutput,
-    alternativesByIndex,
-  });
+  const normalizedRanking = normalizeScenarioRanking({ standardResult });
   const collectiveEvaluations =
     standardResult?.collectiveEvaluations &&
     typeof standardResult.collectiveEvaluations === "object"
@@ -1216,7 +1371,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       out.modelParams.base?.paramsResolved,
   };
 
-  out.alternativesRankings = [{ phase: 1, ranking: normalizedRanking }];
+  out.alternativesRankings = [{ phase: 1, rankedAlternatives: normalizedRanking }];
   out.consensus = [];
   out.consensusHistory = [];
   out.consensusRounds = [];
@@ -1224,7 +1379,6 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     modelExecution: modelExecutionOutput,
     rankedAlternatives: normalizedRanking,
     plotsGraphic: standardResult?.plotsGraphic || {},
-    scoresByAlternative: standardResult?.scoresByAlternative || {},
   };
   out.modelExecution =
     modelExecutionOutput ||

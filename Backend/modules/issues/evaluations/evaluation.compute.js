@@ -14,6 +14,19 @@ import {
 import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
 import { executeAlternativeEvaluationModel } from "../modelExecution/index.js";
+import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
+
+const hasOwn = (value, key) =>
+  Object.prototype.hasOwnProperty.call(value || {}, key);
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const normalizeNonEmptyString = (value) =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const isFiniteNumber = (value) =>
+  typeof value === "number" && Number.isFinite(value);
 
 const getStructureForIssueStage = ({ issue, stage }) => {
   const structureKeyByStage = {
@@ -63,32 +76,16 @@ const loadComputeContext = async ({ issueId, userId, stage }) => {
 const loadParticipationsForCompute = async ({ issueId, stage }) => {
   const participations = await Participation.find({
     issue: issueId,
-    invitationStatus: "accepted",
   });
 
-  if (participations.length === 0) {
-    throw createBadRequestError(
-      "Issue has no accepted participations for expert evaluations",
-      {
-        code: "NO_ACCEPTED_PARTICIPATIONS",
-        field: "issueId",
-      }
-    );
-  }
-
-  const pendingParticipations = participations.filter((participation) => {
-    if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-      return participation.weightsCompleted !== true;
-    }
-
-    return participation.evaluationCompleted !== true;
-  });
-
+  const pendingParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "pending"
+  );
   if (pendingParticipations.length > 0) {
     throw createBadRequestError(
-      "Not all accepted experts have completed the requested evaluation stage",
+      "Pending invitations block stage compute",
       {
-        code: "EVALUATION_STAGE_NOT_COMPLETED_BY_ALL_EXPERTS",
+        code: "PENDING_INVITATIONS_BLOCK_STAGE_COMPUTE",
         field: "stage",
         details: {
           stage,
@@ -100,7 +97,47 @@ const loadParticipationsForCompute = async ({ issueId, stage }) => {
     );
   }
 
-  return participations;
+  const acceptedParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "accepted"
+  );
+
+  if (acceptedParticipations.length === 0) {
+    throw createBadRequestError(
+      "Issue has no accepted participations for expert evaluations",
+      {
+        code: "NO_ACCEPTED_PARTICIPATIONS",
+        field: "issueId",
+      }
+    );
+  }
+
+  const incompleteAcceptedParticipations = acceptedParticipations.filter(
+    (participation) => {
+    if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+      return participation.weightsCompleted !== true;
+    }
+
+    return participation.evaluationCompleted !== true;
+    }
+  );
+
+  if (incompleteAcceptedParticipations.length > 0) {
+    throw createBadRequestError(
+      "Not all accepted experts have completed the requested evaluation stage",
+      {
+        code: "EVALUATION_STAGE_NOT_COMPLETED_BY_ALL_EXPERTS",
+        field: "stage",
+        details: {
+          stage,
+          pendingExpertIds: incompleteAcceptedParticipations.map((participation) =>
+            toIdString(participation.expert)
+          ),
+        },
+      }
+    );
+  }
+
+  return acceptedParticipations;
 };
 
 const loadEvaluationsForCompute = async ({
@@ -165,7 +202,7 @@ const withConsensusLifecycleInModelExecution = ({
   consensusLifecycle,
 }) => {
   const normalizedModelExecution =
-    modelExecution && typeof modelExecution === "object" && !Array.isArray(modelExecution)
+    isPlainObject(modelExecution)
       ? { ...modelExecution }
       : {};
 
@@ -177,6 +214,152 @@ const withConsensusLifecycleInModelExecution = ({
     ...normalizedModelExecution,
     consensusLifecycle,
   };
+};
+
+const normalizeCriteriaWeightingComputeResultOrThrow = async ({
+  issue,
+  computeResult,
+}) => {
+  if (!isPlainObject(computeResult)) {
+    throw createBadRequestError(
+      "Criteria weighting compute result must be an object",
+      {
+        field: "computeResult",
+      }
+    );
+  }
+
+  const allowedFields = new Set([
+    "message",
+    "consensusMeasure",
+    "weightsByCriterion",
+    "collectiveEvaluations",
+    "modelExecution",
+    "rawOutput",
+  ]);
+  const unexpectedField = Object.keys(computeResult).find(
+    (field) => !allowedFields.has(field)
+  );
+  if (unexpectedField) {
+    throw createBadRequestError(
+      `Criteria weighting compute result contains unexpected field '${unexpectedField}'`,
+      {
+        field: `computeResult.${unexpectedField}`,
+      }
+    );
+  }
+
+  const message = normalizeNonEmptyString(computeResult.message);
+  if (!message) {
+    throw createBadRequestError(
+      "Criteria weighting compute result message is required",
+      {
+        field: "computeResult.message",
+      }
+    );
+  }
+
+  const consensusMeasure = computeResult.consensusMeasure;
+  if (consensusMeasure !== null && !isFiniteNumber(consensusMeasure)) {
+    throw createBadRequestError(
+      "Criteria weighting consensusMeasure must be a finite number or null",
+      {
+        field: "computeResult.consensusMeasure",
+      }
+    );
+  }
+
+  if (!isPlainObject(computeResult.weightsByCriterion)) {
+    throw createBadRequestError(
+      "Criteria weighting compute result weightsByCriterion must be an object",
+      {
+        field: "computeResult.weightsByCriterion",
+      }
+    );
+  }
+
+  if (!isPlainObject(computeResult.collectiveEvaluations)) {
+    throw createBadRequestError(
+      "Criteria weighting compute result collectiveEvaluations must be an object",
+      {
+        field: "computeResult.collectiveEvaluations",
+      }
+    );
+  }
+
+  if (!isPlainObject(computeResult.modelExecution)) {
+    throw createBadRequestError(
+      "Criteria weighting compute result modelExecution must be an object",
+      {
+        field: "computeResult.modelExecution",
+      }
+    );
+  }
+
+  if (!isPlainObject(computeResult.rawOutput)) {
+    throw createBadRequestError(
+      "Criteria weighting compute result rawOutput must be an object",
+      {
+        field: "computeResult.rawOutput",
+      }
+    );
+  }
+
+  const { criterionNames } = await getOrderedCriterionNames({ issue });
+  const normalizedWeightsByCriterion = {};
+  const orderedWeights = criterionNames.map((criterionName) => {
+    if (!hasOwn(computeResult.weightsByCriterion, criterionName)) {
+      throw createBadRequestError(
+        `Criteria weighting compute result is missing weight for criterion '${criterionName}'`,
+        {
+          field: `computeResult.weightsByCriterion.${criterionName}`,
+        }
+      );
+    }
+
+    const weight = Number(computeResult.weightsByCriterion[criterionName]);
+    if (!Number.isFinite(weight)) {
+      throw createBadRequestError(
+        `Criteria weighting compute result weight for criterion '${criterionName}' must be finite`,
+        {
+          field: `computeResult.weightsByCriterion.${criterionName}`,
+        }
+      );
+    }
+
+    normalizedWeightsByCriterion[criterionName] = weight;
+    return weight;
+  });
+
+  return {
+    message,
+    consensusMeasure: consensusMeasure ?? null,
+    weightsByCriterion: normalizedWeightsByCriterion,
+    collectiveEvaluations: computeResult.collectiveEvaluations,
+    modelExecution: computeResult.modelExecution,
+    rawOutput: computeResult.rawOutput,
+    orderedWeights,
+  };
+};
+
+const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
+  consensusMeasure: computeResult.consensusMeasure,
+  collectiveEvaluations: computeResult.collectiveEvaluations,
+  modelExecution: computeResult.modelExecution,
+  rawOutput: computeResult.rawOutput,
+});
+
+const applyCriteriaWeightingIssueUpdates = async ({ issue, orderedWeights }) => {
+  const modelParameters = isPlainObject(issue?.modelParameters)
+    ? { ...issue.modelParameters }
+    : {};
+
+  issue.modelParameters = {
+    ...modelParameters,
+    weights: orderedWeights,
+  };
+  issue.currentStage = ISSUE_STAGES.ALTERNATIVE_EVALUATION;
+  await issue.save();
 };
 
 const saveStageResult = async ({
@@ -194,11 +377,13 @@ const saveStageResult = async ({
     {
       $set: {
         consensusMeasure: computeResult.consensusMeasure,
-        ranking: computeResult.ranking,
-        rankedWithScores: computeResult.rankedWithScores,
-        scoresByAlternative: computeResult.scoresByAlternative,
+        ...(Array.isArray(computeResult.rankedAlternatives)
+          ? { rankedAlternatives: computeResult.rankedAlternatives }
+          : {}),
         collectiveEvaluations: computeResult.collectiveEvaluations,
-        plotsGraphic: computeResult.plotsGraphic,
+        ...(isPlainObject(computeResult.plotsGraphic)
+          ? { plotsGraphic: computeResult.plotsGraphic }
+          : {}),
         modelExecution: withConsensusLifecycleInModelExecution({
           modelExecution: computeResult.modelExecution,
           consensusLifecycle: lifecycleMetadata,
@@ -284,8 +469,12 @@ const computeAlternativeEvaluationStage = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  if (typeof structure?.validateCompletedEvaluations === "function") {
-    await structure.validateCompletedEvaluations({ evaluations, issue });
+  if (typeof structure?.validateBeforeCompute === "function") {
+    await structure.validateBeforeCompute({
+      issue,
+      evaluations,
+      phase: issue.consensusPhase,
+    });
   }
 
   return executeAlternativeEvaluationModel({
@@ -354,6 +543,43 @@ export const computeIssueEvaluationStage = async ({
         httpClient,
       });
 
+  if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+    const normalizedCriteriaWeightingResult =
+      await normalizeCriteriaWeightingComputeResultOrThrow({
+        issue,
+        computeResult,
+      });
+
+    await saveStageResult({
+      issue,
+      stage,
+      computeResult: mapCriteriaWeightingResultToStageResult(
+        normalizedCriteriaWeightingResult
+      ),
+      lifecycleMetadata: null,
+    });
+
+    await applyCriteriaWeightingIssueUpdates({
+      issue,
+      orderedWeights: normalizedCriteriaWeightingResult.orderedWeights,
+    });
+
+    return {
+      message: normalizedCriteriaWeightingResult.message,
+      stage,
+      structureKey: structure.key,
+      consensusPhase: issue.consensusPhase,
+      currentStage: issue.currentStage,
+      result: {
+        weightsByCriterion: normalizedCriteriaWeightingResult.weightsByCriterion,
+        collectiveEvaluations: normalizedCriteriaWeightingResult.collectiveEvaluations,
+        consensusMeasure: normalizedCriteriaWeightingResult.consensusMeasure,
+        modelExecution: normalizedCriteriaWeightingResult.modelExecution,
+        rawOutput: normalizedCriteriaWeightingResult.rawOutput,
+      },
+    };
+  }
+
   const {
     computeResult: lifecycleComputeResult,
     lifecycleMetadata,
@@ -386,10 +612,8 @@ export const computeIssueEvaluationStage = async ({
     structureKey: structure.key,
     consensusPhase: issue.consensusPhase,
     currentStage: issue.currentStage,
-    result: {
-      ranking: lifecycleComputeResult.ranking,
-      rankedWithScores: lifecycleComputeResult.rankedWithScores,
-      scoresByAlternative: lifecycleComputeResult.scoresByAlternative,
+      result: {
+      rankedAlternatives: lifecycleComputeResult.rankedAlternatives,
       collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
       plotsGraphic: lifecycleComputeResult.plotsGraphic,
       consensusMeasure: lifecycleComputeResult.consensusMeasure,

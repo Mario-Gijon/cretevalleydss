@@ -322,6 +322,23 @@ export const useFinishedIssueDialogView = ({
     if (fromBackend?.length) return fromBackend;
     return getLeafCriteriaNamesFallback(issue?.summary?.criteria || []);
   }, [baseModelParamsBlock, issue?.summary?.criteria]);
+  const leafCriteriaForParams = useMemo(
+    () =>
+      Array.isArray(baseModelParamsBlock?.leafCriteria)
+        ? baseModelParamsBlock.leafCriteria
+            .map((criterion, index) => {
+              const id =
+                String(criterion?.id || criterion?._id || "").trim() || null;
+              const name =
+                String(criterion?.name || "").trim() ||
+                `Criterion ${index + 1}`;
+              if (!id) return null;
+              return { id, name };
+            })
+            .filter(Boolean)
+        : [],
+    [baseModelParamsBlock?.leafCriteria]
+  );
 
   const viewIssue =
     selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
@@ -347,7 +364,7 @@ export const useFinishedIssueDialogView = ({
       ? viewIssue.alternativesRankings.find(
         (entry) => Number(entry?.phase) === Number(selectedPhase)
       )
-      : null)?.ranking ?? [];
+      : null)?.rankedAlternatives ?? [];
   const lastIndex = ranking.length - 1;
 
   const formatScore = (number) =>
@@ -428,16 +445,18 @@ export const useFinishedIssueDialogView = ({
     const defaults = buildParamsResolved({
       model: selectedModelFromSchema,
       leafCount: leafNames.length,
+      leafCriteria: leafCriteriaForParams,
     });
 
     setScenarioParamValues(defaults);
-  }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames]);
+  }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames, leafCriteriaForParams]);
 
   const restoreScenarioDefaults = () => {
     if (!selectedModelFromSchema) return;
     const defaults = buildParamsResolved({
       model: selectedModelFromSchema,
       leafCount: leafNames.length,
+      leafCriteria: leafCriteriaForParams,
     });
     setScenarioParamValues(defaults);
   };
@@ -463,6 +482,7 @@ export const useFinishedIssueDialogView = ({
         model: selectedModelFromSchema,
         values: scenarioParamValues,
         leafCount,
+        leafCriteria: leafCriteriaForParams,
       });
 
       if (!validation.ok) {
@@ -474,6 +494,7 @@ export const useFinishedIssueDialogView = ({
         model: selectedModelFromSchema,
         values: scenarioParamValues,
         leafCount,
+        leafCriteria: leafCriteriaForParams,
       });
     } else {
       let parsedParams = {};
@@ -740,6 +761,7 @@ export const useFinishedIssueDialogView = ({
         scenarioParamValues,
         setScenarioParamValues,
         leafNames,
+        leafCriteria: leafCriteriaForParams,
         paramsJson,
         setParamsJson,
         modelsLoading,

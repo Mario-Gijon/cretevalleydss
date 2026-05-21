@@ -73,7 +73,6 @@ export const buildActiveIssueCollections = ({
             computedAt: consensusDoc.timestamp,
             consensusLevel: consensusDoc.level,
             rankedAlternatives: consensusDoc.details.rankedAlternatives,
-            rankedWithScores: consensusDoc.details.rankedWithScores,
             collectiveEvaluations: consensusDoc.collectiveEvaluations,
             feedback: consensusDoc.details.feedback,
             recommendations: consensusDoc.details.recommendations,

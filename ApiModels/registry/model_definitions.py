@@ -68,7 +68,6 @@ class ModelDefinition:
     uses_criterion_types: bool = False
 
     supported_domains: list[str] = field(default_factory=list)
-    criterion_types: list[str] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -121,14 +120,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=False,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=[],
         parameters=[
             {
                 "key": "ag_lq",
                 "label": "Agreement interval",
                 "type": "interval",
                 "scope": "global",
-                "handlerKey": "intervalGlobal",
+                "parameterStructureKey": "intervalGlobal",
                 "required": True,
                 "default": [0.3, 0.8],
                 "restrictions": {
@@ -144,7 +142,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "label": "Expert interval",
                 "type": "interval",
                 "scope": "global",
-                "handlerKey": "intervalGlobal",
+                "parameterStructureKey": "intervalGlobal",
                 "required": True,
                 "default": [0.5, 1],
                 "restrictions": {
@@ -161,7 +159,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "type": "enum",
                 "valueType": "number",
                 "scope": "global",
-                "handlerKey": "selectGlobal",
+                "parameterStructureKey": "selectGlobal",
                 "required": True,
                 "default": 1,
                 "restrictions": {
@@ -175,7 +173,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "label": "Beta",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": True,
                 "default": 0.8,
                 "restrictions": {"min": 0, "max": 1, "allowed": None},
@@ -214,7 +212,6 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="borda",
@@ -248,7 +245,6 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=False,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=[],
     ),
     ModelDefinition(
         api_model_key="aras",
@@ -282,7 +278,6 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="fuzzy_topsis",
@@ -313,7 +308,6 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=True,
         uses_criterion_types=True,
         supported_domains=["linguistic"],
-        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="marcos",
@@ -347,7 +341,6 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
-        criterion_types=["max", "min"],
     ),
     ModelDefinition(
         api_model_key="bwm",
@@ -380,14 +373,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=False,
         supported_domains=[],
-        criterion_types=[],
         parameters=[
             {
                 "key": "eps_penalty",
                 "label": "Epsilon penalty",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": False,
                 "default": 1,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -425,14 +417,13 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=False,
         supported_domains=[],
-        criterion_types=[],
         parameters=[
             {
                 "key": "eps",
                 "label": "Epsilon",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": False,
                 "default": None,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -442,7 +433,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "label": "Mu 0",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": False,
                 "default": None,
                 "restrictions": {"min": 0, "max": 1, "allowed": None},
@@ -452,7 +443,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "label": "Lower bound",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": False,
                 "default": 0,
                 "restrictions": {"min": None, "max": None, "allowed": None},
@@ -462,7 +453,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "label": "Upper bound",
                 "type": "number",
                 "scope": "global",
-                "handlerKey": "numberGlobal",
+                "parameterStructureKey": "numberGlobal",
                 "required": False,
                 "default": 1,
                 "restrictions": {"min": None, "max": None, "allowed": None},

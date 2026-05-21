@@ -1,5 +1,6 @@
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, Chip, Stack, useTheme } from "@mui/material";
+import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.utils";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {
@@ -255,7 +256,7 @@ const PairwiseAlternativeMatrix = ({
                 }}
               >
                 <Chip
-                  label={collectiveValue}
+                  label={formatCollectiveDisplayValue(collectiveValue)}
                   variant="outlined"
                   color="info"
                   size="small"

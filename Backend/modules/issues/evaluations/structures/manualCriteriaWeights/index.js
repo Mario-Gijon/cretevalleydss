@@ -8,6 +8,25 @@ import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const EVALUATION_SAVE_MODES = Object.freeze({
+  DRAFT: "draft",
+  SUBMIT: "submit",
+});
+
+const resolveAllowEmptyFromModeOrThrow = (mode) => {
+  if (mode === EVALUATION_SAVE_MODES.DRAFT) {
+    return true;
+  }
+
+  if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
+    return false;
+  }
+
+  throw createBadRequestError("Unsupported evaluation save mode", {
+    field: "mode",
+  });
+};
+
 const buildEmptyWeightsByCriterion = (criterionNames) =>
   criterionNames.reduce((accumulator, criterionName) => {
     accumulator[criterionName] = "";
@@ -127,15 +146,6 @@ const toWeightsByCriterionFromStoredPayload = (storedPayloadWeights, criterionNa
 export const manualCriteriaWeightsStructure = Object.freeze({
   key: EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS,
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-
-  async init({ issue }) {
-    const { criterionNames } = await getOrderedCriterionNames({ issue });
-
-    return {
-      weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames),
-    };
-  },
-
   async get({ storedEvaluation, issue }) {
     const { criterionNames } = await getOrderedCriterionNames({ issue });
 
@@ -153,27 +163,21 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     };
   },
 
-  async send({ payload, issue }) {
+  async save({ payload, issue, mode }) {
+    const allowEmpty = resolveAllowEmptyFromModeOrThrow(mode);
+
     const normalized = await normalizeManualPayloadOrThrow({
       payload,
       issue,
-      allowEmpty: true,
+      allowEmpty,
     });
 
-    return normalized.payload;
-  },
-
-  async submit({ payload, issue }) {
-    const normalized = await normalizeManualPayloadOrThrow({
-      payload,
-      issue,
-      allowEmpty: false,
-    });
-
-    validateSubmittedManualWeightsOrThrow({
-      weightsByCriterion: normalized.payload.weightsByCriterion,
-      criterionNames: normalized.criterionNames,
-    });
+    if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
+      validateSubmittedManualWeightsOrThrow({
+        weightsByCriterion: normalized.payload.weightsByCriterion,
+        criterionNames: normalized.criterionNames,
+      });
+    }
 
     return normalized.payload;
   },
@@ -252,26 +256,16 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     return {
       message: "Criteria weights computed successfully",
       consensusMeasure: null,
-      ranking: [],
-      rankedWithScores: [],
-      scoresByAlternative: {},
+      weightsByCriterion: normalizedWeightsByCriterion,
       collectiveEvaluations: {
         weightsByCriterion: normalizedWeightsByCriterion,
       },
-      plotsGraphic: {},
       modelExecution: {
         kind: "local",
         structureKey: EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS,
         executedAt: new Date(),
       },
       rawOutput: {},
-      issueUpdates: {
-        modelParameters: {
-          ...(issue?.modelParameters || {}),
-          weights: normalizedWeights,
-        },
-      },
-      nextCurrentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     };
   },
 });

@@ -181,12 +181,25 @@ const advanceToWeightsFinishedAfterSubmit = async ({ issue, stage }) => {
     return;
   }
 
-  const acceptedParticipations = await Participation.find({
+  const participations = await Participation.find({
     issue: issue._id,
-    invitationStatus: "accepted",
   })
-    .select("weightsCompleted")
+    .select("expert invitationStatus weightsCompleted")
     .lean();
+
+  const pendingParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "pending"
+  );
+  if (pendingParticipations.length > 0) {
+    return;
+  }
+
+  const acceptedParticipations = participations.filter(
+    (participation) => participation.invitationStatus === "accepted"
+  );
+  if (acceptedParticipations.length === 0) {
+    return;
+  }
 
   const allWeightsCompleted = acceptedParticipations.every(
     (participation) => participation.weightsCompleted === true
@@ -252,7 +265,8 @@ export const saveIssueEvaluationDraft = async ({
     stage,
   });
 
-  const normalizedPayload = await structure.send({
+  const normalizedPayload = await structure.save({
+    mode: "draft",
     payload,
     issueId: issue._id,
     userId,
@@ -291,7 +305,8 @@ export const submitIssueEvaluation = async ({
     stage,
   });
 
-  const normalizedPayload = await structure.submit({
+  const normalizedPayload = await structure.save({
+    mode: "submit",
     payload,
     issueId: issue._id,
     userId,

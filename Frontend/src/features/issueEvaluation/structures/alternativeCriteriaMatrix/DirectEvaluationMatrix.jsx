@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
+import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.utils";
 
 /**
  * Matriz de evaluación directa alternativa x criterio.
@@ -99,7 +100,7 @@ const DirectEvaluationMatrix = ({
 
     return (
       <Chip
-        label={formatDisplayValue(collectiveValue)}
+        label={formatCollectiveDisplayValue(collectiveValue)}
         variant="outlined"
         size="small"
         sx={{
@@ -198,6 +199,13 @@ const DirectEvaluationMatrix = ({
 
         if (domainType === "linguistic") {
           const labels = domain.linguisticLabels || domain.labels || [];
+
+          if (!permitEdit) {
+            return renderCellWithCollective({
+              leftContent: formatDisplayValue(value ?? ""),
+              collectiveValue,
+            });
+          }
 
           return renderCellWithCollective({
             leftContent: (

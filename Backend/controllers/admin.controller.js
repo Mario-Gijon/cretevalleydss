@@ -134,7 +134,6 @@ const mapIssueModelCatalogItem = (model = {}) => {
     lifecycleKind: model.lifecycleKind || null,
     apiInputFormat: model.apiInputFormat || null,
     apiOutputFormat: model.apiOutputFormat || null,
-    criterionTypes: Array.isArray(model.criterionTypes) ? model.criterionTypes : [],
     parameters: Array.isArray(model.parameters) ? model.parameters : [],
     modelInputFields: Array.isArray(model.modelInputFields)
       ? model.modelInputFields
@@ -567,11 +566,8 @@ export const computeIssueWeightsAdmin = async (req, res) => {
     {
       currentStage: result.currentStage,
       consensusPhase: result.consensusPhase,
-      ranking: result.result?.ranking ?? [],
-      rankedWithScores: result.result?.rankedWithScores ?? [],
-      scoresByAlternative: result.result?.scoresByAlternative ?? {},
+      weightsByCriterion: result.result?.weightsByCriterion ?? {},
       collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
-      plotsGraphic: result.result?.plotsGraphic ?? {},
       consensusMeasure: result.result?.consensusMeasure ?? null,
       consensusLifecycle: result.result?.consensusLifecycle ?? null,
       modelExecution: result.result?.modelExecution ?? null,
@@ -605,9 +601,7 @@ export const resolveIssueAdmin = async (req, res) => {
       finished,
       currentStage: result.currentStage,
       consensusPhase: result.consensusPhase,
-      ranking: result.result?.ranking ?? [],
-      rankedWithScores: result.result?.rankedWithScores ?? [],
-      scoresByAlternative: result.result?.scoresByAlternative ?? {},
+      rankedAlternatives: result.result?.rankedAlternatives ?? [],
       collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
       plotsGraphic: result.result?.plotsGraphic ?? {},
       consensusMeasure: result.result?.consensusMeasure ?? null,

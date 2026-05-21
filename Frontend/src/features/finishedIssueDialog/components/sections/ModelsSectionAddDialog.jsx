@@ -162,6 +162,7 @@ const ModelsSectionAddDialog = () => {
                 values={addDialog.scenarioParamValues}
                 setValues={addDialog.setScenarioParamValues}
                 leafNames={addDialog.leafNames}
+                leafCriteria={addDialog.leafCriteria}
               />
 
               {addDialog.selectedModelFromSchema &&

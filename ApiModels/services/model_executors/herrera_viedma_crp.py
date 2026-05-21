@@ -311,12 +311,29 @@ def _output(
             raise ValueError("Herrera-Viedma collective ranking contains out-of-range index")
         ranking.append(alternative_names[alternative_index])
 
+    if len(ranking) == 0:
+        raise ValueError("Herrera-Viedma collective ranking is empty")
+
     collective_scores = _as_list(safe_run_result.get("collective_scores"))
     scores_by_alternative = {
         alternative_names[index]: float(score)
         for index, score in enumerate(collective_scores)
         if index < len(alternative_names)
     }
+    ranked_alternatives = []
+    for rank_position, alternative_name in enumerate(ranking, start=1):
+        if alternative_name not in scores_by_alternative:
+            raise ValueError(
+                f"Herrera-Viedma collective_scores is missing value for '{alternative_name}'"
+            )
+        ranked_alternatives.append(
+            {
+                "alternativeId": None,
+                "name": alternative_name,
+                "score": float(scores_by_alternative[alternative_name]),
+                "rank": rank_position,
+            }
+        )
 
     consensus_measure = _finite_number(safe_run_result.get("cm"), "cm")
 
@@ -329,12 +346,7 @@ def _output(
         plots_graphic = {}
 
     return {
-        "ranking": ranking,
-        "rankedWithScores": [
-            {"name": name, "score": scores_by_alternative.get(name)}
-            for name in ranking
-        ],
-        "scoresByAlternative": scores_by_alternative,
+        "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_pairwise_collective_evaluations(
             source=collective_evaluations,
             alternative_names=alternative_names,

@@ -100,7 +100,7 @@ export const normalizeParameter = (parameter = {}) => {
     type: normalizeNonEmptyString(parameter?.type),
     valueType: normalizeNonEmptyString(parameter?.valueType),
     scope: normalizeNonEmptyString(parameter?.scope),
-    handlerKey: normalizeNonEmptyString(parameter?.handlerKey),
+    parameterStructureKey: normalizeNonEmptyString(parameter?.parameterStructureKey),
     required: parameter?.required === true,
     default: hasOwn(parameter, "default") ? parameter.default : null,
     restrictions: normalizeDynamicObject(parameter?.restrictions),
@@ -139,9 +139,6 @@ export const normalizeSupportedDomains = (supportedDomains) => {
   };
 };
 
-export const normalizeCriterionTypes = (criterionTypes) =>
-  normalizeStringList(criterionTypes);
-
 export const getSyncBlockerReason = (manifestModel) => {
   if (manifestModel?.isIssueModel !== true) {
     return "Model is not marked as issue model";
@@ -168,7 +165,7 @@ const validateManifestParameters = (manifestModel) => {
     const parameterPath = `parameters[${index}]`;
     const key = normalizeNonEmptyString(parameter?.key);
     const type = normalizeNonEmptyString(parameter?.type);
-    const handlerKey = normalizeNonEmptyString(parameter?.handlerKey);
+    const parameterStructureKey = normalizeNonEmptyString(parameter?.parameterStructureKey);
 
     if (!key) {
       errors.push(`${parameterPath}.key`);
@@ -184,8 +181,8 @@ const validateManifestParameters = (manifestModel) => {
       errors.push(`${parameterPath}.type`);
     }
 
-    if (!handlerKey) {
-      errors.push(`${parameterPath}.handlerKey`);
+    if (!parameterStructureKey) {
+      errors.push(`${parameterPath}.parameterStructureKey`);
     }
   });
 
@@ -255,7 +252,6 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
   usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
-  criterionTypes: normalizeCriterionTypes(manifestModel?.criterionTypes),
   parameters: normalizeParameters(manifestModel?.parameters),
   request: normalizeDynamicObject(manifestModel?.request),
   response: normalizeDynamicObject(manifestModel?.response),
@@ -324,10 +320,6 @@ export const normalizeComparableFieldValue = (field, value) => {
 
   if (field === "supportedDomains") {
     return normalizeSupportedDomains(plainValue);
-  }
-
-  if (field === "criterionTypes") {
-    return normalizeCriterionTypes(plainValue);
   }
 
   return normalizeForStableStringify(plainValue);

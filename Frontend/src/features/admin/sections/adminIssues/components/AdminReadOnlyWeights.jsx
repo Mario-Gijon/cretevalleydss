@@ -1,13 +1,17 @@
-import { Box, Stack, Typography } from "@mui/material";
+import {
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import {
-  formatDateTime,
-  formatWeightValue,
-  objectEntriesSafe,
-} from "../adminIssues.utils";
+import { formatWeightValue } from "../adminIssues.utils";
 import AdminInfoRow from "./AdminInfoRow";
-import AdminMetaChip from "./AdminMetaChip";
 
 /**
  * Vista de solo lectura para pesos del experto en admin issues.
@@ -16,7 +20,12 @@ import AdminMetaChip from "./AdminMetaChip";
  * @param {object} props.data
  * @returns {JSX.Element}
  */
-const AdminReadOnlyWeights = ({ data }) => {
+const AdminReadOnlyWeights = ({
+  data,
+  leafCriteria = [],
+  finalWeights = {},
+  showFinalWeights = false,
+}) => {
   const theme = useTheme();
 
   if (!data?.weights) {
@@ -29,95 +38,103 @@ const AdminReadOnlyWeights = ({ data }) => {
 
   const { weights } = data;
   const kind = weights.kind;
-
-  const renderMapRows = (obj) => {
-    const entries = objectEntriesSafe(obj);
-
-    if (!entries.length) {
-      return (
-        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-          No data.
-        </Typography>
-      );
-    }
-
-    return (
-      <Stack spacing={0.75}>
-        {entries.map(([key, value]) => (
-          <Stack
-            key={key}
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              p: 0.85,
-              borderRadius: 3,
-              bgcolor: alpha(theme.palette.common.white, 0.03),
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 900, color: "text.secondary" }}>
-              {key}
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 850 }}>
-              {formatWeightValue(value)}
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-    );
-  };
+  const expertWeightsByCriterion = weights.manualWeights || weights.singleLeafAutoWeights || null;
+  const criteriaWeightsStatus = weights?.status || "notSubmitted";
+  const criteriaRows =
+    Array.isArray(weights?.leafCriteriaDetailed) && weights.leafCriteriaDetailed.length > 0
+      ? weights.leafCriteriaDetailed.map((criterion) => ({
+        id: criterion.criterionId,
+        name: criterion.criterionName,
+        type: criterion.type,
+        expressionDomain: criterion.expressionDomain,
+      }))
+      : leafCriteria.map((criterion) => ({
+        id: criterion?.id || criterion?._id || criterion?.name,
+        name: criterion?.name,
+        type: criterion?.type || null,
+        expressionDomain: criterion?.expressionDomain || null,
+      }));
 
   return (
     <Stack spacing={1.25}>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <AdminMetaChip tone="secondary">{kind || "unknown"}</AdminMetaChip>
-        {weights?.weightDoc?.completed ? <AdminMetaChip tone="success">Completed</AdminMetaChip> : <AdminMetaChip tone="warning">Draft / pending</AdminMetaChip>}
-        {weights?.weightDoc?.updatedAt ? (
-          <AdminMetaChip tone="info">{formatDateTime(weights.weightDoc.updatedAt)}</AdminMetaChip>
-        ) : null}
-      </Stack>
+      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.secondary" }}>
+        {weights?.structureLabel || "Criteria weights"}
+      </Typography>
 
-      {kind === "singleLeaf" ? renderMapRows(weights.singleLeafAutoWeights || {}) : null}
+      {Array.isArray(criteriaRows) && criteriaRows.length > 0 ? (
+        <TableContainer
+          sx={{
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+            bgcolor: alpha(theme.palette.common.white, 0.02),
+            overflowX: "auto",
+          }}
+        >
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 160 }}>
+                  Criterion
+                </TableCell>
+                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
+                  Expert weight
+                </TableCell>
+                {showFinalWeights ? (
+                  <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
+                    Final weight
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {criteriaRows.map((criterion) => {
+                const criterionName = criterion?.name || "—";
+                const expertRawValue = expertWeightsByCriterion?.[criterionName];
+                const hasExpertValue = Number.isFinite(Number(expertRawValue));
 
-      {kind === "manualConsensus" ? (
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.8 }}>
-            Manual weights
-          </Typography>
-          {renderMapRows(weights.manualWeights || {})}
-        </Box>
+                return (
+                  <TableRow key={criterion?.id || criterionName}>
+                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                      <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                        {criterionName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                      <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                        {hasExpertValue
+                          ? formatWeightValue(Number(expertRawValue))
+                          : criteriaWeightsStatus === "notRequired"
+                            ? "Not required"
+                            : criteriaWeightsStatus === "notSubmitted"
+                              ? "Not submitted"
+                              : criteriaWeightsStatus === "draft"
+                                ? "Draft"
+                                : "Unavailable"}
+                      </Typography>
+                    </TableCell>
+                    {showFinalWeights ? (
+                      <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
+                        <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                          {formatWeightValue(finalWeights?.[criterionName])}
+                        </Typography>
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       ) : null}
 
-      {kind === "bwm" ? (
+      {kind === "bestWorstCriteria" ? (
         <Stack spacing={1.1}>
+          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+            Per-criterion expert weights are unavailable for this structure.
+          </Typography>
           <AdminInfoRow label="Best criterion" value={weights?.bwmData?.bestCriterion || "—"} />
           <AdminInfoRow label="Worst criterion" value={weights?.bwmData?.worstCriterion || "—"} />
-
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.8 }}>
-              Best to others
-            </Typography>
-            {renderMapRows(weights?.bwmData?.bestToOthers || {})}
-          </Box>
-
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.8 }}>
-              Others to worst
-            </Typography>
-            {renderMapRows(weights?.bwmData?.othersToWorst || {})}
-          </Box>
         </Stack>
-      ) : null}
-
-      {weights?.resolvedWeights ? (
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary", mb: 0.8 }}>
-            Resolved / final weights in issue
-          </Typography>
-          {renderMapRows(weights.resolvedWeights)}
-        </Box>
       ) : null}
     </Stack>
   );

@@ -8,9 +8,10 @@ import { validateAndNormalizeArrayParameter } from "./handlers/array.parameter.j
 import { validateAndNormalizeFuzzyArrayParameter } from "./handlers/fuzzyArray.parameter.js";
 import { validateAndNormalizeCriteriaWeightsParameter } from "./handlers/criteriaWeights.parameter.js";
 import { validateAndNormalizeFuzzyCriteriaWeightsParameter } from "./handlers/fuzzyCriteriaWeights.parameter.js";
+import { validateAndNormalizeCriterionMapParameter } from "./handlers/criterionMap.parameter.js";
 import { normalizeNonEmptyString } from "./modelParameter.shared.js";
 
-export const MODEL_PARAMETER_HANDLER_REGISTRY = new Map([
+export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
   ["numberGlobal", validateAndNormalizeNumberParameter],
   ["integerGlobal", validateAndNormalizeIntegerParameter],
   ["booleanGlobal", validateAndNormalizeBooleanParameter],
@@ -23,8 +24,9 @@ export const MODEL_PARAMETER_HANDLER_REGISTRY = new Map([
   ["fuzzyArrayPerCriterion", validateAndNormalizeFuzzyArrayParameter],
   ["criteriaWeights", validateAndNormalizeCriteriaWeightsParameter],
   ["fuzzyCriteriaWeights", validateAndNormalizeFuzzyCriteriaWeightsParameter],
+  ["criterionMap", validateAndNormalizeCriterionMapParameter],
 ]);
 
-export const resolveHandlerKey = (parameter) => {
-  return normalizeNonEmptyString(parameter?.handlerKey);
+export const resolveParameterStructureKey = (parameter) => {
+  return normalizeNonEmptyString(parameter?.parameterStructureKey);
 };

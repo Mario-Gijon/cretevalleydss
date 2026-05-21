@@ -118,7 +118,7 @@ const parameterSchema = new Schema(
       trim: true,
       default: null,
     },
-    handlerKey: {
+    parameterStructureKey: {
       type: String,
       trim: true,
       default: null,
@@ -272,10 +272,6 @@ const issueModelSchema = new Schema({
   usesCriterionTypes: {
     type: Boolean,
     default: false,
-  },
-  criterionTypes: {
-    type: [String],
-    default: [],
   },
   supportedDomains: {
     numeric: {

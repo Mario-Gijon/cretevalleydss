@@ -35,7 +35,7 @@ export const buildCreateIssueParameterDefaults = ({
     }
 
     if (typeof adapter.buildDefault === "function") {
-      defaults[key] = adapter.buildDefault({ parameter, leafCount });
+      defaults[key] = adapter.buildDefault({ parameter, leafCount, leafCriteria });
       return;
     }
 
@@ -64,6 +64,7 @@ export const updateCreateIssueParameterValues = ({
       previousValue: next[key],
       parameter,
       leafCount,
+      leafCriteria,
     });
   });
 

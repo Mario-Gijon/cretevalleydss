@@ -77,7 +77,6 @@ export const normalizeRowsFromCatalog = (models = []) =>
     modelInputFields: asArray(model?.modelInputFields),
     modelOutputFields: asArray(model?.modelOutputFields),
     lifecycleKind: model?.lifecycleKind || null,
-    criterionTypes: asArray(model?.criterionTypes),
     safeToCreateIssueModel: null,
     alternativeEvaluationStructureKey:
       model?.alternativeEvaluationStructureKey || null,

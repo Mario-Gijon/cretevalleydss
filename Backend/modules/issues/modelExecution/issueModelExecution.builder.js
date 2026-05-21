@@ -7,6 +7,72 @@ const isPlainObject = (value) =>
 const isFiniteOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
 
+const normalizeNonEmptyString = (value) =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const validateRankedAlternativesOrThrow = (rankedAlternatives) => {
+  if (!Array.isArray(rankedAlternatives) || rankedAlternatives.length === 0) {
+    throw createInternalError(
+      "Model execution result.rankedAlternatives must be a non-empty array",
+      {
+        field: "result.rankedAlternatives",
+      }
+    );
+  }
+
+  let previousRank = 0;
+  rankedAlternatives.forEach((entry, index) => {
+    if (!isPlainObject(entry)) {
+      throw createInternalError("Each ranked alternative must be an object", {
+        field: `result.rankedAlternatives[${index}]`,
+      });
+    }
+
+    const name = normalizeNonEmptyString(entry.name);
+    if (!name) {
+      throw createInternalError("Each ranked alternative requires a name", {
+        field: `result.rankedAlternatives[${index}].name`,
+      });
+    }
+
+    if (typeof entry.alternativeId !== "string" && entry.alternativeId !== null) {
+      throw createInternalError(
+        "Each ranked alternative alternativeId must be a string or null",
+        {
+          field: `result.rankedAlternatives[${index}].alternativeId`,
+        }
+      );
+    }
+
+    const score = Number(entry.score);
+    if (!Number.isFinite(score)) {
+      throw createInternalError("Each ranked alternative requires a finite score", {
+        field: `result.rankedAlternatives[${index}].score`,
+      });
+    }
+
+    const rank = Number(entry.rank);
+    if (!Number.isInteger(rank) || rank <= 0) {
+      throw createInternalError(
+        "Each ranked alternative requires a positive integer rank",
+        {
+          field: `result.rankedAlternatives[${index}].rank`,
+        }
+      );
+    }
+
+    if (rank <= previousRank) {
+      throw createInternalError(
+        "rankedAlternatives must be ordered from best to worst by rank",
+        {
+          field: "result.rankedAlternatives",
+        }
+      );
+    }
+    previousRank = rank;
+  });
+};
+
 const validateNormalizedModelResultOrThrow = ({ result }) => {
   if (!isPlainObject(result)) {
     throw createInternalError("Model execution result must be an object", {
@@ -14,23 +80,7 @@ const validateNormalizedModelResultOrThrow = ({ result }) => {
     });
   }
 
-  if (!Array.isArray(result.ranking)) {
-    throw createInternalError("Model execution result.ranking is required", {
-      field: "result.ranking",
-    });
-  }
-
-  if (!Array.isArray(result.rankedWithScores)) {
-    throw createInternalError("Model execution result.rankedWithScores is required", {
-      field: "result.rankedWithScores",
-    });
-  }
-
-  if (!isPlainObject(result.scoresByAlternative)) {
-    throw createInternalError("Model execution result.scoresByAlternative is required", {
-      field: "result.scoresByAlternative",
-    });
-  }
+  validateRankedAlternativesOrThrow(result.rankedAlternatives);
 
   if (!isPlainObject(result.collectiveEvaluations)) {
     throw createInternalError("Model execution result.collectiveEvaluations is required", {
@@ -123,9 +173,7 @@ export const buildIssueModelExecutionResult = ({
   return {
     message,
     consensusMeasure: result.consensusMeasure,
-    ranking: result.ranking,
-    rankedWithScores: result.rankedWithScores,
-    scoresByAlternative: result.scoresByAlternative,
+    rankedAlternatives: result.rankedAlternatives,
     collectiveEvaluations: result.collectiveEvaluations,
     plotsGraphic: result.plotsGraphic,
     modelExecution: {

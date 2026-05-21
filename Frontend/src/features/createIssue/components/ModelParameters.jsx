@@ -6,7 +6,7 @@ import { resolveModelParameterAdapter } from "../../modelParameters";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const isCriteriaWeightLikeParameter = (parameter) =>
-  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.handlerKey) ||
+  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
   parameter?.semanticRole === "criteriaWeights";
 
 export const getRenderableNormalModelParameters = (selectedModel) => {

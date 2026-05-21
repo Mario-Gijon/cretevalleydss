@@ -43,16 +43,6 @@ export default function ModelDetailDialog({ row, open, onClose }) {
   if (!row) return null;
 
   const syncState = getSyncState(row);
-  const criterionTypesText = count(row.criterionTypes)
-    ? row.criterionTypes
-      .map((item) => {
-        const normalized = String(item || "").toLowerCase();
-        if (normalized === "max") return "Benefit";
-        if (normalized === "min") return "Cost";
-        return toTitle(item);
-      })
-      .join(", ")
-    : null;
 
   return (
     <Dialog
@@ -134,7 +124,6 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 { label: "Multi criteria", value: formatBoolean(row.isMultiCriteria) },
                 { label: "Input format", value: row.apiInputFormat },
                 { label: "Output format", value: row.apiOutputFormat },
-                { label: "Criterion types", value: criterionTypesText },
                 { label: "Supported domains", value: valueToText(row.supportedDomains) },
               ]}
             />

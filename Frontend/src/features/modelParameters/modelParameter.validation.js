@@ -15,6 +15,7 @@ export const validateModelParameterValue = ({
   parameter,
   value,
   leafCount,
+  leafCriteria = [],
 }) => {
   const { adapter } = resolveModelParameterAdapter(parameter);
 
@@ -22,5 +23,5 @@ export const validateModelParameterValue = ({
     return { isValid: true };
   }
 
-  return adapter.validate({ parameter, value, leafCount });
+  return adapter.validate({ parameter, value, leafCount, leafCriteria });
 };

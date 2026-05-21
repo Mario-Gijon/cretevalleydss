@@ -21,6 +21,25 @@ const buildEmptyCell = (expressionDomain = null) => ({
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
 
+const EVALUATION_SAVE_MODES = Object.freeze({
+  DRAFT: "draft",
+  SUBMIT: "submit",
+});
+
+const resolveRequireValueFromModeOrThrow = (mode) => {
+  if (mode === EVALUATION_SAVE_MODES.DRAFT) {
+    return false;
+  }
+
+  if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
+    return true;
+  }
+
+  throw createBadRequestError("Unsupported evaluation save mode", {
+    field: "mode",
+  });
+};
+
 const validateCellValueByDomainOrThrow = ({
   value,
   expressionDomain,
@@ -258,14 +277,6 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-
-  async init({ issue }) {
-    return buildGetPayload({
-      storedEvaluation: null,
-      issue,
-    });
-  },
-
   async get({ storedEvaluation, issue }) {
     return buildGetPayload({
       storedEvaluation,
@@ -273,19 +284,13 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
     });
   },
 
-  async send({ payload, issue }) {
-    return normalizePayloadOrThrow({
-      payload,
-      issue,
-      requireValue: false,
-    });
-  },
+  async save({ payload, issue, mode }) {
+    const requireValue = resolveRequireValueFromModeOrThrow(mode);
 
-  async submit({ payload, issue }) {
     return normalizePayloadOrThrow({
       payload,
       issue,
-      requireValue: true,
+      requireValue,
     });
   },
 

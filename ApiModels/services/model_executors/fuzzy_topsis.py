@@ -206,7 +206,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     return {
         "matrices": matrices,
         "weights": _weights(payload, len(criteria)),
-        "criterion_types": [_criterion_type(item.get("type")) for item in criteria],
+        "criterion_directions": [_criterion_type(item.get("type")) for item in criteria],
         "alternative_names": alternative_names,
         "criterion_names": criterion_names,
     }
@@ -258,19 +258,28 @@ def _output(
             raise ValueError("Fuzzy TOPSIS collective_ranking contains out-of-range index")
         ranking.append(alternative_names[alternative_index])
 
+    if len(ranking) == 0:
+        raise ValueError("Fuzzy TOPSIS output collective_ranking is empty")
+
     scores_by_alternative = {
         alternative_names[index]: float(score)
         for index, score in enumerate(collective_scores)
         if index < len(alternative_names)
     }
 
+    ranked_alternatives = []
+    for rank_position, alternative_name in enumerate(ranking, start=1):
+        ranked_alternatives.append(
+            {
+                "alternativeId": None,
+                "name": alternative_name,
+                "score": float(scores_by_alternative[alternative_name]),
+                "rank": rank_position,
+            }
+        )
+
     return {
-        "ranking": ranking,
-        "rankedWithScores": [
-            {"name": name, "score": scores_by_alternative.get(name)}
-            for name in ranking
-        ],
-        "scoresByAlternative": scores_by_alternative,
+        "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_collective_evaluations(
             collective_matrix=run_result.get("collective_matrix"),
             alternative_names=alternative_names,
@@ -291,7 +300,7 @@ def execute_fuzzy_topsis(
         results = run_fuzzy_topsis(
             execution_input["matrices"],
             execution_input["weights"],
-            execution_input["criterion_types"],
+            execution_input["criterion_directions"],
         )
 
         return success_response(

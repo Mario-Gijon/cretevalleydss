@@ -134,6 +134,28 @@ export const useFinishedIssueRatingsView = ({
     return selected || null;
   }, [selectedExpert, activeCriterion, phaseRatings]);
 
+  const criteriaWeightsEvaluation = useMemo(() => {
+    if (!selectedExpert || !phaseRatings) {
+      return null;
+    }
+
+    const entry = phaseRatings?.criteriaWeightsEvaluationByExpert?.[selectedExpert];
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+
+    return entry;
+  }, [selectedExpert, phaseRatings]);
+
+  const finalCriteriaWeights = useMemo(() => {
+    const weights = viewIssue?.finalCriteriaWeights;
+    if (!weights || typeof weights !== "object") {
+      return null;
+    }
+
+    return weights;
+  }, [viewIssue]);
+
   const collectiveEvaluations = useMemo(() => {
     if (!phaseRatings || !showCollective) {
       return null;
@@ -203,6 +225,8 @@ export const useFinishedIssueRatingsView = ({
     setShowCollective,
     canShowCollective,
     evaluations,
+    criteriaWeightsEvaluation,
+    finalCriteriaWeights,
     collectiveEvaluations,
     unsupportedEvaluationStructure,
   };
