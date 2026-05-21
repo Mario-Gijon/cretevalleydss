@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import DirectEvaluationMatrix from "../../issueEvaluation/structures/alternativeCriteriaMatrix/DirectEvaluationMatrix.jsx";
-import PairwiseAlternativeMatrix from "../../issueEvaluation/structures/alternativePairwiseByCriterion/PairwiseAlternativeMatrix.jsx";
 import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueEvaluationStructure.js";
-import { EVALUATION_STRUCTURE_KEYS } from "../../issueEvaluation/evaluation.constants.js";
-
-const MATRIX_BY_STRUCTURE_KEY = Object.freeze({
-  [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX]: DirectEvaluationMatrix,
-  [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION]:
-    PairwiseAlternativeMatrix,
-});
+import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
+import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry.js";
 
 /**
  * Hook for managing finished issue ratings state and data extraction.
@@ -51,8 +44,17 @@ export const useFinishedIssueRatingsView = ({
     [viewIssue]
   );
 
-  const Matrix = MATRIX_BY_STRUCTURE_KEY[evaluationStructure] || null;
-  const unsupportedEvaluationStructure = !Matrix;
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: evaluationStructure,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      }),
+    [evaluationStructure]
+  );
+
+  const Matrix = structureEntry?.EvaluationComponent ?? null;
+  const unsupportedEvaluationStructure = Boolean(evaluationStructure) && !Matrix;
 
   const phaseRatings = useMemo(
     () => viewIssue?.expertsRatings?.[currentPhaseIndex + 1],
