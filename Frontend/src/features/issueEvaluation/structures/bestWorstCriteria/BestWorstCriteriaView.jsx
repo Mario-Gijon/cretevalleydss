@@ -1,4 +1,5 @@
 import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { buildEmptyBestWorstCriteriaPayload } from "./bestWorstCriteria.payload";
 
 const preventInvalidNumberKeys = (event) => {
   if (["e", "E", "+", "-", ".", ","].includes(event.key)) {
@@ -21,7 +22,11 @@ const BestWorstCriteriaView = ({
 }) => {
   const criterionNamesSource =
     directCriterionNames ?? creationContext?.criterionNames ?? [];
-  const payload = directPayload ?? creationContext?.payload;
+  const providedPayload = directPayload ?? creationContext?.payload;
+  const payload =
+    providedPayload && Object.keys(providedPayload).length > 0
+      ? providedPayload
+      : buildEmptyBestWorstCriteriaPayload(criterionNamesSource);
   const setPayload = directSetPayload ?? creationContext?.setPayload;
   const names = criterionNamesSource;
 

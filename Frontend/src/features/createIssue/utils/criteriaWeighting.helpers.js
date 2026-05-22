@@ -98,7 +98,6 @@ export const buildApiCriteriaWeightingConfig = ({
   mode,
   leafCriteria,
   criteriaWeightingModel,
-  initialPayload = {},
 }) => {
   void leafCriteria;
   const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
@@ -118,7 +117,7 @@ export const buildApiCriteriaWeightingConfig = ({
     criteriaWeightingModelId: modelId || null,
     criteriaWeightingModelKey: modelKey || null,
     criteriaWeightingParameters: {},
-    payload: initialPayload,
+    payload: {},
   };
 };
 
