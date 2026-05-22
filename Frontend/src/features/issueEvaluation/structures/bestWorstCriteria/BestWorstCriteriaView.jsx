@@ -22,13 +22,13 @@ const BestWorstCriteriaView = ({
 }) => {
   const criterionNamesSource =
     directCriterionNames ?? creationContext?.criterionNames ?? [];
+  const names = criterionNamesSource;
   const providedPayload = directPayload ?? creationContext?.payload;
   const payload =
     providedPayload && Object.keys(providedPayload).length > 0
       ? providedPayload
-      : buildEmptyBestWorstCriteriaPayload(criterionNamesSource);
+      : buildEmptyBestWorstCriteriaPayload(names);
   const setPayload = directSetPayload ?? creationContext?.setPayload;
-  const names = criterionNamesSource;
 
   const bestComparisonNames = names.filter((name) => name !== payload.bestCriterion);
   const worstComparisonNames = names.filter((name) => name !== payload.worstCriterion);
