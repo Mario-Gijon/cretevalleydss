@@ -36,13 +36,13 @@ export const IssuesDataProvider = ({ children }) => {
    * @returns {object|null}
    */
   const applyActivePayload = (payload) => {
-    const normalizedPayload = payload && typeof payload === "object" ? payload : null;
+    const activePayload = payload && typeof payload === "object" ? payload : null;
 
-    setActiveIssues(normalizedPayload?.issues ?? []);
-    setTaskCenter(normalizedPayload?.taskCenter ?? null);
-    setFiltersMeta(normalizedPayload?.filtersMeta ?? null);
+    setActiveIssues(activePayload?.issues ?? []);
+    setTaskCenter(activePayload?.taskCenter ?? null);
+    setFiltersMeta(activePayload?.filtersMeta ?? null);
 
-    return normalizedPayload;
+    return activePayload;
   };
 
   /**

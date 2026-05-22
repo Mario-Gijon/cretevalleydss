@@ -332,12 +332,25 @@ export const CriteriaWeightingPanel = ({
           />
 
           {availableCriteriaWeightingModels.map((criteriaModel) => {
+            const structureEntry = getEvaluationStructureEntryForStage({
+              structureKey: criteriaModel?.criteriaWeightingStructureKey || "",
+              stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+            });
+            const supportsCreatorMode =
+              typeof structureEntry?.buildInitialPayload === "function";
+            if (!supportsCreatorMode) return null;
+
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
               (String(safeConfig?.criteriaWeightingModelId || "").trim() === modelId ||
                 String(safeConfig?.criteriaWeightingModelKey || "").trim() ===
                   String(criteriaModel?.apiModelKey || "").trim());
+            const initialPayload = structureEntry.buildInitialPayload({
+              criterionNames,
+              leafCriteria,
+              criteria,
+            });
 
             return (
               <CriteriaWeightingMethodCard
@@ -352,6 +365,7 @@ export const CriteriaWeightingPanel = ({
                       mode: CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL,
                       leafCriteria,
                       criteriaWeightingModel: criteriaModel,
+                      initialPayload,
                     }),
                     { markDirty: true }
                   )
@@ -410,7 +424,7 @@ export const CriteriaWeightingPanel = ({
               criteria,
               leafCriteria,
               criterionNames,
-              payload: safeConfig?.payload || {},
+              payload: safeConfig?.payload,
               setPayload: (payload) =>
                 updateConfig(
                   {

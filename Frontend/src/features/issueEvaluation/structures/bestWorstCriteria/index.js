@@ -1,6 +1,7 @@
 import { EVALUATION_STAGES, EVALUATION_STRUCTURE_KEYS } from "../../evaluation.constants";
 import BestWorstCriteriaEvaluationDialog from "./BestWorstCriteriaEvaluationDialog";
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
+import { buildEmptyBestWorstCriteriaPayload } from "./bestWorstCriteria.payload";
 
 export const bestWorstCriteriaStructure = Object.freeze({
   key: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
@@ -8,4 +9,6 @@ export const bestWorstCriteriaStructure = Object.freeze({
   label: "BWM",
   Dialog: BestWorstCriteriaEvaluationDialog,
   View: BestWorstCriteriaView,
+  buildInitialPayload: ({ criterionNames }) =>
+    buildEmptyBestWorstCriteriaPayload(criterionNames),
 });
