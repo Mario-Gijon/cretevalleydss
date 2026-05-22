@@ -27,6 +27,18 @@ def _normalize_criterion_names(payload: GenericModelExecutionRequest) -> list[st
     return criterion_names
 
 
+def _normalize_bwm_scale_value(value: Any, field: str) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field} must be an integer between 1 and 9")
+
+    if not numeric.is_integer() or numeric < 1 or numeric > 9:
+        raise ValueError(f"{field} must be an integer between 1 and 9")
+
+    return numeric
+
+
 def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONResponse:
     try:
         criterion_names = _normalize_criterion_names(payload)
@@ -45,14 +57,47 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             if not expert_key:
                 continue
 
-            best_to_others = eval_payload.get("bestToOthers", {})
-            others_to_worst = eval_payload.get("othersToWorst", {})
+            best_to_others = eval_payload.get("bestToOthers")
+            others_to_worst = eval_payload.get("othersToWorst")
 
-            if not isinstance(best_to_others, dict) or not isinstance(others_to_worst, dict):
-                continue
+            if not isinstance(best_to_others, dict):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': bestToOthers must be an object"
+                )
+            if not isinstance(others_to_worst, dict):
+                return error_response(
+                    f"Invalid BWM payload for expert '{expert_key}': othersToWorst must be an object"
+                )
 
-            mic = [float(best_to_others[criterion_name]) for criterion_name in criterion_names]
-            lic = [float(others_to_worst[criterion_name]) for criterion_name in criterion_names]
+            mic: list[float] = []
+            lic: list[float] = []
+            for criterion_name in criterion_names:
+                if criterion_name not in best_to_others:
+                    return error_response(
+                        f"Invalid BWM payload for expert '{expert_key}': missing bestToOthers['{criterion_name}']"
+                    )
+                if criterion_name not in others_to_worst:
+                    return error_response(
+                        f"Invalid BWM payload for expert '{expert_key}': missing othersToWorst['{criterion_name}']"
+                    )
+
+                try:
+                    mic.append(
+                        _normalize_bwm_scale_value(
+                            best_to_others[criterion_name],
+                            f"bestToOthers['{criterion_name}']",
+                        )
+                    )
+                    lic.append(
+                        _normalize_bwm_scale_value(
+                            others_to_worst[criterion_name],
+                            f"othersToWorst['{criterion_name}']",
+                        )
+                    )
+                except ValueError as error:
+                    return error_response(
+                        f"Invalid BWM payload for expert '{expert_key}': {error}"
+                    )
 
             experts_data[expert_key] = {
                 "mic": mic,

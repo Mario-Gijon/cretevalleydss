@@ -157,9 +157,13 @@ const validateSubmittedBwmPayloadOrThrow = ({ criterionNames, payload }) => {
     const othersToWorstValue = Number(othersToWorst[criterionName]);
 
     if (criterionName !== bestCriterion) {
-      if (!Number.isFinite(bestToOthersValue) || bestToOthersValue < 1 || bestToOthersValue > 9) {
+      if (
+        !Number.isInteger(bestToOthersValue) ||
+        bestToOthersValue < 1 ||
+        bestToOthersValue > 9
+      ) {
         throw createBadRequestError(
-          `bestToOthers['${criterionName}'] must be a finite number between 1 and 9`,
+          `bestToOthers['${criterionName}'] must be an integer between 1 and 9`,
           {
             field: "payload.bestToOthers",
           }
@@ -168,9 +172,13 @@ const validateSubmittedBwmPayloadOrThrow = ({ criterionNames, payload }) => {
     }
 
     if (criterionName !== worstCriterion) {
-      if (!Number.isFinite(othersToWorstValue) || othersToWorstValue < 1 || othersToWorstValue > 9) {
+      if (
+        !Number.isInteger(othersToWorstValue) ||
+        othersToWorstValue < 1 ||
+        othersToWorstValue > 9
+      ) {
         throw createBadRequestError(
-          `othersToWorst['${criterionName}'] must be a finite number between 1 and 9`,
+          `othersToWorst['${criterionName}'] must be an integer between 1 and 9`,
           {
             field: "payload.othersToWorst",
           }
