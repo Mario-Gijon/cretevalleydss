@@ -19,7 +19,6 @@ import AlternativeEvaluationSubmitDialog from "../../shared/components/Alternati
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
 import {
   buildEmptyBestWorstCriteriaPayload,
-  normalizeBestWorstCriteriaDraftPayload,
   validateBestWorstCriteriaPayload,
 } from "./bestWorstCriteria.payload";
 
@@ -45,12 +44,9 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
       setLoading(true);
       try {
         const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.CRITERIA_WEIGHTING);
-        const normalized = normalizeBestWorstCriteriaDraftPayload({
-          criterionNames,
-          payload: response?.data?.payload || {},
-        });
-        setBwmPayload(normalized);
-        setInitialData(JSON.stringify(normalized));
+        const nextPayload = response?.data?.payload;
+        setBwmPayload(nextPayload);
+        setInitialData(JSON.stringify(nextPayload));
       } catch {
         const empty = buildEmptyBestWorstCriteriaPayload(criterionNames);
         setBwmPayload(empty);
@@ -109,14 +105,10 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
     setLoading(true);
     setOpenSubmitDialog(false);
 
-    const payload = normalizeBestWorstCriteriaDraftPayload({
-      criterionNames,
-      payload: bwmPayload,
-    });
     const response = await submitIssueEvaluationPayload(
       issue.id,
       EVALUATION_STAGES.CRITERIA_WEIGHTING,
-      payload
+      bwmPayload
     );
 
     setLoading(false);

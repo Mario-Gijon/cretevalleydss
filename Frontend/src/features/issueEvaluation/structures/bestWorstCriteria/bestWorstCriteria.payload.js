@@ -1,102 +1,36 @@
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
 const isValidBwmScaleValue = (value) =>
   Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 9;
 
 export const buildEmptyBestWorstCriteriaPayload = (criterionNames) => ({
-  bestCriterion: "",
-  worstCriterion: "",
+  bestCriterion: criterionNames[0] || "",
+  worstCriterion:
+    criterionNames.length > 1
+      ? criterionNames[criterionNames.length - 1]
+      : criterionNames[0] || "",
   bestToOthers: Object.fromEntries(
-    (Array.isArray(criterionNames) ? criterionNames : []).map((name) => [
-      name,
-      "",
-    ])
+    criterionNames.map((name) => [name, name === criterionNames[0] ? 1 : ""])
   ),
   othersToWorst: Object.fromEntries(
-    (Array.isArray(criterionNames) ? criterionNames : []).map((name) => [
+    criterionNames.map((name) => [
       name,
-      "",
+      name ===
+      (criterionNames.length > 1
+        ? criterionNames[criterionNames.length - 1]
+        : criterionNames[0])
+        ? 1
+        : "",
     ])
   ),
 });
 
-export const normalizeBestWorstCriteriaDraftPayload = ({
-  criterionNames,
-  payload,
-}) => {
-  const names = (Array.isArray(criterionNames) ? criterionNames : []).filter(
-    Boolean
-  );
-  const safePayload = isPlainObject(payload) ? payload : {};
-  const base = buildEmptyBestWorstCriteriaPayload(names);
-
-  const normalized = {
-    bestCriterion:
-      typeof safePayload.bestCriterion === "string" &&
-      names.includes(safePayload.bestCriterion)
-        ? safePayload.bestCriterion
-        : names[0] || "",
-    worstCriterion:
-      typeof safePayload.worstCriterion === "string" &&
-      names.includes(safePayload.worstCriterion)
-        ? safePayload.worstCriterion
-        : names.length > 1
-          ? names[names.length - 1]
-          : names[0] || "",
-    bestToOthers: { ...base.bestToOthers },
-    othersToWorst: { ...base.othersToWorst },
-  };
-
-  if (
-    names.length > 1 &&
-    normalized.bestCriterion === normalized.worstCriterion
-  ) {
-    normalized.worstCriterion =
-      names.find((name) => name !== normalized.bestCriterion) ||
-      normalized.worstCriterion;
-  }
-
-  for (const name of names) {
-    const bestValue = safePayload?.bestToOthers?.[name];
-    const worstValue = safePayload?.othersToWorst?.[name];
-
-    normalized.bestToOthers[name] =
-      bestValue === "" || bestValue === null || bestValue === undefined
-        ? ""
-        : Number(bestValue);
-
-    normalized.othersToWorst[name] =
-      worstValue === "" || worstValue === null || worstValue === undefined
-        ? ""
-        : Number(worstValue);
-  }
-
-  if (normalized.bestCriterion) {
-    normalized.bestToOthers[normalized.bestCriterion] = 1;
-  }
-
-  if (normalized.worstCriterion) {
-    normalized.othersToWorst[normalized.worstCriterion] = 1;
-  }
-
-  return normalized;
-};
-
 export const validateBestWorstCriteriaPayload = ({ criterionNames, payload }) => {
-  const names = (Array.isArray(criterionNames) ? criterionNames : []).filter(
-    Boolean
-  );
-  const normalized = normalizeBestWorstCriteriaDraftPayload({
-    criterionNames: names,
-    payload,
-  });
-
-  const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } =
-    normalized;
+  const names = criterionNames;
+  const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } = payload;
 
   if (!bestCriterion) return "Best criterion is required.";
   if (!worstCriterion) return "Worst criterion is required.";
+  if (!names.includes(bestCriterion)) return "Best criterion is invalid.";
+  if (!names.includes(worstCriterion)) return "Worst criterion is invalid.";
   if (names.length > 1 && bestCriterion === worstCriterion) {
     return "Best and worst criteria must be different.";
   }
@@ -109,6 +43,14 @@ export const validateBestWorstCriteriaPayload = ({ criterionNames, payload }) =>
     if (name !== worstCriterion && !isValidBwmScaleValue(othersToWorst[name])) {
       return `Others-to-worst value for '${name}' must be an integer between 1 and 9.`;
     }
+  }
+
+  if (bestToOthers[bestCriterion] !== 1) {
+    return "Best criterion self-comparison must be 1.";
+  }
+
+  if (othersToWorst[worstCriterion] !== 1) {
+    return "Worst criterion self-comparison must be 1.";
   }
 
   return null;

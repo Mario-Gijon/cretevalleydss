@@ -1,5 +1,4 @@
 import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import { normalizeBestWorstCriteriaDraftPayload } from "./bestWorstCriteria.payload";
 
 const preventInvalidNumberKeys = (event) => {
   if (["e", "E", "+", "-", ".", ","].includes(event.key)) {
@@ -20,27 +19,14 @@ const BestWorstCriteriaView = ({
   setPayload: directSetPayload,
   disabled = false,
 }) => {
-  const criterionNamesSource = Array.isArray(directCriterionNames)
-    ? directCriterionNames
-    : Array.isArray(creationContext?.criterionNames)
-      ? creationContext.criterionNames
-      : [];
-  const payload = directPayload ?? creationContext?.payload ?? {};
+  const criterionNamesSource =
+    directCriterionNames ?? creationContext?.criterionNames ?? [];
+  const payload = directPayload ?? creationContext?.payload;
   const setPayload = directSetPayload ?? creationContext?.setPayload;
-  const names = criterionNamesSource.filter(Boolean);
+  const names = criterionNamesSource;
 
-  const normalizedPayload = normalizeBestWorstCriteriaDraftPayload({
-    criterionNames: names,
-    payload,
-  });
-
-  const bestComparisonNames = names.filter(
-    (name) => name !== normalizedPayload.bestCriterion
-  );
-
-  const worstComparisonNames = names.filter(
-    (name) => name !== normalizedPayload.worstCriterion
-  );
+  const bestComparisonNames = names.filter((name) => name !== payload.bestCriterion);
+  const worstComparisonNames = names.filter((name) => name !== payload.worstCriterion);
 
   const longestCriterionLength = names.reduce(
     (max, name) => Math.max(max, String(name).length),
@@ -53,16 +39,16 @@ const BestWorstCriteriaView = ({
   )}ch`;
 
   const updateBestCriterion = (bestCriterion) => {
-    const previousBestCriterion = normalizedPayload.bestCriterion;
+    const previousBestCriterion = payload.bestCriterion;
 
     const next = {
-      ...normalizedPayload,
+      ...payload,
       bestCriterion,
       bestToOthers: {
-        ...normalizedPayload.bestToOthers,
+        ...payload.bestToOthers,
         [bestCriterion]: 1,
       },
-      othersToWorst: { ...normalizedPayload.othersToWorst },
+      othersToWorst: { ...payload.othersToWorst },
     };
 
     if (
@@ -83,14 +69,14 @@ const BestWorstCriteriaView = ({
   };
 
   const updateWorstCriterion = (worstCriterion) => {
-    const previousWorstCriterion = normalizedPayload.worstCriterion;
+    const previousWorstCriterion = payload.worstCriterion;
 
     const next = {
-      ...normalizedPayload,
+      ...payload,
       worstCriterion,
-      bestToOthers: { ...normalizedPayload.bestToOthers },
+      bestToOthers: { ...payload.bestToOthers },
       othersToWorst: {
-        ...normalizedPayload.othersToWorst,
+        ...payload.othersToWorst,
         [worstCriterion]: 1,
       },
     };
@@ -117,9 +103,9 @@ const BestWorstCriteriaView = ({
     if (normalizedValue === null) return;
 
     setPayload({
-      ...normalizedPayload,
+      ...payload,
       bestToOthers: {
-        ...normalizedPayload.bestToOthers,
+        ...payload.bestToOthers,
         [criterionName]: normalizedValue,
       },
     });
@@ -130,9 +116,9 @@ const BestWorstCriteriaView = ({
     if (normalizedValue === null) return;
 
     setPayload({
-      ...normalizedPayload,
+      ...payload,
       othersToWorst: {
-        ...normalizedPayload.othersToWorst,
+        ...payload.othersToWorst,
         [criterionName]: normalizedValue,
       },
     });
@@ -208,11 +194,11 @@ const BestWorstCriteriaView = ({
             size="small"
             color="info"
             disabled={disabled}
-            value={normalizedPayload.bestCriterion}
+            value={payload.bestCriterion}
             onChange={(event) => updateBestCriterion(event.target.value)}
           >
             {names
-              .filter((name) => name !== normalizedPayload.worstCriterion)
+              .filter((name) => name !== payload.worstCriterion)
               .map((name) => (
                 <MenuItem key={name} value={name}>
                   {name}
@@ -225,7 +211,7 @@ const BestWorstCriteriaView = ({
           {bestComparisonNames.map((name) =>
             renderComparisonRow({
               name,
-              value: normalizedPayload.bestToOthers[name],
+              value: payload.bestToOthers[name],
               onChange: updateBestToOthersValue,
             })
           )}
@@ -261,11 +247,11 @@ const BestWorstCriteriaView = ({
             size="small"
             color="info"
             disabled={disabled}
-            value={normalizedPayload.worstCriterion}
+            value={payload.worstCriterion}
             onChange={(event) => updateWorstCriterion(event.target.value)}
           >
             {names
-              .filter((name) => name !== normalizedPayload.bestCriterion)
+              .filter((name) => name !== payload.bestCriterion)
               .map((name) => (
                 <MenuItem key={name} value={name}>
                   {name}
@@ -278,7 +264,7 @@ const BestWorstCriteriaView = ({
           {worstComparisonNames.map((name) =>
             renderComparisonRow({
               name,
-              value: normalizedPayload.othersToWorst[name],
+              value: payload.othersToWorst[name],
               onChange: updateOthersToWorstValue,
             })
           )}

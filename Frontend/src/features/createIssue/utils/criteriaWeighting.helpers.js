@@ -1,4 +1,5 @@
 import { buildDefaultFuzzyWeightVector } from "./criteriaWeighting.model";
+import { buildInitialCriteriaWeightingPayload } from "../../issueEvaluation/structures/criteriaWeightingCreationPayload.registry";
 
 export const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",
@@ -96,12 +97,16 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
 
 export const buildApiCriteriaWeightingConfig = ({
   mode,
+  leafCriteria,
   criteriaWeightingModel,
 }) => {
   const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
   const structureKey = String(
     criteriaWeightingModel?.criteriaWeightingStructureKey || ""
   ).trim();
+  const criterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
   const modelId = String(criteriaWeightingModel?._id || criteriaWeightingModel?.id || "").trim();
   const modelKey = String(criteriaWeightingModel?.apiModelKey || "").trim();
 
@@ -115,7 +120,10 @@ export const buildApiCriteriaWeightingConfig = ({
     criteriaWeightingModelId: modelId || null,
     criteriaWeightingModelKey: modelKey || null,
     criteriaWeightingParameters: {},
-    payload: {},
+    payload: buildInitialCriteriaWeightingPayload({
+      structureKey,
+      criterionNames,
+    }),
   };
 };
 
