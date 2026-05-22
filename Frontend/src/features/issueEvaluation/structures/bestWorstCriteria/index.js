@@ -8,5 +8,4 @@ export const bestWorstCriteriaStructure = Object.freeze({
   label: "BWM",
   Dialog: BestWorstCriteriaEvaluationDialog,
   View: BestWorstCriteriaView,
-  CreationComponent: BestWorstCriteriaView,
 });

@@ -118,8 +118,8 @@ export const CriteriaWeightingPanel = ({
       }),
     [selectedApiCriteriaWeightingModel]
   );
-  const SelectedCreationComponent =
-    selectedCriteriaWeightingStructureEntry?.CreationComponent || null;
+  const SelectedCriteriaWeightingView =
+    selectedCriteriaWeightingStructureEntry?.View || null;
 
   const updateConfig = (nextConfig, options = {}) => {
     const markDirty = options?.markDirty === true;
@@ -404,8 +404,8 @@ export const CriteriaWeightingPanel = ({
       ) : null}
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
-        SelectedCreationComponent ? (
-          <SelectedCreationComponent
+        SelectedCriteriaWeightingView ? (
+          <SelectedCriteriaWeightingView
             creationContext={{
               criteria,
               leafCriteria,
@@ -427,7 +427,7 @@ export const CriteriaWeightingPanel = ({
         ) : (
           <Alert severity="warning">
             This criteria weighting model cannot be computed during issue creation
-            because its structure does not expose a creation editor.
+            because its structure does not expose a view.
           </Alert>
         )
       ) : null}
