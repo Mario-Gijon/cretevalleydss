@@ -1,4 +1,4 @@
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { Chip, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { resolveModelParameterAdapter, getParameterExpectedLength } from "./modelParameter.registry";
 
@@ -17,7 +17,10 @@ const fallbackString = (value) => {
   return String(value);
 };
 
-const GenericView = ({ parameter, value, leafNames }) => {
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
   const theme = useTheme();
   const shown = value ?? parameter?.default;
   const type = parameter?.type;
@@ -79,18 +82,87 @@ const GenericView = ({ parameter, value, leafNames }) => {
     );
   }
 
+  if (parameter?.parameterStructureKey === "criterionMap" && isPlainObject(shown)) {
+    const entries = Object.entries(shown);
+    const normalizedLeafCriteria = Array.isArray(leafCriteria)
+      ? leafCriteria
+          .map((criterion, index) => {
+            const id = String(criterion?.id || criterion?._id || "").trim();
+            const name =
+              String(criterion?.name || "").trim() ||
+              `Criterion ${index + 1}`;
+            if (!id) return null;
+            return { id, name };
+          })
+          .filter(Boolean)
+      : [];
+
+    const byKey = new Map(entries);
+    const orderedEntries = [];
+
+    normalizedLeafCriteria.forEach((criterion) => {
+      if (!byKey.has(criterion.id)) {
+        return;
+      }
+      orderedEntries.push([criterion.name, byKey.get(criterion.id)]);
+      byKey.delete(criterion.id);
+    });
+
+    for (const entry of byKey.entries()) {
+      orderedEntries.push(entry);
+    }
+
+    if (orderedEntries.length === 0) {
+      return <Typography variant="body2" sx={{ fontWeight: 850 }}>—</Typography>;
+    }
+
+    return (
+      <Stack spacing={0.4}>
+        {orderedEntries.map(([criterionKey, criterionValue], index) => (
+          <Stack key={`${criterionKey}-${index}`} direction="row" spacing={1} alignItems="center">
+            <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 120 }}>
+              {criterionKey}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 800 }}>
+              {fallbackString(criterionValue)}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+    );
+  }
+
   return <Typography variant="body2" sx={{ fontWeight: 850 }}>{fallbackString(shown)}</Typography>;
 };
 
-export const ModelParameterReadOnlyView = ({ parameter, value, leafNames }) => {
+export const ModelParameterReadOnlyView = ({
+  parameter,
+  value,
+  leafNames,
+  leafCriteria,
+}) => {
   const { handler } = resolveModelParameterAdapter(parameter);
   const ViewComponent = handler?.ViewComponent;
 
   if (ViewComponent) {
-    return <ViewComponent parameter={parameter} value={value} leafNames={leafNames} />;
+    return (
+      <ViewComponent
+        parameter={parameter}
+        value={value}
+        leafNames={leafNames}
+        leafCriteria={leafCriteria}
+      />
+    );
   }
 
-  return <GenericView parameter={parameter} value={value} leafNames={leafNames} />;
+  return (
+    <GenericView
+      parameter={parameter}
+      value={value}
+      leafNames={leafNames}
+      leafCriteria={leafCriteria}
+    />
+  );
 };
 
 export default ModelParameterReadOnlyView;

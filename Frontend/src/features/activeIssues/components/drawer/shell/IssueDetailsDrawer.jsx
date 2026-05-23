@@ -3,7 +3,6 @@ import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { countLeafCriteria } from "../utils/issueDetailsDrawer.utils.js";
 import {
-  buildIssueDrawerModelParamsList,
   getIssueDrawerAlternatives,
   getIssueDrawerDeadlineLabel,
   getIssueDrawerFinalWeights,
@@ -20,6 +19,29 @@ import IssueDetailsDrawerEmptyState from "./IssueDetailsDrawerEmptyState.jsx";
 import { buildDrawerTabs } from "../config/IssueDetailsDrawer.tabs.js";
 import { getNextActionMeta } from "../../../utils/activeIssues.meta.js";
 import IssueExpertsSection from "../../../../issueExperts/components/IssueExpertsSection.jsx";
+
+const getLeafNames = (nodes = []) => {
+  const names = [];
+  const visit = (nodeList) => {
+    if (!Array.isArray(nodeList)) return;
+
+    nodeList.forEach((node) => {
+      const children = Array.isArray(node?.children) ? node.children : [];
+
+      if (children.length === 0) {
+        if (typeof node?.name === "string" && node.name.trim()) {
+          names.push(node.name);
+        }
+        return;
+      }
+
+      visit(children);
+    });
+  };
+
+  visit(nodes);
+  return names;
+};
 
 /**
  * Drawer principal de detalles del issue activo.
@@ -82,9 +104,9 @@ const IssueDetailsDrawer = ({
     return getIssueDrawerFinalWeights(selectedIssue);
   }, [selectedIssue]);
 
-  const modelParamsList = useMemo(() => {
-    return buildIssueDrawerModelParamsList(selectedIssue);
-  }, [selectedIssue]);
+  const leafNames = useMemo(() => {
+    return getLeafNames(selectedIssue?.criteria || []);
+  }, [selectedIssue?.criteria]);
 
   const permissions = useMemo(() => {
     return getIssueDrawerPermissions(selectedIssue);
@@ -100,7 +122,7 @@ const IssueDetailsDrawer = ({
     drawerAction,
     DrawerActionIcon,
     deadlineLabel,
-    modelParamsList,
+    leafNames,
     totalExperts,
     pendingExperts,
     participatedExperts,

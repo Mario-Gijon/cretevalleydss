@@ -1,5 +1,4 @@
 import { toIdString } from "../../../utils/common/ids.js";
-import { buildConsensusHistoryFromDocs } from "../consensus/index.js";
 
 /**
  * Agrupa una colección por issue id.
@@ -42,20 +41,17 @@ export const buildActiveIssueCollections = ({
   consensusPhases,
 }) => {
   const consensusByIssue = {};
-  const consensusPhaseCountMap = consensusPhases.reduce(
-    (acc, phaseDoc) => {
-      const issueId = toIdString(phaseDoc.issue);
-      if (!issueId) return acc;
 
-      acc[issueId] = (acc[issueId] || 0) + 1;
-      if (!consensusByIssue[issueId]) {
-        consensusByIssue[issueId] = [];
-      }
-      consensusByIssue[issueId].push(phaseDoc);
-      return acc;
-    },
-    {}
-  );
+  for (const phaseDoc of consensusPhases) {
+    const issueId = toIdString(phaseDoc.issue);
+    if (!issueId) continue;
+
+    if (!consensusByIssue[issueId]) {
+      consensusByIssue[issueId] = [];
+    }
+
+    consensusByIssue[issueId].push(phaseDoc);
+  }
 
   return {
     participationMap: groupByIssueId(
@@ -67,11 +63,21 @@ export const buildActiveIssueCollections = ({
       (alternative) => alternative.issue
     ),
     criteriaMap: groupByIssueId(criteria, (criterion) => criterion.issue),
-    consensusPhaseCountMap,
     consensusHistoryByIssue: Object.fromEntries(
       Object.entries(consensusByIssue).map(([issueId, docs]) => [
         issueId,
-        buildConsensusHistoryFromDocs(docs),
+        docs
+          .sort((left, right) => left.phase - right.phase)
+          .map((consensusDoc) => ({
+            phase: consensusDoc.phase,
+            computedAt: consensusDoc.timestamp,
+            consensusLevel: consensusDoc.level,
+            rankedAlternatives: consensusDoc.details.rankedAlternatives,
+            collectiveEvaluations: consensusDoc.collectiveEvaluations,
+            feedback: consensusDoc.details.feedback,
+            recommendations: consensusDoc.details.recommendations,
+            modelExecution: consensusDoc.details.modelExecution,
+          })),
       ])
     ),
   };

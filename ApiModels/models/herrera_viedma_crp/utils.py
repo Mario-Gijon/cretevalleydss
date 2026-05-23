@@ -135,11 +135,23 @@ def calcular_diferencia_rankings(alternatives_rankings):
 
     return result
 
-# Devuelve un conjunto con los índices donde el valor en ranking es 0 (primera posición).
-# :param ranking: Ranking de las alterantivas.
-# :return: Conjunto de índices donde ranking[i] == 0.
-def conjunto_solucion(ranking):
-  return {i for i, value in enumerate(ranking) if value == 0}
+# Devuelve el conjunto de alternativas ganadoras (mejor puntuación QGDD).
+# :param scores: Puntuaciones colectivas QGDD por alternativa.
+# :param tolerance: Tolerancia para considerar empates numéricos.
+# :return: Conjunto de índices de alternativas con la mejor puntuación.
+def conjunto_solucion_desde_scores(scores, tolerance=1e-9):
+  numeric_scores = np.asarray(scores, dtype=float)
+
+  if numeric_scores.size == 0:
+    return set()
+
+  best_score = np.max(numeric_scores)
+
+  return {
+    index
+    for index, score in enumerate(numeric_scores)
+    if abs(float(score) - float(best_score)) <= tolerance
+  }
 
 # Calcula los grados de consenso sobre alternativas para cada experto.
 # :param differences_between_rankings: Matriz de diferencias entre rankings (n_exp x n_alt).

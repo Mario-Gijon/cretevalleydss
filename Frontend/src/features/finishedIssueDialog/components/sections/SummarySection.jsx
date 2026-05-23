@@ -1,5 +1,4 @@
-import { Box, Divider, List, Stack, Typography } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Divider, List, Stack, Typography } from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import { CriterionItem } from "../shared/CriterionItem";
@@ -9,7 +8,6 @@ import {
   SectionCard,
   SummaryAccordionRow,
 } from "../shared/FinishedIssueDialogPrimitives";
-import ModelParamsView from "./shared/ModelParamsView";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 
 /**
@@ -18,37 +16,23 @@ import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog
  * @returns {JSX.Element}
  */
 const SummarySection = () => {
-  const theme = useTheme();
-
   const { summarySection } = useFinishedIssueDialogContext();
 
   const {
     viewIssue,
     selectedModelNameView,
-    paramsPretty,
-    summaryParamsForViewer,
-    summaryResolvedParams,
-    leafNames,
     openDescriptionList,
     setOpenDescriptionList,
     openCriteriaList,
     setOpenCriteriaList,
     openAlternativeList,
     setOpenAlternativesList,
-    openConsensusInfoList,
-    setOpenConsensusInfoList,
     openExpertsList,
     setOpenExpertsList,
     totalExperts,
     participated,
     notAccepted,
   } = summarySection;
-  const hasSummaryParams =
-    (Array.isArray(summaryParamsForViewer) && summaryParamsForViewer.length > 0) ||
-    (summaryResolvedParams &&
-      typeof summaryResolvedParams === "object" &&
-      Object.keys(summaryResolvedParams).length > 0);
-  const shouldShowRaw = Boolean(paramsPretty) && paramsPretty !== "{}";
 
   return (
     <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>
@@ -67,41 +51,6 @@ const SummarySection = () => {
         </SummaryAccordionRow>
 
         <Row label="Model" value={selectedModelNameView} />
-
-        {hasSummaryParams ? (
-          <SummaryAccordionRow
-            label="Model params"
-            open={openConsensusInfoList}
-            onToggle={() => setOpenConsensusInfoList((value) => !value)}
-          >
-            <Stack spacing={1}>
-              <ModelParamsView
-                parameters={summaryParamsForViewer}
-                values={summaryResolvedParams}
-                leafNames={leafNames}
-              />
-              {shouldShowRaw ? (
-                <Box
-                  component="pre"
-                  sx={{
-                    m: 0,
-                    p: 1.25,
-                    borderRadius: 3,
-                    bgcolor: alpha(theme.palette.background.paper, 0.08),
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: alpha("#fff", 0.9),
-                  }}
-                >
-                  {paramsPretty}
-                </Box>
-              ) : null}
-            </Stack>
-          </SummaryAccordionRow>
-        ) : null}
 
         {Array.isArray(viewIssue?.summary?.criteria) &&
         viewIssue.summary.criteria.length > 1 ? (
@@ -173,6 +122,32 @@ const SummarySection = () => {
         <Row label="Creation date" value={viewIssue?.summary?.creationDate} />
         {viewIssue?.summary?.closureDate ? (
           <Row label="Closure date" value={viewIssue.summary.closureDate} />
+        ) : null}
+
+        {viewIssue?.summary?.consensusInfo ? (
+          <>
+            <Divider sx={{ opacity: 0.14 }} />
+            <Row
+              label="Consensus threshold"
+              value={viewIssue.summary.consensusInfo.threshold}
+            />
+            <Row
+              label="Consensus max phases"
+              value={viewIssue.summary.consensusInfo.maxPhases}
+            />
+            <Row
+              label="Consensus reached phase"
+              value={viewIssue.summary.consensusInfo.consensusReachedPhase ?? "—"}
+            />
+            <Row
+              label="Finalization reason"
+              value={viewIssue.summary.consensusInfo.finalizationReason ?? "—"}
+            />
+            <Row
+              label="Final consensus"
+              value={viewIssue.summary.consensusInfo.finalConsensusMeasure ?? "—"}
+            />
+          </>
         ) : null}
       </Stack>
     </SectionCard>

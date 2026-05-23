@@ -1,10 +1,22 @@
-import { Box, Divider, FormControl, InputLabel, MenuItem, Select, Stack, ToggleButton } from "@mui/material";
+import {
+  Box,
+  Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  ToggleButton,
+  Typography,
+} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluationStructureAlert";
+import { Fragment } from "react";
+import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
 
 /**
  * Ratings section of the finished issue dialog.
@@ -13,7 +25,8 @@ import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluation
  * - Expert selector
  * - Criterion selector (if applicable)
  * - Show collective toggle
- * - Renders the registered Matrix component for the evaluation structure
+ * - Expert criteria weights review
+ * - Registered matrix component for the evaluation structure
  *
  * @returns {JSX.Element}
  */
@@ -24,7 +37,6 @@ const RatingsSection = () => {
 
   const {
     viewIssue,
-    currentPhaseIndex,
     selectedExpert,
     setSelectedExpert,
     selectedCriterion,
@@ -34,7 +46,10 @@ const RatingsSection = () => {
     showCriterionSelector,
     showCollective,
     setShowCollective,
+    canShowCollective,
     evaluations,
+    criteriaWeightsEvaluation,
+    finalCriteriaWeights,
     collectiveEvaluations,
     leafNames,
     Matrix,
@@ -52,6 +67,76 @@ const RatingsSection = () => {
   if (!Matrix) {
     return null;
   }
+
+  const expertWeightStatus = criteriaWeightsEvaluation?.status || "notRequired";
+  const expertWeightsByCriterion =
+    criteriaWeightsEvaluation?.weightsByCriterion || null;
+
+  const finalWeightsRows = Array.isArray(finalCriteriaWeights?.weights)
+    ? finalCriteriaWeights.weights
+    : [];
+
+  const finalWeightsByCriterion = finalWeightsRows.reduce((accumulator, entry) => {
+    if (entry?.criterionName) {
+      accumulator[entry.criterionName] = entry.weight;
+    }
+
+    return accumulator;
+  }, {});
+
+  const criteriaNamesForWeights = [
+    ...new Set(
+      [
+        ...(Array.isArray(leafNames) ? leafNames : []),
+        ...finalWeightsRows.map((entry) => entry?.criterionName).filter(Boolean),
+        ...Object.keys(expertWeightsByCriterion || {}),
+      ].filter(Boolean)
+    ),
+  ];
+
+  const formatNumericWeight = (value) => {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric)) {
+      return null;
+    }
+
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 3,
+    }).format(Object.is(numeric, -0) ? 0 : numeric);
+  };
+
+  const getExpertWeightDisplayValue = (criterionName) => {
+    const rawValue = expertWeightsByCriterion?.[criterionName];
+    const formatted = formatNumericWeight(rawValue);
+
+    if (formatted !== null) return formatted;
+    if (expertWeightStatus === "draft") return "Draft";
+    if (expertWeightStatus === "notRequired") return "Not required";
+
+    return "Not submitted";
+  };
+
+  const getFinalWeightDisplayValue = (criterionName) => {
+    const rawValue = finalWeightsByCriterion?.[criterionName];
+    const formatted = formatNumericWeight(rawValue);
+
+    return formatted ?? "—";
+  };
+
+  const evaluationContext = {
+    issue: viewIssue,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    structureKey: ratingsSection.evaluationStructure || "",
+    alternatives: viewIssue?.summary?.alternatives || [],
+    criteria: leafNames || [],
+    payload: evaluations,
+    setPayload: () => {},
+    collectivePayload: collectiveEvaluations || {},
+    permitEdit: false,
+    selectedCriterion,
+    setSelectedCriterion,
+  };
 
   return (
     <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
@@ -72,7 +157,6 @@ const RatingsSection = () => {
                 const value = event.target.value;
                 setSelectedExpert(value);
 
-                // Reset criterion when expert changes
                 const newCriteria = criterionList;
                 setSelectedCriterion(newCriteria[0] || "");
               }}
@@ -105,7 +189,7 @@ const RatingsSection = () => {
 
           <Box sx={{ flex: 1 }} />
 
-          {viewIssue?.expertsRatings?.[currentPhaseIndex + 1]?.collectiveEvaluations ? (
+          {canShowCollective ? (
             <ToggleButton
               selected={showCollective}
               onChange={() => setShowCollective((value) => !value)}
@@ -120,21 +204,101 @@ const RatingsSection = () => {
                 },
               }}
             >
-              Show collective
+              {showCollective ? "Hide collective" : "Show collective"}
             </ToggleButton>
           ) : null}
         </Stack>
 
         <Divider sx={{ opacity: 0.14 }} />
 
-        <Matrix
-          alternatives={viewIssue?.summary?.alternatives || []}
-          criteria={leafNames || []}
-          evaluations={evaluations}
-          setEvaluations={() => {}}
-          collectiveEvaluations={collectiveEvaluations || {}}
-          permitEdit={false}
-        />
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.25,
+            borderRadius: 2.5,
+            border: "1px solid rgba(255,255,255,0.08)",
+            bgcolor: alpha(theme.palette.common.white, 0.025),
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
+            Weights
+          </Typography>
+
+          {criteriaNamesForWeights.length > 0 ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "max-content max-content max-content",
+                },
+                columnGap: { xs: 0, sm: 2.5 },
+                rowGap: 0.75,
+                alignItems: "center",
+                width: "fit-content",
+                maxWidth: "100%",
+              }}
+            >
+              {criteriaNamesForWeights.map((criterionName) => (
+                <Fragment key={criterionName}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 750,
+                      pr: { xs: 0, sm: 1 },
+                    }}
+                  >
+                    {criterionName}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      fontVariantNumeric: "tabular-nums",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Expert:{" "}
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      sx={{ color: "text.primary", fontWeight: 700 }}
+                    >
+                      {getExpertWeightDisplayValue(criterionName)}
+                    </Typography>
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      fontVariantNumeric: "tabular-nums",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Final:{" "}
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      sx={{ color: "text.primary", fontWeight: 700 }}
+                    >
+                      {getFinalWeightDisplayValue(criterionName)}
+                    </Typography>
+                  </Typography>
+                </Fragment>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No weights available
+            </Typography>
+          )}
+        </Box>
+
+        <Divider sx={{ opacity: 0.14 }} />
+
+        <Matrix evaluationContext={evaluationContext} />
       </Stack>
     </SectionCard>
   );

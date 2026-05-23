@@ -19,6 +19,7 @@ import {
 export const IssuesDataProvider = ({ children }) => {
   const [initialExperts, setInitialExperts] = useState([]);
   const [models, setModels] = useState([]);
+  const [criteriaWeightingModels, setCriteriaWeightingModels] = useState([]);
   const [activeIssues, setActiveIssues] = useState([]);
   const [taskCenter, setTaskCenter] = useState(null);
   const [filtersMeta, setFiltersMeta] = useState(null);
@@ -35,13 +36,13 @@ export const IssuesDataProvider = ({ children }) => {
    * @returns {object|null}
    */
   const applyActivePayload = (payload) => {
-    const normalizedPayload = payload && typeof payload === "object" ? payload : null;
+    const activePayload = payload && typeof payload === "object" ? payload : null;
 
-    setActiveIssues(normalizedPayload?.issues ?? []);
-    setTaskCenter(normalizedPayload?.taskCenter ?? null);
-    setFiltersMeta(normalizedPayload?.filtersMeta ?? null);
+    setActiveIssues(activePayload?.issues ?? []);
+    setTaskCenter(activePayload?.taskCenter ?? null);
+    setFiltersMeta(activePayload?.filtersMeta ?? null);
 
-    return normalizedPayload;
+    return activePayload;
   };
 
   /**
@@ -143,14 +144,26 @@ export const IssuesDataProvider = ({ children }) => {
         getExpressionsDomain(),
       ]);
 
+      const modelsPayload = modelsData?.data;
+      const issueModels = Array.isArray(modelsPayload)
+        ? modelsPayload
+        : Array.isArray(modelsPayload?.models)
+          ? modelsPayload.models
+          : [];
+      const criteriaModels = Array.isArray(modelsPayload?.criteriaWeightingModels)
+        ? modelsPayload.criteriaWeightingModels
+        : [];
+
       setInitialExperts(expertsData?.data ?? []);
-      setModels(modelsData?.data ?? []);
+      setModels(issueModels);
+      setCriteriaWeightingModels(criteriaModels);
       setGlobalDomains(domainsData?.data?.globals ?? []);
       setExpressionDomains(domainsData?.data?.userDomains ?? []);
     } catch (error) {
       console.error("Failed to load issue context data", error);
       setInitialExperts([]);
       setModels([]);
+      setCriteriaWeightingModels([]);
       setGlobalDomains([]);
       setExpressionDomains([]);
     }
@@ -184,6 +197,7 @@ export const IssuesDataProvider = ({ children }) => {
   const issuesContextValue = {
     initialExperts,
     models,
+    criteriaWeightingModels,
     globalDomains,
     expressionDomains,
     setExpressionDomains,

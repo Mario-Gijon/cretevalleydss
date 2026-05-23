@@ -4,8 +4,8 @@ import { CircularLoading } from "../../../../components/LoadingProgress/Circular
 import IssueDetailsDrawer from "../drawer/shell/IssueDetailsDrawer";
 import ActiveIssueConfirmDialog from "../dialogs/ActiveIssueConfirmDialog";
 import IssueExpertsDialogs from "../../../issueExperts/components/IssueExpertsDialogs.jsx";
-import EvaluationDialogHost from "../../../issueAlternativeEvaluation/components/EvaluationDialogHost.jsx";
-import IssueWeightEvaluationDialogs from "../../../issueWeightEvaluation/components/IssueWeightEvaluationDialogs.jsx";
+import EvaluationDialogHost from "../../../issueEvaluation/components/EvaluationDialogHost.jsx";
+import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants.js";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.
@@ -71,16 +71,18 @@ const ActiveIssuesOverlays = ({
 
       <EvaluationDialogHost
         issue={selectedIssue}
+        stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
         isOpen={isRatingAlternatives}
         setIsOpen={setIsRatingAlternatives}
         setOpenIssueDialog={setDrawerOpen}
       />
 
-      <IssueWeightEvaluationDialogs
-        selectedIssue={selectedIssue}
-        isRatingWeights={isRatingWeights}
-        setIsRatingWeights={setIsRatingWeights}
-        handleCloseIssueDialog={closeDrawer}
+      <EvaluationDialogHost
+        issue={selectedIssue}
+        stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
+        isOpen={isRatingWeights}
+        setIsOpen={setIsRatingWeights}
+        setOpenIssueDialog={setDrawerOpen}
       />
 
       <ActiveIssueConfirmDialog

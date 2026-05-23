@@ -1,8 +1,9 @@
-import { MODEL_PARAMETER_HANDLER_REGISTRY } from "./modelParameter.adapters";
+import { MODEL_PARAMETER_STRUCTURE_REGISTRY } from "./modelParameter.adapters";
 
-export const getParameterHandlerKey = (parameter) => {
-  if (parameter?.ui?.component) return parameter.ui.component;
-  return `${parameter.type}:${parameter.scope}`;
+export const getParameterStructureKey = (parameter) => {
+  if (typeof parameter?.parameterStructureKey !== "string") return null;
+  const normalized = parameter.parameterStructureKey.trim();
+  return normalized || null;
 };
 
 export const getParameterExpectedLength = (parameter, leafCount) => {
@@ -12,14 +13,16 @@ export const getParameterExpectedLength = (parameter, leafCount) => {
 };
 
 export const resolveModelParameterAdapter = (parameter) => {
-  const registryKey = getParameterHandlerKey(parameter);
-  const handler = MODEL_PARAMETER_HANDLER_REGISTRY[registryKey] || null;
+  const registryKey = getParameterStructureKey(parameter);
+  const handler = registryKey
+    ? MODEL_PARAMETER_STRUCTURE_REGISTRY[registryKey] || null
+    : null;
   const isSupported = Boolean(handler?.FieldComponent);
 
   return { handler, adapter: handler, registryKey, isSupported };
 };
 
-export const resolveModelParameterHandler = (parameter) => {
+export const resolveModelParameterStructure = (parameter) => {
   const { handler, registryKey, isSupported } = resolveModelParameterAdapter(parameter);
   return { handler, registryKey, isSupported };
 };

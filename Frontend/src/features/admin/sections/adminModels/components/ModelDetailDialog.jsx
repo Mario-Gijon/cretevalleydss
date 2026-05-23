@@ -43,16 +43,6 @@ export default function ModelDetailDialog({ row, open, onClose }) {
   if (!row) return null;
 
   const syncState = getSyncState(row);
-  const criterionTypesText = count(row.criterionTypes)
-    ? row.criterionTypes
-      .map((item) => {
-        const normalized = String(item || "").toLowerCase();
-        if (normalized === "max") return "Benefit";
-        if (normalized === "min") return "Cost";
-        return toTitle(item);
-      })
-      .join(", ")
-    : null;
 
   return (
     <Dialog
@@ -114,12 +104,26 @@ export default function ModelDetailDialog({ row, open, onClose }) {
           <SectionCard title="Capabilities">
             <FieldGrid
               rows={[
-                { label: "Evaluation structure", value: toTitle(row.evaluationStructure) },
+                {
+                  label: "Alternative structure",
+                  value: toTitle(row.alternativeEvaluationStructureKey),
+                },
+                {
+                  label: "Uses criteria weights",
+                  value: formatBoolean(row.usesCriteriaWeights),
+                },
+                {
+                  label: "Uses fuzzy criteria weights",
+                  value: formatBoolean(row.usesFuzzyCriteriaWeights),
+                },
+                {
+                  label: "Uses criterion types",
+                  value: formatBoolean(row.usesCriterionTypes),
+                },
                 { label: "Consensus", value: formatBoolean(row.isConsensus) },
                 { label: "Multi criteria", value: formatBoolean(row.isMultiCriteria) },
                 { label: "Input format", value: row.apiInputFormat },
                 { label: "Output format", value: row.apiOutputFormat },
-                { label: "Criterion types", value: criterionTypesText },
                 { label: "Supported domains", value: valueToText(row.supportedDomains) },
               ]}
             />

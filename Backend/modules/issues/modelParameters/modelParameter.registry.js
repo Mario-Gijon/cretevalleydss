@@ -8,39 +8,25 @@ import { validateAndNormalizeArrayParameter } from "./handlers/array.parameter.j
 import { validateAndNormalizeFuzzyArrayParameter } from "./handlers/fuzzyArray.parameter.js";
 import { validateAndNormalizeCriteriaWeightsParameter } from "./handlers/criteriaWeights.parameter.js";
 import { validateAndNormalizeFuzzyCriteriaWeightsParameter } from "./handlers/fuzzyCriteriaWeights.parameter.js";
+import { validateAndNormalizeCriterionMapParameter } from "./handlers/criterionMap.parameter.js";
 import { normalizeNonEmptyString } from "./modelParameter.shared.js";
 
-export const MODEL_PARAMETER_HANDLER_REGISTRY = new Map([
-  ["number:global", validateAndNormalizeNumberParameter],
-  ["integer:global", validateAndNormalizeIntegerParameter],
-  ["boolean:global", validateAndNormalizeBooleanParameter],
-  ["string:global", validateAndNormalizeStringParameter],
-  ["enum:global", validateAndNormalizeEnumParameter],
-  ["interval:global", validateAndNormalizeIntervalParameter],
-  ["array:global", validateAndNormalizeArrayParameter],
-  ["array:perCriterion", validateAndNormalizeArrayParameter],
-  ["fuzzyArray:global", validateAndNormalizeFuzzyArrayParameter],
-  ["fuzzyArray:perCriterion", validateAndNormalizeFuzzyArrayParameter],
+export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
+  ["numberGlobal", validateAndNormalizeNumberParameter],
+  ["integerGlobal", validateAndNormalizeIntegerParameter],
+  ["booleanGlobal", validateAndNormalizeBooleanParameter],
+  ["stringGlobal", validateAndNormalizeStringParameter],
+  ["selectGlobal", validateAndNormalizeEnumParameter],
+  ["intervalGlobal", validateAndNormalizeIntervalParameter],
+  ["arrayGlobal", validateAndNormalizeArrayParameter],
+  ["arrayPerCriterion", validateAndNormalizeArrayParameter],
+  ["fuzzyArrayGlobal", validateAndNormalizeFuzzyArrayParameter],
+  ["fuzzyArrayPerCriterion", validateAndNormalizeFuzzyArrayParameter],
   ["criteriaWeights", validateAndNormalizeCriteriaWeightsParameter],
   ["fuzzyCriteriaWeights", validateAndNormalizeFuzzyCriteriaWeightsParameter],
+  ["criterionMap", validateAndNormalizeCriterionMapParameter],
 ]);
 
-export const resolveHandlerKey = (parameter) => {
-  const semanticRole = normalizeNonEmptyString(parameter?.semanticRole);
-  const parameterType = normalizeNonEmptyString(parameter?.type);
-  const scope = normalizeNonEmptyString(parameter?.scope);
-
-  if (semanticRole === "criteriaWeights" && parameterType === "fuzzyArray") {
-    return "fuzzyCriteriaWeights";
-  }
-
-  if (semanticRole === "criteriaWeights") {
-    return "criteriaWeights";
-  }
-
-  if (!parameterType || !scope) {
-    return null;
-  }
-
-  return `${parameterType}:${scope}`;
+export const resolveParameterStructureKey = (parameter) => {
+  return normalizeNonEmptyString(parameter?.parameterStructureKey);
 };

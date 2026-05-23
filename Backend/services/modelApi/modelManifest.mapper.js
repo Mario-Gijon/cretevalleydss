@@ -1,11 +1,4 @@
-import { EVALUATION_STRUCTURES } from "../../modules/issues/issue.evaluationStructure.js";
-import { isSupportedLifecycleKind } from "../../modules/issues/issue.lifecycleKind.js";
-
 export const MANIFEST_SYNC_SOURCE = "ApiModels";
-
-const SUPPORTED_EVALUATION_STRUCTURES = new Set(
-  Object.values(EVALUATION_STRUCTURES)
-);
 
 export const hasOwn = (value, key) =>
   Object.prototype.hasOwnProperty.call(value || {}, key);
@@ -105,12 +98,12 @@ export const normalizeParameter = (parameter = {}) => {
     label: normalizeNonEmptyString(parameter?.label),
     description: normalizeNonEmptyString(parameter?.description),
     type: normalizeNonEmptyString(parameter?.type),
+    valueType: normalizeNonEmptyString(parameter?.valueType),
     scope: normalizeNonEmptyString(parameter?.scope),
-    semanticRole: normalizeNonEmptyString(parameter?.semanticRole),
+    parameterStructureKey: normalizeNonEmptyString(parameter?.parameterStructureKey),
     required: parameter?.required === true,
     default: hasOwn(parameter, "default") ? parameter.default : null,
     restrictions: normalizeDynamicObject(parameter?.restrictions),
-    ui: normalizeDynamicObject(parameter?.ui),
   };
 };
 
@@ -146,12 +139,13 @@ export const normalizeSupportedDomains = (supportedDomains) => {
   };
 };
 
-export const normalizeCriterionTypes = (criterionTypes) =>
-  normalizeStringList(criterionTypes);
-
 export const getSyncBlockerReason = (manifestModel) => {
-  if (manifestModel?.isIssueModel !== true) {
-    return "Model is not marked as issue model";
+  const isIssueModel = manifestModel?.isIssueModel === true;
+  const isCriteriaWeightingModel =
+    manifestModel?.isCriteriaWeightingModel === true;
+
+  if (!isIssueModel && !isCriteriaWeightingModel) {
+    return "Model is not marked as issue model or criteria weighting model";
   }
 
   return null;
@@ -161,6 +155,7 @@ export const buildSkippedManifestModel = (manifestModel, reason) => ({
   apiModelKey: manifestModel?.apiModelKey ?? null,
   displayName: manifestModel?.displayName ?? null,
   isIssueModel: manifestModel?.isIssueModel === true,
+  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
   reason,
 });
 
@@ -175,6 +170,7 @@ const validateManifestParameters = (manifestModel) => {
     const parameterPath = `parameters[${index}]`;
     const key = normalizeNonEmptyString(parameter?.key);
     const type = normalizeNonEmptyString(parameter?.type);
+    const parameterStructureKey = normalizeNonEmptyString(parameter?.parameterStructureKey);
 
     if (!key) {
       errors.push(`${parameterPath}.key`);
@@ -189,6 +185,10 @@ const validateManifestParameters = (manifestModel) => {
     if (!type) {
       errors.push(`${parameterPath}.type`);
     }
+
+    if (!parameterStructureKey) {
+      errors.push(`${parameterPath}.parameterStructureKey`);
+    }
   });
 
   return errors;
@@ -200,47 +200,49 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const apiModelKey = normalizeNonEmptyString(manifestModel?.apiModelKey);
   const displayName = normalizeNonEmptyString(manifestModel?.displayName);
   const endpointPath = normalizeNonEmptyString(manifestModel?.apiEndpoint?.path);
-  const evaluationStructure = normalizeNonEmptyString(
-    manifestModel?.evaluationStructure
+  const alternativeEvaluationStructureKey = normalizeNonEmptyString(
+    manifestModel?.alternativeEvaluationStructureKey
   );
-  const lifecycleKind = normalizeNonEmptyString(manifestModel?.lifecycleKind);
-  const apiInputFormat = normalizeNonEmptyString(manifestModel?.apiInputFormat);
-  const apiOutputFormat = normalizeNonEmptyString(manifestModel?.apiOutputFormat);
+  const criteriaWeightingStructureKey = normalizeNonEmptyString(
+    manifestModel?.criteriaWeightingStructureKey
+  );
   const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
   const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
   const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
+  const isIssueModel = manifestModel?.isIssueModel === true;
+  const isCriteriaWeightingModel =
+    manifestModel?.isCriteriaWeightingModel === true;
 
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
+  if (isIssueModel && !alternativeEvaluationStructureKey) {
+    missingFields.push("alternativeEvaluationStructureKey");
+  }
+  if (isCriteriaWeightingModel && !criteriaWeightingStructureKey) {
+    missingFields.push("criteriaWeightingStructureKey");
+  }
   if (!modelFamilyKey) missingFields.push("modelFamilyKey");
   if (!modelVersion) missingFields.push("modelVersion");
   if (!versionLabel) missingFields.push("versionLabel");
-
-  if (!evaluationStructure) {
-    missingFields.push("evaluationStructure");
-  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
-    missingFields.push(
-      `evaluationStructure (unsupported: ${evaluationStructure})`
-    );
+  if (typeof manifestModel?.isIssueModel !== "boolean") {
+    missingFields.push("isIssueModel");
   }
-
-  if (!lifecycleKind) {
-    missingFields.push("lifecycleKind");
-  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
-    missingFields.push(`lifecycleKind (unsupported: ${lifecycleKind})`);
-  }
-
-  if (!apiInputFormat) {
-    missingFields.push("apiInputFormat");
-  }
-
-  if (!apiOutputFormat) {
-    missingFields.push("apiOutputFormat");
+  if (typeof manifestModel?.isCriteriaWeightingModel !== "boolean") {
+    missingFields.push("isCriteriaWeightingModel");
   }
 
   if (typeof manifestModel?.isMultiCriteria !== "boolean") {
     missingFields.push("isMultiCriteria");
+  }
+  if (typeof manifestModel?.usesCriteriaWeights !== "boolean") {
+    missingFields.push("usesCriteriaWeights");
+  }
+  if (typeof manifestModel?.usesFuzzyCriteriaWeights !== "boolean") {
+    missingFields.push("usesFuzzyCriteriaWeights");
+  }
+  if (typeof manifestModel?.usesCriterionTypes !== "boolean") {
+    missingFields.push("usesCriterionTypes");
   }
 
   missingFields.push(...validateManifestParameters(manifestModel));
@@ -255,22 +257,29 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   modelVersion: normalizeNonEmptyString(manifestModel?.modelVersion),
   versionLabel: normalizeNonEmptyString(manifestModel?.versionLabel),
   isIssueModel: manifestModel?.isIssueModel === true,
+  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  visibleInIssueCreation: manifestModel?.isIssueModel === true,
+  visibleInCriteriaWeighting:
+    manifestModel?.isCriteriaWeightingModel === true,
   apiEndpoint: normalizeEndpoint(manifestModel?.apiEndpoint, {
     emptyValue: null,
   }),
   smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
   extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
   moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
-  evaluationStructure: normalizeNonEmptyString(manifestModel?.evaluationStructure),
-  lifecycleKind: normalizeNonEmptyString(manifestModel?.lifecycleKind),
-  apiInputFormat: normalizeNonEmptyString(manifestModel?.apiInputFormat),
-  apiOutputFormat: normalizeNonEmptyString(manifestModel?.apiOutputFormat),
+  alternativeEvaluationStructureKey: normalizeNonEmptyString(
+    manifestModel?.alternativeEvaluationStructureKey
+  ),
+  criteriaWeightingStructureKey: normalizeNonEmptyString(
+    manifestModel?.criteriaWeightingStructureKey
+  ),
+  supportsConsensus: manifestModel?.supportsConsensus === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
+  usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
+  usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
+  usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
-  criterionTypes: normalizeCriterionTypes(manifestModel?.criterionTypes),
   parameters: normalizeParameters(manifestModel?.parameters),
-  modelInputFields: normalizeStringList(manifestModel?.modelInputFields),
-  modelOutputFields: normalizeStringList(manifestModel?.modelOutputFields),
   request: normalizeDynamicObject(manifestModel?.request),
   response: normalizeDynamicObject(manifestModel?.response),
 });
@@ -338,14 +347,6 @@ export const normalizeComparableFieldValue = (field, value) => {
 
   if (field === "supportedDomains") {
     return normalizeSupportedDomains(plainValue);
-  }
-
-  if (field === "criterionTypes") {
-    return normalizeCriterionTypes(plainValue);
-  }
-
-  if (field === "modelInputFields" || field === "modelOutputFields") {
-    return normalizeStringList(plainValue);
   }
 
   return normalizeForStableStringify(plainValue);

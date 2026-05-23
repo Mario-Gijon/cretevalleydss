@@ -1,4 +1,4 @@
-import { extractLeafCriteria } from "../../issueAlternativeEvaluation/shared/leafCriteria.utils";
+import { extractLeafCriteria } from "../../issueEvaluation/shared/leafCriteria.utils";
 import { getParameterExpectedLength } from "../../modelParameters";
 
 const countLeafCriteria = (nodes) => {
@@ -20,6 +20,15 @@ const countLeafCriteria = (nodes) => {
   }
 
   return count;
+};
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 };
 
 /**
@@ -186,7 +195,11 @@ export const stripWeights = (obj) => {
 export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
-  Boolean(param) && param?.ui?.component !== "criteriaWeights";
+  Boolean(param) &&
+  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey);
+
+const isCriteriaWeightsParameter = (parameter) =>
+  parameter?.parameterStructureKey === "criteriaWeights";
 
 /**
  * Filtra el parametro `weights` de una coleccion de parametros.
@@ -196,6 +209,62 @@ const filterOutWeightsParam = (param) =>
  */
 export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
+
+const resolveScenarioModelParameters = (model) =>
+  filterOutWeightsParams(Array.isArray(model?.parameters) ? model.parameters : []);
+
+const resolveFuzzyWeightsValueCount = (model) => {
+  const valueCount = Number(model?.fuzzyWeightsValueCount);
+  return Number.isInteger(valueCount) && valueCount >= 2 ? valueCount : null;
+};
+
+const buildSyntheticWeightsParameter = (model) => {
+  if (model?.usesCriteriaWeights !== true) {
+    return null;
+  }
+
+  if (model?.usesFuzzyCriteriaWeights === true) {
+    return {
+      key: "weights",
+      label: "Fuzzy criteria weights",
+      type: "fuzzyArray",
+      scope: "perCriterion",
+      parameterStructureKey: "fuzzyCriteriaWeights",
+      required: true,
+      default: "equal",
+      restrictions: {
+        min: 0,
+        max: 1,
+        ordered: "nonDecreasing",
+        length: resolveFuzzyWeightsValueCount(model),
+        allowed: null,
+      },
+    };
+  }
+
+  return {
+    key: "weights",
+    label: "Criteria weights",
+    type: "array",
+    scope: "perCriterion",
+    parameterStructureKey: "criteriaWeights",
+    required: true,
+    default: "equal",
+    restrictions: {
+      min: 0,
+      max: 1,
+      ordered: null,
+      length: "matchCriteria",
+      allowed: null,
+    },
+  };
+};
+
+const getScenarioParameterDefinitions = (model) => {
+  const params = resolveScenarioModelParameters(model);
+  const syntheticWeights = buildSyntheticWeightsParameter(model);
+  return syntheticWeights ? [...params, syntheticWeights] : params;
+};
 
 /**
  * Quita datos de pesos de la definicion de modelo.
@@ -208,7 +277,7 @@ export const omitWeightsFromModel = (model) => {
 
   return {
     ...model,
-    parameters: filterOutWeightsParams(model.parameters),
+    parameters: resolveScenarioModelParameters(model),
     defaultsResolved: stripWeightsDeep(model.defaultsResolved),
   };
 };
@@ -294,6 +363,64 @@ export const ensureArrayLen = (arr, len, filler = "") => {
   return next;
 };
 
+const normalizeValueType = (parameter) =>
+  String(parameter?.valueType || "").trim().toLowerCase();
+
+const parseByValueType = (rawValue, valueType) => {
+  if (rawValue === "" || rawValue === null || rawValue === undefined) return null;
+
+  if (valueType === "number" || valueType === "integer") {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (valueType === "boolean") {
+    if (rawValue === true || rawValue === false) return rawValue;
+    const normalized = String(rawValue).trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+    return null;
+  }
+
+  return rawValue;
+};
+
+const enumValueIsAllowed = ({ value, allowed, valueType }) => {
+  if (!Array.isArray(allowed) || allowed.length === 0) return true;
+
+  if (valueType === "number" || valueType === "integer") {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return false;
+    return allowed.some((allowedValue) => Number(allowedValue) === numericValue);
+  }
+
+  return allowed.some((allowedValue) => allowedValue === value);
+};
+
+const parseIntervalPair = (value) => {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const left = Number(value[0]);
+  const right = Number(value[1]);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+  return [left, right];
+};
+
+const validateIntervalByRestrictions = ({ pair, restrictions }) => {
+  if (!Array.isArray(pair) || pair.length !== 2) return false;
+  const [left, right] = pair;
+  const min = restrictions?.min;
+  const max = restrictions?.max;
+
+  if (min != null && (left < Number(min) || right < Number(min))) return false;
+  if (max != null && (left > Number(max) || right > Number(max))) return false;
+
+  const ordered = restrictions?.ordered;
+  if (ordered === "strictIncreasing" && !(left < right)) return false;
+  if (ordered === "nonDecreasing" && !(left <= right)) return false;
+
+  return true;
+};
+
 /**
  * Obtiene nombres de criterios hoja desde summary.
  *
@@ -310,7 +437,93 @@ export const getLeafCriteriaNamesFallback = (summaryCriteria) => {
 };
 
 const getEvaluationCompatibilityFlag = (model) => {
-  return model?.compatibility?.evaluationStructure;
+  return model?.compatibility?.alternativeEvaluationStructure;
+};
+
+const isFinitePoint = (point) =>
+  Array.isArray(point) &&
+  point.length === 2 &&
+  Number.isFinite(Number(point[0])) &&
+  Number.isFinite(Number(point[1]));
+
+const normalizePoint = (point) => ({
+  x: Number(point[0]),
+  y: Number(point[1]),
+});
+
+export const normalizePlotsGraphic = (plotsGraphic) => {
+  if (!plotsGraphic || typeof plotsGraphic !== "object") {
+    return null;
+  }
+
+  const expertPointsRaw = Array.isArray(plotsGraphic.expert_points)
+    ? plotsGraphic.expert_points
+    : Array.isArray(plotsGraphic.expertPoints)
+      ? plotsGraphic.expertPoints
+      : null;
+
+  const collectivePointRaw = Array.isArray(plotsGraphic.collective_point)
+    ? plotsGraphic.collective_point
+    : Array.isArray(plotsGraphic.collectivePoint)
+      ? plotsGraphic.collectivePoint
+      : null;
+
+  const reason =
+    typeof plotsGraphic.reason === "string" && plotsGraphic.reason.trim()
+      ? plotsGraphic.reason.trim()
+      : null;
+
+  const labelsRaw = Array.isArray(plotsGraphic.expert_labels)
+    ? plotsGraphic.expert_labels
+    : [];
+  const pointsByEmailRaw =
+    plotsGraphic.expert_points_by_email &&
+    typeof plotsGraphic.expert_points_by_email === "object"
+      ? plotsGraphic.expert_points_by_email
+      : null;
+
+  const expertPoints = [];
+
+  if (pointsByEmailRaw) {
+    for (const [label, point] of Object.entries(pointsByEmailRaw)) {
+      if (!isFinitePoint(point)) continue;
+      expertPoints.push({
+        label: String(label),
+        ...normalizePoint(point),
+      });
+    }
+  } else if (Array.isArray(expertPointsRaw)) {
+    expertPointsRaw.forEach((point, index) => {
+      if (!isFinitePoint(point)) return;
+      const labelCandidate = labelsRaw[index];
+      const label =
+        typeof labelCandidate === "string" && labelCandidate.trim()
+          ? labelCandidate.trim()
+          : `Expert ${index + 1}`;
+
+      expertPoints.push({
+        label,
+        ...normalizePoint(point),
+      });
+    });
+  }
+
+  const collectivePoint = isFinitePoint(collectivePointRaw)
+    ? {
+        label: "Collective",
+        ...normalizePoint(collectivePointRaw),
+      }
+    : null;
+
+  return {
+    expertPoints,
+    collectivePoint,
+    reason,
+    raw: plotsGraphic,
+    isValid:
+      expertPoints.length > 0 &&
+      isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
+  };
 };
 
 /**
@@ -320,11 +533,17 @@ const getEvaluationCompatibilityFlag = (model) => {
  * @returns {boolean}
  */
 export const isModelCompatible = (model) => {
+  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
+    return model.scenarioCompatibility.compatible === true;
+  }
+
   const evalCompat = getEvaluationCompatibilityFlag(model);
   const domainCompat = model?.compatibility?.domain;
+  const consensusCompatible = model?.supportsConsensus !== true;
 
   if (evalCompat === false) return false;
   if (domainCompat === false) return false;
+  if (!consensusCompatible) return false;
 
   return true;
 };
@@ -337,6 +556,13 @@ export const isModelCompatible = (model) => {
  * @returns {string}
  */
 export const getCompatReason = (model, domainType) => {
+  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
+    const reasons = Array.isArray(model.scenarioCompatibility.reasons)
+      ? model.scenarioCompatibility.reasons.filter(Boolean)
+      : [];
+    return reasons.join(" · ");
+  }
+
   const reasons = [];
   const evalCompat = getEvaluationCompatibilityFlag(model);
 
@@ -344,8 +570,132 @@ export const getCompatReason = (model, domainType) => {
   if (model?.compatibility?.domain === false) {
     reasons.push(domainType ? `No ${domainType} support` : "Domain not supported");
   }
+  if (model?.supportsConsensus === true) {
+    reasons.push("Consensus scenarios are not supported");
+  }
 
   return reasons.join(" · ");
+};
+
+const resolveCriterionMapLeafRows = (leafCriteria = []) => {
+  if (!Array.isArray(leafCriteria)) {
+    return [];
+  }
+
+  return leafCriteria
+    .map((criterion, index) => {
+      const key = normalizeNonEmptyString(
+        criterion?.id || criterion?._id
+      );
+      const name =
+        normalizeNonEmptyString(criterion?.name) || `Criterion ${index + 1}`;
+
+      if (!key) {
+        return null;
+      }
+
+      return { key, name };
+    })
+    .filter(Boolean);
+};
+
+const parseCriterionMapValueByRestrictions = ({ rawValue, restrictions }) => {
+  const valueType = normalizeNonEmptyString(restrictions?.valueType) || "number";
+
+  if (valueType === "number") {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    if (
+      typeof restrictions?.min === "number" &&
+      parsed < Number(restrictions.min)
+    ) {
+      return null;
+    }
+
+    if (
+      typeof restrictions?.max === "number" &&
+      parsed > Number(restrictions.max)
+    ) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  if (valueType === "enum") {
+    const allowed = Array.isArray(restrictions?.allowed)
+      ? restrictions.allowed
+      : [];
+    if (!allowed.length) {
+      return null;
+    }
+
+    const allNumbers = allowed.every(
+      (item) => typeof item === "number" && Number.isFinite(item)
+    );
+    if (allNumbers) {
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+      return allowed.includes(parsed) ? parsed : null;
+    }
+
+    const allStrings = allowed.every((item) => typeof item === "string");
+    if (allStrings) {
+      if (typeof rawValue !== "string") {
+        return null;
+      }
+      const normalized = rawValue.trim();
+      return allowed.includes(normalized) ? normalized : null;
+    }
+
+    return allowed.some((item) => Object.is(item, rawValue)) ? rawValue : null;
+  }
+
+  return null;
+};
+
+const buildCriterionMapFromDefaults = ({ param, leafCriteria }) => {
+  const rows = resolveCriterionMapLeafRows(leafCriteria);
+  const restrictions = isPlainObject(param?.restrictions)
+    ? param.restrictions
+    : {};
+  const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+
+  const out = {};
+
+  for (const row of rows) {
+    let seed = null;
+    if (isPlainObject(param?.default) && Object.prototype.hasOwnProperty.call(param.default, row.key)) {
+      seed = param.default[row.key];
+    } else if (!isPlainObject(param?.default)) {
+      seed = param.default;
+    }
+
+    if (!requiredForEachCriterion && (seed === null || seed === undefined || seed === "")) {
+      continue;
+    }
+
+    const normalized = parseCriterionMapValueByRestrictions({
+      rawValue: seed,
+      restrictions,
+    });
+
+    if (normalized !== null) {
+      out[row.key] = normalized;
+      continue;
+    }
+
+    if (requiredForEachCriterion) {
+      out[row.key] = seed ?? "";
+    }
+  }
+
+  return out;
 };
 
 /**
@@ -356,10 +706,10 @@ export const getCompatReason = (model, domainType) => {
  * @param {number} params.leafCount Numero de criterios hoja.
  * @returns {Object}
  */
-export const buildParamsResolved = ({ model, leafCount }) => {
-  if (model?.defaultsResolved) return stripWeightsDeep(model.defaultsResolved);
-
-  const out = {};
+export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => {
+  const out = isPlainObject(model?.defaultsResolved)
+    ? stripWeightsDeep(model.defaultsResolved)
+    : {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   const equalWeights = safeLeafCount > 0
     ? Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount)
@@ -369,20 +719,31 @@ export const buildParamsResolved = ({ model, leafCount }) => {
     ? model.baseIssueWeights
     : null;
 
-  for (const param of model?.parameters || []) {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const key = param?.key;
     if (!key) continue;
 
     if (param.type === "number") out[key] = param.default ?? "";
 
+    if (param.type === "enum") out[key] = param.default ?? "";
+
+    if (param.type === "interval") {
+      const min = param?.restrictions?.min ?? "";
+      const max = param?.restrictions?.max ?? "";
+      out[key] = ensureArrayLen(Array.isArray(param.default) ? param.default : [min, max], 2, "");
+    }
+
     if (param.type === "array") {
-      const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 2;
+      const len =
+        getParameterExpectedLength(param, leafCount) ??
+        param?.restrictions?.length ??
+        2;
       const base = Array.isArray(param.default) ? param.default : [];
       const count = Number(len) || 2;
-      const isWeightsByCriteria = param?.ui?.component === "criteriaWeights";
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
 
-      if (isWeightsByCriteria && Array.isArray(baseIssueWeights) && baseIssueWeights.length === count) {
-        out[key] = ensureArrayLen(baseIssueWeights, count, "");
+      if (isWeightsByCriteria && safeLeafCount === 1) {
+        out[key] = [1];
         continue;
       }
 
@@ -391,17 +752,51 @@ export const buildParamsResolved = ({ model, leafCount }) => {
         continue;
       }
 
+      if (
+        isWeightsByCriteria &&
+        Array.isArray(baseIssueWeights) &&
+        baseIssueWeights.length === count
+      ) {
+        out[key] = ensureArrayLen(baseIssueWeights, count, "");
+        continue;
+      }
+
       out[key] = ensureArrayLen(base, count, "");
     }
 
     if (param.type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(param?.restrictions?.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        safeLeafCount === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        out[key] = [Array.from({ length: fuzzyValueCount }, () => 1)];
+        continue;
+      }
+
       const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 1;
       const count = Number(len) || 1;
+      const vectorLength =
+        Number.isInteger(Number(param?.restrictions?.length)) &&
+        Number(param.restrictions.length) >= 2
+          ? Number(param.restrictions.length)
+          : 3;
       const base = Array.isArray(param.default) ? param.default : [];
-      const filled = ensureArrayLen(base, count, ["", "", ""]).map((triple) =>
-        Array.isArray(triple) && triple.length === 3 ? triple : ["", "", ""]
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
+      const filled = ensureArrayLen(base, count, fillerVector).map((vector) =>
+        Array.isArray(vector) && vector.length === vectorLength
+          ? vector
+          : [...fillerVector]
       );
       out[key] = filled;
+    }
+
+    if (param.type === "criterionMap") {
+      out[key] = buildCriterionMapFromDefaults({ param, leafCriteria });
     }
   }
 
@@ -414,10 +809,15 @@ export const buildParamsResolved = ({ model, leafCount }) => {
  * @param {Object} params Parametros de entrada.
  * @returns {Object}
  */
-export const cleanParamsForSend = ({ model, values, leafCount }) => {
+export const cleanParamsForSend = ({
+  model,
+  values,
+  leafCount,
+  leafCriteria = [],
+}) => {
   const out = {};
 
-  for (const param of model?.parameters || []) {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
     const type = param.type;
@@ -441,12 +841,28 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
     }
 
     if (type === "array") {
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 2);
+      const count = Number(len) || 2;
 
-      const arr = ensureArrayLen(values?.[name] ?? def ?? [], Number(len) || 2, "");
+      if (isWeightsByCriteria && Number(leafCount) === 1) {
+        out[name] = [1];
+        continue;
+      }
+
+      const fallbackDefault =
+        isWeightsByCriteria && def === "equal" && count > 0
+          ? Array.from({ length: count }, () => 1 / count)
+          : def;
+
+      const arr = ensureArrayLen(
+        values?.[name] ?? fallbackDefault ?? [],
+        count,
+        ""
+      );
       const parsed = arr.map((item) => (item === "" || item == null ? null : Number(item)));
       if (parsed.some((item) => item == null || !Number.isFinite(item))) continue;
 
@@ -456,32 +872,114 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
       continue;
     }
 
+    if (type === "enum") {
+      const valueType = normalizeValueType(param);
+      const raw = values?.[name];
+      const value = raw === "" || raw == null ? def : raw;
+      const parsed = parseByValueType(value, valueType);
+      if (parsed == null) continue;
+
+      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
+        continue;
+      }
+
+      out[name] = parsed;
+      continue;
+    }
+
+    if (type === "interval") {
+      const fallback = Array.isArray(def)
+        ? def
+        : [restrictions.min ?? "", restrictions.max ?? ""];
+      const source = values?.[name] ?? fallback;
+      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
+      if (!parsed) continue;
+      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) continue;
+      out[name] = parsed;
+      continue;
+    }
+
     if (type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        Number(leafCount) === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        out[name] = [Array.from({ length: fuzzyValueCount }, () => 1)];
+        continue;
+      }
+
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(def) ? def.length : 1);
+      const vectorLength =
+        Number.isInteger(Number(restrictions.length)) &&
+        Number(restrictions.length) >= 2
+          ? Number(restrictions.length)
+          : 3;
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
 
       const triples = ensureArrayLen(
         values?.[name] ?? def ?? [],
         Number(len) || 1,
-        ["", "", ""]
+        fillerVector
       );
 
-      const parsed = triples.map((triple) => {
-        const safeTriple = Array.isArray(triple) ? triple : ["", "", ""];
-        return safeTriple.map((item) => (item === "" || item == null ? null : Number(item)));
+      const parsed = triples.map((vector) => {
+        const safeVector =
+          Array.isArray(vector) && vector.length === vectorLength
+            ? vector
+            : fillerVector;
+        return safeVector.map((item) => (item === "" || item == null ? null : Number(item)));
       });
 
-      if (parsed.some((triple) => triple.some((item) => item == null || !Number.isFinite(item)))) {
+      if (parsed.some((vector) => vector.some((item) => item == null || !Number.isFinite(item)))) {
         continue;
       }
 
-      out[name] = parsed.map(([l, m, u]) => [
-        clamp(l, restrictions.min ?? null, restrictions.max ?? null),
-        clamp(m, restrictions.min ?? null, restrictions.max ?? null),
-        clamp(u, restrictions.min ?? null, restrictions.max ?? null),
-      ]);
+      out[name] = parsed.map((vector) =>
+        vector.map((item) =>
+          clamp(item, restrictions.min ?? null, restrictions.max ?? null)
+        )
+      );
+      continue;
+    }
+
+    if (type === "criterionMap") {
+      const rows = resolveCriterionMapLeafRows(leafCriteria);
+      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+      const source = isPlainObject(values?.[name]) ? values[name] : {};
+      const next = {};
+
+      for (const row of rows) {
+        const hasValue = Object.prototype.hasOwnProperty.call(source, row.key);
+        if (!hasValue) {
+          if (!requiredForEachCriterion) {
+            continue;
+          }
+          next[row.key] = "";
+          continue;
+        }
+
+        const normalized = parseCriterionMapValueByRestrictions({
+          rawValue: source[row.key],
+          restrictions,
+        });
+
+        if (normalized === null) {
+          continue;
+        }
+
+        next[row.key] = normalized;
+      }
+
+      out[name] = next;
+      continue;
     }
   }
 
@@ -494,8 +992,13 @@ export const cleanParamsForSend = ({ model, values, leafCount }) => {
  * @param {Object} params Parametros de entrada.
  * @returns {{ok: boolean, msg?: string}}
  */
-export const validateParams = ({ model, values, leafCount }) => {
-  for (const param of model?.parameters || []) {
+export const validateParams = ({
+  model,
+  values,
+  leafCount,
+  leafCriteria = [],
+}) => {
+  for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
     const type = param.type;
@@ -527,19 +1030,81 @@ export const validateParams = ({ model, values, leafCount }) => {
       continue;
     }
 
+    if (type === "enum") {
+      const valueType = normalizeValueType(param);
+      const raw = value === "" || value == null ? param.default : value;
+      const parsed = parseByValueType(raw, valueType);
+
+      if ((value === "" || value == null) && param?.required && parsed == null) {
+        return { ok: false, msg: `Parameter '${name}' is required.` };
+      }
+
+      if (parsed == null) continue;
+
+      if (!enumValueIsAllowed({ value: parsed, allowed: restrictions.allowed, valueType })) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be one of: ${(restrictions.allowed || []).join(", ")}.`,
+        };
+      }
+      continue;
+    }
+
+    if (type === "interval") {
+      const fallback = Array.isArray(param.default)
+        ? param.default
+        : [restrictions.min ?? "", restrictions.max ?? ""];
+      const source = value == null ? fallback : value;
+      const parsed = parseIntervalPair(ensureArrayLen(source, 2, ""));
+
+      if (!parsed) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' must be an array of 2 finite numbers.`,
+        };
+      }
+
+      if (!validateIntervalByRestrictions({ pair: parsed, restrictions })) {
+        if (restrictions.ordered === "strictIncreasing") {
+          return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
+        }
+        if (restrictions.ordered === "nonDecreasing") {
+          return { ok: false, msg: `Parameter '${name}' must satisfy left ≤ right.` };
+        }
+        if (restrictions.min != null) {
+          return { ok: false, msg: `Parameter '${name}' must be ≥ ${restrictions.min}.` };
+        }
+        if (restrictions.max != null) {
+          return { ok: false, msg: `Parameter '${name}' must be ≤ ${restrictions.max}.` };
+        }
+      }
+      continue;
+    }
+
     if (type === "array") {
+      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 2);
+      const count = Number(len) || 2;
+
+      if (isWeightsByCriteria && Number(leafCount) === 1) {
+        continue;
+      }
+
+      const fallbackDefault =
+        isWeightsByCriteria && param.default === "equal" && count > 0
+          ? Array.from({ length: count }, () => 1 / count)
+          : param.default;
 
       const arr = ensureArrayLen(
         Array.isArray(value)
           ? value
-          : Array.isArray(param.default)
-            ? param.default
+          : Array.isArray(fallbackDefault)
+            ? fallbackDefault
             : [],
-        Number(len) || 2,
+        count,
         ""
       );
 
@@ -578,10 +1143,28 @@ export const validateParams = ({ model, values, leafCount }) => {
     }
 
     if (type === "fuzzyArray") {
+      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const fuzzyValueCount =
+        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
+      if (
+        isFuzzyWeightsByCriteria &&
+        Number(leafCount) === 1 &&
+        Number.isInteger(fuzzyValueCount) &&
+        fuzzyValueCount >= 2
+      ) {
+        continue;
+      }
+
       const len =
         getParameterExpectedLength(param, leafCount) ??
         (typeof restrictions.length === "number" ? restrictions.length : null) ??
         (Array.isArray(param.default) ? param.default.length : 1);
+      const vectorLength =
+        Number.isInteger(Number(restrictions.length)) &&
+        Number(restrictions.length) >= 2
+          ? Number(restrictions.length)
+          : 3;
+      const fillerVector = Array.from({ length: vectorLength }, () => "");
 
       const triples = ensureArrayLen(
         Array.isArray(value)
@@ -590,16 +1173,16 @@ export const validateParams = ({ model, values, leafCount }) => {
             ? param.default
             : [],
         Number(len) || 1,
-        ["", "", ""]
+        fillerVector
       );
 
       for (let index = 0; index < triples.length; index += 1) {
         const triple = triples[index];
 
-        if (!Array.isArray(triple) || triple.length !== 3) {
+        if (!Array.isArray(triple) || triple.length !== vectorLength) {
           return {
             ok: false,
-            msg: `Parameter '${name}' must be an array of triples.`,
+            msg: `Parameter '${name}' must be an array of vectors with length ${vectorLength}.`,
           };
         }
 
@@ -611,11 +1194,87 @@ export const validateParams = ({ model, values, leafCount }) => {
           };
         }
 
-        const [l, m, u] = numbers;
-        if (l > m || m > u) {
+        for (let vectorIndex = 1; vectorIndex < numbers.length; vectorIndex += 1) {
+          if (numbers[vectorIndex] < numbers[vectorIndex - 1]) {
+            return {
+              ok: false,
+              msg: `Parameter '${name}' requires non-decreasing fuzzy vectors.`,
+            };
+          }
+        }
+
+        if (
+          restrictions.min != null &&
+          numbers.some((item) => item < Number(restrictions.min))
+        ) {
           return {
             ok: false,
-            msg: `Parameter '${name}' requires l ≤ m ≤ u.`,
+            msg: `Parameter '${name}' must be ≥ ${restrictions.min}.`,
+          };
+        }
+
+        if (
+          restrictions.max != null &&
+          numbers.some((item) => item > Number(restrictions.max))
+        ) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must be ≤ ${restrictions.max}.`,
+          };
+        }
+      }
+    }
+
+    if (type === "criterionMap") {
+      const rows = resolveCriterionMapLeafRows(leafCriteria);
+      const source = values?.[name];
+      const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
+
+      if (!isPlainObject(source)) {
+        if (requiredForEachCriterion) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' must be an object keyed by criterion.`,
+          };
+        }
+        continue;
+      }
+
+      const allowedKeys = new Set(rows.map((row) => row.key));
+      const unknown = Object.keys(source).find((key) => !allowedKeys.has(key));
+      if (unknown) {
+        return {
+          ok: false,
+          msg: `Parameter '${name}' contains unknown criterion key '${unknown}'.`,
+        };
+      }
+
+      if (requiredForEachCriterion) {
+        const missing = rows.find(
+          (row) => !Object.prototype.hasOwnProperty.call(source, row.key)
+        );
+        if (missing) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' is missing '${missing.name}'.`,
+          };
+        }
+      }
+
+      for (const row of rows) {
+        if (!Object.prototype.hasOwnProperty.call(source, row.key)) {
+          continue;
+        }
+
+        const normalized = parseCriterionMapValueByRestrictions({
+          rawValue: source[row.key],
+          restrictions,
+        });
+
+        if (normalized === null) {
+          return {
+            ok: false,
+            msg: `Parameter '${name}' has invalid value for '${row.name}'.`,
           };
         }
       }
@@ -630,89 +1289,31 @@ const deepClone = (value) =>
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 
-const toScoreOrNull = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const buildRankingFromRawOutput = ({ rawOutput, alternativesByIndex }) => {
-  const rankingIndexes = Array.isArray(rawOutput?.collective_ranking)
-    ? rawOutput.collective_ranking
+const normalizeScenarioRanking = ({ standardResult }) => {
+  const fromRankedAlternatives = Array.isArray(standardResult?.rankedAlternatives)
+    ? standardResult.rankedAlternatives
     : [];
-  const scores = Array.isArray(rawOutput?.collective_scores)
-    ? rawOutput.collective_scores
-    : [];
+  if (!fromRankedAlternatives.length) return [];
 
-  if (!rankingIndexes.length || !Array.isArray(alternativesByIndex) || !alternativesByIndex.length) {
-    return [];
-  }
-
-  return rankingIndexes
-    .map((rankIndex) => {
-      const index = Number(rankIndex);
-      if (!Number.isInteger(index) || index < 0 || index >= alternativesByIndex.length) {
-        return null;
-      }
-
-      const alternative = alternativesByIndex[index];
-      if (!alternative?.name) return null;
+  return fromRankedAlternatives
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      if (typeof entry.name !== "string" || !entry.name.trim()) return null;
+      const score = Number(entry.score);
+      if (!Number.isFinite(score)) return null;
+      const rank = Number(entry.rank);
+      if (!Number.isInteger(rank) || rank <= 0) return null;
 
       return {
-        name: alternative.name,
-        score: toScoreOrNull(scores[index]),
+        alternativeId:
+          typeof entry.alternativeId === "string" ? entry.alternativeId : null,
+        name: entry.name.trim(),
+        score,
+        rank,
       };
     })
-    .filter(Boolean);
-};
-
-const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesByIndex }) => {
-  const fromRankedWithScores = Array.isArray(details?.rankedWithScores)
-    ? details.rankedWithScores
-    : [];
-  if (fromRankedWithScores.length) return fromRankedWithScores;
-
-  const fromRankedAlternatives = Array.isArray(details?.rankedAlternatives)
-    ? details.rankedAlternatives
-    : [];
-  if (fromRankedAlternatives.length) {
-    const objectShape = fromRankedAlternatives.every(
-      (item) => item && typeof item === "object" && item.name
-    );
-    if (objectShape) return fromRankedAlternatives;
-    return fromRankedAlternatives
-      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
-      .filter(Boolean);
-  }
-
-  const scenarioRanking = scenario?.outputs?.ranking || scenario?.result?.ranking;
-  if (Array.isArray(scenarioRanking) && scenarioRanking.length) {
-    return scenarioRanking
-      .map((name) => (typeof name === "string" && name.trim() ? { name: name.trim(), score: null } : null))
-      .filter(Boolean);
-  }
-
-  const scenarioRankedWithScores =
-    scenario?.outputs?.rankedWithScores || scenario?.result?.rankedWithScores;
-  if (Array.isArray(scenarioRankedWithScores) && scenarioRankedWithScores.length) {
-    return scenarioRankedWithScores;
-  }
-
-  const scoresByAlternative =
-    details?.scoresByAlternative ||
-    scenario?.outputs?.scoresByAlternative ||
-    scenario?.result?.scoresByAlternative ||
-    null;
-  const rankingByName =
-    details?.ranking || scenario?.outputs?.ranking || scenario?.result?.ranking || null;
-  if (Array.isArray(rankingByName) && rankingByName.length && scoresByAlternative && typeof scoresByAlternative === "object") {
-    return rankingByName
-      .map((name) => (typeof name === "string" && name.trim()
-        ? { name: name.trim(), score: toScoreOrNull(scoresByAlternative[name]) }
-        : null))
-      .filter(Boolean);
-  }
-
-  return buildRankingFromRawOutput({ rawOutput, alternativesByIndex });
+    .filter(Boolean)
+    .sort((left, right) => left.rank - right.rank);
 };
 
 /**
@@ -724,31 +1325,32 @@ const normalizeScenarioRanking = ({ scenario, details, rawOutput, alternativesBy
  */
 export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   const out = deepClone(baseIssueInfo || {});
-  const details = scenario?.outputs?.details || {};
-  const scenarioOutputs = scenario?.outputs || null;
+  const scenarioOutputs = scenario?.outputs || {};
+  const standardResult = scenarioOutputs?.standardResult || {};
+  const modelExecutionOutput = scenarioOutputs?.modelExecution || null;
   const scenarioRawOutput =
-    scenarioOutputs?.rawResults ??
-    scenarioOutputs?.details?.modelExecution?.rawOutput ??
+    scenarioOutputs?.rawOutput ??
+    standardResult?.rawOutput ??
+    modelExecutionOutput?.rawOutput ??
     null;
-  const collectiveEvaluations = scenario?.outputs?.collectiveEvaluations || null;
-  const scenarioEvaluationStructure = scenario?.targetEvaluationStructure || scenario?.evaluationStructure || null;
-  const alternativesByIndex = Array.isArray(out?.summary?.alternatives)
-    ? out.summary.alternatives
-    : [];
-  const normalizedRanking = normalizeScenarioRanking({
-    scenario,
-    details,
-    rawOutput: scenarioRawOutput,
-    alternativesByIndex,
-  });
+  const scenarioEvaluationStructure =
+    scenario?.targetAlternativeEvaluationStructureKey ||
+    scenario?.alternativeEvaluationStructureKey ||
+    null;
+  const normalizedRanking = normalizeScenarioRanking({ standardResult });
+  const collectiveEvaluations =
+    standardResult?.collectiveEvaluations &&
+    typeof standardResult.collectiveEvaluations === "object"
+      ? standardResult.collectiveEvaluations
+      : null;
 
   out.summary = {
     ...(out.summary || {}),
     model: scenario?.targetModelName || out?.summary?.model,
     modelName: scenario?.targetModelName || out?.summary?.modelName,
     targetModelName: scenario?.targetModelName,
-    evaluationStructure:
-      scenarioEvaluationStructure || out?.summary?.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      scenarioEvaluationStructure || out?.summary?.alternativeEvaluationStructureKey,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||
@@ -759,8 +1361,9 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   out.modelParams.base = {
     ...(out.modelParams.base || {}),
     modelName: scenario?.targetModelName || out.modelParams.base?.modelName,
-    evaluationStructure:
-      scenarioEvaluationStructure || out.modelParams.base?.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      scenarioEvaluationStructure ||
+      out.modelParams.base?.alternativeEvaluationStructureKey,
     paramsSaved:
       scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
     paramsResolved:
@@ -768,13 +1371,17 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       out.modelParams.base?.paramsResolved,
   };
 
-  out.alternativesRankings = [{ phase: 1, ranking: normalizedRanking }];
+  out.alternativesRankings = [{ phase: 1, rankedAlternatives: normalizedRanking }];
   out.consensus = [];
   out.consensusHistory = [];
   out.consensusRounds = [];
-  out.consensusDetails = details;
+  out.consensusDetails = {
+    modelExecution: modelExecutionOutput,
+    rankedAlternatives: normalizedRanking,
+    plotsGraphic: standardResult?.plotsGraphic || {},
+  };
   out.modelExecution =
-    details?.modelExecution ||
+    modelExecutionOutput ||
     (scenarioRawOutput !== null && scenarioRawOutput !== undefined
       ? { rawOutput: scenarioRawOutput }
       : null);
@@ -783,9 +1390,14 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     outputs: scenarioOutputs,
   };
 
-  const scatterPlot = details?.plotsGraphic;
-  if (scatterPlot?.expert_points && scatterPlot?.collective_point) {
-    out.analyticalGraphs = { ...(out.analyticalGraphs || {}), scatterPlot: [scatterPlot] };
+  const scatterPlot = standardResult?.plotsGraphic;
+  const normalizedPlotsGraphic = normalizePlotsGraphic(scatterPlot);
+  if (normalizedPlotsGraphic) {
+    out.analyticalGraphs = {
+      ...(out.analyticalGraphs || {}),
+      plotsGraphic: scatterPlot,
+      ...(normalizedPlotsGraphic.isValid ? { scatterPlot: [scatterPlot] } : {}),
+    };
   }
 
   if (collectiveEvaluations && out?.expertsRatings && typeof out.expertsRatings === "object") {

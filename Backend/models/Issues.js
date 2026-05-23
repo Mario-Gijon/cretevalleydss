@@ -3,13 +3,17 @@
  */
 
 import { Schema, model } from "mongoose";
-import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 import { Alternative } from "./Alternatives.js";
 import { Consensus } from "./Consensus.js";
 import { Criterion } from "./Criteria.js";
-import { Evaluation } from "./Evaluations.js";
+import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 import { Participation } from "./Participations.js";
+import { IssueEvaluation } from "./IssueEvaluations.js";
+import { IssueStageResult } from "./IssueStageResults.js";
+import { IssueScenario } from "./IssueScenarios.js";
+import { Notification } from "./Notificacions.js";
+import { ExitUserIssue } from "./ExitUserIssue.js";
 
 
 /**
@@ -27,13 +31,11 @@ import { Participation } from "./Participations.js";
  * @property {boolean} active Indica si el issue sigue activo.
  * @property {string|null} creationDate Fecha funcional de creación.
  * @property {string|null} closureDate Fecha funcional de cierre.
+ * @property {Date|null} finishedAt Fecha real de finalización del issue.
  * @property {*} modelParameters Parámetros efectivos del modelo.
  * @property {string} currentStage Etapa actual del flujo.
- * @property {string} weightingMode Estrategia de pesos.
  * @property {Array<*>} alternativeOrder Orden persistido de alternativas.
  * @property {Array<*>} leafCriteriaOrder Orden persistido de criterios hoja.
- * @property {string} evaluationStructure Estructura de evaluación.
- * @property {string|null} lifecycleKind Tipo de ciclo de vida de resolución.
  */
 
 
@@ -42,8 +44,7 @@ import { Participation } from "./Participations.js";
  *
  * Representa un issue creado por un administrador y asociado a un modelo
  * de decisión concreto. Almacena la configuración general del proceso,
- * el estado actual del flujo, el modo de pesos, la estructura de evaluación
- * y el orden estable de alternativas y criterios hoja.
+ * el estado actual del flujo y el orden estable de alternativas y criterios hoja.
  *
  * Relaciones:
  * - `admin` -> usuario creador del issue.
@@ -57,10 +58,9 @@ import { Participation } from "./Participations.js";
  * - `consensusThreshold`: umbral de consenso objetivo.
  * - `modelParameters`: parámetros efectivos del modelo.
  * - `currentStage`: fase actual del flujo del issue.
- * - `weightingMode`: estrategia de obtención de pesos.
- * - `evaluationStructure`: estructura de evaluación exigida por el modelo.
  * - `active`: indica si el issue sigue activo o ya ha finalizado.
  * - `creationDate` y `closureDate`: fechas funcionales de dominio.
+ * - `finishedAt`: fecha real en la que el issue pasó a finalizado.
  *
  * Auditoría:
  * - El schema usa `timestamps`, por lo que también mantiene `createdAt`
@@ -68,7 +68,9 @@ import { Participation } from "./Participations.js";
  *
  * Comportamiento:
  * - Antes de eliminar un issue mediante `remove`, se eliminan en cascada
- *   alternativas, criterios, evaluaciones, participaciones y consensos asociados.
+ *   documentos asociados del issue (alternativas, criterios, evaluaciones,
+ *   resultados de etapa, escenarios, participaciones, consensos, notificaciones
+ *   y salidas de visibilidad).
  */
 
 /**
@@ -109,16 +111,6 @@ const issueSchema = new Schema(
         trim: true,
       },
     },
-    apiInputFormat: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    apiOutputFormat: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     modelFamilyKey: {
       type: String,
       required: true,
@@ -141,6 +133,51 @@ const issueSchema = new Schema(
     },
     isConsensus: {
       type: Boolean,
+      default: false,
+    },
+    supportsConsensus: {
+      type: Boolean,
+      default: false,
+    },
+    criteriaWeightingStructureKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    criteriaWeightingModel: {
+      type: Schema.Types.ObjectId,
+      ref: "IssueModel",
+      default: null,
+    },
+    criteriaWeightingApiModelKey: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    criteriaWeightingApiEndpoint: {
+      method: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      path: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      operationId: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+    },
+    criteriaWeightingParameters: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    alternativeEvaluationStructureKey: {
+      type: String,
+      trim: true,
       required: true,
     },
     consensusMaxPhases: {
@@ -167,6 +204,10 @@ const issueSchema = new Schema(
       type: String,
       default: null,
     },
+    finishedAt: {
+      type: Date,
+      default: null,
+    },
     modelParameters: {
       type: Schema.Types.Mixed,
       default: {},
@@ -181,17 +222,6 @@ const issueSchema = new Schema(
       ],
       default: "criteriaWeighting",
     },
-    weightingMode: {
-      type: String,
-      enum: [
-        "manual",
-        "consensus",
-        "bwm",
-        "consensusBwm",
-        "simulatedConsensusBwm",
-      ],
-      default: "manual",
-    },
     alternativeOrder: [
       {
         type: Schema.Types.ObjectId,
@@ -204,23 +234,15 @@ const issueSchema = new Schema(
         ref: "Criterion",
       },
     ],
-    evaluationStructure: {
-      type: String,
-      enum: ["direct", "pairwiseAlternatives"],
-      required: true,
-    },
-    lifecycleKind: {
-      type: String,
-      enum: Object.values(LIFECYCLE_KINDS),
-    },
     consensusPhase: {
       type: Number,
-      required: true,
       min: 1,
+      default: 1,
     },
   },
   {
     timestamps: true,
+    minimize: false,
   }
 );
 
@@ -236,9 +258,14 @@ async function removeIssueDependencies(next) {
     await Promise.all([
       Alternative.deleteMany({ issue: this._id }),
       Criterion.deleteMany({ issue: this._id }),
-      Evaluation.deleteMany({ issue: this._id }),
+      IssueExpressionDomain.deleteMany({ issue: this._id }),
+      IssueEvaluation.deleteMany({ issue: this._id }),
+      IssueStageResult.deleteMany({ issue: this._id }),
+      IssueScenario.deleteMany({ issue: this._id }),
       Participation.deleteMany({ issue: this._id }),
       Consensus.deleteMany({ issue: this._id }),
+      Notification.deleteMany({ issue: this._id }),
+      ExitUserIssue.deleteMany({ issue: this._id }),
     ]);
 
     next();

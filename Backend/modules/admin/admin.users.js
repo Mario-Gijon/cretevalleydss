@@ -1,7 +1,6 @@
-         
+
 import { Consensus } from "../../models/Consensus.js";
-import { CriteriaWeightEvaluation } from "../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../models/Evaluations.js";
+import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { Issue } from "../../models/Issues.js";
@@ -9,7 +8,7 @@ import { Notification } from "../../models/Notificacions.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 
-          
+
 import {
   deleteIssueCascade,
   getFinishedIssueVisibleUserIds,
@@ -17,7 +16,7 @@ import {
   registerUserExit,
 } from "../issues/lifecycle/index.js";
 
-        
+
 import {
   createBadRequestError,
   createConflictError,
@@ -131,16 +130,9 @@ const removeUserFromActiveIssue = async ({
   summary,
   session = null,
 }) => {
-  const [deleteEvaluationsResult, deleteWeightDocsResult] = await Promise.all([
+  const [deleteIssueEvaluationsResult] = await Promise.all([
     withOptionalSession(
-      Evaluation.deleteMany({
-        issue: issue._id,
-        expert: user._id,
-      }),
-      session
-    ),
-    withOptionalSession(
-      CriteriaWeightEvaluation.deleteMany({
+      IssueEvaluation.deleteMany({
         issue: issue._id,
         expert: user._id,
       }),
@@ -159,8 +151,8 @@ const removeUserFromActiveIssue = async ({
     ),
   ]);
 
-  summary.activeEvaluationsDeleted += deleteEvaluationsResult.deletedCount || 0;
-  summary.activeWeightDocsDeleted += deleteWeightDocsResult.deletedCount || 0;
+  summary.activeIssueEvaluationsDeleted +=
+    deleteIssueEvaluationsResult.deletedCount || 0;
 
   const remainingParticipations = await withOptionalSession(
     Participation.find({ issue: issue._id }),
@@ -706,8 +698,7 @@ export const deleteUserAdminFlow = async ({
     activeIssuesDeleted: 0,
     finishedIssuesHidden: 0,
     finishedIssuesDeleted: 0,
-    activeEvaluationsDeleted: 0,
-    activeWeightDocsDeleted: 0,
+    activeIssueEvaluationsDeleted: 0,
     domainsDeleted: 0,
   };
 

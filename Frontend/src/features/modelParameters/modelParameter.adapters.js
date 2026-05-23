@@ -5,20 +5,22 @@ import { arrayParameterHandler } from "./fields/array";
 import { fuzzyArrayParameterHandler } from "./fields/fuzzyArray";
 import { criteriaWeightsParameterHandler } from "./fields/criteriaWeights";
 import { fuzzyCriteriaWeightsParameterHandler } from "./fields/fuzzyCriteriaWeights";
+import { criterionMapParameterHandler } from "./fields/criterionMap";
 
-export const MODEL_PARAMETER_HANDLER_REGISTRY = {
+export const MODEL_PARAMETER_STRUCTURE_REGISTRY = {
   criteriaWeights: criteriaWeightsParameterHandler,
   fuzzyCriteriaWeights: fuzzyCriteriaWeightsParameterHandler,
-  "number:global": numberParameterHandler,
-  "integer:global": numberParameterHandler,
-  "boolean:global": enumParameterHandler,
-  "enum:global": enumParameterHandler,
-  "string:global": enumParameterHandler,
-  "interval:global": intervalParameterHandler,
-  "array:global": arrayParameterHandler,
-  "array:perCriterion": arrayParameterHandler,
-  "fuzzyArray:global": fuzzyArrayParameterHandler,
-  "fuzzyArray:perCriterion": fuzzyArrayParameterHandler,
+  numberGlobal: numberParameterHandler,
+  integerGlobal: numberParameterHandler,
+  booleanGlobal: enumParameterHandler,
+  selectGlobal: enumParameterHandler,
+  stringGlobal: enumParameterHandler,
+  intervalGlobal: intervalParameterHandler,
+  arrayGlobal: arrayParameterHandler,
+  arrayPerCriterion: arrayParameterHandler,
+  fuzzyArrayGlobal: fuzzyArrayParameterHandler,
+  fuzzyArrayPerCriterion: fuzzyArrayParameterHandler,
+  criterionMap: criterionMapParameterHandler,
 };
 
-export const MODEL_PARAMETER_ADAPTER_REGISTRY = MODEL_PARAMETER_HANDLER_REGISTRY;
+export const MODEL_PARAMETER_ADAPTER_REGISTRY = MODEL_PARAMETER_STRUCTURE_REGISTRY;

@@ -8,11 +8,8 @@ import { IssueModel } from "../models/IssueModels.js";
           
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import {
-  computeWeights as computeWeightsService,
-} from "../modules/issues/weightEvaluations/index.js";
-import {
-  resolveIssue as resolveIssueService,
-} from "../modules/issues/resolution/index.js";
+  computeIssueEvaluationStage,
+} from "../modules/issues/evaluations/index.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
 
 import {
@@ -124,15 +121,23 @@ const mapIssueModelCatalogItem = (model = {}) => {
     name: model.name,
     apiModelKey: model.apiModelKey || null,
     isIssueModel: model.isIssueModel === true,
+    isCriteriaWeightingModel: model.isCriteriaWeightingModel === true,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
+    visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint || null,
     manifestSync: model.manifestSync || null,
     isMultiCriteria: model.isMultiCriteria,
-    evaluationStructure: model.evaluationStructure,
+    alternativeEvaluationStructureKey:
+      model.alternativeEvaluationStructureKey || null,
+    criteriaWeightingStructureKey:
+      model.criteriaWeightingStructureKey || null,
+    usesCriteriaWeights: model.usesCriteriaWeights === true,
+    usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: model.usesCriterionTypes === true,
+    supportsConsensus: model.supportsConsensus === true,
     lifecycleKind: model.lifecycleKind || null,
     apiInputFormat: model.apiInputFormat || null,
     apiOutputFormat: model.apiOutputFormat || null,
-    criterionTypes: Array.isArray(model.criterionTypes) ? model.criterionTypes : [],
     parameters: Array.isArray(model.parameters) ? model.parameters : [],
     modelInputFields: Array.isArray(model.modelInputFields)
       ? model.modelInputFields
@@ -157,12 +162,15 @@ const mapIssueModelCatalogItem = (model = {}) => {
  */
 const getModelCatalogSortRank = (model = {}) => {
   const visibleInIssueCreation = model.visibleInIssueCreation !== false;
+  const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
   const stale = model?.manifestSync?.isStale === true;
 
   if (visibleInIssueCreation && !stale) return 0;
   if (visibleInIssueCreation) return 1;
+  if (visibleInCriteriaWeighting && !stale) return 2;
+  if (visibleInCriteriaWeighting) return 3;
 
-  return 2;
+  return 4;
 };
 
 /**
@@ -215,7 +223,7 @@ export const getModelCatalogAdmin = async (_req, res) => {
  */
 export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   const { id } = req.params || {};
-  const { visibleInIssueCreation } = req.body || {};
+  const { visibleInIssueCreation, visibleInCriteriaWeighting } = req.body || {};
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid model id is required", {
@@ -223,15 +231,31 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
     });
   }
 
-  if (typeof visibleInIssueCreation !== "boolean") {
-    throw createBadRequestError("visibleInIssueCreation must be boolean", {
-      field: "visibleInIssueCreation",
-    });
+  const hasIssueVisibility = typeof visibleInIssueCreation === "boolean";
+  const hasCriteriaVisibility =
+    typeof visibleInCriteriaWeighting === "boolean";
+
+  if (!hasIssueVisibility && !hasCriteriaVisibility) {
+    throw createBadRequestError(
+      "visibleInIssueCreation or visibleInCriteriaWeighting must be boolean",
+      {
+        field: "visibleInIssueCreation",
+      }
+    );
+  }
+
+  const visibilityUpdate = {};
+  if (hasIssueVisibility) {
+    visibilityUpdate.visibleInIssueCreation = visibleInIssueCreation;
+  }
+  if (hasCriteriaVisibility) {
+    visibilityUpdate.visibleInCriteriaWeighting =
+      visibleInCriteriaWeighting;
   }
 
   const model = await IssueModel.findByIdAndUpdate(
     id,
-    { $set: { visibleInIssueCreation } },
+    { $set: visibilityUpdate },
     { new: true, runValidators: true }
   )
     .select("-__v")
@@ -550,41 +574,10 @@ export const computeIssueWeightsAdmin = async (req, res) => {
     issueId,
   });
 
-  const result = await computeWeightsService({
+  const result = await computeIssueEvaluationStage({
     issueId,
     userId: creatorUserId,
-  });
-
-  return sendSuccess(
-    res,
-    result.message,
-    {
-      finished: result.finished,
-      weights: result.weights,
-      criteriaOrder: result.criteriaOrder,
-    },
-  );
-};
-
-/**
- * Permite al admin resolver un issue reutilizando flows de dominio.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
-export const resolveIssueAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
-  const forceFinalize = Boolean(req.body?.forceFinalize);
-
-  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
-    issueId,
-  });
-
-  const result = await resolveIssueService({
-    issueId,
-    userId: creatorUserId,
-    forceFinalize,
+    stage: "criteriaWeighting",
     apiModelsBaseUrl:
       process.env.ORIGIN_APIMODELS || "http://localhost:7000",
     httpClient: axios,
@@ -594,9 +587,50 @@ export const resolveIssueAdmin = async (req, res) => {
     res,
     result.message,
     {
-      finished: result.finished,
-      rankedAlternatives: result.rankedAlternatives || null,
-      resultsAnalysis: result.resultsAnalysis ?? null,
+      currentStage: result.currentStage,
+      consensusPhase: result.consensusPhase,
+      weightsByCriterion: result.result?.weightsByCriterion ?? {},
+      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
+      consensusMeasure: result.result?.consensusMeasure ?? null,
+      consensusLifecycle: result.result?.consensusLifecycle ?? null,
+      modelExecution: result.result?.modelExecution ?? null,
+      rawOutput: result.result?.rawOutput ?? {},
+    },
+  );
+};
+
+export const resolveIssueAdmin = async (req, res) => {
+  const issueId = req.body?.issueId || req.body?.id;
+
+  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+    issueId,
+  });
+
+  const result = await computeIssueEvaluationStage({
+    issueId,
+    userId: creatorUserId,
+    stage: "alternativeEvaluation",
+    apiModelsBaseUrl:
+      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
+
+  const finished = result.currentStage === "finished";
+
+  return sendSuccess(
+    res,
+    result.message,
+    {
+      finished,
+      currentStage: result.currentStage,
+      consensusPhase: result.consensusPhase,
+      rankedAlternatives: result.result?.rankedAlternatives ?? [],
+      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
+      plotsGraphic: result.result?.plotsGraphic ?? {},
+      consensusMeasure: result.result?.consensusMeasure ?? null,
+      consensusLifecycle: result.result?.consensusLifecycle ?? null,
+      modelExecution: result.result?.modelExecution ?? null,
+      rawOutput: result.result?.rawOutput ?? {},
     },
   );
 };

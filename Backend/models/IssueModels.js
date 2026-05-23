@@ -3,7 +3,6 @@
  */
 
 import { Schema, model } from "mongoose";
-import { LIFECYCLE_KINDS } from "../modules/issues/issue.lifecycleKind.js";
 
 /**
  * Comprueba si un valor pertenece al conjunto permitido.
@@ -109,12 +108,17 @@ const parameterSchema = new Schema(
       type: String,
       required: true,
     },
+    valueType: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     scope: {
       type: String,
       trim: true,
       default: null,
     },
-    semanticRole: {
+    parameterStructureKey: {
       type: String,
       trim: true,
       default: null,
@@ -127,10 +131,6 @@ const parameterSchema = new Schema(
       type: Schema.Types.Mixed,
     },
     restrictions: {
-      type: Schema.Types.Mixed,
-      default: null,
-    },
-    ui: {
       type: Schema.Types.Mixed,
       default: null,
     },
@@ -177,10 +177,21 @@ const issueModelSchema = new Schema({
     required: true,
     default: false,
   },
+  isCriteriaWeightingModel: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
   visibleInIssueCreation: {
     type: Boolean,
     default: function resolveDefaultVisibility() {
       return this.isIssueModel === true;
+    },
+  },
+  visibleInCriteriaWeighting: {
+    type: Boolean,
+    default: function resolveDefaultCriteriaWeightingVisibility() {
+      return this.isCriteriaWeightingModel === true;
     },
   },
   apiEndpoint: {
@@ -252,30 +263,34 @@ const issueModelSchema = new Schema({
     type: [parameterSchema],
     default: [],
   },
-  evaluationStructure: {
-    type: String,
-    enum: ["direct", "pairwiseAlternatives"],
-    required: true,
-  },
-  lifecycleKind: {
+  alternativeEvaluationStructureKey: {
     type: String,
     trim: true,
-    enum: Object.values(LIFECYCLE_KINDS),
-    required: true,
+    required: function resolveAlternativeStructureRequirement() {
+      return this.isIssueModel === true;
+    },
+    default: null,
   },
-  apiInputFormat: {
+  criteriaWeightingStructureKey: {
     type: String,
     trim: true,
-    required: true,
+    default: null,
   },
-  apiOutputFormat: {
-    type: String,
-    trim: true,
-    required: true,
+  supportsConsensus: {
+    type: Boolean,
+    default: false,
   },
-  criterionTypes: {
-    type: [String],
-    default: [],
+  usesCriteriaWeights: {
+    type: Boolean,
+    default: false,
+  },
+  usesFuzzyCriteriaWeights: {
+    type: Boolean,
+    default: false,
+  },
+  usesCriterionTypes: {
+    type: Boolean,
+    default: false,
   },
   supportedDomains: {
     numeric: {
@@ -292,14 +307,6 @@ const issueModelSchema = new Schema({
       type: [String],
       default: [],
     },
-  },
-  modelInputFields: {
-    type: [String],
-    default: [],
-  },
-  modelOutputFields: {
-    type: [String],
-    default: [],
   },
   request: {
     type: Schema.Types.Mixed,

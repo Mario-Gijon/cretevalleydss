@@ -13,66 +13,12 @@ API_CONTRACT = {
     "error": "object|null",
 }
 
-_CRITERION_TYPES = ["max", "min"]
-
-_WEIGHTS_PARAMETER = {
-    "key": "weights",
-    "label": "Criteria weights",
-    "description": "Relative importance assigned to each leaf criterion.",
-    "required": True,
-    "type": "array",
-    "scope": "perCriterion",
-    "semanticRole": "criteriaWeights",
-    "default": "equal",
-    "restrictions": {
-        "min": 0,
-        "max": 1,
-        "length": "matchCriteria",
-        "itemType": "number",
-        "sum": 1,
-        "normalize": False,
-        "ordered": None,
-        "allowed": None,
-    },
-    "ui": {
-        "component": "criteriaWeights",
-        "showCriterionNames": True,
-    },
-}
-
-_FUZZY_WEIGHTS_PARAMETER = {
-    "key": "weights",
-    "label": "Criteria fuzzy weights",
-    "required": True,
-    "type": "fuzzyArray",
-    "scope": "perCriterion",
-    "semanticRole": "criteriaWeights",
-    "default": "equal",
-    "restrictions": {
-        "min": 0,
-        "max": 1,
-        "length": "matchCriteria",
-        "itemType": "fuzzyNumber",
-        "ordered": "nonDecreasing",
-        "sum": None,
-        "normalize": None,
-        "allowed": None,
-    },
-    "ui": {
-        "component": "fuzzyCriteriaWeights",
-        "showCriterionNames": True,
-    },
-}
-
 
 def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
     """Normaliza un parámetro al contrato público sin alterar su forma base."""
 
     normalized = dict(parameter)
     normalized["scope"] = normalized.get("scope") or "global"
-
-    if normalized.get("semanticRole") is None:
-        normalized.pop("semanticRole", None)
 
     return normalized
 
@@ -96,18 +42,9 @@ def _build_supported_domains(domain_types: list[str]) -> dict[str, Any]:
 
 
 def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
-    """Genera la lista pública de parámetros desde flags simples del modelo."""
+    """Genera la lista pública de parámetros declarados por el modelo."""
 
-    parameters: list[dict[str, Any]] = []
-
-    if model.uses_weights:
-        parameters.append(_normalize_parameter_definition(_WEIGHTS_PARAMETER))
-
-    if model.uses_fuzzy_weights:
-        parameters.append(_normalize_parameter_definition(_FUZZY_WEIGHTS_PARAMETER))
-
-    parameters.extend(_normalize_parameter_definition(parameter) for parameter in model.parameters)
-    return parameters
+    return [_normalize_parameter_definition(parameter) for parameter in model.parameters]
 
 
 def _get_request_example(model: ModelDefinition) -> dict[str, Any] | None:
@@ -137,6 +74,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "modelVersion": model.model_version,
         "versionLabel": model.version_label,
         "isIssueModel": model.is_issue_model,
+        "isCriteriaWeightingModel": model.is_criteria_weighting_model,
         "apiEndpoint": {
             "method": "POST",
             "path": model.api_endpoint_path,
@@ -145,23 +83,20 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "smallDescription": model.small_description,
         "extendDescription": model.extend_description,
         "moreInfoUrl": model.more_info_url,
-        "evaluationStructure": model.evaluation_structure,
-        "lifecycleKind": model.lifecycle_kind,
-        "apiInputFormat": model.api_input_format,
-        "apiOutputFormat": model.api_output_format,
+        "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
+        "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
+        "supportsConsensus": model.supports_consensus,
         "isMultiCriteria": model.is_multi_criteria,
+        "usesCriteriaWeights": model.uses_criteria_weights,
+        "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
+        "usesCriterionTypes": model.uses_criterion_types,
         "supportedDomains": _build_supported_domains(model.supported_domains),
-        "criterionTypes": _CRITERION_TYPES if model.uses_criterion_types else None,
         "parameters": _build_parameters(model),
-        "modelInputFields": list(model.model_input_fields),
-        "modelOutputFields": list(model.model_output_fields),
         "request": {
             "contentType": "application/json",
-            "bodyFields": list(model.request_body_fields),
             "example": _get_request_example(model),
         },
         "response": {
-            "dataFields": list(model.model_output_fields),
             "example": _get_response_example(model),
         },
     }

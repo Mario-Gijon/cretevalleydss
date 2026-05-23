@@ -29,6 +29,17 @@ import {
   IssueDetailsDrawerKeyValueRow,
 } from "../shell/IssueDetailsDrawer.parts";
 import IssueParticipationChart from "../../shared/IssueParticipationChart";
+import { IssueModelParametersView } from "../../../../modelParameters";
+
+const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
+  manualCriteriaWeights: "Manual criteria weights",
+  bestWorstCriteria: "BWM",
+};
+
+const ALTERNATIVE_STRUCTURE_LABELS = {
+  alternativeCriteriaMatrix: "Alternative-criteria matrix",
+  alternativePairwiseByCriterion: "Pairwise alternatives by criterion",
+};
 
 /**
  * Pestaña Overview del drawer de detalles del issue.
@@ -44,7 +55,7 @@ const IssueDetailsOverviewTab = ({
   drawerAction,
   DrawerActionIcon,
   deadlineLabel,
-  modelParamsList,
+  leafNames,
   totalExperts,
   pendingExperts,
   participatedExperts,
@@ -290,8 +301,20 @@ const IssueDetailsOverviewTab = ({
               v={stageLabel(selectedIssue?.currentStage)}
             />
             <IssueDetailsDrawerKeyValueRow
-              k="Weighting mode"
-              v={selectedIssue?.weightingMode}
+              k="Criteria weighting structure"
+              v={
+                CRITERIA_WEIGHTING_STRUCTURE_LABELS[
+                  selectedIssue?.criteriaWeightingStructureKey
+                ] || selectedIssue?.criteriaWeightingStructureKey || "—"
+              }
+            />
+            <IssueDetailsDrawerKeyValueRow
+              k="Alternative evaluation structure"
+              v={
+                ALTERNATIVE_STRUCTURE_LABELS[
+                  selectedIssue?.alternativeEvaluationStructureKey
+                ] || selectedIssue?.alternativeEvaluationStructureKey || "—"
+              }
             />
             <IssueDetailsDrawerKeyValueRow
               k="Consensus"
@@ -339,17 +362,11 @@ const IssueDetailsOverviewTab = ({
         </AccordionSummary>
 
         <AccordionDetails sx={{ pt: 0 }}>
-          {modelParamsList.length === 0 ? (
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              No model parameters defined for this issue.
-            </Typography>
-          ) : (
-            <Stack spacing={1.05}>
-              {modelParamsList.map((row) => (
-                <IssueDetailsDrawerKeyValueRow key={row.k} k={row.k} v={row.v} />
-              ))}
-            </Stack>
-          )}
+          <IssueModelParametersView
+            parameters={selectedIssue?.model?.parameters || []}
+            values={selectedIssue?.modelParameters || selectedIssue?.ui?.modelParameters || {}}
+            leafNames={leafNames}
+          />
         </AccordionDetails>
       </Accordion>
 

@@ -1,12 +1,12 @@
 import { Alternative } from "../../../models/Alternatives.js";
 import { Consensus } from "../../../models/Consensus.js";
-import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
 import { Criterion } from "../../../models/Criteria.js";
-import { Evaluation } from "../../../models/Evaluations.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Notification } from "../../../models/Notificacions.js";
 import { Participation } from "../../../models/Participations.js";
 
@@ -27,22 +27,16 @@ import {
 
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
   await Promise.all([
-    withOptionalSession(Evaluation.deleteMany({ issue: issueId }), session),
+    withOptionalSession(IssueEvaluation.deleteMany({ issue: issueId }), session),
     withOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
     withOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
     withOptionalSession(Participation.deleteMany({ issue: issueId }), session),
     withOptionalSession(Consensus.deleteMany({ issue: issueId }), session),
     withOptionalSession(Notification.deleteMany({ issue: issueId }), session),
-    withOptionalSession(
-      IssueExpressionDomain.deleteMany({ issue: issueId }),
-      session
-    ),
-    withOptionalSession(
-      CriteriaWeightEvaluation.deleteMany({ issue: issueId }),
-      session
-    ),
+    withOptionalSession(IssueExpressionDomain.deleteMany({ issue: issueId }), session),
     withOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),
     withOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
+    withOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
   ]);
 
   await withOptionalSession(Issue.deleteOne({ _id: issueId }), session);

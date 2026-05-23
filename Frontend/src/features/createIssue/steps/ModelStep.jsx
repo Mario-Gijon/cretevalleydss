@@ -17,7 +17,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 import { filterModels } from "../utils/createIssue.utils";
-import { countLeafCriteria } from "../../../utils/criteria.utils";
+import { getLeafCriteria } from "../../../utils/criteria.utils";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useCreateIssueContext } from "../context/createIssue.context";
@@ -36,30 +36,27 @@ export const ModelStep = () => {
   const {
     selectedModel,
     setSelectedModel,
-    withConsensus,
-    setWithConsensus,
+    showConsensusModels,
+    setShowConsensusModels,
     criteria,
   } = useCreateIssueContext();
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredModels = useMemo(
-    () => filterModels(models, withConsensus, searchQuery),
-    [models, withConsensus, searchQuery]
+    () => filterModels(models, showConsensusModels, searchQuery),
+    [models, showConsensusModels, searchQuery]
   );
 
-  const handleConsensus = () => setWithConsensus((prev) => !prev);
+  const handleConsensus = () => {
+    setShowConsensusModels((previous) => !previous);
+  };
 
   const handleSelectModel = (model) => {
-    if (!model.isMultiCriteria) {
-      const leafCount = countLeafCriteria(criteria);
-      if (leafCount > 1) {
-        showSnackbarAlert(
-          "This model only allows one criterion. Please reduce your criteria first.",
-          "error"
-        );
-        return;
-      }
+    const leafCriteria = getLeafCriteria(criteria);
+    if (model?.isMultiCriteria !== true && leafCriteria.length > 1) {
+      showSnackbarAlert("This model does not support multiple criteria.", "error");
+      return;
     }
 
     setSelectedModel(model);
@@ -74,7 +71,7 @@ export const ModelStep = () => {
       >
         <ToggleButton
           value="consensus"
-          selected={withConsensus}
+          selected={showConsensusModels}
           onChange={handleConsensus}
           color="secondary"
           size="small"

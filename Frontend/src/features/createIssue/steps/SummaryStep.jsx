@@ -32,14 +32,20 @@ import "dayjs/locale/en-gb";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriterionAccordion } from "../components/CriterionAccordion";
-import { ModelParameters } from "../components/ModelParameters";
+import {
+  getRenderableNormalModelParameters,
+  ModelParameters,
+} from "../components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
 import {
   getRemainingTime,
   setDefaults,
 } from "../utils/createIssue.utils";
-import { groupDomainData } from "../../../utils/domainAssignments.utils";
+import { buildDefaultCriteriaWeightingConfig } from "../utils/criteriaWeighting.model";
+import {
+  getExpressionDomainAssignmentsByCriterion,
+} from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
 import {
@@ -93,10 +99,7 @@ export const SummaryStep = () => {
     setDefaultModelParams,
     hasAttemptedCreateIssue,
     setHasAttemptedCreateIssue,
-    bwmData,
-    setBwmData,
-    weightingMode,
-    setWeightingMode,
+    setCriteriaWeightingConfig,
   } = useCreateIssueContext();
 
   const [unlimited, setUnlimited] = useState(consensusMaxPhases === null);
@@ -104,11 +107,11 @@ export const SummaryStep = () => {
 
   const {
     selectedModel,
-    withConsensus,
+    isConsensus,
     alternatives,
     criteria,
     addedExperts,
-    domainAssignments,
+    expressionDomainConfig,
   } = allData;
 
   const domainNameMap = useMemo(
@@ -119,17 +122,29 @@ export const SummaryStep = () => {
     [globalDomains, expressionDomains]
   );
 
-  const groupedData = useMemo(
-    () => groupDomainData(domainAssignments),
-    [domainAssignments]
+  const domainAssignmentsByCriterion = useMemo(
+    () =>
+      getExpressionDomainAssignmentsByCriterion({
+        expressionDomainConfig,
+        leafCriteria: getLeafCriteria(criteria),
+      }),
+    [criteria, expressionDomainConfig]
+  );
+  const hasNormalModelParameters = useMemo(
+    () => getRenderableNormalModelParameters(selectedModel).length > 0,
+    [selectedModel]
   );
 
   const handleDefaultChange = () => {
+    const leafCriteria = getLeafCriteria(criteria);
     setParamValues(
       setDefaults({
         selectedModel,
-        criteria: getLeafCriteria(criteria),
+        criteria: leafCriteria,
       })
+    );
+    setCriteriaWeightingConfig(
+      buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
     );
     setDefaultModelParams(true);
     setHasAttemptedCreateIssue(false);
@@ -139,9 +154,7 @@ export const SummaryStep = () => {
     !selectedModel ||
     addedExperts.length === 0 ||
     alternatives.length === 0 ||
-    criteria.length === 0 ||
-    !domainAssignments?.experts ||
-    Object.keys(domainAssignments.experts).length === 0
+    criteria.length === 0
   ) {
     return (
       <Typography pt={8} variant="h5">
@@ -214,9 +227,8 @@ export const SummaryStep = () => {
                   <KVRow k="Model" v={selectedModel?.name} />
                   <KVRow
                     k="Consensus"
-                    v={withConsensus ? "With consensus" : "Without consensus"}
+                    v={isConsensus ? "Enabled" : "Disabled"}
                   />
-                  <KVRow k="Experts" v={addedExperts.length} />
                 </Stack>
               </Grid>
             </Grid>
@@ -293,31 +305,29 @@ export const SummaryStep = () => {
           </AccordionDetails>
         </Accordion>
 
-        <Divider />
+        {hasNormalModelParameters ? (
+          <>
+            <Divider />
 
-        {selectedModel?.parameters?.length ? (
-          <Accordion disableGutters elevation={0} sx={accordionSx}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              {sectionHeader("Model parameters", null)}
-            </AccordionSummary>
+            <Accordion disableGutters elevation={0} sx={accordionSx}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                {sectionHeader("Model parameters", null)}
+              </AccordionSummary>
 
-            <AccordionDetails sx={{ pt: 0 }}>
-              <ModelParameters
-                selectedModel={selectedModel}
-                allData={allData}
-                paramValues={paramValues}
-                bwmData={bwmData}
-                setBwmData={setBwmData}
-                setParamValues={setParamValues}
-                defaultModelParams={defaultModelParams}
-                setDefaultModelParams={setDefaultModelParams}
-                handleDefaultChange={handleDefaultChange}
-                showValidationErrors={hasAttemptedCreateIssue}
-                weightingMode={weightingMode}
-                setWeightingMode={setWeightingMode}
-              />
-            </AccordionDetails>
-          </Accordion>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <ModelParameters
+                  selectedModel={selectedModel}
+                  allData={allData}
+                  paramValues={paramValues}
+                  setParamValues={setParamValues}
+                  defaultModelParams={defaultModelParams}
+                  setDefaultModelParams={setDefaultModelParams}
+                  handleDefaultChange={handleDefaultChange}
+                  showValidationErrors={hasAttemptedCreateIssue}
+                />
+              </AccordionDetails>
+            </Accordion>
+          </>
         ) : null}
 
         <Divider />
@@ -329,7 +339,7 @@ export const SummaryStep = () => {
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={1.4} alignItems="center">
-              <Grid item size={withConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
+              <Grid item size={isConsensus ? { xs: 12, md: 6 } : { xs: 12 }}>
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1.2}
@@ -368,7 +378,7 @@ export const SummaryStep = () => {
                 </Stack>
               </Grid>
 
-              {withConsensus && (
+              {isConsensus && (
                 <>
                   <Grid item size={{ xs: 12, md: 6 }}>
                     <Stack
@@ -464,53 +474,40 @@ export const SummaryStep = () => {
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
-            <TableContainer sx={getCreateIssueSummaryDomainTableContainerSx(theme)}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    {["Expert", "Alternative", "Criterion", "Domain"].map((header) => (
-                      <TableCell key={header} sx={domainHeaderCellSx}>
-                        {header}
-                      </TableCell>
+            {expressionDomainConfig?.mode === "global" ? (
+              <Stack spacing={0.5}>
+                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                  Global
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                  {domainNameMap[expressionDomainConfig?.globalDomainId] || "undefined"}
+                </Typography>
+              </Stack>
+            ) : (
+              <TableContainer sx={getCreateIssueSummaryDomainTableContainerSx(theme)}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      {["Criterion", "Domain"].map((header) => (
+                        <TableCell key={header} sx={domainHeaderCellSx}>
+                          {header}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {Object.entries(domainAssignmentsByCriterion).map(([criterionName, domainId]) => (
+                      <TableRow key={criterionName} hover>
+                        <TableCell sx={{ fontWeight: 850 }}>{criterionName}</TableCell>
+                        <TableCell sx={{ fontWeight: 850 }}>
+                          {domainNameMap[domainId] || "undefined"}
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {Object.entries(groupedData).map(([expert, alternativesObject]) => {
-                    const expertRowSpan = Object.values(alternativesObject).reduce(
-                      (sum, rows) => sum + rows.length,
-                      0
-                    );
-
-                    return Object.entries(alternativesObject).map(
-                      ([alternative, criteriaArray], alternativeIndex) => {
-                        const alternativeRowSpan = criteriaArray.length;
-
-                        return criteriaArray.map(({ criterion, dataType }, criterionIndex) => (
-                          <TableRow key={`${expert}-${alternative}-${criterion}`} hover>
-                            {alternativeIndex === 0 && criterionIndex === 0 && (
-                              <TableCell rowSpan={expertRowSpan} sx={{ fontWeight: 850 }}>
-                                {expert}
-                              </TableCell>
-                            )}
-                            {criterionIndex === 0 && (
-                              <TableCell rowSpan={alternativeRowSpan} sx={{ fontWeight: 850 }}>
-                                {alternative}
-                              </TableCell>
-                            )}
-                            <TableCell sx={{ fontWeight: 850 }}>{criterion}</TableCell>
-                            <TableCell sx={{ fontWeight: 850 }}>
-                              {domainNameMap[dataType] || "undefined"}
-                            </TableCell>
-                          </TableRow>
-                        ));
-                      }
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </AccordionDetails>
         </Accordion>
       </Stack>

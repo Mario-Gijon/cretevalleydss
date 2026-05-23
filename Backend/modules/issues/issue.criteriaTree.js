@@ -15,6 +15,7 @@ export const buildIssueCriteriaTree = (criteria, issue) => {
     name: criterion.name,
     type: criterion.type,
     isLeaf: criterion.isLeaf,
+    expressionDomain: criterion.expressionDomain || null,
     parentId: toIdString(criterion.parentCriterion),
     children: [],
   }));

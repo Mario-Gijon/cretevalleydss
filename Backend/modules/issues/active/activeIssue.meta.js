@@ -66,21 +66,31 @@ export const ACTIVE_ACTION_META = {
     severity: "info",
     sortPriority: 40,
   },
-  waitingAdmin: {
-    key: "waitingAdmin",
-    label: "Waiting admin",
-    role: "expert",
-    severity: "success",
-    sortPriority: 60,
-  },
 };
 
 /**
  * Acciones que aparecen en el task center.
  */
-export const ACTIVE_TASK_ACTION_KEYS = [
-  "resolveIssue",
-  "computeWeights",
-  "evaluateWeights",
-  "evaluateAlternatives",
-];
+export const ACTIVE_TASK_ACTION_KEYS = Object.freeze(
+  Object.values(ACTIVE_ACTION_META)
+    .sort((a, b) => a.sortPriority - b.sortPriority)
+    .map((action) => action.key)
+);
+
+export const ACTIVE_STATUS_KEYS = Object.freeze({
+  WAITING_ADMIN: "waitingAdmin",
+  WAITING_EXPERTS: "waitingExperts",
+});
+
+export const ACTIVE_STATUS_META = {
+  [ACTIVE_STATUS_KEYS.WAITING_ADMIN]: {
+    key: ACTIVE_STATUS_KEYS.WAITING_ADMIN,
+    label: "Waiting for admin",
+    severity: "success",
+  },
+  [ACTIVE_STATUS_KEYS.WAITING_EXPERTS]: {
+    key: ACTIVE_STATUS_KEYS.WAITING_EXPERTS,
+    label: "Waiting experts",
+    severity: "info",
+  },
+};

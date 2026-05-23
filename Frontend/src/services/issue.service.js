@@ -180,69 +180,55 @@ export const changeInvitationStatus = async (issueOrId, action) => {
 };
 
 /**
- * Guarda borradores de evaluaciones.
+ * Obtiene la evaluación del usuario actual para una etapa.
  *
  * @param {*} issueOrId Id o issue completo.
- * @param {object} evaluations Evaluaciones a guardar.
+ * @param {string} stage Etapa canónica de evaluación.
  * @returns {Promise<object>}
  */
-export const saveEvaluations = async (issueOrId, evaluations) => {
+export const getIssueEvaluation = async (issueOrId, stage) => {
   const issueId = getIssueId(issueOrId);
 
   return requestWithAuth(
-    `/issues/${issueId}/evaluations/draft`,
-    jsonRequest("POST", { evaluations }),
-    "Error saving evaluations."
-  );
-};
-
-/**
- * Obtiene las evaluaciones del usuario actual para un issue.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const getEvaluations = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/evaluations`,
+    `/issues/${issueId}/evaluations/${stage}`,
     { method: "GET" },
-    "Error fetching evaluations."
+    "Error fetching issue evaluation."
   );
 };
 
 /**
- * Envía las evaluaciones del usuario actual.
+ * Guarda borrador de evaluación del usuario actual para una etapa.
  *
  * @param {*} issueOrId Id o issue completo.
- * @param {object} evaluations Evaluaciones a enviar.
+ * @param {string} stage Etapa canónica de evaluación.
+ * @param {object} payload Payload canónico de la estructura.
  * @returns {Promise<object>}
  */
-export const submitEvaluations = async (issueOrId, evaluations) => {
+export const saveIssueEvaluationDraft = async (issueOrId, stage, payload) => {
   const issueId = getIssueId(issueOrId);
 
   return requestWithAuth(
-    `/issues/${issueId}/evaluations/submit`,
-    jsonRequest("POST", { evaluations }),
-    "Error submitting evaluations."
+    `/issues/${issueId}/evaluations/${stage}/send`,
+    jsonRequest("POST", { payload }),
+    "Error saving issue evaluation draft."
   );
 };
 
 /**
- * Resuelve un issue.
+ * Envía evaluación del usuario actual para una etapa.
  *
  * @param {*} issueOrId Id o issue completo.
- * @param {boolean} forceFinalize Fuerza finalización si aplica.
+ * @param {string} stage Etapa canónica de evaluación.
+ * @param {object} payload Payload canónico de la estructura.
  * @returns {Promise<object>}
  */
-export const resolveIssue = async (issueOrId, forceFinalize = false) => {
+export const submitIssueEvaluation = async (issueOrId, stage, payload) => {
   const issueId = getIssueId(issueOrId);
 
   return requestWithAuth(
-    `/issues/${issueId}/resolve`,
-    jsonRequest("POST", { forceFinalize }),
-    "Error resolving issue."
+    `/issues/${issueId}/evaluations/${stage}/submit`,
+    jsonRequest("POST", { payload }),
+    "Error submitting issue evaluation."
   );
 };
 
@@ -259,72 +245,6 @@ export const getFinishedIssueInfo = async (issueOrId) => {
     `/issues/finished/${issueId}`,
     { method: "GET" },
     "Error fetching finished issue info."
-  );
-};
-
-/**
- * Obtiene el último análisis de resultados guardado para un issue.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const getIssueResultsAnalysis = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/results-analysis`,
-    { method: "GET" },
-    "Error fetching results analysis."
-  );
-};
-
-/**
- * Genera/regenera el análisis de resultados para un issue.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const regenerateIssueResultsAnalysis = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/results-analysis`,
-    { method: "POST" },
-    "Error generating results analysis."
-  );
-};
-
-/**
- * Obtiene el último análisis de resultados guardado para un escenario.
- *
- * @param {*} issueOrId Id del issue o issue completo.
- * @param {string} scenarioId Id del escenario.
- * @returns {Promise<object>}
- */
-export const getScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/scenarios/${scenarioId}/results-analysis`,
-    { method: "GET" },
-    "Error fetching scenario results analysis."
-  );
-};
-
-/**
- * Genera o regenera el análisis de resultados de un escenario.
- *
- * @param {*} issueOrId Id del issue o issue completo.
- * @param {string} scenarioId Id del escenario.
- * @returns {Promise<object>}
- */
-export const regenerateScenarioResultsAnalysis = async (issueOrId, scenarioId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/scenarios/${scenarioId}/results-analysis`,
-    { method: "POST" },
-    "Error generating scenario results analysis."
   );
 };
 
@@ -389,134 +309,19 @@ export const leaveIssue = async (issueOrId) => {
 };
 
 /**
- * Guarda un borrador de pesos BWM.
+ * Ejecuta el cómputo de una etapa de evaluación.
  *
  * @param {*} issueOrId Id o issue completo.
- * @param {object} bwmData Datos BWM.
+ * @param {string} stage Etapa de evaluación.
  * @returns {Promise<object>}
  */
-export const saveBwmWeights = async (issueOrId, bwmData) => {
+export const computeEvaluationStage = async (issueOrId, stage) => {
   const issueId = getIssueId(issueOrId);
 
   return requestWithAuth(
-    `/issues/${issueId}/weights/bwm/draft`,
-    jsonRequest("POST", { bwmData }),
-    "Error saving BWM weights."
-  );
-};
-
-/**
- * Obtiene los pesos BWM guardados del usuario actual.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const getBwmWeights = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/bwm`,
-    { method: "GET" },
-    "Error fetching BWM weights."
-  );
-};
-
-/**
- * Envía los pesos BWM del usuario actual.
- *
- * @param {*} issueOrId Id o issue completo.
- * @param {object} bwmData Datos BWM.
- * @returns {Promise<object>}
- */
-export const sendBwmWeights = async (issueOrId, bwmData) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/bwm/submit`,
-    jsonRequest("POST", { bwmData }),
-    "Error sending BWM weights."
-  );
-};
-
-/**
- * Guarda un borrador de pesos manuales.
- *
- * @param {*} issueOrId Id o issue completo.
- * @param {object} manualWeights Pesos manuales.
- * @returns {Promise<object>}
- */
-export const saveManualWeights = async (issueOrId, manualWeights) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/manual/draft`,
-    jsonRequest("POST", { manualWeights }),
-    "Error saving manual weights."
-  );
-};
-
-/**
- * Envía los pesos manuales del usuario actual.
- *
- * @param {*} issueOrId Id o issue completo.
- * @param {object} manualWeights Pesos manuales.
- * @returns {Promise<object>}
- */
-export const sendManualWeights = async (issueOrId, manualWeights) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/manual/submit`,
-    jsonRequest("POST", { manualWeights }),
-    "Error sending manual weights."
-  );
-};
-
-/**
- * Obtiene los pesos manuales guardados del usuario actual.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const getManualWeights = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/manual`,
-    { method: "GET" },
-    "Error fetching manual weights."
-  );
-};
-
-/**
- * Calcula los pesos BWM colectivos.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const computeWeights = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/bwm/compute`,
+    `/issues/${issueId}/evaluations/${stage}/compute`,
     { method: "POST" },
-    "Error computing weights."
-  );
-};
-
-/**
- * Calcula los pesos manuales colectivos.
- *
- * @param {*} issueOrId Id o issue completo.
- * @returns {Promise<object>}
- */
-export const computeManualWeights = async (issueOrId) => {
-  const issueId = getIssueId(issueOrId);
-
-  return requestWithAuth(
-    `/issues/${issueId}/weights/manual/compute`,
-    { method: "POST" },
-    "Error computing manual weights."
+    "Error computing evaluation stage."
   );
 };
 

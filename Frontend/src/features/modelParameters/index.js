@@ -1,12 +1,12 @@
 export {
-  MODEL_PARAMETER_HANDLER_REGISTRY,
+  MODEL_PARAMETER_STRUCTURE_REGISTRY,
   MODEL_PARAMETER_ADAPTER_REGISTRY,
 } from "./modelParameter.adapters";
 
 export {
-  getParameterHandlerKey,
+  getParameterStructureKey,
   getParameterExpectedLength,
-  resolveModelParameterHandler,
+  resolveModelParameterStructure,
   resolveModelParameterAdapter,
 } from "./modelParameter.registry";
 
@@ -22,3 +22,5 @@ export {
   validateCriteriaWeightsValue,
   validateCriteriaWeightsParameterValue,
 } from "./modelParameter.validation";
+
+export { IssueModelParametersView } from "./IssueModelParametersView";

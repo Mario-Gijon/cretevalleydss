@@ -1,7 +1,10 @@
 import { useEffect } from "react";
-import { Stack, Typography, TextField, ButtonGroup, Button, MenuItem } from "@mui/material";
+import { Stack, Typography, TextField, ButtonGroup, Button } from "@mui/material";
 import { handleNumberInput } from "../../../../utils/handleTwoDecimals";
 import { validateCriteriaWeightsParameterValue } from "./criteriaWeights.validation";
+
+const MANUAL_CRITERIA_WEIGHTS = "manualCriteriaWeights";
+const BEST_WORST_CRITERIA = "bestWorstCriteria";
 
 const getParameterExpectedLength = (parameter, leafCount) => {
   if (parameter?.scope === "perCriterion") return leafCount;
@@ -16,116 +19,6 @@ const ensureLength = (arr, len, filler = "") => {
   return normalized;
 };
 
-const renderBwmSelection = ({ leafCriteria, bwmData, setBwmData }) => {
-  const criteria = leafCriteria;
-
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Typography variant="body2">Best (most important):</Typography>
-        <TextField
-          select
-          size="small"
-          color="info"
-          value={bwmData.best}
-          onChange={(e) =>
-            setBwmData((prev) => ({ ...prev, best: e.target.value }))
-          }
-        >
-          {criteria.map((c, i) => (
-            <MenuItem key={i} value={c.name}>
-              {c.name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Typography variant="body2">Worst (least important):</Typography>
-        <TextField
-          select
-          size="small"
-          color="info"
-          value={bwmData.worst}
-          onChange={(e) =>
-            setBwmData((prev) => ({ ...prev, worst: e.target.value }))
-          }
-        >
-          {criteria.map((c, i) => (
-            <MenuItem key={i} value={c.name}>
-              {c.name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      {bwmData.best && (
-        <Stack spacing={1}>
-          <Typography variant="body2">
-            Compare the <b>Best ({bwmData.best})</b> with others (1–9)
-          </Typography>
-          <Stack direction="row" flexWrap="wrap" gap={2}>
-            {criteria
-              .filter((c) => c.name !== bwmData.best)
-              .map((c) => (
-                <Stack key={c.name} spacing={0.5} alignItems="center">
-                  <Typography variant="caption">{`B/${c.name}`}</Typography>
-                  <TextField
-                    color="info"
-                    type="number"
-                    size="small"
-                    value={bwmData.bestToOthers[c.name] ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setBwmData((prev) => ({
-                        ...prev,
-                        bestToOthers: { ...prev.bestToOthers, [c.name]: val },
-                      }));
-                    }}
-                    inputProps={{ min: 1, max: 9 }}
-                    sx={{ width: 60 }}
-                  />
-                </Stack>
-              ))}
-          </Stack>
-        </Stack>
-      )}
-
-      {bwmData.worst && (
-        <Stack spacing={1}>
-          <Typography variant="body2">
-            Compare others with the <b>Worst ({bwmData.worst})</b> (1–9)
-          </Typography>
-          <Stack direction="row" flexWrap="wrap" gap={2}>
-            {criteria
-              .filter((c) => c.name !== bwmData.worst)
-              .map((c) => (
-                <Stack key={c.name} spacing={0.5} alignItems="center">
-                  <Typography variant="caption">{`${c.name}/W`}</Typography>
-                  <TextField
-                    type="number"
-                    size="small"
-                    color="info"
-                    value={bwmData.othersToWorst[c.name] ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setBwmData((prev) => ({
-                        ...prev,
-                        othersToWorst: { ...prev.othersToWorst, [c.name]: val },
-                      }));
-                    }}
-                    inputProps={{ min: 1, max: 9 }}
-                    sx={{ width: 60 }}
-                  />
-                </Stack>
-              ))}
-          </Stack>
-        </Stack>
-      )}
-    </Stack>
-  );
-};
-
 export const CriteriaWeightsParameterField = ({
   parameter,
   paramKey,
@@ -135,14 +28,14 @@ export const CriteriaWeightsParameterField = ({
   defaultModelParams,
   setDefaultModelParams,
   leafCriteria,
-  weightingMode,
-  setWeightingMode,
-  bwmData,
-  setBwmData,
+  criteriaWeightingStructureKey,
+  setCriteriaWeightingStructureKey,
   showValidationErrors = false,
 }) => {
   const restrictions = parameter?.restrictions || {};
   const defaultValue = parameter?.default;
+  const canChooseWeightingStructure =
+    typeof setCriteriaWeightingStructureKey === "function";
   const length =
     getParameterExpectedLength(parameter, leafCriteria.length) ??
     restrictions?.length ?? 2;
@@ -175,42 +68,33 @@ export const CriteriaWeightsParameterField = ({
       <Stack pb={1} direction="row" spacing={2} alignItems="center">
         <Typography variant="body1">{paramLabel}:</Typography>
 
-        {leafCriteria.length >= 2 && (
+        {leafCriteria.length >= 2 && canChooseWeightingStructure && (
           <ButtonGroup color="secondary" size="small">
             <Button
-              key="manual"
-              variant={weightingMode === "manual" ? "contained" : "outlined"}
-              onClick={() => setWeightingMode?.("manual")}
+              key={MANUAL_CRITERIA_WEIGHTS}
+              variant={
+                criteriaWeightingStructureKey === MANUAL_CRITERIA_WEIGHTS
+                  ? "contained"
+                  : "outlined"
+              }
+              onClick={() =>
+                setCriteriaWeightingStructureKey?.(MANUAL_CRITERIA_WEIGHTS)
+              }
             >
-              Manual
+              Manual criteria weights
             </Button>
             <Button
-              key="consensus"
-              variant={weightingMode === "consensus" ? "contained" : "outlined"}
-              onClick={() => setWeightingMode?.("consensus")}
+              key={BEST_WORST_CRITERIA}
+              variant={
+                criteriaWeightingStructureKey === BEST_WORST_CRITERIA
+                  ? "contained"
+                  : "outlined"
+              }
+              onClick={() =>
+                setCriteriaWeightingStructureKey?.(BEST_WORST_CRITERIA)
+              }
             >
-              Consensus
-            </Button>
-            <Button
-              key="bwm"
-              variant={weightingMode === "bwm" ? "contained" : "outlined"}
-              onClick={() => setWeightingMode?.("bwm")}
-            >
-              BWM
-            </Button>
-            <Button
-              key="consensusBwm"
-              variant={weightingMode === "consensusBwm" ? "contained" : "outlined"}
-              onClick={() => setWeightingMode?.("consensusBwm")}
-            >
-              Consensus BWM
-            </Button>
-            <Button
-              key="simulatedConsensusBwm"
-              variant={weightingMode === "simulatedConsensusBwm" ? "contained" : "outlined"}
-              onClick={() => setWeightingMode?.("simulatedConsensusBwm")}
-            >
-              Simulated consensus BWM
+              Best-Worst criteria
             </Button>
           </ButtonGroup>
         )}
@@ -221,8 +105,22 @@ export const CriteriaWeightsParameterField = ({
           <Typography variant="body2">
             Since there is only one criterion, its weight is fixed to <b>1</b>.
           </Typography>
+          <Stack spacing={0.5} alignItems="center">
+            <Typography variant="caption">
+              {leafCriteria[0]?.name ?? "Criterion"}
+            </Typography>
+            <TextField
+              type="number"
+              color="info"
+              size="small"
+              value={1}
+              disabled
+              inputProps={{ min: 1, max: 1, step: 1, readOnly: true }}
+              sx={{ width: 80 }}
+            />
+          </Stack>
         </Stack>
-      ) : weightingMode === "manual" ? (
+      ) : criteriaWeightingStructureKey === MANUAL_CRITERIA_WEIGHTS ? (
         <Stack direction="row" flexWrap="wrap" gap={2}>
           {leafCriteria.map((crit, i) => (
             <Stack key={i} spacing={0.5} alignItems="center">
@@ -249,25 +147,16 @@ export const CriteriaWeightsParameterField = ({
             </Stack>
           ))}
         </Stack>
-      ) : weightingMode === "bwm" ? (
-        renderBwmSelection({ leafCriteria, bwmData, setBwmData })
-      ) : weightingMode === "consensusBwm" ? (
+      ) : canChooseWeightingStructure &&
+        criteriaWeightingStructureKey === BEST_WORST_CRITERIA ? (
         <Typography variant="body2" fontStyle="italic" color="text.secondary">
-          The weight selection process will not be configured now.
-          Experts will participate in one or more consensus rounds to determine the final weights.
-        </Typography>
-      ) : weightingMode === "simulatedConsensusBwm" ? (
-        <Typography variant="body2" fontStyle="italic" color="text.secondary">
-          All experts will provide their preferences for the criteria using the BWM method. The system will then simulate consensus rounds, aggregating these preferences step by step until stable final weights are reached.
-        </Typography>
-      ) : weightingMode === "consensus" ? (
-        <Typography variant="body2" fontStyle="italic" color="text.secondary">
-          All experts will assign weights to the criteria. Simulated consensus rounds will be performed until final weights is reached.
+          Best-Worst preferences will be collected from experts during the criteria
+          weighting evaluation stage.
         </Typography>
       ) : null}
 
       {leafCriteria.length >= 2 &&
-        weightingMode === "manual" &&
+        criteriaWeightingStructureKey === MANUAL_CRITERIA_WEIGHTS &&
         showValidationErrors &&
         !weightsValidation.isValid && (
         <Typography variant="caption" color="error">

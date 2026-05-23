@@ -15,10 +15,15 @@ const normalizeEndpointPath = (value) => {
 export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   const targetApiModelKey = String(targetModel?.apiModelKey || "").trim();
   const endpointPath = normalizeEndpointPath(targetModel?.apiEndpoint?.path);
-  const targetApiInputFormat = String(targetModel?.apiInputFormat || "").trim();
-  const targetApiOutputFormat = String(targetModel?.apiOutputFormat || "").trim();
-  const targetEvaluationStructure = String(targetModel?.evaluationStructure || "").trim();
-  const targetLifecycleKind = String(targetModel?.lifecycleKind || "").trim();
+  const targetAlternativeEvaluationStructureKey = String(
+    targetModel?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetSupportsConsensus = targetModel?.supportsConsensus === true;
+  const targetUsesCriteriaWeights = targetModel?.usesCriteriaWeights === true;
+  const targetUsesFuzzyCriteriaWeights =
+    targetModel?.usesFuzzyCriteriaWeights === true;
+  const targetUsesCriterionTypes = targetModel?.usesCriterionTypes === true;
+  const targetIsMultiCriteria = targetModel?.isMultiCriteria === true;
   const targetModelFamilyKey = String(targetModel?.modelFamilyKey || "").trim();
   const targetModelVersion = String(targetModel?.modelVersion || "").trim();
   const targetVersionLabel = String(targetModel?.versionLabel || "").trim();
@@ -27,10 +32,9 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
 
   if (!targetApiModelKey) missingFields.push("apiModelKey");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
-  if (!targetApiInputFormat) missingFields.push("apiInputFormat");
-  if (!targetApiOutputFormat) missingFields.push("apiOutputFormat");
-  if (!targetEvaluationStructure) missingFields.push("evaluationStructure");
-  if (!targetLifecycleKind) missingFields.push("lifecycleKind");
+  if (!targetAlternativeEvaluationStructureKey) {
+    missingFields.push("alternativeEvaluationStructureKey");
+  }
   if (!targetModelFamilyKey) missingFields.push("modelFamilyKey");
   if (!targetModelVersion) missingFields.push("modelVersion");
   if (!targetVersionLabel) missingFields.push("versionLabel");
@@ -42,7 +46,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
         field: "targetModelId",
         details: {
           missingFields,
-          targetModelId: toIdString(targetModel._id),
+          targetModelId: toIdString(targetModel?._id),
         },
       }
     );
@@ -55,93 +59,191 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       path: endpointPath,
       operationId: targetModel?.apiEndpoint?.operationId || null,
     },
-    targetApiInputFormat,
-    targetApiOutputFormat,
-    targetEvaluationStructure,
-    targetLifecycleKind,
+    targetAlternativeEvaluationStructureKey,
+    targetSupportsConsensus,
+    targetUsesCriteriaWeights,
+    targetUsesFuzzyCriteriaWeights,
+    targetUsesCriterionTypes,
+    targetIsMultiCriteria,
     targetModelFamilyKey,
     targetModelVersion,
     targetVersionLabel,
   };
 };
 
-export const buildTargetRuntimeModelFromSnapshot = ({
-  targetModelName,
-  targetRuntimeSnapshot,
-}) => ({
-  name: targetModelName,
-  apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
-  apiEndpoint: { ...targetRuntimeSnapshot.targetApiEndpoint },
-  apiInputFormat: targetRuntimeSnapshot.targetApiInputFormat,
-  apiOutputFormat: targetRuntimeSnapshot.targetApiOutputFormat,
-  evaluationStructure: targetRuntimeSnapshot.targetEvaluationStructure,
-  lifecycleKind: targetRuntimeSnapshot.targetLifecycleKind,
-  modelFamilyKey: targetRuntimeSnapshot.targetModelFamilyKey,
-  modelVersion: targetRuntimeSnapshot.targetModelVersion,
-  versionLabel: targetRuntimeSnapshot.targetVersionLabel,
+const normalizeSupportedDomainFlags = (modelSupportedDomains) => ({
+  numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
+  numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
+  linguisticMembershipFunctions: Array.isArray(modelSupportedDomains?.linguistic)
+    ? modelSupportedDomains.linguistic
+        .map((item) => String(item || "").trim().toLowerCase())
+        .filter(Boolean)
+    : [],
 });
 
-const resolveCriteriaWeightsKind = (modelDoc) => {
-  const parameters = modelDoc.parameters;
-  const weightsParameter = parameters.find(
-    (parameter) => parameter.semanticRole.trim() === "criteriaWeights"
+const isNumericDiscreteDomainSnapshot = (domainSnapshot) => {
+  const step = domainSnapshot?.numericRange?.step;
+  return Number.isFinite(step) && step > 0;
+};
+
+const isDomainSnapshotSupportedByModel = ({
+  domainSnapshot,
+  supportedDomainFlags,
+}) => {
+  if (domainSnapshot?.type === "numeric") {
+    return isNumericDiscreteDomainSnapshot(domainSnapshot)
+      ? supportedDomainFlags.numericDiscrete
+      : supportedDomainFlags.numericContinuous;
+  }
+
+  if (domainSnapshot?.type === "linguistic") {
+    const membershipFunction = String(domainSnapshot?.membershipFunction || "")
+      .trim()
+      .toLowerCase();
+    return (
+      membershipFunction.length > 0 &&
+      supportedDomainFlags.linguisticMembershipFunctions.includes(membershipFunction)
+    );
+  }
+
+  return false;
+};
+
+export const getUnsupportedIssueDomainsForModel = ({
+  issueDomainSnapshots,
+  modelSupportedDomains,
+}) => {
+  const supportedDomainFlags = normalizeSupportedDomainFlags(modelSupportedDomains);
+  const domainSnapshots = Array.isArray(issueDomainSnapshots)
+    ? issueDomainSnapshots
+    : [];
+
+  return domainSnapshots.filter(
+    (domainSnapshot) =>
+      !isDomainSnapshotSupportedByModel({
+        domainSnapshot,
+        supportedDomainFlags,
+      })
   );
+};
 
-  if (!weightsParameter) {
-    return null;
+const buildConsensusModeMatches = ({ issue, targetSupportsConsensus }) => {
+  if (issue?.isConsensus === true) {
+    return targetSupportsConsensus === true;
+  }
+  return targetSupportsConsensus !== true;
+};
+
+export const buildScenarioCompatibilityMetadata = ({
+  issue,
+  targetModel,
+  issueDomainSnapshots,
+}) => {
+  const issueAlternativeEvaluationStructureKey = String(
+    issue?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetAlternativeEvaluationStructureKey = String(
+    targetModel?.alternativeEvaluationStructureKey || ""
+  ).trim();
+  const targetSupportsConsensus = targetModel?.supportsConsensus === true;
+
+  const structureMatches =
+    targetAlternativeEvaluationStructureKey ===
+    issueAlternativeEvaluationStructureKey;
+  const consensusModeMatches = buildConsensusModeMatches({
+    issue,
+    targetSupportsConsensus,
+  });
+  const unsupportedDomains = getUnsupportedIssueDomainsForModel({
+    issueDomainSnapshots,
+    modelSupportedDomains: targetModel?.supportedDomains || null,
+  });
+  const domainsMatch = unsupportedDomains.length === 0;
+  const targetModelId = toIdString(targetModel?._id);
+  const issueModelId = toIdString(issue?.model?._id || issue?.model);
+  const sameModel =
+    Boolean(targetModelId && issueModelId && targetModelId === issueModelId);
+
+  const reasons = [];
+  if (!structureMatches) {
+    reasons.push("Alternative evaluation structure does not match the issue");
+  }
+  if (!consensusModeMatches) {
+    reasons.push("Consensus mode does not match the issue");
+  }
+  if (!domainsMatch) {
+    reasons.push("Expression domains used by the issue are not supported");
   }
 
-  const weightsType = weightsParameter.type.trim();
-  if (weightsType === "fuzzyArray") {
-    return "fuzzy";
-  }
-
-  if (weightsType === "array") {
-    return "crisp";
-  }
-
-  return null;
+  return {
+    compatible: structureMatches && domainsMatch && consensusModeMatches,
+    reasons,
+    structureMatches,
+    domainsMatch,
+    consensusModeMatches,
+    sameModel,
+    unsupportedDomains: unsupportedDomains.map((domainSnapshot) => ({
+      id: toIdString(domainSnapshot?._id),
+      name: domainSnapshot?.name || null,
+      type: domainSnapshot?.type || null,
+      membershipFunction: domainSnapshot?.membershipFunction || null,
+    })),
+  };
 };
 
 export const validateScenarioModelCompatibilityOrThrow = ({
   issue,
-  targetModel,
   targetRuntimeSnapshot,
+  issueDomainSnapshots,
+  targetModel,
+  targetModelSupportedDomains,
 }) => {
-  const issueEvaluationStructure = String(issue?.evaluationStructure || "").trim();
-  const issueApiInputFormat = String(issue?.apiInputFormat || "").trim();
-  const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
-  const targetApiInputFormat = targetRuntimeSnapshot.targetApiInputFormat;
-
-  if (targetEvaluationStructure !== issueEvaluationStructure) {
+  if (issue?.currentStage !== "finished") {
     throw createBadRequestError(
-      "Incompatible models: evaluation structure does not match this issue input type.",
+      "Scenario model runs are only supported for finished issues",
       {
-        field: "targetModel",
+        field: "currentStage",
       }
     );
   }
 
-  if (targetApiInputFormat !== issueApiInputFormat) {
+  if (issue?.active !== false) {
     throw createBadRequestError(
-      "Incompatible models: target model apiInputFormat does not match this issue apiInputFormat.",
+      "Scenario model runs are only supported for inactive issues",
       {
-        field: "targetModel",
+        field: "active",
       }
     );
   }
 
-  const sourceWeightsKind = resolveCriteriaWeightsKind(issue.model);
-  const targetWeightsKind = resolveCriteriaWeightsKind(targetModel);
-  if (
-    sourceWeightsKind &&
-    targetWeightsKind &&
-    sourceWeightsKind !== targetWeightsKind
-  ) {
+  const compatibility = buildScenarioCompatibilityMetadata({
+    issue,
+    targetModel: {
+      ...targetModel,
+      alternativeEvaluationStructureKey:
+        targetRuntimeSnapshot?.targetAlternativeEvaluationStructureKey,
+      supportsConsensus: targetRuntimeSnapshot?.targetSupportsConsensus === true,
+      supportedDomains: targetModelSupportedDomains,
+    },
+    issueDomainSnapshots,
+  });
+
+  if (!compatibility.compatible) {
     throw createBadRequestError(
-      "Incompatible models: target model criteria weights kind does not match this issue model.",
+      "Incompatible model for this scenario issue",
       {
-        field: "targetModel",
+        field: "targetModelId",
+        details: {
+          scenarioCompatibility: {
+            compatible: compatibility.compatible,
+            reasons: compatibility.reasons,
+            structureMatches: compatibility.structureMatches,
+            domainsMatch: compatibility.domainsMatch,
+            consensusModeMatches: compatibility.consensusModeMatches,
+            sameModel: compatibility.sameModel,
+          },
+          unsupportedDomains: compatibility.unsupportedDomains,
+        },
       }
     );
   }

@@ -13,11 +13,17 @@ import {
   validateSyncableManifestModel,
 } from "./modelManifest.mapper.js";
 
-const LOCAL_CONFIGURATION_FIELDS = ["visibleInIssueCreation"];
+const LOCAL_CONFIGURATION_FIELDS = [
+  "visibleInIssueCreation",
+  "visibleInCriteriaWeighting",
+];
 
 const getManifestSyncFields = (manifestProjection) => {
   const projectionFields = Object.keys(manifestProjection || {}).filter(
-    (field) => field !== "displayName"
+    (field) =>
+      field !== "displayName" &&
+      field !== "visibleInIssueCreation" &&
+      field !== "visibleInCriteriaWeighting"
   );
 
   return ["name", ...projectionFields];
@@ -89,6 +95,9 @@ const compareLocalConfigurationFields = (manifestModel, mongoModel) => {
     if (field === "visibleInIssueCreation") {
       manifestRawValue = manifestProjection.isIssueModel === true;
     }
+    if (field === "visibleInCriteriaWeighting") {
+      manifestRawValue = manifestProjection.isCriteriaWeightingModel === true;
+    }
 
     const mongoRawValue = getMongoTechnicalValue(mongoModel, field);
 
@@ -155,6 +164,7 @@ const buildNotSyncableModels = (manifestModels) => {
       apiModelKey: model?.apiModelKey ?? null,
       displayName: model?.displayName ?? null,
       isIssueModel: model?.isIssueModel === true,
+      isCriteriaWeightingModel: model?.isCriteriaWeightingModel === true,
       reason: blockerReason,
     }));
 };
@@ -164,8 +174,8 @@ const buildManifestSummary = (manifest, manifestModels, syncableManifestModels) 
     manifestVersion: manifest?.manifestVersion ?? null,
     apiVersion: manifest?.apiVersion ?? null,
     totalModels: manifestModels.length,
-    issueModels: syncableManifestModels.length,
-    nonIssueModels: manifestModels.length - syncableManifestModels.length,
+    syncableModels: syncableManifestModels.length,
+    nonSyncableModels: manifestModels.length - syncableManifestModels.length,
   };
 };
 
@@ -190,25 +200,46 @@ const buildModelRow = ({
     mongoId: toIdString(mongoModel?._id),
     isIssueModel:
       manifestProjection?.isIssueModel ?? mongoModel?.isIssueModel ?? null,
+    isCriteriaWeightingModel:
+      manifestProjection?.isCriteriaWeightingModel ??
+      mongoModel?.isCriteriaWeightingModel ??
+      null,
     visibleInIssueCreation:
       mongoModel?.visibleInIssueCreation ??
       (manifestProjection?.isIssueModel === true ? true : null),
-    evaluationStructure:
-      manifestProjection?.evaluationStructure ?? mongoModel?.evaluationStructure ?? null,
-    lifecycleKind:
-      manifestProjection?.lifecycleKind ?? mongoModel?.lifecycleKind ?? null,
+    visibleInCriteriaWeighting:
+      mongoModel?.visibleInCriteriaWeighting ??
+      (manifestProjection?.isCriteriaWeightingModel === true ? true : null),
+    alternativeEvaluationStructureKey:
+      manifestProjection?.alternativeEvaluationStructureKey ??
+      mongoModel?.alternativeEvaluationStructureKey ??
+      null,
+    criteriaWeightingStructureKey:
+      manifestProjection?.criteriaWeightingStructureKey ??
+      mongoModel?.criteriaWeightingStructureKey ??
+      null,
+    supportsConsensus:
+      manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
     modelFamilyKey:
       manifestProjection?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
     modelVersion:
       manifestProjection?.modelVersion ?? mongoModel?.modelVersion ?? null,
     versionLabel:
       manifestProjection?.versionLabel ?? mongoModel?.versionLabel ?? null,
-    apiInputFormat:
-      manifestProjection?.apiInputFormat ?? mongoModel?.apiInputFormat ?? null,
-    apiOutputFormat:
-      manifestProjection?.apiOutputFormat ?? mongoModel?.apiOutputFormat ?? null,
     isMultiCriteria:
       manifestProjection?.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
+    usesCriteriaWeights:
+      manifestProjection?.usesCriteriaWeights ??
+      mongoModel?.usesCriteriaWeights ??
+      null,
+    usesFuzzyCriteriaWeights:
+      manifestProjection?.usesFuzzyCriteriaWeights ??
+      mongoModel?.usesFuzzyCriteriaWeights ??
+      null,
+    usesCriterionTypes:
+      manifestProjection?.usesCriterionTypes ??
+      mongoModel?.usesCriterionTypes ??
+      null,
     supportedDomains: manifestProjection
       ? normalizeSupportedDomains(manifestProjection.supportedDomains)
       : normalizeSupportedDomains(mongoModel?.supportedDomains),
@@ -217,10 +248,6 @@ const buildModelRow = ({
       normalizeEndpoint(mongoModel?.apiEndpoint, { emptyValue: null }),
     parameters:
       normalizeParameters(manifestProjection?.parameters ?? mongoModel?.parameters),
-    modelInputFields:
-      manifestProjection?.modelInputFields ?? mongoModel?.modelInputFields ?? [],
-    modelOutputFields:
-      manifestProjection?.modelOutputFields ?? mongoModel?.modelOutputFields ?? [],
     request: manifestProjection?.request ?? mongoModel?.request ?? null,
     response: manifestProjection?.response ?? mongoModel?.response ?? null,
     syncState,

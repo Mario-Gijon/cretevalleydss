@@ -12,7 +12,7 @@ import { changeInvitationStatus } from "../../../services/issue.service";
  * @returns {object}
  */
 export const useNotificationsPanel = () => {
-  const { notifications, setNotifications } = useAuthContext();
+  const { notifications, setNotifications, fetchNotifications } = useAuthContext();
   const { fetchActiveIssues } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
 
@@ -107,8 +107,9 @@ export const useNotificationsPanel = () => {
         )
       );
 
+      await Promise.all([fetchNotifications(), fetchActiveIssues()]);
+
       if (action === "accepted") {
-        fetchActiveIssues();
         showSnackbarAlert(invitationChanged?.message || "Invitation accepted", "success");
       } else {
         showSnackbarAlert(invitationChanged?.message || "Invitation declined", "warning");

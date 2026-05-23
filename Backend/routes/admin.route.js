@@ -1164,9 +1164,6 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               forceFinalize:
- *                 type: boolean
- *                 example: false
  *     responses:
  *       200:
  *         description: Issue resuelto correctamente

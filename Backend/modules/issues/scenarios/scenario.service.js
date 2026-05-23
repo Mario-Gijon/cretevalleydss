@@ -1,21 +1,110 @@
+import axios from "axios";
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
-import { EVALUATION_STRUCTURES } from "../issue.evaluationStructure.js";
 import {
   createBadRequestError,
   createForbiddenError,
   createNotFoundError,
+  createInternalError,
 } from "../../../utils/common/errors.js";
-import { sameId } from "../../../utils/common/ids.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-import { executeResolutionModelPipeline } from "../resolution/resolution.execution.js";
 import { getCreateScenarioContext } from "./scenario.context.js";
-import axios from "axios";
+import {
+  createModelApiRequestError,
+  unwrapModelApiResponse,
+} from "../../../services/modelApi/modelResponse.js";
 
-/**
- * @typedef {Object} IssueScenarioCreateResult
- * @property {*} scenarioId Id del escenario creado.
- */
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const normalizeResultOrThrow = ({ result }) => {
+  if (result === null || result === undefined) {
+    throw createInternalError("Scenario model execution result is required", {
+      field: "result",
+    });
+  }
+
+  if (!Array.isArray(result?.rankedAlternatives) || result.rankedAlternatives.length === 0) {
+    throw createInternalError(
+      "Scenario model execution result.rankedAlternatives must be a non-empty array",
+      {
+        field: "result.rankedAlternatives",
+      }
+    );
+  }
+
+  for (const [index, entry] of result.rankedAlternatives.entries()) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw createInternalError("Invalid rankedAlternatives entry", {
+        field: `result.rankedAlternatives[${index}]`,
+      });
+    }
+
+    if (typeof entry.name !== "string" || !entry.name.trim()) {
+      throw createInternalError("rankedAlternatives entry requires name", {
+        field: `result.rankedAlternatives[${index}].name`,
+      });
+    }
+
+    if (!Number.isFinite(Number(entry.score))) {
+      throw createInternalError("rankedAlternatives entry requires finite score", {
+        field: `result.rankedAlternatives[${index}].score`,
+      });
+    }
+
+    if (!Number.isInteger(Number(entry.rank)) || Number(entry.rank) <= 0) {
+      throw createInternalError("rankedAlternatives entry requires positive rank", {
+        field: `result.rankedAlternatives[${index}].rank`,
+      });
+    }
+  }
+
+  if (!isPlainObject(result.collectiveEvaluations)) {
+    throw createInternalError(
+      "Scenario model execution result.collectiveEvaluations is required",
+      {
+        field: "result.collectiveEvaluations",
+      }
+    );
+  }
+
+  if (!isPlainObject(result.plotsGraphic)) {
+    throw createInternalError("Scenario model execution result.plotsGraphic is required", {
+      field: "result.plotsGraphic",
+    });
+  }
+
+  if (
+    result.consensusMeasure !== null &&
+    !Number.isFinite(result.consensusMeasure)
+  ) {
+    throw createInternalError(
+      "Scenario model execution result.consensusMeasure must be finite or null",
+      {
+        field: "result.consensusMeasure",
+      }
+    );
+  }
+
+  if (!isPlainObject(result.rawOutput)) {
+    throw createInternalError("Scenario model execution result.rawOutput is required", {
+      field: "result.rawOutput",
+    });
+  }
+
+  return {
+    standardResult: {
+      rankedAlternatives: result.rankedAlternatives,
+      collectiveEvaluations: result.collectiveEvaluations,
+      plotsGraphic: result.plotsGraphic,
+      consensusMeasure: result.consensusMeasure,
+      consensusLifecycle: result.consensusLifecycle ?? null,
+      rawOutput: result.rawOutput,
+    },
+    rawOutput: result.rawOutput,
+  };
+};
 
 export const createIssueScenarioFlow = async ({
   userId,
@@ -31,74 +120,55 @@ export const createIssueScenarioFlow = async ({
     paramOverrides,
   });
 
-  const {
-    matricesUsed,
-    snapshotIdsUsed,
-    results,
-    collectiveEvaluations,
-    consensusDetails,
-    consensusLevel,
-  } = await executeResolutionModelPipeline({
-    issue: {
-      isConsensus:
-        context.targetRuntimeModel.lifecycleKind === "thresholdConsensus",
-      consensusThreshold: context.consensusThresholdUsed,
-    },
-    issueId: context.issue._id,
-    model: context.targetRuntimeModel,
-    evaluationStructure: context.issueEvaluationStructure,
-    alternatives: context.alternatives,
-    criteria: context.criteria,
-    participations: context.participations,
-    currentPhase: context.evaluationPhase,
-    modelParameters: context.normalizedParams,
-    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-    httpClient: axios,
-    requireCompleteMatrices: true,
-    incompleteMatricesMessage:
-      context.issueEvaluationStructure === EVALUATION_STRUCTURES.DIRECT
-        ? "Simulation requires complete evaluations (some values are still null)."
-        : "Simulation requires complete pairwise evaluations (some values are still null).",
-    requestErrorMessage: "Error creating scenario",
-  });
-
-  const details = {
-    ...consensusDetails,
-    ...(consensusLevel != null ? { level: consensusLevel } : {}),
-  };
-  if (details.modelExecution && details.modelExecution.apiModelKey != null) {
-    details.modelExecution.modelKey = details.modelExecution.apiModelKey;
+  let response;
+  try {
+    response = await axios.post(
+      `${process.env.ORIGIN_APIMODELS || "http://localhost:7000"}${
+        context.targetRuntimeSnapshot.targetApiEndpoint.path
+      }`,
+      context.requestPayload
+    );
+  } catch (error) {
+    throw createModelApiRequestError(error, "Scenario model execution failed");
   }
-  const criterionTypes =
-    context.issueEvaluationStructure === EVALUATION_STRUCTURES.PAIRWISE_ALTERNATIVES
-      ? []
-      : context.criteria.map((criterion) =>
-          criterion.type === "benefit" ? "max" : "min"
-        );
+
+  const rawResult = unwrapModelApiResponse(response, "Scenario model execution failed");
+
+  const {
+    standardResult,
+    rawOutput,
+  } = normalizeResultOrThrow({ result: rawResult });
+
+  const modelExecution = {
+    kind: "apiModels",
+    structureKey:
+      context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+    apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
+    apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint.path,
+    executedAt: new Date(),
+  };
 
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
     createdBy: userId,
-    name: scenarioName.trim(),
+    name: String(scenarioName || "").trim(),
     targetModel: context.targetModel._id,
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
     targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
-    targetApiInputFormat: context.targetRuntimeSnapshot.targetApiInputFormat,
-    targetApiOutputFormat: context.targetRuntimeSnapshot.targetApiOutputFormat,
-    targetEvaluationStructure:
-      context.targetRuntimeSnapshot.targetEvaluationStructure,
-    targetLifecycleKind: context.targetRuntimeSnapshot.targetLifecycleKind,
     targetModelFamilyKey: context.targetRuntimeSnapshot.targetModelFamilyKey,
     targetModelVersion: context.targetRuntimeSnapshot.targetModelVersion,
     targetVersionLabel: context.targetRuntimeSnapshot.targetVersionLabel,
+    targetAlternativeEvaluationStructureKey:
+      context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+    targetSupportsConsensus: context.targetRuntimeSnapshot.targetSupportsConsensus,
+    alternativeEvaluationStructureKey: context.issue.alternativeEvaluationStructureKey,
+    criteriaWeightingStructureKey: context.issue.criteriaWeightingStructureKey,
     domainType: context.domainType,
-    evaluationStructure: context.targetEvaluationStructure,
     status: "done",
     config: {
       modelParameters: context.paramsUsed,
       normalizedModelParameters: context.normalizedParams,
-      criterionTypes,
     },
     inputs: {
       consensusPhaseUsed: context.evaluationPhase,
@@ -112,14 +182,14 @@ export const createIssueScenarioFlow = async ({
         name: criterion.name,
         criterionType: criterion.type,
       })),
-      weightsUsed: context.paramsUsed.weights,
-      matricesUsed,
-      snapshotIdsUsed,
+      weightsUsed: context.weightsUsed,
+      evaluationPayloads: context.evaluationPayloads,
+      context: context.scenarioExecutionContext,
     },
     outputs: {
-      details,
-      collectiveEvaluations,
-      rawResults: results,
+      standardResult,
+      modelExecution,
+      rawOutput,
     },
   });
 
@@ -127,6 +197,30 @@ export const createIssueScenarioFlow = async ({
     scenarioId: scenario._id,
   };
 };
+
+const mapScenarioListItem = (scenario) => ({
+  id: toIdString(scenario?._id),
+  name: scenario?.name || "",
+  targetModelId: toIdString(scenario?.targetModel),
+  targetModelName: scenario?.targetModelName || null,
+  targetVersionLabel: scenario?.targetVersionLabel || null,
+  domainType: scenario?.domainType ?? null,
+  alternativeEvaluationStructureKey:
+    scenario?.alternativeEvaluationStructureKey ||
+    scenario?.targetAlternativeEvaluationStructureKey ||
+    null,
+  criteriaWeightingStructureKey:
+    scenario?.criteriaWeightingStructureKey ||
+    null,
+  status: scenario?.status || null,
+  createdAt: scenario?.createdAt || null,
+  createdBy: scenario?.createdBy
+    ? {
+        email: scenario.createdBy.email,
+        name: scenario.createdBy.name,
+      }
+    : null,
+});
 
 export const getIssueScenariosPayload = async ({ issueId }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
@@ -138,15 +232,49 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModelName targetVersionLabel domainType evaluationStructure status createdAt createdBy"
+      "_id name targetModel targetModelName targetVersionLabel domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey status createdAt createdBy"
     )
     .populate("createdBy", "email name")
     .lean();
 
   return {
-    scenarios: scenarioDocs,
+    scenarios: scenarioDocs.map(mapScenarioListItem),
   };
 };
+
+const mapScenarioDetail = (scenarioDoc) => ({
+  id: toIdString(scenarioDoc?._id),
+  issueId: toIdString(scenarioDoc?.issue),
+  name: scenarioDoc?.name || "",
+  targetModelId: toIdString(scenarioDoc?.targetModel),
+  targetModelName: scenarioDoc?.targetModelName || null,
+  targetApiModelKey: scenarioDoc?.targetApiModelKey || null,
+  targetApiEndpoint: scenarioDoc?.targetApiEndpoint || null,
+  targetModelFamilyKey: scenarioDoc?.targetModelFamilyKey || null,
+  targetModelVersion: scenarioDoc?.targetModelVersion || null,
+  targetVersionLabel: scenarioDoc?.targetVersionLabel || null,
+  targetAlternativeEvaluationStructureKey:
+    scenarioDoc?.targetAlternativeEvaluationStructureKey || null,
+  targetSupportsConsensus: scenarioDoc?.targetSupportsConsensus === true,
+  alternativeEvaluationStructureKey:
+    scenarioDoc?.alternativeEvaluationStructureKey || null,
+  criteriaWeightingStructureKey:
+    scenarioDoc?.criteriaWeightingStructureKey || null,
+  domainType: scenarioDoc?.domainType ?? null,
+  status: scenarioDoc?.status || null,
+  error: scenarioDoc?.error || null,
+  config: scenarioDoc?.config || {},
+  inputs: scenarioDoc?.inputs || {},
+  outputs: scenarioDoc?.outputs || {},
+  createdAt: scenarioDoc?.createdAt || null,
+  updatedAt: scenarioDoc?.updatedAt || null,
+  createdBy: scenarioDoc?.createdBy
+    ? {
+        email: scenarioDoc.createdBy.email,
+        name: scenarioDoc.createdBy.name,
+      }
+    : null,
+});
 
 export const getScenarioByIdPayload = async ({ scenarioId }) => {
   if (!scenarioId || !isValidObjectIdLike(scenarioId)) {
@@ -166,7 +294,7 @@ export const getScenarioByIdPayload = async ({ scenarioId }) => {
   }
 
   return {
-    scenario: scenarioDoc,
+    scenario: mapScenarioDetail(scenarioDoc),
   };
 };
 

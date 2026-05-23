@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getAlternativeEvaluationStructureEntry } from "../../issueAlternativeEvaluation/alternativeEvaluation.registry.js";
 import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueEvaluationStructure.js";
+import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
+import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry.js";
 
 /**
  * Hook for managing finished issue ratings state and data extraction.
@@ -43,13 +44,17 @@ export const useFinishedIssueRatingsView = ({
     [viewIssue]
   );
 
-  const entry = useMemo(
-    () => getAlternativeEvaluationStructureEntry(evaluationStructure),
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: evaluationStructure,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      }),
     [evaluationStructure]
   );
 
-  const Matrix = entry?.Matrix || null;
-  const unsupportedEvaluationStructure = !Matrix;
+  const Matrix = structureEntry?.View ?? null;
+  const unsupportedEvaluationStructure = Boolean(evaluationStructure) && !Matrix;
 
   const phaseRatings = useMemo(
     () => viewIssue?.expertsRatings?.[currentPhaseIndex + 1],
@@ -87,11 +92,6 @@ export const useFinishedIssueRatingsView = ({
     [criterionList, hasSingleCriterion]
   );
 
-  const activeCriterion = useMemo(
-    () => selectedCriterion || criterionList[0] || "",
-    [selectedCriterion, criterionList]
-  );
-
   useEffect(() => {
     if (!selectedExpert || !expertList.includes(selectedExpert)) {
       const newExpert = expertList[0] || "";
@@ -116,20 +116,30 @@ export const useFinishedIssueRatingsView = ({
       return null;
     }
 
-    const selected = phaseRatings.expertEvaluations[selectedExpert];
+    return phaseRatings.expertEvaluations[selectedExpert] || null;
+  }, [selectedExpert, phaseRatings]);
 
-    if (
-      activeCriterion &&
-      selected &&
-      typeof selected === "object" &&
-      !Array.isArray(selected) &&
-      Array.isArray(selected[activeCriterion])
-    ) {
-      return selected[activeCriterion] || null;
+  const criteriaWeightsEvaluation = useMemo(() => {
+    if (!selectedExpert || !phaseRatings) {
+      return null;
     }
 
-    return selected || null;
-  }, [selectedExpert, activeCriterion, phaseRatings]);
+    const entry = phaseRatings?.criteriaWeightsEvaluationByExpert?.[selectedExpert];
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+
+    return entry;
+  }, [selectedExpert, phaseRatings]);
+
+  const finalCriteriaWeights = useMemo(() => {
+    const weights = viewIssue?.finalCriteriaWeights;
+    if (!weights || typeof weights !== "object") {
+      return null;
+    }
+
+    return weights;
+  }, [viewIssue]);
 
   const collectiveEvaluations = useMemo(() => {
     if (!phaseRatings || !showCollective) {
@@ -145,21 +155,37 @@ export const useFinishedIssueRatingsView = ({
       return null;
     }
 
-    if (
-      activeCriterion &&
-      typeof collective === "object" &&
-      !Array.isArray(collective) &&
-      Array.isArray(collective[activeCriterion])
-    ) {
-      return collective[activeCriterion] || null;
+    return collective || null;
+  }, [showCollective, selectedExpert, phaseRatings]);
+
+  const canShowCollective = useMemo(() => {
+    const sharedCollective = phaseRatings?.collectiveEvaluations;
+    const localizedCollective = phaseRatings?.collectiveEvaluationsLocalizedByExpert;
+
+    if (sharedCollective !== null && sharedCollective !== undefined) {
+      if (Array.isArray(sharedCollective)) {
+        return sharedCollective.length > 0;
+      }
+      if (typeof sharedCollective === "object") {
+        return Object.keys(sharedCollective).length > 0;
+      }
+      return true;
     }
 
-    return collective || null;
-  }, [showCollective, selectedExpert, activeCriterion, phaseRatings]);
+    if (
+      localizedCollective &&
+      typeof localizedCollective === "object" &&
+      Object.keys(localizedCollective).length > 0
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [phaseRatings]);
 
   useEffect(() => {
-    setShowCollective(false);
-  }, [viewIssue, currentPhaseIndex]);
+    setShowCollective(canShowCollective);
+  }, [viewIssue, currentPhaseIndex, canShowCollective]);
 
   return {
     evaluationStructure,
@@ -173,7 +199,10 @@ export const useFinishedIssueRatingsView = ({
     showCriterionSelector,
     showCollective,
     setShowCollective,
+    canShowCollective,
     evaluations,
+    criteriaWeightsEvaluation,
+    finalCriteriaWeights,
     collectiveEvaluations,
     unsupportedEvaluationStructure,
   };

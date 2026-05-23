@@ -1,6 +1,7 @@
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
+  ACTIVE_STATUS_META,
   ACTIVE_TASK_ACTION_KEYS,
 } from "./activeIssue.meta.js";
 
@@ -28,7 +29,6 @@ export const getEmptyTasksByType = () => ({
   computeWeights: [],
   evaluateWeights: [],
   evaluateAlternatives: [],
-  waitingAdmin: [],
 });
 
 /**
@@ -51,7 +51,10 @@ const buildStageOptions = () => [
  */
 const buildActionOptions = () => [
   { value: "all", label: "All actions" },
-  { value: "waitingExperts", label: "Waiting experts" },
+  ...Object.values(ACTIVE_STATUS_META).map((status) => ({
+    value: status.key,
+    label: status.label,
+  })),
   ...Object.values(ACTIVE_ACTION_META)
     .sort((a, b) => a.sortPriority - b.sortPriority)
     .map((action) => ({
@@ -139,16 +142,16 @@ export const buildActiveTaskCenter = (tasksByType) => {
  * Construye la metadata de filtros para la respuesta de activos.
  *
  * @param {object} params Parámetros de entrada.
- * @param {Object.<string, number>} [params.roleCounts={}] Conteos por rol.
- * @param {Object.<string, number>} [params.stageCounts={}] Conteos por stage.
- * @param {Object.<string, number>} [params.actionCounts={}] Conteos por acción.
+ * @param {Object.<string, number>} params.roleCounts Conteos por rol.
+ * @param {Object.<string, number>} params.stageCounts Conteos por stage.
+ * @param {Object.<string, number>} params.actionCounts Conteos por acción.
  * @returns {Object}
  */
 export const buildActiveFiltersMeta = ({
-  roleCounts = {},
-  stageCounts = {},
-  actionCounts = {},
-} = {}) => ({
+  roleCounts,
+  stageCounts,
+  actionCounts,
+}) => ({
   defaults: {
     role: "all",
     stage: "all",
@@ -217,7 +220,6 @@ export const buildActiveIssuesResponseMeta = ({
  * @returns {Object}
  */
 export const buildEmptyActiveIssuesPayload = () => ({
-  success: true,
   issues: [],
   tasks: {
     total: 0,

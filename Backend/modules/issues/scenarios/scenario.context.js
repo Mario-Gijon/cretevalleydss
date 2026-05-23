@@ -1,46 +1,35 @@
-import { Consensus } from "../../../models/Consensus.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueModel } from "../../../models/IssueModels.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 import {
-  ensureIssueOrdersDb,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../issue.ordering.js";
 import {
   createBadRequestError,
   createForbiddenError,
+  createInternalError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
-import { sameId } from "../../../utils/common/ids.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-import {
-  normalizeScenarioParamOverridesOrThrow,
-  resolveScenarioWeightsArray,
-} from "./scenario.params.js";
+import { normalizeScenarioParamOverridesOrThrow } from "./scenario.params.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
-import { detectIssueDomainTypeOrThrow } from "../expressionDomains/issueDomainDetection.js";
+import {
+  buildExpressionDomainAssignmentsByCriterionOrThrow,
+} from "../expressionDomains/issueDomainConfig.js";
 import {
   buildTargetModelRuntimeSnapshotOrThrow,
-  buildTargetRuntimeModelFromSnapshot,
   validateScenarioModelCompatibilityOrThrow,
 } from "./scenario.compatibility.js";
+import { EVALUATION_STAGES } from "../evaluations/evaluation.constants.js";
 
-const getModelParameterKeys = (modelDoc) => {
-  const parameters = modelDoc.parameters;
-  return new Set(
-    parameters
-      .map((parameter) => {
-        const normalized = parameter.key.trim();
-        return normalized.length > 0 ? normalized : null;
-      })
-      .filter(Boolean)
-  );
-};
+const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 
-const getTargetScenarioModelOrThrow = async ({
-  targetModelId,
-}) => {
+const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
   const cleanTargetModelId = String(targetModelId || "").trim();
 
   if (!cleanTargetModelId) {
@@ -90,43 +79,350 @@ const getTargetScenarioModelOrThrow = async ({
   return targetModel;
 };
 
-const resolveScenarioEvaluationPhaseOrThrow = ({ issue, consensusCount }) => {
-  const phase = issue.consensusPhase;
+const resolveLatestAlternativeResultOrThrow = async ({ issue }) => {
+  const latestAlternativeResult = await IssueStageResult.findOne({
+    issue: issue._id,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  })
+    .sort({ consensusPhase: -1 })
+    .lean();
+
+  if (!latestAlternativeResult) {
+    throw createBadRequestError(
+      "Alternative evaluation result is required before creating model runs",
+      {
+        field: "stageResult",
+      }
+    );
+  }
+
+  const phase = latestAlternativeResult.consensusPhase;
 
   if (!Number.isInteger(phase) || phase < 1) {
-    throw createBadRequestError("Issue consensusPhase is invalid", {
+    throw createInternalError("Alternative evaluation result has invalid consensus phase", {
       field: "consensusPhase",
       details: {
-        consensusPhase: issue.consensusPhase,
+        issueId: toIdString(issue._id),
+        consensusPhase: phase,
       },
     });
   }
 
-  if (issue.isConsensus && consensusCount > 1) {
-    throw createBadRequestError(
-      "Simulation disabled: consensus issues with more than 1 saved phase are not supported yet."
-    );
-  }
-
-  return phase;
+  return {
+    latestAlternativeResult,
+    phase,
+  };
 };
 
-const modelSupportsIssueDomainType = (supportedDomains, domainType) => {
-  if (domainType === "numeric") {
-    return (
-      supportedDomains?.numeric?.continuous === true ||
-      supportedDomains?.numeric?.discrete === true
+const validateEvaluationCoverageOrThrow = ({
+  issue,
+  phase,
+  acceptedParticipations,
+  completedEvaluations,
+}) => {
+  if (acceptedParticipations.length === 0) {
+    throw createBadRequestError("No accepted experts found", {
+      field: "participations",
+    });
+  }
+
+  if (completedEvaluations.length !== acceptedParticipations.length) {
+    throw createBadRequestError(
+      "Completed alternative evaluations are missing for scenario execution",
+      {
+        field: "evaluations",
+        details: {
+          issueId: toIdString(issue._id),
+          phase,
+          expected: acceptedParticipations.length,
+          received: completedEvaluations.length,
+        },
+      }
     );
   }
 
-  if (domainType === "linguistic") {
-    return (
-      Array.isArray(supportedDomains?.linguistic) &&
-      supportedDomains.linguistic.length > 0
+  const acceptedExpertIds = new Set(
+    acceptedParticipations.map((participation) =>
+      toIdString(participation?.expert?._id || participation?.expert)
+    )
+  );
+
+  const completedExpertIds = new Set(
+    completedEvaluations.map((evaluation) =>
+      toIdString(evaluation?.expert?._id || evaluation?.expert)
+    )
+  );
+
+  for (const acceptedExpertId of acceptedExpertIds) {
+    if (!completedExpertIds.has(acceptedExpertId)) {
+      throw createBadRequestError(
+        "Completed alternative evaluations are missing for one or more accepted experts",
+        {
+          field: "evaluations",
+          details: {
+            issueId: toIdString(issue._id),
+            phase,
+            expertId: acceptedExpertId,
+          },
+        }
+      );
+    }
+  }
+};
+
+const resolveFuzzyValueCountFromIssueDomainsOrThrow = ({ issueDomainSnapshots }) => {
+  const linguisticDomains = (Array.isArray(issueDomainSnapshots)
+    ? issueDomainSnapshots
+    : []
+  ).filter((domain) => domain?.type === "linguistic");
+
+  if (linguisticDomains.length === 0) {
+    throw createBadRequestError(
+      "Fuzzy scenario weights require linguistic expression domains",
+      {
+        field: "paramOverrides.weights",
+      }
     );
   }
 
-  return false;
+  const valueCounts = new Set();
+
+  for (const domain of linguisticDomains) {
+    const valueCount = Number(domain?.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      throw createBadRequestError(
+        "Fuzzy scenario weights require a valid linguistic valueCount",
+        {
+          field: "paramOverrides.weights",
+        }
+      );
+    }
+    valueCounts.add(valueCount);
+  }
+
+  if (valueCounts.size !== 1) {
+    throw createBadRequestError(
+      "Fuzzy scenario weights require a consistent linguistic valueCount across issue domains",
+      {
+        field: "paramOverrides.weights",
+      }
+    );
+  }
+
+  return Array.from(valueCounts)[0];
+};
+
+const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
+  if (!Array.isArray(rawWeights) || rawWeights.length === 0) {
+    throw createBadRequestError(
+      "Scenario model parameters must include criteria weights as an array",
+      {
+        field: "paramOverrides.weights",
+      }
+    );
+  }
+
+  if (rawWeights.length !== criteriaCount) {
+    throw createBadRequestError(
+      "Scenario model weights length must match the number of leaf criteria",
+      {
+        field: "paramOverrides.weights",
+        details: {
+          expected: criteriaCount,
+          received: rawWeights.length,
+        },
+      }
+    );
+  }
+
+  const normalizedWeights = rawWeights.map((value, index) => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      throw createBadRequestError(
+        `Scenario weight [${index}] must be a finite number`,
+        {
+          field: "paramOverrides.weights",
+        }
+      );
+    }
+
+    if (numericValue < 0 || numericValue > 1) {
+      throw createBadRequestError(
+        `Scenario weight [${index}] must be between 0 and 1`,
+        {
+          field: "paramOverrides.weights",
+        }
+      );
+    }
+
+    return numericValue;
+  });
+
+  const total = normalizedWeights.reduce((sum, value) => sum + value, 0);
+  if (Math.abs(total - 1) > CRITERIA_WEIGHT_SUM_TOLERANCE) {
+    throw createBadRequestError(
+      "Scenario manual weights must sum to 1 (tolerance 0.001)",
+      {
+        field: "paramOverrides.weights",
+      }
+    );
+  }
+
+  return normalizedWeights;
+};
+
+const normalizeFuzzyWeightsOrThrow = ({
+  rawWeights,
+  criteriaCount,
+  valueCount,
+}) => {
+  if (!Array.isArray(rawWeights) || rawWeights.length === 0) {
+    throw createBadRequestError(
+      "Scenario model parameters must include fuzzy criteria weights as an array",
+      {
+        field: "paramOverrides.weights",
+      }
+    );
+  }
+
+  if (rawWeights.length !== criteriaCount) {
+    throw createBadRequestError(
+      "Scenario fuzzy weights length must match the number of leaf criteria",
+      {
+        field: "paramOverrides.weights",
+        details: {
+          expected: criteriaCount,
+          received: rawWeights.length,
+        },
+      }
+    );
+  }
+
+  return rawWeights.map((rawVector, criterionIndex) => {
+    if (!Array.isArray(rawVector) || rawVector.length !== valueCount) {
+      throw createBadRequestError(
+        `Scenario fuzzy weight for criterion index ${criterionIndex} must contain ${valueCount} values`,
+        {
+          field: "paramOverrides.weights",
+        }
+      );
+    }
+
+    const vector = rawVector.map((value, valueIndex) => {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        throw createBadRequestError(
+          `Scenario fuzzy weight [${criterionIndex}][${valueIndex}] must be a finite number`,
+          {
+            field: "paramOverrides.weights",
+          }
+        );
+      }
+
+      if (numericValue < 0 || numericValue > 1) {
+        throw createBadRequestError(
+          `Scenario fuzzy weight [${criterionIndex}][${valueIndex}] must be between 0 and 1`,
+          {
+            field: "paramOverrides.weights",
+          }
+        );
+      }
+
+      return numericValue;
+    });
+
+    for (let index = 1; index < vector.length; index += 1) {
+      if (vector[index] < vector[index - 1]) {
+        throw createBadRequestError(
+          `Scenario fuzzy weight for criterion index ${criterionIndex} must be non-decreasing`,
+          {
+            field: "paramOverrides.weights",
+          }
+        );
+      }
+    }
+
+    return vector;
+  });
+};
+
+const resolveScenarioWeightsOrThrow = ({
+  targetModel,
+  paramOverrides,
+  criteria,
+  issueDomainSnapshots,
+}) => {
+  if (targetModel?.usesCriteriaWeights !== true) {
+    return null;
+  }
+
+  const criteriaCount = Array.isArray(criteria) ? criteria.length : 0;
+  const fuzzyWeights = targetModel?.usesFuzzyCriteriaWeights === true;
+
+  if (criteriaCount === 1) {
+    if (fuzzyWeights) {
+      const valueCount = resolveFuzzyValueCountFromIssueDomainsOrThrow({
+        issueDomainSnapshots,
+      });
+      return [Array.from({ length: valueCount }, () => 1)];
+    }
+    return [1];
+  }
+
+  const rawWeights = paramOverrides?.weights;
+
+  if (fuzzyWeights) {
+    const valueCount = resolveFuzzyValueCountFromIssueDomainsOrThrow({
+      issueDomainSnapshots,
+    });
+    return normalizeFuzzyWeightsOrThrow({
+      rawWeights,
+      criteriaCount,
+      valueCount,
+    });
+  }
+
+  return normalizeCrispWeightsOrThrow({
+    rawWeights,
+    criteriaCount,
+  });
+};
+
+const buildScenarioParametersOrThrow = ({
+  targetModel,
+  paramOverrides,
+  criteria,
+  alternatives,
+  issueDomainSnapshots,
+}) => {
+  const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
+  const rawScenarioParams = { ...normalizedOverrides };
+  delete rawScenarioParams.weights;
+
+  const normalizedScenarioParameters =
+    validateAndNormalizeModelParametersOrThrow({
+      model: targetModel,
+      paramValues: rawScenarioParams,
+      criteriaNodes: criteria,
+      alternativesCount: alternatives.length,
+    });
+
+  const resolvedWeights = resolveScenarioWeightsOrThrow({
+    targetModel,
+    paramOverrides: normalizedOverrides,
+    criteria,
+    issueDomainSnapshots,
+  });
+
+  if (Array.isArray(resolvedWeights)) {
+    normalizedScenarioParameters.weights = resolvedWeights;
+  }
+
+  return {
+    paramsUsed: normalizedScenarioParameters,
+    normalizedParams: normalizedScenarioParameters,
+    weightsUsed: Array.isArray(resolvedWeights) ? resolvedWeights : [],
+  };
 };
 
 export const getCreateScenarioContext = async ({
@@ -149,144 +445,182 @@ export const getCreateScenarioContext = async ({
   }
 
   if (!sameId(issue.admin, userId)) {
-    throw createForbiddenError(
-      "Not authorized: only admin can create scenarios"
-    );
+    throw createForbiddenError("Not authorized: only admin can create scenarios");
   }
 
-  const [targetModel, consensusCount, pendingInvitations, participations] =
+  const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
+  const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
+  const { latestAlternativeResult, phase } =
+    await resolveLatestAlternativeResultOrThrow({ issue });
+
+  const [participations, completedEvaluations, alternatives, criteria] =
     await Promise.all([
-      getTargetScenarioModelOrThrow({
-        targetModelId,
-      }),
-      Consensus.countDocuments({ issue: issue._id }),
-      Participation.countDocuments({
-        issue: issue._id,
-        invitationStatus: "pending",
-      }),
       Participation.find({
         issue: issue._id,
         invitationStatus: "accepted",
-      }).populate("expert", "email"),
+      })
+        .populate("expert", "email name")
+        .lean(),
+      IssueEvaluation.find({
+        issue: issue._id,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        consensusPhase: phase,
+        completed: true,
+      })
+        .populate("expert", "email name")
+        .lean(),
+      getOrderedAlternativesDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name",
+        lean: true,
+      }),
+      getOrderedLeafCriteriaDb({
+        issueId: issue._id,
+        issueDoc: issue,
+        select: "_id name type expressionDomain",
+        lean: true,
+      }),
     ]);
 
-  const evaluationPhase = resolveScenarioEvaluationPhaseOrThrow({
-    issue,
-    consensusCount,
-  });
-
-  if (pendingInvitations > 0) {
-    throw createBadRequestError(
-      "Simulation requires no pending invitations."
-    );
+  if (!alternatives.length) {
+    throw createBadRequestError("Issue has no alternatives", {
+      field: "alternatives",
+    });
   }
 
-  if (!participations.length) {
-    throw createBadRequestError("No accepted experts found");
+  if (!criteria.length) {
+    throw createBadRequestError("Issue has no leaf criteria", {
+      field: "criteria",
+    });
   }
 
-  const issueEvaluationStructure = issue.evaluationStructure;
-
-  const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(
-    targetModel
+  const domainAssignmentsByCriterion =
+    buildExpressionDomainAssignmentsByCriterionOrThrow({
+      leafCriteria: criteria,
+      field: "expressionDomain",
+    });
+  const issueDomainSnapshotIds = Array.from(
+    new Set(Object.values(domainAssignmentsByCriterion))
   );
-  const targetEvaluationStructure = targetRuntimeSnapshot.targetEvaluationStructure;
+  const issueDomainSnapshots = await IssueExpressionDomain.find({
+    _id: { $in: issueDomainSnapshotIds },
+  })
+    .select("_id name type numericRange membershipFunction valueCount")
+    .lean();
+
   validateScenarioModelCompatibilityOrThrow({
     issue,
-    targetModel,
     targetRuntimeSnapshot,
+    issueDomainSnapshots,
+    targetModel,
+    targetModelSupportedDomains: targetModel?.supportedDomains || null,
   });
 
-  await ensureIssueOrdersDb({ issueId: issue._id });
-
-  const [alternatives, criteria] = await Promise.all([
-    getOrderedAlternativesDb({
-      issueId: issue._id,
-      issueDoc: issue,
-      select: "_id name",
-      lean: true,
-    }),
-    getOrderedLeafCriteriaDb({
-      issueId: issue._id,
-      issueDoc: issue,
-      select: "_id name type",
-      lean: true,
-    }),
-  ]);
-
-  if (!alternatives.length || !criteria.length) {
-    throw createBadRequestError("Issue has no alternatives/leaf criteria");
-  }
-
-  const expertIds = participations.map((participation) => participation.expert._id);
-
-  const detectedDomain = await detectIssueDomainTypeOrThrow({
-    issueId: issue._id,
-    expertIds,
+  validateEvaluationCoverageOrThrow({
+    issue,
+    phase,
+    acceptedParticipations: participations,
+    completedEvaluations,
   });
-  const domainType = detectedDomain.domainType;
 
-  const supportsDomain = modelSupportsIssueDomainType(
-    targetModel?.supportedDomains,
-    domainType
-  );
-  if (!supportsDomain) {
-    throw createBadRequestError(
-      `Target model does not support '${domainType}' domains. Pick a compatible model.`,
-      {
-        field: "targetModel",
-      }
-    );
-  }
-
-  const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
-  const targetParameterKeys = getModelParameterKeys(targetModel);
-  const baseIssueParameters = Object.fromEntries(
-    Object.entries(issue.modelParameters).filter(([key]) =>
-      targetParameterKeys.has(key)
-    )
-  );
-  const rawScenarioParams = {
-    ...baseIssueParameters,
-    ...normalizedOverrides,
-  };
-  const normalizedScenarioParameters =
-    validateAndNormalizeModelParametersOrThrow({
-      model: targetModel,
-      paramValues: rawScenarioParams,
-      criteriaNodes: criteria,
-      alternativesCount: alternatives.length,
+  const { paramsUsed, normalizedParams, weightsUsed } =
+    buildScenarioParametersOrThrow({
+      targetModel,
+      paramOverrides,
+      criteria,
+      alternatives,
+      issueDomainSnapshots,
     });
 
-  const resolvedWeights = resolveScenarioWeightsArray({
-    paramsUsed: normalizedScenarioParameters,
-    criteria,
+  const evaluationsByExpertId = new Map(
+    completedEvaluations.map((evaluation) => [
+      toIdString(evaluation?.expert?._id || evaluation?.expert),
+      evaluation,
+    ])
+  );
+
+  const sortedParticipations = [...participations].sort((left, right) => {
+    const leftEmail = String(left?.expert?.email || "").trim();
+    const rightEmail = String(right?.expert?.email || "").trim();
+    return leftEmail.localeCompare(rightEmail);
   });
 
-  if (resolvedWeights) {
-    normalizedScenarioParameters.weights = resolvedWeights;
-  }
+  const evaluationPayloads = sortedParticipations.map((participation) => {
+    const expertId = toIdString(participation?.expert?._id || participation?.expert);
+    const evaluation = evaluationsByExpertId.get(expertId);
+
+    if (!evaluation) {
+      throw createInternalError(
+        "Completed alternative evaluation missing for accepted expert",
+        {
+          field: "evaluations",
+          details: {
+            issueId: toIdString(issue._id),
+            expertId,
+          },
+        }
+      );
+    }
+
+    return {
+      expert: {
+        id: expertId,
+        name: evaluation?.expert?.name || "",
+        email: evaluation?.expert?.email || "",
+      },
+      payload: evaluation?.payload || {},
+    };
+  });
+
+  const scenarioExecutionContext = {
+    issue: {
+      id: toIdString(issue._id),
+      name: issue.name,
+    },
+    alternatives: alternatives.map((alternative) => ({
+      id: toIdString(alternative._id),
+      name: alternative.name,
+    })),
+    criteria: criteria.map((criterion) => ({
+      id: toIdString(criterion._id),
+      name: criterion.name,
+      type: criterion.type,
+    })),
+    weights: weightsUsed,
+    consensusPhase: phase,
+    previousStageResult: latestAlternativeResult,
+  };
+
+  const requestPayload = {
+    modelParameters: normalizedParams,
+    evaluations: evaluationPayloads,
+    context: scenarioExecutionContext,
+  };
+
+  const usedDomainTypes = new Set(
+    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot?.type).filter(Boolean)
+  );
+  const domainType =
+    usedDomainTypes.size === 1 ? Array.from(usedDomainTypes)[0] : null;
 
   return {
     issue,
     targetModel,
-    targetRuntimeModel: buildTargetRuntimeModelFromSnapshot({
-      targetModelName: targetModel.name,
-      targetRuntimeSnapshot,
-    }),
-    participations,
+    targetRuntimeSnapshot,
     alternatives,
     criteria,
-    issueEvaluationStructure,
-    targetEvaluationStructure,
+    participations,
+    completedEvaluations,
+    latestAlternativeResult,
     domainType,
-    paramsUsed: normalizedScenarioParameters,
-    normalizedParams: normalizedScenarioParameters,
-    expertsOrder: participations.map(
-      (participation) => participation.expert.email
-    ),
-    consensusThresholdUsed: 1,
-    evaluationPhase,
-    targetRuntimeSnapshot,
+    paramsUsed,
+    normalizedParams,
+    weightsUsed,
+    expertsOrder: evaluationPayloads.map((entry) => entry.expert.email || entry.expert.id),
+    evaluationPhase: phase,
+    evaluationPayloads,
+    scenarioExecutionContext,
+    requestPayload,
   };
 };

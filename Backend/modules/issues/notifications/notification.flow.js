@@ -2,6 +2,7 @@
 import { Issue } from "../../../models/Issues.js";
 import { Notification } from "../../../models/Notificacions.js";
 import { Participation } from "../../../models/Participations.js";
+import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
 
         
 import {
@@ -9,6 +10,29 @@ import {
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+
+const PARTICIPATION_ENTRY_STAGES = Object.freeze({
+  CRITERIA_WEIGHTING: "criteriaWeighting",
+  ALTERNATIVE_EVALUATION: "alternativeEvaluation",
+});
+
+const resolveParticipationEntryStage = (issueStage) => {
+  if (
+    issueStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
+    issueStage === ISSUE_STAGES.WEIGHTS_FINISHED
+  ) {
+    return PARTICIPATION_ENTRY_STAGES.CRITERIA_WEIGHTING;
+  }
+
+  if (
+    issueStage === ISSUE_STAGES.ALTERNATIVE_EVALUATION ||
+    issueStage === ISSUE_STAGES.FINISHED
+  ) {
+    return PARTICIPATION_ENTRY_STAGES.ALTERNATIVE_EVALUATION;
+  }
+
+  return null;
+};
 
 /**
  * @typedef {Object} NotificationsPayload
@@ -151,7 +175,9 @@ export const changeInvitationStatusFlow = async ({
   }
 
   const issue = await Issue.findById(issueId)
-    .select("_id name")
+    .select(
+      "_id name currentStage consensusPhase criteriaWeightingStructureKey leafCriteriaOrder"
+    )
     .session(session);
 
   if (!issue) {
@@ -172,7 +198,24 @@ export const changeInvitationStatusFlow = async ({
   participation.invitationStatus = action;
 
   if (action === "accepted") {
+    const leafCriteriaCount = Array.isArray(issue.leafCriteriaOrder)
+      ? issue.leafCriteriaOrder.length
+      : 0;
+    const isSingleCriterion = leafCriteriaCount === 1;
+    const criteriaWeightingIsOpen =
+      issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
+      issue.currentStage === ISSUE_STAGES.WEIGHTS_FINISHED;
+    const requiresCriteriaWeighting = Boolean(issue.criteriaWeightingStructureKey);
+
     participation.evaluationCompleted = false;
+    if (criteriaWeightingIsOpen && requiresCriteriaWeighting) {
+      participation.weightsCompleted = isSingleCriterion;
+    }
+    participation.joinedAt = new Date();
+    participation.entryPhase = Number.isInteger(issue.consensusPhase)
+      ? issue.consensusPhase
+      : null;
+    participation.entryStage = resolveParticipationEntryStage(issue.currentStage);
   }
 
   await participation.save({ session });

@@ -63,7 +63,18 @@ export default function ModelCards({
                 rows={[
                   { label: "Catalog", value: getCatalogVisibilityLabel(row) },
                   { label: "Lifecycle", value: toTitle(row.lifecycleKind) },
-                  { label: "Structure", value: toTitle(row.evaluationStructure) },
+                  {
+                    label: "Alternative structure",
+                    value: toTitle(row.alternativeEvaluationStructureKey),
+                  },
+                  {
+                    label: "Uses criteria weights",
+                    value: formatBoolean(row.usesCriteriaWeights),
+                  },
+                  {
+                    label: "Uses fuzzy weights",
+                    value: formatBoolean(row.usesFuzzyCriteriaWeights),
+                  },
                   { label: "Input", value: row.apiInputFormat },
                   { label: "Output", value: row.apiOutputFormat },
                   { label: "Issue model", value: formatBoolean(row.isIssueModel) },

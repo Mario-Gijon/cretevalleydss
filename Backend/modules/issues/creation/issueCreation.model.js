@@ -1,30 +1,4 @@
-import {
-  EVALUATION_STRUCTURES,
-  validateEvaluationStructureOrThrow,
-} from "../issue.evaluationStructure.js";
-import {
-  LIFECYCLE_KINDS,
-  isSupportedLifecycleKind,
-} from "../issue.lifecycleKind.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-
-const SUPPORTED_EVALUATION_STRUCTURES = new Set(
-  Object.values(EVALUATION_STRUCTURES)
-);
-
-const SUPPORTED_INPUT_KINDS = new Set([
-  "directCrispMatrix",
-  "directFuzzyMatrix",
-  "pairwisePreferenceMatrix",
-]);
-
-const SUPPORTED_OUTPUT_KINDS = new Set([
-  "ranking",
-  "consensusRanking",
-]);
-
-const CONSENSUS_OUTPUT_KIND = "consensusRanking";
-const SINGLE_PASS_OUTPUT_KIND = "ranking";
 
 export const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") {
@@ -77,63 +51,50 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     });
   }
 
-  const evaluationStructure = normalizeNonEmptyString(model?.evaluationStructure);
-  if (!evaluationStructure) {
+  const alternativeEvaluationStructureKey = normalizeNonEmptyString(
+    model?.alternativeEvaluationStructureKey
+  );
+  if (!alternativeEvaluationStructureKey) {
     runtimeErrors.push({
-      field: "evaluationStructure",
+      field: "alternativeEvaluationStructureKey",
       message: "is required",
-      value: model?.evaluationStructure,
-    });
-  } else if (!SUPPORTED_EVALUATION_STRUCTURES.has(evaluationStructure)) {
-    runtimeErrors.push({
-      field: "evaluationStructure",
-      message: `is unsupported: ${evaluationStructure}`,
-      value: model?.evaluationStructure,
+      value: model?.alternativeEvaluationStructureKey,
     });
   }
 
-  const lifecycleKind = normalizeNonEmptyString(model?.lifecycleKind);
-  if (!lifecycleKind) {
+  if (typeof model?.supportsConsensus !== "boolean") {
     runtimeErrors.push({
-      field: "lifecycleKind",
-      message: "is required",
-      value: model?.lifecycleKind,
-    });
-  } else if (!isSupportedLifecycleKind(lifecycleKind)) {
-    runtimeErrors.push({
-      field: "lifecycleKind",
-      message: `is unsupported: ${lifecycleKind}`,
-      value: model?.lifecycleKind,
+      field: "supportsConsensus",
+      message: "must be boolean",
+      value: model?.supportsConsensus,
     });
   }
-
-  const apiInputFormat = normalizeNonEmptyString(model?.apiInputFormat);
-  if (!apiInputFormat) {
+  if (typeof model?.usesCriteriaWeights !== "boolean") {
     runtimeErrors.push({
-      field: "apiInputFormat",
-      message: "is required",
-      value: model?.apiInputFormat,
-    });
-  } else if (!SUPPORTED_INPUT_KINDS.has(apiInputFormat)) {
-    runtimeErrors.push({
-      field: "apiInputFormat",
-      message: `is unsupported: ${apiInputFormat}`,
-      value: model?.apiInputFormat,
+      field: "usesCriteriaWeights",
+      message: "must be boolean",
+      value: model?.usesCriteriaWeights,
     });
   }
-
-  const apiOutputFormat = normalizeNonEmptyString(model?.apiOutputFormat);
-  if (!apiOutputFormat) {
+  if (typeof model?.usesFuzzyCriteriaWeights !== "boolean") {
     runtimeErrors.push({
-      field: "apiOutputFormat",
-      message: "is required",
-      value: model?.apiOutputFormat,
+      field: "usesFuzzyCriteriaWeights",
+      message: "must be boolean",
+      value: model?.usesFuzzyCriteriaWeights,
     });
-  } else if (!SUPPORTED_OUTPUT_KINDS.has(apiOutputFormat)) {
+  }
+  if (typeof model?.usesCriterionTypes !== "boolean") {
     runtimeErrors.push({
-      field: "apiOutputFormat",
-      message: `is unsupported: ${apiOutputFormat}`,
-      value: model?.apiOutputFormat,
+      field: "usesCriterionTypes",
+      message: "must be boolean",
+      value: model?.usesCriterionTypes,
+    });
+  }
+  if (typeof model?.isMultiCriteria !== "boolean") {
+    runtimeErrors.push({
+      field: "isMultiCriteria",
+      message: "must be boolean",
+      value: model?.isMultiCriteria,
     });
   }
 
@@ -189,93 +150,174 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       path: endpointPath,
       operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
     },
-    apiInputFormat,
-    apiOutputFormat,
-    evaluationStructure: validateEvaluationStructureOrThrow(evaluationStructure),
-    lifecycleKind,
-    isConsensus: lifecycleKind === LIFECYCLE_KINDS.THRESHOLD_CONSENSUS,
+    alternativeEvaluationStructureKey,
+    supportsConsensus: model?.supportsConsensus === true,
+    usesCriteriaWeights: model?.usesCriteriaWeights === true,
+    usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: model?.usesCriterionTypes === true,
+    isMultiCriteria: model?.isMultiCriteria === true,
     modelFamilyKey,
     modelVersion,
     versionLabel,
   };
 };
 
-export const validateIssueConsensusCompatibilityOrThrow = ({
-  requestedWithConsensus,
-  model,
-  lifecycleKind,
-}) => {
+export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
-  const normalizedLifecycleKind = normalizeNonEmptyString(lifecycleKind);
-  const modelIsConsensus =
-    normalizedLifecycleKind === LIFECYCLE_KINDS.THRESHOLD_CONSENSUS;
-  const apiOutputFormat = normalizeNonEmptyString(model?.apiOutputFormat);
-  const incompatibilities = [];
+  const runtimeErrors = [];
 
-  if (requestedWithConsensus !== modelIsConsensus) {
-    incompatibilities.push(
-      `withConsensus (${requestedWithConsensus}) must match model lifecycle (${normalizedLifecycleKind})`
-    );
+  if (model?.isCriteriaWeightingModel !== true) {
+    runtimeErrors.push({
+      field: "isCriteriaWeightingModel",
+      message: "must be true",
+      value: model?.isCriteriaWeightingModel,
+    });
   }
 
-  if (modelIsConsensus) {
-    if (normalizedLifecycleKind !== LIFECYCLE_KINDS.THRESHOLD_CONSENSUS) {
-      incompatibilities.push(
-        `consensus model requires lifecycleKind '${LIFECYCLE_KINDS.THRESHOLD_CONSENSUS}'`
-      );
-    }
-
-    if (apiOutputFormat !== CONSENSUS_OUTPUT_KIND) {
-      incompatibilities.push(
-        `consensus model requires apiOutputFormat '${CONSENSUS_OUTPUT_KIND}'`
-      );
-    }
-  } else {
-    if (normalizedLifecycleKind !== LIFECYCLE_KINDS.SINGLE_PASS) {
-      incompatibilities.push(
-        `non-consensus model requires lifecycleKind '${LIFECYCLE_KINDS.SINGLE_PASS}'`
-      );
-    }
-
-    if (apiOutputFormat !== SINGLE_PASS_OUTPUT_KIND) {
-      incompatibilities.push(
-        `non-consensus model requires apiOutputFormat '${SINGLE_PASS_OUTPUT_KIND}'`
-      );
-    }
+  const apiModelKey = normalizeApiModelKey(model?.apiModelKey);
+  if (!apiModelKey) {
+    runtimeErrors.push({
+      field: "apiModelKey",
+      message: "must be a non-empty string",
+      value: model?.apiModelKey,
+    });
   }
 
-  if (incompatibilities.length > 0) {
+  const endpointPath = normalizeEndpointPath(model?.apiEndpoint?.path);
+  if (!endpointPath) {
+    runtimeErrors.push({
+      field: "apiEndpoint.path",
+      message: "must be a non-empty string",
+      value: model?.apiEndpoint?.path,
+    });
+  }
+
+  const criteriaWeightingStructureKey = normalizeNonEmptyString(
+    model?.criteriaWeightingStructureKey
+  );
+  if (!criteriaWeightingStructureKey) {
+    runtimeErrors.push({
+      field: "criteriaWeightingStructureKey",
+      message: "is required",
+      value: model?.criteriaWeightingStructureKey,
+    });
+  }
+
+  const modelFamilyKey = normalizeNonEmptyString(model?.modelFamilyKey);
+  if (!modelFamilyKey) {
+    runtimeErrors.push({
+      field: "modelFamilyKey",
+      message: "must be a non-empty string",
+      value: model?.modelFamilyKey,
+    });
+  }
+
+  const modelVersion = normalizeNonEmptyString(model?.modelVersion);
+  if (!modelVersion) {
+    runtimeErrors.push({
+      field: "modelVersion",
+      message: "must be a non-empty string",
+      value: model?.modelVersion,
+    });
+  }
+
+  const versionLabel = normalizeNonEmptyString(model?.versionLabel);
+  if (!versionLabel) {
+    runtimeErrors.push({
+      field: "versionLabel",
+      message: "must be a non-empty string",
+      value: model?.versionLabel,
+    });
+  }
+
+  if (runtimeErrors.length > 0) {
+    const firstError = runtimeErrors[0];
+    const fieldSummary = runtimeErrors
+      .map((error) => `${error.field} ${error.message}`)
+      .join(", ");
+
     throw createBadRequestError(
-      `Requested consensus mode is incompatible with selected model '${modelName}': ${incompatibilities.join(", ")}`,
+      `Selected criteria weighting model '${modelName}' is missing required runtime configuration: ${fieldSummary}`,
       {
-        field: "withConsensus",
+        field: `criteriaWeightingModel.${firstError.field}`,
         details: {
-          requestedWithConsensus,
-          modelIsConsensus,
-          apiOutputFormat: apiOutputFormat ?? null,
-          lifecycleKind: normalizedLifecycleKind ?? null,
-          incompatibilities,
+          model: modelName,
+          missingOrInvalidFields: runtimeErrors,
         },
       }
     );
   }
+
+  return {
+    apiModelKey,
+    apiEndpoint: {
+      method: normalizeNonEmptyString(model?.apiEndpoint?.method) || null,
+      path: endpointPath,
+      operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
+    },
+    criteriaWeightingStructureKey,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+  };
 };
 
-export const modelRequiresCriterionWeights = (model) => {
-  const parameters = Array.isArray(model?.parameters) ? model.parameters : [];
+const normalizeFiniteNumber = (value) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
 
-  return parameters.some((parameter) => {
-    const parameterSemanticRole = normalizeNonEmptyString(
-      parameter?.semanticRole
-    );
-    const parameterScope = normalizeNonEmptyString(parameter?.scope);
-    const parameterType = normalizeNonEmptyString(parameter?.type);
+  return value;
+};
 
-    return (
-      parameterSemanticRole === "criteriaWeights" &&
-      parameterScope === "perCriterion" &&
-      parameterType === "array" &&
-      parameter?.required === true
+export const resolveIssueConsensusConfigOrThrow = ({
+  supportsConsensus,
+  consensusThreshold,
+  consensusMaxPhases,
+}) => {
+  const isConsensus = supportsConsensus === true;
+
+  if (!isConsensus) {
+    return {
+      isConsensus: false,
+      consensusThreshold: null,
+      consensusMaxPhases: null,
+    };
+  }
+
+  const normalizedThreshold = normalizeFiniteNumber(consensusThreshold);
+  if (
+    normalizedThreshold === null ||
+    normalizedThreshold < 0 ||
+    normalizedThreshold > 1
+  ) {
+    throw createBadRequestError(
+      "consensusThreshold is required and must be a finite number between 0 and 1",
+      {
+        code: "INVALID_CONSENSUS_THRESHOLD",
+        field: "consensusThreshold",
+      }
     );
-  });
+  }
+
+  if (consensusMaxPhases === null || consensusMaxPhases === undefined) {
+    return {
+      isConsensus: true,
+      consensusThreshold: normalizedThreshold,
+      consensusMaxPhases: null,
+    };
+  }
+
+  if (!Number.isInteger(consensusMaxPhases) || Number(consensusMaxPhases) <= 0) {
+    throw createBadRequestError("consensusMaxPhases must be a positive integer", {
+      code: "INVALID_CONSENSUS_MAX_PHASES",
+      field: "consensusMaxPhases",
+    });
+  }
+
+  return {
+    isConsensus: true,
+    consensusThreshold: normalizedThreshold,
+    consensusMaxPhases,
+  };
 };

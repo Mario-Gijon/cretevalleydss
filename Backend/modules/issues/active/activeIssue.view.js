@@ -1,11 +1,15 @@
 import { orderDocsByIdList } from "../issue.ordering.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
+import {
+  buildExpressionDomainConfigFromLeafCriteriaOrThrow,
+} from "../expressionDomains/issueDomainConfig.js";
 
 import {
   ACTIVE_ACTION_META,
   ACTIVE_STAGE_META,
-  ACTIVE_TASK_ACTION_KEYS,
+  ACTIVE_STATUS_KEYS,
+  ACTIVE_STATUS_META,
 } from "./activeIssue.meta.js";
 import {
   buildIssueCriteriaTree,
@@ -15,6 +19,72 @@ import {
   buildDeadlineInfo,
   buildActiveWorkflowSteps,
 } from "./activeIssue.workflow.js";
+import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
+
+const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus"
+
+const WEIGHTS_OPTIONAL_STAGES = new Set([
+  ISSUE_STAGES.CRITERIA_WEIGHTING,
+  ISSUE_STAGES.WEIGHTS_FINISHED,
+]);
+
+const WEIGHTS_REQUIRED_STAGES = new Set([
+  ISSUE_STAGES.ALTERNATIVE_EVALUATION,
+  ISSUE_STAGES.FINISHED,
+]);
+
+const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
+  const criteriaCount = orderedLeafCriteria.length;
+  const stage = issue.currentStage;
+  const weights = issue.modelParameters?.weights;
+
+  if (criteriaCount === 0) {
+    return [];
+  }
+
+  if (Array.isArray(weights)) {
+    if (weights.length !== criteriaCount) {
+      throw createInternalError("Issue is missing effective criteria weights", {
+        field: "modelParameters.weights",
+        details: {
+          issueId,
+          currentStage: stage,
+          criteriaCount,
+          weightsLength: weights.length,
+        },
+      });
+    }
+
+    return weights;
+  }
+
+  if (criteriaCount === 1) {
+    return [1];
+  }
+
+  if (WEIGHTS_OPTIONAL_STAGES.has(stage)) {
+    return null;
+  }
+
+  if (WEIGHTS_REQUIRED_STAGES.has(stage)) {
+    throw createInternalError("Issue is missing effective criteria weights", {
+      field: "modelParameters.weights",
+      details: {
+        issueId,
+        currentStage: stage,
+        criteriaCount,
+      },
+    });
+  }
+
+  throw createInternalError("Unsupported active issue stage", {
+    field: "currentStage",
+    details: {
+      issueId,
+      stage,
+    },
+  });
+};
 
 /**
  * Construye la vista de un issue activo y las tareas asociadas para el task center.
@@ -26,7 +96,6 @@ import {
  * @param {Array<Object>} params.issueParticipations Participaciones del issue.
  * @param {Array<Object>} params.issueAlternativeDocs Alternativas del issue.
  * @param {Array<Object>} params.issueCriteriaDocs Criterios del issue.
- * @param {number} params.savedPhasesCount Número de fases de consenso ya guardadas.
  * @param {Array<Object>} [params.consensusHistoryRounds] Historial de consenso desde colección Consensus.
  * @param {Object} params.dayjsLib Instancia de dayjs.
  * @returns {Object}
@@ -38,7 +107,6 @@ export const buildActiveIssueView = ({
   issueParticipations,
   issueAlternativeDocs,
   issueCriteriaDocs,
-  savedPhasesCount,
   consensusHistoryRounds,
   dayjsLib,
 }) => {
@@ -86,26 +154,47 @@ export const buildActiveIssueView = ({
     issueCriteriaDocs,
     issue
   );
+  const orderedLeafCriteriaWithDomain = orderDocsByIdList(
+    (Array.isArray(issueCriteriaDocs) ? issueCriteriaDocs : []).filter(
+      (criterion) => criterion?.isLeaf === true
+    ),
+    issue.leafCriteriaOrder
+  );
+  const expressionDomainConfig =
+    buildExpressionDomainConfigFromLeafCriteriaOrThrow({
+      leafCriteria: orderedLeafCriteriaWithDomain,
+      field: "expressionDomain",
+    });
 
-  const criteriaWeights = issue.modelParameters.weights;
+  const criteriaWeights = getEffectiveCriteriaWeightsForActiveView({
+    issue,
+    orderedLeafCriteria,
+    issueId,
+  });
 
   const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.id] = criteriaWeights[index];
+    acc[node.id] = criteriaWeights === null ? null : criteriaWeights[index];
     return acc;
   }, {});
 
   const criteriaWeightsByName = orderedLeafCriteria.reduce((acc, node, index) => {
-    acc[node.name] = criteriaWeights[index];
+    acc[node.name] = criteriaWeights === null ? null : criteriaWeights[index];
     return acc;
   }, {});
 
   decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 
-  const consensusCurrentPhase = savedPhasesCount + 1;
+  const consensusCurrentPhase = issue.consensusPhase;
 
   const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
   const stage = issue.currentStage;
-  const stageMeta = ACTIVE_STAGE_META[stage];
+  const uiStage = 
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
+    issue.isConsensus && issue.consensusPhase > 1
+      ? ALTERNATIVE_CONSENSUS_UI_STAGE
+      : stage;
+
+  const stageMeta = ACTIVE_STAGE_META[uiStage];
 
   if (!stageMeta) {
     throw createInternalError("Unsupported active issue stage", {
@@ -126,25 +215,25 @@ export const buildActiveIssueView = ({
   const waitingAdmin =
     !isAdminUser &&
     !hasPending &&
-    ((stage === "weightsFinished" && allWeightsDone) ||
-      (stage === "alternativeEvaluation" && allEvalsDone));
+    ((stage === ISSUE_STAGES.WEIGHTS_FINISHED && allWeightsDone) ||
+      (stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION && allEvalsDone));
 
   const canComputeWeights =
-    stage === "weightsFinished" &&
+    stage === ISSUE_STAGES.WEIGHTS_FINISHED &&
     isAdminUser &&
     !hasPending &&
     totalAccepted > 0 &&
     allWeightsDone;
 
   const canResolveIssue =
-    stage === "alternativeEvaluation" &&
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
     isAdminUser &&
     !hasPending &&
     totalAccepted > 0 &&
     allEvalsDone;
 
   const canEvaluateWeights =
-    stage === "criteriaWeighting" &&
+    stage === ISSUE_STAGES.CRITERIA_WEIGHTING &&
     isExpertAccepted &&
     acceptedParticipations.some(
       (participation) =>
@@ -153,7 +242,7 @@ export const buildActiveIssueView = ({
     );
 
   const canEvaluateAlternatives =
-    stage === "alternativeEvaluation" &&
+    stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
     isExpertAccepted &&
     acceptedParticipations.some(
       (participation) =>
@@ -162,13 +251,13 @@ export const buildActiveIssueView = ({
     );
 
   const waitingExperts =
-    (hasPending && stage !== "finished") ||
+    (hasPending && stage !== ISSUE_STAGES.FINISHED) ||
     (!waitingAdmin &&
       !canResolveIssue &&
       !canComputeWeights &&
       !canEvaluateWeights &&
       !canEvaluateAlternatives &&
-      stage !== "finished");
+      stage !== ISSUE_STAGES.FINISHED);
 
   const statusFlags = {
     canEvaluateWeights,
@@ -194,37 +283,34 @@ export const buildActiveIssueView = ({
   let statusLabel = stageMeta.label;
   let statusKey = stage;
 
-  if (stage !== "finished") {
+  if (stage !== ISSUE_STAGES.FINISHED) {
     if (waitingAdmin) {
-      statusLabel = "Waiting for admin";
-      statusKey = "waitingAdmin";
+      statusLabel = ACTIVE_STATUS_META.waitingAdmin.label;
+      statusKey = ACTIVE_STATUS_META.waitingAdmin.key;
     } else if (nextAction) {
       statusLabel = nextAction.label;
       statusKey = nextAction.key;
     } else {
-      statusLabel = "Waiting experts";
-      statusKey = "waitingExperts";
+      statusLabel = ACTIVE_STATUS_META.waitingExperts.label;
+      statusKey = ACTIVE_STATUS_META.waitingExperts.key;
     }
   }
 
-  const taskItems = actions
-    .filter((action) => ACTIVE_TASK_ACTION_KEYS.includes(action.key))
-    .filter((action) => !(action.role === "admin" && !isAdminUser))
-    .filter((action) => !(action.role === "expert" && !isExpertAccepted))
-    .map((action) => ({
-      issueId,
-      issueName: issue.name,
-      stage,
-      role: action.role,
-      severity: action.severity,
-      actionKey: action.key,
-      actionLabel: action.label,
-      sortPriority: action.sortPriority,
-      deadline,
-    }));
+  const taskItems = actions.map((action) => ({
+    issueId,
+    issueName: issue.name,
+    stage,
+    role: action.role,
+    severity: action.severity,
+    actionKey: action.key,
+    actionLabel: action.label,
+    sortPriority: action.sortPriority,
+    deadline,
+  }));
 
   const isWeightEvaluationStage =
-    stage === "criteriaWeighting" || stage === "weightsFinished";
+    stage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
+    stage === ISSUE_STAGES.WEIGHTS_FINISHED;
 
   let completedParticipations;
   let pendingEvaluationParticipations;
@@ -259,7 +345,6 @@ export const buildActiveIssueView = ({
   }
 
   const workflowSteps = buildActiveWorkflowSteps({
-    usesManualWeighting: issue.weightingMode === "manual",
     hasAlternativeConsensus: issue.isConsensus,
   });
 
@@ -271,12 +356,13 @@ export const buildActiveIssueView = ({
       creator: issue.admin.email,
       description: issue.description,
       model: issue.model,
-      evaluationStructure: issue.evaluationStructure,
+      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
       isConsensus: issue.isConsensus,
+      supportsConsensus: issue.supportsConsensus,
       currentStage: stage,
-      weightingMode: issue.weightingMode,
       ...(issue.isConsensus && {
-        consensusMaxPhases: issue.consensusMaxPhases || "Unlimited",
+        consensusMaxPhases: issue.consensusMaxPhases,
         consensusThreshold: issue.consensusThreshold,
         consensusCurrentPhase,
       }),
@@ -315,6 +401,7 @@ export const buildActiveIssueView = ({
       consensusHistory: consensusHistoryRounds,
       consensusRounds: consensusHistoryRounds,
       modelParameters: issue.modelParameters,
+      expressionDomainConfig,
       myParticipation: myParticipation
         ? {
           invitationStatus: myParticipation.invitationStatus,
@@ -326,13 +413,16 @@ export const buildActiveIssueView = ({
       actions,
       nextAction,
       ui: {
-        stage,
+        stage: uiStage,
         stageLabel: stageMeta.label,
         stageColorKey: stageMeta.colorKey,
         statusKey,
         statusLabel,
         deadline,
-        hasDirectWeights: issue.weightingMode === "manual",
+        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+        alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
+        hasCriteriaWeighting:
+          stage === ISSUE_STAGES.CRITERIA_WEIGHTING || stage === ISSUE_STAGES.WEIGHTS_FINISHED,
         hasAlternativeConsensus: issue.isConsensus,
         workflowSteps,
         permissions: {
@@ -341,7 +431,7 @@ export const buildActiveIssueView = ({
           computeWeights: canComputeWeights,
           resolveIssue: canResolveIssue,
           waitingAdmin,
-          waitingExperts: statusKey === "waitingExperts",
+          waitingExperts: statusKey === ACTIVE_STATUS_KEYS.WAITING_EXPERTS,
         },
         modelParameters: issue.modelParameters,
       },

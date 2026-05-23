@@ -1,8 +1,24 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
+
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import { resolveModelParameterAdapter } from "../../modelParameters";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+
+const isCriteriaWeightLikeParameter = (parameter) =>
+  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
+  parameter?.semanticRole === "criteriaWeights";
+
+export const getRenderableNormalModelParameters = (selectedModel) => {
+  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+
+  return parameters.filter((parameter) => {
+    if (!parameter?.key) return false;
+    if (isCriteriaWeightLikeParameter(parameter)) return false;
+    const { adapter, isSupported } = resolveModelParameterAdapter(parameter);
+    return Boolean(isSupported && adapter?.FieldComponent);
+  });
+};
 
 export const ModelParameters = ({
   selectedModel,
@@ -13,10 +29,6 @@ export const ModelParameters = ({
   setDefaultModelParams,
   handleDefaultChange,
   showValidationErrors = false,
-  weightingMode,
-  setWeightingMode,
-  bwmData,
-  setBwmData,
 }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const hasShownUnsupportedRef = useRef(false);
@@ -28,11 +40,17 @@ export const ModelParameters = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(allData?.criteria)]);
 
+  const renderableNormalParameters = useMemo(
+    () => getRenderableNormalModelParameters(selectedModel),
+    [selectedModel]
+  );
+
   const hasUnsupportedParameters = useMemo(
     () =>
       (selectedModel?.parameters || []).some((parameter) => {
+        if (isCriteriaWeightLikeParameter(parameter)) return false;
         const { isSupported } = resolveModelParameterAdapter(parameter);
-        return !isSupported;
+        return Boolean(parameter?.key) && !isSupported;
       }),
     [selectedModel?.parameters]
   );
@@ -67,24 +85,12 @@ export const ModelParameters = ({
       </Stack>
 
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
-        {(selectedModel?.parameters || []).map((parameter, index) => {
-          const paramKey = parameter?.key;
-          if (!paramKey) return null;
+        {renderableNormalParameters.map((parameter, index) => {
+          const paramKey = parameter.key;
 
           const paramLabel = parameter?.label || paramKey || "Parameter";
-          const { adapter, registryKey } = resolveModelParameterAdapter(parameter);
-          const FieldComponent = adapter?.FieldComponent || null;
-
-          if (!FieldComponent) {
-            return (
-              <Stack key={`${paramKey}-${index}`} spacing={1} sx={{ minWidth: 260 }}>
-                <Typography variant="body1">{paramLabel}:</Typography>
-                <Typography variant="caption" color="error">
-                  Unsupported parameter renderer for `{registryKey}`.
-                </Typography>
-              </Stack>
-            );
-          }
+          const { adapter } = resolveModelParameterAdapter(parameter);
+          const FieldComponent = adapter.FieldComponent;
 
           return (
             <Stack key={`${paramKey}-${index}`}>
@@ -97,10 +103,6 @@ export const ModelParameters = ({
                 defaultModelParams={defaultModelParams}
                 setDefaultModelParams={setDefaultModelParams}
                 leafCriteria={leafCriteria}
-                weightingMode={weightingMode}
-                setWeightingMode={setWeightingMode}
-                bwmData={bwmData}
-                setBwmData={setBwmData}
                 showValidationErrors={showValidationErrors}
               />
             </Stack>

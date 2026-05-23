@@ -1,19 +1,11 @@
-import { CriteriaWeightEvaluation } from "../../../models/CriteriaWeightEvaluation.js";
-import { Evaluation } from "../../../models/Evaluations.js";
 import { Issue } from "../../../models/Issues.js";
-import {
-  buildInitialCriteriaWeightEvaluationDocs,
-  resolveInitialIssueStage,
-} from "../weightEvaluations/weightEvaluation.initialDocs.js";
-import { normalizeSingleWeight } from "../weightEvaluations/weightEvaluation.shared.js";
 import { createIssueDomainSnapshots } from "../expressionDomains/issueDomainSnapshots.js";
 import { normalizeCreateIssueInput } from "./issueCreation.input.js";
 import { loadCreateIssueActorsAndModel } from "./issueCreation.context.js";
 import {
-  buildExpertAssignmentDomainMap,
+  resolveExpressionDomainConfigByLeafCriteriaOrThrow,
   loadAccessibleExpressionDomains,
 } from "./issueCreation.domains.js";
-import { buildIssueEvaluationDocsWithSnapshots } from "./issueCreation.evaluations.js";
 import { createIssueParticipationsAndNotifications } from "./issueCreation.participants.js";
 import {
   createCriteriaRecursively,
@@ -21,25 +13,86 @@ import {
 } from "./issueCreation.documents.js";
 import { compareNameId } from "../issue.ordering.js";
 import {
+  EVALUATION_STAGES,
+  getEvaluationStructureOrThrow,
+} from "../evaluations/index.js";
+import {
+  resolveIssueConsensusConfigOrThrow,
+} from "./issueCreation.model.js";
+import { resolveCriteriaWeightingConfigOrThrow } from "./issueCreation.criteriaWeights.js";
+import {
   createBadRequestError,
   createConflictError,
 } from "../../../utils/common/errors.js";
 import dayjs from "dayjs";
+import axios from "axios";
+
+const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
+  model,
+  domainDocs,
+}) => {
+  if (model?.usesFuzzyCriteriaWeights !== true) {
+    return null;
+  }
+
+  const linguisticDomains = (Array.isArray(domainDocs) ? domainDocs : []).filter(
+    (domain) => domain?.type === "linguistic"
+  );
+
+  if (linguisticDomains.length === 0) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require linguistic expression domains",
+      {
+        field: "expressionDomainConfig",
+      }
+    );
+  }
+
+  const valueCounts = new Set();
+
+  for (const domain of linguisticDomains) {
+    const valueCount = Number(domain?.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      throw createBadRequestError(
+        "Fuzzy criteria weights require a valid linguistic valueCount",
+        {
+          field: "expressionDomainConfig",
+        }
+      );
+    }
+
+    valueCounts.add(valueCount);
+  }
+
+  if (valueCounts.size !== 1) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require consistent linguistic valueCount across issue domains",
+      {
+        field: "expressionDomainConfig",
+      }
+    );
+  }
+
+  return Array.from(valueCounts)[0];
+};
 
 /**
- * Crea un nuevo issue con alternativas, criterios, snapshots,
- * participaciones y evaluaciones iniciales.
+ * Crea un nuevo issue con alternativas, criterios, snapshots y participaciones.
  *
  * @param {object} params Parámetros de entrada.
  * @param {Object} params.issueInfo Payload issueInfo recibido.
  * @param {string} params.adminUserId Id del usuario actual.
  * @param {Object} params.session Sesión de mongoose.
+ * @param {string} [params.apiModelsBaseUrl] Base URL del servicio ApiModels.
+ * @param {Object} [params.httpClient] Cliente HTTP compatible con axios.
  * @returns {Promise<Object>}
  */
 export const createIssueFlow = async ({
   issueInfo,
   adminUserId,
   session,
+  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+  httpClient = axios,
 }) => {
   const input = normalizeCreateIssueInput(issueInfo);
 
@@ -56,15 +109,11 @@ export const createIssueFlow = async ({
     model,
     admin,
     adminEmail,
-    expertUsers,
     expertByEmail,
-    modelEvaluationStructure,
-    modelLifecycleKind,
     apiModelKey,
     apiEndpoint,
-    apiInputFormat,
-    apiOutputFormat,
-    modelIsConsensus,
+    alternativeEvaluationStructureKey,
+    supportsConsensus: modelSupportsConsensus,
     modelFamilyKey,
     modelVersion,
     versionLabel,
@@ -72,8 +121,6 @@ export const createIssueFlow = async ({
   } = await loadCreateIssueActorsAndModel({
     adminUserId,
     selectedModelId: input.selectedModelId,
-    requestedWithConsensus: input.withConsensus,
-    weightingMode: input.weightingMode,
     paramValues: input.paramValues,
     criteriaNodes: input.criteria,
     alternativesCount: input.uniqueAlternativeNames.length,
@@ -81,20 +128,54 @@ export const createIssueFlow = async ({
     session,
   });
 
+  const baseModelParameters =
+    normalizedModelParameters &&
+    typeof normalizedModelParameters === "object" &&
+    !Array.isArray(normalizedModelParameters)
+      ? normalizedModelParameters
+      : {};
+
+  const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
+    alternativeEvaluationStructureKey
+  );
+
+  if (alternativeEvaluationStructure.stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    throw createBadRequestError(
+      `Evaluation structure '${alternativeEvaluationStructure.key}' does not support stage '${EVALUATION_STAGES.ALTERNATIVE_EVALUATION}'`,
+      {
+        code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
+        field: "alternativeEvaluationStructureKey",
+      }
+    );
+  }
+
+  const {
+    isConsensus,
+    consensusThreshold,
+    consensusMaxPhases,
+  } = resolveIssueConsensusConfigOrThrow({
+    supportsConsensus: modelSupportsConsensus,
+    consensusThreshold: input.consensusThreshold,
+    consensusMaxPhases: input.consensusMaxPhases,
+  });
+
   const issue = new Issue({
     admin: adminUserId,
     model: model._id,
     apiModelKey,
     apiEndpoint,
-    apiInputFormat,
-    apiOutputFormat,
     modelFamilyKey,
     modelVersion,
     versionLabel,
-    evaluationStructure: modelEvaluationStructure,
-    lifecycleKind: modelLifecycleKind,
+    criteriaWeightingStructureKey: null,
+    criteriaWeightingModel: null,
+    criteriaWeightingApiModelKey: null,
+    criteriaWeightingApiEndpoint: null,
+    criteriaWeightingParameters: {},
+    alternativeEvaluationStructureKey,
+    supportsConsensus: modelSupportsConsensus,
     consensusPhase: 1,
-    isConsensus: modelIsConsensus,
+    isConsensus,
     name: input.issueName,
     description: input.issueDescription,
     active: true,
@@ -102,13 +183,13 @@ export const createIssueFlow = async ({
     closureDate: input.closureDate
       ? dayjs(input.closureDate).format("DD-MM-YYYY")
       : null,
-    weightingMode: input.weightingMode,
-    currentStage: "criteriaWeighting",
-    ...(modelIsConsensus && {
-      consensusMaxPhases: input.consensusMaxPhases,
-      consensusThreshold: input.consensusThreshold,
-    }),
-    modelParameters: normalizedModelParameters,
+    currentStage:
+      model?.usesCriteriaWeights === true
+        ? EVALUATION_STAGES.CRITERIA_WEIGHTING
+        : EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    consensusMaxPhases,
+    consensusThreshold,
+    modelParameters: baseModelParameters,
   });
 
   await issue.save({ session });
@@ -133,6 +214,15 @@ export const createIssueFlow = async ({
     });
   }
 
+  if (model?.isMultiCriteria !== true && leafCriteria.length > 1) {
+    throw createBadRequestError(
+      "Selected model does not support multiple criteria",
+      {
+        field: "criteria",
+      }
+    );
+  }
+
   issue.alternativeOrder = createdAlternatives
     .slice()
     .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
@@ -143,25 +233,64 @@ export const createIssueFlow = async ({
     .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
     .map((criterion) => criterion._id);
 
-  const isSingleLeafCriterion = leafCriteria.length === 1;
+  const orderedLeafCriteria = leafCriteria
+    .slice()
+    .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id));
+  const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const isSingleLeafCriterion = criterionNames.length === 1;
 
-  issue.currentStage = resolveInitialIssueStage({
-    leafCriteriaCount: leafCriteria.length,
-    weightingMode: input.weightingMode,
+  const { usedDomainIds, domainIdByCriterionName } =
+    resolveExpressionDomainConfigByLeafCriteriaOrThrow({
+      expressionDomainConfig: input.expressionDomainConfig,
+      leafCriteria,
+    });
+
+  const domainDocs = await loadAccessibleExpressionDomains({
+    domainIdList: usedDomainIds,
+    userId: adminUserId,
+    modelSupportedDomains: model?.supportedDomains || null,
+    session,
   });
-  const isCriteriaWeightingRequired = issue.currentStage === "criteriaWeighting";
 
-  if (isSingleLeafCriterion) {
-    const previousParams = issue.modelParameters;
+  const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({
+    model,
+    domainDocs,
+  });
 
+  const resolvedCriteriaWeighting =
+    await resolveCriteriaWeightingConfigOrThrow({
+      criteriaWeightingConfig: input.criteriaWeightingConfig,
+      criteriaWeightingParameters: input.criteriaWeightingParameters,
+      criterionNames,
+      isSingleLeafCriterion,
+      model,
+      fuzzyValueCount: fuzzyCriteriaWeightValueCount,
+      apiModelsBaseUrl,
+      httpClient,
+      session,
+    });
+
+  issue.criteriaWeightingStructureKey =
+    resolvedCriteriaWeighting.criteriaWeightingStructureKey;
+  issue.criteriaWeightingModel =
+    resolvedCriteriaWeighting.criteriaWeightingModel?._id || null;
+  issue.criteriaWeightingApiModelKey =
+    resolvedCriteriaWeighting.criteriaWeightingApiModelKey || null;
+  issue.criteriaWeightingApiEndpoint =
+    resolvedCriteriaWeighting.criteriaWeightingApiEndpoint || null;
+  issue.criteriaWeightingParameters =
+    resolvedCriteriaWeighting.criteriaWeightingParameters || {};
+  issue.currentStage = resolvedCriteriaWeighting.currentStage;
+
+  if (Array.isArray(resolvedCriteriaWeighting.modelWeights)) {
     issue.modelParameters = {
-      ...previousParams,
-      weights:
-        previousParams.weights != null
-          ? normalizeSingleWeight(previousParams.weights)
-          : [1],
+      ...issue.modelParameters,
+      weights: resolvedCriteriaWeighting.modelWeights,
     };
   }
+
+  const isCriteriaWeightingRequired =
+    resolvedCriteriaWeighting.isCriteriaWeightingRequired === true;
 
   await issue.save({ session });
 
@@ -175,60 +304,43 @@ export const createIssueFlow = async ({
     session,
   });
 
-  const { usedDomainIds, sourceDomainByEvaluationKey } =
-    buildExpertAssignmentDomainMap({
-      uniqueExpertEmails: input.uniqueExpertEmails,
-      normalizedAssignmentsByExpert: input.normalizedAssignmentsByExpert,
-      expertByEmail,
-      createdAlternatives,
-      leafCriteria,
-      uniqueAlternativeNames: input.uniqueAlternativeNames,
-    });
-
-  const domainDocs = await loadAccessibleExpressionDomains({
-    domainIdList: usedDomainIds,
-    userId: adminUserId,
-    modelSupportedDomains: model?.supportedDomains || null,
-    session,
-  });
-
-  const snapshotMap = await createIssueDomainSnapshots({
+  const snapshotIdBySourceDomainId = await createIssueDomainSnapshots({
     issueId: issue._id,
     domainDocs,
     session,
   });
 
-  const evaluationDocs = buildIssueEvaluationDocsWithSnapshots({
-    issueId: issue._id,
-    expertUsers,
-    createdAlternatives,
-    leafCriteria,
-    modelEvaluationStructure,
-    sourceDomainByEvaluationKey,
-    snapshotMap,
-  });
+  for (const leafCriterion of leafCriteria) {
+    const criterionName = String(leafCriterion?.name || "").trim();
+    const sourceDomainId = domainIdByCriterionName.get(criterionName);
+    const snapshotId = snapshotIdBySourceDomainId.get(sourceDomainId);
 
-  if (evaluationDocs.length > 0) {
-    await Evaluation.insertMany(evaluationDocs, {
-      session,
-      ordered: true,
-    });
+    if (!snapshotId) {
+      throw createBadRequestError(
+        `Missing IssueExpressionDomain snapshot for criterion '${criterionName}'`,
+        {
+          field: "expressionDomainConfig",
+        }
+      );
+    }
+
+    leafCriterion.expressionDomain = snapshotId;
+    await leafCriterion.save({ session });
   }
 
-  const criteriaWeightDocs = buildInitialCriteriaWeightEvaluationDocs({
-    issueId: issue._id,
-    experts: expertUsers,
-    leafCriteria,
-    weightingMode: input.weightingMode,
-    consensusPhase: 1,
-    completed: false,
-  });
-
-  if (criteriaWeightDocs.length > 0) {
-    await CriteriaWeightEvaluation.insertMany(criteriaWeightDocs, {
-      session,
-      ordered: true,
-    });
+  const missingExpressionDomain = leafCriteria.find(
+    (leafCriterion) => !leafCriterion?.expressionDomain
+  );
+  if (missingExpressionDomain) {
+    throw createBadRequestError(
+      "Each leaf criterion must have an expression domain snapshot",
+      {
+        field: "expressionDomainConfig",
+        details: {
+          criterionName: String(missingExpressionDomain?.name || ""),
+        },
+      }
+    );
   }
 
   return {

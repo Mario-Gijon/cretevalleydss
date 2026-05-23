@@ -1,4 +1,4 @@
-import { Box, Button, MobileStepper, Stack } from "@mui/material";
+import { Box, Button, MobileStepper, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
@@ -8,6 +8,7 @@ import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
 import { AnalyticalScatterChart } from "../charts/AnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../charts/AnalyticalConsensusLineChart";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { normalizePlotsGraphic } from "../../utils/finishedIssueDialog.utils";
 
 /**
  * Seccion Graphs del dialogo de issue finalizado.
@@ -30,14 +31,45 @@ const GraphsSection = () => {
     resetZoom,
   } = graphsSection;
 
-  if (!viewIssue?.analyticalGraphs) return null;
+  if (!viewIssue) return null;
+
+  const preferredPlotsGraphic =
+    viewIssue?.analyticalGraphs?.plotsGraphic ??
+    viewIssue?.consensusDetails?.plotsGraphic ??
+    null;
+  const normalizedPlots = normalizePlotsGraphic(preferredPlotsGraphic);
+
+  const scatterPlotData =
+    viewIssue?.analyticalGraphs?.scatterPlot ||
+    (normalizedPlots?.isValid
+      ? [
+          {
+            expertPoints: normalizedPlots.expertPoints,
+            collectivePoint: normalizedPlots.collectivePoint,
+          },
+        ]
+      : null);
+
+  const hasConsensusLine = Boolean(
+    viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data?.length > 1
+  );
+
+  if (!scatterPlotData && !hasConsensusLine && !normalizedPlots?.reason) {
+    return (
+      <SectionCard title="Analytical graphs" icon={<AnalyticsIcon fontSize="small" />}>
+        <Typography variant="body2" color="text.secondary">
+          No analytical graph data available.
+        </Typography>
+      </SectionCard>
+    );
+  }
 
   return (
     <SectionCard
       title="Analytical graphs"
       icon={<AnalyticsIcon fontSize="small" />}
       right={
-        activeStep === 0 && viewIssue?.analyticalGraphs?.scatterPlot ? (
+        activeStep === 0 && scatterPlotData ? (
           <Button
             variant="outlined"
             color="secondary"
@@ -52,12 +84,35 @@ const GraphsSection = () => {
     >
       <Stack spacing={2} alignItems="center">
         <Box sx={{ width: "100%", height: { xs: 290, md: 520 } }}>
-          {activeStep === 0 && viewIssue?.analyticalGraphs?.scatterPlot ? (
+          {activeStep === 0 && scatterPlotData ? (
             <AnalyticalScatterChart
-              data={viewIssue.analyticalGraphs.scatterPlot}
+              data={scatterPlotData}
               phase={currentPhaseIndex}
               scatterPlotRef={scatterPlotRef}
             />
+          ) : null}
+
+          {activeStep === 0 && !scatterPlotData && normalizedPlots?.reason ? (
+            <Stack
+              sx={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                px: 2,
+                textAlign: "center",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {normalizedPlots.reason === "insufficient_variation_for_projection"
+                  ? "Analytical graph is unavailable because all expert inputs are equivalent."
+                  : normalizedPlots.reason === "insufficient_points_for_projection"
+                    ? "Analytical graph is unavailable because there are not enough points to project."
+                    : normalizedPlots.reason === "projection_failed"
+                      ? "Analytical graph projection failed for this result."
+                      : "No analytical graph data available."}
+              </Typography>
+            </Stack>
           ) : null}
 
           {activeStep === 1 && viewIssue?.analyticalGraphs?.consensusLevelLineChart ? (
@@ -68,7 +123,7 @@ const GraphsSection = () => {
           ) : null}
         </Box>
 
-        {viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data?.length > 1 ? (
+        {hasConsensusLine ? (
           <MobileStepper
             variant="dots"
             steps={2}
