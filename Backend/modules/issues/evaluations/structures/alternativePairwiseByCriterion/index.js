@@ -1,6 +1,5 @@
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import {
   createBadRequestError,
@@ -436,7 +435,7 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
 };
 
 export const alternativePairwiseByCriterionStructure = Object.freeze({
-  key: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION,
+  key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   async get({ storedEvaluation, issue }) {
     return buildGetPayload({

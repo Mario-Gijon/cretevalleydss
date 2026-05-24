@@ -27,7 +27,6 @@ import {
 } from "../../services/issueEvaluation.service";
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants";
 
 const buildPairKey = (altA, altB) => `${altA}::${altB}`;
@@ -325,7 +324,7 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
     () => ({
       issue,
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION,
+      structureKey: "alternativePairwiseByCriterion",
       alternatives,
       criteria: criterionNames,
       payload: evaluations,

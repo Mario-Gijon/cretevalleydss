@@ -1,72 +1,44 @@
-import { resolveModelParameterAdapter } from "./modelParameter.registry";
+import { buildInitialParameterValues, normalizeParameterValues } from "./parameterValues";
+import { resolveParameterStructure } from "./parameter.registry";
 import { buildEqualWeights } from "./fields/criteriaWeights/criteriaWeights.defaults";
 
 export { buildEqualWeights };
 
-const buildUnsupportedParameterError = (parameter, registryKey, reason) => {
-  if (!parameter?.key) {
-    return new Error("[modelParameters] Missing parameter.key.");
-  }
-  const parameterName = parameter.key;
-  return new Error(
-    `[modelParameters] ${reason} for parameter "${parameterName}" (${registryKey}).`
-  );
+export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria }) => {
+  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+  const context = {
+    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
+  };
+
+  return buildInitialParameterValues(parameters, context);
 };
 
-export const buildCreateIssueParameterDefaults = ({
-  selectedModel,
-  leafCriteria,
-}) => {
-  const defaults = {};
-  const leafCount = Array.isArray(leafCriteria) ? leafCriteria.length : 0;
+export const updateCreateIssueParameterValues = ({ previous, selectedModel, leafCriteria }) => {
+  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+  const context = {
+    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
+  };
 
-  (selectedModel?.parameters || []).forEach((parameter) => {
-    const key = parameter?.key;
-    if (!key) return;
-
-    const { adapter, registryKey, isSupported } = resolveModelParameterAdapter(parameter);
-
-    if (!isSupported || !adapter) {
-      throw buildUnsupportedParameterError(
-        parameter,
-        registryKey,
-        "Unsupported parameter adapter"
-      );
-    }
-
-    if (typeof adapter.buildDefault === "function") {
-      defaults[key] = adapter.buildDefault({ parameter, leafCount, leafCriteria });
-      return;
-    }
-
-    defaults[key] = parameter?.default;
-  });
-
-  return defaults;
-};
-
-export const updateCreateIssueParameterValues = ({
-  previous,
-  selectedModel,
-  leafCriteria,
-}) => {
   const next = { ...(previous || {}) };
-  const leafCount = Array.isArray(leafCriteria) ? leafCriteria.length : 0;
 
-  (selectedModel?.parameters || []).forEach((parameter) => {
-    const key = parameter?.key;
-    if (!key) return;
+  parameters.forEach((parameter) => {
+    const parameterKey = parameter?.key;
+    if (!parameterKey) return;
 
-    const { adapter } = resolveModelParameterAdapter(parameter);
-    if (!adapter?.updateValue) return;
-
-    next[key] = adapter.updateValue({
-      previousValue: next[key],
-      parameter,
-      leafCount,
-      leafCriteria,
-    });
+    const structure = resolveParameterStructure(parameter);
+    const currentValue = next[parameterKey];
+    if (currentValue === undefined) {
+      next[parameterKey] = structure.getInitialValue(parameter, context);
+    }
   });
 
   return next;
+};
+
+export const normalizeCreateIssueParameterValues = ({ selectedModel, values, leafCriteria }) => {
+  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+
+  return normalizeParameterValues(parameters, values, {
+    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
+  });
 };

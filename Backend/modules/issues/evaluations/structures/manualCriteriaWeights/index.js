@@ -1,6 +1,5 @@
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
@@ -144,7 +143,7 @@ const toWeightsByCriterionFromStoredPayload = (storedPayloadWeights, criterionNa
 };
 
 export const manualCriteriaWeightsStructure = Object.freeze({
-  key: EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS,
+  key: "manualCriteriaWeights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   async get({ storedEvaluation, issue }) {
     const { criterionNames } = await getOrderedCriterionNames({ issue });

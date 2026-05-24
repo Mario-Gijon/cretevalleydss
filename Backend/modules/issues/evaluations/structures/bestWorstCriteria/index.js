@@ -1,6 +1,5 @@
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
@@ -230,7 +229,7 @@ const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
 };
 
 export const bestWorstCriteriaStructure = Object.freeze({
-  key: EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA,
+  key: "bestWorstCriteria",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   async get({ storedEvaluation, issue }) {
     const { criterionNames } = await getOrderedCriterionNames({ issue });

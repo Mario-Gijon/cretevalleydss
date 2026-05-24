@@ -22,7 +22,6 @@ import {
 } from "../../services/issueEvaluation.service";
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants";
 
 const buildKey = (alternativeName, criterionName) => `${alternativeName}::${criterionName}`;
@@ -137,7 +136,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
     () => ({
       issue,
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      structureKey: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
+      structureKey: "alternativeCriteriaMatrix",
       alternatives,
       criteria: criterionNames,
       payload: evaluations,

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { resolveModelParameterAdapter } from "../../modelParameters";
-import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { ParameterFieldHost, resolveParameterStructure } from "../../modelParameters";
 
 const isCriteriaWeightLikeParameter = (parameter) =>
   ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
@@ -15,8 +14,9 @@ export const getRenderableNormalModelParameters = (selectedModel) => {
   return parameters.filter((parameter) => {
     if (!parameter?.key) return false;
     if (isCriteriaWeightLikeParameter(parameter)) return false;
-    const { adapter, isSupported } = resolveModelParameterAdapter(parameter);
-    return Boolean(isSupported && adapter?.FieldComponent);
+
+    resolveParameterStructure(parameter);
+    return true;
   });
 };
 
@@ -29,10 +29,8 @@ export const ModelParameters = ({
   setDefaultModelParams,
   handleDefaultChange,
   showValidationErrors = false,
+  parameterErrors = {},
 }) => {
-  const { showSnackbarAlert } = useSnackbarAlertContext();
-  const hasShownUnsupportedRef = useRef(false);
-
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
     return getLeafCriteria(allData.criteria);
@@ -44,27 +42,6 @@ export const ModelParameters = ({
     () => getRenderableNormalModelParameters(selectedModel),
     [selectedModel]
   );
-
-  const hasUnsupportedParameters = useMemo(
-    () =>
-      (selectedModel?.parameters || []).some((parameter) => {
-        if (isCriteriaWeightLikeParameter(parameter)) return false;
-        const { isSupported } = resolveModelParameterAdapter(parameter);
-        return Boolean(parameter?.key) && !isSupported;
-      }),
-    [selectedModel?.parameters]
-  );
-
-  useEffect(() => {
-    if (!hasUnsupportedParameters) {
-      hasShownUnsupportedRef.current = false;
-      return;
-    }
-
-    if (hasShownUnsupportedRef.current) return;
-    showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
-    hasShownUnsupportedRef.current = true;
-  }, [hasUnsupportedParameters, showSnackbarAlert]);
 
   return (
     <Stack spacing={2}>
@@ -86,24 +63,28 @@ export const ModelParameters = ({
 
       <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
         {renderableNormalParameters.map((parameter, index) => {
-          const paramKey = parameter.key;
-
-          const paramLabel = parameter?.label || paramKey || "Parameter";
-          const { adapter } = resolveModelParameterAdapter(parameter);
-          const FieldComponent = adapter.FieldComponent;
+          const parameterKey = parameter.key;
 
           return (
-            <Stack key={`${paramKey}-${index}`}>
-              <FieldComponent
+            <Stack key={`${parameterKey}-${index}`}>
+              <ParameterFieldHost
                 parameter={parameter}
-                paramKey={paramKey}
-                paramLabel={paramLabel}
-                paramValues={paramValues}
-                setParamValues={setParamValues}
-                defaultModelParams={defaultModelParams}
-                setDefaultModelParams={setDefaultModelParams}
-                leafCriteria={leafCriteria}
-                showValidationErrors={showValidationErrors}
+                value={paramValues?.[parameterKey]}
+                onChange={(nextValue) => {
+                  setParamValues((previous) => ({
+                    ...previous,
+                    [parameterKey]: nextValue,
+                  }));
+
+                  if (defaultModelParams) {
+                    setDefaultModelParams(false);
+                  }
+                }}
+                error={showValidationErrors ? parameterErrors?.[parameterKey] : ""}
+                disabled={false}
+                context={{
+                  leafCriteria,
+                }}
               />
             </Stack>
           );

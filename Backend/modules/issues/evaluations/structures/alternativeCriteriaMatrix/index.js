@@ -1,6 +1,5 @@
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../evaluation.constants.js";
 import {
   getOrderedAlternativeAndCriterionNames,
@@ -275,7 +274,7 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
 };
 
 export const alternativeCriteriaMatrixStructure = Object.freeze({
-  key: EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX,
+  key: "alternativeCriteriaMatrix",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   async get({ storedEvaluation, issue }) {
     return buildGetPayload({

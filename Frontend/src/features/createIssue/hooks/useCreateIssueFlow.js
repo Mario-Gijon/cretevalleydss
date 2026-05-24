@@ -12,6 +12,10 @@ import {
   validateIssueDescription,
   validateIssueName,
 } from "../utils/createIssue.utils";
+import {
+  normalizeParameterValues,
+  validateParameterValues,
+} from "../../modelParameters";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import {
   buildInitialExpressionDomainConfig,
@@ -36,6 +40,10 @@ const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_API_MODEL: "creatorApiModel",
   EXPERT_API_MODEL: "expertApiModel",
 });
+
+const isCriteriaWeightLikeParameter = (parameter) =>
+  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
+  parameter?.semanticRole === "criteriaWeights";
 
 
 const isPlainObject = (value) =>
@@ -348,6 +356,7 @@ export const useCreateIssueFlow = () => {
     storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7
   );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
+  const [parameterErrors, setParameterErrors] = useState({});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   const [hasAttemptedCreateIssue, setHasAttemptedCreateIssue] = useState(false);
   const [expressionDomainConfig, setExpressionDomainConfig] = useState(
@@ -447,9 +456,13 @@ export const useCreateIssueFlow = () => {
   }, [criteria, expressionDomains, globalDomains, selectedModel]);
 
   useEffect(() => {
-    setParamValues((previous) =>
-      updateParamValues(previous, selectedModel, getLeafCriteria(criteria))
-    );
+    try {
+      setParamValues((previous) =>
+        updateParamValues(previous, selectedModel, getLeafCriteria(criteria))
+      );
+    } catch {
+      showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
+    }
   }, [criteria, selectedModel]);
 
   useEffect(() => {
@@ -508,7 +521,10 @@ export const useCreateIssueFlow = () => {
     if (hasAttemptedCreateIssue) {
       setHasAttemptedCreateIssue(false);
     }
-  }, [hasAttemptedCreateIssue, paramValues]);
+    if (Object.keys(parameterErrors).length > 0) {
+      setParameterErrors({});
+    }
+  }, [hasAttemptedCreateIssue, paramValues, parameterErrors]);
 
   /**
    * Valida y actualiza el nombre del issue.
@@ -718,6 +734,20 @@ export const useCreateIssueFlow = () => {
 
     }
 
+    const parameters = (selectedModel?.parameters || []).filter(
+      (parameter) => parameter?.key && !isCriteriaWeightLikeParameter(parameter)
+    );
+
+    const nextParameterErrors = validateParameterValues(parameters, paramValues, {
+      leafCriteria,
+    });
+    if (Object.keys(nextParameterErrors).length > 0) {
+      setParameterErrors(nextParameterErrors);
+      showSnackbarAlert("Please correct model parameter values.", "error");
+      return;
+    }
+    setParameterErrors({});
+
     setLoading(true);
 
     const issueInfoPayload = { ...allData };
@@ -726,7 +756,10 @@ export const useCreateIssueFlow = () => {
       issueInfoPayload.consensusThreshold = normalizedConsensusThreshold;
       issueInfoPayload.consensusMaxPhases = normalizedConsensusMaxPhases;
     }
-    const sanitizedParamValues = Object.entries(issueInfoPayload.paramValues || {})
+    const normalizedParamValues = normalizeParameterValues(parameters, paramValues, {
+      leafCriteria,
+    });
+    const sanitizedParamValues = Object.entries(normalizedParamValues || {})
       .filter(([key]) => key !== "weights")
       .reduce((accumulator, [key, value]) => {
         accumulator[key] = value;
@@ -815,6 +848,7 @@ export const useCreateIssueFlow = () => {
     consensusMaxPhases,
     consensusThreshold,
     paramValues,
+    parameterErrors,
     defaultModelParams,
     hasAttemptedCreateIssue,
     expressionDomainConfig,
@@ -831,6 +865,7 @@ export const useCreateIssueFlow = () => {
     setConsensusMaxPhases,
     setConsensusThreshold,
     setParamValues,
+    setParameterErrors,
     setDefaultModelParams,
     setHasAttemptedCreateIssue,
     setExpressionDomainConfig,

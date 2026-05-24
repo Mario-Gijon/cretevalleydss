@@ -94,6 +94,7 @@ export const SummaryStep = () => {
     consensusThreshold,
     setConsensusThreshold,
     paramValues,
+    parameterErrors,
     setParamValues,
     defaultModelParams,
     setDefaultModelParams,
@@ -324,6 +325,7 @@ export const SummaryStep = () => {
                   setDefaultModelParams={setDefaultModelParams}
                   handleDefaultChange={handleDefaultChange}
                   showValidationErrors={hasAttemptedCreateIssue}
+                  parameterErrors={parameterErrors}
                 />
               </AccordionDetails>
             </Accordion>

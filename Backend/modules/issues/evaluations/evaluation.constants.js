@@ -11,17 +11,7 @@ export const EVALUATION_STAGES = Object.freeze({
 });
 
 
-export const EVALUATION_STRUCTURE_KEYS = Object.freeze({
-  ALTERNATIVE_CRITERIA_MATRIX: "alternativeCriteriaMatrix",
-  ALTERNATIVE_PAIRWISE_BY_CRITERION: "alternativePairwiseByCriterion",
-  MANUAL_CRITERIA_WEIGHTS: "manualCriteriaWeights",
-  BEST_WORST_CRITERIA: "bestWorstCriteria",
-});
-
 export const EVALUATION_STAGE_VALUES = Object.freeze(
   Object.values(EVALUATION_STAGES)
 );
 
-export const EVALUATION_STRUCTURE_KEY_VALUES = Object.freeze(
-  Object.values(EVALUATION_STRUCTURE_KEYS)
-);
