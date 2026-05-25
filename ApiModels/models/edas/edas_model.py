@@ -55,6 +55,8 @@ def run_edas(
         "matrix_used": matrix_clean.tolist(),
         "collective_scores": collective_scores,
         "collective_ranking": np.argsort(scores_np)[::-1].tolist(),
+        "a_s": collective_scores,
+        "weights_used": np.array(weights_clean, dtype=float).tolist(),
         "plots_graphic": get_plots_graphics_from_matrices(
             matrices_np,
             collective_matrix,
