@@ -26,7 +26,7 @@ const resolveLeafRows = ({ leafCriteria, leafNames }) => {
   if (rowsFromCriteria.length > 0) return rowsFromCriteria;
 
   return (Array.isArray(leafNames) ? leafNames : [])
-    .map((name, index) => {
+    .map((name) => {
       const normalizedName = String(name || "").trim();
       if (!normalizedName) return null;
 
