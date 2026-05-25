@@ -1,4 +1,5 @@
-import { Stack, TextField, Typography } from "@mui/material";
+import { Fragment } from "react";
+import { Box, Stack, TextField, Typography } from "@mui/material";
 import {
   formatScenarioWeightValue,
   modelUsesScenarioCriteriaWeights,
@@ -14,7 +15,6 @@ const labelSx = {
   fontWeight: 750,
   whiteSpace: "nowrap",
   lineHeight: 1,
-  minWidth: 120,
 };
 
 const textFieldSx = {
@@ -102,40 +102,51 @@ const ModelsSectionScenarioWeightsField = ({
         Criteria weights
       </Typography>
 
-      {rows.map((row, index) => (
-        <Stack key={row.key} direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" sx={labelSx}>
-            {row.name}:
-          </Typography>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "max-content max-content",
+          columnGap: 1,
+          rowGap: 0.75,
+          alignItems: "center",
+          width: "fit-content",
+        }}
+      >
+        {rows.map((row, index) => (
+          <Fragment key={row.key}>
+            <Typography variant="body2" sx={labelSx}>
+              {row.name}:
+            </Typography>
 
-          <TextField
-            type="text"
-            variant="outlined"
-            color="secondary"
-            size="small"
-            value={
-              typeof weights[index] === "string"
-                ? normalizeWeightInput(weights[index])
-                : weights[index] === "" || weights[index] == null
-                  ? ""
-                  : formatScenarioWeightValue(weights[index])
-            }
-            onChange={(event) => {
-              const next = [...weights];
-              next[index] = normalizeWeightInput(event.target.value);
-              setValues((previous) => ({
-                ...(previous || {}),
-                weights: next,
-              }));
-              if (onClearError) {
-                onClearError();
+            <TextField
+              type="text"
+              variant="outlined"
+              color="secondary"
+              size="small"
+              value={
+                typeof weights[index] === "string"
+                  ? normalizeWeightInput(weights[index])
+                  : weights[index] === "" || weights[index] == null
+                    ? ""
+                    : formatScenarioWeightValue(weights[index])
               }
-            }}
-            sx={textFieldSx}
-            error={Boolean(error)}
-          />
-        </Stack>
-      ))}
+              onChange={(event) => {
+                const next = [...weights];
+                next[index] = normalizeWeightInput(event.target.value);
+                setValues((previous) => ({
+                  ...(previous || {}),
+                  weights: next,
+                }));
+                if (onClearError) {
+                  onClearError();
+                }
+              }}
+              sx={textFieldSx}
+              error={Boolean(error)}
+            />
+          </Fragment>
+        ))}
+      </Box>
 
       {error ? (
         <Typography variant="caption" color="error">
