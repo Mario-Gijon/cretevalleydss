@@ -187,7 +187,8 @@ export const getRoundsCount = (issueInfo) => {
  */
 export const stripWeights = (obj) => {
   if (!obj || typeof obj !== "object") return {};
-  const { ...rest } = obj;
+  const { weights, ...rest } = obj;
+  void weights;
   return rest;
 };
 
@@ -201,7 +202,8 @@ export const stripWeightsDeep = (value) => stripWeights(value);
 
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
-  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey);
+  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey) &&
+  param?.semanticRole !== "criteriaWeights";
 
 export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
 
