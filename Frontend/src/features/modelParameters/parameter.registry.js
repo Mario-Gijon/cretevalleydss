@@ -1,46 +1,33 @@
-import { numberGlobalParameterStructure } from "./structures/numberGlobal";
-import { selectGlobalParameterStructure } from "./structures/selectGlobal";
-import { intervalGlobalParameterStructure } from "./structures/intervalGlobal";
+import NumberGlobalParameterField from "./fields/numberGlobal/NumberGlobalParameterField";
+import SelectGlobalParameterField from "./fields/selectGlobal/SelectGlobalParameterField";
+import IntervalGlobalParameterField from "./fields/intervalGlobal/IntervalGlobalParameterField";
 
-const STRUCTURES = [
-  numberGlobalParameterStructure,
-  selectGlobalParameterStructure,
-  intervalGlobalParameterStructure,
-];
+export const PARAMETER_FIELD_REGISTRY = Object.freeze({
+  numberGlobal: NumberGlobalParameterField,
+  selectGlobal: SelectGlobalParameterField,
+  intervalGlobal: IntervalGlobalParameterField,
+});
 
-export const PARAMETER_STRUCTURE_REGISTRY = Object.freeze(
-  STRUCTURES.reduce((accumulator, structure) => {
-    accumulator[structure.key] = structure;
-    return accumulator;
-  }, {})
-);
-
-export const resolveParameterStructureKey = (parameter) => {
-  if (typeof parameter?.parameterStructureKey !== "string") {
-    return null;
-  }
-
-  const normalized = parameter.parameterStructureKey.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-export const resolveParameterStructure = (parameter) => {
-  const structureKey = resolveParameterStructureKey(parameter);
+export const resolveParameterField = (parameter) => {
+  const parameterKey = parameter?.key || "unknown";
+  const structureKey =
+    typeof parameter?.parameterStructureKey === "string"
+      ? parameter.parameterStructureKey.trim()
+      : "";
 
   if (!structureKey) {
-    const parameterKey = parameter?.key || "unknown";
     throw new Error(
-      `[modelParameters] Missing parameter.parameterStructureKey for parameter "${parameterKey}".`
+      `[modelParameters] Missing parameterStructureKey for parameter "${parameterKey}".`
     );
   }
 
-  const structure = PARAMETER_STRUCTURE_REGISTRY[structureKey];
-  if (!structure) {
-    const parameterKey = parameter?.key || "unknown";
+  const FieldComponent = PARAMETER_FIELD_REGISTRY[structureKey];
+
+  if (!FieldComponent) {
     throw new Error(
-      `[modelParameters] Unsupported parameter structure "${structureKey}" for parameter "${parameterKey}".`
+      `[modelParameters] Unsupported parameterStructureKey "${structureKey}" for parameter "${parameterKey}".`
     );
   }
 
-  return structure;
+  return FieldComponent;
 };

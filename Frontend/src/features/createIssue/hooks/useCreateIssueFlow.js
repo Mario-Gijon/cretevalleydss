@@ -14,8 +14,7 @@ import {
 } from "../utils/createIssue.utils";
 import {
   getCreateIssueModelParameters,
-  normalizeParameterValues,
-  validateParameterValues,
+  pruneCreateIssueParameterValues,
 } from "../../modelParameters";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import {
@@ -352,9 +351,7 @@ export const useCreateIssueFlow = () => {
     storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7
   );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
-  const [parameterErrors, setParameterErrors] = useState({});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
-  const [hasAttemptedCreateIssue, setHasAttemptedCreateIssue] = useState(false);
   const [expressionDomainConfig, setExpressionDomainConfig] = useState(
     isPlainObject(storedData.expressionDomainConfig)
       ? storedData.expressionDomainConfig
@@ -427,7 +424,6 @@ export const useCreateIssueFlow = () => {
         return;
       }
       setDefaultModelParams(true);
-      setHasAttemptedCreateIssue(false);
       setCriteriaWeightingConfig(
         buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
       );
@@ -484,7 +480,7 @@ export const useCreateIssueFlow = () => {
       return;
     }
 
-    const parameterKeys = (selectedModel?.parameters || [])
+    const parameterKeys = getCreateIssueModelParameters(selectedModel)
       .map((parameter) => parameter?.key)
       .filter(Boolean);
 
@@ -512,15 +508,6 @@ export const useCreateIssueFlow = () => {
     paramValues,
     selectedModel,
   ]);
-
-  useEffect(() => {
-    if (hasAttemptedCreateIssue) {
-      setHasAttemptedCreateIssue(false);
-    }
-    if (Object.keys(parameterErrors).length > 0) {
-      setParameterErrors({});
-    }
-  }, [hasAttemptedCreateIssue, paramValues, parameterErrors]);
 
   /**
    * Valida y actualiza el nombre del issue.
@@ -608,7 +595,6 @@ export const useCreateIssueFlow = () => {
    * @returns {Promise<void>}
    */
   const handleComplete = async () => {
-    setHasAttemptedCreateIssue(true);
     handleClosureDateError();
 
     if (closureDateError) return;
@@ -730,18 +716,6 @@ export const useCreateIssueFlow = () => {
 
     }
 
-    const parameters = getCreateIssueModelParameters(selectedModel);
-
-    const nextParameterErrors = validateParameterValues(parameters, paramValues, {
-      leafCriteria,
-    });
-    if (Object.keys(nextParameterErrors).length > 0) {
-      setParameterErrors(nextParameterErrors);
-      showSnackbarAlert("Please correct model parameter values.", "error");
-      return;
-    }
-    setParameterErrors({});
-
     setLoading(true);
 
     const issueInfoPayload = { ...allData };
@@ -750,16 +724,10 @@ export const useCreateIssueFlow = () => {
       issueInfoPayload.consensusThreshold = normalizedConsensusThreshold;
       issueInfoPayload.consensusMaxPhases = normalizedConsensusMaxPhases;
     }
-    const normalizedParamValues = normalizeParameterValues(parameters, paramValues, {
-      leafCriteria,
+    issueInfoPayload.paramValues = pruneCreateIssueParameterValues({
+      selectedModel,
+      values: paramValues,
     });
-    const sanitizedParamValues = Object.entries(normalizedParamValues || {})
-      .filter(([key]) => key !== "weights")
-      .reduce((accumulator, [key, value]) => {
-        accumulator[key] = value;
-        return accumulator;
-      }, {});
-    issueInfoPayload.paramValues = sanitizedParamValues;
     issueInfoPayload.criteriaWeightingParameters =
       criteriaWeightingConfig?.criteriaWeightingParameters &&
       typeof criteriaWeightingConfig.criteriaWeightingParameters === "object" &&
@@ -842,9 +810,7 @@ export const useCreateIssueFlow = () => {
     consensusMaxPhases,
     consensusThreshold,
     paramValues,
-    parameterErrors,
     defaultModelParams,
-    hasAttemptedCreateIssue,
     expressionDomainConfig,
     criteriaWeightingConfig,
     allData,
@@ -859,9 +825,7 @@ export const useCreateIssueFlow = () => {
     setConsensusMaxPhases,
     setConsensusThreshold,
     setParamValues,
-    setParameterErrors,
     setDefaultModelParams,
-    setHasAttemptedCreateIssue,
     setExpressionDomainConfig,
     setCriteriaWeightingConfig,
     handleValidateIssueName,

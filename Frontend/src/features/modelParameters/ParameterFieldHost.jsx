@@ -1,4 +1,4 @@
-import { resolveParameterStructure } from "./parameter.registry";
+import { resolveParameterField } from "./parameter.registry";
 
 export const ParameterFieldHost = ({
   parameter,
@@ -8,11 +8,10 @@ export const ParameterFieldHost = ({
   disabled,
   context,
 }) => {
-  const structure = resolveParameterStructure(parameter);
-  const Component = structure.Component;
+  const FieldComponent = resolveParameterField(parameter);
 
   return (
-    <Component
+    <FieldComponent
       parameter={parameter}
       value={value}
       onChange={onChange}

@@ -1,5 +1,4 @@
 import { extractLeafCriteria } from "../../issueEvaluation/shared/leafCriteria.utils";
-import { getParameterExpectedLength } from "../../modelParameters";
 
 const countLeafCriteria = (nodes) => {
   if (!Array.isArray(nodes) || nodes.length === 0) return 0;
@@ -29,6 +28,12 @@ const normalizeNonEmptyString = (value) => {
   if (typeof value !== "string") return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
 };
 
 /**

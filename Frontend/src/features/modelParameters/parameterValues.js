@@ -1,41 +1,28 @@
-import { resolveParameterStructure } from "./parameter.registry";
+const normalizeParameters = (parameters) => (Array.isArray(parameters) ? parameters : []);
 
-const getParameterList = (parameters) => (Array.isArray(parameters) ? parameters : []);
+export const buildInitialParameterValues = (parameters) => {
+  const list = normalizeParameters(parameters);
 
-export const buildInitialParameterValues = (parameters, context = {}) => {
-  return getParameterList(parameters).reduce((accumulator, parameter) => {
-    const parameterKey = parameter?.key;
-    if (!parameterKey) return accumulator;
+  return list.reduce((accumulator, parameter) => {
+    const key = parameter?.key;
+    if (!key) return accumulator;
 
-    const structure = resolveParameterStructure(parameter);
-    accumulator[parameterKey] = structure.getInitialValue(parameter, context);
+    accumulator[key] = parameter?.default ?? "";
     return accumulator;
   }, {});
 };
 
-export const validateParameterValues = (parameters, values, context = {}) => {
-  return getParameterList(parameters).reduce((accumulator, parameter) => {
-    const parameterKey = parameter?.key;
-    if (!parameterKey) return accumulator;
+export const pruneParameterValues = (parameters, values) => {
+  const list = normalizeParameters(parameters);
+  const allowedKeys = new Set(list.map((parameter) => parameter?.key).filter(Boolean));
+  const source =
+    values && typeof values === "object" && !Array.isArray(values) ? values : {};
 
-    const structure = resolveParameterStructure(parameter);
-    const message = structure.validate(values?.[parameterKey], parameter, context);
-
-    if (typeof message === "string" && message.trim().length > 0) {
-      accumulator[parameterKey] = message;
+  return Object.entries(source).reduce((accumulator, [key, value]) => {
+    if (allowedKeys.has(key)) {
+      accumulator[key] = value;
     }
 
-    return accumulator;
-  }, {});
-};
-
-export const normalizeParameterValues = (parameters, values, context = {}) => {
-  return getParameterList(parameters).reduce((accumulator, parameter) => {
-    const parameterKey = parameter?.key;
-    if (!parameterKey) return accumulator;
-
-    const structure = resolveParameterStructure(parameter);
-    accumulator[parameterKey] = structure.normalize(values?.[parameterKey], parameter, context);
     return accumulator;
   }, {});
 };

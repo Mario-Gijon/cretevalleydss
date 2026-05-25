@@ -2,18 +2,10 @@ import { useMemo } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import {
-  getCreateIssueModelParameters,
-  ParameterFieldHost,
-  resolveParameterStructure,
-} from "../../modelParameters";
+import { getCreateIssueModelParameters, ParameterFieldHost } from "../../modelParameters";
 
-export const getRenderableNormalModelParameters = (selectedModel) => {
-  return getCreateIssueModelParameters(selectedModel).filter((parameter) => {
-    resolveParameterStructure(parameter);
-    return true;
-  });
-};
+export const getRenderableNormalModelParameters = (selectedModel) =>
+  getCreateIssueModelParameters(selectedModel);
 
 export const ModelParameters = ({
   selectedModel,
@@ -23,8 +15,6 @@ export const ModelParameters = ({
   defaultModelParams,
   setDefaultModelParams,
   handleDefaultChange,
-  showValidationErrors = false,
-  parameterErrors = {},
 }) => {
   const leafCriteria = useMemo(() => {
     if (!Array.isArray(allData?.criteria)) return [];
@@ -75,11 +65,8 @@ export const ModelParameters = ({
                     setDefaultModelParams(false);
                   }
                 }}
-                error={showValidationErrors ? parameterErrors?.[parameterKey] : ""}
                 disabled={false}
-                context={{
-                  leafCriteria,
-                }}
+                context={{ leafCriteria }}
               />
             </Stack>
           );

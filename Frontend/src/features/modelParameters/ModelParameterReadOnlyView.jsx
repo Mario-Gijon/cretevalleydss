@@ -1,11 +1,10 @@
 import { Chip, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { resolveModelParameterAdapter, getParameterExpectedLength } from "./modelParameter.registry";
 
 const formatNumber = (value, digits = 2) => {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return String(value ?? "—");
-  return n.toFixed(digits);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return String(value ?? "—");
+  return parsed.toFixed(digits);
 };
 
 const criterionLabel = (leafNames, index) => leafNames?.[index] || `Criterion ${index + 1}`;
@@ -20,7 +19,18 @@ const fallbackString = (value) => {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
+};
+
+export const ModelParameterReadOnlyView = ({
+  parameter,
+  value,
+  leafNames,
+  leafCriteria,
+}) => {
   const theme = useTheme();
   const shown = value ?? parameter?.default;
   const type = parameter?.type;
@@ -34,50 +44,71 @@ const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
   }
 
   if (type === "interval" && Array.isArray(shown) && shown.length >= 2) {
-    return <Typography variant="body2" sx={{ fontWeight: 850 }}>{`${formatNumber(shown[0])} → ${formatNumber(shown[1])}`}</Typography>;
+    return (
+      <Typography variant="body2" sx={{ fontWeight: 850 }}>
+        {`${formatNumber(shown[0])} → ${formatNumber(shown[1])}`}
+      </Typography>
+    );
   }
 
-  if (type === "array" && Array.isArray(shown)) {
+  if ((type === "array" || type === "fuzzyArray") && Array.isArray(shown)) {
     const expected = getParameterExpectedLength(parameter, leafNames?.length || 0);
     const perCriterion = Number.isInteger(expected) && expected === shown.length && Array.isArray(leafNames);
+
     if (perCriterion) {
       return (
         <Stack spacing={0.4}>
-          {shown.map((item, idx) => (
-            <Stack key={idx} direction="row" spacing={1} alignItems="center">
-              <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 120 }}>{criterionLabel(leafNames, idx)}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 800 }}>{formatNumber(item)}</Typography>
+          {shown.map((item, index) => (
+            <Stack key={index} direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 120 }}>
+                {criterionLabel(leafNames, index)}
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                {type === "fuzzyArray" && Array.isArray(item)
+                  ? `l ${formatNumber(item[0])} · m ${formatNumber(item[1])} · u ${formatNumber(item[2])}`
+                  : formatNumber(item)}
+              </Typography>
             </Stack>
           ))}
         </Stack>
       );
     }
+
+    if (type === "fuzzyArray") {
+      return (
+        <Stack spacing={0.6}>
+          {shown.map((tri, index) => {
+            const text = Array.isArray(tri)
+              ? `l ${formatNumber(tri[0])} · m ${formatNumber(tri[1])} · u ${formatNumber(tri[2])}`
+              : fallbackString(tri);
+            return (
+              <Stack
+                key={index}
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{
+                  p: 0.6,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.background.paper, 0.08),
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                  {text}
+                </Typography>
+              </Stack>
+            );
+          })}
+        </Stack>
+      );
+    }
+
     return (
       <Stack direction="row" flexWrap="wrap" gap={0.75}>
-        {shown.map((item, idx) => <Chip key={idx} size="small" label={formatNumber(item)} />)}
-      </Stack>
-    );
-  }
-
-  if (type === "fuzzyArray" && Array.isArray(shown)) {
-    const expected = getParameterExpectedLength(parameter, leafNames?.length || 0);
-    const perCriterion = Number.isInteger(expected) && expected === shown.length && Array.isArray(leafNames);
-    return (
-      <Stack spacing={0.6}>
-        {shown.map((tri, idx) => {
-          const text = Array.isArray(tri) ? `l ${formatNumber(tri[0])} · m ${formatNumber(tri[1])} · u ${formatNumber(tri[2])}` : fallbackString(tri);
-          return (
-            <Stack key={idx} direction="row" spacing={1} alignItems="center" sx={{
-              p: 0.6,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.background.paper, 0.08),
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}>
-              {perCriterion ? <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 120 }}>{criterionLabel(leafNames, idx)}</Typography> : null}
-              <Typography variant="body2" sx={{ fontWeight: 800 }}>{text}</Typography>
-            </Stack>
-          );
-        })}
+        {shown.map((item, index) => (
+          <Chip key={index} size="small" label={formatNumber(item)} />
+        ))}
       </Stack>
     );
   }
@@ -88,9 +119,7 @@ const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
       ? leafCriteria
           .map((criterion, index) => {
             const id = String(criterion?.id || criterion?._id || "").trim();
-            const name =
-              String(criterion?.name || "").trim() ||
-              `Criterion ${index + 1}`;
+            const name = String(criterion?.name || "").trim() || `Criterion ${index + 1}`;
             if (!id) return null;
             return { id, name };
           })
@@ -101,9 +130,7 @@ const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
     const orderedEntries = [];
 
     normalizedLeafCriteria.forEach((criterion) => {
-      if (!byKey.has(criterion.id)) {
-        return;
-      }
+      if (!byKey.has(criterion.id)) return;
       orderedEntries.push([criterion.name, byKey.get(criterion.id)]);
       byKey.delete(criterion.id);
     });
@@ -133,36 +160,6 @@ const GenericView = ({ parameter, value, leafNames, leafCriteria }) => {
   }
 
   return <Typography variant="body2" sx={{ fontWeight: 850 }}>{fallbackString(shown)}</Typography>;
-};
-
-export const ModelParameterReadOnlyView = ({
-  parameter,
-  value,
-  leafNames,
-  leafCriteria,
-}) => {
-  const { handler } = resolveModelParameterAdapter(parameter);
-  const ViewComponent = handler?.ViewComponent;
-
-  if (ViewComponent) {
-    return (
-      <ViewComponent
-        parameter={parameter}
-        value={value}
-        leafNames={leafNames}
-        leafCriteria={leafCriteria}
-      />
-    );
-  }
-
-  return (
-    <GenericView
-      parameter={parameter}
-      value={value}
-      leafNames={leafNames}
-      leafCriteria={leafCriteria}
-    />
-  );
 };
 
 export default ModelParameterReadOnlyView;

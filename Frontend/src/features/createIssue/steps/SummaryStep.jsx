@@ -94,12 +94,9 @@ export const SummaryStep = () => {
     consensusThreshold,
     setConsensusThreshold,
     paramValues,
-    parameterErrors,
     setParamValues,
     defaultModelParams,
     setDefaultModelParams,
-    hasAttemptedCreateIssue,
-    setHasAttemptedCreateIssue,
     setCriteriaWeightingConfig,
   } = useCreateIssueContext();
 
@@ -148,7 +145,6 @@ export const SummaryStep = () => {
       buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
     );
     setDefaultModelParams(true);
-    setHasAttemptedCreateIssue(false);
   };
 
   if (
@@ -324,8 +320,6 @@ export const SummaryStep = () => {
                   defaultModelParams={defaultModelParams}
                   setDefaultModelParams={setDefaultModelParams}
                   handleDefaultChange={handleDefaultChange}
-                  showValidationErrors={hasAttemptedCreateIssue}
-                  parameterErrors={parameterErrors}
                 />
               </AccordionDetails>
             </Accordion>

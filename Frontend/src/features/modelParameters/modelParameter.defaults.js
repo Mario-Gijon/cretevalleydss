@@ -1,45 +1,28 @@
 import { getCreateIssueModelParameters } from "./modelParameter.filters";
-import { buildInitialParameterValues, normalizeParameterValues } from "./parameterValues";
-import { resolveParameterStructure } from "./parameter.registry";
-import { buildEqualWeights } from "./fields/criteriaWeights/criteriaWeights.defaults";
+import { buildInitialParameterValues, pruneParameterValues } from "./parameterValues";
 
-export { buildEqualWeights };
-
-export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria }) => {
+export const buildCreateIssueParameterDefaults = ({ selectedModel }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
-  const context = {
-    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
-  };
-
-  return buildInitialParameterValues(parameters, context);
+  return buildInitialParameterValues(parameters);
 };
 
-export const updateCreateIssueParameterValues = ({ previous, selectedModel, leafCriteria }) => {
+export const updateCreateIssueParameterValues = ({ previous, selectedModel }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
-  const context = {
-    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
-  };
-
   const next = { ...(previous || {}) };
 
   parameters.forEach((parameter) => {
-    const parameterKey = parameter?.key;
-    if (!parameterKey) return;
+    const key = parameter?.key;
+    if (!key) return;
 
-    const structure = resolveParameterStructure(parameter);
-    const currentValue = next[parameterKey];
-    if (currentValue === undefined) {
-      next[parameterKey] = structure.getInitialValue(parameter, context);
+    if (next[key] === undefined) {
+      next[key] = parameter?.default ?? "";
     }
   });
 
   return next;
 };
 
-export const normalizeCreateIssueParameterValues = ({ selectedModel, values, leafCriteria }) => {
+export const pruneCreateIssueParameterValues = ({ selectedModel, values }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
-
-  return normalizeParameterValues(parameters, values, {
-    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
-  });
+  return pruneParameterValues(parameters, values);
 };

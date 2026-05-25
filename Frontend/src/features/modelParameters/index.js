@@ -1,46 +1,25 @@
 export {
-  MODEL_PARAMETER_STRUCTURE_REGISTRY,
-  MODEL_PARAMETER_ADAPTER_REGISTRY,
-} from "./modelParameter.adapters";
-
-export {
-  getParameterStructureKey,
-  getParameterExpectedLength,
-  resolveModelParameterStructure,
-  resolveModelParameterAdapter,
-} from "./modelParameter.registry";
-
-export {
   isCriteriaWeightLikeParameter,
   getCreateIssueModelParameters,
 } from "./modelParameter.filters";
 
 export {
-  PARAMETER_STRUCTURE_REGISTRY,
-  resolveParameterStructureKey,
-  resolveParameterStructure,
+  PARAMETER_FIELD_REGISTRY,
+  resolveParameterField,
 } from "./parameter.registry";
 
 export { ParameterFieldHost } from "./ParameterFieldHost";
 
 export {
   buildInitialParameterValues,
-  validateParameterValues,
-  normalizeParameterValues,
+  pruneParameterValues,
 } from "./parameterValues";
 
 export {
-  buildEqualWeights,
   buildCreateIssueParameterDefaults,
   updateCreateIssueParameterValues,
-  normalizeCreateIssueParameterValues,
+  pruneCreateIssueParameterValues,
 } from "./modelParameter.defaults";
 
-export {
-  CRITERIA_WEIGHTS_SUM_TOLERANCE,
-  validateModelParameterValue,
-  validateCriteriaWeightsValue,
-  validateCriteriaWeightsParameterValue,
-} from "./modelParameter.validation";
-
+export { ModelParameterReadOnlyView } from "./ModelParameterReadOnlyView";
 export { IssueModelParametersView } from "./IssueModelParametersView";
