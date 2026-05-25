@@ -1,25 +1,19 @@
 export {
   isCriteriaWeightLikeParameter,
   getCreateIssueModelParameters,
-} from "./modelParameter.filters";
+  buildCreateIssueParameterDefaults,
+  updateCreateIssueParameterValues,
+  pruneCreateIssueParameterValues,
+} from "./modelParameter.helpers";
 
 export {
   PARAMETER_FIELD_REGISTRY,
+  resolveParameterFieldEntry,
   resolveParameterField,
 } from "./parameter.registry";
 
 export { ParameterFieldHost } from "./ParameterFieldHost";
-
-export {
-  buildInitialParameterValues,
-  pruneParameterValues,
-} from "./parameterValues";
-
-export {
-  buildCreateIssueParameterDefaults,
-  updateCreateIssueParameterValues,
-  pruneCreateIssueParameterValues,
-} from "./modelParameter.defaults";
+export { ParameterReadOnlyHost } from "./ParameterReadOnlyHost";
 
 export { ModelParameterReadOnlyView } from "./ModelParameterReadOnlyView";
 export { IssueModelParametersView } from "./IssueModelParametersView";

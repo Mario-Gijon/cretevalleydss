@@ -50,28 +50,6 @@ const ParamRow = ({ name, children }) => {
 };
 
 const RawValueView = ({ paramKey, value, leafNames }) => {
-  const canMapWeightsByCriterion =
-    paramKey === "weights" &&
-    Array.isArray(value) &&
-    Array.isArray(leafNames) &&
-    leafNames.length > 0 &&
-    value.length === leafNames.length;
-
-  if (canMapWeightsByCriterion) {
-    return (
-      <ModelParameterReadOnlyView
-        parameter={{
-          key: "weights",
-          label: "weights",
-          type: "array",
-          scope: "perCriterion",
-        }}
-        value={value}
-        leafNames={leafNames}
-      />
-    );
-  }
-
   if (Array.isArray(value)) {
     return (
       <Stack direction="row" flexWrap="wrap" gap={0.75}>

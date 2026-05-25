@@ -1,26 +1,24 @@
 import { resolveParameterFieldEntry } from "./parameter.registry";
 
-export const ParameterFieldHost = ({
+export const ParameterReadOnlyHost = ({
   parameter,
   value,
-  onChange,
-  error,
-  disabled,
+  leafNames,
+  leafCriteria,
   context,
 }) => {
   const entry = resolveParameterFieldEntry(parameter);
-  const FieldComponent = entry.FieldComponent;
+  const ReadOnlyComponent = entry.ReadOnlyComponent;
 
   return (
-    <FieldComponent
+    <ReadOnlyComponent
       parameter={parameter}
       value={value}
-      onChange={onChange}
-      error={error}
-      disabled={disabled}
+      leafNames={leafNames}
+      leafCriteria={leafCriteria}
       context={context}
     />
   );
 };
 
-export default ParameterFieldHost;
+export default ParameterReadOnlyHost;
