@@ -33,7 +33,21 @@ const WEIGHTS_REQUIRED_STAGES = new Set([
   ISSUE_STAGES.FINISHED,
 ]);
 
-const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, issueId }) => {
+const issueUsesEffectiveCriteriaWeights = (issue) => {
+  const modelUsesCriteriaWeights = issue?.model?.usesCriteriaWeights;
+  if (typeof modelUsesCriteriaWeights === "boolean") {
+    return modelUsesCriteriaWeights;
+  }
+
+  return true;
+};
+
+const getEffectiveCriteriaWeightsForActiveView = ({
+  issue,
+  orderedLeafCriteria,
+  issueId,
+  requiresEffectiveCriteriaWeights,
+}) => {
   const criteriaCount = orderedLeafCriteria.length;
   const stage = issue.currentStage;
   const weights = issue.modelParameters?.weights;
@@ -56,6 +70,10 @@ const getEffectiveCriteriaWeightsForActiveView = ({ issue, orderedLeafCriteria, 
     }
 
     return weights;
+  }
+
+  if (!requiresEffectiveCriteriaWeights) {
+    return null;
   }
 
   if (criteriaCount === 1) {
@@ -170,6 +188,7 @@ export const buildActiveIssueView = ({
     issue,
     orderedLeafCriteria,
     issueId,
+    requiresEffectiveCriteriaWeights: issueUsesEffectiveCriteriaWeights(issue),
   });
 
   const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {

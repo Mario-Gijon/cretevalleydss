@@ -141,6 +141,29 @@ export const useFinishedIssueRatingsView = ({
     return weights;
   }, [viewIssue]);
 
+  const shouldShowExpertWeights = useMemo(() => {
+    if (finalCriteriaWeights?.source === "criteriaWeightingStageResult") {
+      return true;
+    }
+
+    const byExpert = phaseRatings?.criteriaWeightsEvaluationByExpert;
+    if (!byExpert || typeof byExpert !== "object") {
+      return false;
+    }
+
+    const entries = Object.values(byExpert).filter(
+      (entry) => entry && typeof entry === "object"
+    );
+    if (entries.length === 0) {
+      return false;
+    }
+
+    return entries.some(
+      (entry) =>
+        typeof entry?.status === "string" && entry.status !== "notRequired"
+    );
+  }, [finalCriteriaWeights, phaseRatings]);
+
   const collectiveEvaluations = useMemo(() => {
     if (!phaseRatings || !showCollective) {
       return null;
@@ -203,6 +226,7 @@ export const useFinishedIssueRatingsView = ({
     evaluations,
     criteriaWeightsEvaluation,
     finalCriteriaWeights,
+    shouldShowExpertWeights,
     collectiveEvaluations,
     unsupportedEvaluationStructure,
   };

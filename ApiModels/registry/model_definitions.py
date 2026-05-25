@@ -23,6 +23,7 @@ from services.model_executors.fuzzy_topsis import execute_fuzzy_topsis
 from services.model_executors.herrera_viedma_crp import execute_herrera_viedma
 from services.model_executors.marcos import execute_marcos
 from services.model_executors.topsis import execute_topsis
+from services.model_executors.promethee_vi import execute_promethee_vi
 
 from registry.response_examples import (
     HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
@@ -33,6 +34,7 @@ from registry.response_examples import (
     FUZZY_TOPSIS_RESPONSE_EXAMPLES,
     BWM_RESPONSE_EXAMPLES,
     CMCC_RESPONSE_EXAMPLES,
+    PROMETHEE_VI_RESPONSE_EXAMPLES,
 )
 
 
@@ -86,7 +88,10 @@ class ModelDefinition:
                 "alternative_evaluation_structure_key for issue models."
             )
 
-        if self.is_criteria_weighting_model and not self.criteria_weighting_structure_key:
+        if (
+            self.is_criteria_weighting_model
+            and not self.criteria_weighting_structure_key
+        ):
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "criteria_weighting_structure_key for criteria weighting models."
@@ -348,6 +353,147 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
+    ),
+    ModelDefinition(
+        api_model_key="promethee_vi",
+        api_endpoint_path="/promethee_vi",
+        request_model=GenericModelExecutionRequest,
+        handler=execute_promethee_vi,
+        summary="Execute PROMETHEE VI",
+        description=(
+            "Executes PROMETHEE VI using aggregated expert evaluations, "
+            "criterion-level preference thresholds and interval weight bounds."
+        ),
+        small_description=(
+            "Outranking MCDM method based on preference functions, thresholds "
+            "and lower/upper criterion weight bounds."
+        ),
+        extend_description=(
+            "PROMETHEE VI ranks alternatives using criterion-level preference "
+            "functions, indifference/preference thresholds and interval weights. "
+            "It is useful when exact criteria weights are not fixed but lower and "
+            "upper bounds are known."
+        ),
+        operation_id="executePrometheeVi",
+        response_examples=PROMETHEE_VI_RESPONSE_EXAMPLES,
+        display_name="PROMETHEE VI",
+        model_version="1.0.0",
+        version_label="v1",
+        more_info_url=None,
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        supports_consensus=False,
+        is_multi_criteria=True,
+        uses_criteria_weights=False,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
+        supported_domains=["numericContinuous", "numericDiscrete"],
+        parameters=[
+            {
+                "key": "q",
+                "label": "Q thresholds",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "numberCriterion",
+                "required": True,
+                "default": 0.05,
+                "restrictions": {
+                    "valueType": "number",
+                    "requiredForEachCriterion": True,
+                    "min": 0,
+                    "max": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "key": "s",
+                "label": "S thresholds",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "numberCriterion",
+                "required": True,
+                "default": 0.10,
+                "restrictions": {
+                    "valueType": "number",
+                    "requiredForEachCriterion": True,
+                    "min": 0,
+                    "max": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "key": "p",
+                "label": "P thresholds",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "numberCriterion",
+                "required": True,
+                "default": 0.20,
+                "restrictions": {
+                    "valueType": "number",
+                    "requiredForEachCriterion": True,
+                    "min": 0,
+                    "max": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "key": "f",
+                "label": "Preference functions",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "selectCriterion",
+                "required": True,
+                "default": "t5",
+                "restrictions": {
+                    "valueType": "enum",
+                    "requiredForEachCriterion": True,
+                    "allowed": ["t1", "t2", "t3", "t4", "t5", "t6", "t7"],
+                },
+            },
+            {
+                "key": "w_lower",
+                "label": "Lower weight bounds",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "numberCriterion",
+                "required": True,
+                "default": 1,
+                "restrictions": {
+                    "valueType": "number",
+                    "requiredForEachCriterion": True,
+                    "min": 0,
+                    "max": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "key": "w_upper",
+                "label": "Upper weight bounds",
+                "type": "criterionMap",
+                "scope": "perCriterion",
+                "parameterStructureKey": "numberCriterion",
+                "required": True,
+                "default": 1,
+                "restrictions": {
+                    "valueType": "number",
+                    "requiredForEachCriterion": True,
+                    "min": 0,
+                    "max": None,
+                    "allowed": None,
+                },
+            },
+            {
+                "key": "iterations",
+                "label": "Iterations",
+                "type": "integer",
+                "valueType": "integer",
+                "scope": "global",
+                "parameterStructureKey": "numberGlobal",
+                "required": True,
+                "default": 1000,
+                "restrictions": {"min": 1, "max": None, "allowed": None},
+            },
+        ],
     ),
     ModelDefinition(
         api_model_key="bwm",

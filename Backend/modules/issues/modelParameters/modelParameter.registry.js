@@ -25,6 +25,8 @@ export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
   ["criteriaWeights", validateAndNormalizeCriteriaWeightsParameter],
   ["fuzzyCriteriaWeights", validateAndNormalizeFuzzyCriteriaWeightsParameter],
   ["criterionMap", validateAndNormalizeCriterionMapParameter],
+  ["numberCriterion", validateAndNormalizeCriterionMapParameter],
+  ["selectCriterion", validateAndNormalizeCriterionMapParameter],
 ]);
 
 export const resolveParameterStructureKey = (parameter) => {

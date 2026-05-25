@@ -46,12 +46,12 @@ export const ModelParameters = ({
         </ToggleButton>
       </Stack>
 
-      <Stack gap={3} direction={{ xs: "column", md: "row" }} flexWrap="wrap">
+      <Stack spacing={2} sx={{ width: "100%" }}>
         {renderableNormalParameters.map((parameter, index) => {
           const parameterKey = parameter.key;
 
           return (
-            <Stack key={`${parameterKey}-${index}`}>
+            <Stack key={`${parameterKey}-${index}`} sx={{ minWidth: 0 }}>
               <ParameterFieldHost
                 parameter={parameter}
                 value={paramValues?.[parameterKey]}

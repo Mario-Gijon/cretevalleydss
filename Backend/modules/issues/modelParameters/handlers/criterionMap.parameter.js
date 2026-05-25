@@ -11,25 +11,38 @@ const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 const buildLeafCriterionIndex = (leafCriteria) => {
-  const allowedCriterionIds = new Set();
-  const criterionNameById = new Map();
+  const allowedCriterionKeys = new Set();
+  const criterionNameByCanonical = new Map();
+  const canonicalByInputKey = new Map();
   const canonicalByCriterion = [];
 
   for (const criterion of leafCriteria) {
     const criterionId = normalizeNonEmptyString(criterion?.id);
+    const criterionObjectId = normalizeNonEmptyString(criterion?._id);
+    const criterionKey = normalizeNonEmptyString(criterion?.key);
     const criterionName = normalizeNonEmptyString(criterion?.name);
-    if (!criterionId) {
+    const canonicalKey = criterionId || criterionObjectId || criterionKey || criterionName;
+    if (!canonicalKey) {
       continue;
     }
 
-    canonicalByCriterion.push(criterionId);
-    allowedCriterionIds.add(criterionId);
-    criterionNameById.set(criterionId, criterionName || criterionId);
+    const aliases = [criterionId, criterionObjectId, criterionKey, criterionName].filter(
+      Boolean
+    );
+
+    canonicalByCriterion.push(canonicalKey);
+    criterionNameByCanonical.set(canonicalKey, criterionName || canonicalKey);
+
+    for (const alias of aliases) {
+      allowedCriterionKeys.add(alias);
+      canonicalByInputKey.set(alias, canonicalKey);
+    }
   }
 
   return {
-    allowedCriterionIds,
-    criterionNameById,
+    allowedCriterionKeys,
+    criterionNameByCanonical,
+    canonicalByInputKey,
     canonicalByCriterion,
   };
 };
@@ -105,11 +118,17 @@ const normalizeCriterionMapValue = ({ rawValue, valueType, restrictions }) => {
   return toInvalid(`uses unsupported restrictions.valueType '${valueType}'`, rawValue);
 };
 
-export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, context }) => {
-  if (!isPlainObject(value)) {
-    return toInvalid("must be an object keyed by criterion", value);
-  }
+const expandScalarCriterionMap = ({
+  scalarValue,
+  canonicalByCriterion,
+}) => {
+  return canonicalByCriterion.reduce((accumulator, criterionKey) => {
+    accumulator[criterionKey] = scalarValue;
+    return accumulator;
+  }, {});
+};
 
+export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, context }) => {
   const restrictions = isPlainObject(parameter?.restrictions)
     ? parameter.restrictions
     : {};
@@ -117,7 +136,7 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
   const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
   const leafCriteria = Array.isArray(context?.leafCriteria) ? context.leafCriteria : [];
 
-  const { allowedCriterionIds, criterionNameById, canonicalByCriterion } = buildLeafCriterionIndex(
+  const { allowedCriterionKeys, criterionNameByCanonical, canonicalByInputKey, canonicalByCriterion } = buildLeafCriterionIndex(
     leafCriteria
   );
 
@@ -125,33 +144,47 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
     return toInvalid("cannot validate criterionMap without leaf criteria", value);
   }
 
+  let inputValue = value;
+  if (!isPlainObject(inputValue)) {
+    if (!requiredForEachCriterion) {
+      return toInvalid("must be an object keyed by criterion", value);
+    }
+
+    inputValue = expandScalarCriterionMap({
+      scalarValue: value,
+      canonicalByCriterion,
+    });
+  }
+
   const normalizedByCriterion = {};
 
-  for (const [inputKey, inputValue] of Object.entries(value)) {
+  for (const [inputKey, rawCriterionValue] of Object.entries(inputValue)) {
     const normalizedInputKey = normalizeNonEmptyString(inputKey);
     if (!normalizedInputKey) {
       return toInvalid("contains an empty criterion key", inputKey);
     }
 
-    if (!allowedCriterionIds.has(normalizedInputKey)) {
-      return toInvalid(`contains unknown criterion key '${normalizedInputKey}'`, inputValue);
+    if (!allowedCriterionKeys.has(normalizedInputKey)) {
+      return toInvalid(`contains unknown criterion key '${normalizedInputKey}'`, rawCriterionValue);
     }
 
+    const canonicalKey = canonicalByInputKey.get(normalizedInputKey) || normalizedInputKey;
+
     const normalizedResult = normalizeCriterionMapValue({
-      rawValue: inputValue,
+      rawValue: rawCriterionValue,
       valueType,
       restrictions,
     });
 
     if (!normalizedResult.ok) {
-      const criterionName = criterionNameById.get(normalizedInputKey) || normalizedInputKey;
+      const criterionName = criterionNameByCanonical.get(canonicalKey) || canonicalKey;
       return toInvalid(
         `[${criterionName}] ${normalizedResult.message}`,
         normalizedResult.value
       );
     }
 
-    normalizedByCriterion[normalizedInputKey] = normalizedResult.value;
+    normalizedByCriterion[canonicalKey] = normalizedResult.value;
   }
 
   if (requiredForEachCriterion) {

@@ -7,7 +7,6 @@ const labelSx = {
   height: FIELD_HEIGHT,
   display: "flex",
   alignItems: "center",
-  color: "text.secondary",
   fontWeight: 750,
   whiteSpace: "nowrap",
   lineHeight: 1,

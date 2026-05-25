@@ -33,13 +33,17 @@ const normalizeCriterionLeafMetadata = (node) => {
   const nameCandidate =
     normalizeNonEmptyString(node?.name?.toString?.()) ||
     normalizeNonEmptyString(node?.name);
+  const keyCandidate =
+    normalizeNonEmptyString(node?.key?.toString?.()) ||
+    normalizeNonEmptyString(node?.key);
 
-  if (!idCandidate && !nameCandidate) {
+  if (!idCandidate && !keyCandidate && !nameCandidate) {
     return null;
   }
 
   return {
     id: idCandidate,
+    key: keyCandidate,
     name: nameCandidate,
   };
 };

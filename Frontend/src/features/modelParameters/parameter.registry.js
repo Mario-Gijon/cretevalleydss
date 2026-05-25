@@ -4,6 +4,10 @@ import SelectGlobalParameterField from "./fields/selectGlobal/SelectGlobalParame
 import SelectGlobalParameterReadOnly from "./fields/selectGlobal/SelectGlobalParameterReadOnly";
 import IntervalGlobalParameterField from "./fields/intervalGlobal/IntervalGlobalParameterField";
 import IntervalGlobalParameterReadOnly from "./fields/intervalGlobal/IntervalGlobalParameterReadOnly";
+import NumberCriterionParameterField from "./fields/numberCriterion/NumberCriterionParameterField";
+import NumberCriterionParameterReadOnly from "./fields/numberCriterion/NumberCriterionParameterReadOnly";
+import SelectCriterionParameterField from "./fields/selectCriterion/SelectCriterionParameterField";
+import SelectCriterionParameterReadOnly from "./fields/selectCriterion/SelectCriterionParameterReadOnly";
 
 export const PARAMETER_FIELD_REGISTRY = Object.freeze({
   numberGlobal: {
@@ -17,6 +21,14 @@ export const PARAMETER_FIELD_REGISTRY = Object.freeze({
   intervalGlobal: {
     FieldComponent: IntervalGlobalParameterField,
     ReadOnlyComponent: IntervalGlobalParameterReadOnly,
+  },
+  numberCriterion: {
+    FieldComponent: NumberCriterionParameterField,
+    ReadOnlyComponent: NumberCriterionParameterReadOnly,
+  },
+  selectCriterion: {
+    FieldComponent: SelectCriterionParameterField,
+    ReadOnlyComponent: SelectCriterionParameterReadOnly,
   },
 });
 

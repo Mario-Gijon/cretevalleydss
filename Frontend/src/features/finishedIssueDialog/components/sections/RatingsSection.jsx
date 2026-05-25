@@ -50,6 +50,7 @@ const RatingsSection = () => {
     evaluations,
     criteriaWeightsEvaluation,
     finalCriteriaWeights,
+    shouldShowExpertWeights,
     collectiveEvaluations,
     leafNames,
     Matrix,
@@ -211,92 +212,96 @@ const RatingsSection = () => {
 
         <Divider sx={{ opacity: 0.14 }} />
 
-        <Box
-          sx={{
-            px: 1.5,
-            py: 1.25,
-            borderRadius: 2.5,
-            border: "1px solid rgba(255,255,255,0.08)",
-            bgcolor: alpha(theme.palette.common.white, 0.025),
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
-            Weights
-          </Typography>
-
-          {criteriaNamesForWeights.length > 0 ? (
+        {shouldShowExpertWeights ? (
+          <>
             <Box
               sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "max-content max-content max-content",
-                },
-                columnGap: { xs: 0, sm: 2.5 },
-                rowGap: 0.75,
-                alignItems: "center",
-                width: "fit-content",
-                maxWidth: "100%",
+                px: 1.5,
+                py: 1.25,
+                borderRadius: 2.5,
+                border: "1px solid rgba(255,255,255,0.08)",
+                bgcolor: alpha(theme.palette.common.white, 0.025),
               }}
             >
-              {criteriaNamesForWeights.map((criterionName) => (
-                <Fragment key={criterionName}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 750,
-                      pr: { xs: 0, sm: 1 },
-                    }}
-                  >
-                    {criterionName}
-                  </Typography>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
+                Weights
+              </Typography>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      fontVariantNumeric: "tabular-nums",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Expert:{" "}
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      sx={{ color: "text.primary", fontWeight: 700 }}
-                    >
-                      {getExpertWeightDisplayValue(criterionName)}
-                    </Typography>
-                  </Typography>
+              {criteriaNamesForWeights.length > 0 ? (
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      sm: "max-content max-content max-content",
+                    },
+                    columnGap: { xs: 0, sm: 2.5 },
+                    rowGap: 0.75,
+                    alignItems: "center",
+                    width: "fit-content",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {criteriaNamesForWeights.map((criterionName) => (
+                    <Fragment key={criterionName}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 750,
+                          pr: { xs: 0, sm: 1 },
+                        }}
+                      >
+                        {criterionName}
+                      </Typography>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      fontVariantNumeric: "tabular-nums",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Final:{" "}
-                    <Typography
-                      component="span"
-                      variant="body2"
-                      sx={{ color: "text.primary", fontWeight: 700 }}
-                    >
-                      {getFinalWeightDisplayValue(criterionName)}
-                    </Typography>
-                  </Typography>
-                </Fragment>
-              ))}
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontVariantNumeric: "tabular-nums",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Expert:{" "}
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{ color: "text.primary", fontWeight: 700 }}
+                        >
+                          {getExpertWeightDisplayValue(criterionName)}
+                        </Typography>
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontVariantNumeric: "tabular-nums",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Final:{" "}
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{ color: "text.primary", fontWeight: 700 }}
+                        >
+                          {getFinalWeightDisplayValue(criterionName)}
+                        </Typography>
+                      </Typography>
+                    </Fragment>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No weights available
+                </Typography>
+              )}
             </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No weights available
-            </Typography>
-          )}
-        </Box>
 
-        <Divider sx={{ opacity: 0.14 }} />
+            <Divider sx={{ opacity: 0.14 }} />
+          </>
+        ) : null}
 
         <Matrix evaluationContext={evaluationContext} />
       </Stack>
