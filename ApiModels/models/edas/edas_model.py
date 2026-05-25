@@ -36,7 +36,7 @@ def run_edas(
         criterion_type,
     )
 
-    raw_scores = edas_method(
+    a_s = edas_method(
         matrix_clean,
         criteria_clean,
         weights_clean,
@@ -44,7 +44,7 @@ def run_edas(
         verbose=False,
     )
 
-    scores_np = np.array(raw_scores, dtype=float)
+    scores_np = np.array(a_s, dtype=float)
     collective_scores = _ensure_valid_scores(
         scores_np,
         expected_length=matrix_clean.shape[0],

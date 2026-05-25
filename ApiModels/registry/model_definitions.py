@@ -26,6 +26,7 @@ from services.model_executors.topsis import execute_topsis
 from services.model_executors.promethee_vi import execute_promethee_vi
 from services.model_executors.vikor import execute_vikor
 from services.model_executors.waspas import execute_waspas
+from services.model_executors.edas import execute_edas
 
 from registry.response_examples import (
     HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
@@ -39,6 +40,7 @@ from registry.response_examples import (
     PROMETHEE_VI_RESPONSE_EXAMPLES,
     VIKOR_RESPONSE_EXAMPLES,
     WASPAS_RESPONSE_EXAMPLES,
+    EDAS_RESPONSE_EXAMPLES,
 )
 
 
@@ -590,6 +592,40 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
                 "restrictions": {"min": 0, "max": 1, "allowed": None},
             },
         ],
+    ),
+    ModelDefinition(
+        api_model_key="edas",
+        api_endpoint_path="/edas",
+        request_model=GenericModelExecutionRequest,
+        handler=execute_edas,
+        summary="Execute EDAS",
+        description=(
+            "Executes the EDAS method using aggregated expert decision matrices, "
+            "criterion weights and criterion types."
+        ),
+        small_description=(
+            "Distance-based MCDM method that ranks alternatives according to their "
+            "positive and negative distances from the average solution."
+        ),
+        extend_description=(
+            "EDAS evaluates alternatives by comparing each criterion value against "
+            "the average solution. Alternatives are rewarded for positive distance "
+            "from the average and penalized for negative distance, producing a final "
+            "appraisal score under weighted benefit and cost criteria."
+        ),
+        operation_id="executeEdas",
+        response_examples=EDAS_RESPONSE_EXAMPLES,
+        display_name="EDAS",
+        model_version="1.0.0",
+        version_label="v1",
+        more_info_url=None,
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        supports_consensus=False,
+        is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=True,
+        supported_domains=["numericContinuous", "numericDiscrete"],
     ),
     ModelDefinition(
         api_model_key="bwm",
