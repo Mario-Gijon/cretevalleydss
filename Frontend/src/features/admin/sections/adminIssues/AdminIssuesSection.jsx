@@ -86,7 +86,6 @@ import ExpressionDomainSummaryButton from "../../../issueEvaluation/components/E
 import { useAdminIssuesSection } from "./hooks/useAdminIssuesSection";
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../../../issueEvaluation/evaluation.constants";
 import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
 import { IssueModelParametersView } from "../../../modelParameters";
@@ -193,13 +192,13 @@ export default function AdminIssuesSection() {
   const confirmColor = confirmColorByKey[confirmAction?.key] || "info";
   const confirmIcon = confirmIconByKey[confirmAction?.key] || <InfoOutlinedIcon />;
   const alternativeStructureLabelByKey = {
-    [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX]: "Alternative-criteria matrix",
-    [EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION]:
+    ["alternativeCriteriaMatrix"]: "Alternative-criteria matrix",
+    ["alternativePairwiseByCriterion"]:
       "Pairwise alternatives by criterion",
   };
   const criteriaWeightingStructureLabelByKey = {
-    [EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS]: "Manual criteria weights",
-    [EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA]: "BWM",
+    ["manualCriteriaWeights"]: "Manual criteria weights",
+    ["bestWorstCriteria"]: "BWM",
   };
   const alternativeEvaluationStructureEntry = getEvaluationStructureEntryForStage({
     structureKey: expertEvaluations?.issue?.alternativeEvaluationStructureKey,

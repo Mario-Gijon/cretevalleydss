@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { ModelParameterReadOnlyView } from "./ModelParameterReadOnlyView";
+import ParameterReadOnlyHost from "./ParameterReadOnlyHost";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -23,13 +23,23 @@ const formatPrimitive = (value) => {
   return String(value);
 };
 
+const formatWeight = (value) => {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return formatPrimitive(value);
+  }
+
+  return Number(numberValue.toFixed(3)).toString();
+};
+
 const ParamRow = ({ name, children }) => {
   const theme = useTheme();
 
   return (
     <Box sx={{ py: 0.85 }}>
       <Stack spacing={0.5}>
-        <Typography variant="body2" sx={{ fontWeight: 950, color: "text.secondary" }}>
+        <Typography variant="body2" sx={{ fontWeight: 800, color: "text.secondary" }}>
           {name}
         </Typography>
 
@@ -37,8 +47,8 @@ const ParamRow = ({ name, children }) => {
           sx={{
             px: 1.1,
             py: 0.9,
-            borderRadius: 3,
-            bgcolor: alpha(theme.palette.background.paper, 0.35),
+            borderRadius: 2,
+            bgcolor: alpha(theme.palette.background.paper, 0.22),
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
@@ -49,14 +59,73 @@ const ParamRow = ({ name, children }) => {
   );
 };
 
+const RawWeightsView = ({ value, leafNames }) => {
+  if (!Array.isArray(value)) {
+    return (
+      <Typography variant="body2" sx={{ fontWeight: 800 }}>
+        {formatPrimitive(value)}
+      </Typography>
+    );
+  }
+
+  const labels = value.map((_, index) => {
+    const criterionName = Array.isArray(leafNames) ? leafNames[index] : null;
+    return criterionName || `Criterion ${index + 1}`;
+  });
+
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "max-content max-content",
+        columnGap: 1.25,
+        rowGap: 0.45,
+        alignItems: "center",
+        width: "fit-content",
+      }}
+    >
+      {value.map((weight, index) => (
+        <Box
+          key={`${labels[index]}-${index}`}
+          sx={{
+            display: "contents",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {labels[index]}:
+          </Typography>
+
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 850,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {formatWeight(weight)}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+};
 const RawValueView = ({ paramKey, value, leafNames }) => {
+  if (paramKey === "weights") {
+    return <RawWeightsView value={value} leafNames={leafNames} />;
+  }
+
   if (Array.isArray(value)) {
     return (
-      <Stack direction="row" flexWrap="wrap" gap={0.75}>
-        {value.map((item, index) => (
-          <Chip key={`${paramKey}-${index}`} size="small" label={formatPrimitive(item)} />
-        ))}
-      </Stack>
+      <Typography variant="body2" sx={{ fontWeight: 800 }}>
+        {value.map(formatPrimitive).join(", ")}
+      </Typography>
     );
   }
 
@@ -77,7 +146,11 @@ const RawValueView = ({ paramKey, value, leafNames }) => {
     );
   }
 
-  return <Typography variant="body2" sx={{ fontWeight: 850 }}>{formatPrimitive(value)}</Typography>;
+  return (
+    <Typography variant="body2" sx={{ fontWeight: 800 }}>
+      {formatPrimitive(value)}
+    </Typography>
+  );
 };
 
 export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
@@ -139,7 +212,7 @@ export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
 
           return (
             <ParamRow key={parameter?._id || key} name={label}>
-              <ModelParameterReadOnlyView
+              <ParameterReadOnlyHost
                 parameter={parameter}
                 value={value}
                 leafNames={leafNames}

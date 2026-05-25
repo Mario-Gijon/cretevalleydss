@@ -203,6 +203,8 @@ const filterOutWeightsParam = (param) =>
   Boolean(param) &&
   !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey);
 
+export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
+
 const isCriteriaWeightsParameter = (parameter) =>
   parameter?.parameterStructureKey === "criteriaWeights";
 
@@ -218,33 +220,104 @@ export const filterOutWeightsParams = (params) =>
 const resolveScenarioModelParameters = (model) =>
   filterOutWeightsParams(Array.isArray(model?.parameters) ? model.parameters : []);
 
+export const modelUsesScenarioCriteriaWeights = (model) =>
+  model?.usesCriteriaWeights === true;
+
+export const formatScenarioWeightValue = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "";
+  return String(Number(parsed.toFixed(3)));
+};
+
+const isFiniteNumberArray = (value) =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every((item) => Number.isFinite(Number(item)));
+
+const buildEqualScenarioWeights = (count) => {
+  if (!Number.isInteger(count) || count <= 0) return [];
+  if (count === 1) return [1];
+
+  const baseWeight = Number((1 / count).toFixed(6));
+  const weights = Array.from({ length: count }, () => baseWeight);
+  const consumed = baseWeight * (count - 1);
+  weights[count - 1] = Number((1 - consumed).toFixed(6));
+  return weights;
+};
+
+const resolveScenarioWeightDefaults = ({ leafCount, baseIssueWeights }) => {
+  if (leafCount <= 0) return [];
+  if (
+    isFiniteNumberArray(baseIssueWeights) &&
+    baseIssueWeights.length === leafCount
+  ) {
+    return baseIssueWeights.map((item) => Number(item));
+  }
+  return buildEqualScenarioWeights(leafCount);
+};
+
+export const validateScenarioCriteriaWeights = ({ weights, leafCount }) => {
+  if (!Number.isInteger(leafCount) || leafCount <= 0) {
+    return {
+      ok: false,
+      msg: "Leaf criteria are required to set scenario weights.",
+    };
+  }
+
+  if (!Array.isArray(weights) || weights.length !== leafCount) {
+    return {
+      ok: false,
+      msg: "Provide one weight for each criterion.",
+    };
+  }
+
+  const normalized = [];
+
+  for (let index = 0; index < weights.length; index += 1) {
+    const parsed = Number(weights[index]);
+
+    if (!Number.isFinite(parsed)) {
+      return {
+        ok: false,
+        msg: "All weights must be numeric.",
+      };
+    }
+
+    if (parsed < 0 || parsed > 1) {
+      return {
+        ok: false,
+        msg: "Each weight must be between 0 and 1.",
+      };
+    }
+
+    normalized.push(parsed);
+  }
+
+  const sum = normalized.reduce((accumulator, value) => accumulator + value, 0);
+  if (
+    Math.abs(sum - 1) >
+    SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON
+  ) {
+    return {
+      ok: false,
+      msg: "Weights must sum to 1.",
+    };
+  }
+
+  return {
+    ok: true,
+    normalized,
+  };
+};
+
 const resolveFuzzyWeightsValueCount = (model) => {
   const valueCount = Number(model?.fuzzyWeightsValueCount);
   return Number.isInteger(valueCount) && valueCount >= 2 ? valueCount : null;
 };
 
 const buildSyntheticWeightsParameter = (model) => {
-  if (model?.usesCriteriaWeights !== true) {
+  if (!modelUsesScenarioCriteriaWeights(model)) {
     return null;
-  }
-
-  if (model?.usesFuzzyCriteriaWeights === true) {
-    return {
-      key: "weights",
-      label: "Fuzzy criteria weights",
-      type: "fuzzyArray",
-      scope: "perCriterion",
-      parameterStructureKey: "fuzzyCriteriaWeights",
-      required: true,
-      default: "equal",
-      restrictions: {
-        min: 0,
-        max: 1,
-        ordered: "nonDecreasing",
-        length: resolveFuzzyWeightsValueCount(model),
-        allowed: null,
-      },
-    };
   }
 
   return {
@@ -716,13 +789,10 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
     ? stripWeightsDeep(model.defaultsResolved)
     : {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
-  const equalWeights = safeLeafCount > 0
-    ? Array.from({ length: safeLeafCount }, () => 1 / safeLeafCount)
-    : [];
-
-  const baseIssueWeights = Array.isArray(model?.baseIssueWeights)
-    ? model.baseIssueWeights
-    : null;
+  const defaultWeights = resolveScenarioWeightDefaults({
+    leafCount: safeLeafCount,
+    baseIssueWeights: model?.baseIssueWeights,
+  });
 
   for (const param of getScenarioParameterDefinitions(model)) {
     const key = param?.key;
@@ -753,16 +823,7 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
       }
 
       if (isWeightsByCriteria && param?.default === "equal" && count > 0) {
-        out[key] = ensureArrayLen(equalWeights, count, "");
-        continue;
-      }
-
-      if (
-        isWeightsByCriteria &&
-        Array.isArray(baseIssueWeights) &&
-        baseIssueWeights.length === count
-      ) {
-        out[key] = ensureArrayLen(baseIssueWeights, count, "");
+        out[key] = ensureArrayLen(defaultWeights, count, "");
         continue;
       }
 
@@ -1122,6 +1183,27 @@ export const validateParams = ({
 
       const numbers = arr.map((item) => Number(item));
       const sum = numbers.reduce((acc, item) => acc + item, 0);
+
+      if (isWeightsByCriteria) {
+        if (numbers.some((item) => item < 0 || item > 1)) {
+          return {
+            ok: false,
+            msg: "Each weight must be between 0 and 1.",
+          };
+        }
+
+        if (
+          Math.abs(sum - 1) >
+          SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON
+        ) {
+          return {
+            ok: false,
+            msg: "Weights must sum to 1.",
+          };
+        }
+
+        continue;
+      }
 
       if (restrictions.normalize === true) {
         if (sum <= 0) {

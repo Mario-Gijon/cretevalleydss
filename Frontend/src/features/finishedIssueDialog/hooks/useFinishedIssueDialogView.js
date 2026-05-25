@@ -21,7 +21,9 @@ import {
   getRoundsCount,
   hasSingleLeafCriterion,
   isModelCompatible,
+  modelUsesScenarioCriteriaWeights,
   safeJsonStringify,
+  validateScenarioCriteriaWeights,
   validateParams,
 } from "../utils/finishedIssueDialog.utils";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
@@ -141,6 +143,7 @@ export const useFinishedIssueDialogView = ({
 
   const [selectedModelId, setSelectedModelId] = useState("");
   const [scenarioParamValues, setScenarioParamValues] = useState({});
+  const [scenarioWeightsError, setScenarioWeightsError] = useState("");
 
   const [modelsCatalog, setModelsCatalog] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -205,6 +208,7 @@ export const useFinishedIssueDialogView = ({
 
         setSelectedModelId("");
         setScenarioParamValues({});
+        setScenarioWeightsError("");
         setScenarioName("");
         setParamsJson("{}");
 
@@ -229,15 +233,6 @@ export const useFinishedIssueDialogView = ({
       cancelled = true;
     };
   }, [selectedIssue?.id, openFinishedIssueDialog]);
-
-  useEffect(() => {
-    const issueId = selectedIssue?.id;
-    if (!issueId || !openFinishedIssueDialog) return;
-
-    return () => {
-      
-    };
-  }, [selectedIssue?.id, selectedRunKey, openFinishedIssueDialog]);
 
   const ensureRunLoaded = async (runKey) => {
     if (!runKey || runKey === "base") return null;
@@ -300,6 +295,8 @@ export const useFinishedIssueDialogView = ({
     if (Array.isArray(weightsFromSaved)) return weightsFromSaved;
     const weightsFromResolved = issue?.modelParams?.base?.paramsResolved?.weights;
     if (Array.isArray(weightsFromResolved)) return weightsFromResolved;
+    const weightsFromResult = issue?.finalCriteriaWeights?.weights;
+    if (Array.isArray(weightsFromResult)) return weightsFromResult;
     return [];
   }, [issue]);
 
@@ -434,6 +431,7 @@ export const useFinishedIssueDialogView = ({
     setScenarioName("");
     setSelectedModelId("");
     setScenarioParamValues({});
+    setScenarioWeightsError("");
     setParamsJson("{}");
   };
 
@@ -449,6 +447,7 @@ export const useFinishedIssueDialogView = ({
     });
 
     setScenarioParamValues(defaults);
+    setScenarioWeightsError("");
   }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames, leafCriteriaForParams]);
 
   const restoreScenarioDefaults = () => {
@@ -459,6 +458,7 @@ export const useFinishedIssueDialogView = ({
       leafCriteria: leafCriteriaForParams,
     });
     setScenarioParamValues(defaults);
+    setScenarioWeightsError("");
   };
 
   const handleAddModelRun = async () => {
@@ -477,6 +477,25 @@ export const useFinishedIssueDialogView = ({
 
     if (useSchemaAdd) {
       const leafCount = leafNames?.length || 0;
+      const modelNeedsCriteriaWeights =
+        modelUsesScenarioCriteriaWeights(selectedModelFromSchema);
+      let normalizedScenarioWeights = null;
+
+      if (modelNeedsCriteriaWeights) {
+        const weightsValidation = validateScenarioCriteriaWeights({
+          weights: scenarioParamValues?.weights,
+          leafCount,
+        });
+
+        if (!weightsValidation.ok) {
+          setScenarioWeightsError(weightsValidation.msg || "Invalid criteria weights.");
+          showSnackbarAlert(weightsValidation.msg || "Invalid criteria weights.", "error");
+          return;
+        }
+
+        normalizedScenarioWeights = weightsValidation.normalized;
+        setScenarioWeightsError("");
+      }
 
       const validation = validateParams({
         model: selectedModelFromSchema,
@@ -496,6 +515,12 @@ export const useFinishedIssueDialogView = ({
         leafCount,
         leafCriteria: leafCriteriaForParams,
       });
+
+      if (modelNeedsCriteriaWeights) {
+        modelParameters.weights = Array.isArray(normalizedScenarioWeights)
+          ? normalizedScenarioWeights
+          : [];
+      }
     } else {
       let parsedParams = {};
       try {
@@ -760,6 +785,8 @@ export const useFinishedIssueDialogView = ({
         restoreScenarioDefaults,
         scenarioParamValues,
         setScenarioParamValues,
+        scenarioWeightsError,
+        clearScenarioWeightsError: () => setScenarioWeightsError(""),
         leafNames,
         leafCriteria: leafCriteriaForParams,
         paramsJson,

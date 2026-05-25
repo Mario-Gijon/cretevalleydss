@@ -170,48 +170,6 @@ const validateEvaluationCoverageOrThrow = ({
   }
 };
 
-const resolveFuzzyValueCountFromIssueDomainsOrThrow = ({ issueDomainSnapshots }) => {
-  const linguisticDomains = (Array.isArray(issueDomainSnapshots)
-    ? issueDomainSnapshots
-    : []
-  ).filter((domain) => domain?.type === "linguistic");
-
-  if (linguisticDomains.length === 0) {
-    throw createBadRequestError(
-      "Fuzzy scenario weights require linguistic expression domains",
-      {
-        field: "paramOverrides.weights",
-      }
-    );
-  }
-
-  const valueCounts = new Set();
-
-  for (const domain of linguisticDomains) {
-    const valueCount = Number(domain?.valueCount);
-    if (!Number.isInteger(valueCount) || valueCount < 2) {
-      throw createBadRequestError(
-        "Fuzzy scenario weights require a valid linguistic valueCount",
-        {
-          field: "paramOverrides.weights",
-        }
-      );
-    }
-    valueCounts.add(valueCount);
-  }
-
-  if (valueCounts.size !== 1) {
-    throw createBadRequestError(
-      "Fuzzy scenario weights require a consistent linguistic valueCount across issue domains",
-      {
-        field: "paramOverrides.weights",
-      }
-    );
-  }
-
-  return Array.from(valueCounts)[0];
-};
-
 const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
   if (!Array.isArray(rawWeights) || rawWeights.length === 0) {
     throw createBadRequestError(
@@ -259,7 +217,10 @@ const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
   });
 
   const total = normalizedWeights.reduce((sum, value) => sum + value, 0);
-  if (Math.abs(total - 1) > CRITERIA_WEIGHT_SUM_TOLERANCE) {
+  if (
+    Math.abs(total - 1) >
+    CRITERIA_WEIGHT_SUM_TOLERANCE + Number.EPSILON
+  ) {
     throw createBadRequestError(
       "Scenario manual weights must sum to 1 (tolerance 0.001)",
       {
@@ -271,116 +232,17 @@ const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
   return normalizedWeights;
 };
 
-const normalizeFuzzyWeightsOrThrow = ({
-  rawWeights,
-  criteriaCount,
-  valueCount,
-}) => {
-  if (!Array.isArray(rawWeights) || rawWeights.length === 0) {
-    throw createBadRequestError(
-      "Scenario model parameters must include fuzzy criteria weights as an array",
-      {
-        field: "paramOverrides.weights",
-      }
-    );
-  }
-
-  if (rawWeights.length !== criteriaCount) {
-    throw createBadRequestError(
-      "Scenario fuzzy weights length must match the number of leaf criteria",
-      {
-        field: "paramOverrides.weights",
-        details: {
-          expected: criteriaCount,
-          received: rawWeights.length,
-        },
-      }
-    );
-  }
-
-  return rawWeights.map((rawVector, criterionIndex) => {
-    if (!Array.isArray(rawVector) || rawVector.length !== valueCount) {
-      throw createBadRequestError(
-        `Scenario fuzzy weight for criterion index ${criterionIndex} must contain ${valueCount} values`,
-        {
-          field: "paramOverrides.weights",
-        }
-      );
-    }
-
-    const vector = rawVector.map((value, valueIndex) => {
-      const numericValue = Number(value);
-      if (!Number.isFinite(numericValue)) {
-        throw createBadRequestError(
-          `Scenario fuzzy weight [${criterionIndex}][${valueIndex}] must be a finite number`,
-          {
-            field: "paramOverrides.weights",
-          }
-        );
-      }
-
-      if (numericValue < 0 || numericValue > 1) {
-        throw createBadRequestError(
-          `Scenario fuzzy weight [${criterionIndex}][${valueIndex}] must be between 0 and 1`,
-          {
-            field: "paramOverrides.weights",
-          }
-        );
-      }
-
-      return numericValue;
-    });
-
-    for (let index = 1; index < vector.length; index += 1) {
-      if (vector[index] < vector[index - 1]) {
-        throw createBadRequestError(
-          `Scenario fuzzy weight for criterion index ${criterionIndex} must be non-decreasing`,
-          {
-            field: "paramOverrides.weights",
-          }
-        );
-      }
-    }
-
-    return vector;
-  });
-};
-
 const resolveScenarioWeightsOrThrow = ({
   targetModel,
   paramOverrides,
   criteria,
-  issueDomainSnapshots,
 }) => {
   if (targetModel?.usesCriteriaWeights !== true) {
     return null;
   }
 
   const criteriaCount = Array.isArray(criteria) ? criteria.length : 0;
-  const fuzzyWeights = targetModel?.usesFuzzyCriteriaWeights === true;
-
-  if (criteriaCount === 1) {
-    if (fuzzyWeights) {
-      const valueCount = resolveFuzzyValueCountFromIssueDomainsOrThrow({
-        issueDomainSnapshots,
-      });
-      return [Array.from({ length: valueCount }, () => 1)];
-    }
-    return [1];
-  }
-
   const rawWeights = paramOverrides?.weights;
-
-  if (fuzzyWeights) {
-    const valueCount = resolveFuzzyValueCountFromIssueDomainsOrThrow({
-      issueDomainSnapshots,
-    });
-    return normalizeFuzzyWeightsOrThrow({
-      rawWeights,
-      criteriaCount,
-      valueCount,
-    });
-  }
 
   return normalizeCrispWeightsOrThrow({
     rawWeights,
@@ -393,7 +255,6 @@ const buildScenarioParametersOrThrow = ({
   paramOverrides,
   criteria,
   alternatives,
-  issueDomainSnapshots,
 }) => {
   const normalizedOverrides = normalizeScenarioParamOverridesOrThrow(paramOverrides);
   const rawScenarioParams = { ...normalizedOverrides };
@@ -411,7 +272,6 @@ const buildScenarioParametersOrThrow = ({
     targetModel,
     paramOverrides: normalizedOverrides,
     criteria,
-    issueDomainSnapshots,
   });
 
   if (Array.isArray(resolvedWeights)) {
@@ -530,7 +390,6 @@ export const getCreateScenarioContext = async ({
       paramOverrides,
       criteria,
       alternatives,
-      issueDomainSnapshots,
     });
 
   const evaluationsByExpertId = new Map(

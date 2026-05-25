@@ -65,6 +65,7 @@ const redirectToFrontend = (res) => {
  * @returns {Promise<Object>}
  */
 export const loginUser = async (req, res) => {
+  console.log("AAAA")
   const result = await loginUserFlow({
     email: req.body?.email,
     password: req.body?.password,

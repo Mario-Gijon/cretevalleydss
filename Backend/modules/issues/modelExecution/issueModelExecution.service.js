@@ -8,7 +8,6 @@ import {
   buildIssueModelExecutionResult,
   buildIssueModelRequestPayload,
 } from "./issueModelExecution.builder.js";
-import { EVALUATION_STRUCTURE_KEYS } from "../evaluations/evaluation.constants.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
 const computeManualCriteriaWeights = ({ structureKey, requestPayload }) => {
@@ -187,7 +186,7 @@ export const executeCriteriaWeightingModel = async ({
     phase,
   });
 
-  if (structureKey === EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS) {
+  if (structureKey === "manualCriteriaWeights") {
     const result = computeManualCriteriaWeights({
       structureKey,
       requestPayload,

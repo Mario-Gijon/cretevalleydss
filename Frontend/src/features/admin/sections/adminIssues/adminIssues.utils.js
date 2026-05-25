@@ -1,7 +1,6 @@
 import { alpha } from "@mui/material/styles";
 
 import { getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../activeIssues/styles/activeIssues.styles";
-import { EVALUATION_STRUCTURE_KEYS } from "../../../issueEvaluation/evaluation.constants";
 
 /**
  * Formatea valores numéricos de peso con truncado estable.
@@ -235,7 +234,7 @@ export const summarizeIssueStats = (issues = []) => {
   const pairwise = issues.filter(
     (issue) =>
       issue?.alternativeEvaluationStructureKey ===
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION
+      "alternativePairwiseByCriterion"
   ).length;
 
   return { total, active, finished, consensus, pairwise };

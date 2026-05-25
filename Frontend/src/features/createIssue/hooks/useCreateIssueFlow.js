@@ -455,6 +455,7 @@ export const useCreateIssueFlow = () => {
     } catch {
       showSnackbarAlert("No se pudieron mostrar los parámetros del modelo.", "error");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [criteria, selectedModel]);
 
   useEffect(() => {

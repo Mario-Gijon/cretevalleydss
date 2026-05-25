@@ -22,10 +22,6 @@ import {
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
 } from "../issues/expressionDomains/issueDomainConfig.js";
-import {
-  EVALUATION_STRUCTURE_KEYS,
-} from "../issues/evaluations/evaluation.constants.js";
-
 
 import {
   createBadRequestError,
@@ -120,7 +116,7 @@ const countExpectedEvaluationCellsPerExpert = ({
 
   if (
     alternativeEvaluationStructureKey ===
-    EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION
+    "alternativePairwiseByCriterion"
   ) {
     return (
       alternativesCount *
@@ -1308,7 +1304,7 @@ export const getIssueExpertEvaluationsPayload = async ({
 
   const usesPairwiseAlternatives =
     alternativeEvaluationStructureKey ===
-    EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION;
+    "alternativePairwiseByCriterion";
 
   if (usesPairwiseAlternatives) {
     const comparisonsByCriterion =
@@ -1377,7 +1373,7 @@ export const getIssueExpertEvaluationsPayload = async ({
           alternativesCount: orderedAlternatives.length,
           leafCriteriaCount: orderedLeafCriteria.length,
           alternativeEvaluationStructureKey:
-            EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION,
+            "alternativePairwiseByCriterion",
         }),
         filledCells,
         lastEvaluationAt,
@@ -1545,12 +1541,12 @@ export const getIssueExpertWeightsPayload = async ({
     kind = "singleLeaf";
   } else if (
     issue.criteriaWeightingStructureKey ===
-    EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS
+    "manualCriteriaWeights"
   ) {
     kind = "manualCriteriaWeights";
   } else if (
     issue.criteriaWeightingStructureKey ===
-    EVALUATION_STRUCTURE_KEYS.BEST_WORST_CRITERIA
+    "bestWorstCriteria"
   ) {
     kind = "bestWorstCriteria";
   } else if (!issue.criteriaWeightingStructureKey) {

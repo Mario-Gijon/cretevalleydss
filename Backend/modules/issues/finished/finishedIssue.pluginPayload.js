@@ -11,7 +11,6 @@ import {
 } from "../issue.ordering.js";
 import {
   EVALUATION_STAGES,
-  EVALUATION_STRUCTURE_KEYS,
 } from "../evaluations/evaluation.constants.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
@@ -851,7 +850,7 @@ const buildCriteriaWeightsEvaluationByExpert = ({
     const payload = isPlainObject(evaluation.payload) ? evaluation.payload : {};
     const weightsByCriterion =
       issue.criteriaWeightingStructureKey ===
-      EVALUATION_STRUCTURE_KEYS.MANUAL_CRITERIA_WEIGHTS
+      "manualCriteriaWeights"
         ? buildExpertWeightsByCriterionForManual({
           payload,
           criterionNames,
@@ -2386,8 +2385,8 @@ export const supportsPluginFinishedIssuePayload = (issue) => {
 
   const structureKey = issue?.alternativeEvaluationStructureKey;
   return (
-    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX ||
-    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION
+    structureKey === "alternativeCriteriaMatrix" ||
+    structureKey === "alternativePairwiseByCriterion"
   );
 };
 
@@ -2404,14 +2403,14 @@ export const buildPluginFinishedIssuePayload = async ({ issue }) => {
   const structureKey = issue?.alternativeEvaluationStructureKey;
 
   if (
-    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX &&
+    structureKey === "alternativeCriteriaMatrix" &&
     issue?.isConsensus !== true
   ) {
     return buildNonConsensusMatrixFinishedPayload({ issue });
   }
 
   if (
-    structureKey === EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_CRITERIA_MATRIX &&
+    structureKey === "alternativeCriteriaMatrix" &&
     issue?.isConsensus === true
   ) {
     return buildConsensusMatrixFinishedPayload({ issue });
@@ -2419,7 +2418,7 @@ export const buildPluginFinishedIssuePayload = async ({ issue }) => {
 
   if (
     structureKey ===
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION &&
+      "alternativePairwiseByCriterion" &&
     issue?.isConsensus !== true
   ) {
     return buildNonConsensusPairwiseFinishedPayload({ issue });
@@ -2427,7 +2426,7 @@ export const buildPluginFinishedIssuePayload = async ({ issue }) => {
 
   if (
     structureKey ===
-      EVALUATION_STRUCTURE_KEYS.ALTERNATIVE_PAIRWISE_BY_CRITERION &&
+      "alternativePairwiseByCriterion" &&
     issue?.isConsensus === true
   ) {
     return buildConsensusPairwiseFinishedPayload({ issue });
