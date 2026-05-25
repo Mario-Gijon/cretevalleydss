@@ -25,6 +25,7 @@ from services.model_executors.marcos import execute_marcos
 from services.model_executors.topsis import execute_topsis
 from services.model_executors.promethee_vi import execute_promethee_vi
 from services.model_executors.vikor import execute_vikor
+from services.model_executors.waspas import execute_waspas
 
 from registry.response_examples import (
     HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
@@ -37,6 +38,7 @@ from registry.response_examples import (
     CMCC_RESPONSE_EXAMPLES,
     PROMETHEE_VI_RESPONSE_EXAMPLES,
     VIKOR_RESPONSE_EXAMPLES,
+    WASPAS_RESPONSE_EXAMPLES,
 )
 
 
@@ -497,7 +499,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             },
         ],
     ),
-        ModelDefinition(
+    ModelDefinition(
         api_model_key="vikor",
         api_endpoint_path="/vikor",
         request_model=GenericModelExecutionRequest,
@@ -534,6 +536,52 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             {
                 "key": "v",
                 "label": "Strategy coefficient",
+                "type": "number",
+                "scope": "global",
+                "parameterStructureKey": "numberGlobal",
+                "required": True,
+                "default": 0.5,
+                "restrictions": {"min": 0, "max": 1, "allowed": None},
+            },
+        ],
+    ),
+    ModelDefinition(
+        api_model_key="waspas",
+        api_endpoint_path="/waspas",
+        request_model=GenericModelExecutionRequest,
+        handler=execute_waspas,
+        summary="Execute WASPAS",
+        description=(
+            "Executes the WASPAS method using aggregated expert decision matrices, "
+            "criterion weights and criterion types."
+        ),
+        small_description=(
+            "Hybrid MCDM method that combines weighted sum and weighted product "
+            "aggregation into a single ranking score."
+        ),
+        extend_description=(
+            "WASPAS combines the Weighted Sum Model and the Weighted Product Model. "
+            "It evaluates alternatives by blending additive and multiplicative utility "
+            "scores through a configurable lambda coefficient, supporting weighted "
+            "benefit and cost criteria."
+        ),
+        operation_id="executeWaspas",
+        response_examples=WASPAS_RESPONSE_EXAMPLES,
+        display_name="WASPAS",
+        model_version="1.0.0",
+        version_label="v1",
+        more_info_url=None,
+        alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+        supports_consensus=False,
+        is_multi_criteria=True,
+        uses_criteria_weights=True,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=True,
+        supported_domains=["numericContinuous", "numericDiscrete"],
+        parameters=[
+            {
+                "key": "lambda",
+                "label": "Lambda",
                 "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
