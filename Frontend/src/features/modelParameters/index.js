@@ -11,6 +11,11 @@ export {
 } from "./modelParameter.registry";
 
 export {
+  isCriteriaWeightLikeParameter,
+  getCreateIssueModelParameters,
+} from "./modelParameter.filters";
+
+export {
   PARAMETER_STRUCTURE_REGISTRY,
   resolveParameterStructureKey,
   resolveParameterStructure,

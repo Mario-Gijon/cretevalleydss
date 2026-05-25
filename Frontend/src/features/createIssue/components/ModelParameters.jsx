@@ -2,19 +2,14 @@ import { useMemo } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { ParameterFieldHost, resolveParameterStructure } from "../../modelParameters";
-
-const isCriteriaWeightLikeParameter = (parameter) =>
-  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
-  parameter?.semanticRole === "criteriaWeights";
+import {
+  getCreateIssueModelParameters,
+  ParameterFieldHost,
+  resolveParameterStructure,
+} from "../../modelParameters";
 
 export const getRenderableNormalModelParameters = (selectedModel) => {
-  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
-
-  return parameters.filter((parameter) => {
-    if (!parameter?.key) return false;
-    if (isCriteriaWeightLikeParameter(parameter)) return false;
-
+  return getCreateIssueModelParameters(selectedModel).filter((parameter) => {
     resolveParameterStructure(parameter);
     return true;
   });

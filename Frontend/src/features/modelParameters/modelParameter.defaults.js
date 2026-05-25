@@ -1,3 +1,4 @@
+import { getCreateIssueModelParameters } from "./modelParameter.filters";
 import { buildInitialParameterValues, normalizeParameterValues } from "./parameterValues";
 import { resolveParameterStructure } from "./parameter.registry";
 import { buildEqualWeights } from "./fields/criteriaWeights/criteriaWeights.defaults";
@@ -5,7 +6,7 @@ import { buildEqualWeights } from "./fields/criteriaWeights/criteriaWeights.defa
 export { buildEqualWeights };
 
 export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria }) => {
-  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+  const parameters = getCreateIssueModelParameters(selectedModel);
   const context = {
     leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
   };
@@ -14,7 +15,7 @@ export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria 
 };
 
 export const updateCreateIssueParameterValues = ({ previous, selectedModel, leafCriteria }) => {
-  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+  const parameters = getCreateIssueModelParameters(selectedModel);
   const context = {
     leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
   };
@@ -36,7 +37,7 @@ export const updateCreateIssueParameterValues = ({ previous, selectedModel, leaf
 };
 
 export const normalizeCreateIssueParameterValues = ({ selectedModel, values, leafCriteria }) => {
-  const parameters = Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
+  const parameters = getCreateIssueModelParameters(selectedModel);
 
   return normalizeParameterValues(parameters, values, {
     leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],

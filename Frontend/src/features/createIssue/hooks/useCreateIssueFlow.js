@@ -13,6 +13,7 @@ import {
   validateIssueName,
 } from "../utils/createIssue.utils";
 import {
+  getCreateIssueModelParameters,
   normalizeParameterValues,
   validateParameterValues,
 } from "../../modelParameters";
@@ -40,11 +41,6 @@ const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_API_MODEL: "creatorApiModel",
   EXPERT_API_MODEL: "expertApiModel",
 });
-
-const isCriteriaWeightLikeParameter = (parameter) =>
-  ["criteriaWeights", "fuzzyCriteriaWeights"].includes(parameter?.parameterStructureKey) ||
-  parameter?.semanticRole === "criteriaWeights";
-
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -734,9 +730,7 @@ export const useCreateIssueFlow = () => {
 
     }
 
-    const parameters = (selectedModel?.parameters || []).filter(
-      (parameter) => parameter?.key && !isCriteriaWeightLikeParameter(parameter)
-    );
+    const parameters = getCreateIssueModelParameters(selectedModel);
 
     const nextParameterErrors = validateParameterValues(parameters, paramValues, {
       leafCriteria,
