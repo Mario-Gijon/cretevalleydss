@@ -1,18 +1,15 @@
-import { sameId } from "../../../utils/common/ids.js";
 import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
 import { ACTIVE_ACTION_META, ACTIVE_STATUS_META } from "./activeIssue.meta.js";
 
 export const buildActivePermissions = ({
   stage,
   stageMeta,
-  userId,
   isAdminUser,
   hasPending,
   totalAccepted,
   completedWeightEvaluations,
   completedAlternativeEvaluations,
-  isExpertAccepted,
-  acceptedParticipations,
+  acceptedUserParticipation,
 }) => {
   const allWeightsDone =
     totalAccepted > 0 && completedWeightEvaluations === totalAccepted;
@@ -41,21 +38,13 @@ export const buildActivePermissions = ({
 
   const canEvaluateWeights =
     stage === ISSUE_STAGES.CRITERIA_WEIGHTING &&
-    isExpertAccepted &&
-    acceptedParticipations.some(
-      (participation) =>
-        sameId(participation.expert._id, userId) &&
-        !participation.weightsCompleted
-    );
+    acceptedUserParticipation &&
+    !acceptedUserParticipation.weightsCompleted;
 
   const canEvaluateAlternatives =
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
-    isExpertAccepted &&
-    acceptedParticipations.some(
-      (participation) =>
-        sameId(participation.expert._id, userId) &&
-        !participation.evaluationCompleted
-    );
+    acceptedUserParticipation &&
+    !acceptedUserParticipation.evaluationCompleted;
 
   const waitingExperts =
     (hasPending && stage !== ISSUE_STAGES.FINISHED) ||

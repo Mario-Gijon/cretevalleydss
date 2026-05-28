@@ -1,7 +1,6 @@
 import { orderDocsByIdList } from "../issue.ordering.js";
 import {
   buildIssueCriteriaTree,
-  decorateCriteriaTree,
 } from "../issue.criteriaTree.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
@@ -27,11 +26,4 @@ export const buildActiveCriteriaView = ({ issue, issueCriteriaDocs }) => {
     orderedLeafCriteria,
     expressionDomainConfig,
   };
-};
-
-export const applyActiveCriteriaWeightsToTree = ({
-  criteriaTree,
-  criteriaWeightsById,
-}) => {
-  decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 };

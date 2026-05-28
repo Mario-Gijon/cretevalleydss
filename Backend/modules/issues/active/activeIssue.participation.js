@@ -29,9 +29,10 @@ export const buildActiveParticipationSummary = ({
   const myParticipation = issueParticipations.find((participation) =>
     sameId(participation.expert._id, userId)
   );
-  const isExpertAccepted = acceptedParticipations.some((participation) =>
-    sameId(participation.expert._id, userId)
+  const acceptedUserParticipation = acceptedParticipations.find(
+    (participation) => sameId(participation.expert._id, userId)
   );
+  const isExpertAccepted = acceptedUserParticipation !== undefined;
 
   let role = "viewer";
   if (isAdminUser && isExpertAccepted) {
@@ -70,12 +71,12 @@ export const buildActiveParticipationSummary = ({
   );
 
   return {
-    acceptedParticipations,
     hasPending,
     totalAccepted,
     completedWeightEvaluations,
     completedAlternativeEvaluations,
     myParticipation,
+    acceptedUserParticipation,
     isExpertAccepted,
     role,
     evaluated,

@@ -1,6 +1,7 @@
 import { orderDocsByIdList } from "../issue.ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
+import { decorateCriteriaTree } from "../issue.criteriaTree.js";
 import { ACTIVE_STAGE_META, ACTIVE_STATUS_KEYS } from "./activeIssue.meta.js";
 import { buildDeadlineInfo, buildActiveWorkflowSteps } from "./activeIssue.workflow.js";
 import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
@@ -9,7 +10,6 @@ import {
 } from "./activeIssue.participation.js";
 import { buildActivePermissions } from "./activeIssue.permissions.js";
 import {
-  applyActiveCriteriaWeightsToTree,
   buildActiveCriteriaView,
 } from "./activeIssue.criteriaView.js";
 import { buildActiveCriteriaWeights } from "./activeIssue.weights.js";
@@ -60,10 +60,7 @@ export const buildActiveIssueView = ({
       issueId,
     });
 
-  applyActiveCriteriaWeightsToTree({
-    criteriaTree,
-    criteriaWeightsById,
-  });
+  decorateCriteriaTree(criteriaTree, criteriaWeightsById);
 
   const uiStage =
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
@@ -87,15 +84,13 @@ export const buildActiveIssueView = ({
   const permissions = buildActivePermissions({
     stage,
     stageMeta,
-    userId,
     isAdminUser,
     hasPending: participationSummary.hasPending,
     totalAccepted: participationSummary.totalAccepted,
     completedWeightEvaluations: participationSummary.completedWeightEvaluations,
     completedAlternativeEvaluations:
       participationSummary.completedAlternativeEvaluations,
-    isExpertAccepted: participationSummary.isExpertAccepted,
-    acceptedParticipations: participationSummary.acceptedParticipations,
+    acceptedUserParticipation: participationSummary.acceptedUserParticipation,
   });
 
   const taskItems = permissions.actions.map((action) => ({
