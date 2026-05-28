@@ -350,6 +350,9 @@ export const useCreateIssueFlow = () => {
   const [consensusThreshold, setConsensusThreshold] = useState(
     storedConsensusThreshold !== null ? storedConsensusThreshold : 0.7
   );
+  const [simulateConsensus, setSimulateConsensus] = useState(
+    storedData.simulateConsensus === true
+  );
   const [paramValues, setParamValues] = useState(storedData.paramValues || {});
   const [defaultModelParams, setDefaultModelParams] = useState(true);
   const [expressionDomainConfig, setExpressionDomainConfig] = useState(
@@ -366,6 +369,8 @@ export const useCreateIssueFlow = () => {
       : buildDefaultCriteriaWeightingConfig(storedData.selectedModel || null)
   );
   const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
+  const modelSupportsConsensusSimulation =
+    selectedModel?.supportsConsensusSimulation === true;
 
   useEffect(() => {
     const dataToSave = {
@@ -387,6 +392,7 @@ export const useCreateIssueFlow = () => {
         consensusMaxPhases,
         consensusThreshold,
       }),
+      simulateConsensus,
     };
 
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
@@ -407,7 +413,14 @@ export const useCreateIssueFlow = () => {
     expressionDomainConfig,
     paramValues,
     criteriaWeightingConfig,
+    simulateConsensus,
   ]);
+
+  useEffect(() => {
+    if (!effectiveIsConsensus || !modelSupportsConsensusSimulation) {
+      setSimulateConsensus(false);
+    }
+  }, [effectiveIsConsensus, modelSupportsConsensusSimulation]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -573,6 +586,7 @@ export const useCreateIssueFlow = () => {
       criteriaWeightingConfig,
       paramValues,
       ...(effectiveIsConsensus && { consensusMaxPhases, consensusThreshold }),
+      simulateConsensus,
     };
   }, [
     issueName,
@@ -588,6 +602,7 @@ export const useCreateIssueFlow = () => {
     paramValues,
     consensusMaxPhases,
     consensusThreshold,
+    simulateConsensus,
   ]);
 
   /**
@@ -721,6 +736,8 @@ export const useCreateIssueFlow = () => {
 
     const issueInfoPayload = { ...allData };
     issueInfoPayload.isConsensus = modelRequiresConsensus;
+    issueInfoPayload.simulateConsensus =
+      modelRequiresConsensus && modelSupportsConsensusSimulation && simulateConsensus;
     if (modelRequiresConsensus) {
       issueInfoPayload.consensusThreshold = normalizedConsensusThreshold;
       issueInfoPayload.consensusMaxPhases = normalizedConsensusMaxPhases;
@@ -810,6 +827,7 @@ export const useCreateIssueFlow = () => {
     closureDateError,
     consensusMaxPhases,
     consensusThreshold,
+    simulateConsensus,
     paramValues,
     defaultModelParams,
     expressionDomainConfig,
@@ -825,6 +843,7 @@ export const useCreateIssueFlow = () => {
     setClosureDate,
     setConsensusMaxPhases,
     setConsensusThreshold,
+    setSimulateConsensus,
     setParamValues,
     setDefaultModelParams,
     setExpressionDomainConfig,

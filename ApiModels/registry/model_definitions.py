@@ -71,6 +71,7 @@ class ModelDefinition:
     alternative_evaluation_structure_key: str | None = None
     criteria_weighting_structure_key: str | None = None
     supports_consensus: bool = False
+    supports_consensus_simulation: bool = False
     is_multi_criteria: bool | None = None
     uses_criteria_weights: bool = False
     uses_fuzzy_criteria_weights: bool = False
@@ -133,6 +134,7 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         more_info_url=None,
         alternative_evaluation_structure_key="alternativePairwiseByCriterion",
         supports_consensus=True,
+        supports_consensus_simulation=True,
         is_multi_criteria=False,
         uses_criteria_weights=True,
         uses_fuzzy_criteria_weights=False,

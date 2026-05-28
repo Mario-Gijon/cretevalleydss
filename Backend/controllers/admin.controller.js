@@ -135,6 +135,7 @@ const mapIssueModelCatalogItem = (model = {}) => {
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
     supportsConsensus: model.supportsConsensus === true,
+    supportsConsensusSimulation: model.supportsConsensusSimulation === true,
     lifecycleKind: model.lifecycleKind || null,
     apiInputFormat: model.apiInputFormat || null,
     apiOutputFormat: model.apiOutputFormat || null,

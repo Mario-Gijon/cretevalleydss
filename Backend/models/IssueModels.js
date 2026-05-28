@@ -280,6 +280,10 @@ const issueModelSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  supportsConsensusSimulation: {
+    type: Boolean,
+    default: false,
+  },
   usesCriteriaWeights: {
     type: Boolean,
     default: false,

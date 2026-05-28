@@ -69,6 +69,13 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       value: model?.supportsConsensus,
     });
   }
+  if (typeof model?.supportsConsensusSimulation !== "boolean") {
+    runtimeErrors.push({
+      field: "supportsConsensusSimulation",
+      message: "must be boolean",
+      value: model?.supportsConsensusSimulation,
+    });
+  }
   if (typeof model?.usesCriteriaWeights !== "boolean") {
     runtimeErrors.push({
       field: "usesCriteriaWeights",
@@ -152,6 +159,7 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     },
     alternativeEvaluationStructureKey,
     supportsConsensus: model?.supportsConsensus === true,
+    supportsConsensusSimulation: model?.supportsConsensusSimulation === true,
     usesCriteriaWeights: model?.usesCriteriaWeights === true,
     usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model?.usesCriterionTypes === true,
@@ -271,11 +279,12 @@ const normalizeFiniteNumber = (value) => {
 };
 
 export const resolveIssueConsensusConfigOrThrow = ({
+  requestedIsConsensus,
   supportsConsensus,
   consensusThreshold,
   consensusMaxPhases,
 }) => {
-  const isConsensus = supportsConsensus === true;
+  const isConsensus = requestedIsConsensus === true;
 
   if (!isConsensus) {
     return {
@@ -283,6 +292,16 @@ export const resolveIssueConsensusConfigOrThrow = ({
       consensusThreshold: null,
       consensusMaxPhases: null,
     };
+  }
+
+  if (supportsConsensus !== true) {
+    throw createBadRequestError(
+      "Selected model does not support consensus issues",
+      {
+        code: "MODEL_DOES_NOT_SUPPORT_CONSENSUS",
+        field: "isConsensus",
+      }
+    );
   }
 
   const normalizedThreshold = normalizeFiniteNumber(consensusThreshold);
@@ -320,4 +339,47 @@ export const resolveIssueConsensusConfigOrThrow = ({
     consensusThreshold: normalizedThreshold,
     consensusMaxPhases,
   };
+};
+
+export const resolveIssueSimulationConfigOrThrow = ({
+  simulateConsensus,
+  isConsensus,
+  supportsConsensus,
+  supportsConsensusSimulation,
+}) => {
+  if (simulateConsensus !== true) {
+    return false;
+  }
+
+  if (isConsensus !== true) {
+    throw createBadRequestError(
+      "simulateConsensus can only be enabled for consensus issues",
+      {
+        code: "SIMULATION_REQUIRES_CONSENSUS_ISSUE",
+        field: "simulateConsensus",
+      }
+    );
+  }
+
+  if (supportsConsensus !== true) {
+    throw createBadRequestError(
+      "simulateConsensus requires a model that supports consensus",
+      {
+        code: "SIMULATION_REQUIRES_CONSENSUS_MODEL",
+        field: "simulateConsensus",
+      }
+    );
+  }
+
+  if (supportsConsensusSimulation !== true) {
+    throw createBadRequestError(
+      "simulateConsensus requires a model that supports consensus simulation",
+      {
+        code: "MODEL_DOES_NOT_SUPPORT_CONSENSUS_SIMULATION",
+        field: "simulateConsensus",
+      }
+    );
+  }
+
+  return true;
 };

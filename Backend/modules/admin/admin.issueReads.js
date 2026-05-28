@@ -260,7 +260,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria parameters supportedDomains"
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation"
     )
     .lean();
 
@@ -493,6 +493,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       currentStageMeta: getIssueStageMeta(issue.currentStage),
       weightingMode: issue.weightingMode,
       isConsensus: issue.isConsensus,
+      simulateConsensus: issue.simulateConsensus === true,
       consensusMaxPhases: issue.consensusMaxPhases,
       consensusThreshold: issue.consensusThreshold,
       creationDate: issue.creationDate,
@@ -512,6 +513,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           name: issue.model.name,
           isConsensus:
             issue.model.lifecycleKind === "thresholdConsensus",
+          supportsConsensus: issue.model.supportsConsensus === true,
+          supportsConsensusSimulation:
+            issue.model.supportsConsensusSimulation === true,
           isMultiCriteria: issue.model.isMultiCriteria,
           supportedDomains: issue.model.supportedDomains,
           parameters: issue.model.parameters,
@@ -683,7 +687,10 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name alternativeEvaluationStructureKey criteriaWeightingStructureKey")
+    .populate(
+      "model",
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
+    )
     .lean();
 
   if (!issue) {
@@ -1233,7 +1240,10 @@ export const getIssueExpertEvaluationsPayload = async ({
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name alternativeEvaluationStructureKey criteriaWeightingStructureKey")
+    .populate(
+      "model",
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
+    )
     .lean();
 
   if (!issue) {
@@ -1468,7 +1478,10 @@ export const getIssueExpertWeightsPayload = async ({
   }
 
   let issue = await Issue.findById(issueId)
-    .populate("model", "name alternativeEvaluationStructureKey criteriaWeightingStructureKey")
+    .populate(
+      "model",
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
+    )
     .lean();
 
   if (!issue) {
@@ -1744,7 +1757,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria"
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria supportsConsensus supportsConsensusSimulation"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -1938,6 +1951,7 @@ export const getAdminIssuesListPayload = async ({
         currentStageMeta: getIssueStageMeta(issue.currentStage),
         weightingMode: issue.weightingMode,
         isConsensus: issue.isConsensus,
+        simulateConsensus: issue.simulateConsensus === true,
         consensusMaxPhases: issue.consensusMaxPhases,
         consensusThreshold: issue.consensusThreshold,
         creationDate: issue.creationDate,
@@ -1963,6 +1977,9 @@ export const getAdminIssuesListPayload = async ({
               issue.model.criteriaWeightingStructureKey,
             isConsensus:
               issue.model.lifecycleKind === "thresholdConsensus",
+            supportsConsensus: issue.model.supportsConsensus === true,
+            supportsConsensusSimulation:
+              issue.model.supportsConsensusSimulation === true,
             isMultiCriteria: issue.model.isMultiCriteria,
           }
           : null,

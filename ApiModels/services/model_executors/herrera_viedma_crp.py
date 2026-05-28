@@ -238,7 +238,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
             expert_key = f"{expert_key}_{expert_index + 1}"
         seen_expert_keys.add(expert_key)
 
-        matrices[expert_key] = {"preference": expert_matrix}
+        matrices[expert_key] = {criterion_names[0]: expert_matrix}
 
     return {
         "matrices": matrices,
@@ -262,11 +262,6 @@ def _normalize_pairwise_collective_evaluations(
         candidate = source.get(criterion_name)
         if isinstance(candidate, list):
             matrix_by_criterion_name[criterion_name] = candidate
-
-    if len(matrix_by_criterion_name) == 0 and len(criterion_names) > 0:
-        preference_matrix = source.get("preference")
-        if isinstance(preference_matrix, list):
-            matrix_by_criterion_name[criterion_names[0]] = preference_matrix
 
     collective_evaluations: dict[str, dict[str, Any]] = {}
 

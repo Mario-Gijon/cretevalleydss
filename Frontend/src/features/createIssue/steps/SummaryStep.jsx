@@ -15,6 +15,7 @@ import {
   TableHead,
   TableRow,
   ToggleButton,
+  ToggleButtonGroup,
   Grid2 as Grid,
   Divider,
 } from "@mui/material";
@@ -93,6 +94,8 @@ export const SummaryStep = () => {
     setConsensusMaxPhases,
     consensusThreshold,
     setConsensusThreshold,
+    simulateConsensus,
+    setSimulateConsensus,
     paramValues,
     setParamValues,
     defaultModelParams,
@@ -106,11 +109,16 @@ export const SummaryStep = () => {
   const {
     selectedModel,
     isConsensus,
+    simulateConsensus: currentSimulateConsensus,
     alternatives,
     criteria,
     addedExperts,
     expressionDomainConfig,
   } = allData;
+  const showSimulationModeToggle =
+    isConsensus &&
+    selectedModel?.supportsConsensus === true &&
+    selectedModel?.supportsConsensusSimulation === true;
 
   const domainNameMap = useMemo(
     () =>
@@ -226,6 +234,12 @@ export const SummaryStep = () => {
                     k="Consensus"
                     v={isConsensus ? "Enabled" : "Disabled"}
                   />
+                  {showSimulationModeToggle && (
+                    <KVRow
+                      k="Consensus rounds"
+                      v={currentSimulateConsensus ? "Simulated rounds" : "Manual rounds"}
+                    />
+                  )}
                 </Stack>
               </Grid>
             </Grid>
@@ -456,6 +470,42 @@ export const SummaryStep = () => {
                       />
                     </Stack>
                   </Grid>
+
+                  {showSimulationModeToggle && (
+                    <Grid item size={{ xs: 12, md: 6 }}>
+                      <Stack spacing={1}>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.2}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 950, minWidth: 190 }}>
+                            Consensus rounds
+                          </Typography>
+
+                          <ToggleButtonGroup
+                            exclusive
+                            color="secondary"
+                            size="small"
+                            value={simulateConsensus ? "simulated" : "manual"}
+                            onChange={(_, value) => {
+                              if (!value) return;
+                              setSimulateConsensus(value === "simulated");
+                            }}
+                          >
+                            <ToggleButton value="manual">Manual rounds</ToggleButton>
+                            <ToggleButton value="simulated">Simulated rounds</ToggleButton>
+                          </ToggleButtonGroup>
+                        </Stack>
+
+                        {simulateConsensus && (
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
+                            Experts submit only the first round; next rounds are generated automatically.
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Grid>
+                  )}
                 </>
               )}
             </Grid>

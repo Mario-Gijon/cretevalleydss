@@ -23,6 +23,13 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     ? issueInfo.alternatives
     : [];
   const isConsensus = issueInfo.isConsensus === true;
+  const hasSimulateConsensus = Object.prototype.hasOwnProperty.call(
+    issueInfo,
+    "simulateConsensus"
+  );
+  const simulateConsensus = hasSimulateConsensus
+    ? issueInfo.simulateConsensus
+    : false;
   const criteria = Array.isArray(issueInfo.criteria) ? issueInfo.criteria : [];
   const addedExperts = Array.isArray(issueInfo.addedExperts)
     ? issueInfo.addedExperts
@@ -49,6 +56,13 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   if (!selectedModelId) {
     throw createBadRequestError("selectedModelId is required", {
       field: "selectedModelId",
+    });
+  }
+
+  if (hasSimulateConsensus && typeof simulateConsensus !== "boolean") {
+    throw createBadRequestError("simulateConsensus must be a boolean", {
+      field: "simulateConsensus",
+      code: "INVALID_SIMULATE_CONSENSUS",
     });
   }
 
@@ -123,6 +137,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     selectedModelId,
     uniqueAlternativeNames,
     isConsensus,
+    simulateConsensus,
     criteria,
     uniqueExpertEmails,
     expressionDomainConfig: normalizedExpressionDomainConfig,

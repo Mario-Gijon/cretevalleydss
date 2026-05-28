@@ -220,6 +220,10 @@ const buildModelRow = ({
       null,
     supportsConsensus:
       manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
+    supportsConsensusSimulation:
+      manifestProjection?.supportsConsensusSimulation ??
+      mongoModel?.supportsConsensusSimulation ??
+      null,
     modelFamilyKey:
       manifestProjection?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
     modelVersion:

@@ -139,6 +139,10 @@ const issueSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    simulateConsensus: {
+      type: Boolean,
+      default: false,
+    },
     criteriaWeightingStructureKey: {
       type: String,
       trim: true,

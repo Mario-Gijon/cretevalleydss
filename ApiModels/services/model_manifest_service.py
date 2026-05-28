@@ -86,6 +86,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
         "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
         "supportsConsensus": model.supports_consensus,
+        "supportsConsensusSimulation": model.supports_consensus_simulation,
         "isMultiCriteria": model.is_multi_criteria,
         "usesCriteriaWeights": model.uses_criteria_weights,
         "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,

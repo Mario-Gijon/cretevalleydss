@@ -1,5 +1,6 @@
 """Implementación del proceso de consenso Herrera-Viedma CRP."""
 
+import math
 from typing import Any
 
 import numpy as np
@@ -21,6 +22,31 @@ from models.herrera_viedma_crp.utils import (
 )
 
 
+def _rounded_finite_matrix(matrix: np.ndarray) -> list[list[float]]:
+    rounded_matrix: list[list[float]] = []
+    for row_index, row in enumerate(matrix):
+        rounded_row: list[float] = []
+        for col_index, cell in enumerate(row):
+            numeric_cell = float(cell)
+            if not math.isfinite(numeric_cell):
+                raise ValueError(
+                    f"Non-finite value in preference matrix at [{row_index}][{col_index}]"
+                )
+            rounded_row.append(round(numeric_cell, 2))
+        rounded_matrix.append(rounded_row)
+    return rounded_matrix
+
+
+def _finite_float_list(values: np.ndarray, *, precision: int = 6) -> list[float]:
+    result: list[float] = []
+    for index, value in enumerate(values):
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"Non-finite value at index {index}")
+        result.append(round(numeric_value, precision))
+    return result
+
+
 def run_herrera_viedma(
     matrices: dict[str, dict[str, list[list[float]]]],
     cl: float,
@@ -39,9 +65,15 @@ def run_herrera_viedma(
     n_alt = len(first_matrix)
     n_crit = 1
 
+    expert_keys = list(matrices.keys())
     pref = np.zeros((n_exp + 1, n_alt, n_alt))
-    for index, expert in enumerate(matrices.values()):
-        pref[index] = np.array(expert[criterion_name])
+    for index, expert_key in enumerate(expert_keys):
+        expert = matrices[expert_key]
+        if criterion_name not in expert:
+            raise ValueError(
+                f"Missing criterion '{criterion_name}' in matrix for expert '{expert_key}'"
+            )
+        pref[index] = np.array(expert[criterion_name], dtype=float)
 
     w_exp = calcular_pesos_OWA(n_exp, ag_lq)
     w_alt = calcular_pesos_OWA(n_alt, ex_lq)
@@ -73,13 +105,63 @@ def run_herrera_viedma(
         farthest_experts = expertos_mas_alejados(proximity_measures)
         changes = detectar_cambios(farthest_experts, differences_rankings)
         aplicar_cambios(changes, pref)
+        suggested_next_evaluations = {
+            expert_keys[expert_index]: {
+                criterion_name: _rounded_finite_matrix(pref[expert_index]),
+            }
+            for expert_index in range(n_exp)
+        }
+        proximity_measures_output = [
+            round(float(value), 6) for value in proximity_measures
+        ]
+        farthest_experts_output = sorted(int(index) for index in farthest_experts)
+        changes_output = {
+            str(int(expert_index)): [int(change) for change in expert_changes]
+            for expert_index, expert_changes in changes.items()
+        }
+    else:
+        suggested_next_evaluations = {}
+        proximity_measures_output = []
+        farthest_experts_output = []
+        changes_output = {}
+
+    expert_rankings = [
+        [int(value) for value in alternatives_rankings[expert_index]]
+        for expert_index in range(n_exp)
+    ]
+    collective_ranking = [int(value) for value in alternatives_rankings[-1]]
+    differences_rankings_output = [
+        [int(value) for value in row]
+        for row in differences_rankings.tolist()
+    ]
+    consensus_degree_exp_alt_output = [
+        _finite_float_list(row, precision=6)
+        for row in consensus_degree_exp_alt
+    ]
+    consensus_degree_alt_output = _finite_float_list(
+        consensus_degree_alt,
+        precision=6,
+    )
+    solution_set_output = sorted(int(index) for index in solution_set)
 
     return {
         "alternatives_rankings": alternatives_rankings,
         "cm": round(cm, 2),
         "collective_scores": [round(float(value), 6) for value in collective_scores],
         "collective_evaluations": {
-            criterion_name: [[round(cell, 2) for cell in row] for row in pref[-1]],
+            criterion_name: _rounded_finite_matrix(pref[-1]),
         },
         "plots_graphic": plots,
+        "suggested_next_evaluations": suggested_next_evaluations,
+        "diagnostics": {
+            "expert_rankings": expert_rankings,
+            "collective_ranking": collective_ranking,
+            "differences_rankings": differences_rankings_output,
+            "consensus_degree_exp_alt": consensus_degree_exp_alt_output,
+            "consensus_degree_alt": consensus_degree_alt_output,
+            "solution_set": solution_set_output,
+            "proximity_measures": proximity_measures_output,
+            "farthest_experts": farthest_experts_output,
+            "changes": changes_output,
+        },
     }

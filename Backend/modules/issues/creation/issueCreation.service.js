@@ -18,6 +18,7 @@ import {
 } from "../evaluations/index.js";
 import {
   resolveIssueConsensusConfigOrThrow,
+  resolveIssueSimulationConfigOrThrow,
 } from "./issueCreation.model.js";
 import { resolveCriteriaWeightingConfigOrThrow } from "./issueCreation.criteriaWeights.js";
 import {
@@ -114,6 +115,7 @@ export const createIssueFlow = async ({
     apiEndpoint,
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
+    supportsConsensusSimulation: modelSupportsConsensusSimulation,
     modelFamilyKey,
     modelVersion,
     versionLabel,
@@ -154,9 +156,16 @@ export const createIssueFlow = async ({
     consensusThreshold,
     consensusMaxPhases,
   } = resolveIssueConsensusConfigOrThrow({
+    requestedIsConsensus: input.isConsensus,
     supportsConsensus: modelSupportsConsensus,
     consensusThreshold: input.consensusThreshold,
     consensusMaxPhases: input.consensusMaxPhases,
+  });
+  const simulateConsensus = resolveIssueSimulationConfigOrThrow({
+    simulateConsensus: input.simulateConsensus,
+    isConsensus,
+    supportsConsensus: modelSupportsConsensus,
+    supportsConsensusSimulation: modelSupportsConsensusSimulation,
   });
 
   const issue = new Issue({
@@ -174,6 +183,7 @@ export const createIssueFlow = async ({
     criteriaWeightingParameters: {},
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
+    simulateConsensus,
     consensusPhase: 1,
     isConsensus,
     name: input.issueName,

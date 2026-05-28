@@ -244,6 +244,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.usesCriterionTypes !== "boolean") {
     missingFields.push("usesCriterionTypes");
   }
+  if (typeof manifestModel?.supportsConsensusSimulation !== "boolean") {
+    missingFields.push("supportsConsensusSimulation");
+  }
 
   missingFields.push(...validateManifestParameters(manifestModel));
 
@@ -274,6 +277,8 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
     manifestModel?.criteriaWeightingStructureKey
   ),
   supportsConsensus: manifestModel?.supportsConsensus === true,
+  supportsConsensusSimulation:
+    manifestModel?.supportsConsensusSimulation === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
   usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
   usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,

@@ -5,6 +5,7 @@ import { getIssueByIdOrThrow } from "../issue.queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
+  createInternalError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import {
@@ -18,6 +19,7 @@ import {
   executeCriteriaWeightingModel,
 } from "../modelExecution/index.js";
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
+import { getOrderedAlternativeAndCriterionNames } from "./structures/shared/alternativeEvaluation.helpers.js";
 
 const hasOwn = (value, key) =>
   Object.prototype.hasOwnProperty.call(value || {}, key);
@@ -370,12 +372,13 @@ const saveStageResult = async ({
   stage,
   computeResult,
   lifecycleMetadata = null,
+  consensusPhase = issue.consensusPhase,
 }) => {
   await IssueStageResult.findOneAndUpdate(
     {
       issue: issue._id,
       stage,
-      consensusPhase: issue.consensusPhase,
+      consensusPhase,
     },
     {
       $set: {
@@ -461,6 +464,7 @@ const computeAlternativeEvaluationStage = async ({
   structure,
   issue,
   evaluations,
+  phase = issue.consensusPhase,
   apiModelsBaseUrl,
   httpClient,
 }) => {
@@ -468,7 +472,7 @@ const computeAlternativeEvaluationStage = async ({
     await structure.validateBeforeCompute({
       issue,
       evaluations,
-      phase: issue.consensusPhase,
+      phase,
     });
   }
 
@@ -476,12 +480,12 @@ const computeAlternativeEvaluationStage = async ({
     issue,
     structureKey: structure.key,
     evaluations,
-    phase: issue.consensusPhase,
+    phase,
     apiModelsBaseUrl,
     httpClient,
     message:
       issue.isConsensus === true
-        ? `Consensus round ${issue.consensusPhase} for '${issue.name}' computed successfully.`
+        ? `Consensus round ${phase} for '${issue.name}' computed successfully.`
         : `Issue '${issue.name}' computed successfully.`,
     issueUpdates:
       issue.isConsensus === true
@@ -490,6 +494,412 @@ const computeAlternativeEvaluationStage = async ({
     nextCurrentStage:
       issue.isConsensus === true ? null : ISSUE_STAGES.FINISHED,
   });
+};
+
+const ensureSimulatedConsensusIssueConfigOrThrow = ({ issue, stage }) => {
+  if (stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    return;
+  }
+
+  if (issue?.simulateConsensus !== true) {
+    return;
+  }
+
+  if (issue?.isConsensus !== true) {
+    throw createBadRequestError(
+      "simulateConsensus requires isConsensus to be true",
+      {
+        code: "SIMULATION_REQUIRES_CONSENSUS_ISSUE",
+        field: "simulateConsensus",
+      }
+    );
+  }
+
+  if (!Number.isFinite(issue?.consensusThreshold)) {
+    throw createInternalError("Issue consensusThreshold is invalid", {
+      field: "consensusThreshold",
+      details: {
+        issueId: issue?._id ?? null,
+        consensusThreshold: issue?.consensusThreshold ?? null,
+      },
+    });
+  }
+
+  if (!Number.isInteger(issue?.consensusMaxPhases) || issue.consensusMaxPhases <= 0) {
+    throw createInternalError(
+      "Simulated consensus requires a valid positive consensusMaxPhases",
+      {
+        field: "consensusMaxPhases",
+        details: {
+          issueId: issue?._id ?? null,
+          consensusMaxPhases: issue?.consensusMaxPhases ?? null,
+        },
+      }
+    );
+  }
+
+  if (
+    !Number.isInteger(issue?.consensusPhase) ||
+    issue.consensusPhase < 1
+  ) {
+    throw createInternalError("Issue consensusPhase is invalid", {
+      field: "consensusPhase",
+      details: {
+        issueId: issue?._id ?? null,
+        consensusPhase: issue?.consensusPhase ?? null,
+      },
+    });
+  }
+};
+
+const validateStructureForSimulatedConsensusOrThrow = ({
+  structure,
+  criterionNames,
+}) => {
+  if (structure?.key !== "alternativePairwiseByCriterion") {
+    throw createBadRequestError(
+      "Simulated consensus is only supported for alternativePairwiseByCriterion",
+      {
+        code: "UNSUPPORTED_SIMULATED_CONSENSUS_STRUCTURE",
+        field: "alternativeEvaluationStructureKey",
+      }
+    );
+  }
+
+  if (!Array.isArray(criterionNames) || criterionNames.length !== 1) {
+    throw createBadRequestError(
+      "Simulated consensus for alternativePairwiseByCriterion requires exactly one criterion",
+      {
+        code: "SIMULATED_CONSENSUS_REQUIRES_SINGLE_CRITERION",
+        field: "criteria",
+      }
+    );
+  }
+};
+
+const getSuggestedEvaluationsOrThrow = (rawOutput) => {
+  if (!isPlainObject(rawOutput)) {
+    throw createInternalError("Model rawOutput is missing for simulated consensus", {
+      field: "rawOutput",
+    });
+  }
+
+  const suggestions = rawOutput.suggested_next_evaluations;
+  if (!isPlainObject(suggestions)) {
+    throw createInternalError(
+      "Model rawOutput.suggested_next_evaluations is required for simulated consensus rounds",
+      {
+        field: "rawOutput.suggested_next_evaluations",
+      }
+    );
+  }
+
+  if (Object.keys(suggestions).length === 0) {
+    throw createInternalError(
+      "Model rawOutput.suggested_next_evaluations cannot be empty when consensus is not reached",
+      {
+        field: "rawOutput.suggested_next_evaluations",
+      }
+    );
+  }
+
+  return suggestions;
+};
+
+const buildSimulatedPairwisePayloadOrThrow = ({
+  expertId,
+  expertSuggestion,
+  criterionName,
+  criterionExpressionDomain,
+  alternativeNames,
+}) => {
+  if (!isPlainObject(expertSuggestion)) {
+    throw createInternalError(
+      `Suggested evaluation for expert '${expertId}' must be an object`,
+      {
+        field: `suggested_next_evaluations.${expertId}`,
+      }
+    );
+  }
+
+  const criterionKeys = Object.keys(expertSuggestion);
+  if (criterionKeys.length !== 1 || criterionKeys[0] !== criterionName) {
+    throw createInternalError(
+      `Suggested evaluation for expert '${expertId}' must include exactly criterion '${criterionName}'`,
+      {
+        field: `suggested_next_evaluations.${expertId}`,
+      }
+    );
+  }
+
+  const matrix = expertSuggestion[criterionName];
+  if (!Array.isArray(matrix) || matrix.length !== alternativeNames.length) {
+    throw createInternalError(
+      `Suggested matrix for expert '${expertId}' must have ${alternativeNames.length} rows`,
+      {
+        field: `suggested_next_evaluations.${expertId}.${criterionName}`,
+      }
+    );
+  }
+
+  const comparisons = {};
+  for (let rowIndex = 0; rowIndex < alternativeNames.length; rowIndex += 1) {
+    const row = matrix[rowIndex];
+    if (!Array.isArray(row) || row.length !== alternativeNames.length) {
+      throw createInternalError(
+        `Suggested matrix row ${rowIndex} for expert '${expertId}' must have ${alternativeNames.length} values`,
+        {
+          field: `suggested_next_evaluations.${expertId}.${criterionName}`,
+        }
+      );
+    }
+
+    for (let colIndex = 0; colIndex < alternativeNames.length; colIndex += 1) {
+      if (rowIndex === colIndex) {
+        continue;
+      }
+
+      const numericValue = Number(row[colIndex]);
+      if (!Number.isFinite(numericValue)) {
+        throw createInternalError(
+          `Suggested matrix contains a non-finite value for expert '${expertId}'`,
+          {
+            field: `suggested_next_evaluations.${expertId}.${criterionName}`,
+            details: {
+              rowIndex,
+              colIndex,
+            },
+          }
+        );
+      }
+
+      const pairKey = `${alternativeNames[rowIndex]}::${alternativeNames[colIndex]}`;
+      comparisons[pairKey] = {
+        value: numericValue,
+        expressionDomain: criterionExpressionDomain,
+      };
+    }
+  }
+
+  return {
+    comparisonsByCriterion: {
+      [criterionName]: comparisons,
+    },
+  };
+};
+
+const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
+  issue,
+  structure,
+  acceptedParticipations,
+  suggestions,
+  nextPhase,
+  criterionName,
+  criterionExpressionDomain,
+  alternativeNames,
+}) => {
+  const expectedExpertIds = acceptedParticipations.map((participation) =>
+    toIdString(participation.expert)
+  );
+
+  const suggestedExpertIds = Object.keys(suggestions);
+  const missingExpertIds = expectedExpertIds.filter(
+    (expertId) => !suggestedExpertIds.includes(expertId)
+  );
+  const unexpectedExpertIds = suggestedExpertIds.filter(
+    (expertId) => !expectedExpertIds.includes(expertId)
+  );
+
+  if (missingExpertIds.length > 0 || unexpectedExpertIds.length > 0) {
+    throw createInternalError(
+      "Suggested next evaluations do not match accepted experts",
+      {
+        field: "rawOutput.suggested_next_evaluations",
+        details: {
+          missingExpertIds,
+          unexpectedExpertIds,
+        },
+      }
+    );
+  }
+
+  for (const participation of acceptedParticipations) {
+    const expertId = toIdString(participation.expert);
+    const expertSuggestion = suggestions[expertId];
+    const rawPayload = buildSimulatedPairwisePayloadOrThrow({
+      expertId,
+      expertSuggestion,
+      criterionName,
+      criterionExpressionDomain,
+      alternativeNames,
+    });
+
+    const normalizedPayload = await structure.save({
+      mode: "submit",
+      payload: rawPayload,
+      issue,
+    });
+
+    await IssueEvaluation.findOneAndUpdate(
+      {
+        issue: issue._id,
+        expert: participation.expert,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        consensusPhase: nextPhase,
+      },
+      {
+        $set: {
+          payload: normalizedPayload,
+          completed: true,
+          submittedAt: new Date(),
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+  }
+};
+
+const buildIssueSnapshotForConsensusLifecycle = ({ issue, consensusPhase }) => ({
+  _id: issue._id,
+  isConsensus: issue.isConsensus,
+  consensusThreshold: issue.consensusThreshold,
+  consensusMaxPhases: issue.consensusMaxPhases,
+  consensusPhase,
+});
+
+const computeSimulatedAlternativeConsensusRounds = async ({
+  structure,
+  issue,
+  acceptedParticipations,
+  evaluations,
+  apiModelsBaseUrl,
+  httpClient,
+}) => {
+  ensureSimulatedConsensusIssueConfigOrThrow({
+    issue,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  });
+
+  const {
+    alternativeNames,
+    criteria,
+    criterionNames,
+  } = await getOrderedAlternativeAndCriterionNames({ issue });
+  validateStructureForSimulatedConsensusOrThrow({
+    structure,
+    criterionNames,
+  });
+
+  const criterionName = criterionNames[0];
+  const criterionExpressionDomain = criteria[0]?.expressionDomain || null;
+  const initialPhase = issue.consensusPhase;
+  let currentPhase = initialPhase;
+  let currentEvaluations = evaluations;
+  let lastLifecycleMetadata = null;
+  let lastComputeResult = null;
+
+  while (true) {
+    const phaseComputeResult = await computeAlternativeEvaluationStage({
+      structure,
+      issue,
+      evaluations: currentEvaluations,
+      phase: currentPhase,
+      apiModelsBaseUrl,
+      httpClient,
+    });
+
+    const {
+      computeResult: lifecycleComputeResult,
+      lifecycleMetadata,
+    } = resolveEvaluationComputeLifecycle({
+      issue: buildIssueSnapshotForConsensusLifecycle({
+        issue,
+        consensusPhase: currentPhase,
+      }),
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      computeResult: phaseComputeResult,
+    });
+
+    await saveStageResult({
+      issue,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      computeResult: lifecycleComputeResult,
+      lifecycleMetadata,
+      consensusPhase: currentPhase,
+    });
+
+    lastComputeResult = lifecycleComputeResult;
+    lastLifecycleMetadata = lifecycleMetadata;
+
+    if (lifecycleMetadata.consensusReached || lifecycleMetadata.maxPhasesReached) {
+      break;
+    }
+
+    const suggestions = getSuggestedEvaluationsOrThrow(
+      lifecycleComputeResult.rawOutput
+    );
+    const nextPhase = currentPhase + 1;
+
+    await saveSimulatedEvaluationsForNextPhaseOrThrow({
+      issue,
+      structure,
+      acceptedParticipations,
+      suggestions,
+      nextPhase,
+      criterionName,
+      criterionExpressionDomain,
+      alternativeNames,
+    });
+
+    currentPhase = nextPhase;
+    issue.consensusPhase = currentPhase;
+    await issue.save();
+
+    currentEvaluations = await loadEvaluationsForCompute({
+      issueId: issue._id,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      consensusPhase: currentPhase,
+      participations: acceptedParticipations,
+    });
+  }
+
+  issue.consensusPhase = currentPhase;
+  issue.currentStage = ISSUE_STAGES.FINISHED;
+  issue.active = false;
+  if (!issue.finishedAt) {
+    issue.finishedAt = new Date();
+  }
+  await issue.save();
+
+  return {
+    message: "Simulated consensus rounds computed successfully.",
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    structureKey: structure.key,
+    consensusPhase: currentPhase,
+    currentStage: issue.currentStage,
+    result: {
+      rankedAlternatives: lastComputeResult.rankedAlternatives,
+      collectiveEvaluations: lastComputeResult.collectiveEvaluations,
+      plotsGraphic: lastComputeResult.plotsGraphic,
+      consensusMeasure: lastComputeResult.consensusMeasure,
+      consensusLifecycle: lastLifecycleMetadata,
+      modelExecution: lastComputeResult.modelExecution,
+      rawOutput: lastComputeResult.rawOutput,
+      simulatedConsensus: {
+        enabled: true,
+        initialPhase,
+        finalPhase: currentPhase,
+        roundsComputed: currentPhase - initialPhase + 1,
+        consensusReached: lastLifecycleMetadata?.consensusReached === true,
+        maxPhasesReached: lastLifecycleMetadata?.maxPhasesReached === true,
+        finalizationReason: lastLifecycleMetadata?.finalizationReason ?? null,
+      },
+    },
+  };
 };
 
 export const computeIssueEvaluationStage = async ({
@@ -516,6 +926,22 @@ export const computeIssueEvaluationStage = async ({
     consensusPhase: issue.consensusPhase,
     participations,
   });
+
+  ensureSimulatedConsensusIssueConfigOrThrow({ issue, stage });
+
+  if (
+    stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION &&
+    issue.simulateConsensus === true
+  ) {
+    return computeSimulatedAlternativeConsensusRounds({
+      structure,
+      issue,
+      acceptedParticipations: participations,
+      evaluations,
+      apiModelsBaseUrl,
+      httpClient,
+    });
+  }
 
   const computeResult =
     stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
