@@ -20,10 +20,9 @@ const ACTIVE_SORT_OPTIONS = [
 ];
 
 export const getEmptyTasksByType = () => ({
-  resolveIssue: [],
-  computeWeights: [],
-  evaluateWeights: [],
-  evaluateAlternatives: [],
+  ...Object.fromEntries(
+    ACTIVE_TASK_ACTION_KEYS.map((actionKey) => [actionKey, []])
+  ),
 });
 
 const buildStageOptions = () => [
@@ -65,8 +64,12 @@ export const sortActiveTasksByType = (tasksByType) => {
         return a.sortPriority - b.sortPriority;
       }
 
-      const aDeadline = a.deadline.hasDeadline ? a.deadline.daysLeft : 999999;
-      const bDeadline = b.deadline.hasDeadline ? b.deadline.daysLeft : 999999;
+      const aDeadline = a.deadline.hasDeadline
+        ? a.deadline.daysLeft
+        : Number.POSITIVE_INFINITY;
+      const bDeadline = b.deadline.hasDeadline
+        ? b.deadline.daysLeft
+        : Number.POSITIVE_INFINITY;
       if (aDeadline !== bDeadline) return aDeadline - bDeadline;
 
       return a.issueName.localeCompare(b.issueName);
@@ -80,8 +83,9 @@ export const buildActiveTaskCenter = (tasksByType) => {
     0
   );
 
-  const sections = Object.values(ACTIVE_ACTION_META)
-    .filter((action) => ACTIVE_TASK_ACTION_KEYS.includes(action.key))
+  const sections = ACTIVE_TASK_ACTION_KEYS.map(
+    (actionKey) => ACTIVE_ACTION_META[actionKey]
+  )
     .sort((a, b) => a.sortPriority - b.sortPriority)
     .map((action) => {
       const items = tasksByType[action.key];

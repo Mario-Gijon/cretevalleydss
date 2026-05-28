@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 export const buildActiveWorkflowSteps = ({ hasAlternativeConsensus }) => {
   const steps = [
     { key: "criteriaWeighting", label: "Criteria weighting" },
@@ -14,7 +16,7 @@ export const buildActiveWorkflowSteps = ({ hasAlternativeConsensus }) => {
   return steps;
 };
 
-export const buildDeadlineInfo = (closureDate, dayjsLib) => {
+export const buildDeadlineInfo = (closureDate) => {
   if (!closureDate) {
     return {
       hasDeadline: false,
@@ -24,7 +26,7 @@ export const buildDeadlineInfo = (closureDate, dayjsLib) => {
     };
   }
 
-  const parsedDate = dayjsLib(closureDate, "DD-MM-YYYY", true);
+  const parsedDate = dayjs(closureDate, "DD-MM-YYYY", true);
   if (!parsedDate.isValid()) {
     return {
       hasDeadline: false,
@@ -36,7 +38,7 @@ export const buildDeadlineInfo = (closureDate, dayjsLib) => {
 
   const daysLeft = parsedDate
     .startOf("day")
-    .diff(dayjsLib().startOf("day"), "day");
+    .diff(dayjs().startOf("day"), "day");
 
   return {
     hasDeadline: true,

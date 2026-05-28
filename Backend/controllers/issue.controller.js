@@ -1,16 +1,11 @@
 
-import { Alternative } from "../models/Alternatives.js";
-import { Consensus } from "../models/Consensus.js";
-import { Criterion } from "../models/Criteria.js";
 import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
-import { Participation } from "../models/Participations.js";
 import { User } from "../models/Users.js";
 
 
 import {
   getUserFinishedIssueIds,
-  getVisibleActiveIssueIdsForUser,
 } from "../modules/issues/issue.queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
 import {
@@ -28,13 +23,7 @@ import {
 
 
 import {
-  buildActiveIssueCollections,
-  buildActiveIssueView,
-  buildActiveIssuesResponseMeta,
-  buildEmptyActiveIssuesPayload,
-  getEmptyTasksByType,
-  sortActiveIssues,
-  sortActiveTasksByType,
+  getActiveIssuesPayload,
 } from "../modules/issues/active/index.js";
 import {
   createIssueScenarioFlow,
@@ -65,7 +54,6 @@ import { createIssueFlow } from "../modules/issues/creation/index.js";
 
 
 import axios from "axios";
-import dayjs from "dayjs";
 import mongoose from "mongoose";
 
 export const modelsInfo = async (req, res) => {
@@ -200,90 +188,11 @@ export const createIssue = async (req, res) => {
 };
 
 export const getAllActiveIssues = async (req, res) => {
-  const userId = toIdString(req.uid);
-
-  const { issueIds, adminIssueIds } = await getVisibleActiveIssueIdsForUser(
-    userId
-  );
-
-  if (issueIds.length === 0) {
-    return sendSuccess(
-      res,
-      "Active issues fetched successfully",
-      buildEmptyActiveIssuesPayload()
-    );
-  }
-
-  const adminIssueIdSet = new Set(adminIssueIds);
-
-  const [issues, allParticipations, alternatives, criteria, consensusPhases] =
-    await Promise.all([
-      Issue.find({ _id: { $in: issueIds } })
-        .populate("model")
-        .populate("admin", "email name")
-        .lean(),
-      Participation.find({ issue: { $in: issueIds } })
-        .populate("expert", "email")
-        .lean(),
-      Alternative.find({ issue: { $in: issueIds } }).lean(),
-      Criterion.find({ issue: { $in: issueIds } })
-        .populate(
-          "expressionDomain",
-          "name type numericRange valueCount linguisticLabels"
-        )
-        .lean(),
-      Consensus.find({ issue: { $in: issueIds } }).lean(),
-    ]);
-
-  const {
-    participationMap,
-    alternativesMap,
-    criteriaMap,
-    consensusHistoryByIssue,
-  } = buildActiveIssueCollections({
-    participations: allParticipations,
-    alternatives,
-    criteria,
-    consensusPhases,
+  const payload = await getActiveIssuesPayload({
+    userId: req.uid,
   });
 
-  const tasksByType = getEmptyTasksByType();
-
-  const formattedIssues = issues.map((issue) => {
-    const issueId = toIdString(issue._id);
-
-    const { issueView, taskItems } = buildActiveIssueView({
-      issue,
-      userId,
-      adminIssueIdSet,
-      issueParticipations: participationMap[issueId] || [],
-      issueAlternativeDocs: alternativesMap[issueId] || [],
-      issueCriteriaDocs: criteriaMap[issueId] || [],
-      consensusHistoryRounds: consensusHistoryByIssue[issueId] || [],
-      dayjsLib: dayjs,
-    });
-
-    for (const taskItem of taskItems) {
-      tasksByType[taskItem.actionKey].push(taskItem);
-    }
-
-    return issueView;
-  });
-
-  sortActiveIssues(formattedIssues);
-  sortActiveTasksByType(tasksByType);
-
-  const { tasks, taskCenter, filtersMeta } = buildActiveIssuesResponseMeta({
-    formattedIssues,
-    tasksByType,
-  });
-
-  return sendSuccess(res, "Active issues fetched successfully", {
-    issues: formattedIssues,
-    tasks,
-    taskCenter,
-    filtersMeta,
-  });
+  return sendSuccess(res, "Active issues fetched successfully", payload);
 };
 
 export const removeIssue = async (req, res) => {

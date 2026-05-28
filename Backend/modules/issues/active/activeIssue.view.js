@@ -21,7 +21,7 @@ import {
 } from "./activeIssue.workflow.js";
 import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
 
-const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus"
+const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus";
 
 const WEIGHTS_OPTIONAL_STAGES = new Set([
   ISSUE_STAGES.CRITERIA_WEIGHTING,
@@ -33,15 +33,6 @@ const WEIGHTS_REQUIRED_STAGES = new Set([
   ISSUE_STAGES.FINISHED,
 ]);
 
-const issueUsesEffectiveCriteriaWeights = (issue) => {
-  const modelUsesCriteriaWeights = issue?.model?.usesCriteriaWeights;
-  if (typeof modelUsesCriteriaWeights === "boolean") {
-    return modelUsesCriteriaWeights;
-  }
-
-  return true;
-};
-
 const getEffectiveCriteriaWeightsForActiveView = ({
   issue,
   orderedLeafCriteria,
@@ -50,7 +41,7 @@ const getEffectiveCriteriaWeightsForActiveView = ({
 }) => {
   const criteriaCount = orderedLeafCriteria.length;
   const stage = issue.currentStage;
-  const weights = issue.modelParameters?.weights;
+  const weights = issue.modelParameters.weights;
 
   if (criteriaCount === 0) {
     return [];
@@ -112,11 +103,20 @@ export const buildActiveIssueView = ({
   issueAlternativeDocs,
   issueCriteriaDocs,
   consensusHistoryRounds,
-  dayjsLib,
 }) => {
   const issueId = toIdString(issue._id);
   const adminId = toIdString(issue.admin);
   const isAdminUser = adminId === userId || adminIssueIdSet.has(issueId);
+
+  if (typeof issue.model.usesCriteriaWeights !== "boolean") {
+    throw createInternalError("Issue model.usesCriteriaWeights is invalid", {
+      field: "model.usesCriteriaWeights",
+      details: {
+        issueId,
+        value: issue.model.usesCriteriaWeights,
+      },
+    });
+  }
 
   const acceptedParticipations = issueParticipations.filter(
     (participation) => participation.invitationStatus === "accepted"
@@ -159,9 +159,7 @@ export const buildActiveIssueView = ({
     issue
   );
   const orderedLeafCriteriaWithDomain = orderDocsByIdList(
-    (Array.isArray(issueCriteriaDocs) ? issueCriteriaDocs : []).filter(
-      (criterion) => criterion?.isLeaf === true
-    ),
+    issueCriteriaDocs.filter((criterion) => criterion.isLeaf === true),
     issue.leafCriteriaOrder
   );
   const expressionDomainConfig =
@@ -174,7 +172,7 @@ export const buildActiveIssueView = ({
     issue,
     orderedLeafCriteria,
     issueId,
-    requiresEffectiveCriteriaWeights: issueUsesEffectiveCriteriaWeights(issue),
+    requiresEffectiveCriteriaWeights: issue.model.usesCriteriaWeights,
   });
 
   const criteriaWeightsById = orderedLeafCriteria.reduce((acc, node, index) => {
@@ -191,7 +189,7 @@ export const buildActiveIssueView = ({
 
   const consensusCurrentPhase = issue.consensusPhase;
 
-  const deadline = buildDeadlineInfo(issue.closureDate, dayjsLib);
+  const deadline = buildDeadlineInfo(issue.closureDate);
   const stage = issue.currentStage;
   const uiStage = 
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
@@ -366,8 +364,7 @@ export const buildActiveIssueView = ({
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,
       simulateConsensus: issue.simulateConsensus === true,
-      supportsConsensusSimulation:
-        issue?.model?.supportsConsensusSimulation === true,
+      supportsConsensusSimulation: issue.model.supportsConsensusSimulation === true,
       currentStage: stage,
       ...(issue.isConsensus && {
         consensusMaxPhases: issue.consensusMaxPhases,
