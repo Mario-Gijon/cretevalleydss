@@ -19,11 +19,8 @@ const ACTIVE_SORT_OPTIONS = [
   { value: "deadlineDate", label: "Deadline Date" },
 ];
 
-export const getEmptyTasksByType = () => ({
-  ...Object.fromEntries(
-    ACTIVE_TASK_ACTION_KEYS.map((actionKey) => [actionKey, []])
-  ),
-});
+export const getEmptyTasksByType = () =>
+  Object.fromEntries(ACTIVE_TASK_ACTION_KEYS.map((actionKey) => [actionKey, []]));
 
 const buildStageOptions = () => [
   { value: "all", label: "All stages" },
