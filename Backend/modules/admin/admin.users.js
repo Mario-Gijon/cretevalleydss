@@ -4,7 +4,7 @@ import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notificacions.js";
+import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
 import { User } from "../../models/Users.js";
 

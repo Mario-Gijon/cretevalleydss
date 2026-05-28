@@ -1,4 +1,4 @@
-import { Notification } from "../../../models/Notificacions.js";
+import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
 export const createIssueParticipationsAndNotifications = async ({

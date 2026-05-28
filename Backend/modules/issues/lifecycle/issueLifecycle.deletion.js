@@ -7,7 +7,7 @@ import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
-import { Notification } from "../../../models/Notificacions.js";
+import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
 import { getNextConsensusPhase } from "../issue.queries.js";

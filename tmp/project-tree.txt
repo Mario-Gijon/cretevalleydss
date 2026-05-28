@@ -1,0 +1,248 @@
+.
+├── ApiModels
+│   ├── api
+│   │   └── routers
+│   │       ├── model_manifest.py
+│   │       └── models.py
+│   ├── app.py
+│   ├── core
+│   │   └── application.py
+│   ├── legacy
+│   │   ├── cmcc_model.py
+│   │   ├── function_calls_example.txt
+│   │   ├── mcc_model.py
+│   │   └── README.md
+│   ├── models
+│   │   ├── aras
+│   │   │   └── aras_model.py
+│   │   ├── borda
+│   │   │   └── borda_model.py
+│   │   ├── bwm
+│   │   │   └── bwm_model.py
+│   │   ├── cmcc
+│   │   │   └── cmcc_model.py
+│   │   ├── edas
+│   │   │   └── edas_model.py
+│   │   ├── fuzzy_topsis
+│   │   │   └── fuzzy_topsis_model.py
+│   │   ├── herrera_viedma_crp
+│   │   │   ├── herrera_viedma_crp_model.py
+│   │   │   └── utils.py
+│   │   ├── marcos
+│   │   │   └── marcos_model.py
+│   │   ├── promethee_vi
+│   │   │   └── promethee_vi_model.py
+│   │   ├── topsis
+│   │   │   └── topsis_model.py
+│   │   ├── vikor
+│   │   │   └── vikor_model.py
+│   │   └── waspas
+│   │       └── waspas_model.py
+│   ├── registry
+│   │   ├── model_definitions.py
+│   │   └── response_examples.py
+│   ├── requirements.txt
+│   ├── schemas
+│   │   ├── common.py
+│   │   ├── model_manifest.py
+│   │   └── model_requests.py
+│   ├── services
+│   │   ├── model_executors
+│   │   │   ├── aras.py
+│   │   │   ├── borda.py
+│   │   │   ├── bwm.py
+│   │   │   ├── cmcc.py
+│   │   │   ├── edas.py
+│   │   │   ├── fuzzy_topsis.py
+│   │   │   ├── herrera_viedma_crp.py
+│   │   │   ├── marcos.py
+│   │   │   ├── promethee_vi.py
+│   │   │   ├── responses.py
+│   │   │   ├── topsis.py
+│   │   │   ├── vikor.py
+│   │   │   └── waspas.py
+│   │   └── model_manifest_service.py
+│   └── utils
+│       ├── clean_matrix.py
+│       ├── defuzzify_centroid.py
+│       └── get_plots_graphics_from_matrices.py
+├── Backend
+│   ├── app.js
+│   ├── bun.lockb
+│   ├── controllers
+│   │   ├── admin.controller.js
+│   │   ├── auth.controller.js
+│   │   └── issue.controller.js
+│   ├── database
+│   │   └── db.js
+│   ├── docs
+│   │   ├── jsdoc-home.md
+│   │   └── README.md
+│   ├── .env
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── jsdoc.json
+│   ├── middlewares
+│   │   ├── asyncHandler.js
+│   │   ├── authValidations.js
+│   │   ├── errorHandler.js
+│   │   ├── refreshToken.js
+│   │   ├── requireAdmin.js
+│   │   ├── requireRefreshToken.js
+│   │   └── requireToken.js
+│   ├── models
+│   │   ├── Alternatives.js
+│   │   ├── Consensus.js
+│   │   ├── Criteria.js
+│   │   ├── ExitUserIssue.js
+│   │   ├── ExpressionDomain.js
+│   │   ├── IssueEvaluations.js
+│   │   ├── IssueExpressionDomains.js
+│   │   ├── IssueModels.js
+│   │   ├── IssueScenarios.js
+│   │   ├── Issues.js
+│   │   ├── IssueStageResults.js
+│   │   ├── Notificacions.js
+│   │   ├── Participations.js
+│   │   ├── Users.js
+│   │   └── validators
+│   │       └── orderedNumericArrayValidator.js
+│   ├── modules
+│   │   ├── admin
+│   │   │   ├── admin.issueReads.js
+│   │   │   └── admin.users.js
+│   │   ├── auth
+│   │   │   ├── auth.account.js
+│   │   │   ├── auth.emailChange.js
+│   │   │   ├── auth.profile.js
+│   │   │   └── auth.session.js
+│   │   └── issues
+│   │       ├── active
+│   │       ├── creation
+│   │       ├── evaluations
+│   │       ├── expressionDomains
+│   │       ├── finished
+│   │       ├── issue.criteriaTree.js
+│   │       ├── issue.ordering.js
+│   │       ├── issue.queries.js
+│   │       ├── lifecycle
+│   │       ├── modelExecution
+│   │       ├── modelParameters
+│   │       ├── notifications
+│   │       ├── participants
+│   │       └── scenarios
+│   ├── openapi
+│   │   ├── bundled-openapi.json
+│   │   └── openapi.json
+│   ├── package.json
+│   ├── README.md
+│   ├── redocly.yaml
+│   ├── routes
+│   │   ├── admin.route.js
+│   │   ├── auth.route.js
+│   │   └── issue.route.js
+│   ├── scripts
+│   │   └── generate-openapi.mjs
+│   ├── seeds
+│   │   ├── seedExpressionDomains.js
+│   │   └── seedIssueModels.js
+│   ├── server.js
+│   ├── services
+│   │   ├── email.service.js
+│   │   ├── modelApi
+│   │   │   ├── modelCatalog.js
+│   │   │   ├── modelManifestClient.js
+│   │   │   ├── modelManifestDryRun.js
+│   │   │   ├── modelManifest.mapper.js
+│   │   │   ├── modelManifestSync.js
+│   │   │   └── modelResponse.js
+│   │   └── token.service.js
+│   ├── tsconfig.json
+│   └── utils
+│       └── common
+│           ├── errors.js
+│           ├── ids.js
+│           ├── mongoose.js
+│           ├── responses.js
+│           └── strings.js
+├── build_and_push.sh
+├── cloc-report.sh
+├── .codex
+├── cretevalley-docker-compose.yml
+├── docker-compose.yml
+├── Dockerfile.apimodels
+├── Dockerfile.backend
+├── Dockerfile.frontend
+├── .dockerignore
+├── Frontend
+│   ├── bun.lockb
+│   ├── .env.development
+│   ├── .env.production
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── README.md
+│   ├── src
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── eu_dark.svg
+│   │   │   ├── eu_light.svg
+│   │   │   ├── logo.svg
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── Account
+│   │   │   ├── FuzzyPreviewChart
+│   │   │   ├── GoUpButton
+│   │   │   ├── LoadingProgress
+│   │   │   ├── ResponsiveNavbar
+│   │   │   ├── SnackbarAlert
+│   │   │   └── StyledComponents
+│   │   ├── context
+│   │   │   ├── auth
+│   │   │   ├── issues
+│   │   │   └── snackbarAlert
+│   │   ├── features
+│   │   │   ├── activeIssues
+│   │   │   ├── admin
+│   │   │   ├── auth
+│   │   │   ├── createIssue
+│   │   │   ├── finishedIssueDialog
+│   │   │   ├── finishedIssues
+│   │   │   ├── issueEvaluation
+│   │   │   ├── issueExperts
+│   │   │   ├── modelParameters
+│   │   │   ├── notifications
+│   │   │   └── settings
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   └── private
+│   │   ├── services
+│   │   │   ├── admin.service.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── issue.service.js
+│   │   │   └── service.utils.js
+│   │   ├── styles
+│   │   │   └── dashboard.css
+│   │   ├── theme
+│   │   │   ├── appTheme.js
+│   │   │   └── globalStyles.js
+│   │   └── utils
+│   │       ├── authFetch.js
+│   │       ├── criteria.utils.js
+│   │       ├── domainAssignments.utils.js
+│   │       ├── handleTwoDecimals.js
+│   │       ├── linguisticMembershipFunctions.js
+│   │       └── text.utils.js
+│   └── vite.config.js
+├── .gitignore
+├── README.md
+├── reports
+│   └── cloc
+│       ├── by_file.csv
+│       ├── by_language.csv
+│       └── totals.csv
+└── .vscode
+    └── tasks.json
+
+90 directories, 156 files

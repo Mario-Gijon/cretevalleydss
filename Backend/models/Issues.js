@@ -12,7 +12,7 @@ import { Participation } from "./Participations.js";
 import { IssueEvaluation } from "./IssueEvaluations.js";
 import { IssueStageResult } from "./IssueStageResults.js";
 import { IssueScenario } from "./IssueScenarios.js";
-import { Notification } from "./Notificacions.js";
+import { Notification } from "./Notifications.js";
 import { ExitUserIssue } from "./ExitUserIssue.js";
 
 
