@@ -10,12 +10,8 @@ import {
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 
-const stripCriteriaWeightParameterValues = ({ paramValues }) => {
-  const rawParamValues =
-    paramValues && typeof paramValues === "object" && !Array.isArray(paramValues)
-      ? paramValues
-      : {};
-  const normalized = { ...rawParamValues };
+const stripCriteriaWeightParameterValues = (paramValues) => {
+  const normalized = { ...paramValues };
 
   delete normalized.weights;
 
@@ -54,7 +50,7 @@ export const loadCreateIssueActorsAndModel = async ({
     versionLabel,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
-  const sanitizedParamValues = stripCriteriaWeightParameterValues({ paramValues });
+  const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
 
   const normalizedModelParameters = validateAndNormalizeModelParametersSharedOrThrow({
     model: existingModel,
@@ -63,9 +59,7 @@ export const loadCreateIssueActorsAndModel = async ({
     alternativesCount,
   });
   const normalizedModelParametersWithoutCriteriaWeights =
-    stripCriteriaWeightParameterValues({
-      paramValues: normalizedModelParameters,
-    });
+    stripCriteriaWeightParameterValues(normalizedModelParameters);
 
   const admin = await User.findById(adminUserId).session(session);
   if (!admin) {
@@ -97,7 +91,6 @@ export const loadCreateIssueActorsAndModel = async ({
     model: existingModel,
     admin,
     adminEmail: normalizeEmail(admin.email),
-    expertUsers,
     expertByEmail,
     apiModelKey,
     apiEndpoint,

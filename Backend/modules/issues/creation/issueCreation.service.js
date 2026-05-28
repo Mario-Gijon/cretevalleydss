@@ -20,62 +20,16 @@ import {
   resolveIssueConsensusConfigOrThrow,
   resolveIssueSimulationConfigOrThrow,
 } from "./issueCreation.model.js";
-import { resolveCriteriaWeightingConfigOrThrow } from "./issueCreation.criteriaWeights.js";
+import {
+  resolveCriteriaWeightingConfigOrThrow,
+  resolveFuzzyCriteriaWeightValueCountOrThrow,
+} from "./issueCreation.criteriaWeights.js";
 import {
   createBadRequestError,
   createConflictError,
 } from "../../../utils/common/errors.js";
 import dayjs from "dayjs";
 import axios from "axios";
-
-const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
-  model,
-  domainDocs,
-}) => {
-  if (model?.usesFuzzyCriteriaWeights !== true) {
-    return null;
-  }
-
-  const linguisticDomains = (Array.isArray(domainDocs) ? domainDocs : []).filter(
-    (domain) => domain?.type === "linguistic"
-  );
-
-  if (linguisticDomains.length === 0) {
-    throw createBadRequestError(
-      "Fuzzy criteria weights require linguistic expression domains",
-      {
-        field: "expressionDomainConfig",
-      }
-    );
-  }
-
-  const valueCounts = new Set();
-
-  for (const domain of linguisticDomains) {
-    const valueCount = Number(domain?.valueCount);
-    if (!Number.isInteger(valueCount) || valueCount < 2) {
-      throw createBadRequestError(
-        "Fuzzy criteria weights require a valid linguistic valueCount",
-        {
-          field: "expressionDomainConfig",
-        }
-      );
-    }
-
-    valueCounts.add(valueCount);
-  }
-
-  if (valueCounts.size !== 1) {
-    throw createBadRequestError(
-      "Fuzzy criteria weights require consistent linguistic valueCount across issue domains",
-      {
-        field: "expressionDomainConfig",
-      }
-    );
-  }
-
-  return Array.from(valueCounts)[0];
-};
 
 export const createIssueFlow = async ({
   issueInfo,
@@ -105,6 +59,8 @@ export const createIssueFlow = async ({
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
     supportsConsensusSimulation: modelSupportsConsensusSimulation,
+    usesCriteriaWeights,
+    isMultiCriteria,
     modelFamilyKey,
     modelVersion,
     versionLabel,
@@ -118,13 +74,6 @@ export const createIssueFlow = async ({
     uniqueExpertEmails: input.uniqueExpertEmails,
     session,
   });
-
-  const baseModelParameters =
-    normalizedModelParameters &&
-    typeof normalizedModelParameters === "object" &&
-    !Array.isArray(normalizedModelParameters)
-      ? normalizedModelParameters
-      : {};
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     alternativeEvaluationStructureKey
@@ -183,12 +132,12 @@ export const createIssueFlow = async ({
       ? dayjs(input.closureDate).format("DD-MM-YYYY")
       : null,
     currentStage:
-      model?.usesCriteriaWeights === true
+      usesCriteriaWeights
         ? EVALUATION_STAGES.CRITERIA_WEIGHTING
         : EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     consensusMaxPhases,
     consensusThreshold,
-    modelParameters: baseModelParameters,
+    modelParameters: normalizedModelParameters,
   });
 
   await issue.save({ session });
@@ -207,13 +156,7 @@ export const createIssueFlow = async ({
     session,
   });
 
-  if (leafCriteria.length === 0) {
-    throw createBadRequestError("At least one leaf criterion is required", {
-      field: "criteria",
-    });
-  }
-
-  if (model?.isMultiCriteria !== true && leafCriteria.length > 1) {
+  if (!isMultiCriteria && leafCriteria.length > 1) {
     throw createBadRequestError(
       "Selected model does not support multiple criteria",
       {
@@ -247,7 +190,7 @@ export const createIssueFlow = async ({
   const domainDocs = await loadAccessibleExpressionDomains({
     domainIdList: usedDomainIds,
     userId: adminUserId,
-    modelSupportedDomains: model?.supportedDomains || null,
+    modelSupportedDomains: model.supportedDomains,
     session,
   });
 
@@ -272,13 +215,15 @@ export const createIssueFlow = async ({
   issue.criteriaWeightingStructureKey =
     resolvedCriteriaWeighting.criteriaWeightingStructureKey;
   issue.criteriaWeightingModel =
-    resolvedCriteriaWeighting.criteriaWeightingModel?._id || null;
+    resolvedCriteriaWeighting.criteriaWeightingModel
+      ? resolvedCriteriaWeighting.criteriaWeightingModel._id
+      : null;
   issue.criteriaWeightingApiModelKey =
-    resolvedCriteriaWeighting.criteriaWeightingApiModelKey || null;
+    resolvedCriteriaWeighting.criteriaWeightingApiModelKey;
   issue.criteriaWeightingApiEndpoint =
-    resolvedCriteriaWeighting.criteriaWeightingApiEndpoint || null;
+    resolvedCriteriaWeighting.criteriaWeightingApiEndpoint;
   issue.criteriaWeightingParameters =
-    resolvedCriteriaWeighting.criteriaWeightingParameters || {};
+    resolvedCriteriaWeighting.criteriaWeightingParameters;
   issue.currentStage = resolvedCriteriaWeighting.currentStage;
 
   if (Array.isArray(resolvedCriteriaWeighting.modelWeights)) {
@@ -289,7 +234,7 @@ export const createIssueFlow = async ({
   }
 
   const isCriteriaWeightingRequired =
-    resolvedCriteriaWeighting.isCriteriaWeightingRequired === true;
+    resolvedCriteriaWeighting.isCriteriaWeightingRequired;
 
   await issue.save({ session });
 
@@ -310,7 +255,7 @@ export const createIssueFlow = async ({
   });
 
   for (const leafCriterion of leafCriteria) {
-    const criterionName = String(leafCriterion?.name || "").trim();
+    const criterionName = leafCriterion.name;
     const sourceDomainId = domainIdByCriterionName.get(criterionName);
     const snapshotId = snapshotIdBySourceDomainId.get(sourceDomainId);
 
@@ -328,7 +273,7 @@ export const createIssueFlow = async ({
   }
 
   const missingExpressionDomain = leafCriteria.find(
-    (leafCriterion) => !leafCriterion?.expressionDomain
+    (leafCriterion) => !leafCriterion.expressionDomain
   );
   if (missingExpressionDomain) {
     throw createBadRequestError(
@@ -336,7 +281,7 @@ export const createIssueFlow = async ({
       {
         field: "expressionDomainConfig",
         details: {
-          criterionName: String(missingExpressionDomain?.name || ""),
+          criterionName: missingExpressionDomain.name,
         },
       }
     );

@@ -9,10 +9,8 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,
   leafCriteria,
 }) => {
-  const mode = String(expressionDomainConfig?.mode || "").trim();
-  const leafCriterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion) => String(criterion?.name || "").trim())
-    .filter(Boolean);
+  const mode = String(expressionDomainConfig.mode).trim();
+  const leafCriterionNames = leafCriteria.map((criterion) => criterion.name);
 
   if (leafCriterionNames.length === 0) {
     throw createBadRequestError("At least one leaf criterion is required", {
@@ -30,7 +28,7 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   const usedDomainIds = new Set();
 
   if (mode === "global") {
-    const globalDomainId = toIdString(expressionDomainConfig?.globalDomainId);
+    const globalDomainId = toIdString(expressionDomainConfig.globalDomainId);
     if (!globalDomainId) {
       throw createBadRequestError("expressionDomainConfig.globalDomainId is required", {
         field: "expressionDomainConfig",
@@ -48,7 +46,7 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
     };
   }
 
-  const rawDomainsByCriterion = expressionDomainConfig?.domainsByCriterion;
+  const rawDomainsByCriterion = expressionDomainConfig.domainsByCriterion;
   if (!isPlainObject(rawDomainsByCriterion)) {
     throw createBadRequestError("expressionDomainConfig.domainsByCriterion is required", {
       field: "expressionDomainConfig",
@@ -118,14 +116,14 @@ const resolveSupportedDomainFlags = (modelSupportedDomains) => ({
 });
 
 const isNumericContinuousDomain = (domain) => {
-  const step = domain?.numericRange?.step;
-  return domain?.type === "numeric" && (step === null || step === undefined);
+  const step = domain.numericRange?.step;
+  return domain.type === "numeric" && (step === null || step === undefined);
 };
 
 const isNumericDiscreteDomain = (domain) => {
-  const step = domain?.numericRange?.step;
+  const step = domain.numericRange?.step;
   return (
-    domain?.type === "numeric" &&
+    domain.type === "numeric" &&
     Number.isFinite(step) &&
     step > 0
   );
@@ -146,13 +144,13 @@ const isSupportedDomainForModel = ({
     return supported.numericDiscrete;
   }
 
-  if (domain?.type === "linguistic") {
-    const normalizedDomainUserId = toIdString(domain?.user);
+  if (domain.type === "linguistic") {
+    const normalizedDomainUserId = toIdString(domain.user);
     const isCreatorOwnedDomain =
-      domain?.isGlobal !== true &&
+      domain.isGlobal !== true &&
       normalizedDomainUserId &&
       normalizedDomainUserId === toIdString(userId);
-    const membershipFunction = String(domain?.membershipFunction || "")
+    const membershipFunction = String(domain.membershipFunction || "")
       .trim()
       .toLowerCase();
     const supportsMembershipFunction =

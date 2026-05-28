@@ -148,7 +148,7 @@ export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    const issueInfo = req.body?.issueInfo || {};
+    const issueInfo = req.body.issueInfo;
     let result = null;
 
     await session.withTransaction(async () => {
@@ -162,7 +162,7 @@ export const createIssue = async (req, res) => {
       });
     });
 
-    for (const emailPayload of result?.emailsToSend || []) {
+    for (const emailPayload of result.emailsToSend) {
       try {
         await sendExpertInvitationEmail(emailPayload);
       } catch (error) {
@@ -176,9 +176,9 @@ export const createIssue = async (req, res) => {
 
     return sendSuccess(
       res,
-      `Issue ${result?.issueName || ""} created successfully`,
+      `Issue ${result.issueName} created successfully`,
       {
-        issueName: result?.issueName || null,
+        issueName: result.issueName,
       },
       201
     );

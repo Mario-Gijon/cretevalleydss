@@ -8,10 +8,6 @@ export const createIssueAlternatives = async ({
   uniqueAlternativeNames,
   session,
 }) => {
-  if (!uniqueAlternativeNames.length) {
-    return [];
-  }
-
   return Alternative.insertMany(
     uniqueAlternativeNames.map((name) => ({
       issue: issueId,
@@ -28,13 +24,29 @@ export const createCriteriaRecursively = async ({
   session,
   parentCriterionId = null,
 }) => {
-  if (!Array.isArray(nodes)) return;
+  if (!Array.isArray(nodes)) {
+    throw createBadRequestError("criteria must be an array", {
+      field: "criteria",
+    });
+  }
 
   for (const node of nodes) {
-    const children = Array.isArray(node?.children) ? node.children : [];
+    if (!node || typeof node !== "object" || Array.isArray(node)) {
+      throw createBadRequestError("Criterion node must be an object", {
+        field: "criteria",
+      });
+    }
+
+    if (!Array.isArray(node.children)) {
+      throw createBadRequestError("Criterion children must be an array", {
+        field: "criteria",
+      });
+    }
+
+    const children = node.children;
     const isLeaf = children.length === 0;
-    const criterionName = normalizeString(node?.name);
-    const criterionType = normalizeString(node?.type);
+    const criterionName = normalizeString(node.name);
+    const criterionType = normalizeString(node.type);
 
     if (!criterionName) {
       throw createBadRequestError("Criterion name is required", {

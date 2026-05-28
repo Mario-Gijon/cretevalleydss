@@ -58,10 +58,59 @@ const ensureCriteriaNamesOrThrow = (criterionNames) => {
   }
 };
 
-const usesCriteriaWeights = (model) => model?.usesCriteriaWeights === true;
+const usesCriteriaWeights = (model) => model.usesCriteriaWeights;
 
 const usesFuzzyCriteriaWeights = (model) =>
-  usesCriteriaWeights(model) && model?.usesFuzzyCriteriaWeights === true;
+  usesCriteriaWeights(model) && model.usesFuzzyCriteriaWeights;
+
+export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
+  model,
+  domainDocs,
+}) => {
+  if (!model.usesFuzzyCriteriaWeights) {
+    return null;
+  }
+
+  const linguisticDomains = domainDocs.filter(
+    (domain) => domain.type === "linguistic"
+  );
+
+  if (linguisticDomains.length === 0) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require linguistic expression domains",
+      {
+        field: "expressionDomainConfig",
+      }
+    );
+  }
+
+  const valueCounts = new Set();
+
+  for (const domain of linguisticDomains) {
+    const valueCount = Number(domain.valueCount);
+    if (!Number.isInteger(valueCount) || valueCount < 2) {
+      throw createBadRequestError(
+        "Fuzzy criteria weights require a valid linguistic valueCount",
+        {
+          field: "expressionDomainConfig",
+        }
+      );
+    }
+
+    valueCounts.add(valueCount);
+  }
+
+  if (valueCounts.size !== 1) {
+    throw createBadRequestError(
+      "Fuzzy criteria weights require consistent linguistic valueCount across issue domains",
+      {
+        field: "expressionDomainConfig",
+      }
+    );
+  }
+
+  return Array.from(valueCounts)[0];
+};
 
 const normalizeCreatorFuzzyWeightsOrThrow = ({
   payload,
