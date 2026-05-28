@@ -10,15 +10,59 @@ import { createBadRequestError } from "../../../utils/common/errors.js";
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
+  return criteriaNodes.map((node) => {
+    if (!isPlainObject(node)) {
+      throw createBadRequestError("Each criterion must be an object", {
+        field: "criteria",
+      });
+    }
+
+    const name = normalizeString(node.name);
+    if (!name) {
+      throw createBadRequestError("Criterion name is required", {
+        field: "criteria",
+      });
+    }
+
+    const type = normalizeString(node.type);
+    const rawChildren = node.children;
+
+    if (rawChildren !== undefined && !Array.isArray(rawChildren)) {
+      throw createBadRequestError("Criterion children must be an array", {
+        field: "criteria",
+      });
+    }
+
+    const children = normalizeCriteriaNodesOrThrow(rawChildren || []);
+
+    return {
+      name,
+      type,
+      children,
+    };
+  });
+};
+
 export const normalizeCreateIssueInput = (rawIssueInfo) => {
-  const issueInfo = rawIssueInfo || {};
+  if (rawIssueInfo === undefined || rawIssueInfo === null) {
+    throw createBadRequestError("issueInfo is required", {
+      field: "issueInfo",
+    });
+  }
+
+  if (!isPlainObject(rawIssueInfo)) {
+    throw createBadRequestError("issueInfo must be an object", {
+      field: "issueInfo",
+    });
+  }
+
+  const issueInfo = rawIssueInfo;
 
   const issueName = normalizeString(issueInfo.issueName);
   const issueDescription = normalizeOptionalString(issueInfo.issueDescription);
   const selectedModelId = normalizeString(issueInfo.selectedModelId);
-  const alternatives = Array.isArray(issueInfo.alternatives)
-    ? issueInfo.alternatives
-    : [];
+  const alternatives = issueInfo.alternatives;
   const isConsensus = issueInfo.isConsensus === true;
   const hasSimulateConsensus = Object.prototype.hasOwnProperty.call(
     issueInfo,
@@ -27,10 +71,8 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const simulateConsensus = hasSimulateConsensus
     ? issueInfo.simulateConsensus
     : false;
-  const criteria = Array.isArray(issueInfo.criteria) ? issueInfo.criteria : [];
-  const addedExperts = Array.isArray(issueInfo.addedExperts)
-    ? issueInfo.addedExperts
-    : [];
+  const criteria = issueInfo.criteria;
+  const addedExperts = issueInfo.addedExperts;
   const expressionDomainConfig = issueInfo.expressionDomainConfig;
   const closureDate = issueInfo.closureDate;
   const consensusMaxPhases = issueInfo.consensusMaxPhases;
@@ -64,6 +106,24 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
+  if (!Array.isArray(alternatives)) {
+    throw createBadRequestError("alternatives must be an array", {
+      field: "alternatives",
+    });
+  }
+
+  if (!Array.isArray(addedExperts)) {
+    throw createBadRequestError("addedExperts must be an array", {
+      field: "addedExperts",
+    });
+  }
+
+  if (!Array.isArray(criteria)) {
+    throw createBadRequestError("criteria must be an array", {
+      field: "criteria",
+    });
+  }
+
   const uniqueAlternativeNames = getUniqueTrimmedStrings(alternatives);
   if (uniqueAlternativeNames.length <= 1) {
     throw createBadRequestError("Must be at least two valid alternatives", {
@@ -79,11 +139,13 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  if (!criteria.length) {
+  if (criteria.length === 0) {
     throw createBadRequestError("At least one criterion is required", {
       field: "criteria",
     });
   }
+
+  const normalizedCriteria = normalizeCriteriaNodesOrThrow(criteria);
 
   if (!isPlainObject(expressionDomainConfig)) {
     throw createBadRequestError("expressionDomainConfig is required", {
@@ -146,7 +208,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     uniqueAlternativeNames,
     isConsensus,
     simulateConsensus,
-    criteria,
+    criteria: normalizedCriteria,
     uniqueExpertEmails,
     expressionDomainConfig: normalizedExpressionDomainConfig,
     closureDate,
