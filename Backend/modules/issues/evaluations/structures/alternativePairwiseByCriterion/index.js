@@ -4,10 +4,8 @@ import {
 import {
   createBadRequestError,
 } from "../../../../../utils/common/errors.js";
+import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const buildComparisonKey = (alternativeA, alternativeB) =>
   `${alternativeA}::${alternativeB}`;

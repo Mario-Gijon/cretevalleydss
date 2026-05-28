@@ -2,10 +2,8 @@ import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
+import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",

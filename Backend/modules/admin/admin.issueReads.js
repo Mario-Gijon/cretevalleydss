@@ -29,6 +29,7 @@ import {
 } from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
+import { isPlainObject } from "../../utils/common/objects.js";
 
 const sortByNameStable = (a, b) => {
   const byName = a.name.localeCompare(
@@ -877,9 +878,6 @@ const orderObjectByKeys = (obj, orderedKeys) => {
 
   return orderedObject;
 };
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const formatIssueSnapshotDomain = (domain) => {
   if (!domain) return null;

@@ -1,8 +1,6 @@
 import { getOrderedAlternativeAndCriterionNames } from "../evaluations/structures/shared/alternativeEvaluation.helpers.js";
 import { createInternalError } from "../../../utils/common/errors.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const isFiniteOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));

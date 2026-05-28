@@ -20,12 +20,10 @@ import {
 } from "../modelExecution/index.js";
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
 import { getOrderedAlternativeAndCriterionNames } from "./structures/shared/alternativeEvaluation.helpers.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const hasOwn = (value, key) =>
   Object.prototype.hasOwnProperty.call(value || {}, key);
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const normalizeNonEmptyString = (value) =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : null;

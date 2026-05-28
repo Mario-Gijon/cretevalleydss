@@ -1,9 +1,7 @@
 import { ExpressionDomain } from "../../../models/ExpressionDomain.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,

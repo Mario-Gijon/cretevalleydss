@@ -6,9 +6,7 @@ import {
   toInvalid,
   toValid,
 } from "../modelParameter.shared.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../../utils/common/objects.js";
 
 const buildLeafCriterionIndex = (leafCriteria) => {
   const allowedCriterionKeys = new Set();

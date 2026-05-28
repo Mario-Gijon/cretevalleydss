@@ -12,6 +12,7 @@ import {
   createModelApiRequestError,
   unwrapModelApiResponse,
 } from "../../../services/modelApi/modelResponse.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 import {
   normalizeNonEmptyString,
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
@@ -46,9 +47,6 @@ const MODE_CONFIGS = Object.freeze({
     structureKey: null,
   }),
 });
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const ensureCriteriaNamesOrThrow = (criterionNames) => {
   if (!Array.isArray(criterionNames) || criterionNames.length === 0) {

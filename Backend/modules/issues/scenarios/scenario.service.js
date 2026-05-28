@@ -14,9 +14,7 @@ import {
   createModelApiRequestError,
   unwrapModelApiResponse,
 } from "../../../services/modelApi/modelResponse.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const normalizeResultOrThrow = ({ result }) => {
   if (result === null || result === undefined) {

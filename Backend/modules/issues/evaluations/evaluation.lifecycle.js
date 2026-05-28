@@ -6,9 +6,7 @@ import {
   createBadRequestError,
   createInternalError,
 } from "../../../utils/common/errors.js";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);

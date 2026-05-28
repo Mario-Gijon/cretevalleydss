@@ -11,6 +11,7 @@ import {
   ISSUE_STAGES,
 } from "./evaluation.constants.js";
 import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 
 const getStructureForIssueStage = ({ issue, stage }) => {
   const structureKeyByStage = {
@@ -22,9 +23,6 @@ const getStructureForIssueStage = ({ issue, stage }) => {
 
   return getEvaluationStructureOrThrow(structureKeyByStage[stage]);
 };
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const loadPreviousCollectiveReference = async ({ issue, stage }) => {
   if (stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
