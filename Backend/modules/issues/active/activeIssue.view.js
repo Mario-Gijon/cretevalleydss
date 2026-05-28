@@ -121,8 +121,8 @@ export const buildActiveIssueView = ({
       alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,
-      simulateConsensus: issue.simulateConsensus === true,
-      supportsConsensusSimulation: issue.model.supportsConsensusSimulation === true,
+      simulateConsensus: issue.simulateConsensus,
+      supportsConsensusSimulation: issue.model.supportsConsensusSimulation,
       currentStage: stage,
       ...(issue.isConsensus && {
         consensusMaxPhases: issue.consensusMaxPhases,

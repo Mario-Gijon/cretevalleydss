@@ -38,12 +38,12 @@ export const buildActivePermissions = ({
 
   const canEvaluateWeights =
     stage === ISSUE_STAGES.CRITERIA_WEIGHTING &&
-    acceptedUserParticipation &&
+    acceptedUserParticipation !== undefined &&
     !acceptedUserParticipation.weightsCompleted;
 
   const canEvaluateAlternatives =
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
-    acceptedUserParticipation &&
+    acceptedUserParticipation !== undefined &&
     !acceptedUserParticipation.evaluationCompleted;
 
   const waitingExperts =
