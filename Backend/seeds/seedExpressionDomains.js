@@ -27,10 +27,6 @@ const EXPRESSION_DOMAINS = [
   },
 ];
 
-/**
- * Inserta o actualiza los dominios de expresión base.
- * Es idempotente: no duplica dominios si ya existen.
- */
 export const seedExpressionDomains = async () => {
   try {
     const operations = EXPRESSION_DOMAINS.map((domain) => ({

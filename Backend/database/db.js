@@ -3,11 +3,6 @@ import mongoose from "mongoose";
 const MONGOOSE_CONNECTED_STATE = 1;
 const MONGOOSE_CONNECTING_STATE = 2;
 
-/**
- * Comprueba si ya existe una conexión activa o en proceso con MongoDB.
- *
- * @returns {boolean}
- */
 const isMongoConnectionActive = () => {
   return (
     mongoose.connection.readyState === MONGOOSE_CONNECTED_STATE ||
@@ -15,11 +10,6 @@ const isMongoConnectionActive = () => {
   );
 };
 
-/**
- * Establece la conexión principal con MongoDB.
- *
- * @returns {Promise<Object>}
- */
 export const connectDB = async () => {
   const mongoUri = process.env.URI_MONGODB;
 

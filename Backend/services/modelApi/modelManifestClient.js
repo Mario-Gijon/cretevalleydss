@@ -119,14 +119,6 @@ const createManifestRequestError = (
   });
 };
 
-/**
- * Fetches the ApiModels manifest using the Backend API response contract.
- *
- * @param {Object} [options] Request options.
- * @param {Object} [options.httpClient] HTTP client compatible with axios.
- * @param {string} [options.apiModelsBaseUrl] ApiModels base URL.
- * @returns {Promise<Object>} Manifest data payload.
- */
 export const fetchModelManifest = async ({
   httpClient = axios,
   apiModelsBaseUrl = process.env.ORIGIN_APIMODELS,
@@ -170,24 +162,12 @@ export const fetchModelManifest = async ({
   return validateManifestData(payload.data);
 };
 
-/**
- * Fetches all models declared by the ApiModels manifest.
- *
- * @param {Object} [options] Request options forwarded to fetchModelManifest.
- * @returns {Promise<Array<Object>>}
- */
 export const getManifestModels = async (options = {}) => {
   const manifest = await fetchModelManifest(options);
 
   return manifest.models;
 };
 
-/**
- * Fetches manifest models marked as issue models.
- *
- * @param {Object} [options] Request options forwarded to fetchModelManifest.
- * @returns {Promise<Array<Object>>}
- */
 export const getPublicIssueManifestModels = async (options = {}) => {
   const models = await getManifestModels(options);
 

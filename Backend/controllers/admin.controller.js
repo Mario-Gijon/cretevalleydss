@@ -43,21 +43,7 @@ import {
 } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 
-/**
- * @typedef {Object} AdminIssueExecutionContext
- * @property {Object} issue Issue cargado con su modelo.
- * @property {string} creatorUserId Id del creador del issue.
- */
 
-/**
- * Obtiene el contexto necesario para ejecutar acciones de admin
- * sobre un issue reutilizando flows de dominio.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<AdminIssueExecutionContext>}
- */
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
   session = null,
@@ -88,12 +74,6 @@ const getAdminIssueExecutionContextOrThrow = async ({
   };
 };
 
-/**
- * Convierte un error de clave duplicada de MongoDB en AppError de conflicto.
- *
- * @param {unknown} error Error original.
- * @returns {never}
- */
 const throwIfDuplicateEmailError = (error) => {
   if (error?.code === 11000) {
     throw createConflictError("Email already registered", {
@@ -106,12 +86,6 @@ const throwIfDuplicateEmailError = (error) => {
   throw error;
 };
 
-/**
- * Normaliza un IssueModel persistido para el catálogo admin.
- *
- * @param {Object} model Documento IssueModel en modo lean.
- * @returns {Object}
- */
 const mapIssueModelCatalogItem = (model = {}) => {
   const id = toIdString(model._id);
 
@@ -155,12 +129,6 @@ const mapIssueModelCatalogItem = (model = {}) => {
   };
 };
 
-/**
- * Devuelve la prioridad de ordenación del catálogo admin.
- *
- * @param {Object} model Modelo normalizado.
- * @returns {number}
- */
 const getModelCatalogSortRank = (model = {}) => {
   const visibleInIssueCreation = model.visibleInIssueCreation !== false;
   const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
@@ -174,13 +142,6 @@ const getModelCatalogSortRank = (model = {}) => {
   return 4;
 };
 
-/**
- * Obtiene todos los usuarios visibles desde el panel de administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getAllUsersAdmin = async (req, res) => {
   const data = await getAdminUsersListPayload({
     adminUserId: req.uid,
@@ -191,13 +152,6 @@ export const getAllUsersAdmin = async (req, res) => {
   return sendSuccess(res, "Users fetched successfully", data);
 };
 
-/**
- * Obtiene el catálogo persistido de modelos desde MongoDB.
- *
- * @param {Object} _req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getModelCatalogAdmin = async (_req, res) => {
   const models = (await IssueModel.find().select("-__v").lean())
     .map(mapIssueModelCatalogItem)
@@ -215,13 +169,6 @@ export const getModelCatalogAdmin = async (_req, res) => {
   });
 };
 
-/**
- * Actualiza la visibilidad de un modelo en el flujo Create Issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   const { id } = req.params || {};
   const { visibleInIssueCreation, visibleInCriteriaWeighting } = req.body || {};
@@ -277,13 +224,6 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
   );
 };
 
-/**
- * Ejecuta una comparación read-only entre el manifest de ApiModels y IssueModel.
- *
- * @param {Object} _req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getModelManifestDryRunAdmin = async (_req, res) => {
   const report = await runModelManifestDryRun();
 
@@ -294,13 +234,6 @@ export const getModelManifestDryRunAdmin = async (_req, res) => {
   );
 };
 
-/**
- * Sincroniza modelos públicos del manifest de ApiModels con IssueModel.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const syncModelManifestAdmin = async (req, res) => {
   if (req.body?.confirm !== true) {
     throw createBadRequestError(
@@ -321,13 +254,6 @@ export const syncModelManifestAdmin = async (req, res) => {
   );
 };
 
-/**
- * Crea un nuevo usuario desde el panel de administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const createUserAdmin = async (req, res) => {
   try {
     const result = await createUserAdminFlow({
@@ -347,13 +273,6 @@ export const createUserAdmin = async (req, res) => {
   }
 };
 
-/**
- * Actualiza un usuario desde el panel de administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const updateUserAdmin = async (req, res) => {
   try {
     const result = await updateUserAdminFlow({
@@ -372,13 +291,6 @@ export const updateUserAdmin = async (req, res) => {
   }
 };
 
-/**
- * Elimina un usuario desde el panel de administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const deleteUserAdmin = async (req, res) => {
   const { id } = req.body || {};
 
@@ -414,13 +326,6 @@ export const deleteUserAdmin = async (req, res) => {
   }
 };
 
-/**
- * Obtiene el listado resumido de issues para el panel de administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getAllIssuesAdmin = async (req, res) => {
   const data = await getAdminIssuesListPayload({
     search: String(req.query.q || "").trim(),
@@ -434,13 +339,6 @@ export const getAllIssuesAdmin = async (req, res) => {
   return sendSuccess(res, "Issues fetched successfully", data);
 };
 
-/**
- * Obtiene el detalle completo de un issue para administración.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getIssueAdminById = async (req, res) => {
   const data = await getIssueAdminDetailPayload({
     issueId: req.params?.id,
@@ -449,13 +347,6 @@ export const getIssueAdminById = async (req, res) => {
   return sendSuccess(res, "Issue detail fetched successfully", data);
 };
 
-/**
- * Obtiene una vista resumida del progreso de expertos en un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertsProgressAdmin = async (req, res) => {
   const data = await getIssueExpertsProgressPayload({
     issueId: req.params?.id,
@@ -468,13 +359,6 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
   );
 };
 
-/**
- * Obtiene las evaluaciones de un experto en modo solo lectura.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertEvaluationsAdmin = async (req, res) => {
   const data = await getIssueExpertEvaluationsPayload({
     issueId: req.params?.issueId,
@@ -488,13 +372,6 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
   );
 };
 
-/**
- * Obtiene los pesos de un experto en modo solo lectura.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertWeightsAdmin = async (req, res) => {
   const data = await getIssueExpertWeightsPayload({
     issueId: req.params?.issueId,
@@ -504,13 +381,6 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
   return sendSuccess(res, "Expert weights fetched successfully", data);
 };
 
-/**
- * Reasigna el creador o responsable principal de un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const reassignIssueAdminAdmin = async (req, res) => {
   const result = await reassignIssueAdminFlow({
     issueId: req.body?.issueId,
@@ -527,13 +397,6 @@ export const reassignIssueAdminAdmin = async (req, res) => {
   );
 };
 
-/**
- * Permite al admin editar expertos de un issue reutilizando el flow de dominio.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const editIssueExpertsAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
 
@@ -561,13 +424,6 @@ export const editIssueExpertsAdmin = async (req, res) => {
   );
 };
 
-/**
- * Permite al admin computar pesos de un issue reutilizando flows de dominio.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const computeIssueWeightsAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
 
@@ -636,13 +492,6 @@ export const resolveIssueAdmin = async (req, res) => {
   );
 };
 
-/**
- * Permite al admin eliminar un issue reutilizando el flow de lifecycle.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const removeIssueAdmin = async (req, res) => {
   const issueId = req.body?.issueId || req.body?.id;
   const session = await mongoose.startSession();

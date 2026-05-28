@@ -1,6 +1,3 @@
-/**
- * @module models/Issue
- */
 
 import { Schema, model } from "mongoose";
 
@@ -16,69 +13,9 @@ import { Notification } from "./Notifications.js";
 import { ExitUserIssue } from "./ExitUserIssue.js";
 
 
-/**
- * Documento persistido del issue o problema de decisión.
- *
- * @typedef {Object} IssueDocument
- * @property {*} _id Identificador del documento.
- * @property {*} admin Usuario administrador creador.
- * @property {*} model Modelo de decisión asociado.
- * @property {string} name Nombre del issue.
- * @property {boolean} isConsensus Indica si usa consenso.
- * @property {number|null} consensusMaxPhases Máximo de fases.
- * @property {number|null} consensusThreshold Umbral de consenso.
- * @property {string} description Descripción funcional.
- * @property {boolean} active Indica si el issue sigue activo.
- * @property {string|null} creationDate Fecha funcional de creación.
- * @property {string|null} closureDate Fecha funcional de cierre.
- * @property {Date|null} finishedAt Fecha real de finalización del issue.
- * @property {*} modelParameters Parámetros efectivos del modelo.
- * @property {string} currentStage Etapa actual del flujo.
- * @property {Array<*>} alternativeOrder Orden persistido de alternativas.
- * @property {Array<*>} leafCriteriaOrder Orden persistido de criterios hoja.
- */
 
 
-/**
- * Modelo principal de problema de decisión.
- *
- * Representa un issue creado por un administrador y asociado a un modelo
- * de decisión concreto. Almacena la configuración general del proceso,
- * el estado actual del flujo y el orden estable de alternativas y criterios hoja.
- *
- * Relaciones:
- * - `admin` -> usuario creador del issue.
- * - `model` -> modelo de decisión aplicado al issue.
- * - `alternativeOrder` -> orden persistido de alternativas.
- * - `leafCriteriaOrder` -> orden persistido de criterios hoja.
- *
- * Campos de negocio relevantes:
- * - `isConsensus`: indica si el issue usa consenso.
- * - `consensusMaxPhases`: número máximo de fases de consenso.
- * - `consensusThreshold`: umbral de consenso objetivo.
- * - `modelParameters`: parámetros efectivos del modelo.
- * - `currentStage`: fase actual del flujo del issue.
- * - `active`: indica si el issue sigue activo o ya ha finalizado.
- * - `creationDate` y `closureDate`: fechas funcionales de dominio.
- * - `finishedAt`: fecha real en la que el issue pasó a finalizado.
- *
- * Auditoría:
- * - El schema usa `timestamps`, por lo que también mantiene `createdAt`
- *   y `updatedAt` como fechas técnicas.
- *
- * Comportamiento:
- * - Antes de eliminar un issue mediante `remove`, se eliminan en cascada
- *   documentos asociados del issue (alternativas, criterios, evaluaciones,
- *   resultados de etapa, escenarios, participaciones, consensos, notificaciones
- *   y salidas de visibilidad).
- */
 
-/**
- * Schema Mongoose que define la estructura persistida del documento.
- *
- * @constant
- * @type {Object}
- */
 const issueSchema = new Schema(
   {
     admin: {
@@ -250,13 +187,6 @@ const issueSchema = new Schema(
   }
 );
 
-/**
- * Elimina en cascada los documentos dependientes de un issue antes de borrarlo.
- *
- * @this {Object}
- * @param {Function} next Siguiente middleware de mongoose.
- * @returns {Promise<void>}
- */
 async function removeIssueDependencies(next) {
   try {
     await Promise.all([
@@ -281,10 +211,4 @@ async function removeIssueDependencies(next) {
 issueSchema.pre("remove", removeIssueDependencies);
 
 
-/**
- * Modelo Mongoose compilado desde el schema del módulo.
- *
- * @class Issue
- * @classdesc Modelo Mongoose principal del problema de decisión o issue.
- */
 export const Issue = model("Issue", issueSchema);

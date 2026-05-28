@@ -48,12 +48,6 @@ const requireModelDocument = (modelOrName) => {
   return modelOrName;
 };
 
-/**
- * Obtiene la clave de endpoint asociada a un modelo.
- *
- * @param {Object} [modelOrName={}] Documento del modelo.
- * @returns {string}
- */
 export const getModelEndpointKey = (modelOrName = {}) => {
   const model = requireModelDocument(modelOrName);
   const rawApiModelKey = model.apiModelKey;
@@ -81,12 +75,6 @@ export const getModelEndpointKey = (modelOrName = {}) => {
   return apiModelKey;
 };
 
-/**
- * Obtiene la ruta del endpoint de ApiModels para un modelo.
- *
- * @param {Object} [modelOrName={}] Documento del modelo.
- * @returns {string}
- */
 export const getModelEndpointPath = (modelOrName = {}) => {
   const model = requireModelDocument(modelOrName);
   const rawEndpointPath = model.apiEndpoint?.path;
@@ -114,13 +102,6 @@ export const getModelEndpointPath = (modelOrName = {}) => {
   return endpointPath;
 };
 
-/**
- * Construye una URL completa de ApiModels para un modelo.
- *
- * @param {string} apiModelsBaseUrl Base URL de ApiModels.
- * @param {Object} modelOrName Documento del modelo.
- * @returns {string}
- */
 export const buildModelEndpointUrl = (apiModelsBaseUrl, modelOrName = {}) => {
   const endpointPath = getModelEndpointPath(modelOrName);
 

@@ -1,6 +1,3 @@
-/**
- * @module models/IssueScenario
- */
 
 import { Schema, model } from "mongoose";
 

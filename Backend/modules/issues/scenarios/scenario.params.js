@@ -7,14 +7,6 @@ const normalizeNonEmptyString = (value) => {
   return normalized.length > 0 ? normalized : null;
 };
 
-/**
- * Ajusta la longitud de un array rellenando o truncando según corresponda.
- *
- * @param {unknown[]} arr Array de entrada.
- * @param {number} len Longitud deseada.
- * @param {unknown} [filler=null] Valor de relleno.
- * @returns {unknown[]}
- */
 const ensureLen = (arr, len, filler = null) => {
   const normalized = [...arr];
 
@@ -29,14 +21,6 @@ const ensureLen = (arr, len, filler = null) => {
   return normalized;
 };
 
-/**
- * Resuelve los parámetros por defecto de un modelo según el número de criterios hoja.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.modelDoc Documento del modelo.
- * @param {number} params.leafCount Número de criterios hoja.
- * @returns {Object}
- */
 export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const resolved = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
@@ -124,14 +108,6 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   return resolved;
 };
 
-/**
- * Fusiona parámetros guardados con sus valores resueltos por defecto.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.defaultsResolved Defaults resueltos.
- * @param {Object} params.savedParams Parámetros guardados.
- * @returns {Object}
- */
 export const mergeParamsResolved = ({ defaultsResolved, savedParams }) => {
   const merged = { ...defaultsResolved };
 
@@ -156,14 +132,6 @@ export const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
   return paramOverrides;
 };
 
-/**
- * Resuelve weights como array a partir de paramsUsed y criterios ordenados.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.paramsUsed Parámetros usados.
- * @param {Array<Object>} params.criteria Criterios ordenados.
- * @returns {Array<*> | null}
- */
 export const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
   return paramsUsed.weights;
 };

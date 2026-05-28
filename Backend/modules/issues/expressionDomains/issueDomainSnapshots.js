@@ -1,20 +1,6 @@
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
-/**
- * Crea snapshots de dominios de expresión para un issue y devuelve un mapa
- * entre el id del dominio original y el id del snapshot creado.
- *
- * Este helper congela en la colección `IssueExpressionDomain` la definición
- * de los dominios usados por un issue para evitar depender de cambios futuros
- * en los dominios reutilizables originales.
- *
- * @param {Object} params Datos de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {Array<Object>} params.domainDocs Dominios origen a copiar.
- * @param {Object|null} [params.session] Sesión de mongoose.
- * @returns {Promise<Map<string, Object>>}
- */
 export const createIssueDomainSnapshots = async ({
   issueId,
   domainDocs,

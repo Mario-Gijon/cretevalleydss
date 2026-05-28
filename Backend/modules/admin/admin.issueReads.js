@@ -45,15 +45,6 @@ const sortByNameStable = (a, b) => {
   return toIdString(a).localeCompare(toIdString(b));
 };
 
-/**
- * Construye el árbol jerárquico de criterios para el detalle admin del issue.
- *
- * Cada nodo incluye su relación padre-hijos y el resultado se devuelve
- * ordenado de forma estable por nombre para facilitar su renderizado.
- *
- * @param {Array<Object>} [criteriaDocs=[]] Criterios del issue.
- * @returns {Array<Object>}
- */
 const buildCriteriaTreeAdmin = (criteriaDocs) => {
   const nodes = criteriaDocs.map((criterion) => ({
     id: toIdString(criterion._id),
@@ -92,19 +83,6 @@ const buildCriteriaTreeAdmin = (criteriaDocs) => {
   return roots;
 };
 
-/**
- * Calcula cuántas celdas de evaluación debería completar cada experto.
- *
- * En evaluación directa se espera una celda por alternativa y criterio hoja.
- * En pairwise se espera una comparación por cada alternativa frente al resto
- * para cada criterio hoja.
- *
- * @param {object} params Parámetros de entrada.
- * @param {number} params.alternativesCount Número de alternativas.
- * @param {number} params.leafCriteriaCount Número de criterios hoja.
- * @param {string} params.alternativeEvaluationStructureKey Estructura de evaluación alternativa del issue.
- * @returns {number}
- */
 const countExpectedEvaluationCellsPerExpert = ({
   alternativesCount,
   leafCriteriaCount,
@@ -128,12 +106,6 @@ const countExpectedEvaluationCellsPerExpert = ({
   return alternativesCount * leafCriteriaCount;
 };
 
-/**
- * Devuelve la metadata legible de la etapa actual del issue.
- *
- * @param {string} stage Etapa actual del issue.
- * @returns {IssueStageMeta}
- */
 const getIssueStageMeta = (stage) => {
   const stageMap = {
     criteriaWeighting: {
@@ -157,21 +129,6 @@ const getIssueStageMeta = (stage) => {
   return stageMap[stage] || { key: stage, label: stage || "Unknown" };
 };
 
-/**
- * Calcula el estado de acciones disponibles para el creador del issue.
- *
- * Estas flags permiten al panel admin saber si el issue puede editar expertos,
- * computar pesos, resolverse o eliminarse según su etapa y el progreso real
- * de los participantes aceptados.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {Object} params.issue Documento del issue.
- * @param {number} [params.acceptedExperts=0] Número de expertos aceptados.
- * @param {number} [params.pendingExperts=0] Número de expertos pendientes.
- * @param {number} [params.weightsDoneAccepted=0] Expertos aceptados con pesos completados.
- * @param {number} [params.evaluationsDoneAccepted=0] Expertos aceptados con evaluaciones completadas.
- * @returns {CreatorActionFlags}
- */
 const getCreatorActionFlags = ({
   issue,
   acceptedExperts = 0,
@@ -200,16 +157,6 @@ const getCreatorActionFlags = ({
   };
 };
 
-/**
- * Construye el payload público de un experto o usuario participante.
- *
- * Si el usuario ya no existe, devuelve una representación segura para que
- * el detalle admin no rompa el renderizado ni dependa de populate completo.
- *
- * @param {Object|null|undefined} expert Usuario poblado.
- * @param {string} [fallbackId=""] Id alternativo cuando no hay documento poblado.
- * @returns {ParticipantExpertPayload}
- */
 const buildParticipantExpertPayload = (expert, fallbackId = "") => {
   if (!expert) {
     return {
@@ -232,23 +179,6 @@ const buildParticipantExpertPayload = (expert, fallbackId = "") => {
   };
 };
 
-/**
- * Obtiene el detalle completo de un issue para el panel de administración.
- *
- * La respuesta incluye:
- * - datos base del issue
- * - alternativas y criterios ordenados
- * - árbol de criterios
- * - pesos finales
- * - snapshots de dominios
- * - consenso y escenarios
- * - métricas de progreso
- * - participantes actuales y usuarios que ya salieron
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @returns {Promise<Object>}
- */
 export const getIssueAdminDetailPayload = async ({ issueId }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {
@@ -599,23 +529,6 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   };
 };
 
-/**
- * Construye una fila de progreso de experto para el panel admin.
- *
- * La fila sirve tanto para participantes actuales como para usuarios que ya
- * salieron del issue, manteniendo una estructura homogénea para la UI.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {Object|null|undefined} params.expert Usuario poblado.
- * @param {string} params.expertId Id normalizado del experto.
- * @param {boolean} params.currentParticipant Indica si sigue participando.
- * @param {Object|null} [params.participation=null] Participación actual.
- * @param {Object|null} [params.exit=null] Documento de salida.
- * @param {EvaluationStatsSummary} params.evaluationStats Estadísticas de evaluación.
- * @param {Object|null} [params.weightDoc=null] Documento de pesos del experto.
- * @param {number} params.expectedEvaluationCells Número esperado de celdas de evaluación.
- * @returns {Object}
- */
 const buildExpertProgressRow = ({
   expert,
   expertId,
@@ -665,20 +578,6 @@ const buildExpertProgressRow = ({
   },
 });
 
-/**
- * Obtiene una vista resumida del progreso de expertos en un issue para admin.
- *
- * La respuesta incluye:
- * - metadata básica del issue
- * - estructura de evaluación resuelta
- * - progreso de participantes actuales
- * - usuarios que ya salieron del issue
- * - resumen de documentos de evaluación y pesos por experto
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {
@@ -845,12 +744,6 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   };
 };
 
-/**
- * Comprueba si una celda de evaluación contiene un valor real.
- *
- * @param {*} value Valor almacenado en la evaluación.
- * @returns {boolean}
- */
 const isFilledValue = (value) =>
   !(value === null || value === undefined || value === "");
 
@@ -965,16 +858,6 @@ const buildIssueEvaluationStatsByIssue = (evaluationDocs = []) => {
   return statsByIssue;
 };
 
-/**
- * Ordena un objeto siguiendo un orden fijo de claves.
- *
- * Se usa para devolver matrices pairwise con columnas estables
- * y predecibles para el frontend.
- *
- * @param {Object} [obj={}] Objeto a ordenar.
- * @param {string[]} [orderedKeys=[]] Orden deseado de claves.
- * @returns {Object}
- */
 const orderObjectByKeys = (obj, orderedKeys) => {
   const orderedObject = {};
   const usedKeys = new Set();
@@ -998,12 +881,6 @@ const orderObjectByKeys = (obj, orderedKeys) => {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-/**
- * Formatea un snapshot de dominio de expresión para consumo del frontend admin.
- *
- * @param {Object|null} domain Snapshot del dominio.
- * @returns {Object|null}
- */
 const formatIssueSnapshotDomain = (domain) => {
   if (!domain) return null;
 
@@ -1023,12 +900,6 @@ const formatIssueSnapshotDomain = (domain) => {
   };
 };
 
-/**
- * Construye el payload resumido de participación del experto para admin.
- *
- * @param {Object|null} participation Documento de participación.
- * @returns {Object|null}
- */
 const buildAdminExpertParticipationPayload = (participation) => {
   if (!participation) {
     return null;
@@ -1044,13 +915,6 @@ const buildAdminExpertParticipationPayload = (participation) => {
   };
 };
 
-/**
- * Construye el payload base de experto para vistas admin.
- *
- * @param {Object|null} expert Usuario poblado.
- * @param {string} fallbackId Id alternativo cuando el usuario ya no existe.
- * @returns {ParticipantExpertPayload}
- */
 const buildAdminExpertIdentityPayload = (expert, fallbackId) =>
   buildParticipantExpertPayload(expert, fallbackId);
 
@@ -1207,22 +1071,6 @@ const normalizeAdminPairwiseCollectiveEvaluations = ({
   return Object.keys(normalized).length > 0 ? normalized : null;
 };
 
-/**
- * Obtiene las evaluaciones de un experto en modo solo lectura para admin.
- *
- * La respuesta soporta tanto estructuras directas como pairwise y devuelve:
- * - metadata básica del issue
- * - datos del experto
- * - estado de participación
- * - estadísticas de progreso
- * - evaluaciones formateadas para la UI
- * - evaluaciones colectivas de la última fase de consenso, si existen
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @param {string} params.expertId Id del experto.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertEvaluationsPayload = async ({
   issueId,
   expertId,
@@ -1445,22 +1293,6 @@ export const getIssueExpertEvaluationsPayload = async ({
   };
 };
 
-/**
- * Obtiene los pesos de un experto en modo solo lectura para administración.
- *
- * La respuesta incluye:
- * - metadata básica del issue
- * - datos del experto
- * - estado de participación
- * - criterios hoja ordenados
- * - pesos manuales o BWM del experto
- * - pesos finales resueltos del issue, si existen
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @param {string} params.expertId Id del experto.
- * @returns {Promise<Object>}
- */
 export const getIssueExpertWeightsPayload = async ({
   issueId,
   expertId,
@@ -1641,23 +1473,6 @@ export const getIssueExpertWeightsPayload = async ({
   };
 };
 
-/**
- * Construye el filtro del listado de issues para el panel de administración.
- *
- * Mantiene el mismo comportamiento actual:
- * - búsqueda por nombre o descripción
- * - filtros opcionales por activo, etapa, consenso, admin y modelo
- * - ids inválidos de admin/model simplemente se ignoran
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} [params.search=""] Texto de búsqueda.
- * @param {string} [params.active="all"] Filtro de activo: all | true | false.
- * @param {string} [params.currentStage="all"] Etapa actual o all.
- * @param {string} [params.isConsensus="all"] Filtro de consenso: all | true | false.
- * @param {string} [params.adminId=""] Id del admin responsable.
- * @param {string} [params.modelId=""] Id del modelo.
- * @returns {Promise<Object>}
- */
 const buildAdminIssuesFilter = ({
   search = "",
   active = "all",
@@ -1715,27 +1530,6 @@ const buildAdminIssuesFilter = ({
   return filter;
 };
 
-/**
- * Obtiene el listado resumido de issues para el panel de administración.
- *
- * La respuesta incluye:
- * - datos base del issue
- * - metadata legible de etapa
- * - estructura de evaluación resuelta
- * - datos base de admin y modelo
- * - métricas agregadas de alternativas, criterios hoja, expertos, consenso,
- *   escenarios y evaluaciones
- * - estado de acciones disponibles para el creador
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} [params.search=""] Texto de búsqueda.
- * @param {string} [params.active="all"] Filtro de activo: all | true | false.
- * @param {string} [params.currentStage="all"] Etapa actual o all.
- * @param {string} [params.isConsensus="all"] Filtro de consenso: all | true | false.
- * @param {string} [params.adminId=""] Id del admin responsable.
- * @param {string} [params.modelId=""] Id del modelo.
- * @returns {Promise<{ issues: Array<Record<string, any>> }>}
- */
 export const getAdminIssuesListPayload = async ({
   search = "",
   active = "all",

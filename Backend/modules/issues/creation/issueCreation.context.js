@@ -22,18 +22,6 @@ const stripCriteriaWeightParameterValues = ({ paramValues }) => {
   return normalized;
 };
 
-/**
- * Carga y valida el modelo, admin y expertos para la creación del issue.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.adminUserId Id del admin actual.
- * @param {string} params.selectedModelId Id del modelo elegido.
- * @param {Object} params.paramValues Parámetros del modelo recibidos en la petición.
- * @param {Array<Object>} params.criteriaNodes Criterios recibidos en la petición.
- * @param {string[]} params.uniqueExpertEmails Correos únicos de expertos.
- * @param {Object} params.session Sesión de mongoose.
- * @returns {Promise<Object>}
- */
 export const loadCreateIssueActorsAndModel = async ({
   adminUserId,
   selectedModelId,

@@ -5,14 +5,6 @@ import { createBadRequestError } from "../../../utils/common/errors.js";
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-/**
- * Resuelve la configuración de dominios para criterios hoja.
- *
- * @param {object} params Parámetros de entrada.
- * @param {object} params.expressionDomainConfig Configuración recibida del frontend.
- * @param {Array<Object>} params.leafCriteria Criterios hoja creados.
- * @returns {{ usedDomainIds: string[], domainIdByCriterionName: Map<string, string> }}
- */
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,
   leafCriteria,
@@ -173,16 +165,6 @@ const isSupportedDomainForModel = ({
   return false;
 };
 
-/**
- * Carga y valida los dominios de expresión usados en el issue.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string[]} params.domainIdList Ids de dominios requeridos.
- * @param {string} params.userId Id del usuario actual.
- * @param {object} params.modelSupportedDomains Dominios soportados por el modelo.
- * @param {Object} params.session Sesión de mongoose.
- * @returns {Promise<Array<Object>>}
- */
 export const loadAccessibleExpressionDomains = async ({
   domainIdList,
   userId,

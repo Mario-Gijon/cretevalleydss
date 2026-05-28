@@ -6,14 +6,6 @@ import {
 } from "../utils/common/errors.js";
 import { sendSuccess } from "../utils/common/responses.js";
 
-/**
- * Genera un nuevo access token a partir del refresh token validado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @param {Function} next Siguiente middleware.
- * @returns {Promise<Object|void>}
- */
 export const refreshToken = async (req, res, next) => {
   try {
     const user = await User.findById(req.uid).select("role").lean();

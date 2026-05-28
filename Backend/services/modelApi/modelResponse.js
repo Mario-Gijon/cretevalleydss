@@ -1,12 +1,5 @@
 import { AppError, isAppError } from "../../utils/common/errors.js";
 
-/**
- * Extrae el payload de datos de una respuesta de ApiModels con contrato estándar.
- *
- * @param {Object} response Respuesta HTTP recibida desde ApiModels.
- * @param {string} [fallbackMessage="Model execution failed"] Mensaje de respaldo.
- * @returns {*}
- */
 export const unwrapModelApiResponse = (
   response,
   fallbackMessage = "Model execution failed"
@@ -26,13 +19,6 @@ export const unwrapModelApiResponse = (
   });
 };
 
-/**
- * Convierte errores HTTP de ApiModels en AppError del Backend.
- *
- * @param {unknown} error Error capturado durante la llamada HTTP.
- * @param {string} [fallbackMessage="Model execution failed"] Mensaje de respaldo.
- * @returns {AppError}
- */
 export const createModelApiRequestError = (
   error,
   fallbackMessage = "Model execution failed"

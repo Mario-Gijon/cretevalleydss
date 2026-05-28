@@ -1,12 +1,3 @@
-/**
- * Validador reutilizable para arrays numéricos ordenados.
- *
- * Se usa en dominios lingüísticos para garantizar que:
- * - el valor sea un array,
- * - tenga al menos dos elementos,
- * - todos los elementos sean números finitos,
- * - y estén en orden no decreciente.
- */
 export const orderedNumericArrayValidator = {
   validator(values) {
     return (

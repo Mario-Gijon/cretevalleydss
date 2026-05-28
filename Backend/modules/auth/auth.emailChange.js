@@ -10,36 +10,8 @@ import {
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
 
-/**
- * @typedef {Object} EmailChangeConfirmationPayload
- * @property {string} newEmail Nuevo email pendiente de confirmar.
- * @property {string} token Token de confirmación del cambio.
- */
 
-/**
- * @typedef {Object} RequestEmailChangeResult
- * @property {string} message Mensaje de resultado.
- * @property {EmailChangeConfirmationPayload} emailChangeConfirmation Datos necesarios para confirmar el cambio de email.
- */
 
-/**
- * Inicia el cambio de email del usuario autenticado.
- *
- * Mantiene el flujo actual de token + confirmación por correo, añadiendo:
- * - validación de email vacío
- * - normalización básica del email
- * - comprobación de que el email nuevo sea distinto al actual
- * - comprobación de duplicados
- *
- * No envía el correo directamente. Devuelve los datos necesarios para que
- * la capa HTTP pueda hacerlo tras confirmar la transacción.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string|Object} params.userId Id del usuario autenticado.
- * @param {string} params.newEmail Nuevo email solicitado.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<RequestEmailChangeResult>}
- */
 export const requestAuthenticatedUserEmailChangeFlow = async ({
   userId,
   newEmail,
@@ -97,19 +69,6 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
   };
 };
 
-/**
- * Confirma el cambio de email usando el token recibido.
- *
- * Mantiene el flujo actual basado en emailTokenConfirm, añadiendo:
- * - validación de token vacío
- * - validación del payload decodificado
- * - comprobación de duplicados antes de persistir el nuevo email
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.token Token recibido en la URL.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<Object>}
- */
 export const confirmAuthenticatedUserEmailChangeFlow = async ({
   token,
   session = null,

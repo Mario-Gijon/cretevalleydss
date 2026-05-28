@@ -11,21 +11,6 @@ import {
 } from "../../../utils/common/errors.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
-/**
- * Construye el payload completo de detalle para un issue finalizado.
- *
- * El flujo actual usa exclusivamente el payload plugin-like basado en:
- * - IssueEvaluation
- * - IssueStageResult
- * - alternativeEvaluationStructureKey
- * - criteriaWeightingStructureKey
- *
- * No mantiene fallback legacy basado en Evaluation.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @returns {Promise<Object>}
- */
 export const getFinishedIssueInfoPayload = async ({ issueId }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {

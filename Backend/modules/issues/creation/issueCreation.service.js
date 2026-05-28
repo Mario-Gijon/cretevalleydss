@@ -77,17 +77,6 @@ const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
   return Array.from(valueCounts)[0];
 };
 
-/**
- * Crea un nuevo issue con alternativas, criterios, snapshots y participaciones.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.issueInfo Payload issueInfo recibido.
- * @param {string} params.adminUserId Id del usuario actual.
- * @param {Object} params.session Sesión de mongoose.
- * @param {string} [params.apiModelsBaseUrl] Base URL del servicio ApiModels.
- * @param {Object} [params.httpClient] Cliente HTTP compatible con axios.
- * @returns {Promise<Object>}
- */
 export const createIssueFlow = async ({
   issueInfo,
   adminUserId,

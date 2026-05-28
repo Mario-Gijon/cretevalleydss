@@ -1,12 +1,3 @@
-/**
- * Convierte un identificador a string normalizado sin entrar en recursión.
- *
- * Soporta strings, números, ObjectId, documentos con _id o id
- * y objetos con métodos toHexString()/toString().
- *
- * @param {any} value Valor a convertir.
- * @returns {string}
- */
 export const toIdString = (value) => {
   if (value == null) return "";
 
@@ -37,13 +28,6 @@ export const toIdString = (value) => {
 
   return "";
 };
-/**
- * Comprueba si dos identificadores representan el mismo valor.
- *
- * @param {any} a Primer identificador.
- * @param {any} b Segundo identificador.
- * @returns {boolean}
- */
 export const sameId = (a, b) => {
   const left = toIdString(a);
   const right = toIdString(b);
@@ -51,23 +35,10 @@ export const sameId = (a, b) => {
   return Boolean(left && right && left === right);
 };
 
-/**
- * Devuelve una lista de ids únicos normalizados como string.
- *
- * @param {Array<any>} [values=[]] Valores de entrada.
- * @returns {Array<string>}
- */
 export const uniqueIdStrings = (values = []) => {
   return [...new Set(values.map(toIdString).filter(Boolean))];
 };
 
-/**
- * Indexa una colección por id en un Map.
- *
- * @param {Array<any>} [items=[]] Elementos a indexar.
- * @returns {Object} Selector del id. Si no se indica, usa el propio item.
- * @returns {Map<string, any>}
- */
 export const indexById = (items = [], selector = null) => {
   const map = new Map();
 
@@ -86,16 +57,6 @@ export const indexById = (items = [], selector = null) => {
   return map;
 };
 
-/**
- * Ordena una colección según un orden externo de ids.
- *
- * Los elementos cuyo id no esté presente en idOrder quedan al final.
- *
- * @param {Array<any>} [items=[]] Elementos a ordenar.
- * @param {Array<any>} [idOrder=[]] Orden de ids de referencia.
- * @param {string|Function|null} [selector=null] Selector del id. Si no se indica, usa el propio item.
- * @returns {Array<any>}
- */
 export const sortByIdOrder = (items = [], idOrder = [], selector = null) => {
   const orderMap = new Map(
     uniqueIdStrings(idOrder).map((id, index) => [id, index])

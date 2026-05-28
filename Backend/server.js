@@ -11,11 +11,6 @@ const [{ default: app }, { connectDB }] = await Promise.all([
 
 const PORT = process.env.PORT || 6000;
 
-/**
- * Arranca la aplicación tras establecer la conexión con MongoDB.
- *
- * @returns {Promise<void>}
- */
 const startServer = async () => {
   try {
     await connectDB();

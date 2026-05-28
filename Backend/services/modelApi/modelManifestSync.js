@@ -223,14 +223,6 @@ const buildSummary = ({
   warnings: warnings.length,
 });
 
-/**
- * Synchronizes syncable ApiModels manifest entries into Mongo IssueModels.
- *
- * @param {Object} [options] Synchronization options.
- * @param {Object} [options.httpClient] HTTP client compatible with axios.
- * @param {string} [options.apiModelsBaseUrl] ApiModels base URL.
- * @returns {Promise<Object>} Synchronization report.
- */
 export const syncModelManifestToIssueModels = async (options = {}) => {
   const manifest = await fetchModelManifest(options);
   const manifestModels = Array.isArray(manifest.models) ? manifest.models : [];

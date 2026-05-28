@@ -1,14 +1,6 @@
 import { orderDocsByIdList } from "./issue.ordering.js";
 import { toIdString } from "../../utils/common/ids.js";
 
-/**
- * Construye el árbol de criterios del issue y devuelve también
- * la lista de criterios hoja en el orden configurado en el issue.
- *
- * @param {Array<Object>} criteria Criterios del issue.
- * @param {Object} issue Documento del issue.
- * @returns {Object}
- */
 export const buildIssueCriteriaTree = (criteria, issue) => {
   const normalizedCriteria = criteria.map((criterion) => ({
     id: toIdString(criterion._id),
@@ -44,13 +36,6 @@ export const buildIssueCriteriaTree = (criteria, issue) => {
   };
 };
 
-/**
- * Añade metadata de visualización al árbol de criterios.
- *
- * @param {Array<Object>} criteriaTree Árbol de criterios.
- * @param {Object} finalWeightsById Pesos finales por id.
- * @returns {void}
- */
 export const decorateCriteriaTree = (criteriaTree, finalWeightsById) => {
   const decorateNode = (node, depth = 0) => {
     const isLeaf = node.isLeaf || node.children.length === 0;

@@ -104,20 +104,6 @@ const getEffectiveCriteriaWeightsForActiveView = ({
   });
 };
 
-/**
- * Construye la vista de un issue activo y las tareas asociadas para el task center.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.issue Documento del issue.
- * @param {string} params.userId Id del usuario actual.
- * @param {Set<string>} params.adminIssueIdSet Set de ids de issues donde el usuario es admin.
- * @param {Array<Object>} params.issueParticipations Participaciones del issue.
- * @param {Array<Object>} params.issueAlternativeDocs Alternativas del issue.
- * @param {Array<Object>} params.issueCriteriaDocs Criterios del issue.
- * @param {Array<Object>} [params.consensusHistoryRounds] Historial de consenso desde colección Consensus.
- * @param {Object} params.dayjsLib Instancia de dayjs.
- * @returns {Object}
- */
 export const buildActiveIssueView = ({
   issue,
   userId,

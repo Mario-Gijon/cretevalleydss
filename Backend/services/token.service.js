@@ -5,13 +5,6 @@ const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 60 * 15;
 const REFRESH_TOKEN_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30;
 const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
-/**
- * Genera un access token para un usuario.
- *
- * @param {string|Object} uid Id del usuario.
- * @param {string} [role="user"] Rol del usuario.
- * @returns {Object}
- */
 export const generateToken = (uid, role = "user") => {
   try {
     const token = jwt.sign({ uid, role }, process.env.JWT_SECRET, {
@@ -32,13 +25,6 @@ export const generateToken = (uid, role = "user") => {
   }
 };
 
-/**
- * Genera un refresh token y lo guarda en cookie.
- *
- * @param {string|Object} uid Id del usuario.
- * @param {Object} res Response de Express.
- * @returns {Object}
- */
 export const generateRefreshToken = (uid, res) => {
   try {
     const refreshToken = jwt.sign({ uid }, process.env.JWT_REFRESH, {

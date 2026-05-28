@@ -12,23 +12,9 @@ import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { normalizeString } from "../../../utils/common/strings.js";
 
-/**
- * Aplica una sesión de mongoose a una query si existe.
- *
- * @template T
- * @param {T} query Query de mongoose.
- * @param {Object|null} [session=null] Sesión opcional.
- * @returns {T}
- */
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
 
-/**
- * Normaliza y valida los datos de un dominio de expresión a crear.
- *
- * @param {Object} payload Cuerpo recibido.
- * @returns {Object}
- */
 export const normalizeNewExpressionDomainPayload = (payload) => {
   let {
     name,
@@ -201,15 +187,6 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   };
 };
 
-/**
- * Obtiene un dominio editable del usuario actual o lanza error.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.domainId Id del dominio.
- * @param {string} params.userId Id del usuario actual.
- * @param {Object|null} [params.session=null] Sesión opcional.
- * @returns {Promise<Object>}
- */
 export const getEditableUserExpressionDomainOrThrow = async ({
   domainId,
   userId,
@@ -245,13 +222,6 @@ export const getEditableUserExpressionDomainOrThrow = async ({
   return domain;
 };
 
-/**
- * Obtiene los dominios globales y del usuario actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<Object>}
- */
 export const getExpressionDomainsPayload = async ({ userId }) => {
   const normalizedUserId = toIdString(userId);
 
@@ -270,14 +240,6 @@ export const getExpressionDomainsPayload = async ({ userId }) => {
   };
 };
 
-/**
- * Crea un dominio de expresión del usuario actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.payload Cuerpo recibido.
- * @returns {Promise<Object>}
- */
 export const createUserExpressionDomain = async ({ userId, payload }) => {
   const normalizedDomain = normalizeNewExpressionDomainPayload(payload);
 
@@ -304,14 +266,6 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
   return newDomain;
 };
 
-/**
- * Elimina un dominio de expresión del usuario actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.domainId Id del dominio.
- * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<Object>}
- */
 export const removeUserExpressionDomain = async ({ domainId, userId }) => {
   const domain = await getEditableUserExpressionDomainOrThrow({
     domainId,
@@ -325,16 +279,6 @@ export const removeUserExpressionDomain = async ({ domainId, userId }) => {
   return { domainName };
 };
 
-/**
- * Actualiza un dominio de expresión del usuario actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.domainId Id del dominio.
- * @param {string} params.userId Id del usuario actual.
- * @param {Object} params.updatedDomain Campos a actualizar.
- * @param {Object|null} [params.session=null] Sesión opcional.
- * @returns {Promise<Object>}
- */
 export const updateUserExpressionDomain = async ({
   domainId,
   userId,

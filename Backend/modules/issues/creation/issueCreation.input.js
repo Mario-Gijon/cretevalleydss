@@ -7,12 +7,6 @@ import {
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
-/**
- * Normaliza y valida la entrada base para crear un issue.
- *
- * @param {Object} rawIssueInfo Datos recibidos en req.body.issueInfo.
- * @returns {Object}
- */
 export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const issueInfo = rawIssueInfo || {};
 

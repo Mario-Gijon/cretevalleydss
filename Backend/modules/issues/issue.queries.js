@@ -9,12 +9,6 @@ import {
 import { toIdString, uniqueIdStrings } from "../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 
-/**
- * Valida que el id de issue sea válido.
- *
- * @param {string} issueId Id del issue.
- * @returns {void}
- */
 const validateIssueIdOrThrow = (issueId) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {
@@ -23,14 +17,6 @@ const validateIssueIdOrThrow = (issueId) => {
   }
 };
 
-/**
- * Carga un issue por id y lanza error si no existe.
- *
- * @param {string} issueId Id del issue.
- * @param {object} [options={}] Opciones de carga.
- * @param {string} [options.select] Proyección mongoose.
- * @returns {Promise<Object>}
- */
 export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   validateIssueIdOrThrow(issueId);
 
@@ -53,30 +39,9 @@ export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   return issue;
 };
 
-/**
- * @typedef {Object} WeightCompletionStats
- * @property {number} totalParticipants
- * @property {number} totalWeightsDone
- */
 
-/**
- * @typedef {Object} VisibleActiveIssueIds
- * @property {string[]} issueIds
- * @property {string[]} adminIssueIds
- */
 
-/**
- * @typedef {Object} FinishedIssueIdsOptions
- * @property {boolean} [excludeHidden]
- * @property {Object|null} [session]
- */
 
-/**
- * Obtiene la siguiente fase de consenso para un issue.
- *
- * @param {string|Object} issueId Id del issue.
- * @returns {Promise<number>}
- */
 export const getNextConsensusPhase = async (issueId) => {
   const issue = await Issue.findById(issueId).select("consensusPhase").lean();
   if (!issue) {
@@ -100,13 +65,6 @@ export const getNextConsensusPhase = async (issueId) => {
   return phase;
 };
 
-/**
- * Obtiene la participación aceptada del usuario en un issue.
- *
- * @param {string|Object} issueId Id del issue.
- * @param {string|Object} userId Id del usuario.
- * @returns {Promise<Object|null>}
- */
 export const getAcceptedParticipation = async (issueId, userId) =>
   Participation.findOne({
     issue: issueId,
@@ -114,12 +72,6 @@ export const getAcceptedParticipation = async (issueId, userId) =>
     invitationStatus: "accepted",
   });
 
-/**
- * Obtiene estadísticas de pesos completados para un issue.
- *
- * @param {string|Object} issueId Id del issue.
- * @returns {Promise<WeightCompletionStats>}
- */
 export const getWeightCompletionStats = async (issueId) => {
   const [totalParticipants, totalWeightsDone] = await Promise.all([
     Participation.countDocuments({
@@ -136,15 +88,6 @@ export const getWeightCompletionStats = async (issueId) => {
   return { totalParticipants, totalWeightsDone };
 };
 
-/**
- * Obtiene los ids de issues activos visibles para un usuario.
- *
- * Incluye issues donde el usuario es admin y issues donde participa
- * como experto con invitación aceptada.
- *
- * @param {string|Object} userId Id del usuario.
- * @returns {Promise<VisibleActiveIssueIds>}
- */
 export const getVisibleActiveIssueIdsForUser = async (userId) => {
   const normalizedUserId = toIdString(userId);
 
@@ -184,13 +127,6 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
   };
 };
 
-/**
- * Obtiene los ids de issues finalizados visibles para un usuario.
- *
- * @param {string|Object} userId Id del usuario.
- * @param {FinishedIssueIdsOptions} [options]
- * @returns {Promise<string[]>}
- */
 export const getUserFinishedIssueIds = async (
   userId,
   { excludeHidden = true, session = null } = {}

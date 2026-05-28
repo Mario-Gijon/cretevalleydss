@@ -263,14 +263,6 @@ const buildModelRow = ({
   };
 };
 
-/**
- * Builds a read-only dry-run report comparing ApiModels manifest data to Mongo IssueModels.
- *
- * @param {Object} params Report input.
- * @param {Object} params.manifest Manifest data returned by ApiModels.
- * @param {Array<Object>} params.issueModels Current Mongo IssueModel documents.
- * @returns {Object}
- */
 export const buildModelManifestDryRunReport = ({
   manifest,
   issueModels = [],
@@ -513,14 +505,6 @@ export const buildModelManifestDryRunReport = ({
   };
 };
 
-/**
- * Runs the Backend dry-run by fetching the manifest and reading IssueModels without writes.
- *
- * @param {Object} [options] Dry-run options.
- * @param {Object} [options.httpClient] HTTP client compatible with axios.
- * @param {string} [options.apiModelsBaseUrl] ApiModels base URL.
- * @returns {Promise<Object>}
- */
 export const runModelManifestDryRun = async (options = {}) => {
   const manifest = await fetchModelManifest(options);
   const issueModels = await IssueModel.find().select("-__v").lean();

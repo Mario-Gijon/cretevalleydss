@@ -1,12 +1,5 @@
 import { toIdString } from "../../../utils/common/ids.js";
 
-/**
- * Agrupa una colección por issue id.
- *
- * @param {Array<Object>} items Elementos a agrupar.
- * @param {Function} selector Selector del issue id.
- * @returns {Object}
- */
 const groupByIssueId = (items, selector) => {
   const grouped = {};
 
@@ -24,16 +17,6 @@ const groupByIssueId = (items, selector) => {
   return grouped;
 };
 
-/**
- * Construye mapas auxiliares para la respuesta de activos.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Array<Object>} params.participations Participaciones de los issues visibles.
- * @param {Array<Object>} params.alternatives Alternativas de los issues visibles.
- * @param {Array<Object>} params.criteria Criterios de los issues visibles.
- * @param {Array<Object>} params.consensusPhases Fases de consenso guardadas.
- * @returns {Object}
- */
 export const buildActiveIssueCollections = ({
   participations,
   alternatives,

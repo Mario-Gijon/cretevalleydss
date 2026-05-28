@@ -33,37 +33,14 @@ const STATUS_COOKIE_OPTIONS = {
   maxAge: 30000,
 };
 
-/**
- * Añade una cookie temporal de estado para redirecciones del frontend.
- *
- * @param {Object} res Response de Express.
- * @param {string} name Nombre de la cookie.
- * @param {string} value Valor de la cookie.
- * @returns {void}
- */
 const setStatusCookie = (res, name, value) => {
   res.cookie(name, value, STATUS_COOKIE_OPTIONS);
 };
 
-/**
- * Redirige al frontend principal.
- *
- * @param {Object} res Response de Express.
- * @returns {Object}
- */
 const redirectToFrontend = (res) => {
   return res.redirect(`${process.env.ORIGIN_FRONT}/`);
 };
 
-/**
- * Inicia sesión y devuelve la respuesta de autenticación.
- *
- * Los errores se delegan al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const loginUser = async (req, res) => {
   const result = await loginUserFlow({
     email: req.body?.email,
@@ -86,29 +63,12 @@ export const loginUser = async (req, res) => {
   );
 };
 
-/**
- * Cierra la sesión del usuario eliminando la cookie de refresh token.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Object}
- */
 export const logout = (req, res) => {
   res.clearCookie("refreshToken");
 
   return sendSuccess(res, "Logged out successfully", null, 200);
 };
 
-/**
- * Actualiza la contraseña del usuario autenticado.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const updatePassword = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -133,16 +93,6 @@ export const updatePassword = async (req, res) => {
   }
 };
 
-/**
- * Actualiza la universidad del usuario autenticado.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const modifyUniversity = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -166,16 +116,6 @@ export const modifyUniversity = async (req, res) => {
   }
 };
 
-/**
- * Actualiza el nombre del usuario autenticado.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const modifyName = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -199,15 +139,6 @@ export const modifyName = async (req, res) => {
   }
 };
 
-/**
- * Obtiene los datos del usuario autenticado.
- *
- * Los errores se delegan al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const infoUser = async (req, res) => {
   const profile = await getAuthenticatedUserProfilePayload({
     userId: req.uid,
@@ -223,16 +154,6 @@ export const infoUser = async (req, res) => {
   );
 };
 
-/**
- * Inicia el proceso de cambio de email enviando un correo de confirmación.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const modifyEmail = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -258,15 +179,6 @@ export const modifyEmail = async (req, res) => {
   }
 };
 
-/**
- * Confirma el cambio de email a partir del token recibido.
- *
- * Mantiene la lógica de redirección y cookies de estado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const confirmEmailChange = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -297,16 +209,6 @@ export const confirmEmailChange = async (req, res) => {
   }
 };
 
-/**
- * Registra un nuevo usuario y envía el correo de verificación.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const signupUser = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -331,15 +233,6 @@ export const signupUser = async (req, res) => {
   }
 };
 
-/**
- * Confirma una cuenta a partir del token de verificación.
- *
- * Mantiene la lógica de redirección y cookies de estado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const accountConfirm = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -370,16 +263,6 @@ export const accountConfirm = async (req, res) => {
   }
 };
 
-/**
- * Elimina la cuenta del usuario autenticado.
- *
- * En caso de error solo se gestiona el rollback de la transacción;
- * la respuesta HTTP final se delega al middleware global de errores.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<Object>}
- */
 export const deleteAccount = async (req, res) => {
   const session = await mongoose.startSession();
 

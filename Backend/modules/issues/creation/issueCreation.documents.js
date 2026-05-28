@@ -3,15 +3,6 @@ import { Criterion } from "../../../models/Criteria.js";
 import { normalizeString } from "../../../utils/common/strings.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 
-/**
- * Crea las alternativas del issue.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {string[]} params.uniqueAlternativeNames Nombres de alternativas.
- * @param {Object} params.session Sesión de mongoose.
- * @returns {Promise<Array<Object>>}
- */
 export const createIssueAlternatives = async ({
   issueId,
   uniqueAlternativeNames,
@@ -30,17 +21,6 @@ export const createIssueAlternatives = async ({
   );
 };
 
-/**
- * Crea recursivamente la jerarquía de criterios del issue.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {Array<Object>} params.nodes Nodos de criterios.
- * @param {Array<Object>} params.leafCriteria Acumulador de criterios hoja.
- * @param {Object} params.session Sesión de mongoose.
- * @param {string|Object|null} [params.parentCriterionId=null] Id del criterio padre.
- * @returns {Promise<void>}
- */
 export const createCriteriaRecursively = async ({
   issueId,
   nodes,

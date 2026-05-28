@@ -195,10 +195,6 @@ const ISSUE_MODELS = [
   },
 ];
 
-/**
- * Inserta o actualiza los modelos base de IssueModel.
- * Es idempotente: no duplica modelos si ya existen.
- */
 export const seedIssueModels = async () => {
   try {
     const operations = ISSUE_MODELS.map((model) => ({

@@ -34,17 +34,7 @@ const resolveParticipationEntryStage = (issueStage) => {
   return null;
 };
 
-/**
- * @typedef {Object} NotificationsPayload
- * @property {Array<Object>} notifications Lista de notificaciones formateadas.
- */
 
-/**
- * Construye el texto de respuesta asociado a una invitación.
- *
- * @param {Object|null} participation Documento de participación.
- * @returns {false | string}
- */
 const getNotificationResponseStatus = (participation) => {
   if (!participation) {
     return false;
@@ -61,14 +51,6 @@ const getNotificationResponseStatus = (participation) => {
   return false;
 };
 
-/**
- * Da formato a una notificación para el frontend.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.notification Notificación cargada.
- * @param {Map<string, Object>} params.participationByIssueId Participaciones del usuario indexadas por issue.
- * @returns {Object}
- */
 const buildNotificationItem = ({ notification, participationByIssueId }) => {
   const issueId = toIdString(notification.issue?._id);
   const participation = issueId ? participationByIssueId.get(issueId) : null;
@@ -94,13 +76,6 @@ const buildNotificationItem = ({ notification, participationByIssueId }) => {
   };
 };
 
-/**
- * Obtiene las notificaciones del usuario actual con el formato esperado por el frontend.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.userId Id del usuario actual.
- * @returns {Promise<NotificationsPayload>}
- */
 export const getNotificationsPayload = async ({ userId }) => {
   const [notifications, participations] = await Promise.all([
     Notification.find({ expert: userId })
@@ -127,13 +102,6 @@ export const getNotificationsPayload = async ({ userId }) => {
   };
 };
 
-/**
- * Marca todas las notificaciones del usuario actual como leídas.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.userId Id del usuario actual.
- * @returns {Promise<Object>}
- */
 export const markAllNotificationsAsReadFlow = async ({ userId }) => {
   await Notification.updateMany({ expert: userId, read: false }, { read: true });
 
@@ -142,22 +110,6 @@ export const markAllNotificationsAsReadFlow = async ({ userId }) => {
   };
 };
 
-/**
- * Cambia el estado de invitación del usuario actual para un issue.
- *
- * Mantiene la lógica actual:
- * - valida existencia del issue
- * - valida existencia de participación
- * - actualiza invitationStatus
- * - si acepta, reinicia evaluationCompleted
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.issueId Id del issue.
- * @param {string|Object} params.userId Id del usuario actual.
- * @param {"accepted"|"declined"} params.action Nuevo estado de invitación.
- * @param {Object|null} [params.session=null] Sesión de Mongo opcional.
- * @returns {Promise<Object>}
- */
 export const changeInvitationStatusFlow = async ({
   issueId,
   userId,
@@ -228,14 +180,6 @@ export const changeInvitationStatusFlow = async ({
   };
 };
 
-/**
- * Elimina una notificación del usuario actual.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string|Object} params.notificationId Id de la notificación.
- * @param {string|Object} params.userId Id del usuario actual.
- * @returns {Promise<Object>}
- */
 export const removeNotificationForUserFlow = async ({
   notificationId,
   userId,

@@ -1,10 +1,3 @@
-/**
- * Construye los pasos del workflow para la UI de activos.
- *
- * @param {object} params Parámetros de entrada.
- * @param {boolean} params.hasAlternativeConsensus Indica si el issue tiene consenso de alternativas.
- * @returns {Array<Object>}
- */
 export const buildActiveWorkflowSteps = ({ hasAlternativeConsensus }) => {
   const steps = [
     { key: "criteriaWeighting", label: "Criteria weighting" },
@@ -21,13 +14,6 @@ export const buildActiveWorkflowSteps = ({ hasAlternativeConsensus }) => {
   return steps;
 };
 
-/**
- * Calcula la metadata de deadline para un issue.
- *
- * @param {string | null | undefined} closureDate Fecha de cierre.
- * @param {Object} dayjsLib Instancia de dayjs.
- * @returns {Object}
- */
 export const buildDeadlineInfo = (closureDate, dayjsLib) => {
   if (!closureDate) {
     return {

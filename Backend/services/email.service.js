@@ -16,15 +16,6 @@ apiInstance.setApiKey(
   process.env.APIKEY_BREVO
 );
 
-/**
- * Construye un email transaccional de Brevo.
- *
- * @param {Object} params Datos del email.
- * @param {string} params.subject Asunto del correo.
- * @param {Array<Object>} params.to Destinatarios.
- * @param {string} params.htmlContent Contenido HTML del correo.
- * @returns {Object}
- */
 const createEmail = ({ subject, to, htmlContent }) => {
   const email = new brevo.SendSmtpEmail();
   email.subject = subject;
@@ -35,13 +26,6 @@ const createEmail = ({ subject, to, htmlContent }) => {
   return email;
 };
 
-/**
- * Envía un email transaccional y propaga un error tipado si falla.
- *
- * @param {Object} email Mensaje de Brevo ya construido.
- * @param {string} failureMessage Mensaje interno para el error.
- * @returns {Promise<Object>}
- */
 const sendTransactionalEmail = async (email, failureMessage) => {
   try {
     return await apiInstance.sendTransacEmail(email);
@@ -55,15 +39,6 @@ const sendTransactionalEmail = async (email, failureMessage) => {
   }
 };
 
-/**
- * Envía un correo de verificación de cuenta.
- *
- * @param {Object} params Datos del correo.
- * @param {string} params.name Nombre del destinatario.
- * @param {string} params.email Email del destinatario.
- * @param {string} params.token Token de confirmación.
- * @returns {Promise<Object>}
- */
 export const sendVerificationEmail = async ({ name, email, token }) => {
   const message = createEmail({
     subject: "Verify your account",
@@ -95,14 +70,6 @@ export const sendVerificationEmail = async ({ name, email, token }) => {
   );
 };
 
-/**
- * Envía un correo para confirmar el cambio de email.
- *
- * @param {Object} params Datos del correo.
- * @param {string} params.newEmail Nuevo email.
- * @param {string} params.token Token de confirmación.
- * @returns {Promise<Object>}
- */
 export const sendEmailChangeConfirmation = async ({ newEmail, token }) => {
   const message = createEmail({
     subject: "Confirm your email change",
@@ -133,16 +100,6 @@ export const sendEmailChangeConfirmation = async ({ newEmail, token }) => {
   );
 };
 
-/**
- * Envía un correo de invitación a un experto.
- *
- * @param {Object} params Datos del correo.
- * @param {string} params.expertEmail Email del experto.
- * @param {string} params.issueName Nombre del issue.
- * @param {string} params.issueDescription Descripción del issue.
- * @param {string} params.adminEmail Email del administrador.
- * @returns {Promise<Object>}
- */
 export const sendExpertInvitationEmail = async ({
   expertEmail,
   issueName,

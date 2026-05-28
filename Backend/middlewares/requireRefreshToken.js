@@ -3,24 +3,10 @@ import { createUnauthorizedError } from "../utils/common/errors.js";
 
 const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
-/**
- * Extrae el refresh token desde las cookies del request.
- *
- * @param {Object} req Request de Express.
- * @returns {string|null}
- */
 const getRefreshTokenFromCookies = (req) => {
   return req.cookies?.[REFRESH_TOKEN_COOKIE_NAME] ?? null;
 };
 
-/**
- * Verifica el refresh token enviado en cookies y añade el uid al request.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @param {Function} next Siguiente middleware.
- * @returns {void}
- */
 export const requireRefreshToken = (req, res, next) => {
   try {
     const refreshTokenCookie = getRefreshTokenFromCookies(req);

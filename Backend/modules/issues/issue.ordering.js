@@ -3,55 +3,18 @@ import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
 import { createInternalError } from "../../utils/common/errors.js";
 
-/**
- * @callback IssueNameSelector
- * @param {Object} doc Documento.
- * @returns {string}
- */
 
-/**
- * @callback IssueIdSelector
- * @param {Object} doc Documento.
- * @returns {*}
- */
 
-/**
- * @typedef {Object} OrderDocsOptions
- * @property {Function} [getId] Selector de id.
- * @property {Function} [getName] Selector de nombre.
- */
 
-/**
- * @typedef {Object} EnsureIssueOrdersParams
- * @property {string|Object} [issueId]
- * @property {Object|null} [session]
- */
 
 const COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
-/**
- * Compara dos documentos por nombre y, en empate, por id.
- *
- * @param {string} aName Nombre A.
- * @param {*} aId Id A.
- * @param {string} bName Nombre B.
- * @param {*} bId Id B.
- * @returns {number}
- */
 export const compareNameId = (aName, aId, bName, bId) => {
   const nameComparison = COLLATOR.compare(aName, bName);
   if (nameComparison !== 0) return nameComparison;
   return aId.toString().localeCompare(bId.toString());
 };
 
-/**
- * Ordena documentos por nombre e id.
- *
- * @param {Array<Object>} docs Lista de documentos.
- * @param {IssueNameSelector} [getName] Selector de nombre.
- * @param {IssueIdSelector} [getId] Selector de id.
- * @returns {Array<Object>}
- */
 export const sortDocsByNameId = (
   docs,
   getName = (doc) => doc.name,
@@ -64,14 +27,6 @@ export const sortDocsByNameId = (
   return sortedDocs;
 };
 
-/**
- * Reordena documentos usando una lista de ids.
- *
- * @param {Array<Object>} docs Lista de documentos.
- * @param {Array<*>} orderIds Lista de ids ordenada.
- * @param {OrderDocsOptions} [options]
- * @returns {Array<Object>}
- */
 export const orderDocsByIdList = (
   docs,
   orderIds,
@@ -103,12 +58,6 @@ export const orderDocsByIdList = (
   return orderedDocs.concat(extraDocs);
 };
 
-/**
- * Genera y guarda los órdenes del issue si no existen.
- *
- * @param {EnsureIssueOrdersParams} [params]
- * @returns {Promise<Object>}
- */
 export const ensureIssueOrdersDb = async ({ issueId, session } = {}) => {
   const issue = await Issue.findById(issueId)
     .select("_id alternativeOrder leafCriteriaOrder")
@@ -154,12 +103,6 @@ export const ensureIssueOrdersDb = async ({ issueId, session } = {}) => {
   return issue;
 };
 
-/**
- * Obtiene las alternativas ordenadas de un issue.
- *
- * @param {Object} [params]
- * @returns {Promise<Array<Object>>}
- */
 export const getOrderedAlternativesDb = async ({
   issueId,
   issueDoc = null,
@@ -189,12 +132,6 @@ export const getOrderedAlternativesDb = async ({
   return orderDocsByIdList(alternatives, issue.alternativeOrder);
 };
 
-/**
- * Obtiene los criterios hoja ordenados de un issue.
- *
- * @param {Object} [params]
- * @returns {Promise<Array<Object>>}
- */
 export const getOrderedLeafCriteriaDb = async ({
   issueId,
   issueDoc = null,

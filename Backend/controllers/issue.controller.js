@@ -68,13 +68,6 @@ import axios from "axios";
 import dayjs from "dayjs";
 import mongoose from "mongoose";
 
-/**
- * Obtiene la información de modelos disponibles.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const modelsInfo = async (req, res) => {
   const models = await IssueModel.find({
     $and: [
@@ -118,13 +111,6 @@ export const modelsInfo = async (req, res) => {
   });
 };
 
-/**
- * Obtiene todos los usuarios visibles para la creación de issues.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getAllUsers = async (req, res) => {
   const users = await User.find({ accountConfirm: true })
     .select("name university email")
@@ -133,13 +119,6 @@ export const getAllUsers = async (req, res) => {
   return sendSuccess(res, "Users fetched successfully", users);
 };
 
-/**
- * Obtiene los dominios de expresión globales y del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getExpressionsDomain = async (req, res) => {
   const data = await getExpressionDomainsPayload({
     userId: req.uid,
@@ -148,13 +127,6 @@ export const getExpressionsDomain = async (req, res) => {
   return sendSuccess(res, "Expression domains fetched successfully", data);
 };
 
-/**
- * Crea un nuevo dominio de expresión de usuario.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const createExpressionDomain = async (req, res) => {
   try {
     const newDomain = await createUserExpressionDomain({
@@ -184,14 +156,6 @@ export const createExpressionDomain = async (req, res) => {
   }
 };
 
-/**
- * Crea un nuevo issue con alternativas, criterios, participaciones,
- * snapshots de dominios y evaluaciones iniciales.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const createIssue = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -235,13 +199,6 @@ export const createIssue = async (req, res) => {
   }
 };
 
-/**
- * Obtiene todos los issues activos visibles para el usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getAllActiveIssues = async (req, res) => {
   const userId = toIdString(req.uid);
 
@@ -329,13 +286,6 @@ export const getAllActiveIssues = async (req, res) => {
   });
 };
 
-/**
- * Elimina un issue activo y todos sus datos relacionados.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const removeIssue = async (req, res) => {
   const { id } = req.body;
   const userId = req.uid;
@@ -363,13 +313,6 @@ export const removeIssue = async (req, res) => {
   }
 };
 
-/**
- * Elimina un dominio de expresión del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const removeExpressionDomain = async (req, res) => {
   const { id } = req.body;
 
@@ -381,13 +324,6 @@ export const removeExpressionDomain = async (req, res) => {
   return sendSuccess(res, "Domain deleted", { id });
 };
 
-/**
- * Actualiza un dominio de expresión del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const updateExpressionDomain = async (req, res) => {
   const { id, updatedDomain } = req.body;
   const userId = toIdString(req.uid);
@@ -412,13 +348,6 @@ export const updateExpressionDomain = async (req, res) => {
   }
 };
 
-/**
- * Obtiene todos los issues finalizados visibles para el usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getAllFinishedIssues = async (req, res) => {
   const userId = toIdString(req.uid);
   const issueIds = await getUserFinishedIssueIds(userId);
@@ -448,13 +377,6 @@ export const getAllFinishedIssues = async (req, res) => {
   return sendSuccess(res, "Finished issues fetched successfully", formattedIssues);
 };
 
-/**
- * Obtiene las notificaciones del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getNotifications = async (req, res) => {
   const result = await getNotificationsPayload({
     userId: req.uid,
@@ -465,13 +387,6 @@ export const getNotifications = async (req, res) => {
   });
 };
 
-/**
- * Marca como leídas todas las notificaciones no leídas del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const markAllNotificationsAsRead = async (req, res) => {
   const result = await markAllNotificationsAsReadFlow({
     userId: req.uid,
@@ -480,13 +395,6 @@ export const markAllNotificationsAsRead = async (req, res) => {
   return sendSuccess(res, result.message);
 };
 
-/**
- * Cambia el estado de invitación del usuario actual para un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const changeInvitationStatus = async (req, res) => {
   const session = await mongoose.startSession();
 
@@ -509,13 +417,6 @@ export const changeInvitationStatus = async (req, res) => {
   }
 };
 
-/**
- * Elimina una notificación concreta del usuario actual.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const removeNotificationById = async (req, res) => {
   const notificationId = req.body?.notificationId;
 
@@ -527,14 +428,6 @@ export const removeNotificationById = async (req, res) => {
   return sendSuccess(res, result.message, { notificationId });
 };
 
-/**
- * Oculta un issue finalizado para el usuario actual y elimina sus datos
- * si todos los usuarios con visibilidad ya lo han ocultado.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const removeFinishedIssue = async (req, res) => {
   const { id } = req.body;
   const userId = req.uid;
@@ -562,13 +455,6 @@ export const removeFinishedIssue = async (req, res) => {
   }
 };
 
-/**
- * Añade o expulsa expertos de un issue activo.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const editExperts = async (req, res) => {
   const { id, expertsToAdd = [], expertsToRemove = [] } = req.body;
 
@@ -582,13 +468,6 @@ export const editExperts = async (req, res) => {
   return sendSuccess(res, "Experts updated successfully.");
 };
 
-/**
- * Permite a un experto abandonar un issue activo.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const leaveIssue = async (req, res) => {
   const { id } = req.body;
   const userId = req.uid;
@@ -614,13 +493,6 @@ export const leaveIssue = async (req, res) => {
   }
 };
 
-/**
- * Obtiene toda la información de un issue finalizado para la pantalla de detalle.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getFinishedIssueInfo = async (req, res) => {
   const { id } = req.body;
 
@@ -631,13 +503,6 @@ export const getFinishedIssueInfo = async (req, res) => {
   return sendSuccess(res, "Issue info sent", issueInfo);
 };
 
-/**
- * Crea un escenario de simulación para un issue resuelto.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const createIssueScenario = async (req, res) => {
   const {
     issueId,
@@ -664,13 +529,6 @@ export const createIssueScenario = async (req, res) => {
   );
 };
 
-/**
- * Lista los escenarios creados para un issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getIssueScenarios = async (req, res) => {
   const { issueId } = req.body;
 
@@ -679,13 +537,6 @@ export const getIssueScenarios = async (req, res) => {
   return sendSuccess(res, "Scenarios fetched successfully", scenarios);
 };
 
-/**
- * Obtiene un escenario por su id.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const getScenarioById = async (req, res) => {
   const { scenarioId } = req.body;
 
@@ -694,13 +545,6 @@ export const getScenarioById = async (req, res) => {
   return sendSuccess(res, "Scenario fetched successfully", scenario);
 };
 
-/**
- * Elimina un escenario si el usuario actual es su creador o admin del issue.
- *
- * @param {Object} req Request de Express.
- * @param {Object} res Response de Express.
- * @returns {Promise<void>}
- */
 export const removeScenario = async (req, res) => {
   const { scenarioId } = req.body;
 

@@ -7,33 +7,11 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 
-/**
- * @typedef {Object} SignupVerificationEmail
- * @property {string} name Nombre del usuario registrado.
- * @property {string} email Email del usuario registrado.
- * @property {string} token Token de confirmación de cuenta.
- */
 
-/**
- * @typedef {Object} CreateSignupAccountResult
- * @property {string} message Mensaje de resultado.
- * @property {SignupVerificationEmail} verificationEmail Datos necesarios para enviar el correo de verificación.
- */
 
 const withOptionalSession = (query, session = null) =>
   session ? query.session(session) : query;
 
-/**
- * Registra un nuevo usuario pendiente de verificación.
- *
- * Mantiene el flujo actual de alta con token de confirmación,
- * añadiendo validación y normalización básica de entrada.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {Object} params.payload Cuerpo recibido.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<CreateSignupAccountResult>}
- */
 export const createSignupAccountFlow = async ({
   payload,
   session = null,
@@ -113,14 +91,6 @@ export const createSignupAccountFlow = async ({
   };
 };
 
-/**
- * Confirma una cuenta de usuario a partir del token de verificación.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string} params.token Token recibido en la URL.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<Object>}
- */
 export const confirmAccountFlow = async ({
   token,
   session = null,
@@ -154,14 +124,6 @@ export const confirmAccountFlow = async ({
   };
 };
 
-/**
- * Elimina la cuenta del usuario autenticado.
- *
- * @param {Object} params Parámetros de entrada.
- * @param {string|Object} params.userId Id del usuario autenticado.
- * @param {Object|null} [params.session=null] Sesión de mongoose.
- * @returns {Promise<Object>}
- */
 export const deleteAuthenticatedUserAccountFlow = async ({
   userId,
   session = null,

@@ -21,15 +21,6 @@ import {
 } from "../issue.ordering.js";
 import { sendExpertInvitationEmail } from "../../../services/email.service.js";
 
-/**
- * Normaliza las listas de expertos a añadir y expulsar,
- * evitando duplicados y conflictos entre ambas.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string[]} [params.expertsToAdd=[]] Correos a añadir.
- * @param {string[]} [params.expertsToRemove=[]] Correos a expulsar.
- * @returns {Object}
- */
 const normalizeExpertEditionRequest = ({
   expertsToAdd = [],
   expertsToRemove = [],
@@ -58,14 +49,6 @@ const normalizeExpertEditionRequest = ({
   };
 };
 
-/**
- * Obtiene y valida el contexto base necesario para editar expertos.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @param {string} params.userId Id del usuario actual.
- * @returns {Promise<Object>}
- */
 const getEditExpertsContext = async ({ issueId, userId }) => {
   const issue = await Issue.findById(issueId).populate("model");
 
@@ -101,21 +84,6 @@ const getEditExpertsContext = async ({ issueId, userId }) => {
   };
 };
 
-/**
- * Añade expertos nuevos al issue activo.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.issue Issue actual.
- * @param {Object|null} params.admin Usuario admin.
- * @param {string} params.userId Id del usuario actual.
- * @param {string[]} params.expertEmails Correos normalizados a añadir.
- * @param {Map<string, Object>} params.userByEmail Usuarios indexados por email.
- * @param {Array<Object>} params.leafCriteria Criterios hoja ordenados.
- * @param {number} params.currentPhase Fase actual.
- * @param {string | null} params.stageForLog Stage para logs de entrada.
- * @param {boolean} params.weightsStageIsOpen Indica si la fase de pesos sigue abierta.
- * @returns {Promise<string[]>}
- */
 const addExpertsToActiveIssue = async ({
   issue,
   admin,
@@ -173,17 +141,6 @@ const addExpertsToActiveIssue = async ({
   return invitationEmailsToSend;
 };
 
-/**
- * Expulsa expertos de un issue activo.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object} params.issue Issue actual.
- * @param {string[]} params.expertEmails Correos normalizados a expulsar.
- * @param {Map<string, Object>} params.userByEmail Usuarios indexados por email.
- * @param {number} params.currentPhase Fase actual.
- * @param {string | null} params.stageForLog Stage para logs de salida.
- * @returns {Promise<void>}
- */
 const removeExpertsFromActiveIssue = async ({
   issue,
   expertEmails,
@@ -221,16 +178,6 @@ const removeExpertsFromActiveIssue = async ({
   }
 };
 
-/**
- * Añade o expulsa expertos de un issue activo.
- *
- * @param {object} params Parámetros de entrada.
- * @param {string} params.issueId Id del issue.
- * @param {string} params.userId Id del usuario actual.
- * @param {string[]} [params.expertsToAdd=[]] Correos a añadir.
- * @param {string[]} [params.expertsToRemove=[]] Correos a expulsar.
- * @returns {Promise<Object>}
- */
 export const editIssueExpertsFlow = async ({
   issueId,
   userId,

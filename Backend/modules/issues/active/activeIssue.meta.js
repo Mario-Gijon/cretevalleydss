@@ -1,6 +1,3 @@
-/**
- * Metadata de stages para la UI de issues activos.
- */
 export const ACTIVE_STAGE_META = {
   criteriaWeighting: {
     key: "criteriaWeighting",
@@ -34,9 +31,6 @@ export const ACTIVE_STAGE_META = {
   },
 };
 
-/**
- * Metadata de acciones para la UI de issues activos.
- */
 export const ACTIVE_ACTION_META = {
   resolveIssue: {
     key: "resolveIssue",
@@ -68,9 +62,6 @@ export const ACTIVE_ACTION_META = {
   },
 };
 
-/**
- * Acciones que aparecen en el task center.
- */
 export const ACTIVE_TASK_ACTION_KEYS = Object.freeze(
   Object.values(ACTIVE_ACTION_META)
     .sort((a, b) => a.sortPriority - b.sortPriority)

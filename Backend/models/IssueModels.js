@@ -1,16 +1,6 @@
-/**
- * @module models/IssueModel
- */
 
 import { Schema, model } from "mongoose";
 
-/**
- * Comprueba si un valor pertenece al conjunto permitido.
- *
- * @param {unknown} value Valor a validar.
- * @param {unknown[] | null | undefined} allowed Valores permitidos.
- * @returns {boolean}
- */
 function isAllowedValue(value, allowed) {
   if (!Array.isArray(allowed) || allowed.length === 0) {
     return true;
@@ -19,20 +9,6 @@ function isAllowedValue(value, allowed) {
   return allowed.includes(value);
 }
 
-/**
- * Valida el valor por defecto de un parámetro de tipo array con longitud 2.
- *
- * Reglas aplicadas:
- * - debe ser un array de dos posiciones,
- * - el primer valor debe ser menor que el segundo,
- * - ambos deben respetar `min` y `max` cuando existan.
- *
- * @param {unknown} value Valor a validar.
- * @param {object} restrictions Restricciones del parámetro.
- * @param {number | null} restrictions.min Valor mínimo permitido.
- * @param {number | null} restrictions.max Valor máximo permitido.
- * @returns {boolean}
- */
 function isValidLengthTwoArrayDefault(value, restrictions = {}) {
   if (!Array.isArray(value) || value.length !== 2) {
     return false;
@@ -59,13 +35,6 @@ function isValidLengthTwoArrayDefault(value, restrictions = {}) {
   return true;
 }
 
-/**
- * Valida el valor por defecto de un parámetro según su definición.
- *
- * @this {Object}
- * @param {unknown} value Valor por defecto a validar.
- * @returns {boolean}
- */
 function validateParameterDefault(value) {
   const restrictions = this.restrictions || {};
 

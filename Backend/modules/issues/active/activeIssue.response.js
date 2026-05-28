@@ -19,11 +19,6 @@ const ACTIVE_SORT_OPTIONS = [
   { value: "deadlineDate", label: "Deadline Date" },
 ];
 
-/**
- * Devuelve un objeto de tareas vacío para la UI de activos.
- *
- * @returns {Object}
- */
 export const getEmptyTasksByType = () => ({
   resolveIssue: [],
   computeWeights: [],
@@ -31,11 +26,6 @@ export const getEmptyTasksByType = () => ({
   evaluateAlternatives: [],
 });
 
-/**
- * Construye las opciones de stage para filtros de activos.
- *
- * @returns {Array<Object>}
- */
 const buildStageOptions = () => [
   { value: "all", label: "All stages" },
   ...Object.values(ACTIVE_STAGE_META).map((stage) => ({
@@ -44,11 +34,6 @@ const buildStageOptions = () => [
   })),
 ];
 
-/**
- * Construye las opciones de acción para filtros de activos.
- *
- * @returns {Array<Object>}
- */
 const buildActionOptions = () => [
   { value: "all", label: "All actions" },
   ...Object.values(ACTIVE_STATUS_META).map((status) => ({
@@ -64,13 +49,6 @@ const buildActionOptions = () => [
   { value: "none", label: "No pending action" },
 ];
 
-/**
- * Ordena la colección de issues activos por criterios visibles:
- * creación (más recientes primero) y luego nombre.
- *
- * @param {Array<Object>} issues Issues formateados.
- * @returns {void}
- */
 export const sortActiveIssues = (issues) => {
   issues.sort((a, b) => {
     const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -80,12 +58,6 @@ export const sortActiveIssues = (issues) => {
   });
 };
 
-/**
- * Ordena las tareas agrupadas por tipo para el task center.
- *
- * @param {Object.<string, Array<Object>>} tasksByType Tareas agrupadas.
- * @returns {void}
- */
 export const sortActiveTasksByType = (tasksByType) => {
   for (const actionKey of ACTIVE_TASK_ACTION_KEYS) {
     tasksByType[actionKey].sort((a, b) => {
@@ -102,12 +74,6 @@ export const sortActiveTasksByType = (tasksByType) => {
   }
 };
 
-/**
- * Construye el task center a partir de las tareas agrupadas.
- *
- * @param {Object} tasksByType Tareas agrupadas.
- * @returns {Object}
- */
 export const buildActiveTaskCenter = (tasksByType) => {
   const total = ACTIVE_TASK_ACTION_KEYS.reduce(
     (acc, key) => acc + tasksByType[key].length,
@@ -138,15 +104,6 @@ export const buildActiveTaskCenter = (tasksByType) => {
   };
 };
 
-/**
- * Construye la metadata de filtros para la respuesta de activos.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Object.<string, number>} params.roleCounts Conteos por rol.
- * @param {Object.<string, number>} params.stageCounts Conteos por stage.
- * @param {Object.<string, number>} params.actionCounts Conteos por acción.
- * @returns {Object}
- */
 export const buildActiveFiltersMeta = ({
   roleCounts,
   stageCounts,
@@ -170,14 +127,6 @@ export const buildActiveFiltersMeta = ({
   },
 });
 
-/**
- * Construye la metadata agregada de la respuesta de activos.
- *
- * @param {object} params Parámetros de entrada.
- * @param {Array<Object>} params.formattedIssues Issues ya formateados.
- * @param {Object} params.tasksByType Tareas agrupadas.
- * @returns {Object}
- */
 export const buildActiveIssuesResponseMeta = ({
   formattedIssues,
   tasksByType,
@@ -212,13 +161,6 @@ export const buildActiveIssuesResponseMeta = ({
   };
 };
 
-/**
- * Construye la respuesta vacía estándar para activos.
- *
- * Mantiene el mismo contrato actual de la API cuando no hay issues visibles.
- *
- * @returns {Object}
- */
 export const buildEmptyActiveIssuesPayload = () => ({
   issues: [],
   tasks: {
