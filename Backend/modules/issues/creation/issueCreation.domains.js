@@ -104,13 +104,11 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
 };
 
 const resolveSupportedDomainFlags = (modelSupportedDomains) => ({
-  numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
-  numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
-  linguisticMembershipFunctions: Array.isArray(modelSupportedDomains?.linguistic)
-    ? modelSupportedDomains.linguistic
-      .map((item) => String(item || "").trim().toLowerCase())
-      .filter(Boolean)
-    : [],
+  numericContinuous: modelSupportedDomains.numeric.continuous,
+  numericDiscrete: modelSupportedDomains.numeric.discrete,
+  linguisticMembershipFunctions: modelSupportedDomains.linguistic
+    .map((item) => String(item || "").trim().toLowerCase())
+    .filter(Boolean),
 });
 
 const isNumericContinuousDomain = (domain) => {

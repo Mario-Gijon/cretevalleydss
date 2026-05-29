@@ -32,7 +32,9 @@ const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
       });
     }
 
-    const children = normalizeCriteriaNodesOrThrow(rawChildren || []);
+    const children = normalizeCriteriaNodesOrThrow(
+      rawChildren === undefined ? [] : rawChildren
+    );
 
     return {
       name,

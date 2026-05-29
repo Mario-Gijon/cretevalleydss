@@ -1,5 +1,4 @@
 import { Issue } from "../../../models/Issues.js";
-import { createIssueDomainSnapshots } from "../expressionDomains/issueDomainSnapshots.js";
 import { normalizeCreateIssueInput } from "./issueCreation.input.js";
 import { loadCreateIssueActorsAndModel } from "./issueCreation.context.js";
 import {
@@ -11,7 +10,6 @@ import {
   createCriteriaRecursively,
   createIssueAlternatives,
 } from "./issueCreation.documents.js";
-import { compareNameId } from "../issue.ordering.js";
 import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
@@ -28,8 +26,12 @@ import {
   createBadRequestError,
   createConflictError,
 } from "../../../utils/common/errors.js";
-import dayjs from "dayjs";
 import axios from "axios";
+import { buildIssueCreationDocument } from "./issueCreation.issue.js";
+import { applyIssueCreationOrdering } from "./issueCreation.ordering.js";
+import {
+  assignIssueExpressionDomainSnapshotsOrThrow,
+} from "./issueCreation.domainSnapshots.js";
 
 export const createIssueFlow = async ({
   issueInfo,
@@ -106,38 +108,25 @@ export const createIssueFlow = async ({
     supportsConsensusSimulation: modelSupportsConsensusSimulation,
   });
 
-  const issue = new Issue({
-    admin: adminUserId,
-    model: model._id,
+  const issue = buildIssueCreationDocument({
+    adminUserId,
+    model,
     apiModelKey,
     apiEndpoint,
     modelFamilyKey,
     modelVersion,
     versionLabel,
-    criteriaWeightingStructureKey: null,
-    criteriaWeightingModel: null,
-    criteriaWeightingApiModelKey: null,
-    criteriaWeightingApiEndpoint: null,
-    criteriaWeightingParameters: {},
     alternativeEvaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
     simulateConsensus,
-    consensusPhase: 1,
     isConsensus,
-    name: input.issueName,
-    description: input.issueDescription,
-    active: true,
-    creationDate: dayjs().format("DD-MM-YYYY"),
-    closureDate: input.closureDate
-      ? dayjs(input.closureDate).format("DD-MM-YYYY")
-      : null,
-    currentStage:
-      usesCriteriaWeights
-        ? EVALUATION_STAGES.CRITERIA_WEIGHTING
-        : EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    issueName: input.issueName,
+    issueDescription: input.issueDescription,
+    closureDate: input.closureDate,
+    usesCriteriaWeights,
     consensusMaxPhases,
     consensusThreshold,
-    modelParameters: normalizedModelParameters,
+    normalizedModelParameters,
   });
 
   await issue.save({ session });
@@ -165,21 +154,11 @@ export const createIssueFlow = async ({
     );
   }
 
-  issue.alternativeOrder = createdAlternatives
-    .slice()
-    .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
-    .map((alternative) => alternative._id);
-
-  issue.leafCriteriaOrder = leafCriteria
-    .slice()
-    .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id))
-    .map((criterion) => criterion._id);
-
-  const orderedLeafCriteria = leafCriteria
-    .slice()
-    .sort((a, b) => compareNameId(a.name, a._id, b.name, b._id));
-  const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
-  const isSingleLeafCriterion = criterionNames.length === 1;
+  const { criterionNames, isSingleLeafCriterion } = applyIssueCreationOrdering({
+    issue,
+    createdAlternatives,
+    leafCriteria,
+  });
 
   const { usedDomainIds, domainIdByCriterionName } =
     resolveExpressionDomainConfigByLeafCriteriaOrThrow({
@@ -248,44 +227,13 @@ export const createIssueFlow = async ({
     session,
   });
 
-  const snapshotIdBySourceDomainId = await createIssueDomainSnapshots({
+  await assignIssueExpressionDomainSnapshotsOrThrow({
     issueId: issue._id,
     domainDocs,
+    leafCriteria,
+    domainIdByCriterionName,
     session,
   });
-
-  for (const leafCriterion of leafCriteria) {
-    const criterionName = leafCriterion.name;
-    const sourceDomainId = domainIdByCriterionName.get(criterionName);
-    const snapshotId = snapshotIdBySourceDomainId.get(sourceDomainId);
-
-    if (!snapshotId) {
-      throw createBadRequestError(
-        `Missing IssueExpressionDomain snapshot for criterion '${criterionName}'`,
-        {
-          field: "expressionDomainConfig",
-        }
-      );
-    }
-
-    leafCriterion.expressionDomain = snapshotId;
-    await leafCriterion.save({ session });
-  }
-
-  const missingExpressionDomain = leafCriteria.find(
-    (leafCriterion) => !leafCriterion.expressionDomain
-  );
-  if (missingExpressionDomain) {
-    throw createBadRequestError(
-      "Each leaf criterion must have an expression domain snapshot",
-      {
-        field: "expressionDomainConfig",
-        details: {
-          criterionName: missingExpressionDomain.name,
-        },
-      }
-    );
-  }
 
   return {
     issueName: input.issueName,
