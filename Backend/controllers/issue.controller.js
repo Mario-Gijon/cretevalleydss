@@ -6,7 +6,7 @@ import { User } from "../models/Users.js";
 
 import {
   getUserFinishedIssueIds,
-} from "../modules/issues/issue.queries.js";
+} from "../modules/issues/shared/queries.js";
 import { sendExpertInvitationEmail } from "../services/email.service.js";
 import {
   createConflictError,

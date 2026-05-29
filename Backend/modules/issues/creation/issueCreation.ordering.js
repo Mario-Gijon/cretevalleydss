@@ -1,4 +1,4 @@
-import { compareNameId } from "../issue.ordering.js";
+import { compareNameId } from "../shared/ordering.js";
 
 export const applyIssueCreationOrdering = ({
   issue,

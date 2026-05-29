@@ -4,7 +4,7 @@ import { Criterion } from "../../../models/Criteria.js";
 import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { getVisibleActiveIssueIdsForUser } from "../issue.queries.js";
+import { getVisibleActiveIssueIdsForUser } from "../shared/queries.js";
 import { buildActiveIssueCollections } from "./activeIssue.collections.js";
 import {
   buildActiveIssuesResponseMeta,

@@ -4,11 +4,11 @@ import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { Participation } from "../../../models/Participations.js";
-import { buildIssueCriteriaTree } from "../issue.criteriaTree.js";
+import { buildIssueCriteriaTree } from "../shared/criteriaTree.js";
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../issue.ordering.js";
+} from "../shared/ordering.js";
 import {
   EVALUATION_STAGES,
 } from "../../decisionEngine/evaluations/evaluation.constants.js";

@@ -18,7 +18,7 @@ import {
   ensureIssueOrdersDb,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../issues/issue.ordering.js";
+} from "../issues/shared/ordering.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
 } from "../issues/expressionDomains/issueDomainConfig.js";

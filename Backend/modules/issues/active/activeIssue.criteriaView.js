@@ -1,7 +1,7 @@
-import { orderDocsByIdList } from "../issue.ordering.js";
+import { orderDocsByIdList } from "../shared/ordering.js";
 import {
   buildIssueCriteriaTree,
-} from "../issue.criteriaTree.js";
+} from "../shared/criteriaTree.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
 } from "../expressionDomains/issueDomainConfig.js";

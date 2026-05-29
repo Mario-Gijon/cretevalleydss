@@ -18,7 +18,7 @@ import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
-} from "../issue.ordering.js";
+} from "../shared/ordering.js";
 import { sendExpertInvitationEmail } from "../../../services/email.service.js";
 
 const normalizeExpertEditionRequest = ({

@@ -1,7 +1,7 @@
-import { orderDocsByIdList } from "../issue.ordering.js";
+import { orderDocsByIdList } from "../shared/ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
-import { decorateCriteriaTree } from "../issue.criteriaTree.js";
+import { decorateCriteriaTree } from "../shared/criteriaTree.js";
 import { ACTIVE_STAGE_META, ACTIVE_STATUS_KEYS } from "./activeIssue.meta.js";
 import { buildDeadlineInfo, buildActiveWorkflowSteps } from "./activeIssue.workflow.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";

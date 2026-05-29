@@ -10,7 +10,7 @@ import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { getNextConsensusPhase } from "../issue.queries.js";
+import { getNextConsensusPhase } from "../shared/queries.js";
 import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
 import { registerUserExit } from "./issueLifecycle.exits.js";
 import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";

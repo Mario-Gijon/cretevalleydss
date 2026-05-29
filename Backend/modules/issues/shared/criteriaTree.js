@@ -1,4 +1,4 @@
-import { orderDocsByIdList } from "./issue.ordering.js";
+import { orderDocsByIdList } from "./ordering.js";
 import { toIdString } from "../../utils/common/ids.js";
 
 export const buildIssueCriteriaTree = (criteria, issue) => {

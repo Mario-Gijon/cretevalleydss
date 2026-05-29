@@ -7,7 +7,7 @@ import { Participation } from "../../../models/Participations.js";
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../issue.ordering.js";
+} from "../shared/ordering.js";
 import {
   createBadRequestError,
   createForbiddenError,
