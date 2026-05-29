@@ -5,7 +5,6 @@ export {
 } from "./evaluation.constants.js";
 
 export {
-  EVALUATION_STRUCTURE_REGISTRY,
   getEvaluationStructureOrThrow,
 } from "./evaluation.registry.js";
 

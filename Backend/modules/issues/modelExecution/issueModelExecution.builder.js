@@ -1,12 +1,10 @@
 import { getOrderedAlternativeAndCriterionNames } from "../evaluations/structures/shared/alternativeEvaluation.helpers.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
 const isFiniteOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
-
-const normalizeNonEmptyString = (value) =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
 const normalizeModelParameters = (modelParameters) =>
   isPlainObject(modelParameters) ? modelParameters : {};

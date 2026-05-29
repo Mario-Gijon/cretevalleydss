@@ -21,12 +21,10 @@ import {
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
 import { getOrderedAlternativeAndCriterionNames } from "./structures/shared/alternativeEvaluation.helpers.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
 const hasOwn = (value, key) =>
   Object.prototype.hasOwnProperty.call(value || {}, key);
-
-const normalizeNonEmptyString = (value) =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);

@@ -131,7 +131,3 @@ export const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
 
   return paramOverrides;
 };
-
-export const resolveScenarioWeightsArray = ({ paramsUsed, criteria }) => {
-  return paramsUsed.weights;
-};
