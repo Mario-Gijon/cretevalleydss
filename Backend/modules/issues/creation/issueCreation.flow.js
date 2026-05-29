@@ -27,7 +27,10 @@ import {
   createConflictError,
 } from "../../../utils/common/errors.js";
 import axios from "axios";
-import { buildIssueCreationDocument } from "./issueCreation.issue.js";
+import {
+  applyResolvedCriteriaWeightingToIssue,
+  buildIssueCreationDocument,
+} from "./issueCreation.issue.js";
 import { applyIssueCreationOrdering } from "./issueCreation.ordering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
@@ -191,26 +194,10 @@ export const createIssueFlow = async ({
       session,
     });
 
-  issue.criteriaWeightingStructureKey =
-    resolvedCriteriaWeighting.criteriaWeightingStructureKey;
-  issue.criteriaWeightingModel =
-    resolvedCriteriaWeighting.criteriaWeightingModel
-      ? resolvedCriteriaWeighting.criteriaWeightingModel._id
-      : null;
-  issue.criteriaWeightingApiModelKey =
-    resolvedCriteriaWeighting.criteriaWeightingApiModelKey;
-  issue.criteriaWeightingApiEndpoint =
-    resolvedCriteriaWeighting.criteriaWeightingApiEndpoint;
-  issue.criteriaWeightingParameters =
-    resolvedCriteriaWeighting.criteriaWeightingParameters;
-  issue.currentStage = resolvedCriteriaWeighting.currentStage;
-
-  if (resolvedCriteriaWeighting.modelWeights !== null) {
-    issue.modelParameters = {
-      ...issue.modelParameters,
-      weights: resolvedCriteriaWeighting.modelWeights,
-    };
-  }
+  applyResolvedCriteriaWeightingToIssue({
+    issue,
+    resolvedCriteriaWeighting,
+  });
 
   const isCriteriaWeightingRequired =
     resolvedCriteriaWeighting.isCriteriaWeightingRequired;

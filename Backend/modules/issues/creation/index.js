@@ -1,1 +1,1 @@
-export { createIssueFlow } from "./issueCreation.service.js";
+export { createIssueFlow } from "./issueCreation.flow.js";
