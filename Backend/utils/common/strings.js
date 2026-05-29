@@ -20,6 +20,15 @@ export const normalizeOptionalString = (value, options = {}) => {
   return normalized || null;
 };
 
+export const normalizeNonEmptyString = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
 export const normalizeEmail = (value) =>
   normalizeString(value, {
     trim: true,

@@ -266,10 +266,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   if (isSingleLeafCriterion) {
-    const fixedWeights =
-      fuzzyModel && Number.isInteger(fuzzyValueCount) && fuzzyValueCount >= 2
-        ? [Array.from({ length: fuzzyValueCount }, () => 1)]
-        : [1];
+    const fixedWeights = [1];
 
     return buildResolvedCriteriaWeightingConfig({
       criteriaWeightingStructureKey: resolvedStructureKey,

@@ -1,15 +1,7 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
-export const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-export const normalizeEndpointPath = (value) => {
+const normalizeEndpointPath = (value) => {
   const path = normalizeNonEmptyString(value);
   if (!path) {
     return null;
@@ -19,7 +11,7 @@ export const normalizeEndpointPath = (value) => {
   return normalizedPath ? `/${normalizedPath}` : null;
 };
 
-export const normalizeApiModelKey = (value) => {
+const normalizeApiModelKey = (value) => {
   const key = normalizeNonEmptyString(value);
   if (!key) {
     return null;

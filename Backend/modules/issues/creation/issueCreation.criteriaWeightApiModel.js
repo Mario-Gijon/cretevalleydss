@@ -13,7 +13,7 @@ import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./issueCreation.model.js";
 
-export const loadCriteriaWeightingModelOrThrow = async ({
+const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
   session,
 }) => {
@@ -55,16 +55,14 @@ export const loadCriteriaWeightingModelOrThrow = async ({
   return criteriaWeightingModel;
 };
 
-export const validateCriteriaWeightingParametersOrThrow = ({
+const validateCriteriaWeightingParametersOrThrow = ({
   criteriaWeightingModel,
   criteriaWeightingParameters,
   criterionNames,
 }) => {
   return validateAndNormalizeModelParametersOrThrow({
     model: criteriaWeightingModel,
-    paramValues: isPlainObject(criteriaWeightingParameters)
-      ? criteriaWeightingParameters
-      : {},
+    paramValues: criteriaWeightingParameters,
     criteriaNodes: criterionNames.map((criterionName) => ({
       name: criterionName,
       children: [],

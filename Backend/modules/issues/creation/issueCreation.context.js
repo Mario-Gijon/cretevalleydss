@@ -1,6 +1,6 @@
 import { IssueModel } from "../../../models/IssueModels.js";
 import { User } from "../../../models/Users.js";
-import { validateAndNormalizeModelParametersOrThrow as validateAndNormalizeModelParametersSharedOrThrow } from "../modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
 import {
   validateIssueModelRuntimeConfigOrThrow,
 } from "./issueCreation.model.js";
@@ -42,8 +42,6 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,
-    usesFuzzyCriteriaWeights,
-    usesCriterionTypes,
     isMultiCriteria,
     modelFamilyKey,
     modelVersion,
@@ -52,7 +50,7 @@ export const loadCreateIssueActorsAndModel = async ({
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
 
-  const normalizedModelParameters = validateAndNormalizeModelParametersSharedOrThrow({
+  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
     model: existingModel,
     paramValues: sanitizedParamValues,
     criteriaNodes,
@@ -98,8 +96,6 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,
-    usesFuzzyCriteriaWeights,
-    usesCriterionTypes,
     isMultiCriteria,
     modelFamilyKey,
     modelVersion,

@@ -205,7 +205,7 @@ export const createIssueFlow = async ({
     resolvedCriteriaWeighting.criteriaWeightingParameters;
   issue.currentStage = resolvedCriteriaWeighting.currentStage;
 
-  if (Array.isArray(resolvedCriteriaWeighting.modelWeights)) {
+  if (resolvedCriteriaWeighting.modelWeights !== null) {
     issue.modelParameters = {
       ...issue.modelParameters,
       weights: resolvedCriteriaWeighting.modelWeights,
