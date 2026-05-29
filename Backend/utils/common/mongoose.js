@@ -36,6 +36,9 @@ export const areSameObjectIds = (a, b) => {
   return Boolean(left && right && left === right);
 };
 
+export const applyOptionalSession = (query, session = null) =>
+  session ? query.session(session) : query;
+
 export const endSessionSafely = async (session) => {
   if (!session) return;
 

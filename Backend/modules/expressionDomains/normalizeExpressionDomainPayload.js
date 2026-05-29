@@ -19,10 +19,16 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   name = normalizeString(name);
   type = normalizeString(type);
 
-  if (Boolean(isGlobal)) {
+  if (isGlobal === true) {
     throw createForbiddenError(
       "Global domains are not creatable. They are predefined and non-modifiable."
     );
+  }
+
+  if (isGlobal !== undefined && isGlobal !== false) {
+    throw createBadRequestError("isGlobal must be false when provided", {
+      field: "isGlobal",
+    });
   }
 
   if (!name) {

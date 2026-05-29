@@ -5,10 +5,10 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId } from "../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
+import {
+  applyOptionalSession,
+  isValidObjectIdLike,
+} from "../../utils/common/mongoose.js";
 
 export const getEditableUserExpressionDomainOrThrow = async ({
   domainId,
@@ -21,7 +21,7 @@ export const getEditableUserExpressionDomainOrThrow = async ({
     });
   }
 
-  const domain = await withOptionalSession(
+  const domain = await applyOptionalSession(
     ExpressionDomain.findById(domainId),
     session
   );

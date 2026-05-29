@@ -1,5 +1,4 @@
 import { createBadRequestError } from "../../utils/common/errors.js";
-import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
 import { getEditableUserExpressionDomainOrThrow } from "./getEditableExpressionDomain.js";
 import { normalizeNewExpressionDomainPayload } from "./normalizeExpressionDomainPayload.js";
 
@@ -9,12 +8,6 @@ export const updateUserExpressionDomain = async ({
   updatedDomain,
   session = null,
 }) => {
-  if (!domainId || !isValidObjectIdLike(domainId)) {
-    throw createBadRequestError("Valid domain id is required", {
-      field: "domainId",
-    });
-  }
-
   if (!updatedDomain || typeof updatedDomain !== "object") {
     throw createBadRequestError("updatedDomain is required", {
       field: "updatedDomain",
