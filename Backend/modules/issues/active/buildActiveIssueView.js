@@ -2,17 +2,18 @@ import { orderDocsByIdList } from "../shared/ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 import { decorateCriteriaTree } from "../shared/criteriaTree.js";
-import { ACTIVE_STAGE_META, ACTIVE_STATUS_KEYS } from "./activeIssue.meta.js";
-import { buildDeadlineInfo, buildActiveWorkflowSteps } from "./activeIssue.workflow.js";
+import { ACTIVE_STAGE_META, ACTIVE_STATUS_KEYS } from "./activeIssueUiCatalog.js";
+import { buildDeadlineInfo } from "./buildActiveDeadlineInfo.js";
+import { buildActiveWorkflowSteps } from "./buildActiveWorkflowSteps.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import {
   buildActiveParticipationSummary,
-} from "./activeIssue.participation.js";
-import { buildActivePermissions } from "./activeIssue.permissions.js";
+} from "./buildActiveParticipationSummary.js";
+import { buildActivePermissions } from "./resolveActiveIssuePermissions.js";
 import {
   buildActiveCriteriaView,
-} from "./activeIssue.criteriaView.js";
-import { buildActiveCriteriaWeights } from "./activeIssue.weights.js";
+} from "./buildActiveCriteriaView.js";
+import { buildActiveCriteriaWeights } from "./buildActiveCriteriaWeights.js";
 
 const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus";
 

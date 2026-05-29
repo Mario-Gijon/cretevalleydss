@@ -1,1 +1,1 @@
-export { getActiveIssuesPayload } from "./activeIssue.payload.js";
+export { getActiveIssuesPayload } from "./getActiveIssuesPayload.js";

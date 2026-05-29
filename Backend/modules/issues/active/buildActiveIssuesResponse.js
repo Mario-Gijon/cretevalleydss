@@ -3,7 +3,7 @@ import {
   ACTIVE_STAGE_META,
   ACTIVE_STATUS_META,
   ACTIVE_TASK_ACTION_KEYS,
-} from "./activeIssue.meta.js";
+} from "./activeIssueUiCatalog.js";
 
 const ACTIVE_ROLE_OPTIONS = [
   { value: "all", label: "All roles" },

@@ -5,15 +5,15 @@ import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { getVisibleActiveIssueIdsForUser } from "../shared/queries.js";
-import { buildActiveIssueCollections } from "./activeIssue.collections.js";
+import { buildActiveIssueCollections } from "./groupActiveIssueRecords.js";
 import {
   buildActiveIssuesResponseMeta,
   buildEmptyActiveIssuesPayload,
   getEmptyTasksByType,
   sortActiveIssues,
   sortActiveTasksByType,
-} from "./activeIssue.response.js";
-import { buildActiveIssueView } from "./activeIssue.view.js";
+} from "./buildActiveIssuesResponse.js";
+import { buildActiveIssueView } from "./buildActiveIssueView.js";
 
 export const getActiveIssuesPayload = async ({ userId }) => {
   const normalizedUserId = toIdString(userId);
