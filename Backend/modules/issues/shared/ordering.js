@@ -1,7 +1,7 @@
-import { Issue } from "../../models/Issues.js";
-import { Alternative } from "../../models/Alternatives.js";
-import { Criterion } from "../../models/Criteria.js";
-import { createInternalError } from "../../utils/common/errors.js";
+import { Issue } from "../../../models/Issues.js";
+import { Alternative } from "../../../models/Alternatives.js";
+import { Criterion } from "../../../models/Criteria.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
 
 
