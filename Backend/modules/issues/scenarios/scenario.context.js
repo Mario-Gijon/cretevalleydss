@@ -20,7 +20,7 @@ import { normalizeScenarioParamOverridesOrThrow } from "./scenario.params.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 import {
   buildExpressionDomainAssignmentsByCriterionOrThrow,
-} from "../../expressionDomains/issueDomainConfig.js";
+} from "../../expressionDomains/buildIssueDomainConfig.js";
 import {
   buildTargetModelRuntimeSnapshotOrThrow,
   validateScenarioModelCompatibilityOrThrow,

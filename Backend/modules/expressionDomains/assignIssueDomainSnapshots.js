@@ -1,5 +1,5 @@
 import { createBadRequestError } from "../../utils/common/errors.js";
-import { createIssueDomainSnapshots } from "./issueDomainSnapshots.js";
+import { createIssueDomainSnapshots } from "./createIssueDomainSnapshots.js";
 
 export const assignIssueExpressionDomainSnapshotsOrThrow = async ({
   issueId,
