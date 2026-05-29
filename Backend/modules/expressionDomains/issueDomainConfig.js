@@ -1,5 +1,5 @@
-import { createInternalError } from "../../../utils/common/errors.js";
-import { toIdString } from "../../../utils/common/ids.js";
+import { createInternalError } from "../../utils/common/errors.js";
+import { toIdString } from "../../utils/common/ids.js";
 
 const normalizeCriterionName = (criterion) => String(criterion?.name || "").trim();
 

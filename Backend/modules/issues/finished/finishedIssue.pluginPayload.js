@@ -24,7 +24,7 @@ import {
 import { buildScenarioCompatibilityMetadata } from "../scenarios/scenario.compatibility.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
-} from "../expressionDomains/issueDomainConfig.js";
+} from "../../expressionDomains/issueDomainConfig.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 
 const mapCriteriaTreeToSummaryShape = (node) => ({

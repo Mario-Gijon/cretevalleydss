@@ -41,7 +41,7 @@ import {
   getExpressionDomainsPayload,
   removeUserExpressionDomain,
   updateUserExpressionDomain,
-} from "../modules/issues/expressionDomains/issueExpressionDomains.js";
+} from "../modules/expressionDomains/issueExpressionDomains.js";
 import {
   changeInvitationStatusFlow,
   getNotificationsPayload,

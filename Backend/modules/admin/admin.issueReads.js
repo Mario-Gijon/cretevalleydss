@@ -21,7 +21,7 @@ import {
 } from "../issues/shared/ordering.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
-} from "../issues/expressionDomains/issueDomainConfig.js";
+} from "../expressionDomains/issueDomainConfig.js";
 
 import {
   createBadRequestError,

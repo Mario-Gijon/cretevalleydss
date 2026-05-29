@@ -4,7 +4,7 @@ import {
 } from "../shared/criteriaTree.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
-} from "../expressionDomains/issueDomainConfig.js";
+} from "../../expressionDomains/issueDomainConfig.js";
 
 export const buildActiveCriteriaView = ({ issue, issueCriteriaDocs }) => {
   const { criteriaTree, orderedLeafCriteria } = buildIssueCriteriaTree(

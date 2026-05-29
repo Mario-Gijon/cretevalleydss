@@ -1,4 +1,4 @@
-import { createBadRequestError } from "../../../utils/common/errors.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
 
 export const LINGUISTIC_MEMBERSHIP_FUNCTIONS = {
   triangular: {
@@ -48,4 +48,3 @@ export const getLinguisticMembershipFunctionOrThrow = ({
     },
   });
 };
-
