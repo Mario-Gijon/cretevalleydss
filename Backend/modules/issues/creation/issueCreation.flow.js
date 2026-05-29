@@ -21,7 +21,7 @@ import {
 import {
   resolveCriteriaWeightingConfigOrThrow,
   resolveFuzzyCriteriaWeightValueCountOrThrow,
-} from "./issueCreation.criteriaWeights.js";
+} from "./initialCriteriaWeights/index.js";
 import {
   createBadRequestError,
   createConflictError,

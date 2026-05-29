@@ -1,17 +1,17 @@
-import { IssueModel } from "../../../models/IssueModels.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
+import { IssueModel } from "../../../../models/IssueModels.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../../decisionEngine/modelParameters/index.js";
 import {
   createBadRequestError,
   createInternalError,
-} from "../../../utils/common/errors.js";
+} from "../../../../utils/common/errors.js";
 import {
   createModelApiRequestError,
   unwrapModelApiResponse,
-} from "../../../services/modelApi/modelResponse.js";
-import { isPlainObject } from "../../../utils/common/objects.js";
+} from "../../../../services/modelApi/modelResponse.js";
+import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
-} from "./issueCreation.model.js";
+} from "../issueCreation.model.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,

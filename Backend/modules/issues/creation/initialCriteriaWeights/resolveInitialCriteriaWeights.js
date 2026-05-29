@@ -1,17 +1,17 @@
 import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
-} from "../../decisionEngine/evaluations/index.js";
+} from "../../../decisionEngine/evaluations/index.js";
 import {
   createBadRequestError,
   createInternalError,
-} from "../../../utils/common/errors.js";
-import { normalizeCreatorFuzzyWeightsOrThrow, normalizeCreatorManualWeightsOrThrow } from "./issueCreation.criteriaWeightPayloads.js";
-import { resolveCriteriaWeightingModeConfigOrThrow } from "./issueCreation.criteriaWeightModes.js";
+} from "../../../../utils/common/errors.js";
+import { normalizeCreatorFuzzyWeightsOrThrow, normalizeCreatorManualWeightsOrThrow } from "./validateCriteriaWeightPayload.js";
+import { resolveCriteriaWeightingModeConfigOrThrow } from "./resolveCriteriaWeightMode.js";
 import {
   loadCriteriaWeightingApiModelContextOrThrow,
   resolveCreatorApiCriteriaWeightingModelWeightsOrThrow,
-} from "./issueCreation.criteriaWeightApiModel.js";
+} from "./runCriteriaWeightApiModel.js";
 
 const ensureCriteriaNamesOrThrow = (criterionNames) => {
   if (criterionNames.length === 0) {
