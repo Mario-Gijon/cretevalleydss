@@ -1,7 +1,7 @@
-import { ExpressionDomain } from "../../../models/ExpressionDomain.js";
-import { toIdString } from "../../../utils/common/ids.js";
-import { createBadRequestError } from "../../../utils/common/errors.js";
-import { isPlainObject } from "../../../utils/common/objects.js";
+import { ExpressionDomain } from "../../models/ExpressionDomain.js";
+import { toIdString } from "../../utils/common/ids.js";
+import { createBadRequestError } from "../../utils/common/errors.js";
+import { isPlainObject } from "../../utils/common/objects.js";
 
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,

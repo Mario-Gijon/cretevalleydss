@@ -4,7 +4,7 @@ import { loadCreateIssueActorsAndModel } from "./issueCreation.context.js";
 import {
   resolveExpressionDomainConfigByLeafCriteriaOrThrow,
   loadAccessibleExpressionDomains,
-} from "./issueCreation.domains.js";
+} from "../../expressionDomains/resolveIssueDomainAssignments.js";
 import { createIssueParticipationsAndNotifications } from "./issueCreation.participants.js";
 import {
   createCriteriaRecursively,
@@ -34,7 +34,7 @@ import {
 import { applyIssueCreationOrdering } from "./issueCreation.ordering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
-} from "./issueCreation.domainSnapshots.js";
+} from "../../expressionDomains/assignIssueDomainSnapshots.js";
 
 export const createIssueFlow = async ({
   issueInfo,
