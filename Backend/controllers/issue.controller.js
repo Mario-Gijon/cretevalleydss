@@ -50,7 +50,7 @@ import {
 } from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finishedIssue.payload.js";
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
-import { createIssueFlow } from "../modules/issues/creation/index.js";
+import { createIssue as createIssueUseCase } from "../modules/issues/creation/index.js";
 
 
 import axios from "axios";
@@ -152,7 +152,7 @@ export const createIssue = async (req, res) => {
     let result = null;
 
     await session.withTransaction(async () => {
-      result = await createIssueFlow({
+      result = await createIssueUseCase({
         issueInfo,
         adminUserId: req.uid,
         session,

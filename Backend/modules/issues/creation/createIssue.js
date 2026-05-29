@@ -30,13 +30,13 @@ import axios from "axios";
 import {
   buildIssueCreationDocument,
 } from "./buildIssueDocument.js";
-import { applyResolvedCriteriaWeightingToIssue } from "./initialCriteriaWeights/applyInitialCriteriaWeights.js";
+import { applyInitialCriteriaWeightsToIssue } from "./initialCriteriaWeights/applyInitialCriteriaWeights.js";
 import { applyIssueCreationOrdering } from "./applyIssueOrdering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";
 
-export const createIssueFlow = async ({
+export const createIssue = async ({
   issueInfo,
   adminUserId,
   session,
@@ -194,7 +194,7 @@ export const createIssueFlow = async ({
       session,
     });
 
-  applyResolvedCriteriaWeightingToIssue({
+  applyInitialCriteriaWeightsToIssue({
     issue,
     resolvedCriteriaWeighting,
   });
