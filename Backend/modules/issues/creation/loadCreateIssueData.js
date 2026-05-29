@@ -3,7 +3,7 @@ import { User } from "../../../models/Users.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 import {
   validateIssueModelRuntimeConfigOrThrow,
-} from "./issueCreation.model.js";
+} from "./validateIssueModelRuntime.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   createBadRequestError,

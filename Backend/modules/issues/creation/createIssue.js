@@ -1,15 +1,15 @@
 import { Issue } from "../../../models/Issues.js";
-import { normalizeCreateIssueInput } from "./issueCreation.input.js";
-import { loadCreateIssueActorsAndModel } from "./issueCreation.context.js";
+import { normalizeCreateIssueInput } from "./normalizeCreateIssueInput.js";
+import { loadCreateIssueActorsAndModel } from "./loadCreateIssueData.js";
 import {
   resolveExpressionDomainConfigByLeafCriteriaOrThrow,
   loadAccessibleExpressionDomains,
 } from "../../expressionDomains/resolveIssueDomainAssignments.js";
-import { createIssueParticipationsAndNotifications } from "./issueCreation.participants.js";
+import { createIssueParticipationsAndNotifications } from "./createIssueParticipants.js";
 import {
   createCriteriaRecursively,
   createIssueAlternatives,
-} from "./issueCreation.documents.js";
+} from "./createIssueDocuments.js";
 import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
@@ -17,7 +17,7 @@ import {
 import {
   resolveIssueConsensusConfigOrThrow,
   resolveIssueSimulationConfigOrThrow,
-} from "./issueCreation.model.js";
+} from "./resolveIssueCreationOptions.js";
 import {
   resolveCriteriaWeightingConfigOrThrow,
   resolveFuzzyCriteriaWeightValueCountOrThrow,
@@ -28,10 +28,10 @@ import {
 } from "../../../utils/common/errors.js";
 import axios from "axios";
 import {
-  applyResolvedCriteriaWeightingToIssue,
   buildIssueCreationDocument,
-} from "./issueCreation.issue.js";
-import { applyIssueCreationOrdering } from "./issueCreation.ordering.js";
+} from "./buildIssueDocument.js";
+import { applyResolvedCriteriaWeightingToIssue } from "./initialCriteriaWeights/applyInitialCriteriaWeights.js";
+import { applyIssueCreationOrdering } from "./applyIssueOrdering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";

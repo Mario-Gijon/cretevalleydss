@@ -11,7 +11,7 @@ import {
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
-} from "../issueCreation.model.js";
+} from "./validateCriteriaWeightModelRuntime.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
