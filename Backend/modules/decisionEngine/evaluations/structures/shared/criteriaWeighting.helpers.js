@@ -1,4 +1,4 @@
-import { getOrderedLeafCriteriaDb } from "../../../issue.ordering.js";
+import { getOrderedLeafCriteriaDb } from "../../../../issues/issue.ordering.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 
 export const getOrderedCriterionNames = async ({ issue }) => {

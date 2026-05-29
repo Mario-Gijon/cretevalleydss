@@ -1,5 +1,5 @@
 import { IssueModel } from "../../../models/IssueModels.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 import {
   createBadRequestError,
   createInternalError,

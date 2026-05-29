@@ -13,7 +13,7 @@ import {
 import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
-} from "../evaluations/index.js";
+} from "../../decisionEngine/evaluations/index.js";
 import {
   resolveIssueConsensusConfigOrThrow,
   resolveIssueSimulationConfigOrThrow,

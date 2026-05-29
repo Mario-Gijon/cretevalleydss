@@ -1,7 +1,7 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
-import { getIssueByIdOrThrow } from "../issue.queries.js";
+import { getIssueByIdOrThrow } from "../../issues/issue.queries.js";
 import {
   createBadRequestError,
   createForbiddenError,

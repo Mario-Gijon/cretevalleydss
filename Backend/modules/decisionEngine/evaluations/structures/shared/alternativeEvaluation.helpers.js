@@ -1,7 +1,7 @@
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../../../issue.ordering.js";
+} from "../../../../issues/issue.ordering.js";
 import { IssueExpressionDomain } from "../../../../../models/IssueExpressionDomains.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { toIdString } from "../../../../../utils/common/ids.js";

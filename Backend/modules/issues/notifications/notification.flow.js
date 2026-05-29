@@ -2,7 +2,7 @@
 import { Issue } from "../../../models/Issues.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
-import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 
         
 import {

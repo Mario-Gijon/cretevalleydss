@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { Issue } from "../../../models/Issues.js";
-import { EVALUATION_STAGES } from "../evaluations/index.js";
+import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/index.js";
 
 export const buildIssueCreationDocument = ({
   adminUserId,

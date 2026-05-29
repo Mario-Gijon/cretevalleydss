@@ -17,7 +17,7 @@ import {
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { normalizeScenarioParamOverridesOrThrow } from "./scenario.params.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 import {
   buildExpressionDomainAssignmentsByCriterionOrThrow,
 } from "../expressionDomains/issueDomainConfig.js";
@@ -25,7 +25,7 @@ import {
   buildTargetModelRuntimeSnapshotOrThrow,
   validateScenarioModelCompatibilityOrThrow,
 } from "./scenario.compatibility.js";
-import { EVALUATION_STAGES } from "../evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 

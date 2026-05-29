@@ -9,7 +9,7 @@ import { IssueModel } from "../models/IssueModels.js";
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import {
   computeIssueEvaluationStage,
-} from "../modules/issues/evaluations/index.js";
+} from "../modules/decisionEngine/evaluations/index.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
 
 import {

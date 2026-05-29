@@ -19,7 +19,7 @@ import {
   getIssueEvaluationPayload,
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
-} from "../modules/issues/evaluations/index.js";
+} from "../modules/decisionEngine/evaluations/index.js";
 
 
 import {

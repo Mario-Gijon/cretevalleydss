@@ -1,5 +1,5 @@
 import { sameId } from "../../../utils/common/ids.js";
-import { ISSUE_STAGES } from "../evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 
 export const buildActiveParticipationSummary = ({
   issueParticipations,

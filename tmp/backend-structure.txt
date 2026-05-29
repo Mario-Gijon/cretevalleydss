@@ -1,0 +1,146 @@
+Backend/modules
+├── admin
+│   ├── admin.issueReads.js
+│   └── admin.users.js
+├── auth
+│   ├── auth.account.js
+│   ├── auth.emailChange.js
+│   ├── auth.profile.js
+│   └── auth.session.js
+└── issues
+    ├── active
+    │   ├── activeIssue.collections.js
+    │   ├── activeIssue.criteriaView.js
+    │   ├── activeIssue.meta.js
+    │   ├── activeIssue.participation.js
+    │   ├── activeIssue.payload.js
+    │   ├── activeIssue.permissions.js
+    │   ├── activeIssue.response.js
+    │   ├── activeIssue.view.js
+    │   ├── activeIssue.weights.js
+    │   ├── activeIssue.workflow.js
+    │   └── index.js
+    ├── creation
+    │   ├── index.js
+    │   ├── issueCreation.context.js
+    │   ├── issueCreation.criteriaWeightApiModel.js
+    │   ├── issueCreation.criteriaWeightModes.js
+    │   ├── issueCreation.criteriaWeightPayloads.js
+    │   ├── issueCreation.criteriaWeights.js
+    │   ├── issueCreation.documents.js
+    │   ├── issueCreation.domains.js
+    │   ├── issueCreation.domainSnapshots.js
+    │   ├── issueCreation.flow.js
+    │   ├── issueCreation.input.js
+    │   ├── issueCreation.issue.js
+    │   ├── issueCreation.model.js
+    │   ├── issueCreation.ordering.js
+    │   └── issueCreation.participants.js
+    ├── evaluations
+    │   ├── evaluation.compute.js
+    │   ├── evaluation.constants.js
+    │   ├── evaluation.lifecycle.js
+    │   ├── evaluation.registry.js
+    │   ├── evaluation.service.js
+    │   ├── index.js
+    │   └── structures
+    │       ├── alternativeCriteriaMatrix
+    │       │   └── index.js
+    │       ├── alternativePairwiseByCriterion
+    │       │   └── index.js
+    │       ├── bestWorstCriteria
+    │       │   └── index.js
+    │       ├── criteriaPairwiseMatrix
+    │       ├── fuzzyCriteriaWeights
+    │       ├── manualCriteriaWeights
+    │       │   └── index.js
+    │       └── shared
+    │           ├── alternativeEvaluation.helpers.js
+    │           └── criteriaWeighting.helpers.js
+    ├── expressionDomains
+    │   ├── issueDomainConfig.js
+    │   ├── issueDomainSnapshots.js
+    │   ├── issueExpressionDomains.js
+    │   └── linguisticMembership.functions.js
+    ├── finished
+    │   ├── finishedIssue.payload.js
+    │   └── finishedIssue.pluginPayload.js
+    ├── issue.criteriaTree.js
+    ├── issue.ordering.js
+    ├── issue.queries.js
+    ├── lifecycle
+    │   ├── index.js
+    │   ├── issueLifecycle.deletion.js
+    │   ├── issueLifecycle.exits.js
+    │   ├── issueLifecycle.shared.js
+    │   └── issueLifecycle.stage.js
+    ├── modelExecution
+    │   ├── index.js
+    │   ├── issueModelExecution.builder.js
+    │   └── issueModelExecution.service.js
+    ├── modelParameters
+    │   ├── handlers
+    │   │   ├── array.parameter.js
+    │   │   ├── boolean.parameter.js
+    │   │   ├── criteriaWeights.parameter.js
+    │   │   ├── criterionMap.parameter.js
+    │   │   ├── enum.parameter.js
+    │   │   ├── fuzzyArray.parameter.js
+    │   │   ├── fuzzyCriteriaWeights.parameter.js
+    │   │   ├── integer.parameter.js
+    │   │   ├── interval.parameter.js
+    │   │   ├── number.parameter.js
+    │   │   └── string.parameter.js
+    │   ├── index.js
+    │   ├── modelParameter.errors.js
+    │   ├── modelParameter.registry.js
+    │   ├── modelParameter.shared.js
+    │   └── modelParameter.validation.js
+    ├── notifications
+    │   ├── index.js
+    │   └── notification.flow.js
+    ├── participants
+    │   ├── index.js
+    │   └── participantEdition.flow.js
+    └── scenarios
+        ├── index.js
+        ├── scenario.compatibility.js
+        ├── scenario.context.js
+        ├── scenario.flow.js
+        ├── scenario.params.js
+        └── scenario.payload.js
+Backend/controllers
+├── admin.controller.js
+├── auth.controller.js
+└── issue.controller.js
+Backend/models
+├── Alternatives.js
+├── Consensus.js
+├── Criteria.js
+├── ExitUserIssue.js
+├── ExpressionDomain.js
+├── IssueEvaluations.js
+├── IssueExpressionDomains.js
+├── IssueModels.js
+├── IssueScenarios.js
+├── Issues.js
+├── IssueStageResults.js
+├── Notifications.js
+├── Participations.js
+├── Users.js
+└── validators
+    └── orderedNumericArrayValidator.js
+Backend/routes
+├── admin.route.js
+├── auth.route.js
+└── issue.route.js
+Backend/utils
+└── common
+    ├── errors.js
+    ├── ids.js
+    ├── mongoose.js
+    ├── objects.js
+    ├── responses.js
+    └── strings.js
+
+30 directories, 114 files
