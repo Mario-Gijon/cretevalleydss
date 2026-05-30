@@ -1,14 +1,10 @@
 import {
   createBadRequestError,
 } from "../../../utils/common/errors.js";
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
-
-const normalizeNonEmptyString = (value) => {
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
 
 const ensureLen = (arr, len, filler = null) => {
   const normalized = [...arr];
@@ -206,7 +202,7 @@ export const resolveScenarioWeightsOrThrow = ({
     return null;
   }
 
-  const criteriaCount = Array.isArray(criteria) ? criteria.length : 0;
+  const criteriaCount = criteria.length;
   const rawWeights = paramOverrides?.weights;
 
   return normalizeCrispWeightsOrThrow({
