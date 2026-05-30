@@ -17,9 +17,9 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow, validateAcceptedEvaluationCoverageOrThrow } from "./finishedPayload.errors.js";
 import { buildRankedAlternativesPayloadOrThrow } from "./buildFinishedRankings.js";
 import {
-  buildCollectiveMatrixEvaluations,
-  buildExpertAlternativeRatingsOrThrow,
-} from "./buildMatrixFinishedRatings.js";
+  buildFinishedExpertEvaluationsByEmail,
+  getFinishedAlternativeEvaluationStructureOrThrow,
+} from "./buildFinishedEvaluationDisplayPayloads.js";
 import {
   buildCriteriaWeightsEvaluationByExpert,
   resolveCriteriaWeightingPhase,
@@ -194,7 +194,6 @@ export const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     stageResult: latestAlternativeResult,
   });
 
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const criteriaWeightingEvaluationsByExpertId = new Map(
     criteriaWeightingEvaluations.map((evaluation) => [
@@ -203,19 +202,16 @@ export const buildNonConsensusMatrixFinishedPayload = async ({ issue }) => {
     ])
   );
 
-  const expertEvaluations = buildExpertAlternativeRatingsOrThrow({
+  const structure = getFinishedAlternativeEvaluationStructureOrThrow({ issue });
+  const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
+    structure,
     evaluations: completedAlternativeEvaluations,
-    alternativeNames,
-    criterionNames,
-    issueId: issue._id,
-    phase,
+    issue,
   });
 
-  const collectiveEvaluations = buildCollectiveMatrixEvaluations({
-    stageResult: latestAlternativeResult,
-    alternativeNames,
-    criterionNames,
-  });
+  const collectiveEvaluations = isPlainObject(latestAlternativeResult?.collectiveEvaluations)
+    ? latestAlternativeResult.collectiveEvaluations
+    : {};
   const collectiveEvaluationsPayload =
     Object.keys(collectiveEvaluations).length > 0
       ? collectiveEvaluations

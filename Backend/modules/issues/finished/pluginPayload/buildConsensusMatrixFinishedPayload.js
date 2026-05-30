@@ -19,7 +19,10 @@ import {
   buildConsensusInfo,
   buildConsensusRoundPayloadOrThrow,
 } from "./buildFinishedConsensus.js";
-import { buildExpertAlternativeRatingsOrThrow, buildCollectiveMatrixEvaluations } from "./buildMatrixFinishedRatings.js";
+import {
+  buildFinishedExpertEvaluationsByEmail,
+  getFinishedAlternativeEvaluationStructureOrThrow,
+} from "./buildFinishedEvaluationDisplayPayloads.js";
 import {
   buildCriteriaWeightsEvaluationByExpert,
   resolveCriteriaWeightingPhase,
@@ -199,7 +202,6 @@ export const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     modelUsesWeights: model?.usesCriteriaWeights === true,
   });
   const leafCount = orderedLeafCriteria.length;
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const criteriaWeightingEvaluationsByExpertId = new Map(
     criteriaWeightingEvaluations.map((evaluation) => [
@@ -207,6 +209,7 @@ export const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
       evaluation,
     ])
   );
+  const structure = getFinishedAlternativeEvaluationStructureOrThrow({ issue });
 
   const experts = buildParticipationsSummary({
     participations,
@@ -252,17 +255,15 @@ export const buildConsensusMatrixFinishedPayload = async ({ issue }) => {
     });
     round.plotsGraphic = enrichedPlotsGraphic;
 
-    const expertEvaluations = buildExpertAlternativeRatingsOrThrow({
+    const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
+      structure,
       evaluations: phaseEvaluations,
-      alternativeNames,
-      criterionNames,
-      issueId: issue._id,
-      phase,
+      issue,
     });
 
-    const collectiveEvaluations = buildCollectiveMatrixEvaluations({
-      stageResult,
-    });
+    const collectiveEvaluations = isPlainObject(stageResult?.collectiveEvaluations)
+      ? stageResult.collectiveEvaluations
+      : {};
     const collectiveEvaluationsPayload =
       Object.keys(collectiveEvaluations).length > 0
         ? collectiveEvaluations

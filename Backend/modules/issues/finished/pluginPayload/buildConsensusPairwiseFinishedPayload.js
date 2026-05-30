@@ -20,9 +20,9 @@ import {
   buildConsensusRoundPayloadOrThrow,
 } from "./buildFinishedConsensus.js";
 import {
-  buildCollectivePairwiseEvaluations,
-  buildExpertPairwiseRatingsOrThrow,
-} from "./buildPairwiseFinishedRatings.js";
+  buildFinishedExpertEvaluationsByEmail,
+  getFinishedAlternativeEvaluationStructureOrThrow,
+} from "./buildFinishedEvaluationDisplayPayloads.js";
 import {
   buildCriteriaWeightsEvaluationByExpert,
   resolveCriteriaWeightingPhase,
@@ -202,7 +202,6 @@ export const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     modelUsesWeights: model?.usesCriteriaWeights === true,
   });
   const leafCount = orderedLeafCriteria.length;
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const criteriaWeightingEvaluationsByExpertId = new Map(
     criteriaWeightingEvaluations.map((evaluation) => [
@@ -210,6 +209,7 @@ export const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
       evaluation,
     ])
   );
+  const structure = getFinishedAlternativeEvaluationStructureOrThrow({ issue });
 
   const experts = buildParticipationsSummary({
     participations,
@@ -255,19 +255,20 @@ export const buildConsensusPairwiseFinishedPayload = async ({ issue }) => {
     });
     round.plotsGraphic = enrichedPlotsGraphic;
 
-    const expertEvaluations = buildExpertPairwiseRatingsOrThrow({
+    const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
+      structure,
       evaluations: phaseEvaluations,
-      alternativeNames,
-      criterionNames,
-      issueId: issue._id,
-      phase,
+      issue,
     });
 
-    const collectiveEvaluations = buildCollectivePairwiseEvaluations({
-      stageResult,
-      alternativeNames,
-      criterionNames,
-    });
+    const collectiveEvaluationsSource = isPlainObject(stageResult?.collectiveEvaluations)
+      ? stageResult.collectiveEvaluations
+      : null;
+    const collectiveEvaluations =
+      collectiveEvaluationsSource &&
+      Object.keys(collectiveEvaluationsSource).length > 0
+        ? collectiveEvaluationsSource
+        : null;
 
     expertsRatings[phase] = {
       consensusMeasure: round.consensusMeasure,

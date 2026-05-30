@@ -17,9 +17,9 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow, validateAcceptedEvaluationCoverageOrThrow } from "./finishedPayload.errors.js";
 import { buildRankedAlternativesPayloadOrThrow } from "./buildFinishedRankings.js";
 import {
-  buildCollectivePairwiseEvaluations,
-  buildExpertPairwiseRatingsOrThrow,
-} from "./buildPairwiseFinishedRatings.js";
+  buildFinishedExpertEvaluationsByEmail,
+  getFinishedAlternativeEvaluationStructureOrThrow,
+} from "./buildFinishedEvaluationDisplayPayloads.js";
 import {
   buildCriteriaWeightsEvaluationByExpert,
   resolveCriteriaWeightingPhase,
@@ -188,7 +188,6 @@ export const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
     modelUsesWeights: model?.usesCriteriaWeights === true,
   });
   const leafCount = orderedLeafCriteria.length;
-  const alternativeNames = alternatives.map((alternative) => alternative.name);
   const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
   const criteriaWeightingEvaluationsByExpertId = new Map(
     criteriaWeightingEvaluations.map((evaluation) => [
@@ -201,19 +200,23 @@ export const buildNonConsensusPairwiseFinishedPayload = async ({ issue }) => {
     stageResult: latestAlternativeResult,
   });
 
-  const expertEvaluations = buildExpertPairwiseRatingsOrThrow({
+  const structure = getFinishedAlternativeEvaluationStructureOrThrow({ issue });
+  const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
+    structure,
     evaluations: completedAlternativeEvaluations,
-    alternativeNames,
-    criterionNames,
-    issueId: issue._id,
-    phase,
+    issue,
   });
 
-  const collectiveEvaluations = buildCollectivePairwiseEvaluations({
-    stageResult: latestAlternativeResult,
-    alternativeNames,
-    criterionNames,
-  });
+  const collectiveEvaluationsSource = isPlainObject(
+    latestAlternativeResult?.collectiveEvaluations
+  )
+    ? latestAlternativeResult.collectiveEvaluations
+    : null;
+  const collectiveEvaluations =
+    collectiveEvaluationsSource &&
+    Object.keys(collectiveEvaluationsSource).length > 0
+      ? collectiveEvaluationsSource
+      : null;
 
   const experts = buildParticipationsSummary({
     participations,
