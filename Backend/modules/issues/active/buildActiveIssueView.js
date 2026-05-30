@@ -9,7 +9,7 @@ import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.consta
 import {
   buildActiveParticipationSummary,
 } from "./buildActiveParticipationSummary.js";
-import { buildActivePermissions } from "./resolveActiveIssuePermissions.js";
+import { resolveActiveIssuePermissions } from "./resolveActiveIssuePermissions.js";
 import {
   buildActiveCriteriaView,
 } from "./buildActiveCriteriaView.js";
@@ -82,7 +82,7 @@ export const buildActiveIssueView = ({
     });
   }
 
-  const permissions = buildActivePermissions({
+  const permissions = resolveActiveIssuePermissions({
     stage,
     stageMeta,
     isAdminUser,

@@ -1,7 +1,7 @@
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import { ACTIVE_ACTION_META, ACTIVE_STATUS_META } from "./activeIssueUiCatalog.js";
 
-export const buildActivePermissions = ({
+export const resolveActiveIssuePermissions = ({
   stage,
   stageMeta,
   isAdminUser,
