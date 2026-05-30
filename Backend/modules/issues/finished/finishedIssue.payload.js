@@ -2,7 +2,7 @@ import { Issue } from "../../../models/Issues.js";
 import {
   buildPluginFinishedIssuePayload,
   supportsPluginFinishedIssuePayload,
-} from "./finishedIssue.pluginPayload.js";
+} from "./pluginPayload/index.js";
 
 import {
   createBadRequestError,
