@@ -17,44 +17,20 @@ import { enrichPlotsGraphicWithExpertLabels } from "./buildFinishedGraphs.js";
 import {
   buildFinishedPayloadContextOrThrow,
   buildFinishedSummaryFromContext,
+  validateFinishedAlternativesAndLeafCriteriaOrThrow,
 } from "./buildFinishedPayloadContext.js";
 import {
   buildFinishedExpertRatingsByPhase,
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
-import {
-  buildMatrixFinishedCollectiveEvaluations,
-  buildPairwiseFinishedCollectiveEvaluations,
-} from "./buildFinishedCollectiveEvaluations.js";
+import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
 import {
   groupCompletedEvaluationsByPhase,
   loadConsensusAlternativeStageResultsOrThrow,
   loadFinishedConsensusData,
 } from "./loadFinishedPayloadData.js";
 
-const CONSENSUS_VARIANT_CONFIG = {
-  matrix: {
-    includeCollectiveEvaluationsLocalizedByExpert: false,
-    buildCollectiveEvaluations: buildMatrixFinishedCollectiveEvaluations,
-  },
-  pairwise: {
-    includeCollectiveEvaluationsLocalizedByExpert: true,
-    buildCollectiveEvaluations: buildPairwiseFinishedCollectiveEvaluations,
-  },
-};
-
-export const buildConsensusFinishedPayload = async ({ issue, variant }) => {
-  const config = CONSENSUS_VARIANT_CONFIG[variant];
-
-  if (!config) {
-    throw createInternalError(
-      `Unsupported consensus finished payload variant: ${variant}`,
-      {
-        field: "variant",
-      }
-    );
-  }
-
+export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const alternativeStageResults = await loadConsensusAlternativeStageResultsOrThrow({
     issue,
   });
@@ -77,6 +53,16 @@ export const buildConsensusFinishedPayload = async ({ issue, variant }) => {
     criteriaWeightingPhase,
   });
 
+  validateFinishedAlternativesAndLeafCriteriaOrThrow({
+    issue,
+    alternatives: loaded.alternatives,
+    orderedLeafCriteria: loaded.orderedLeafCriteria,
+  });
+
+  const acceptedParticipations = loaded.participations.filter(
+    (participation) => participation.invitationStatus === "accepted"
+  );
+
   const completedByPhase = groupCompletedEvaluationsByPhase({
     evaluations: loaded.allCompletedAlternativeEvaluations,
   });
@@ -95,6 +81,7 @@ export const buildConsensusFinishedPayload = async ({ issue, variant }) => {
 
   const expertRatingsContext = buildFinishedExpertRatingsContext({
     issue,
+    structure,
     participations: context.participations,
     criteriaWeightingEvaluationsByExpertId:
       context.criteriaWeightingEvaluationsByExpertId,
@@ -123,7 +110,7 @@ export const buildConsensusFinishedPayload = async ({ issue, variant }) => {
     }
 
     validateAcceptedEvaluationCoverageOrThrow({
-      acceptedParticipations: context.acceptedParticipations,
+      acceptedParticipations,
       completedEvaluations: phaseEvaluations,
       issue,
       phase,
@@ -143,16 +130,15 @@ export const buildConsensusFinishedPayload = async ({ issue, variant }) => {
     expertsRatings[phase] = await buildFinishedExpertRatingsByPhase({
       issue,
       structure: expertRatingsContext.structure,
+      options: expertRatingsContext.options,
       evaluations: phaseEvaluations,
       stageResult,
-      collectiveEvaluations: config.buildCollectiveEvaluations({
+      collectiveEvaluations: buildFinishedCollectiveEvaluations({
         stageResult,
       }),
       criteriaWeightsEvaluationByExpert:
         expertRatingsContext.criteriaWeightsEvaluationByExpert,
-      includeConsensusMeasure: true,
-      includeCollectiveEvaluationsLocalizedByExpert:
-        config.includeCollectiveEvaluationsLocalizedByExpert,
+      isConsensus: true,
     });
 
     alternativesRankings.push({

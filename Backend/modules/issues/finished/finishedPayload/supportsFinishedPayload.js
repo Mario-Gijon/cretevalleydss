@@ -1,3 +1,5 @@
+import { getEvaluationStructureOrThrow } from "../../../decisionEngine/evaluations/evaluation.registry.js";
+
 export const isFinishedIssue = (issue) =>
   issue?.currentStage === "finished" && issue?.active === false;
 
@@ -6,9 +8,12 @@ export const supportsFinishedPayload = (issue) => {
     return false;
   }
 
-  const structureKey = issue?.alternativeEvaluationStructureKey;
-  return (
-    structureKey === "alternativeCriteriaMatrix" ||
-    structureKey === "alternativePairwiseByCriterion"
-  );
+  try {
+    const structure = getEvaluationStructureOrThrow(
+      issue?.alternativeEvaluationStructureKey
+    );
+    return typeof structure?.get === "function";
+  } catch {
+    return false;
+  }
 };

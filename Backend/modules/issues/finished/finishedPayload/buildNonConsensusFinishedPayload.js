@@ -1,5 +1,4 @@
 import { isPlainObject } from "../../../../utils/common/objects.js";
-import { createInternalError } from "../../../../utils/common/errors.js";
 import {
   normalizeConsensusPhaseOrThrow,
   validateAcceptedEvaluationCoverageOrThrow,
@@ -20,40 +19,13 @@ import {
   buildFinishedExpertRatingsByPhase,
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
-import {
-  buildMatrixFinishedCollectiveEvaluations,
-  buildPairwiseFinishedCollectiveEvaluations,
-} from "./buildFinishedCollectiveEvaluations.js";
+import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
 import {
   loadFinishedSinglePhaseData,
   loadLatestAlternativeStageResultOrThrow,
 } from "./loadFinishedPayloadData.js";
 
-const NON_CONSENSUS_VARIANT_CONFIG = {
-  matrix: {
-    includeConsensusMeasure: false,
-    includeCollectiveEvaluationsLocalizedByExpert: false,
-    buildCollectiveEvaluations: buildMatrixFinishedCollectiveEvaluations,
-  },
-  pairwise: {
-    includeConsensusMeasure: true,
-    includeCollectiveEvaluationsLocalizedByExpert: true,
-    buildCollectiveEvaluations: buildPairwiseFinishedCollectiveEvaluations,
-  },
-};
-
-export const buildNonConsensusFinishedPayload = async ({ issue, variant }) => {
-  const config = NON_CONSENSUS_VARIANT_CONFIG[variant];
-
-  if (!config) {
-    throw createInternalError(
-      `Unsupported non-consensus finished payload variant: ${variant}`,
-      {
-        field: "variant",
-      }
-    );
-  }
-
+export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => {
   const latestAlternativeResult = await loadLatestAlternativeStageResultOrThrow({
     issue,
   });
@@ -109,6 +81,7 @@ export const buildNonConsensusFinishedPayload = async ({ issue, variant }) => {
 
   const expertRatingsContext = buildFinishedExpertRatingsContext({
     issue,
+    structure,
     participations: context.participations,
     criteriaWeightingEvaluationsByExpertId:
       context.criteriaWeightingEvaluationsByExpertId,
@@ -118,16 +91,15 @@ export const buildNonConsensusFinishedPayload = async ({ issue, variant }) => {
   const expertsRatingsByPhase = await buildFinishedExpertRatingsByPhase({
     issue,
     structure: expertRatingsContext.structure,
+    options: expertRatingsContext.options,
     evaluations: loaded.completedAlternativeEvaluations,
     stageResult: latestAlternativeResult,
-    collectiveEvaluations: config.buildCollectiveEvaluations({
+    collectiveEvaluations: buildFinishedCollectiveEvaluations({
       stageResult: latestAlternativeResult,
     }),
     criteriaWeightsEvaluationByExpert:
       expertRatingsContext.criteriaWeightsEvaluationByExpert,
-    includeConsensusMeasure: config.includeConsensusMeasure,
-    includeCollectiveEvaluationsLocalizedByExpert:
-      config.includeCollectiveEvaluationsLocalizedByExpert,
+    isConsensus: false,
   });
 
   const modelExecution = buildModelExecutionPayload(latestAlternativeResult);

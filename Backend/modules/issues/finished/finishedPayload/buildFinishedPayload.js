@@ -1,9 +1,8 @@
 import { createBadRequestError } from "../../../../utils/common/errors.js";
 import { isFinishedIssue } from "./supportsFinishedPayload.js";
-import { buildNonConsensusMatrixFinishedPayload } from "./buildNonConsensusMatrixFinishedPayload.js";
-import { buildConsensusMatrixFinishedPayload } from "./buildConsensusMatrixFinishedPayload.js";
-import { buildNonConsensusPairwiseFinishedPayload } from "./buildNonConsensusPairwiseFinishedPayload.js";
-import { buildConsensusPairwiseFinishedPayload } from "./buildConsensusPairwiseFinishedPayload.js";
+import { buildNonConsensusFinishedPayload } from "./buildNonConsensusFinishedPayload.js";
+import { buildConsensusFinishedPayload } from "./buildConsensusFinishedPayload.js";
+import { getFinishedAlternativeEvaluationStructureOrThrow } from "./buildFinishedEvaluationDisplayPayloads.js";
 
 export const buildFinishedPayload = async ({ issue }) => {
   if (!isFinishedIssue(issue)) {
@@ -15,44 +14,11 @@ export const buildFinishedPayload = async ({ issue }) => {
     );
   }
 
-  const structureKey = issue?.alternativeEvaluationStructureKey;
+  const structure = getFinishedAlternativeEvaluationStructureOrThrow({ issue });
 
-  if (
-    structureKey === "alternativeCriteriaMatrix" &&
-    issue?.isConsensus !== true
-  ) {
-    return buildNonConsensusMatrixFinishedPayload({ issue });
+  if (issue?.isConsensus === true) {
+    return buildConsensusFinishedPayload({ issue, structure });
   }
 
-  if (
-    structureKey === "alternativeCriteriaMatrix" &&
-    issue?.isConsensus === true
-  ) {
-    return buildConsensusMatrixFinishedPayload({ issue });
-  }
-
-  if (
-    structureKey === "alternativePairwiseByCriterion" &&
-    issue?.isConsensus !== true
-  ) {
-    return buildNonConsensusPairwiseFinishedPayload({ issue });
-  }
-
-  if (
-    structureKey === "alternativePairwiseByCriterion" &&
-    issue?.isConsensus === true
-  ) {
-    return buildConsensusPairwiseFinishedPayload({ issue });
-  }
-
-  throw createBadRequestError(
-    "Unsupported finished issue structure for this phase",
-    {
-      field: "alternativeEvaluationStructureKey",
-      details: {
-        alternativeEvaluationStructureKey: structureKey || null,
-        isConsensus: issue?.isConsensus === true,
-      },
-    }
-  );
+  return buildNonConsensusFinishedPayload({ issue, structure });
 };
