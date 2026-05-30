@@ -1,7 +1,7 @@
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
-import { normalizeConsensusPhaseOrThrow } from "./finishedPayload.errors.js";
+import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
 import { buildRankedAlternativesPayloadOrThrow } from "./buildFinishedRankings.js";
 
 export const buildModelExecutionPayload = (stageResult) => {

@@ -14,7 +14,7 @@ import {
 import { toIdString } from "../../../../utils/common/ids.js";
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
-import { normalizeConsensusPhaseOrThrow, validateAcceptedEvaluationCoverageOrThrow } from "./finishedPayload.errors.js";
+import { normalizeConsensusPhaseOrThrow, validateAcceptedEvaluationCoverageOrThrow } from "./finishedPayloadValidation.js";
 import {
   buildConsensusInfo,
   buildConsensusRoundPayloadOrThrow,

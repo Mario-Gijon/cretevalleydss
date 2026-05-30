@@ -1,14 +1,14 @@
 import { createBadRequestError } from "../../../../utils/common/errors.js";
-import { isFinishedIssue } from "./supportsFinishedPluginPayload.js";
+import { isFinishedIssue } from "./supportsFinishedPayload.js";
 import { buildNonConsensusMatrixFinishedPayload } from "./buildNonConsensusMatrixFinishedPayload.js";
 import { buildConsensusMatrixFinishedPayload } from "./buildConsensusMatrixFinishedPayload.js";
 import { buildNonConsensusPairwiseFinishedPayload } from "./buildNonConsensusPairwiseFinishedPayload.js";
 import { buildConsensusPairwiseFinishedPayload } from "./buildConsensusPairwiseFinishedPayload.js";
 
-export const buildPluginFinishedIssuePayload = async ({ issue }) => {
+export const buildFinishedPayload = async ({ issue }) => {
   if (!isFinishedIssue(issue)) {
     throw createBadRequestError(
-      "Plugin finished payload is only supported for finished inactive issues",
+      "Finished payload is only supported for finished inactive issues",
       {
         field: "currentStage",
       }
@@ -46,7 +46,7 @@ export const buildPluginFinishedIssuePayload = async ({ issue }) => {
   }
 
   throw createBadRequestError(
-    "Unsupported plugin finished issue structure for this phase",
+    "Unsupported finished issue structure for this phase",
     {
       field: "alternativeEvaluationStructureKey",
       details: {

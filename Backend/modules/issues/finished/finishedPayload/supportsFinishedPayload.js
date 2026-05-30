@@ -1,7 +1,7 @@
 export const isFinishedIssue = (issue) =>
   issue?.currentStage === "finished" && issue?.active === false;
 
-export const supportsPluginFinishedIssuePayload = (issue) => {
+export const supportsFinishedPayload = (issue) => {
   if (!isFinishedIssue(issue)) {
     return false;
   }

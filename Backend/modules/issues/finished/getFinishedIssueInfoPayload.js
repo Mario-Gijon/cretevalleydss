@@ -1,8 +1,8 @@
 import { Issue } from "../../../models/Issues.js";
 import {
-  buildPluginFinishedIssuePayload,
-  supportsPluginFinishedIssuePayload,
-} from "./pluginPayload/index.js";
+  buildFinishedPayload,
+  supportsFinishedPayload,
+} from "./finishedPayload/index.js";
 
 import {
   createBadRequestError,
@@ -29,9 +29,9 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     });
   }
 
-  if (!supportsPluginFinishedIssuePayload(issue)) {
+  if (!supportsFinishedPayload(issue)) {
     throw createInternalError(
-      "Finished issue requires plugin evaluation payload support",
+      "Finished issue requires finished evaluation payload support",
       {
         field: "alternativeEvaluationStructureKey",
         details: {
@@ -41,5 +41,5 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     );
   }
 
-  return buildPluginFinishedIssuePayload({ issue });
+  return buildFinishedPayload({ issue });
 };

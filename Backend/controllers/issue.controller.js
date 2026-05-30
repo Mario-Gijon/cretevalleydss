@@ -48,7 +48,7 @@ import {
   markAllNotificationsAsReadFlow,
   removeNotificationForUserFlow,
 } from "../modules/issues/notifications/index.js";
-import { getFinishedIssueInfoPayload } from "../modules/issues/finished/finishedIssue.payload.js";
+import { getFinishedIssueInfoPayload } from "../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
 import { createIssue as createIssueUseCase } from "../modules/issues/creation/index.js";
 
