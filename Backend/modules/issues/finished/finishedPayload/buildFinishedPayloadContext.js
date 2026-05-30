@@ -1,4 +1,3 @@
-import { IssueModel } from "../../../../models/IssueModels.js";
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { buildParticipationsSummary, buildSummarySection } from "./buildFinishedSummary.js";
@@ -6,32 +5,32 @@ import { resolveFinalCriteriaWeightsOrThrow } from "./buildFinishedCriteriaWeigh
 import { buildAvailableModelsPayload } from "./buildFinishedScenarioModels.js";
 import { buildModelParamsPayloadOrThrow } from "./buildFinishedModelParams.js";
 
-export const ensureModelOrThrow = async ({ issue }) => {
+export const requireFinishedIssueModelOrThrow = ({ issue }) => {
   const populatedModel = issue?.model;
 
-  if (
+  const isPopulatedModelObject =
     populatedModel &&
     typeof populatedModel === "object" &&
     populatedModel !== null &&
-    (populatedModel.name || populatedModel.parameters)
-  ) {
-    return populatedModel;
-  }
+    !Array.isArray(populatedModel);
+  const hasRequiredFields =
+    isPopulatedModelObject &&
+    populatedModel._id !== undefined &&
+    typeof populatedModel.name === "string" &&
+    populatedModel.name.trim() &&
+    populatedModel.parameters !== undefined &&
+    typeof populatedModel.usesCriteriaWeights === "boolean";
 
-  const modelId = issue?.model?._id || issue?.model;
-  const loadedModel = await IssueModel.findById(modelId).lean();
-
-  if (!loadedModel) {
-    throw createInternalError("Finished issue model not found", {
+  if (!hasRequiredFields) {
+    throw createInternalError("Finished issue model must be populated", {
       field: "model",
       details: {
         issueId: toIdString(issue?._id),
-        modelId: toIdString(modelId),
       },
     });
   }
 
-  return loadedModel;
+  return populatedModel;
 };
 
 export const validateFinishedAlternativesAndLeafCriteriaOrThrow = ({
@@ -90,7 +89,7 @@ export const buildFinishedPayloadContextOrThrow = async ({
     (participation) => participation.invitationStatus === "accepted"
   );
 
-  const model = await ensureModelOrThrow({ issue });
+  const model = requireFinishedIssueModelOrThrow({ issue });
   const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
     issue,
     orderedLeafCriteria,

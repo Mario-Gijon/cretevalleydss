@@ -13,7 +13,6 @@ import { buildModelExecutionPayload } from "./buildFinishedConsensus.js";
 import {
   buildFinishedPayloadContextOrThrow,
   buildFinishedSummaryFromContext,
-  validateFinishedAlternativesAndLeafCriteriaOrThrow,
 } from "./buildFinishedPayloadContext.js";
 import {
   buildFinishedExpertRatingsByPhase,
@@ -44,12 +43,6 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
     issue,
     phase,
     criteriaWeightingPhase,
-  });
-
-  validateFinishedAlternativesAndLeafCriteriaOrThrow({
-    issue,
-    alternatives: loaded.alternatives,
-    orderedLeafCriteria: loaded.orderedLeafCriteria,
   });
 
   const acceptedParticipations = loaded.participations.filter(

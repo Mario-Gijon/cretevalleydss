@@ -17,7 +17,6 @@ import { enrichPlotsGraphicWithExpertLabels } from "./buildFinishedGraphs.js";
 import {
   buildFinishedPayloadContextOrThrow,
   buildFinishedSummaryFromContext,
-  validateFinishedAlternativesAndLeafCriteriaOrThrow,
 } from "./buildFinishedPayloadContext.js";
 import {
   buildFinishedExpertRatingsByPhase,
@@ -51,12 +50,6 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     issue,
     phaseList,
     criteriaWeightingPhase,
-  });
-
-  validateFinishedAlternativesAndLeafCriteriaOrThrow({
-    issue,
-    alternatives: loaded.alternatives,
-    orderedLeafCriteria: loaded.orderedLeafCriteria,
   });
 
   const acceptedParticipations = loaded.participations.filter(
