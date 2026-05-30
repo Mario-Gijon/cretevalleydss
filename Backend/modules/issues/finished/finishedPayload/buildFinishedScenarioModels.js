@@ -1,5 +1,5 @@
 import { toIdString } from "../../../../utils/common/ids.js";
-import { buildDefaultsResolved } from "../../scenarios/resolveScenarioModelParameters.js";
+import { buildDefaultsResolved } from "../../../decisionEngine/modelParameters/resolveModelParameterValues.js";
 import { buildScenarioCompatibilityMetadata } from "../../scenarios/validateScenarioModelCompatibility.js";
 
 export const buildAvailableModelsPayload = ({

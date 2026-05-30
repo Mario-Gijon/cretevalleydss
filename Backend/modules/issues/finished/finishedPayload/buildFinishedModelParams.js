@@ -2,7 +2,7 @@ import { toIdString } from "../../../../utils/common/ids.js";
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
-} from "../../scenarios/resolveScenarioModelParameters.js";
+} from "../../../decisionEngine/modelParameters/resolveModelParameterValues.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
 } from "../../../expressionDomains/buildIssueDomainConfig.js";
