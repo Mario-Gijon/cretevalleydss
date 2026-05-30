@@ -26,10 +26,10 @@ import {
   getActiveIssuesPayload,
 } from "../modules/issues/active/index.js";
 import {
-  createIssueScenarioFlow,
+  createIssueScenario as createIssueScenarioUseCase,
   getIssueScenariosPayload,
   getScenarioByIdPayload,
-  removeIssueScenarioFlow,
+  removeIssueScenario,
 } from "../modules/issues/scenarios/index.js";
 import {
   deleteActiveIssueAsAdmin,
@@ -420,7 +420,7 @@ export const createIssueScenario = async (req, res) => {
     paramOverrides = {},
   } = req.body || {};
 
-  const { scenarioId } = await createIssueScenarioFlow({
+  const { scenarioId } = await createIssueScenarioUseCase({
     userId: req.uid,
     issueId,
     targetModelId,
@@ -457,7 +457,7 @@ export const getScenarioById = async (req, res) => {
 export const removeScenario = async (req, res) => {
   const { scenarioId } = req.body;
 
-  await removeIssueScenarioFlow({
+  await removeIssueScenario({
     scenarioId,
     userId: req.uid,
   });

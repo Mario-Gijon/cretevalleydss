@@ -1,0 +1,53 @@
+import { IssueModel } from "../../../models/IssueModels.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
+import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+
+export const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
+  const cleanTargetModelId = String(targetModelId || "").trim();
+
+  if (!cleanTargetModelId) {
+    throw createBadRequestError("targetModelId is required", {
+      field: "targetModelId",
+    });
+  }
+
+  if (!isValidObjectIdLike(cleanTargetModelId)) {
+    throw createBadRequestError("targetModelId must be a valid id", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
+  const targetModel = await IssueModel.findById(cleanTargetModelId);
+
+  if (!targetModel) {
+    throw createBadRequestError("Target model not found", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
+  if (targetModel.isIssueModel !== true) {
+    throw createBadRequestError("Target model is not available for issue simulation", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
+  if (targetModel?.manifestSync?.isStale === true) {
+    throw createBadRequestError("Target model is stale and cannot be used for simulation", {
+      field: "targetModelId",
+      details: {
+        targetModelId: cleanTargetModelId,
+      },
+    });
+  }
+
+  return targetModel;
+};

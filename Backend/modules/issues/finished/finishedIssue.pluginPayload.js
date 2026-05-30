@@ -20,8 +20,8 @@ import {
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
-} from "../scenarios/scenario.params.js";
-import { buildScenarioCompatibilityMetadata } from "../scenarios/scenario.compatibility.js";
+} from "../scenarios/resolveScenarioModelParameters.js";
+import { buildScenarioCompatibilityMetadata } from "../scenarios/validateScenarioModelCompatibility.js";
 import {
   buildExpressionDomainConfigFromLeafCriteriaOrThrow,
 } from "../../expressionDomains/buildIssueDomainConfig.js";

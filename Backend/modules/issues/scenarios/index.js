@@ -1,9 +1,7 @@
-export {
-  createIssueScenarioFlow,
-  removeIssueScenarioFlow,
-} from "./scenario.flow.js";
+export { createIssueScenario } from "./createIssueScenario.js";
+export { removeIssueScenario } from "./removeIssueScenario.js";
 
 export {
   getIssueScenariosPayload,
   getScenarioByIdPayload,
-} from "./scenario.payload.js";
+} from "./buildScenarioPayloads.js";
