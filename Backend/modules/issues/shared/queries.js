@@ -20,12 +20,16 @@ const validateIssueIdOrThrow = (issueId) => {
 export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   validateIssueIdOrThrow(issueId);
 
-  const { select, lean = true, session = null } = options;
+  const { select, populate = null, lean = true, session = null } = options;
 
   let query = Issue.findById(issueId);
 
   if (select) {
     query = query.select(select);
+  }
+
+  if (populate) {
+    query = query.populate(populate);
   }
 
   if (session) {

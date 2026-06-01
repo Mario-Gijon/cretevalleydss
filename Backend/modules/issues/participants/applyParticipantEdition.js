@@ -5,6 +5,7 @@ import {
   cleanupExpertDraftsOnExit,
   registerUserExit,
 } from "../lifecycle/index.js";
+import { isSingleLeafCriterionCount } from "../shared/participantEntry.js";
 
 import { sameId } from "../../../utils/common/ids.js";
 
@@ -32,7 +33,7 @@ export const addExpertsToActiveIssue = async ({
     if (existingParticipation) continue;
 
     const isAdminExpert = sameId(expertUser._id, userId);
-    const weightsCompleted = leafCriteria.length === 1;
+    const weightsCompleted = isSingleLeafCriterionCount(leafCriteria.length);
 
     await Participation.create({
       issue: issue._id,

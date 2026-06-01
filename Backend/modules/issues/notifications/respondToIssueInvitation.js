@@ -1,34 +1,15 @@
 import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import {
+  buildParticipationEntryMetadata,
+  isSingleLeafCriterionCount,
+} from "../shared/participantEntry.js";
 
 import {
   createBadRequestError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
-
-const PARTICIPATION_ENTRY_STAGES = Object.freeze({
-  CRITERIA_WEIGHTING: "criteriaWeighting",
-  ALTERNATIVE_EVALUATION: "alternativeEvaluation",
-});
-
-const resolveParticipationEntryStage = (issueStage) => {
-  if (
-    issueStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
-    issueStage === ISSUE_STAGES.WEIGHTS_FINISHED
-  ) {
-    return PARTICIPATION_ENTRY_STAGES.CRITERIA_WEIGHTING;
-  }
-
-  if (
-    issueStage === ISSUE_STAGES.ALTERNATIVE_EVALUATION ||
-    issueStage === ISSUE_STAGES.FINISHED
-  ) {
-    return PARTICIPATION_ENTRY_STAGES.ALTERNATIVE_EVALUATION;
-  }
-
-  return null;
-};
 
 export const respondToIssueInvitation = async ({
   issueId,
@@ -71,7 +52,7 @@ export const respondToIssueInvitation = async ({
 
   if (action === "accepted") {
     const leafCriteriaCount = issue.leafCriteriaOrder.length;
-    const isSingleCriterion = leafCriteriaCount === 1;
+    const isSingleCriterion = isSingleLeafCriterionCount(leafCriteriaCount);
     const criteriaWeightingIsOpen =
       issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
       issue.currentStage === ISSUE_STAGES.WEIGHTS_FINISHED;
@@ -83,11 +64,10 @@ export const respondToIssueInvitation = async ({
     if (criteriaWeightingIsOpen && requiresCriteriaWeighting) {
       participation.weightsCompleted = isSingleCriterion;
     }
-    participation.joinedAt = new Date();
-    participation.entryPhase = Number.isInteger(issue.consensusPhase)
-      ? issue.consensusPhase
-      : null;
-    participation.entryStage = resolveParticipationEntryStage(issue.currentStage);
+    const participationEntryMetadata = buildParticipationEntryMetadata({ issue });
+    participation.joinedAt = participationEntryMetadata.joinedAt;
+    participation.entryPhase = participationEntryMetadata.entryPhase;
+    participation.entryStage = participationEntryMetadata.entryStage;
   }
 
   await participation.save({ session });

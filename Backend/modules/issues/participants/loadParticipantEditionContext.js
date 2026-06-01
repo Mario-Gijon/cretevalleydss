@@ -1,11 +1,10 @@
-import { Issue } from "../../../models/Issues.js";
 import { User } from "../../../models/Users.js";
 
 import { mapIssueStageToExitStage } from "../lifecycle/index.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 import {
   createForbiddenError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId } from "../../../utils/common/ids.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
@@ -43,11 +42,10 @@ export const normalizeParticipantEditionRequest = ({
 };
 
 export const loadParticipantEditionContext = async ({ issueId, userId }) => {
-  const issue = await Issue.findById(issueId).populate("model");
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found");
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    lean: false,
+    populate: "model",
+  });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Not authorized to edit this issue's experts.");
