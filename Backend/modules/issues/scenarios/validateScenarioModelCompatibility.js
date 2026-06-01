@@ -3,6 +3,10 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import {
+  isDomainSnapshotSupportedByModel,
+  resolveSupportedDomainFlags,
+} from "../../expressionDomains/domainCompatibility.js";
 
 const normalizeEndpointPath = (value) => {
   const normalizedPath = String(value || "").trim();
@@ -71,49 +75,11 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
   };
 };
 
-const normalizeSupportedDomainFlags = (modelSupportedDomains) => ({
-  numericContinuous: modelSupportedDomains?.numeric?.continuous === true,
-  numericDiscrete: modelSupportedDomains?.numeric?.discrete === true,
-  linguisticMembershipFunctions: Array.isArray(modelSupportedDomains?.linguistic)
-    ? modelSupportedDomains.linguistic
-        .map((item) => String(item || "").trim().toLowerCase())
-        .filter(Boolean)
-    : [],
-});
-
-const isNumericDiscreteDomainSnapshot = (domainSnapshot) => {
-  const step = domainSnapshot?.numericRange?.step;
-  return Number.isFinite(step) && step > 0;
-};
-
-const isDomainSnapshotSupportedByModel = ({
-  domainSnapshot,
-  supportedDomainFlags,
-}) => {
-  if (domainSnapshot?.type === "numeric") {
-    return isNumericDiscreteDomainSnapshot(domainSnapshot)
-      ? supportedDomainFlags.numericDiscrete
-      : supportedDomainFlags.numericContinuous;
-  }
-
-  if (domainSnapshot?.type === "linguistic") {
-    const membershipFunction = String(domainSnapshot?.membershipFunction || "")
-      .trim()
-      .toLowerCase();
-    return (
-      membershipFunction.length > 0 &&
-      supportedDomainFlags.linguisticMembershipFunctions.includes(membershipFunction)
-    );
-  }
-
-  return false;
-};
-
 export const getUnsupportedIssueDomainsForModel = ({
   issueDomainSnapshots,
   modelSupportedDomains,
 }) => {
-  const supportedDomainFlags = normalizeSupportedDomainFlags(modelSupportedDomains);
+  const supportedDomainFlags = resolveSupportedDomainFlags(modelSupportedDomains);
   const domainSnapshots = Array.isArray(issueDomainSnapshots)
     ? issueDomainSnapshots
     : [];

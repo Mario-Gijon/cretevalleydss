@@ -2,6 +2,7 @@ import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { toIdString } from "../../utils/common/ids.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
 import { isPlainObject } from "../../utils/common/objects.js";
+import { isSupportedDomainForModel } from "./domainCompatibility.js";
 
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,
@@ -101,62 +102,6 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
     usedDomainIds: Array.from(usedDomainIds),
     domainIdByCriterionName,
   };
-};
-
-const resolveSupportedDomainFlags = (modelSupportedDomains) => ({
-  numericContinuous: modelSupportedDomains.numeric.continuous,
-  numericDiscrete: modelSupportedDomains.numeric.discrete,
-  linguisticMembershipFunctions: modelSupportedDomains.linguistic
-    .map((item) => String(item || "").trim().toLowerCase())
-    .filter(Boolean),
-});
-
-const isNumericContinuousDomain = (domain) => {
-  const step = domain.numericRange?.step;
-  return domain.type === "numeric" && (step === null || step === undefined);
-};
-
-const isNumericDiscreteDomain = (domain) => {
-  const step = domain.numericRange?.step;
-  return (
-    domain.type === "numeric" &&
-    Number.isFinite(step) &&
-    step > 0
-  );
-};
-
-const isSupportedDomainForModel = ({
-  domain,
-  modelSupportedDomains,
-  userId,
-}) => {
-  const supported = resolveSupportedDomainFlags(modelSupportedDomains);
-
-  if (isNumericContinuousDomain(domain)) {
-    return supported.numericContinuous;
-  }
-
-  if (isNumericDiscreteDomain(domain)) {
-    return supported.numericDiscrete;
-  }
-
-  if (domain.type === "linguistic") {
-    const normalizedDomainUserId = toIdString(domain.user);
-    const isCreatorOwnedDomain =
-      domain.isGlobal !== true &&
-      normalizedDomainUserId &&
-      normalizedDomainUserId === toIdString(userId);
-    const membershipFunction = String(domain.membershipFunction || "")
-      .trim()
-      .toLowerCase();
-    const supportsMembershipFunction =
-      membershipFunction.length > 0 &&
-      supported.linguisticMembershipFunctions.includes(membershipFunction);
-
-    return supportsMembershipFunction && isCreatorOwnedDomain;
-  }
-
-  return false;
 };
 
 export const loadAccessibleExpressionDomains = async ({
