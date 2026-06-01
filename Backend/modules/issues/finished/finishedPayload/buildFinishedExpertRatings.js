@@ -18,7 +18,7 @@ const resolveFinishedPayloadOptions = ({ structure }) => {
   };
 };
 
-export const buildFinishedExpertRatingsContext = ({
+export const buildFinishedExpertRatingsContext = async ({
   issue,
   structure,
   participations,
@@ -31,7 +31,7 @@ export const buildFinishedExpertRatingsContext = ({
   return {
     structure: resolvedStructure,
     options: resolveFinishedPayloadOptions({ structure: resolvedStructure }),
-    criteriaWeightsEvaluationByExpert: buildCriteriaWeightsEvaluationByExpert({
+    criteriaWeightsEvaluationByExpert: await buildCriteriaWeightsEvaluationByExpert({
       issue,
       participations,
       criteriaWeightingEvaluationsByExpertId,

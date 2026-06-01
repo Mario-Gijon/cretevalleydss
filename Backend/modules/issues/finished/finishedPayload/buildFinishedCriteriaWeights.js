@@ -220,25 +220,25 @@ export const resolveExpertWeightingRequired = ({
     : false;
 };
 
-const resolveFinishedExpertWeightsByCriterion = ({
-  criteriaWeightingStructure,
-  payload,
-  criterionNames,
-}) => {
-  if (
-    typeof criteriaWeightingStructure?.getWeightsByCriterionForFinishedPayload !==
-    "function"
-  ) {
+const extractWeightsByCriterionFromDisplayPayload = ({ payload, criterionNames }) => {
+  const sourceWeightsByCriterion = payload?.weightsByCriterion;
+  if (!isPlainObject(sourceWeightsByCriterion)) {
     return null;
   }
 
-  return criteriaWeightingStructure.getWeightsByCriterionForFinishedPayload({
-    payload,
-    criterionNames,
-  });
+  const normalizedWeightsByCriterion = {};
+  for (const criterionName of criterionNames) {
+    const numericValue = Number(sourceWeightsByCriterion[criterionName]);
+    if (!Number.isFinite(numericValue)) {
+      return null;
+    }
+    normalizedWeightsByCriterion[criterionName] = numericValue;
+  }
+
+  return normalizedWeightsByCriterion;
 };
 
-export const buildCriteriaWeightsEvaluationByExpert = ({
+export const buildCriteriaWeightsEvaluationByExpert = async ({
   issue,
   participations,
   criteriaWeightingEvaluationsByExpertId,
@@ -252,6 +252,20 @@ export const buildCriteriaWeightsEvaluationByExpert = ({
   const criteriaWeightingStructure = isRequired
     ? getEvaluationStructureOrThrow(issue?.criteriaWeightingStructureKey)
     : null;
+
+  if (isRequired && typeof criteriaWeightingStructure?.get !== "function") {
+    throw createInternalError(
+      "Criteria weighting structure must implement get({ storedEvaluation, issue })",
+      {
+        field: "criteriaWeightingStructureKey",
+        details: {
+          issueId: toIdString(issue?._id),
+          criteriaWeightingStructureKey: issue?.criteriaWeightingStructureKey || null,
+        },
+      }
+    );
+  }
+
   const mapByExpertEmail = {};
 
   for (const participation of participations) {
@@ -285,10 +299,13 @@ export const buildCriteriaWeightsEvaluationByExpert = ({
     }
 
     const status = evaluation.completed === true ? "submitted" : "draft";
-    const payload = isPlainObject(evaluation.payload) ? evaluation.payload : {};
-    const weightsByCriterion = resolveFinishedExpertWeightsByCriterion({
-      criteriaWeightingStructure,
-      payload,
+    const displayPayload = await criteriaWeightingStructure.get({
+      storedEvaluation: evaluation,
+      issue,
+    });
+    const payload = isPlainObject(displayPayload) ? displayPayload : {};
+    const weightsByCriterion = extractWeightsByCriterionFromDisplayPayload({
+      payload: displayPayload,
       criterionNames,
     });
 

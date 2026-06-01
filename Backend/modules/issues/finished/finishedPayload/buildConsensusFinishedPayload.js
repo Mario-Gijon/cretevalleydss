@@ -72,7 +72,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     completedEvaluationsForExpertsSummary: loaded.allCompletedAlternativeEvaluations,
   });
 
-  const expertRatingsContext = buildFinishedExpertRatingsContext({
+  const expertRatingsContext = await buildFinishedExpertRatingsContext({
     issue,
     structure,
     participations: context.participations,

@@ -140,30 +140,9 @@ const toWeightsByCriterionFromStoredPayload = (storedPayloadWeights, criterionNa
   }, {});
 };
 
-const getWeightsByCriterionForFinishedPayload = ({ payload, criterionNames }) => {
-  const weightsSource = payload?.weightsByCriterion;
-  if (!isPlainObject(weightsSource)) {
-    return null;
-  }
-
-  const weightsByCriterion = {};
-
-  for (const criterionName of criterionNames) {
-    const rawValue = weightsSource[criterionName];
-    const numericValue = Number(rawValue);
-    if (!Number.isFinite(numericValue)) {
-      return null;
-    }
-    weightsByCriterion[criterionName] = numericValue;
-  }
-
-  return weightsByCriterion;
-};
-
 export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  getWeightsByCriterionForFinishedPayload,
   async get({ storedEvaluation, issue }) {
     const { criterionNames } = await getOrderedCriterionNames({ issue });
 
