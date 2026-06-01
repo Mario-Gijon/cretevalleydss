@@ -13,4 +13,8 @@ export {
 export {
   getFinishedIssueVisibleUserIds,
   hideFinishedIssueForUser,
+  hideFinishedIssueForDeletedUser,
 } from "./hideFinishedIssue.js";
+export {
+  removeIssueParticipantFromActiveIssue,
+} from "./removeIssueParticipant.js";
