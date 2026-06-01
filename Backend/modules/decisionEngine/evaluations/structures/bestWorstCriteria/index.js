@@ -267,9 +267,6 @@ const buildDisplayMeta = ({ storedEvaluation, criterionNames }) => {
     : {};
 
   return {
-    manualWeights: storedEvaluation && isPlainObject(rawPayload.weightsByCriterion)
-      ? orderObjectByKeys(rawPayload.weightsByCriterion, criterionNames)
-      : null,
     bwm: {
       bestCriterion: rawPayload?.bestCriterion,
       worstCriterion: rawPayload?.worstCriterion,
