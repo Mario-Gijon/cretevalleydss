@@ -6,7 +6,11 @@ export {
 } from "./leaveActiveIssue.js";
 export {
   deleteIssueCascade,
+} from "./deleteIssueCascade.js";
+export {
   deleteActiveIssueAsAdmin,
+} from "./deleteActiveIssue.js";
+export {
   getFinishedIssueVisibleUserIds,
   hideFinishedIssueForUser,
-} from "./removeIssueVisibility.js";
+} from "./hideFinishedIssue.js";
