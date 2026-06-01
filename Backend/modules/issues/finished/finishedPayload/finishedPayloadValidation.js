@@ -3,6 +3,7 @@ import {
   createInternalError,
 } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
+import { getAcceptedExpertsMissingCompletedEvaluations } from "../../shared/evaluationCoverage.js";
 
 export const normalizeConsensusPhaseOrThrow = ({ value, issueId, stage }) => {
   if (!Number.isInteger(value) || value < 1) {
@@ -49,31 +50,22 @@ export const validateAcceptedEvaluationCoverageOrThrow = ({
     );
   }
 
-  const acceptedByExpertId = new Set(
-    acceptedParticipations.map((participation) =>
-      toIdString(participation?.expert?._id || participation?.expert)
-    )
-  );
+  const { missingExpertIds } = getAcceptedExpertsMissingCompletedEvaluations({
+    acceptedParticipations,
+    completedEvaluations,
+  });
 
-  const receivedByExpertId = new Set(
-    completedEvaluations.map((evaluation) =>
-      toIdString(evaluation?.expert?._id || evaluation?.expert)
-    )
-  );
-
-  for (const expertId of acceptedByExpertId) {
-    if (!receivedByExpertId.has(expertId)) {
-      throw createInternalError(
-        "Completed alternative evaluations are missing for one or more experts",
-        {
-          field: "evaluations",
-          details: {
-            issueId: toIdString(issue?._id),
-            phase,
-            expertId,
-          },
-        }
-      );
-    }
+  if (missingExpertIds.length > 0) {
+    throw createInternalError(
+      "Completed alternative evaluations are missing for one or more experts",
+      {
+        field: "evaluations",
+        details: {
+          issueId: toIdString(issue?._id),
+          phase,
+          expertId: missingExpertIds[0],
+        },
+      }
+    );
   }
 };

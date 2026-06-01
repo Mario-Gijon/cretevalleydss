@@ -1,5 +1,6 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { getAcceptedExpertsMissingCompletedEvaluations } from "../shared/evaluationCoverage.js";
 
 export const validateEvaluationCoverageOrThrow = ({
   issue,
@@ -28,31 +29,22 @@ export const validateEvaluationCoverageOrThrow = ({
     );
   }
 
-  const acceptedExpertIds = new Set(
-    acceptedParticipations.map((participation) =>
-      toIdString(participation?.expert?._id || participation?.expert)
-    )
-  );
+  const { missingExpertIds } = getAcceptedExpertsMissingCompletedEvaluations({
+    acceptedParticipations,
+    completedEvaluations,
+  });
 
-  const completedExpertIds = new Set(
-    completedEvaluations.map((evaluation) =>
-      toIdString(evaluation?.expert?._id || evaluation?.expert)
-    )
-  );
-
-  for (const acceptedExpertId of acceptedExpertIds) {
-    if (!completedExpertIds.has(acceptedExpertId)) {
-      throw createBadRequestError(
-        "Completed alternative evaluations are missing for one or more accepted experts",
-        {
-          field: "evaluations",
-          details: {
-            issueId: toIdString(issue._id),
-            phase,
-            expertId: acceptedExpertId,
-          },
-        }
-      );
-    }
+  if (missingExpertIds.length > 0) {
+    throw createBadRequestError(
+      "Completed alternative evaluations are missing for one or more accepted experts",
+      {
+        field: "evaluations",
+        details: {
+          issueId: toIdString(issue._id),
+          phase,
+          expertId: missingExpertIds[0],
+        },
+      }
+    );
   }
 };
