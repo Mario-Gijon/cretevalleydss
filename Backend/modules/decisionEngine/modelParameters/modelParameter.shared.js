@@ -1,10 +1,7 @@
-export const WEIGHT_SUM_TOLERANCE = 1e-6;
+import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
+export { normalizeNonEmptyString };
 
-export const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
+export const WEIGHT_SUM_TOLERANCE = 1e-6;
 
 export const resolveParameterKey = (parameter) =>
   normalizeNonEmptyString(parameter?.key);

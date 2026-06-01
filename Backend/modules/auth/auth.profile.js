@@ -3,10 +3,7 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
-
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
+import { applyOptionalSession } from "../../utils/common/mongoose.js";
 
 const buildAuthenticatedUserProfilePayload = (user) => {
   const role = user.role;
@@ -46,7 +43,7 @@ export const updateAuthenticatedUserNameFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(userId), session);
+  const user = await applyOptionalSession(User.findById(userId), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {
@@ -76,7 +73,7 @@ export const updateAuthenticatedUserUniversityFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(userId), session);
+  const user = await applyOptionalSession(User.findById(userId), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {
@@ -120,7 +117,7 @@ export const updateAuthenticatedUserPasswordFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(userId), session);
+  const user = await applyOptionalSession(User.findById(userId), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {

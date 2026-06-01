@@ -23,20 +23,19 @@ import {
   createNotFoundError,
 } from "../../utils/common/errors.js";
 import { sameId, toIdString } from "../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../utils/common/mongoose.js";
+import {
+  applyOptionalSession,
+  isValidObjectIdLike,
+} from "../../utils/common/mongoose.js";
 
 const ACCOUNT_DELETED_BY_ADMIN_REASON = "Expert account deleted by admin";
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
-
 
 const getExitPhaseForIssue = async ({
   issueId,
   fallbackIfMissing,
   session = null,
 }) => {
-  const latestConsensus = await withOptionalSession(
+  const latestConsensus = await applyOptionalSession(
     Consensus.findOne({ issue: issueId }).sort({ phase: -1 }),
     session
   );
@@ -84,21 +83,21 @@ const removeUserFromActiveIssue = async ({
   session = null,
 }) => {
   const [deleteIssueEvaluationsResult] = await Promise.all([
-    withOptionalSession(
+    applyOptionalSession(
       IssueEvaluation.deleteMany({
         issue: issue._id,
         expert: user._id,
       }),
       session
     ),
-    withOptionalSession(
+    applyOptionalSession(
       Notification.deleteMany({
         issue: issue._id,
         expert: user._id,
       }),
       session
     ),
-    withOptionalSession(
+    applyOptionalSession(
       Participation.deleteOne({ _id: participation._id }),
       session
     ),
@@ -107,7 +106,7 @@ const removeUserFromActiveIssue = async ({
   summary.activeIssueEvaluationsDeleted +=
     deleteIssueEvaluationsResult.deletedCount || 0;
 
-  const remainingParticipations = await withOptionalSession(
+  const remainingParticipations = await applyOptionalSession(
     Participation.find({ issue: issue._id }),
     session
   );
@@ -167,7 +166,7 @@ const removeUserFromFinishedIssue = async ({
     session,
   });
 
-  await withOptionalSession(
+  await applyOptionalSession(
     Notification.deleteMany({
       issue: issue._id,
       expert: user._id,
@@ -182,7 +181,7 @@ const removeUserFromFinishedIssue = async ({
     session,
   });
 
-  const hiddenExits = await withOptionalSession(
+  const hiddenExits = await applyOptionalSession(
     ExitUserIssue.find({
       issue: issue._id,
       hidden: true,
@@ -296,7 +295,7 @@ export const createUserAdminFlow = async ({
     });
   }
 
-  const existingUser = await withOptionalSession(
+  const existingUser = await applyOptionalSession(
     User.findOne({ email }).lean(),
     session
   );
@@ -349,7 +348,7 @@ export const updateUserAdminFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(id), session);
+  const user = await applyOptionalSession(User.findById(id), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {
@@ -390,7 +389,7 @@ export const updateUserAdminFlow = async ({
       });
     }
 
-    const emailInUse = await withOptionalSession(
+    const emailInUse = await applyOptionalSession(
       User.findOne({
         email: cleanEmail,
         _id: { $ne: user._id },
@@ -464,11 +463,11 @@ export const reassignIssueAdminFlow = async ({
   }
 
   const [issue, newAdmin] = await Promise.all([
-    withOptionalSession(
+    applyOptionalSession(
       Issue.findById(issueId).populate("admin", "name email role"),
       session
     ),
-    withOptionalSession(
+    applyOptionalSession(
       User.findById(newAdminId).select("name email role accountConfirm"),
       session
     ),
@@ -535,7 +534,7 @@ export const deleteUserAdminFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(targetUserId), session);
+  const user = await applyOptionalSession(User.findById(targetUserId), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {
@@ -550,7 +549,7 @@ export const deleteUserAdminFlow = async ({
     );
   }
 
-  const ownedIssuesCount = await withOptionalSession(
+  const ownedIssuesCount = await applyOptionalSession(
     Issue.countDocuments({ admin: user._id }),
     session
   );
@@ -562,7 +561,7 @@ export const deleteUserAdminFlow = async ({
     );
   }
 
-  const participations = await withOptionalSession(
+  const participations = await applyOptionalSession(
     Participation.find({ expert: user._id }),
     session
   );
@@ -570,7 +569,7 @@ export const deleteUserAdminFlow = async ({
   const issueIds = [...new Set(participations.map((item) => toIdString(item.issue)))];
 
   const issues = issueIds.length
-    ? await withOptionalSession(Issue.find({ _id: { $in: issueIds } }), session)
+    ? await applyOptionalSession(Issue.find({ _id: { $in: issueIds } }), session)
     : [];
 
   const participationsByIssueId = new Map(
@@ -612,7 +611,7 @@ export const deleteUserAdminFlow = async ({
     });
   }
 
-  const deleteDomainsResult = await withOptionalSession(
+  const deleteDomainsResult = await applyOptionalSession(
     ExpressionDomain.deleteMany({
       user: user._id,
       isGlobal: false,
@@ -622,14 +621,14 @@ export const deleteUserAdminFlow = async ({
 
   summary.domainsDeleted = deleteDomainsResult.deletedCount;
 
-  await withOptionalSession(
+  await applyOptionalSession(
     Notification.deleteMany({
       expert: user._id,
     }),
     session
   );
 
-  await withOptionalSession(
+  await applyOptionalSession(
     User.deleteOne({
       _id: user._id,
     }),

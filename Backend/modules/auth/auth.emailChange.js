@@ -6,9 +6,7 @@ import {
   createConflictError,
   createNotFoundError,
 } from "../../utils/common/errors.js";
-
-const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
+import { applyOptionalSession } from "../../utils/common/mongoose.js";
 
 
 
@@ -25,7 +23,7 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(User.findById(userId), session);
+  const user = await applyOptionalSession(User.findById(userId), session);
 
   if (!user) {
     throw createNotFoundError("User not found", {
@@ -44,7 +42,7 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
     );
   }
 
-  const existingUser = await withOptionalSession(
+  const existingUser = await applyOptionalSession(
     User.findOne({ email: cleanEmail }).select("_id").lean(),
     session
   );
@@ -81,7 +79,7 @@ export const confirmAuthenticatedUserEmailChangeFlow = async ({
     });
   }
 
-  const user = await withOptionalSession(
+  const user = await applyOptionalSession(
     User.findOne({ emailTokenConfirm: cleanToken }),
     session
   );
@@ -111,7 +109,7 @@ export const confirmAuthenticatedUserEmailChangeFlow = async ({
     });
   }
 
-  const existingUser = await withOptionalSession(
+  const existingUser = await applyOptionalSession(
     User.findOne({ email: newEmail }).select("_id").lean(),
     session
   );
