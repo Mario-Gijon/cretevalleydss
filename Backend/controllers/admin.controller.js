@@ -18,7 +18,7 @@ import {
   getIssueExpertsProgressPayload,
   getIssueExpertEvaluationsPayload,
   getIssueExpertWeightsPayload,
-} from "../modules/admin/admin.issueReads.js";
+} from "../modules/admin/issueReads/index.js";
 
 import {
   createAdminUser as createAdminUserUseCase,
