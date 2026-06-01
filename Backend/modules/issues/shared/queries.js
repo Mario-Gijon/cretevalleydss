@@ -20,12 +20,16 @@ const validateIssueIdOrThrow = (issueId) => {
 export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   validateIssueIdOrThrow(issueId);
 
-  const { select, lean = true } = options;
+  const { select, lean = true, session = null } = options;
 
   let query = Issue.findById(issueId);
 
   if (select) {
     query = query.select(select);
+  }
+
+  if (session) {
+    query = query.session(session);
   }
 
   const issue = lean ? await query.lean() : await query;
@@ -38,9 +42,6 @@ export const getIssueByIdOrThrow = async (issueId, options = {}) => {
 
   return issue;
 };
-
-
-
 
 export const getNextConsensusPhase = async (issueId) => {
   const issue = await Issue.findById(issueId).select("consensusPhase").lean();

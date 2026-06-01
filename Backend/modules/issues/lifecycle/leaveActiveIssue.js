@@ -1,9 +1,9 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Participation } from "../../../models/Participations.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
-import { getIssueOrThrow } from "./getLifecycleIssue.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
@@ -60,7 +60,7 @@ export const leaveActiveIssue = async ({
   userId,
   session = null,
 }) => {
-  const issue = await getIssueOrThrow({ issueId, session });
+  const issue = await getIssueByIdOrThrow(issueId, { lean: false, session });
 
   if (!issue.active) {
     throw createBadRequestError("Issue is not active");

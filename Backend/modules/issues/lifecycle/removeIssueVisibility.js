@@ -10,10 +10,9 @@ import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { getNextConsensusPhase } from "../shared/queries.js";
+import { getIssueByIdOrThrow, getNextConsensusPhase } from "../shared/queries.js";
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 import { registerUserExit } from "./leaveActiveIssue.js";
-import { getIssueOrThrow } from "./getLifecycleIssue.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
@@ -48,7 +47,7 @@ export const deleteActiveIssueAsAdmin = async ({
   userId,
   session = null,
 }) => {
-  const issue = await getIssueOrThrow({ issueId, session });
+  const issue = await getIssueByIdOrThrow(issueId, { lean: false, session });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("You are not the admin of this issue");
@@ -93,7 +92,7 @@ export const hideFinishedIssueForUser = async ({
   userId,
   session = null,
 }) => {
-  const issue = await getIssueOrThrow({ issueId, session });
+  const issue = await getIssueByIdOrThrow(issueId, { lean: false, session });
 
   if (issue.active) {
     throw createBadRequestError("Issue is still active");
