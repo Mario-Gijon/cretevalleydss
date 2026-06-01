@@ -1,4 +1,3 @@
-import { Consensus } from "../../../models/Consensus.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
@@ -7,6 +6,7 @@ import { getIssueByIdOrThrow, getNextConsensusPhase } from "../shared/queries.js
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 import { registerUserExit } from "./leaveActiveIssue.js";
 import { deleteIssueCascade } from "./deleteIssueCascade.js";
+import { resolveIssueExitPhase } from "./resolveIssueExitPhase.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
@@ -36,19 +36,6 @@ export const getFinishedIssueVisibleUserIds = async ({
     issue.admin,
     ...acceptedParticipations.map((participation) => participation.expert),
   ]);
-};
-
-const getExitPhaseForIssue = async ({
-  issueId,
-  fallbackIfMissing,
-  session = null,
-}) => {
-  const latestConsensus = await applyOptionalSession(
-    Consensus.findOne({ issue: issueId }).sort({ phase: -1 }),
-    session
-  );
-
-  return latestConsensus ? latestConsensus.phase + 1 : fallbackIfMissing;
 };
 
 export const hideFinishedIssueForUser = async ({
@@ -125,7 +112,7 @@ export const hideFinishedIssueForDeletedUser = async ({
   reason,
   session = null,
 }) => {
-  const phase = await getExitPhaseForIssue({
+  const phase = await resolveIssueExitPhase({
     issueId: issue._id,
     fallbackIfMissing: null,
     session,

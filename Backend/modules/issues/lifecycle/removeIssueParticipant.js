@@ -1,4 +1,3 @@
-import { Consensus } from "../../../models/Consensus.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
@@ -6,20 +5,8 @@ import { Participation } from "../../../models/Participations.js";
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 import { registerUserExit } from "./leaveActiveIssue.js";
 import { deleteIssueCascade } from "./deleteIssueCascade.js";
+import { resolveIssueExitPhase } from "./resolveIssueExitPhase.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
-
-const getExitPhaseForIssue = async ({
-  issueId,
-  fallbackIfMissing,
-  session = null,
-}) => {
-  const latestConsensus = await applyOptionalSession(
-    Consensus.findOne({ issue: issueId }).sort({ phase: -1 }),
-    session
-  );
-
-  return latestConsensus ? latestConsensus.phase + 1 : fallbackIfMissing;
-};
 
 const syncActiveIssueStageAfterUserRemoval = async ({
   issue,
@@ -100,7 +87,7 @@ export const removeIssueParticipantFromActiveIssue = async ({
     };
   }
 
-  const phase = await getExitPhaseForIssue({
+  const phase = await resolveIssueExitPhase({
     issueId: issue._id,
     fallbackIfMissing: 1,
     session,

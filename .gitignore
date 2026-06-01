@@ -19,6 +19,7 @@ __pycache__/
 *~
 .codex
 cloc-report.sh
+tmp/
 
 # Ignorar build and push de docker
 build_and_push.sh
