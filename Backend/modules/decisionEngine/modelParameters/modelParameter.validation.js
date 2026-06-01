@@ -14,6 +14,7 @@ import {
   MODEL_PARAMETER_STRUCTURE_REGISTRY,
   resolveParameterStructureKey,
 } from "./modelParameter.registry.js";
+import { hasOwnKey } from "../../../utils/common/objects.js";
 
 export const validateAndNormalizeModelParametersOrThrow = ({
   model,
@@ -106,10 +107,7 @@ export const validateAndNormalizeModelParametersOrThrow = ({
 
   for (const [parameterKey, parameter] of parameterByKey.entries()) {
     const isRequired = parameter?.required === true;
-    const hasProvidedValue = Object.prototype.hasOwnProperty.call(
-      rawParamValues,
-      parameterKey
-    );
+    const hasProvidedValue = hasOwnKey(rawParamValues, parameterKey);
 
     let value = hasProvidedValue ? rawParamValues[parameterKey] : undefined;
 

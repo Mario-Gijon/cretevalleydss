@@ -6,7 +6,7 @@ import {
   toInvalid,
   toValid,
 } from "../modelParameter.shared.js";
-import { isPlainObject } from "../../../../utils/common/objects.js";
+import { hasOwnKey, isPlainObject } from "../../../../utils/common/objects.js";
 
 const buildLeafCriterionIndex = (leafCriteria) => {
   const allowedCriterionKeys = new Set();
@@ -187,7 +187,7 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
 
   if (requiredForEachCriterion) {
     const missingCriterionKey = canonicalByCriterion.find(
-      (criterionKey) => !Object.prototype.hasOwnProperty.call(normalizedByCriterion, criterionKey)
+      (criterionKey) => !hasOwnKey(normalizedByCriterion, criterionKey)
     );
 
     if (missingCriterionKey) {

@@ -6,7 +6,7 @@ import {
 } from "../../../utils/common/strings.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { isPlainObject } from "../../../utils/common/objects.js";
+import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 
 const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
   return criteriaNodes.map((node) => {
@@ -64,10 +64,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const selectedModelId = normalizeString(issueInfo.selectedModelId);
   const alternatives = issueInfo.alternatives;
   const isConsensus = issueInfo.isConsensus === true;
-  const hasSimulateConsensus = Object.prototype.hasOwnProperty.call(
-    issueInfo,
-    "simulateConsensus"
-  );
+  const hasSimulateConsensus = hasOwnKey(issueInfo, "simulateConsensus");
   const simulateConsensus = hasSimulateConsensus
     ? issueInfo.simulateConsensus
     : false;

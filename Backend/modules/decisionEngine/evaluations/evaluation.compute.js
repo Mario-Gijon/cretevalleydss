@@ -20,11 +20,8 @@ import {
 } from "../modelExecution/index.js";
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
 import { getOrderedAlternativeAndCriterionNames } from "./structures/shared/alternativeEvaluation.helpers.js";
-import { isPlainObject } from "../../../utils/common/objects.js";
+import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
-
-const hasOwn = (value, key) =>
-  Object.prototype.hasOwnProperty.call(value || {}, key);
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
@@ -309,7 +306,7 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
   const { criterionNames } = await getOrderedCriterionNames({ issue });
   const normalizedWeightsByCriterion = {};
   const orderedWeights = criterionNames.map((criterionName) => {
-    if (!hasOwn(computeResult.weightsByCriterion, criterionName)) {
+    if (!hasOwnKey(computeResult.weightsByCriterion || {}, criterionName)) {
       throw createBadRequestError(
         `Criteria weighting compute result is missing weight for criterion '${criterionName}'`,
         {
