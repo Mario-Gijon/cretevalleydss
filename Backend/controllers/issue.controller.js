@@ -43,10 +43,10 @@ import {
   updateUserExpressionDomain,
 } from "../modules/expressionDomains/index.js";
 import {
-  changeInvitationStatusFlow,
   getNotificationsPayload,
-  markAllNotificationsAsReadFlow,
-  removeNotificationForUserFlow,
+  markAllNotificationsAsRead as markAllNotificationsAsReadUseCase,
+  respondToIssueInvitation as respondToIssueInvitationUseCase,
+  removeNotificationForUser as removeNotificationForUserUseCase,
 } from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
@@ -297,7 +297,7 @@ export const getNotifications = async (req, res) => {
 };
 
 export const markAllNotificationsAsRead = async (req, res) => {
-  const result = await markAllNotificationsAsReadFlow({
+  const result = await markAllNotificationsAsReadUseCase({
     userId: req.uid,
   });
 
@@ -312,7 +312,7 @@ export const changeInvitationStatus = async (req, res) => {
     let result = null;
 
     await session.withTransaction(async () => {
-      result = await changeInvitationStatusFlow({
+      result = await respondToIssueInvitationUseCase({
         issueId: id,
         userId: req.uid,
         action,
@@ -329,7 +329,7 @@ export const changeInvitationStatus = async (req, res) => {
 export const removeNotificationById = async (req, res) => {
   const notificationId = req.body?.notificationId;
 
-  const result = await removeNotificationForUserFlow({
+  const result = await removeNotificationForUserUseCase({
     notificationId,
     userId: req.uid,
   });
