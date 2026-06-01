@@ -1,6 +1,40 @@
 import { orderDocsByIdList } from "./ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
+export const buildCriteriaTreeFromDocs = ({
+  criteriaDocs,
+  mapNode,
+  sortChildren = null,
+}) => {
+  const nodes = criteriaDocs.map(mapNode);
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const roots = [];
+
+  for (const node of nodes) {
+    if (node.parentId && nodesById.has(node.parentId)) {
+      nodesById.get(node.parentId).children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  if (typeof sortChildren === "function") {
+    const sortRecursively = (items) => {
+      items.sort(sortChildren);
+
+      items.forEach((item) => {
+        if (item.children.length > 0) {
+          sortRecursively(item.children);
+        }
+      });
+    };
+
+    sortRecursively(roots);
+  }
+
+  return roots;
+};
+
 export const buildIssueCriteriaTree = (criteria, issue) => {
   const normalizedCriteria = criteria.map((criterion) => ({
     id: toIdString(criterion._id),

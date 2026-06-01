@@ -1,4 +1,6 @@
 import { toIdString } from "../../../utils/common/ids.js";
+import { hasOwnKey } from "../../../utils/common/objects.js";
+import { buildCriteriaTreeFromDocs } from "../../issues/shared/criteriaTree.js";
 
 export const sortByNameStable = (a, b) => {
   const byName = a.name.localeCompare(
@@ -16,41 +18,20 @@ export const sortByNameStable = (a, b) => {
 };
 
 export const buildCriteriaTreeAdmin = (criteriaDocs) => {
-  const nodes = criteriaDocs.map((criterion) => ({
-    id: toIdString(criterion._id),
-    name: criterion.name,
-    type: criterion.type,
-    isLeaf: criterion.isLeaf,
-    parentId: criterion.parentCriterion
-      ? toIdString(criterion.parentCriterion)
-      : null,
-    children: [],
-  }));
-
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
-  const roots = [];
-
-  for (const node of nodes) {
-    if (node.parentId && nodesById.has(node.parentId)) {
-      nodesById.get(node.parentId).children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  const sortRecursively = (items) => {
-    items.sort(sortByNameStable);
-
-    items.forEach((item) => {
-      if (item.children.length > 0) {
-        sortRecursively(item.children);
-      }
-    });
-  };
-
-  sortRecursively(roots);
-
-  return roots;
+  return buildCriteriaTreeFromDocs({
+    criteriaDocs,
+    mapNode: (criterion) => ({
+      id: toIdString(criterion._id),
+      name: criterion.name,
+      type: criterion.type,
+      isLeaf: criterion.isLeaf,
+      parentId: criterion.parentCriterion
+        ? toIdString(criterion.parentCriterion)
+        : null,
+      children: [],
+    }),
+    sortChildren: sortByNameStable,
+  });
 };
 
 export const getIssueStageMeta = (stage) => {
@@ -131,7 +112,7 @@ export const orderObjectByKeys = (obj, orderedKeys) => {
   const usedKeys = new Set();
 
   for (const key of orderedKeys) {
-    orderedObject[key] = Object.prototype.hasOwnProperty.call(obj, key)
+    orderedObject[key] = hasOwnKey(obj, key)
       ? obj[key]
       : null;
     usedKeys.add(key);
