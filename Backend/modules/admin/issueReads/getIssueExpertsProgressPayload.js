@@ -11,7 +11,7 @@ import { toIdString } from "../../../utils/common/ids.js";
 import {
   buildExpertProgressRow,
   buildIssueEvaluationStatsByExpert,
-  countExpectedEvaluationCellsPerExpert,
+  resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import { loadIssueForExpertsProgressOrThrow } from "./adminIssueReadLoaders.js";
 
@@ -58,15 +58,18 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       .lean(),
   ]);
 
-  const alternativeEvaluationStructureKey = issue.alternativeEvaluationStructureKey;
-
-  const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
-    alternativesCount: alternatives.length,
-    leafCriteriaCount: leafCriteria.length,
-    alternativeEvaluationStructureKey,
+  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert({
+    issue,
+    alternatives,
+    criteria: leafCriteria,
   });
 
-  const evaluationMap = buildIssueEvaluationStatsByExpert(evaluationAgg);
+  const evaluationMap = await buildIssueEvaluationStatsByExpert({
+    issue,
+    evaluationDocs: evaluationAgg,
+    alternatives,
+    criteria: leafCriteria,
+  });
 
   const weightMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])

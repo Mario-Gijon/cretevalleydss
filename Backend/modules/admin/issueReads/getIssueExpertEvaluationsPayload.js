@@ -17,8 +17,7 @@ import {
   orderObjectByKeys,
 } from "./adminIssueReadPayloads.js";
 import {
-  countExpectedEvaluationCellsPerExpert,
-  isFilledValue,
+  resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import {
   loadIssueForExpertEvaluationsOrThrow,
@@ -29,6 +28,11 @@ import { createNotFoundError } from "../../../utils/common/errors.js";
 
 const buildPairKey = (alternativeA, alternativeB) =>
   `${alternativeA}::${alternativeB}`;
+
+const isFilledValue = (value) =>
+  value !== null &&
+  value !== undefined &&
+  !(typeof value === "string" && value.trim() === "");
 
 const buildCollectiveValueCell = (value) => ({
   value:
@@ -239,6 +243,11 @@ export const getIssueExpertEvaluationsPayload = async ({
   const consensusPhase = evaluationDoc?.consensusPhase ?? null;
   const collectiveSource =
     latestAlternativeStageResult?.collectiveEvaluations || null;
+  const expectedCells = await resolveExpectedEvaluationCellsPerExpert({
+    issue,
+    alternatives: orderedAlternatives,
+    criteria: orderedLeafCriteria,
+  });
 
   const usesPairwiseAlternatives =
     alternativeEvaluationStructureKey ===
@@ -307,12 +316,7 @@ export const getIssueExpertEvaluationsPayload = async ({
       expert: buildAdminExpertIdentityPayload(expert, expertId),
       participation: buildAdminExpertParticipationPayload(participation),
       stats: {
-        expectedCells: countExpectedEvaluationCellsPerExpert({
-          alternativesCount: orderedAlternatives.length,
-          leafCriteriaCount: orderedLeafCriteria.length,
-          alternativeEvaluationStructureKey:
-            "alternativePairwiseByCriterion",
-        }),
+        expectedCells,
         filledCells,
         lastEvaluationAt,
       },
@@ -358,11 +362,7 @@ export const getIssueExpertEvaluationsPayload = async ({
     expert: buildAdminExpertIdentityPayload(expert, expertId),
     participation: buildAdminExpertParticipationPayload(participation),
     stats: {
-      expectedCells: countExpectedEvaluationCellsPerExpert({
-        alternativesCount: orderedAlternatives.length,
-        leafCriteriaCount: orderedLeafCriteria.length,
-        alternativeEvaluationStructureKey,
-      }),
+      expectedCells,
       filledCells,
       lastEvaluationAt,
     },

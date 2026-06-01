@@ -1,82 +1,89 @@
 import { toIdString } from "../../../utils/common/ids.js";
+import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
 import { buildParticipantExpertPayload } from "./adminIssueReadPayloads.js";
 
-export const countExpectedEvaluationCellsPerExpert = ({
-  alternativesCount,
-  leafCriteriaCount,
-  alternativeEvaluationStructureKey,
+const toProgressStats = (displayPayload) => {
+  const progress = displayPayload?.meta?.progress;
+
+  const expectedItems = Number(progress?.expectedItems);
+  const totalItems = Number(progress?.totalItems);
+  const filledItems = Number(progress?.filledItems);
+
+  return {
+    expectedItems: Number.isFinite(expectedItems) ? expectedItems : 0,
+    totalItems: Number.isFinite(totalItems) ? totalItems : 0,
+    filledItems: Number.isFinite(filledItems) ? filledItems : 0,
+  };
+};
+
+const normalizeAlternativesForProgress = (alternatives = []) =>
+  alternatives.map((alternative, index) => ({
+    name: String(
+      alternative?.name ?? alternative?.id ?? alternative?._id ?? `alternative_${index + 1}`
+    ),
+  }));
+
+const normalizeCriteriaForProgress = (criteria = []) =>
+  criteria.map((criterion, index) => ({
+    name: String(
+      criterion?.name ?? criterion?.id ?? criterion?._id ?? `criterion_${index + 1}`
+    ),
+    expressionDomain: criterion?.expressionDomain || null,
+  }));
+
+export const buildPlaceholderAlternatives = (count = 0) =>
+  Array.from({ length: Math.max(Number(count) || 0, 0) }, (_, index) => ({
+    name: `alternative_${index + 1}`,
+  }));
+
+export const buildPlaceholderCriteria = (count = 0) =>
+  Array.from({ length: Math.max(Number(count) || 0, 0) }, (_, index) => ({
+    name: `criterion_${index + 1}`,
+    expressionDomain: null,
+  }));
+
+const buildStructureProgressMeta = async ({
+  issue,
+  storedEvaluation,
+  alternatives = [],
+  criteria = [],
 }) => {
-  if (!alternativesCount || !leafCriteriaCount) {
-    return 0;
-  }
+  const structure = getEvaluationStructureOrThrow(
+    issue.alternativeEvaluationStructureKey
+  );
 
-  if (
-    alternativeEvaluationStructureKey ===
-    "alternativePairwiseByCriterion"
-  ) {
-    return (
-      alternativesCount *
-      leafCriteriaCount *
-      Math.max(alternativesCount - 1, 0)
-    );
-  }
+  const displayPayload = await structure.get({
+    storedEvaluation,
+    issue,
+    alternatives: normalizeAlternativesForProgress(alternatives),
+    criteria: normalizeCriteriaForProgress(criteria),
+    includeMeta: true,
+  });
 
-  return alternativesCount * leafCriteriaCount;
+  return toProgressStats(displayPayload);
 };
 
-export const isFilledValue = (value) =>
-  !(value === null || value === undefined || value === "");
+export const resolveExpectedEvaluationCellsPerExpert = async ({
+  issue,
+  alternatives = [],
+  criteria = [],
+}) => {
+  const progress = await buildStructureProgressMeta({
+    issue,
+    storedEvaluation: null,
+    alternatives,
+    criteria,
+  });
 
-export const countPayloadCells = (payload = {}) => {
-  if (payload?.cells && typeof payload.cells === "object") {
-    return Object.keys(payload.cells).length;
-  }
-
-  const comparisonsByCriterion = payload?.comparisonsByCriterion;
-  if (comparisonsByCriterion && typeof comparisonsByCriterion === "object") {
-    return Object.values(comparisonsByCriterion).reduce(
-      (total, criterionComparisons) =>
-        total +
-        (criterionComparisons && typeof criterionComparisons === "object"
-          ? Object.keys(criterionComparisons).length
-          : 0),
-      0
-    );
-  }
-
-  return 0;
+  return progress.expectedItems;
 };
 
-export const countFilledPayloadCells = (payload = {}) => {
-  if (payload?.cells && typeof payload.cells === "object") {
-    return Object.values(payload.cells).filter((cell) =>
-      isFilledValue(cell?.value)
-    ).length;
-  }
-
-  const comparisonsByCriterion = payload?.comparisonsByCriterion;
-  if (comparisonsByCriterion && typeof comparisonsByCriterion === "object") {
-    return Object.values(comparisonsByCriterion).reduce(
-      (total, criterionComparisons) => {
-        if (!criterionComparisons || typeof criterionComparisons !== "object") {
-          return total;
-        }
-
-        return (
-          total +
-          Object.values(criterionComparisons).filter((cell) =>
-            isFilledValue(cell?.value)
-          ).length
-        );
-      },
-      0
-    );
-  }
-
-  return 0;
-};
-
-export const buildIssueEvaluationStatsByExpert = (evaluationDocs = []) => {
+export const buildIssueEvaluationStatsByExpert = async ({
+  issue,
+  evaluationDocs = [],
+  alternatives = [],
+  criteria = [],
+}) => {
   const statsByExpert = new Map();
 
   for (const evaluationDoc of evaluationDocs) {
@@ -87,11 +94,16 @@ export const buildIssueEvaluationStatsByExpert = (evaluationDocs = []) => {
       lastEvaluationAt: null,
     };
 
-    const payload = evaluationDoc.payload || {};
+    const progress = await buildStructureProgressMeta({
+      issue,
+      storedEvaluation: evaluationDoc,
+      alternatives,
+      criteria,
+    });
     const submittedAt = evaluationDoc.submittedAt || null;
 
-    previous.totalDocs += countPayloadCells(payload);
-    previous.filledDocs += countFilledPayloadCells(payload);
+    previous.totalDocs += progress.totalItems;
+    previous.filledDocs += progress.filledItems;
 
     if (
       submittedAt &&
@@ -107,20 +119,35 @@ export const buildIssueEvaluationStatsByExpert = (evaluationDocs = []) => {
   return statsByExpert;
 };
 
-export const buildIssueEvaluationStatsByIssue = (evaluationDocs = []) => {
+export const buildIssueEvaluationStatsByIssue = async ({
+  evaluationDocs = [],
+  issuesById = new Map(),
+  alternativesByIssueId = new Map(),
+  criteriaByIssueId = new Map(),
+}) => {
   const statsByIssue = new Map();
 
   for (const evaluationDoc of evaluationDocs) {
     const issueId = toIdString(evaluationDoc.issue);
+    const issue = issuesById.get(issueId);
+
+    if (!issue) {
+      continue;
+    }
 
     const previous = statsByIssue.get(issueId) || {
       filledCells: 0,
       lastEvaluationAt: null,
     };
 
-    previous.filledCells += countFilledPayloadCells(
-      evaluationDoc.payload || {}
-    );
+    const progress = await buildStructureProgressMeta({
+      issue,
+      storedEvaluation: evaluationDoc,
+      alternatives: alternativesByIssueId.get(issueId) || [],
+      criteria: criteriaByIssueId.get(issueId) || [],
+    });
+
+    previous.filledCells += progress.filledItems;
 
     const submittedAt = evaluationDoc.submittedAt || null;
 

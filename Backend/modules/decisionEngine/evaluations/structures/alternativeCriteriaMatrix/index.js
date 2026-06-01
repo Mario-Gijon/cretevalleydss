@@ -18,6 +18,9 @@ const buildEmptyCell = (expressionDomain = null) => ({
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
 
+const isFilledValue = (value) =>
+  !(value === null || value === undefined || value === "");
+
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
   SUBMIT: "submit",
@@ -159,7 +162,81 @@ const buildExpectedCellMetadata = ({ alternativeNames, criteria }) => {
   };
 };
 
-const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
+const resolveAlternativesAndCriteria = async ({ issue, alternatives, criteria }) => {
+  const normalizedAlternatives = Array.isArray(alternatives)
+    ? alternatives
+        .map((alternative) =>
+          typeof alternative === "string"
+            ? alternative
+            : String(alternative?.name || "")
+        )
+        .map((name) => name.trim())
+        .filter(Boolean)
+    : [];
+
+  const normalizedCriteria = Array.isArray(criteria)
+    ? criteria
+        .map((criterion) =>
+          typeof criterion === "string"
+            ? {
+                name: criterion.trim(),
+                expressionDomain: null,
+              }
+            : {
+                name: String(criterion?.name || "").trim(),
+                expressionDomain: criterion?.expressionDomain || null,
+              }
+        )
+        .filter((criterion) => criterion.name)
+    : [];
+
+  if (normalizedAlternatives.length > 0 && normalizedCriteria.length > 0) {
+    return {
+      alternativeNames: normalizedAlternatives,
+      criteria: normalizedCriteria,
+    };
+  }
+
+  const issueContext = await getOrderedAlternativeAndCriterionNames({ issue });
+
+  return {
+    alternativeNames: issueContext.alternativeNames,
+    criteria: issueContext.criteria,
+  };
+};
+
+const buildProgressMeta = ({ storedEvaluation, alternativeNames, criteria }) => {
+  const storedCells =
+    isPlainObject(storedEvaluation?.payload?.cells)
+      ? storedEvaluation.payload.cells
+      : {};
+
+  const totalItems = Object.keys(storedCells).length;
+  const filledItems = Object.values(storedCells).filter((cell) =>
+    isFilledValue(cell?.value)
+  ).length;
+
+  const expectedItems =
+    alternativeNames.length > 0 && criteria.length > 0
+      ? alternativeNames.length * criteria.length
+      : 0;
+
+  return {
+    progress: {
+      expectedItems,
+      totalItems,
+      filledItems,
+    },
+  };
+};
+
+const normalizePayloadOrThrow = async ({
+  payload,
+  issue,
+  requireValue,
+  alternatives,
+  criteria,
+}) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("payload must be an object", {
       field: "payload",
@@ -184,12 +261,18 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
     });
   }
 
-  const { alternativeNames, criteria } =
-    await getOrderedAlternativeAndCriterionNames({ issue });
+  const {
+    alternativeNames,
+    criteria: resolvedCriteria,
+  } = await resolveAlternativesAndCriteria({
+    issue,
+    alternatives,
+    criteria,
+  });
   const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
     buildExpectedCellMetadata({
     alternativeNames,
-    criteria,
+    criteria: resolvedCriteria,
   });
   const expectedCellKeySet = new Set(expectedCellKeys);
 
@@ -226,13 +309,24 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
   };
 };
 
-const buildGetPayload = async ({ storedEvaluation, issue }) => {
-  const { alternativeNames, criteria } =
-    await getOrderedAlternativeAndCriterionNames({ issue });
+const buildGetPayload = async ({
+  storedEvaluation,
+  issue,
+  alternatives,
+  criteria,
+}) => {
+  const {
+    alternativeNames,
+    criteria: resolvedCriteria,
+  } = await resolveAlternativesAndCriteria({
+    issue,
+    alternatives,
+    criteria,
+  });
   const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
     buildExpectedCellMetadata({
     alternativeNames,
-    criteria,
+    criteria: resolvedCriteria,
   });
 
   const storedCells = isPlainObject(storedEvaluation?.payload?.cells)
@@ -268,7 +362,13 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
     return accumulator;
   }, {});
 
-  return { cells };
+  return {
+    payload: { cells },
+    context: {
+      alternativeNames,
+      criteria: resolvedCriteria,
+    },
+  };
 };
 
 export const alternativeCriteriaMatrixStructure = Object.freeze({
@@ -278,20 +378,37 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
     includeNonConsensusConsensusMeasureInExpertRatings: false,
     includeCollectiveEvaluationsLocalizedByExpert: false,
   },
-  async get({ storedEvaluation, issue }) {
-    return buildGetPayload({
+  async get({ storedEvaluation, issue, alternatives, criteria, includeMeta = false }) {
+    const { payload, context } = await buildGetPayload({
       storedEvaluation,
       issue,
+      alternatives,
+      criteria,
     });
+
+    if (!includeMeta) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      meta: buildProgressMeta({
+        storedEvaluation,
+        alternativeNames: context.alternativeNames,
+        criteria: context.criteria,
+      }),
+    };
   },
 
-  async save({ payload, issue, mode }) {
+  async save({ payload, issue, mode, alternatives, criteria }) {
     const requireValue = resolveRequireValueFromModeOrThrow(mode);
 
     return normalizePayloadOrThrow({
       payload,
       issue,
       requireValue,
+      alternatives,
+      criteria,
     });
   },
 

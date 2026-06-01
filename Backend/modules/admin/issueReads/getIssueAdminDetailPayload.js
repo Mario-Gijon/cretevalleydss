@@ -22,7 +22,7 @@ import {
 } from "./adminIssueReadPayloads.js";
 import {
   buildIssueEvaluationStatsByExpert,
-  countExpectedEvaluationCellsPerExpert,
+  resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import { loadIssueForAdminDetailOrThrow } from "./adminIssueReadLoaders.js";
 
@@ -83,14 +83,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       .lean(),
   ]);
 
-  const issueEvaluationStructure = issue.alternativeEvaluationStructureKey;
   const alternativesCount = orderedAlternatives.length;
   const leafCriteriaCount = orderedLeafCriteria.length;
 
-  const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
-    alternativesCount,
-    leafCriteriaCount,
-    alternativeEvaluationStructureKey: issueEvaluationStructure,
+  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert({
+    issue,
+    alternatives: orderedAlternatives,
+    criteria: orderedLeafCriteria,
   });
 
   const criteriaTree = buildCriteriaTreeAdmin(allCriteria);
@@ -106,7 +105,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     finalWeightsByName[criterion.name] = value;
   });
 
-  const evaluationAggMap = buildIssueEvaluationStatsByExpert(evaluationDocs);
+  const evaluationAggMap = await buildIssueEvaluationStatsByExpert({
+    issue,
+    evaluationDocs,
+    alternatives: orderedAlternatives,
+    criteria: orderedLeafCriteria,
+  });
 
   const weightDocMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])

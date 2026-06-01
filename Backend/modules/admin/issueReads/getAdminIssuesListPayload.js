@@ -13,8 +13,10 @@ import {
   getIssueStageMeta,
 } from "./adminIssueReadPayloads.js";
 import {
+  buildPlaceholderAlternatives,
+  buildPlaceholderCriteria,
   buildIssueEvaluationStatsByIssue,
-  countExpectedEvaluationCellsPerExpert,
+  resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 
 const buildAdminIssuesFilter = ({
@@ -239,10 +241,29 @@ export const getAdminIssuesListPayload = async ({
     scenariosAgg.map((row) => [toIdString(row._id), row.total || 0])
   );
 
-  const evaluationsMap = buildIssueEvaluationStatsByIssue(evaluationsAgg);
+  const issuesById = new Map(issues.map((issue) => [toIdString(issue._id), issue]));
+  const alternativesByIssueId = new Map(
+    issueIds.map((issueId) => {
+      const key = toIdString(issueId);
+      return [key, buildPlaceholderAlternatives(alternativesMap.get(key) || 0)];
+    })
+  );
+  const criteriaByIssueId = new Map(
+    issueIds.map((issueId) => {
+      const key = toIdString(issueId);
+      return [key, buildPlaceholderCriteria(leafCriteriaMap.get(key) || 0)];
+    })
+  );
+
+  const evaluationsMap = await buildIssueEvaluationStatsByIssue({
+    evaluationDocs: evaluationsAgg,
+    issuesById,
+    alternativesByIssueId,
+    criteriaByIssueId,
+  });
 
   return {
-    issues: issues.map((issue) => {
+    issues: await Promise.all(issues.map(async (issue) => {
       const issueId = toIdString(issue._id);
 
       const totalAlternatives = alternativesMap.get(issueId) || 0;
@@ -268,16 +289,14 @@ export const getAdminIssuesListPayload = async ({
         lastEvaluationAt: null,
       };
 
-      const alternativeEvaluationStructureKey = issue.alternativeEvaluationStructureKey;
-
       const modelAlternativeEvaluationStructureKey = issue.model
         ? issue.model.alternativeEvaluationStructureKey
         : null;
 
-      const expectedPerExpert = countExpectedEvaluationCellsPerExpert({
-        alternativesCount: totalAlternatives,
-        leafCriteriaCount: totalLeafCriteria,
-        alternativeEvaluationStructureKey,
+      const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert({
+        issue,
+        alternatives: alternativesByIssueId.get(issueId) || [],
+        criteria: criteriaByIssueId.get(issueId) || [],
       });
 
       return {
@@ -348,6 +367,6 @@ export const getAdminIssuesListPayload = async ({
             participationStats.evaluationsDoneAccepted || 0,
         }),
       };
-    }),
+    })),
   };
 };

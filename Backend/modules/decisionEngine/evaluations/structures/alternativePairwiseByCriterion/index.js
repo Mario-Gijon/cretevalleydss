@@ -18,6 +18,9 @@ const buildEmptyCell = (expressionDomain = null) => ({
 const normalizeText = (value) =>
   typeof value === "string" ? value.trim() : "";
 
+const isFilledValue = (value) =>
+  !(value === null || value === undefined || value === "");
+
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
   SUBMIT: "submit",
@@ -165,6 +168,92 @@ const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) => {
   return expectedPairsByCriterion;
 };
 
+const resolveAlternativesAndCriteria = async ({ issue, alternatives, criteria }) => {
+  const normalizedAlternatives = Array.isArray(alternatives)
+    ? alternatives
+        .map((alternative) =>
+          typeof alternative === "string"
+            ? alternative
+            : String(alternative?.name || "")
+        )
+        .map((name) => name.trim())
+        .filter(Boolean)
+    : [];
+
+  const normalizedCriteria = Array.isArray(criteria)
+    ? criteria
+        .map((criterion) =>
+          typeof criterion === "string"
+            ? {
+                name: criterion.trim(),
+                expressionDomain: null,
+              }
+            : {
+                name: String(criterion?.name || "").trim(),
+                expressionDomain: criterion?.expressionDomain || null,
+              }
+        )
+        .filter((criterion) => criterion.name)
+    : [];
+
+  if (normalizedAlternatives.length > 0 && normalizedCriteria.length > 0) {
+    return {
+      alternativeNames: normalizedAlternatives,
+      criteria: normalizedCriteria,
+      criterionNames: normalizedCriteria.map((criterion) => criterion.name),
+    };
+  }
+
+  return getOrderedAlternativeAndCriterionNames({ issue });
+};
+
+const buildProgressMeta = ({ storedEvaluation, alternativeNames, criterionNames }) => {
+  const comparisonsByCriterion =
+    isPlainObject(storedEvaluation?.payload?.comparisonsByCriterion)
+      ? storedEvaluation.payload.comparisonsByCriterion
+      : {};
+
+  const totalItems = Object.values(comparisonsByCriterion).reduce(
+    (total, criterionComparisons) =>
+      total +
+      (isPlainObject(criterionComparisons)
+        ? Object.keys(criterionComparisons).length
+        : 0),
+    0
+  );
+
+  const filledItems = Object.values(comparisonsByCriterion).reduce(
+    (total, criterionComparisons) => {
+      if (!isPlainObject(criterionComparisons)) {
+        return total;
+      }
+
+      return (
+        total +
+        Object.values(criterionComparisons).filter((cell) =>
+          isFilledValue(cell?.value)
+        ).length
+      );
+    },
+    0
+  );
+
+  const expectedItems =
+    alternativeNames.length > 0 && criterionNames.length > 0
+      ? alternativeNames.length *
+        criterionNames.length *
+        Math.max(alternativeNames.length - 1, 0)
+      : 0;
+
+  return {
+    progress: {
+      expectedItems,
+      totalItems,
+      filledItems,
+    },
+  };
+};
+
 const isNonEmptyValue = (value) =>
   !(value === "" || value === null || value === undefined);
 
@@ -258,7 +347,13 @@ const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
   }
 };
 
-const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
+const normalizePayloadOrThrow = async ({
+  payload,
+  issue,
+  requireValue,
+  alternatives,
+  criteria,
+}) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("payload must be an object", {
       field: "payload",
@@ -289,10 +384,17 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
     );
   }
 
-  const { alternativeNames, criteria, criterionNames } =
-    await getOrderedAlternativeAndCriterionNames({ issue });
-  const expectedPairsByCriterion = buildExpectedPairsByCriterion({
+  const {
+    alternativeNames,
+    criteria: resolvedCriteria,
+    criterionNames,
+  } = await resolveAlternativesAndCriteria({
+    issue,
+    alternatives,
     criteria,
+  });
+  const expectedPairsByCriterion = buildExpectedPairsByCriterion({
+    criteria: resolvedCriteria,
     alternativeNames,
   });
 
@@ -373,11 +475,23 @@ const normalizePayloadOrThrow = async ({ payload, issue, requireValue }) => {
   };
 };
 
-const buildGetPayload = async ({ storedEvaluation, issue }) => {
-  const { alternativeNames, criteria, criterionNames } =
-    await getOrderedAlternativeAndCriterionNames({ issue });
-  const expectedPairsByCriterion = buildExpectedPairsByCriterion({
+const buildGetPayload = async ({
+  storedEvaluation,
+  issue,
+  alternatives,
+  criteria,
+}) => {
+  const {
+    alternativeNames,
+    criteria: resolvedCriteria,
+    criterionNames,
+  } = await resolveAlternativesAndCriteria({
+    issue,
+    alternatives,
     criteria,
+  });
+  const expectedPairsByCriterion = buildExpectedPairsByCriterion({
+    criteria: resolvedCriteria,
     alternativeNames,
   });
 
@@ -428,7 +542,13 @@ const buildGetPayload = async ({ storedEvaluation, issue }) => {
   }
 
   return {
-    comparisonsByCriterion,
+    payload: {
+      comparisonsByCriterion,
+    },
+    context: {
+      alternativeNames,
+      criterionNames,
+    },
   };
 };
 
@@ -439,20 +559,37 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
     includeNonConsensusConsensusMeasureInExpertRatings: true,
     includeCollectiveEvaluationsLocalizedByExpert: true,
   },
-  async get({ storedEvaluation, issue }) {
-    return buildGetPayload({
+  async get({ storedEvaluation, issue, alternatives, criteria, includeMeta = false }) {
+    const { payload, context } = await buildGetPayload({
       storedEvaluation,
       issue,
+      alternatives,
+      criteria,
     });
+
+    if (!includeMeta) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      meta: buildProgressMeta({
+        storedEvaluation,
+        alternativeNames: context.alternativeNames,
+        criterionNames: context.criterionNames,
+      }),
+    };
   },
 
-  async save({ payload, issue, mode }) {
+  async save({ payload, issue, mode, alternatives, criteria }) {
     const requireValue = resolveRequireValueFromModeOrThrow(mode);
 
     return normalizePayloadOrThrow({
       payload,
       issue,
       requireValue,
+      alternatives,
+      criteria,
     });
   },
 
