@@ -6,6 +6,7 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
+import { getEvaluationStructureOrThrow } from "../../../decisionEngine/evaluations/evaluation.registry.js";
 
 export const resolveCriteriaWeightingPhase = async ({ issueId }) => {
   const latestCriteriaWeightingResult = await IssueStageResult.findOne({
@@ -219,26 +220,22 @@ export const resolveExpertWeightingRequired = ({
     : false;
 };
 
-export const buildExpertWeightsByCriterionForManual = ({
+const resolveFinishedExpertWeightsByCriterion = ({
+  criteriaWeightingStructure,
   payload,
   criterionNames,
 }) => {
-  const weightsSource = payload?.weightsByCriterion;
-  if (!isPlainObject(weightsSource)) {
+  if (
+    typeof criteriaWeightingStructure?.getWeightsByCriterionForFinishedPayload !==
+    "function"
+  ) {
     return null;
   }
 
-  const weightsByCriterion = {};
-  for (const criterionName of criterionNames) {
-    const rawValue = weightsSource[criterionName];
-    const numericValue = Number(rawValue);
-    if (!Number.isFinite(numericValue)) {
-      return null;
-    }
-    weightsByCriterion[criterionName] = numericValue;
-  }
-
-  return weightsByCriterion;
+  return criteriaWeightingStructure.getWeightsByCriterionForFinishedPayload({
+    payload,
+    criterionNames,
+  });
 };
 
 export const buildCriteriaWeightsEvaluationByExpert = ({
@@ -252,6 +249,9 @@ export const buildCriteriaWeightsEvaluationByExpert = ({
     participations,
     criteriaWeightingEvaluationsByExpertId,
   });
+  const criteriaWeightingStructure = isRequired
+    ? getEvaluationStructureOrThrow(issue?.criteriaWeightingStructureKey)
+    : null;
   const mapByExpertEmail = {};
 
   for (const participation of participations) {
@@ -286,13 +286,11 @@ export const buildCriteriaWeightsEvaluationByExpert = ({
 
     const status = evaluation.completed === true ? "submitted" : "draft";
     const payload = isPlainObject(evaluation.payload) ? evaluation.payload : {};
-    const weightsByCriterion =
-      issue.criteriaWeightingStructureKey === "manualCriteriaWeights"
-        ? buildExpertWeightsByCriterionForManual({
-          payload,
-          criterionNames,
-        })
-        : null;
+    const weightsByCriterion = resolveFinishedExpertWeightsByCriterion({
+      criteriaWeightingStructure,
+      payload,
+      criterionNames,
+    });
 
     mapByExpertEmail[expertEmail] = {
       status,
