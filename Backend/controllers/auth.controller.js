@@ -4,18 +4,18 @@ import {
   confirmAccount,
   createSignupAccount,
   deleteAuthenticatedUserAccount,
-} from "../modules/auth/auth.account.js";
+} from "../modules/auth/account.js";
 import {
   confirmAuthenticatedUserEmailChange,
   requestAuthenticatedUserEmailChange,
-} from "../modules/auth/auth.emailChange.js";
+} from "../modules/auth/emailChange.js";
 import {
   getAuthenticatedUserProfilePayload,
   updateAuthenticatedUserName,
   updateAuthenticatedUserPassword,
   updateAuthenticatedUserUniversity,
-} from "../modules/auth/auth.profile.js";
-import { loginUser as loginUserUseCase } from "../modules/auth/auth.session.js";
+} from "../modules/auth/profile.js";
+import { loginUser as loginUserUseCase } from "../modules/auth/session.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import { generateRefreshToken } from "../services/token.service.js";
 import {

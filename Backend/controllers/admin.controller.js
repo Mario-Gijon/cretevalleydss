@@ -21,12 +21,12 @@ import {
 } from "../modules/admin/admin.issueReads.js";
 
 import {
-  createUserAdminFlow,
-  deleteUserAdminFlow,
+  createAdminUser as createAdminUserUseCase,
+  deleteAdminUser as deleteAdminUserUseCase,
   getAdminUsersListPayload,
-  reassignIssueAdminFlow,
-  updateUserAdminFlow,
-} from "../modules/admin/admin.users.js";
+  reassignIssueAdmin as reassignIssueAdminUseCase,
+  updateAdminUser as updateAdminUserUseCase,
+} from "../modules/admin/users/index.js";
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 
@@ -256,7 +256,7 @@ export const syncModelManifestAdmin = async (req, res) => {
 
 export const createUserAdmin = async (req, res) => {
   try {
-    const result = await createUserAdminFlow({
+    const result = await createAdminUserUseCase({
       payload: req.body,
     });
 
@@ -275,7 +275,7 @@ export const createUserAdmin = async (req, res) => {
 
 export const updateUserAdmin = async (req, res) => {
   try {
-    const result = await updateUserAdminFlow({
+    const result = await updateAdminUserUseCase({
       payload: req.body,
     });
 
@@ -306,7 +306,7 @@ export const deleteUserAdmin = async (req, res) => {
     let result = null;
 
     await session.withTransaction(async () => {
-      result = await deleteUserAdminFlow({
+      result = await deleteAdminUserUseCase({
         targetUserId: id,
         adminUserId: req.uid,
         session,
@@ -382,7 +382,7 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
 };
 
 export const reassignIssueAdminAdmin = async (req, res) => {
-  const result = await reassignIssueAdminFlow({
+  const result = await reassignIssueAdminUseCase({
     issueId: req.body?.issueId,
     newAdminId: req.body?.newAdminId,
   });
