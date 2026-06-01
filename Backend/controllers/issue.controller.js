@@ -33,8 +33,8 @@ import {
 } from "../modules/issues/scenarios/index.js";
 import {
   deleteActiveIssueAsAdmin,
-  hideFinishedIssueForUserFlow,
-  leaveActiveIssueFlow,
+  hideFinishedIssueForUser,
+  leaveActiveIssue,
 } from "../modules/issues/lifecycle/index.js";
 import {
   createUserExpressionDomain,
@@ -347,7 +347,7 @@ export const removeFinishedIssue = async (req, res) => {
     let removedIssueName = "";
 
     await session.withTransaction(async () => {
-      const result = await hideFinishedIssueForUserFlow({
+      const result = await hideFinishedIssueForUser({
         issueId: id,
         userId,
         session,
@@ -387,7 +387,7 @@ export const leaveIssue = async (req, res) => {
     let result = null;
 
     await session.withTransaction(async () => {
-      result = await leaveActiveIssueFlow({
+      result = await leaveActiveIssue({
         issueId: id,
         userId,
         session,

@@ -1,12 +1,12 @@
-export { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
+export { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 export {
   registerUserExit,
-  leaveActiveIssueFlow,
+  leaveActiveIssue,
   cleanupExpertDraftsOnExit,
-} from "./issueLifecycle.exits.js";
+} from "./leaveActiveIssue.js";
 export {
   deleteIssueCascade,
   deleteActiveIssueAsAdmin,
   getFinishedIssueVisibleUserIds,
-  hideFinishedIssueForUserFlow,
-} from "./issueLifecycle.deletion.js";
+  hideFinishedIssueForUser,
+} from "./removeIssueVisibility.js";

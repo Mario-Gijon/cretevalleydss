@@ -2,8 +2,9 @@ import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
-import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";
+import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
+import { getIssueOrThrow } from "./getLifecycleIssue.js";
+import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
   createBadRequestError,
@@ -29,7 +30,7 @@ export const registerUserExit = async ({
     reason,
   };
 
-  await withOptionalSession(
+  await applyOptionalSession(
     ExitUserIssue.findOneAndUpdate(
       { issue: issueId, user: userId },
       {
@@ -54,7 +55,7 @@ export const registerUserExit = async ({
   );
 };
 
-export const leaveActiveIssueFlow = async ({
+export const leaveActiveIssue = async ({
   issueId,
   userId,
   session = null,
@@ -69,7 +70,7 @@ export const leaveActiveIssueFlow = async ({
     throw createForbiddenError("An admin can not leave an issue");
   }
 
-  const participation = await withOptionalSession(
+  const participation = await applyOptionalSession(
     Participation.findOne({
       issue: issue._id,
       expert: userId,
@@ -87,7 +88,7 @@ export const leaveActiveIssueFlow = async ({
     session,
   });
 
-  await withOptionalSession(
+  await applyOptionalSession(
     Participation.deleteOne({ _id: participation._id }),
     session
   );
@@ -114,7 +115,7 @@ export const cleanupExpertDraftsOnExit = async ({
   expertId,
   session = null,
 }) => {
-  await withOptionalSession(
+  await applyOptionalSession(
     IssueEvaluation.deleteMany({
       issue: issueId,
       expert: expertId,

@@ -11,9 +11,10 @@ import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
 import { getNextConsensusPhase } from "../shared/queries.js";
-import { mapIssueStageToExitStage } from "./issueLifecycle.stage.js";
-import { registerUserExit } from "./issueLifecycle.exits.js";
-import { getIssueOrThrow, withOptionalSession } from "./issueLifecycle.shared.js";
+import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
+import { registerUserExit } from "./leaveActiveIssue.js";
+import { getIssueOrThrow } from "./getLifecycleIssue.js";
+import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
   createBadRequestError,
@@ -27,19 +28,19 @@ import {
 
 export const deleteIssueCascade = async ({ issueId, session = null }) => {
   await Promise.all([
-    withOptionalSession(IssueEvaluation.deleteMany({ issue: issueId }), session),
-    withOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
-    withOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
-    withOptionalSession(Participation.deleteMany({ issue: issueId }), session),
-    withOptionalSession(Consensus.deleteMany({ issue: issueId }), session),
-    withOptionalSession(Notification.deleteMany({ issue: issueId }), session),
-    withOptionalSession(IssueExpressionDomain.deleteMany({ issue: issueId }), session),
-    withOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),
-    withOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
-    withOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueEvaluation.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(Participation.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(Consensus.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(Notification.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueExpressionDomain.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueScenario.deleteMany({ issue: issueId }), session),
+    applyOptionalSession(IssueStageResult.deleteMany({ issue: issueId }), session),
   ]);
 
-  await withOptionalSession(Issue.deleteOne({ _id: issueId }), session);
+  await applyOptionalSession(Issue.deleteOne({ _id: issueId }), session);
 };
 
 export const deleteActiveIssueAsAdmin = async ({
@@ -71,7 +72,7 @@ export const getFinishedIssueVisibleUserIds = async ({
   issue,
   session = null,
 }) => {
-  const acceptedParticipations = await withOptionalSession(
+  const acceptedParticipations = await applyOptionalSession(
     Participation.find({
       issue: issue._id,
       invitationStatus: "accepted",
@@ -87,7 +88,7 @@ export const getFinishedIssueVisibleUserIds = async ({
   ]);
 };
 
-export const hideFinishedIssueForUserFlow = async ({
+export const hideFinishedIssueForUser = async ({
   issueId,
   userId,
   session = null,
@@ -121,7 +122,7 @@ export const hideFinishedIssueForUserFlow = async ({
     session,
   });
 
-  const hiddenExits = await withOptionalSession(
+  const hiddenExits = await applyOptionalSession(
     ExitUserIssue.find({
       issue: issue._id,
       hidden: true,

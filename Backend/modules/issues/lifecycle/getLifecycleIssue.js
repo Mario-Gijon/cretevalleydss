@@ -4,10 +4,10 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-
-export const withOptionalSession = (query, session = null) =>
-  session ? query.session(session) : query;
+import {
+  applyOptionalSession,
+  isValidObjectIdLike,
+} from "../../../utils/common/mongoose.js";
 
 export const getIssueOrThrow = async ({ issueId, session = null }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
@@ -16,7 +16,7 @@ export const getIssueOrThrow = async ({ issueId, session = null }) => {
     });
   }
 
-  const issue = await withOptionalSession(Issue.findById(issueId), session);
+  const issue = await applyOptionalSession(Issue.findById(issueId), session);
 
   if (!issue) {
     throw createNotFoundError("Issue not found", {
