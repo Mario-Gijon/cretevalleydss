@@ -1,7 +1,7 @@
-export const MANIFEST_SYNC_SOURCE = "ApiModels";
+import { hasOwnKey } from "../../utils/common/objects.js";
+import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 
-export const hasOwn = (value, key) =>
-  Object.prototype.hasOwnProperty.call(value || {}, key);
+export const MANIFEST_SYNC_SOURCE = "ApiModels";
 
 export const toIdString = (value) => {
   if (value === null || value === undefined) {
@@ -9,15 +9,6 @@ export const toIdString = (value) => {
   }
 
   return String(value);
-};
-
-export const normalizeNonEmptyString = (value) => {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
 };
 
 export const toPlainValue = (value) => {
@@ -102,7 +93,7 @@ export const normalizeParameter = (parameter = {}) => {
     scope: normalizeNonEmptyString(parameter?.scope),
     parameterStructureKey: normalizeNonEmptyString(parameter?.parameterStructureKey),
     required: parameter?.required === true,
-    default: hasOwn(parameter, "default") ? parameter.default : null,
+    default: hasOwnKey(parameter || {}, "default") ? parameter.default : null,
     restrictions: normalizeDynamicObject(parameter?.restrictions),
   };
 };

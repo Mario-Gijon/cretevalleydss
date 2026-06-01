@@ -1,9 +1,9 @@
 import { IssueModel } from "../../models/IssueModels.js";
+import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
   buildManifestTechnicalProjection,
   getSyncBlockerReason,
-  hasOwn,
   isValueEqual,
   normalizeComparableFieldValue,
   normalizeEndpoint,
@@ -34,7 +34,7 @@ const getManifestTechnicalValue = (manifestModel, manifestProjection, field) => 
     return manifestProjection.displayName;
   }
 
-  if (hasOwn(manifestProjection, field)) {
+  if (hasOwnKey(manifestProjection || {}, field)) {
     return manifestProjection[field] ?? null;
   }
 
@@ -42,14 +42,15 @@ const getManifestTechnicalValue = (manifestModel, manifestProjection, field) => 
 };
 
 const getMongoTechnicalValue = (mongoModel, field) => {
-  if (!hasOwn(mongoModel, field)) {
+  if (!hasOwnKey(mongoModel || {}, field)) {
     return null;
   }
 
   return mongoModel[field] ?? null;
 };
 
-const isMongoFieldPresent = (mongoModel, field) => hasOwn(mongoModel, field);
+const isMongoFieldPresent = (mongoModel, field) =>
+  hasOwnKey(mongoModel || {}, field);
 
 const compareTechnicalFields = (manifestModel, mongoModel) => {
   const differences = [];

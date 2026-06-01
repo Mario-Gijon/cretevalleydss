@@ -1,4 +1,5 @@
 import { IssueModel } from "../../models/IssueModels.js";
+import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
   MANIFEST_SYNC_SOURCE,
@@ -62,7 +63,7 @@ const getChangedSyncFields = (model, payload) => {
 
   return comparedFields.filter(
     (field) =>
-      Object.prototype.hasOwnProperty.call(payload, field) &&
+      hasOwnKey(payload, field) &&
       !isValueEqual(field, model[field], payload[field])
   );
 };

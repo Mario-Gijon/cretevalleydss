@@ -1,11 +1,9 @@
 import axios from "axios";
 
 import { AppError, isAppError } from "../../utils/common/errors.js";
+import { hasOwnKey } from "../../utils/common/objects.js";
 
 const MODEL_MANIFEST_PATH = "/models/manifest";
-
-const hasOwn = (value, key) =>
-  Object.prototype.hasOwnProperty.call(value || {}, key);
 
 const joinUrl = (baseUrl, path) => {
   const cleanBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -20,7 +18,7 @@ const isStandardApiResponse = (payload) => {
     typeof payload === "object" &&
     typeof payload.success === "boolean" &&
     typeof payload.message === "string" &&
-    hasOwn(payload, "data")
+    hasOwnKey(payload || {}, "data")
   );
 };
 
@@ -55,7 +53,7 @@ const validateManifestData = (data) => {
   }
 
   const missingContractKeys = ["success", "message", "data", "error"].filter(
-    (key) => !hasOwn(data.contract, key)
+    (key) => !hasOwnKey(data.contract || {}, key)
   );
 
   if (missingContractKeys.length > 0) {

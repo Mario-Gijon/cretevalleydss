@@ -51,7 +51,7 @@ export const sendVerificationEmail = async ({ name, email, token }) => {
           <p>To complete your registration, please verify your account by clicking the button below:</p>
           <p>
             <a
-              href="${process.env.ORIGIN_BACK}/auth/accountConfirm/${token}"
+              href="${process.env.ORIGIN_BACK}/api/auth/account/confirm/${token}"
               style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
             >
               Verify Account
@@ -81,7 +81,7 @@ export const sendEmailChangeConfirmation = async ({ newEmail, token }) => {
           <p>Click the button below to confirm your new email address:</p>
           <p>
             <a
-              href="${process.env.ORIGIN_BACK}/auth/confirmEmailChange/${token}"
+              href="${process.env.ORIGIN_BACK}/api/auth/email-change/confirm/${token}"
               style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
             >
               Confirm Email Change
