@@ -2,6 +2,7 @@ import { getOrderedAlternativeAndCriterionNames } from "../evaluations/structure
 import { createInternalError } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
+import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
 
 const isFiniteOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
@@ -18,103 +19,6 @@ const normalizeEvaluationsPayload = (evaluations) =>
     },
     payload: evaluation.payload,
   }));
-
-const validateRankedAlternativesOrThrow = (rankedAlternatives) => {
-  if (!Array.isArray(rankedAlternatives) || rankedAlternatives.length === 0) {
-    throw createInternalError(
-      "Model execution result.rankedAlternatives must be a non-empty array",
-      {
-        field: "result.rankedAlternatives",
-      }
-    );
-  }
-
-  let previousRank = 0;
-  rankedAlternatives.forEach((entry, index) => {
-    if (!isPlainObject(entry)) {
-      throw createInternalError("Each ranked alternative must be an object", {
-        field: `result.rankedAlternatives[${index}]`,
-      });
-    }
-
-    const name = normalizeNonEmptyString(entry.name);
-    if (!name) {
-      throw createInternalError("Each ranked alternative requires a name", {
-        field: `result.rankedAlternatives[${index}].name`,
-      });
-    }
-
-    if (typeof entry.alternativeId !== "string" && entry.alternativeId !== null) {
-      throw createInternalError(
-        "Each ranked alternative alternativeId must be a string or null",
-        {
-          field: `result.rankedAlternatives[${index}].alternativeId`,
-        }
-      );
-    }
-
-    const score = Number(entry.score);
-    if (!Number.isFinite(score)) {
-      throw createInternalError("Each ranked alternative requires a finite score", {
-        field: `result.rankedAlternatives[${index}].score`,
-      });
-    }
-
-    const rank = Number(entry.rank);
-    if (!Number.isInteger(rank) || rank <= 0) {
-      throw createInternalError(
-        "Each ranked alternative requires a positive integer rank",
-        {
-          field: `result.rankedAlternatives[${index}].rank`,
-        }
-      );
-    }
-
-    if (rank <= previousRank) {
-      throw createInternalError(
-        "rankedAlternatives must be ordered from best to worst by rank",
-        {
-          field: "result.rankedAlternatives",
-        }
-      );
-    }
-    previousRank = rank;
-  });
-};
-
-const validateNormalizedModelResultOrThrow = ({ result }) => {
-  if (!isPlainObject(result)) {
-    throw createInternalError("Model execution result must be an object", {
-      field: "result",
-    });
-  }
-
-  validateRankedAlternativesOrThrow(result.rankedAlternatives);
-
-  if (!isPlainObject(result.collectiveEvaluations)) {
-    throw createInternalError("Model execution result.collectiveEvaluations is required", {
-      field: "result.collectiveEvaluations",
-    });
-  }
-
-  if (!isPlainObject(result.plotsGraphic)) {
-    throw createInternalError("Model execution result.plotsGraphic must be an object", {
-      field: "result.plotsGraphic",
-    });
-  }
-
-  if (!isFiniteOrNull(result.consensusMeasure)) {
-    throw createInternalError("Model execution result.consensusMeasure must be finite or null", {
-      field: "result.consensusMeasure",
-    });
-  }
-
-  if (!isPlainObject(result.rawOutput)) {
-    throw createInternalError("Model execution result.rawOutput is required", {
-      field: "result.rawOutput",
-    });
-  }
-};
 
 export const buildIssueModelRequestPayload = async ({
   issue,
@@ -210,14 +114,14 @@ export const buildIssueModelExecutionResult = ({
   issueUpdates,
   nextCurrentStage,
 }) => {
-  validateNormalizedModelResultOrThrow({ result });
+  const normalizedResult = normalizeModelExecutionResult({ result });
 
   return {
     message,
-    consensusMeasure: result.consensusMeasure,
-    rankedAlternatives: result.rankedAlternatives,
-    collectiveEvaluations: result.collectiveEvaluations,
-    plotsGraphic: result.plotsGraphic,
+    consensusMeasure: normalizedResult.consensusMeasure,
+    rankedAlternatives: normalizedResult.rankedAlternatives,
+    collectiveEvaluations: normalizedResult.collectiveEvaluations,
+    plotsGraphic: normalizedResult.plotsGraphic,
     modelExecution: {
       kind: "apiModels",
       structureKey,
@@ -225,7 +129,7 @@ export const buildIssueModelExecutionResult = ({
       apiEndpointPath: issue.apiEndpoint.path,
       executedAt: new Date(),
     },
-    rawOutput: result.rawOutput,
+    rawOutput: normalizedResult.rawOutput,
     issueUpdates,
     nextCurrentStage,
   };

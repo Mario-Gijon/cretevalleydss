@@ -4,14 +4,11 @@ import {
   createBadRequestError,
   createInternalError,
 } from "../../../../utils/common/errors.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../../services/modelApi/modelResponse.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
+import { executeApiModelRequest } from "../../../decisionEngine/modelExecution/index.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
@@ -120,54 +117,46 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
 
   const normalizedBaseUrl = apiModelsBaseUrl.replace(/\/+$/g, "");
 
-  let response;
-  try {
-    response = await httpClient.post(
-      `${normalizedBaseUrl}${criteriaWeightingRuntime.apiEndpoint.path}`,
+  const requestPayload = {
+    modelParameters: criteriaWeightingParameters,
+    evaluations: [
       {
-        modelParameters: criteriaWeightingParameters,
-        evaluations: [
-          {
-            expert: {
-              id: "creator",
-              name: "Creator",
-              email: "creator@local",
-            },
-            payload,
-          },
-        ],
-        context: {
-          issue: {
-            id: "preview",
-            name: "Issue creation preview",
-            consensusThreshold: null,
-            consensusMaxPhases: null,
-          },
-          criteria: criterionNames.map((criterionName, index) => ({
-            id: String(index + 1),
-            name: criterionName,
-            type: null,
-          })),
-          consensusPhase: 1,
-          previousStageResult: null,
-          structure: {
-            key: criteriaWeightingRuntime.criteriaWeightingStructureKey,
-            stage: "criteriaWeighting",
-          },
+        expert: {
+          id: "creator",
+          name: "Creator",
+          email: "creator@local",
         },
-      }
-    );
-  } catch (error) {
-    throw createModelApiRequestError(
-      error,
-      `Failed to compute ${criteriaWeightingModel.name} weights`
-    );
-  }
+        payload,
+      },
+    ],
+    context: {
+      issue: {
+        id: "preview",
+        name: "Issue creation preview",
+        consensusThreshold: null,
+        consensusMaxPhases: null,
+      },
+      criteria: criterionNames.map((criterionName, index) => ({
+        id: String(index + 1),
+        name: criterionName,
+        type: null,
+      })),
+      consensusPhase: 1,
+      previousStageResult: null,
+      structure: {
+        key: criteriaWeightingRuntime.criteriaWeightingStructureKey,
+        stage: "criteriaWeighting",
+      },
+    },
+  };
 
-  const result = unwrapModelApiResponse(
-    response,
-    `Failed to compute ${criteriaWeightingModel.name} weights`
-  );
+  const result = await executeApiModelRequest({
+    apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path,
+    requestPayload,
+    errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`,
+    apiModelsBaseUrl: normalizedBaseUrl,
+    httpClient,
+  });
 
   const weightsByCriterion = result?.weightsByCriterion;
   if (!isPlainObject(weightsByCriterion)) {

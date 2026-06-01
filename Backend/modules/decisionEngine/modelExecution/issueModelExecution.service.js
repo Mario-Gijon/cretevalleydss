@@ -1,14 +1,11 @@
 import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../services/modelApi/modelResponse.js";
-import {
   buildCriteriaWeightingExecutionResult,
   buildCriteriaWeightingRequestPayload,
   buildIssueModelExecutionResult,
   buildIssueModelRequestPayload,
 } from "./issueModelExecution.builder.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { executeApiModelRequest } from "./executeApiModelRequest.js";
 
 const computeManualCriteriaWeights = ({ structureKey, requestPayload }) => {
   const criterionNames = requestPayload.context.criteria.map(
@@ -105,23 +102,13 @@ const executeCriteriaWeightingApiModel = async ({
     );
   }
 
-  let response;
-  try {
-    response = await httpClient.post(
-      `${apiModelsBaseUrl}${apiEndpointPath}`,
-      requestPayload
-    );
-  } catch (error) {
-    throw createModelApiRequestError(
-      error,
-      "Criteria weighting model execution failed"
-    );
-  }
-
-  const result = unwrapModelApiResponse(
-    response,
-    "Criteria weighting model execution failed"
-  );
+  const result = await executeApiModelRequest({
+    apiEndpointPath,
+    requestPayload,
+    errorMessage: "Criteria weighting model execution failed",
+    apiModelsBaseUrl,
+    httpClient,
+  });
 
   return buildCriteriaWeightingExecutionResult({
     structureKey,
@@ -149,17 +136,13 @@ export const executeAlternativeEvaluationModel = async ({
     phase,
   });
 
-  let response;
-  try {
-    response = await httpClient.post(
-      `${apiModelsBaseUrl}${issue.apiEndpoint.path}`,
-      requestPayload
-    );
-  } catch (error) {
-    throw createModelApiRequestError(error, executionErrorMessage);
-  }
-
-  const result = unwrapModelApiResponse(response, executionErrorMessage);
+  const result = await executeApiModelRequest({
+    apiEndpointPath: issue.apiEndpoint.path,
+    requestPayload,
+    errorMessage: executionErrorMessage,
+    apiModelsBaseUrl,
+    httpClient,
+  });
 
   return buildIssueModelExecutionResult({
     issue,

@@ -1,11 +1,7 @@
 import axios from "axios";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
-import {
-  createModelApiRequestError,
-  unwrapModelApiResponse,
-} from "../../../services/modelApi/modelResponse.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
-import { normalizeScenarioExecutionResultOrThrow } from "./normalizeScenarioExecutionResult.js";
+import { executeScenarioModel } from "../../decisionEngine/modelExecution/index.js";
 
 export const createIssueScenario = async ({
   userId,
@@ -13,6 +9,8 @@ export const createIssueScenario = async ({
   targetModelId,
   scenarioName = "",
   paramOverrides = {},
+  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+  httpClient = axios,
 }) => {
   const context = await buildScenarioExecutionContext({
     issueId,
@@ -21,33 +19,16 @@ export const createIssueScenario = async ({
     paramOverrides,
   });
 
-  let response;
-  try {
-    response = await axios.post(
-      `${process.env.ORIGIN_APIMODELS || "http://localhost:7000"}${
-        context.targetRuntimeSnapshot.targetApiEndpoint.path
-      }`,
-      context.requestPayload
-    );
-  } catch (error) {
-    throw createModelApiRequestError(error, "Scenario model execution failed");
-  }
-
-  const rawResult = unwrapModelApiResponse(response, "Scenario model execution failed");
-
   const {
     standardResult,
+    modelExecution,
     rawOutput,
-  } = normalizeScenarioExecutionResultOrThrow({ result: rawResult });
-
-  const modelExecution = {
-    kind: "apiModels",
-    structureKey:
-      context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
-    apiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
-    apiEndpointPath: context.targetRuntimeSnapshot.targetApiEndpoint.path,
-    executedAt: new Date(),
-  };
+  } = await executeScenarioModel({
+    requestPayload: context.requestPayload,
+    targetRuntimeSnapshot: context.targetRuntimeSnapshot,
+    apiModelsBaseUrl,
+    httpClient,
+  });
 
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
