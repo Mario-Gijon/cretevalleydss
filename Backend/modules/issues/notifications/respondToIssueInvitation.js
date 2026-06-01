@@ -70,9 +70,7 @@ export const respondToIssueInvitation = async ({
   participation.invitationStatus = action;
 
   if (action === "accepted") {
-    const leafCriteriaCount = Array.isArray(issue.leafCriteriaOrder)
-      ? issue.leafCriteriaOrder.length
-      : 0;
+    const leafCriteriaCount = issue.leafCriteriaOrder.length;
     const isSingleCriterion = leafCriteriaCount === 1;
     const criteriaWeightingIsOpen =
       issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
