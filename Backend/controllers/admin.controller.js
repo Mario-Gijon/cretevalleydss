@@ -6,7 +6,7 @@ import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 
           
-import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
+import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
 import {
   computeIssueEvaluationStage,
 } from "../modules/decisionEngine/evaluations/index.js";
@@ -404,7 +404,7 @@ export const editIssueExpertsAdmin = async (req, res) => {
     issueId,
   });
 
-  const result = await editIssueExpertsFlow({
+  const result = await editIssueExpertsUseCase({
     issueId,
     userId: creatorUserId,
     expertsToAdd: Array.isArray(req.body?.expertsToAdd)

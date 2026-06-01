@@ -49,7 +49,7 @@ import {
   removeNotificationForUser as removeNotificationForUserUseCase,
 } from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/getFinishedIssueInfoPayload.js";
-import { editIssueExpertsFlow } from "../modules/issues/participants/index.js";
+import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
 import { createIssue as createIssueUseCase } from "../modules/issues/creation/index.js";
 
 
@@ -367,7 +367,7 @@ export const removeFinishedIssue = async (req, res) => {
 export const editExperts = async (req, res) => {
   const { id, expertsToAdd = [], expertsToRemove = [] } = req.body;
 
-  await editIssueExpertsFlow({
+  await editIssueExpertsUseCase({
     issueId: id,
     userId: req.uid,
     expertsToAdd,

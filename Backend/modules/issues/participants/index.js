@@ -1,1 +1,1 @@
-export { editIssueExpertsFlow } from "./participantEdition.flow.js";
+export { editIssueExperts } from "./editIssueExperts.js";
