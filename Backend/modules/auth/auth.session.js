@@ -6,7 +6,7 @@ import { createBadRequestError } from "../../utils/common/errors.js";
 const createLoginFieldError = (field, message) =>
   createBadRequestError(message, { field });
 
-export const loginUserFlow = async ({ email, password }) => {
+export const loginUser = async ({ email, password }) => {
   const cleanEmail = String(email ?? "").trim().toLowerCase();
   const rawPassword = String(password ?? "");
 

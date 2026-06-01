@@ -10,7 +10,7 @@ import { applyOptionalSession } from "../../utils/common/mongoose.js";
 
 
 
-export const requestAuthenticatedUserEmailChangeFlow = async ({
+export const requestAuthenticatedUserEmailChange = async ({
   userId,
   newEmail,
   session = null,
@@ -67,7 +67,7 @@ export const requestAuthenticatedUserEmailChangeFlow = async ({
   };
 };
 
-export const confirmAuthenticatedUserEmailChangeFlow = async ({
+export const confirmAuthenticatedUserEmailChange = async ({
   token,
   session = null,
 }) => {

@@ -30,7 +30,7 @@ export const getAuthenticatedUserProfilePayload = async ({ userId }) => {
   return buildAuthenticatedUserProfilePayload(user);
 };
 
-export const updateAuthenticatedUserNameFlow = async ({
+export const updateAuthenticatedUserName = async ({
   userId,
   newName,
   session = null,
@@ -60,7 +60,7 @@ export const updateAuthenticatedUserNameFlow = async ({
   };
 };
 
-export const updateAuthenticatedUserUniversityFlow = async ({
+export const updateAuthenticatedUserUniversity = async ({
   userId,
   newUniversity,
   session = null,
@@ -90,7 +90,7 @@ export const updateAuthenticatedUserUniversityFlow = async ({
   };
 };
 
-export const updateAuthenticatedUserPasswordFlow = async ({
+export const updateAuthenticatedUserPassword = async ({
   userId,
   newPassword,
   repeatNewPassword,

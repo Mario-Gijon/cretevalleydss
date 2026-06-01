@@ -1,21 +1,21 @@
 import mongoose from "mongoose";
 
 import {
-  confirmAccountFlow,
-  createSignupAccountFlow,
-  deleteAuthenticatedUserAccountFlow,
+  confirmAccount,
+  createSignupAccount,
+  deleteAuthenticatedUserAccount,
 } from "../modules/auth/auth.account.js";
 import {
-  confirmAuthenticatedUserEmailChangeFlow,
-  requestAuthenticatedUserEmailChangeFlow,
+  confirmAuthenticatedUserEmailChange,
+  requestAuthenticatedUserEmailChange,
 } from "../modules/auth/auth.emailChange.js";
 import {
   getAuthenticatedUserProfilePayload,
-  updateAuthenticatedUserNameFlow,
-  updateAuthenticatedUserPasswordFlow,
-  updateAuthenticatedUserUniversityFlow,
+  updateAuthenticatedUserName,
+  updateAuthenticatedUserPassword,
+  updateAuthenticatedUserUniversity,
 } from "../modules/auth/auth.profile.js";
-import { loginUserFlow } from "../modules/auth/auth.session.js";
+import { loginUser as loginUserUseCase } from "../modules/auth/auth.session.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import { generateRefreshToken } from "../services/token.service.js";
 import {
@@ -42,7 +42,7 @@ const redirectToFrontend = (res) => {
 };
 
 export const loginUser = async (req, res) => {
-  const result = await loginUserFlow({
+  const result = await loginUserUseCase({
     email: req.body?.email,
     password: req.body?.password,
   });
@@ -75,7 +75,7 @@ export const updatePassword = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await updateAuthenticatedUserPasswordFlow({
+    const result = await updateAuthenticatedUserPassword({
       userId: req.uid,
       newPassword: req.body?.newPassword,
       repeatNewPassword: req.body?.repeatNewPassword,
@@ -99,7 +99,7 @@ export const modifyUniversity = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await updateAuthenticatedUserUniversityFlow({
+    const result = await updateAuthenticatedUserUniversity({
       userId: req.uid,
       newUniversity: req.body?.newUniversity,
       session,
@@ -122,7 +122,7 @@ export const modifyName = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await updateAuthenticatedUserNameFlow({
+    const result = await updateAuthenticatedUserName({
       userId: req.uid,
       newName: req.body?.newName,
       session,
@@ -160,7 +160,7 @@ export const modifyEmail = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await requestAuthenticatedUserEmailChangeFlow({
+    const result = await requestAuthenticatedUserEmailChange({
       userId: req.uid,
       newEmail: req.body?.newEmail,
       session,
@@ -185,7 +185,7 @@ export const confirmEmailChange = async (req, res) => {
   try {
     session.startTransaction();
 
-    await confirmAuthenticatedUserEmailChangeFlow({
+    await confirmAuthenticatedUserEmailChange({
       token: req.params?.token,
       session,
     });
@@ -215,7 +215,7 @@ export const signupUser = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await createSignupAccountFlow({
+    const result = await createSignupAccount({
       payload: req.body,
       session,
     });
@@ -239,7 +239,7 @@ export const accountConfirm = async (req, res) => {
   try {
     session.startTransaction();
 
-    await confirmAccountFlow({
+    await confirmAccount({
       token: req.params?.token,
       session,
     });
@@ -269,7 +269,7 @@ export const deleteAccount = async (req, res) => {
   try {
     session.startTransaction();
 
-    const result = await deleteAuthenticatedUserAccountFlow({
+    const result = await deleteAuthenticatedUserAccount({
       userId: req.uid,
       session,
     });

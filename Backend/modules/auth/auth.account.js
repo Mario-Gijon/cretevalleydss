@@ -8,7 +8,7 @@ import {
 } from "../../utils/common/errors.js";
 import { applyOptionalSession } from "../../utils/common/mongoose.js";
 
-export const createSignupAccountFlow = async ({
+export const createSignupAccount = async ({
   payload,
   session = null,
 }) => {
@@ -87,7 +87,7 @@ export const createSignupAccountFlow = async ({
   };
 };
 
-export const confirmAccountFlow = async ({
+export const confirmAccount = async ({
   token,
   session = null,
 }) => {
@@ -120,7 +120,7 @@ export const confirmAccountFlow = async ({
   };
 };
 
-export const deleteAuthenticatedUserAccountFlow = async ({
+export const deleteAuthenticatedUserAccount = async ({
   userId,
   session = null,
 }) => {
