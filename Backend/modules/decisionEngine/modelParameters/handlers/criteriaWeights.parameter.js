@@ -1,11 +1,9 @@
 import {
-  WEIGHT_SUM_TOLERANCE,
   buildEqualCrispWeights,
-  isWithinRange,
-  normalizeNumberValue,
   toInvalid,
   toValid,
 } from "../modelParameter.shared.js";
+import { validateAndNormalizeCrispCriteriaWeightArray } from "../criteriaWeightValues.js";
 
 export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};
@@ -15,49 +13,61 @@ export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter,
     candidate = buildEqualCrispWeights(context.leafCriteriaCount);
   }
 
-  if (!Array.isArray(candidate)) {
-    return toInvalid("must be an array of numbers", candidate);
-  }
+  const normalizedResult = validateAndNormalizeCrispCriteriaWeightArray({
+    value: candidate,
+    expectedLength: context.leafCriteriaCount,
+    min: typeof restrictions.min === "number" ? restrictions.min : null,
+    max: typeof restrictions.max === "number" ? restrictions.max : null,
+    enforceNonNegative: true,
+    requirePositiveTotal: true,
+    sumTarget: typeof restrictions.sum === "number" ? restrictions.sum : null,
+  });
 
-  if (candidate.length !== context.leafCriteriaCount) {
-    return toInvalid(
-      `must contain exactly ${context.leafCriteriaCount} values`,
-      candidate
-    );
-  }
+  if (!normalizedResult.ok) {
+    const { code, index } = normalizedResult.error;
 
-  const normalized = [];
-  for (let index = 0; index < candidate.length; index += 1) {
-    const num = normalizeNumberValue(candidate[index]);
-    if (num === null) {
+    if (code === "notArray") {
+      return toInvalid("must be an array of numbers", candidate);
+    }
+
+    if (code === "lengthMismatch") {
+      return toInvalid(
+        `must contain exactly ${context.leafCriteriaCount} values`,
+        candidate
+      );
+    }
+
+    if (code === "nonFinite") {
       return toInvalid(`[${index}] must be a finite number`, candidate[index]);
     }
 
-    if (!isWithinRange(num, restrictions)) {
+    if (code === "outOfRange") {
       return toInvalid(
         `[${index}] must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
         candidate[index]
       );
     }
 
-    normalized.push(num);
+    if (code === "nonNegativeViolation") {
+      return toInvalid(
+        "must contain only values greater than or equal to 0",
+        candidate
+      );
+    }
+
+    if (code === "nonPositiveTotal") {
+      return toInvalid(
+        "must contain at least one value greater than 0",
+        candidate
+      );
+    }
+
+    if (code === "sumMismatch") {
+      return toInvalid(`must sum to ${restrictions.sum}`, candidate);
+    }
+
+    return toInvalid("is invalid", candidate);
   }
 
-  if (normalized.some((item) => item < 0)) {
-    return toInvalid("must contain only values greater than or equal to 0", candidate);
-  }
-
-  const total = normalized.reduce((sum, item) => sum + item, 0);
-  if (total <= 0) {
-    return toInvalid("must contain at least one value greater than 0", candidate);
-  }
-
-  if (
-    typeof restrictions.sum === "number" &&
-    Math.abs(total - restrictions.sum) > WEIGHT_SUM_TOLERANCE
-  ) {
-    return toInvalid(`must sum to ${restrictions.sum}`, candidate);
-  }
-
-  return toValid(normalized);
+  return toValid(normalizedResult.value);
 };

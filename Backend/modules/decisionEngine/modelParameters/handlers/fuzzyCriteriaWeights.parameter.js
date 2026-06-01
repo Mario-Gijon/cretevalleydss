@@ -1,10 +1,9 @@
 import {
-  WEIGHT_SUM_TOLERANCE,
   buildEqualFuzzyWeights,
-  normalizeNumberValue,
   toInvalid,
   toValid,
 } from "../modelParameter.shared.js";
+import { validateAndNormalizeFuzzyCriteriaWeightArray } from "../criteriaWeightValues.js";
 
 export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, context }) => {
   let candidate = value;
@@ -12,40 +11,56 @@ export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, conte
     candidate = buildEqualFuzzyWeights(context.leafCriteriaCount);
   }
 
-  if (!Array.isArray(candidate)) {
-    return toInvalid("must be an array of fuzzy triples", candidate);
-  }
+  const normalizedResult = validateAndNormalizeFuzzyCriteriaWeightArray({
+    value: candidate,
+    expectedLength: context.leafCriteriaCount,
+    valueCount: 3,
+    min: 0,
+    max: 1,
+    requireNonDecreasing: true,
+    enforceMiddleSum: true,
+    middleIndex: 1,
+    middleSumTarget: 1,
+  });
 
-  if (candidate.length !== context.leafCriteriaCount) {
-    return toInvalid(
-      `must contain exactly ${context.leafCriteriaCount} fuzzy values`,
-      candidate
-    );
-  }
+  if (!normalizedResult.ok) {
+    const { code, index } = normalizedResult.error;
 
-  const normalized = [];
-  for (let index = 0; index < candidate.length; index += 1) {
-    const triangle = candidate[index];
-    if (!Array.isArray(triangle) || triangle.length !== 3) {
-      return toInvalid(`[${index}] must be an array [l,m,u]`, triangle);
+    if (code === "notArray") {
+      return toInvalid("must be an array of fuzzy triples", candidate);
     }
 
-    const [left, middle, right] = triangle.map((item) => normalizeNumberValue(item));
-    if ([left, middle, right].some((item) => item === null)) {
-      return toInvalid(`[${index}] must contain finite numeric values`, triangle);
+    if (code === "lengthMismatch") {
+      return toInvalid(
+        `must contain exactly ${context.leafCriteriaCount} fuzzy values`,
+        candidate
+      );
     }
 
-    if (!(0 <= left && left <= middle && middle <= right && right <= 1)) {
-      return toInvalid(`[${index}] must satisfy 0 <= l <= m <= u <= 1`, triangle);
+    if (code === "tupleLengthMismatch") {
+      return toInvalid(`[${index}] must be an array [l,m,u]`, candidate[index]);
     }
 
-    normalized.push([left, middle, right]);
+    if (code === "tupleNonFinite") {
+      return toInvalid(
+        `[${index}] must contain finite numeric values`,
+        candidate[index]
+      );
+    }
+
+    if (code === "tupleOutOfRange" || code === "tupleNotNonDecreasing") {
+      return toInvalid(
+        `[${index}] must satisfy 0 <= l <= m <= u <= 1`,
+        candidate[index]
+      );
+    }
+
+    if (code === "middleSumMismatch") {
+      return toInvalid("middle values must sum to 1", candidate);
+    }
+
+    return toInvalid("is invalid", candidate);
   }
 
-  const middleSum = normalized.reduce((sum, [, middle]) => sum + middle, 0);
-  if (Math.abs(middleSum - 1) > WEIGHT_SUM_TOLERANCE) {
-    return toInvalid("middle values must sum to 1", candidate);
-  }
-
-  return toValid(normalized);
+  return toValid(normalizedResult.value);
 };

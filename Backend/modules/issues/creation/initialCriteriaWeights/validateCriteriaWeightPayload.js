@@ -1,5 +1,9 @@
 import { createBadRequestError } from "../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
+import {
+  validateAndNormalizeCrispCriteriaWeightArray,
+  validateAndNormalizeFuzzyCriteriaWeightArray,
+} from "../../../decisionEngine/modelParameters/criteriaWeightValues.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 
@@ -41,10 +45,25 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
     );
   }
 
-  return criterionNames.map((criterionName) => {
-    const value = weightsByCriterion[criterionName];
+  const orderedFuzzyValues = criterionNames.map(
+    (criterionName) => weightsByCriterion[criterionName]
+  );
 
-    if (!Array.isArray(value) || value.length !== valueCount) {
+  const normalizedResult = validateAndNormalizeFuzzyCriteriaWeightArray({
+    value: orderedFuzzyValues,
+    expectedLength: criterionNames.length,
+    valueCount,
+    min: 0,
+    max: 1,
+    requireNonDecreasing: true,
+    enforceMiddleSum: false,
+  });
+
+  if (!normalizedResult.ok) {
+    const { code, index } = normalizedResult.error;
+    const criterionName = criterionNames[index] || "<unknown>";
+
+    if (code === "tupleLengthMismatch") {
       throw createBadRequestError(
         `Fuzzy weight for criterion '${criterionName}' must be an array with length ${valueCount}`,
         {
@@ -53,8 +72,7 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
       );
     }
 
-    const fuzzyValues = value.map(Number);
-    if (fuzzyValues.some((item) => !Number.isFinite(item))) {
+    if (code === "tupleNonFinite") {
       throw createBadRequestError(
         `Fuzzy weight for criterion '${criterionName}' must contain finite numbers`,
         {
@@ -63,7 +81,7 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
       );
     }
 
-    if (fuzzyValues.some((item) => item < 0 || item > 1)) {
+    if (code === "tupleOutOfRange") {
       throw createBadRequestError(
         `Fuzzy weight for criterion '${criterionName}' values must be in [0, 1]`,
         {
@@ -72,19 +90,24 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
       );
     }
 
-    for (let index = 1; index < fuzzyValues.length; index += 1) {
-      if (fuzzyValues[index] < fuzzyValues[index - 1]) {
-        throw createBadRequestError(
-          `Fuzzy weight for criterion '${criterionName}' must be non-decreasing`,
-          {
-            field: "criteriaWeightingConfig.payload.weightsByCriterion",
-          }
-        );
-      }
+    if (code === "tupleNotNonDecreasing") {
+      throw createBadRequestError(
+        `Fuzzy weight for criterion '${criterionName}' must be non-decreasing`,
+        {
+          field: "criteriaWeightingConfig.payload.weightsByCriterion",
+        }
+      );
     }
 
-    return fuzzyValues;
-  });
+    throw createBadRequestError(
+      `Invalid fuzzy weight for criterion '${criterionName}'`,
+      {
+        field: "criteriaWeightingConfig.payload.weightsByCriterion",
+      }
+    );
+  }
+
+  return normalizedResult.value;
 };
 
 export const normalizeCreatorManualWeightsOrThrow = ({
@@ -124,11 +147,26 @@ export const normalizeCreatorManualWeightsOrThrow = ({
     );
   }
 
-  const weights = criterionNames.map((criterionName) => {
-    const rawValue = weightsByCriterion[criterionName];
-    const numericValue = Number(rawValue);
+  const orderedWeights = criterionNames.map(
+    (criterionName) => weightsByCriterion[criterionName]
+  );
 
-    if (!Number.isFinite(numericValue)) {
+  const normalizedResult = validateAndNormalizeCrispCriteriaWeightArray({
+    value: orderedWeights,
+    expectedLength: criterionNames.length,
+    min: 0,
+    max: 1,
+    enforceNonNegative: false,
+    requirePositiveTotal: false,
+    sumTarget: 1,
+    sumTolerance: CRITERIA_WEIGHT_SUM_TOLERANCE,
+  });
+
+  if (!normalizedResult.ok) {
+    const { code, index } = normalizedResult.error;
+    const criterionName = criterionNames[index] || "<unknown>";
+
+    if (code === "nonFinite") {
       throw createBadRequestError(
         `Weight for criterion '${criterionName}' must be a finite number`,
         {
@@ -137,7 +175,7 @@ export const normalizeCreatorManualWeightsOrThrow = ({
       );
     }
 
-    if (numericValue < 0 || numericValue > 1) {
+    if (code === "outOfRange") {
       throw createBadRequestError(
         `Weight for criterion '${criterionName}' must be between 0 and 1`,
         {
@@ -146,18 +184,22 @@ export const normalizeCreatorManualWeightsOrThrow = ({
       );
     }
 
-    return numericValue;
-  });
+    if (code === "sumMismatch") {
+      throw createBadRequestError(
+        "Creator manual weights must sum to 1 (tolerance 0.001)",
+        {
+          field: "criteriaWeightingConfig.payload.weightsByCriterion",
+        }
+      );
+    }
 
-  const total = weights.reduce((sum, value) => sum + value, 0);
-  if (Math.abs(total - 1) > CRITERIA_WEIGHT_SUM_TOLERANCE) {
     throw createBadRequestError(
-      "Creator manual weights must sum to 1 (tolerance 0.001)",
+      `Invalid manual weight for criterion '${criterionName}'`,
       {
         field: "criteriaWeightingConfig.payload.weightsByCriterion",
       }
     );
   }
 
-  return weights;
+  return normalizedResult.value;
 };
