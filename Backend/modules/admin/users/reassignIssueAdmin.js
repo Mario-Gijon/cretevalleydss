@@ -1,5 +1,5 @@
-import { Issue } from "../../../models/Issues.js";
 import { User } from "../../../models/Users.js";
+import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
 
 import {
   createBadRequestError,
@@ -30,21 +30,19 @@ export const reassignIssueAdmin = async ({
   }
 
   const [issue, newAdmin] = await Promise.all([
-    applyOptionalSession(
-      Issue.findById(issueId).populate("admin", "name email role"),
-      session
-    ),
+    getIssueByIdOrThrow(issueId, {
+      populate: {
+        path: "admin",
+        select: "name email role",
+      },
+      lean: false,
+      session,
+    }),
     applyOptionalSession(
       User.findById(newAdminId).select("name email role accountConfirm"),
       session
     ),
   ]);
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
 
   if (!newAdmin) {
     throw createNotFoundError("Target user not found", {

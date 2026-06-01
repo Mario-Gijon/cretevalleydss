@@ -1,5 +1,5 @@
-import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
@@ -22,10 +22,10 @@ export const removeIssueScenario = async ({ scenarioId, userId }) => {
     });
   }
 
-  const issue = await Issue.findById(scenario.issue).select("admin").lean();
-  if (!issue) {
-    throw createNotFoundError("Issue not found");
-  }
+  const issue = await getIssueByIdOrThrow(scenario.issue, {
+    select: "admin",
+    lean: true,
+  });
 
   const isCreator = sameId(scenario.createdBy, userId);
   const isAdmin = sameId(issue.admin, userId);

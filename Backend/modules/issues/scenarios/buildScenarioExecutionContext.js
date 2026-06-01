@@ -1,4 +1,3 @@
-import { Issue } from "../../../models/Issues.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { Participation } from "../../../models/Participations.js";
@@ -10,10 +9,8 @@ import {
   createBadRequestError,
   createForbiddenError,
   createInternalError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
-import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import {
   buildExpressionDomainAssignmentsByCriterionOrThrow,
 } from "../../expressionDomains/buildIssueDomainConfig.js";
@@ -26,6 +23,7 @@ import { getTargetScenarioModelOrThrow } from "./loadScenarioTargetModel.js";
 import { resolveLatestAlternativeResultOrThrow } from "./loadScenarioEvaluationData.js";
 import { validateEvaluationCoverageOrThrow } from "./validateScenarioEvaluationCoverage.js";
 import { buildScenarioParametersOrThrow } from "./resolveScenarioModelParameters.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 export const buildScenarioExecutionContext = async ({
   issueId,
@@ -33,18 +31,10 @@ export const buildScenarioExecutionContext = async ({
   targetModelId,
   paramOverrides,
 }) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-
-  const issue = await Issue.findById(issueId).populate("model");
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: "model",
+    lean: false,
+  });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Not authorized: only admin can create scenarios");

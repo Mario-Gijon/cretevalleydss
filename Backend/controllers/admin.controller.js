@@ -2,7 +2,6 @@ import axios from "axios";
 import mongoose from "mongoose";
 
          
-import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 
           
@@ -42,31 +41,18 @@ import {
   isValidObjectIdLike,
 } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
+import { getIssueByIdOrThrow } from "../modules/issues/shared/queries.js";
 
 
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
   session = null,
 }) => {
-  if (!issueId || !isValidObjectIdLike(issueId)) {
-    throw createBadRequestError("Valid issue id is required", {
-      field: "issueId",
-    });
-  }
-
-  let query = Issue.findById(issueId).populate("model");
-
-  if (session) {
-    query = query.session(session);
-  }
-
-  const issue = await query;
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: "model",
+    lean: false,
+    session,
+  });
 
   return {
     issue,

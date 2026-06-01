@@ -1,10 +1,10 @@
-import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import {
   buildParticipationEntryMetadata,
   isSingleLeafCriterionCount,
 } from "../shared/participantEntry.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 import {
   createBadRequestError,
@@ -27,15 +27,12 @@ export const respondToIssueInvitation = async ({
     });
   }
 
-  const issue = await Issue.findById(issueId)
-    .select(
-      "_id name currentStage consensusPhase criteriaWeightingStructureKey leafCriteriaOrder"
-    )
-    .session(session);
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found");
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    select:
+      "_id name currentStage consensusPhase criteriaWeightingStructureKey leafCriteriaOrder",
+    lean: false,
+    session,
+  });
 
   const participation = await Participation.findOne({
     issue: issue._id,

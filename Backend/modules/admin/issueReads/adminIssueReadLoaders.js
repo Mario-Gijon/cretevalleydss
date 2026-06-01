@@ -1,10 +1,8 @@
-import { Issue } from "../../../models/Issues.js";
-
 import { ensureIssueOrdersDb } from "../../issues/shared/ordering.js";
+import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
 
 import {
   createBadRequestError,
-  createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
@@ -35,78 +33,56 @@ const attachIssueOrders = async ({ issueId, issue }) => {
 };
 
 export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
-  validateIssueIdOrThrow(issueId);
-
-  const issue = await Issue.findById(issueId)
-    .populate("admin", "name email role accountConfirm")
-    .populate(
-      "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation"
-    )
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: [
+      { path: "admin", select: "name email role accountConfirm" },
+      {
+        path: "model",
+        select:
+          "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation",
+      },
+    ],
+    lean: true,
+  });
 
   return attachIssueOrders({ issueId, issue });
 };
 
 export const loadIssueForExpertsProgressOrThrow = async ({ issueId }) => {
-  validateIssueIdOrThrow(issueId);
-
-  const issue = await Issue.findById(issueId)
-    .populate(
-      "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
-    )
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: {
+      path: "model",
+      select:
+        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+    },
+    lean: true,
+  });
 
   return attachIssueOrders({ issueId, issue });
 };
 
 export const loadIssueForExpertEvaluationsOrThrow = async ({ issueId }) => {
-  validateIssueIdOrThrow(issueId);
-
-  const issue = await Issue.findById(issueId)
-    .populate(
-      "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
-    )
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: {
+      path: "model",
+      select:
+        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+    },
+    lean: true,
+  });
 
   return attachIssueOrders({ issueId, issue });
 };
 
 export const loadIssueForExpertWeightsOrThrow = async ({ issueId }) => {
-  validateIssueIdOrThrow(issueId);
-
-  const issue = await Issue.findById(issueId)
-    .populate(
-      "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation"
-    )
-    .lean();
-
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
+  const issue = await getIssueByIdOrThrow(issueId, {
+    populate: {
+      path: "model",
+      select:
+        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+    },
+    lean: true,
+  });
 
   return attachIssueOrders({ issueId, issue });
 };
