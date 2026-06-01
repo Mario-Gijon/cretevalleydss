@@ -18,6 +18,71 @@ import {
   validateIssueIdOrThrow,
   validateExpertIdOrThrow,
 } from "./adminIssueReadLoaders.js";
+import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
+
+const resolveWeightsKind = ({
+  leafNames,
+  criteriaWeightingStructureKey,
+  criteriaWeightingStructure,
+}) => {
+  if (leafNames.length === 1) {
+    return "singleLeaf";
+  }
+
+  if (!criteriaWeightingStructureKey) {
+    return "notRequired";
+  }
+
+  return criteriaWeightingStructure?.key || "unknown";
+};
+
+const resolveStructureLabel = ({ kind, criteriaWeightingStructure }) => {
+  if (kind === "singleLeaf") {
+    return "Single criterion weights";
+  }
+
+  if (kind === "notRequired") {
+    return "Not required";
+  }
+
+  if (
+    typeof criteriaWeightingStructure?.label === "string" &&
+    criteriaWeightingStructure.label.trim()
+  ) {
+    return criteriaWeightingStructure.label.trim();
+  }
+
+  return "Criteria weights";
+};
+
+const resolveDisplayMeta = (displayPayload) => {
+  return displayPayload?.meta?.display &&
+    typeof displayPayload.meta.display === "object"
+    ? displayPayload.meta.display
+    : {};
+};
+
+const resolveBwmFromDisplayMeta = ({ displayMeta, leafNames }) => {
+  const bwmSource =
+    displayMeta?.bwm && typeof displayMeta.bwm === "object"
+      ? displayMeta.bwm
+      : {};
+
+  return {
+    bestCriterion: bwmSource?.bestCriterion,
+    worstCriterion: bwmSource?.worstCriterion,
+    bestToOthers: orderObjectByKeys(bwmSource?.bestToOthers ?? {}, leafNames),
+    othersToWorst: orderObjectByKeys(bwmSource?.othersToWorst ?? {}, leafNames),
+  };
+};
+
+const resolveManualWeightsFromDisplayMeta = ({ displayMeta }) => {
+  if (!isPlainObject(displayMeta?.manualWeights)) {
+    return null;
+  }
+
+  return displayMeta.manualWeights;
+};
 
 export const getIssueExpertWeightsPayload = async ({
   issueId,
@@ -60,42 +125,33 @@ export const getIssueExpertWeightsPayload = async ({
     Array.isArray(issue?.modelParameters?.weights) &&
     issue.modelParameters.weights.length
       ? leafNames.reduce((accumulator, name, index) => {
-        accumulator[name] = issue.modelParameters.weights[index];
-        return accumulator;
-      }, {})
+          accumulator[name] = issue.modelParameters.weights[index];
+          return accumulator;
+        }, {})
       : null;
 
-  const manualWeights = weightDoc
-    ? orderObjectByKeys(weightDoc.payload?.weightsByCriterion ?? {}, leafNames)
+  const criteriaWeightingStructureKey = issue.criteriaWeightingStructureKey || null;
+  const criteriaWeightingStructure = criteriaWeightingStructureKey
+    ? getEvaluationStructureOrThrow(criteriaWeightingStructureKey)
     : null;
 
-  const weightBwmData = weightDoc?.payload || {};
-  const bwm = {
-    bestCriterion: weightBwmData?.bestCriterion,
-    worstCriterion: weightBwmData?.worstCriterion,
-    bestToOthers: orderObjectByKeys(weightBwmData?.bestToOthers ?? {}, leafNames),
-    othersToWorst: orderObjectByKeys(weightBwmData?.othersToWorst ?? {}, leafNames),
-  };
+  const criteriaWeightingDisplayPayload = criteriaWeightingStructure
+    ? await criteriaWeightingStructure.get({
+        storedEvaluation: weightDoc,
+        issue,
+        criteria: orderedLeafCriteria,
+        includeMeta: true,
+      })
+    : null;
 
-  let kind = "unknown";
+  const displayMeta = resolveDisplayMeta(criteriaWeightingDisplayPayload);
+  const kind = resolveWeightsKind({
+    leafNames,
+    criteriaWeightingStructureKey,
+    criteriaWeightingStructure,
+  });
 
-  if (leafNames.length === 1) {
-    kind = "singleLeaf";
-  } else if (
-    issue.criteriaWeightingStructureKey ===
-    "manualCriteriaWeights"
-  ) {
-    kind = "manualCriteriaWeights";
-  } else if (
-    issue.criteriaWeightingStructureKey ===
-    "bestWorstCriteria"
-  ) {
-    kind = "bestWorstCriteria";
-  } else if (!issue.criteriaWeightingStructureKey) {
-    kind = "notRequired";
-  }
-
-  const criteriaWeightsStatus = !issue.criteriaWeightingStructureKey
+  const criteriaWeightsStatus = !criteriaWeightingStructureKey
     ? "notRequired"
     : !weightDoc
       ? "notSubmitted"
@@ -103,9 +159,8 @@ export const getIssueExpertWeightsPayload = async ({
         ? "submitted"
         : "draft";
 
-  const hasManualWeightsByCriterion = isPlainObject(
-    weightDoc?.payload?.weightsByCriterion
-  );
+  const manualWeights = resolveManualWeightsFromDisplayMeta({ displayMeta });
+  const bwm = resolveBwmFromDisplayMeta({ displayMeta, leafNames });
 
   return {
     issue: {
@@ -118,13 +173,13 @@ export const getIssueExpertWeightsPayload = async ({
       criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
       model: issue.model
         ? {
-          id: toIdString(issue.model._id),
-          name: issue.model.name,
-          alternativeEvaluationStructureKey:
-            issue.model.alternativeEvaluationStructureKey,
-          criteriaWeightingStructureKey:
-            issue.model.criteriaWeightingStructureKey,
-        }
+            id: toIdString(issue.model._id),
+            name: issue.model.name,
+            alternativeEvaluationStructureKey:
+              issue.model.alternativeEvaluationStructureKey,
+            criteriaWeightingStructureKey:
+              issue.model.criteriaWeightingStructureKey,
+          }
         : null,
     },
     expert: buildAdminExpertIdentityPayload(expert, expertId),
@@ -133,16 +188,10 @@ export const getIssueExpertWeightsPayload = async ({
       kind,
       status: criteriaWeightsStatus,
       structureKey: issue.criteriaWeightingStructureKey || null,
-      structureLabel:
-        kind === "manualCriteriaWeights"
-          ? "Manual weights"
-          : kind === "bestWorstCriteria"
-            ? "Best-worst weights"
-            : kind === "singleLeaf"
-              ? "Single criterion weights"
-              : kind === "notRequired"
-                ? "Not required"
-                : "Criteria weights",
+      structureLabel: resolveStructureLabel({
+        kind,
+        criteriaWeightingStructure,
+      }),
       leafCriteria: leafNames,
       leafCriteriaDetailed: orderedLeafCriteria.map((criterion) => ({
         criterionId: toIdString(criterion._id),
@@ -153,18 +202,18 @@ export const getIssueExpertWeightsPayload = async ({
       singleLeafAutoWeights:
         leafNames.length === 1
           ? {
-            [leafNames[0]]: resolvedWeights?.[leafNames[0]],
-          }
+              [leafNames[0]]: resolvedWeights?.[leafNames[0]],
+            }
           : null,
       resolvedWeights,
-      manualWeights: hasManualWeightsByCriterion ? manualWeights : null,
+      manualWeights,
       bwm,
       docMeta: weightDoc
         ? {
-          completed: weightDoc.completed,
-          consensusPhase: weightDoc.consensusPhase,
-          updatedAt: weightDoc.updatedAt,
-        }
+            completed: weightDoc.completed,
+            consensusPhase: weightDoc.consensusPhase,
+            updatedAt: weightDoc.updatedAt,
+          }
         : null,
     },
   };

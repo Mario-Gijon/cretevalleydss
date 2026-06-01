@@ -6,6 +6,7 @@ import {
 } from "../shared/alternativeEvaluation.helpers.js";
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
+import { toIdString } from "../../../../../utils/common/ids.js";
 
 const buildCellKey = (alternativeName, criterionName) =>
   `${alternativeName}::${criterionName}`;
@@ -20,6 +21,27 @@ const normalizeText = (value) =>
 
 const isFilledValue = (value) =>
   !(value === null || value === undefined || value === "");
+
+const formatIssueSnapshotDomain = (domain) => {
+  if (!domain) {
+    return null;
+  }
+
+  return {
+    id: toIdString(domain._id),
+    name: domain.name,
+    type: domain.type,
+    ...(domain.type === "numeric" && {
+      range: {
+        min: domain.numericRange?.min ?? null,
+        max: domain.numericRange?.max ?? null,
+      },
+    }),
+    ...(domain.type === "linguistic" && {
+      labels: domain.linguisticLabels,
+    }),
+  };
+};
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
@@ -230,6 +252,45 @@ const buildProgressMeta = ({ storedEvaluation, alternativeNames, criteria }) => 
   };
 };
 
+const buildDisplayMeta = ({
+  alternativeNames,
+  criteria,
+  storedEvaluation,
+  collectiveEvaluations,
+}) => {
+  const sourceCells = isPlainObject(storedEvaluation?.payload?.cells)
+    ? storedEvaluation.payload.cells
+    : {};
+  const lastEvaluationAt = storedEvaluation?.submittedAt || null;
+  const consensusPhase = storedEvaluation?.consensusPhase ?? null;
+
+  const evaluations = {};
+
+  for (const alternativeName of alternativeNames) {
+    evaluations[alternativeName] = {};
+
+    for (const criterion of criteria) {
+      const criterionName = criterion.name;
+      const cellKey = buildCellKey(alternativeName, criterionName);
+      const cell = sourceCells[cellKey];
+
+      evaluations[alternativeName][criterionName] = {
+        value: cell?.value,
+        domain: formatIssueSnapshotDomain(cell?.expressionDomain),
+        timestamp: lastEvaluationAt,
+        consensusPhase,
+      };
+    }
+  }
+
+  return {
+    evaluations,
+    collectiveEvaluations: isPlainObject(collectiveEvaluations)
+      ? collectiveEvaluations
+      : null,
+  };
+};
+
 const normalizePayloadOrThrow = async ({
   payload,
   issue,
@@ -378,7 +439,14 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
     includeNonConsensusConsensusMeasureInExpertRatings: false,
     includeCollectiveEvaluationsLocalizedByExpert: false,
   },
-  async get({ storedEvaluation, issue, alternatives, criteria, includeMeta = false }) {
+  async get({
+    storedEvaluation,
+    issue,
+    alternatives,
+    criteria,
+    collectiveEvaluations = null,
+    includeMeta = false,
+  }) {
     const { payload, context } = await buildGetPayload({
       storedEvaluation,
       issue,
@@ -392,11 +460,19 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
 
     return {
       ...payload,
-      meta: buildProgressMeta({
-        storedEvaluation,
-        alternativeNames: context.alternativeNames,
-        criteria: context.criteria,
-      }),
+      meta: {
+        progress: buildProgressMeta({
+          storedEvaluation,
+          alternativeNames: context.alternativeNames,
+          criteria: context.criteria,
+        }).progress,
+        display: buildDisplayMeta({
+          alternativeNames: context.alternativeNames,
+          criteria: context.criteria,
+          storedEvaluation,
+          collectiveEvaluations,
+        }),
+      },
     };
   },
 

@@ -140,23 +140,89 @@ const toWeightsByCriterionFromStoredPayload = (storedPayloadWeights, criterionNa
   }, {});
 };
 
+const orderObjectByKeys = (obj, orderedKeys) => {
+  const orderedObject = {};
+  const usedKeys = new Set();
+
+  for (const key of orderedKeys) {
+    orderedObject[key] = Object.prototype.hasOwnProperty.call(obj, key)
+      ? obj[key]
+      : null;
+    usedKeys.add(key);
+  }
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (!usedKeys.has(key)) {
+      orderedObject[key] = value;
+    }
+  }
+
+  return orderedObject;
+};
+
+const resolveCriterionNames = async ({ issue, criteria }) => {
+  if (Array.isArray(criteria) && criteria.length > 0) {
+    return criteria
+      .map((criterion) =>
+        typeof criterion === "string"
+          ? criterion.trim()
+          : String(criterion?.name || "").trim()
+      )
+      .filter(Boolean);
+  }
+
+  const { criterionNames } = await getOrderedCriterionNames({ issue });
+  return criterionNames;
+};
+
+const buildDisplayMeta = ({ storedEvaluation, criterionNames }) => {
+  const rawPayload = isPlainObject(storedEvaluation?.payload)
+    ? storedEvaluation.payload
+    : {};
+
+  return {
+    manualWeights: storedEvaluation && isPlainObject(rawPayload.weightsByCriterion)
+      ? orderObjectByKeys(rawPayload.weightsByCriterion, criterionNames)
+      : null,
+    bwm: {
+      bestCriterion: rawPayload?.bestCriterion,
+      worstCriterion: rawPayload?.worstCriterion,
+      bestToOthers: orderObjectByKeys(rawPayload?.bestToOthers ?? {}, criterionNames),
+      othersToWorst: orderObjectByKeys(rawPayload?.othersToWorst ?? {}, criterionNames),
+    },
+  };
+};
+
 export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",
+  label: "Manual weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ storedEvaluation, issue }) {
-    const { criterionNames } = await getOrderedCriterionNames({ issue });
+  async get({ storedEvaluation, issue, criteria, includeMeta = false }) {
+    const criterionNames = await resolveCriterionNames({ issue, criteria });
 
-    if (!storedEvaluation) {
-      return {
-        weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames),
-      };
+    const payload = !storedEvaluation
+      ? {
+          weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames),
+        }
+      : {
+          weightsByCriterion: toWeightsByCriterionFromStoredPayload(
+            storedEvaluation?.payload?.weightsByCriterion,
+            criterionNames
+          ),
+        };
+
+    if (!includeMeta) {
+      return payload;
     }
 
     return {
-      weightsByCriterion: toWeightsByCriterionFromStoredPayload(
-        storedEvaluation?.payload?.weightsByCriterion,
-        criterionNames
-      ),
+      ...payload,
+      meta: {
+        display: buildDisplayMeta({
+          storedEvaluation,
+          criterionNames,
+        }),
+      },
     };
   },
 
