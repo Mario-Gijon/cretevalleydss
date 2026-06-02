@@ -1,3 +1,4 @@
+import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
@@ -16,13 +17,11 @@ const hasUsableSerializedExpressionDomain = (expressionDomain) =>
       expressionDomain.type.trim()
   );
 
-const shouldNormalizeProvidedLeafCriteriaDomains = (leafCriteria) =>
-  leafCriteria.some(
-    (criterion) =>
-      criterion &&
+const isObjectCriterion = (criterion) =>
+  Boolean(
+    criterion &&
       typeof criterion === "object" &&
-      !Array.isArray(criterion) &&
-      Object.prototype.hasOwnProperty.call(criterion, "expressionDomain")
+      !Array.isArray(criterion)
   );
 
 const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
@@ -30,43 +29,94 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
     return leafCriteria;
   }
 
-  if (!shouldNormalizeProvidedLeafCriteriaDomains(leafCriteria)) {
+  const objectCriteria = leafCriteria.filter(isObjectCriterion);
+
+  if (objectCriteria.length === 0) {
     return leafCriteria;
   }
 
-  const criteriaWithMissingSnapshot = leafCriteria.filter((criterion) => {
-    if (!criterion || typeof criterion !== "object" || Array.isArray(criterion)) {
-      return false;
-    }
-
-    return (
+  const criteriaNeedingCriterionLookup = objectCriteria.filter(
+    (criterion) =>
       !hasUsableSerializedExpressionDomain(criterion.expressionDomain) &&
       !toIdString(criterion.expressionDomain)
-    );
-  });
+  );
 
-  if (criteriaWithMissingSnapshot.length > 0) {
+  const criteriaMissingResolutionSource = criteriaNeedingCriterionLookup.filter(
+    (criterion) => !toIdString(criterion?._id)
+  );
+
+  if (criteriaMissingResolutionSource.length > 0) {
     throw createBadRequestError("Each leaf criterion must have an expression domain snapshot", {
       field: "expressionDomain",
       details: {
-        missingCriteria: criteriaWithMissingSnapshot.map((criterion) =>
+        missingCriteria: criteriaMissingResolutionSource.map((criterion) =>
           String(criterion?.name || "")
         ),
       },
     });
   }
 
+  const criterionIds = Array.from(
+    new Set(
+      criteriaNeedingCriterionLookup
+        .map((criterion) => toIdString(criterion?._id))
+        .filter(Boolean)
+    )
+  );
+
+  const criteriaFromDb =
+    criterionIds.length > 0
+      ? await Criterion.find({
+          _id: { $in: criterionIds },
+        })
+          .select("_id expressionDomain")
+          .lean()
+      : [];
+
+  const criterionById = new Map(
+    criteriaFromDb
+      .map((criterion) => [toIdString(criterion?._id), criterion])
+      .filter(([criterionId]) => Boolean(criterionId))
+  );
+
+  const missingCriterionIds = criterionIds.filter(
+    (criterionId) => !criterionById.has(criterionId)
+  );
+
+  if (missingCriterionIds.length > 0) {
+    throw createBadRequestError(
+      "Leaf criteria are missing required criterion records to resolve expression domains",
+      {
+        field: "leafCriteria",
+        details: {
+          missingCriterionIds,
+        },
+      }
+    );
+  }
+
   const snapshotIds = Array.from(
     new Set(
-      leafCriteria
-        .filter(
-          (criterion) =>
-            criterion &&
-            typeof criterion === "object" &&
-            !Array.isArray(criterion) &&
-            !hasUsableSerializedExpressionDomain(criterion.expressionDomain)
-        )
-        .map((criterion) => toIdString(criterion?.expressionDomain))
+      objectCriteria
+        .map((criterion) => {
+          if (hasUsableSerializedExpressionDomain(criterion.expressionDomain)) {
+            return null;
+          }
+
+          const directSnapshotId = toIdString(criterion?.expressionDomain);
+          if (directSnapshotId) {
+            return directSnapshotId;
+          }
+
+          const criterionId = toIdString(criterion?._id);
+          const dbCriterion = criterionById.get(criterionId);
+
+          if (hasUsableSerializedExpressionDomain(dbCriterion?.expressionDomain)) {
+            return null;
+          }
+
+          return toIdString(dbCriterion?.expressionDomain);
+        })
         .filter(Boolean)
     )
   );
@@ -89,7 +139,7 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
   );
 
   return leafCriteria.map((criterion) => {
-    if (!criterion || typeof criterion !== "object" || Array.isArray(criterion)) {
+    if (!isObjectCriterion(criterion)) {
       return criterion;
     }
 
@@ -97,7 +147,20 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
       return criterion;
     }
 
-    const snapshotId = toIdString(criterion.expressionDomain);
+    const criterionId = toIdString(criterion?._id);
+    const dbCriterion = criterionById.get(criterionId);
+    const fallbackExpressionDomain = dbCriterion?.expressionDomain;
+
+    if (hasUsableSerializedExpressionDomain(fallbackExpressionDomain)) {
+      return {
+        ...criterion,
+        expressionDomain: fallbackExpressionDomain,
+      };
+    }
+
+    const snapshotId =
+      toIdString(criterion.expressionDomain) ||
+      toIdString(fallbackExpressionDomain);
     const snapshot = snapshotById.get(snapshotId);
     const serialized = serializeIssueExpressionDomainSnapshot(snapshot);
 
@@ -106,6 +169,10 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
         `Expression domain snapshot is missing or invalid for criterion '${String(criterion?.name || "")}'`,
         {
           field: "expressionDomain",
+          details: {
+            criterionId: criterionId || null,
+            expressionDomainId: snapshotId || null,
+          },
         }
       );
     }

@@ -61,7 +61,7 @@ export const getIssueExpertEvaluationsPayload = async ({
     getOrderedLeafCriteriaDb({
       issueId,
       issueDoc: issue,
-      select: "_id name type",
+      select: "_id name type expressionDomain",
       lean: true,
     }),
     IssueEvaluation.findOne({
