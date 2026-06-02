@@ -47,6 +47,38 @@ def _finite_float_list(values: np.ndarray, *, precision: int = 6) -> list[float]
     return result
 
 
+def _build_suggested_pairwise_payload(
+    *,
+    matrix: np.ndarray,
+    criterion_name: str,
+    alternative_names: list[str],
+) -> dict[str, Any]:
+    if len(alternative_names) != len(matrix):
+        raise ValueError(
+            "alternative_names length must match the suggested preference matrix size"
+        )
+
+    rounded_matrix = _rounded_finite_matrix(matrix)
+    comparisons_by_criterion: dict[str, dict[str, Any]] = {
+        criterion_name: {}
+    }
+
+    for row_index, row_alternative in enumerate(alternative_names):
+        row = rounded_matrix[row_index]
+        for col_index, col_alternative in enumerate(alternative_names):
+            if row_index == col_index:
+                continue
+
+            pair_key = f"{row_alternative}::{col_alternative}"
+            comparisons_by_criterion[criterion_name][pair_key] = {
+                "value": row[col_index]
+            }
+
+    return {
+        "comparisonsByCriterion": comparisons_by_criterion
+    }
+
+
 def run_herrera_viedma(
     matrices: dict[str, dict[str, list[list[float]]]],
     cl: float,
@@ -55,6 +87,7 @@ def run_herrera_viedma(
     b: float,
     beta: float,
     w_crit: list[float],
+    alternative_names: list[str],
 ) -> dict[str, Any]:
     """Ejecuta una iteración del modelo Herrera-Viedma sobre matrices por experto."""
 
@@ -107,7 +140,11 @@ def run_herrera_viedma(
         aplicar_cambios(changes, pref)
         suggested_next_evaluations = {
             expert_keys[expert_index]: {
-                criterion_name: _rounded_finite_matrix(pref[expert_index]),
+                "payload": _build_suggested_pairwise_payload(
+                    matrix=pref[expert_index],
+                    criterion_name=criterion_name,
+                    alternative_names=alternative_names,
+                ),
             }
             for expert_index in range(n_exp)
         }

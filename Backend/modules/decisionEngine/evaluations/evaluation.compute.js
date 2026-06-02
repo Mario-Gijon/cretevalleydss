@@ -19,7 +19,6 @@ import {
   executeCriteriaWeightingModel,
 } from "../modelExecution/index.js";
 import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
-import { getOrderedAlternativeAndCriterionNames } from "./structures/shared/alternativeEvaluation.helpers.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
@@ -546,31 +545,6 @@ const ensureSimulatedConsensusIssueConfigOrThrow = ({ issue, stage }) => {
   }
 };
 
-const validateStructureForSimulatedConsensusOrThrow = ({
-  structure,
-  criterionNames,
-}) => {
-  if (structure?.key !== "alternativePairwiseByCriterion") {
-    throw createBadRequestError(
-      "Simulated consensus is only supported for alternativePairwiseByCriterion",
-      {
-        code: "UNSUPPORTED_SIMULATED_CONSENSUS_STRUCTURE",
-        field: "alternativeEvaluationStructureKey",
-      }
-    );
-  }
-
-  if (!Array.isArray(criterionNames) || criterionNames.length !== 1) {
-    throw createBadRequestError(
-      "Simulated consensus for alternativePairwiseByCriterion requires exactly one criterion",
-      {
-        code: "SIMULATED_CONSENSUS_REQUIRES_SINGLE_CRITERION",
-        field: "criteria",
-      }
-    );
-  }
-};
-
 const getSuggestedEvaluationsOrThrow = (rawOutput) => {
   if (!isPlainObject(rawOutput)) {
     throw createInternalError("Model rawOutput is missing for simulated consensus", {
@@ -600,86 +574,29 @@ const getSuggestedEvaluationsOrThrow = (rawOutput) => {
   return suggestions;
 };
 
-const buildSimulatedPairwisePayloadOrThrow = ({
+const extractSuggestedEvaluationPayloadOrThrow = ({
   expertId,
   expertSuggestion,
-  criterionName,
-  criterionExpressionDomain,
-  alternativeNames,
 }) => {
   if (!isPlainObject(expertSuggestion)) {
     throw createInternalError(
-      `Suggested evaluation for expert '${expertId}' must be an object`,
+      `Suggested evaluation payload for expert '${expertId}' must be an object`,
       {
-        field: `suggested_next_evaluations.${expertId}`,
+        field: `rawOutput.suggested_next_evaluations.${expertId}.payload`,
       }
     );
   }
 
-  const criterionKeys = Object.keys(expertSuggestion);
-  if (criterionKeys.length !== 1 || criterionKeys[0] !== criterionName) {
+  if (!isPlainObject(expertSuggestion.payload)) {
     throw createInternalError(
-      `Suggested evaluation for expert '${expertId}' must include exactly criterion '${criterionName}'`,
+      `Suggested evaluation payload for expert '${expertId}' must be an object`,
       {
-        field: `suggested_next_evaluations.${expertId}`,
+        field: `rawOutput.suggested_next_evaluations.${expertId}.payload`,
       }
     );
   }
 
-  const matrix = expertSuggestion[criterionName];
-  if (!Array.isArray(matrix) || matrix.length !== alternativeNames.length) {
-    throw createInternalError(
-      `Suggested matrix for expert '${expertId}' must have ${alternativeNames.length} rows`,
-      {
-        field: `suggested_next_evaluations.${expertId}.${criterionName}`,
-      }
-    );
-  }
-
-  const comparisons = {};
-  for (let rowIndex = 0; rowIndex < alternativeNames.length; rowIndex += 1) {
-    const row = matrix[rowIndex];
-    if (!Array.isArray(row) || row.length !== alternativeNames.length) {
-      throw createInternalError(
-        `Suggested matrix row ${rowIndex} for expert '${expertId}' must have ${alternativeNames.length} values`,
-        {
-          field: `suggested_next_evaluations.${expertId}.${criterionName}`,
-        }
-      );
-    }
-
-    for (let colIndex = 0; colIndex < alternativeNames.length; colIndex += 1) {
-      if (rowIndex === colIndex) {
-        continue;
-      }
-
-      const numericValue = Number(row[colIndex]);
-      if (!Number.isFinite(numericValue)) {
-        throw createInternalError(
-          `Suggested matrix contains a non-finite value for expert '${expertId}'`,
-          {
-            field: `suggested_next_evaluations.${expertId}.${criterionName}`,
-            details: {
-              rowIndex,
-              colIndex,
-            },
-          }
-        );
-      }
-
-      const pairKey = `${alternativeNames[rowIndex]}::${alternativeNames[colIndex]}`;
-      comparisons[pairKey] = {
-        value: numericValue,
-        expressionDomain: criterionExpressionDomain,
-      };
-    }
-  }
-
-  return {
-    comparisonsByCriterion: {
-      [criterionName]: comparisons,
-    },
-  };
+  return expertSuggestion.payload;
 };
 
 const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
@@ -688,9 +605,6 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
   acceptedParticipations,
   suggestions,
   nextPhase,
-  criterionName,
-  criterionExpressionDomain,
-  alternativeNames,
 }) => {
   const expectedExpertIds = acceptedParticipations.map((participation) =>
     toIdString(participation.expert)
@@ -720,17 +634,14 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
   for (const participation of acceptedParticipations) {
     const expertId = toIdString(participation.expert);
     const expertSuggestion = suggestions[expertId];
-    const rawPayload = buildSimulatedPairwisePayloadOrThrow({
+    const suggestedPayload = extractSuggestedEvaluationPayloadOrThrow({
       expertId,
       expertSuggestion,
-      criterionName,
-      criterionExpressionDomain,
-      alternativeNames,
     });
 
     const normalizedPayload = await structure.save({
       mode: "submit",
-      payload: rawPayload,
+      payload: suggestedPayload,
       issue,
     });
 
@@ -778,18 +689,6 @@ const computeSimulatedAlternativeConsensusRounds = async ({
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
 
-  const {
-    alternativeNames,
-    criteria,
-    criterionNames,
-  } = await getOrderedAlternativeAndCriterionNames({ issue });
-  validateStructureForSimulatedConsensusOrThrow({
-    structure,
-    criterionNames,
-  });
-
-  const criterionName = criterionNames[0];
-  const criterionExpressionDomain = criteria[0]?.expressionDomain || null;
   const initialPhase = issue.consensusPhase;
   let currentPhase = initialPhase;
   let currentEvaluations = evaluations;
@@ -844,9 +743,6 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       acceptedParticipations,
       suggestions,
       nextPhase,
-      criterionName,
-      criterionExpressionDomain,
-      alternativeNames,
     });
 
     currentPhase = nextPhase;

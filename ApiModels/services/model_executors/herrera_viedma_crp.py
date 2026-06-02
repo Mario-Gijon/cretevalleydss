@@ -285,6 +285,37 @@ def _normalize_pairwise_collective_evaluations(
     return collective_evaluations
 
 
+def _normalize_suggested_next_evaluations(
+    *,
+    source: Any,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(source, dict):
+        return {}
+
+    if len(source) == 0:
+        return {}
+
+    normalized_suggestions: dict[str, dict[str, Any]] = {}
+
+    for expert_id, expert_suggestion in source.items():
+        if not isinstance(expert_suggestion, dict):
+            raise ValueError(
+                f"Herrera-Viedma suggested_next_evaluations['{expert_id}'] must be an object"
+            )
+
+        payload = expert_suggestion.get("payload")
+        if not isinstance(payload, dict):
+            raise ValueError(
+                f"Herrera-Viedma suggested_next_evaluations['{expert_id}'].payload must be an object"
+            )
+
+        normalized_suggestions[str(expert_id)] = {
+            "payload": payload
+        }
+
+    return normalized_suggestions
+
+
 def _output(
     *,
     run_result: dict[str, Any],
@@ -340,6 +371,10 @@ def _output(
     if not isinstance(plots_graphic, dict):
         plots_graphic = {}
 
+    safe_run_result["suggested_next_evaluations"] = _normalize_suggested_next_evaluations(
+        source=safe_run_result.get("suggested_next_evaluations"),
+    )
+
     return {
         "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_pairwise_collective_evaluations(
@@ -379,6 +414,7 @@ def execute_herrera_viedma(
             b=float(model_parameters.get("b", 1)),
             beta=float(model_parameters.get("beta", 0.8)),
             w_crit=[1.0],
+            alternative_names=execution_input["alternative_names"],
         )
 
         return success_response(
