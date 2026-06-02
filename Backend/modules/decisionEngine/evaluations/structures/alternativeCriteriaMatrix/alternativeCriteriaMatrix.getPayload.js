@@ -10,17 +10,13 @@ import {
 
 export const buildGetPayload = async ({
   storedEvaluation,
-  issue,
-  alternatives,
-  criteria,
+  structureContext,
 }) => {
   const {
     alternativeNames,
     criteria: resolvedCriteria,
   } = await resolveAlternativesAndCriteria({
-    issue,
-    alternatives,
-    criteria,
+    structureContext,
   });
   const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
     buildExpectedCellMetadata({

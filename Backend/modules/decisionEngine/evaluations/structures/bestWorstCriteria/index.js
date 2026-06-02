@@ -15,11 +15,10 @@ export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",
   label: "Best-worst weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ storedEvaluation, issue, criteria, includeMeta = false }) {
+  async get({ storedEvaluation, structureContext, includeMeta = false }) {
     const { payload, criterionNames } = await buildGetPayload({
       storedEvaluation,
-      issue,
-      criteria,
+      structureContext,
     });
 
     if (!includeMeta) {
@@ -37,10 +36,13 @@ export const bestWorstCriteriaStructure = Object.freeze({
     };
   },
 
-  async save({ payload, issue, mode }) {
+  async save({ mode, payload, structureContext }) {
     validateSaveModeOrThrow(mode);
 
-    const normalized = await normalizePayloadOrThrow({ payload, issue });
+    const normalized = await normalizePayloadOrThrow({
+      payload,
+      structureContext,
+    });
 
     if (mode === "submit") {
       validateSubmittedBwmPayloadOrThrow({

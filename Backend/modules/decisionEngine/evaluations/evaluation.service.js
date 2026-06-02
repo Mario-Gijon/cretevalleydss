@@ -11,6 +11,7 @@ import {
   ISSUE_STAGES,
 } from "./evaluation.constants.js";
 import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
+import { buildEvaluationStructureContext } from "./evaluationStructureContext.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 
 const getStructureForIssueStage = ({ issue, stage }) => {
@@ -227,12 +228,13 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     consensusPhase: issue.consensusPhase,
   });
 
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+  });
+
   const payload = await structure.get({
     storedEvaluation,
-    issueId: issue._id,
-    userId,
-    issue,
-    phase: issue.consensusPhase,
+    structureContext,
   });
 
   const collectiveReference = await loadPreviousCollectiveReference({
@@ -263,13 +265,14 @@ export const saveIssueEvaluationDraft = async ({
     stage,
   });
 
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+  });
+
   const normalizedPayload = await structure.save({
     mode: "draft",
     payload,
-    issueId: issue._id,
-    userId,
-    issue,
-    phase: issue.consensusPhase,
+    structureContext,
   });
 
   await upsertIssueEvaluation({
@@ -303,13 +306,14 @@ export const submitIssueEvaluation = async ({
     stage,
   });
 
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+  });
+
   const normalizedPayload = await structure.save({
     mode: "submit",
     payload,
-    issueId: issue._id,
-    userId,
-    issue,
-    phase: issue.consensusPhase,
+    structureContext,
   });
 
   await upsertIssueEvaluation({

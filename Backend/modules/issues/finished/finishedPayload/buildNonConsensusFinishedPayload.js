@@ -19,6 +19,7 @@ import {
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
 import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
+import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
 import {
   loadFinishedSinglePhaseData,
   loadLatestAlternativeStageResultOrThrow,
@@ -79,16 +80,24 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
     criteriaWeightingEvaluationsByExpertId:
       context.criteriaWeightingEvaluationsByExpertId,
     criterionNames: context.criterionNames,
+    orderedLeafCriteria: context.orderedLeafCriteria,
+  });
+  const collectiveEvaluations = buildFinishedCollectiveEvaluations({
+    stageResult: latestAlternativeResult,
+  });
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+    alternatives: context.alternatives,
+    leafCriteria: context.orderedLeafCriteria,
+    collectiveEvaluations,
   });
 
   const expertsRatingsByPhase = await buildFinishedExpertRatingsByPhase({
-    issue,
     structure: expertRatingsContext.structure,
+    structureContext,
     evaluations: loaded.completedAlternativeEvaluations,
     stageResult: latestAlternativeResult,
-    collectiveEvaluations: buildFinishedCollectiveEvaluations({
-      stageResult: latestAlternativeResult,
-    }),
+    collectiveEvaluations,
     criteriaWeightsEvaluationByExpert:
       expertRatingsContext.criteriaWeightsEvaluationByExpert,
   });

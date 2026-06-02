@@ -1,6 +1,5 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
@@ -61,14 +60,25 @@ const normalizeComparisonsMapOrThrow = (
   }, {});
 };
 
-export const normalizePayloadOrThrow = async ({ payload, issue }) => {
+export const normalizePayloadOrThrow = async ({
+  payload,
+  structureContext,
+}) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("payload must be an object", {
       field: "payload",
     });
   }
 
-  const { criterionNames } = await getOrderedCriterionNames({ issue });
+  const criterionNames = Array.isArray(structureContext?.leafCriteria)
+    ? structureContext.leafCriteria
+        .map((criterion) =>
+          typeof criterion === "string"
+            ? criterion.trim()
+            : String(criterion?.name || "").trim()
+        )
+        .filter(Boolean)
+    : [];
 
   const bestCriterion = normalizeText(payload.bestCriterion);
   const worstCriterion = normalizeText(payload.worstCriterion);

@@ -1,5 +1,4 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
 import { normalizeText } from "./bestWorstCriteria.payload.js";
 
 const buildEmptyComparisons = (criterionNames) =>
@@ -57,9 +56,9 @@ const orderObjectByKeys = (obj, orderedKeys) => {
   return orderedObject;
 };
 
-const resolveCriterionNames = async ({ issue, criteria }) => {
-  if (Array.isArray(criteria) && criteria.length > 0) {
-    return criteria
+const resolveCriterionNames = async ({ structureContext }) => {
+  if (Array.isArray(structureContext?.leafCriteria) && structureContext.leafCriteria.length > 0) {
+    return structureContext.leafCriteria
       .map((criterion) =>
         typeof criterion === "string"
           ? criterion.trim()
@@ -68,8 +67,7 @@ const resolveCriterionNames = async ({ issue, criteria }) => {
       .filter(Boolean);
   }
 
-  const { criterionNames } = await getOrderedCriterionNames({ issue });
-  return criterionNames;
+  return [];
 };
 
 export const buildDisplayMeta = ({ storedEvaluation, criterionNames }) => {
@@ -87,8 +85,11 @@ export const buildDisplayMeta = ({ storedEvaluation, criterionNames }) => {
   };
 };
 
-export const buildGetPayload = async ({ storedEvaluation, issue, criteria }) => {
-  const criterionNames = await resolveCriterionNames({ issue, criteria });
+export const buildGetPayload = async ({
+  storedEvaluation,
+  structureContext,
+}) => {
+  const criterionNames = await resolveCriterionNames({ structureContext });
 
   const payload = !storedEvaluation
     ? {

@@ -21,6 +21,7 @@ import {
 } from "./adminIssueReadLoaders.js";
 import { createNotFoundError } from "../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
+import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 
 const resolveFilledCells = (displayPayload) => {
   const filledItems = Number(displayPayload?.meta?.progress?.filledItems);
@@ -101,13 +102,16 @@ export const getIssueExpertEvaluationsPayload = async ({
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     issue.alternativeEvaluationStructureKey
   );
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+    alternatives: orderedAlternatives,
+    leafCriteria: orderedLeafCriteria,
+    collectiveEvaluations: collectiveSource,
+  });
 
   const displayPayload = await alternativeEvaluationStructure.get({
     storedEvaluation: evaluationDoc,
-    issue,
-    alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
-    collectiveEvaluations: collectiveSource,
+    structureContext,
     includeMeta: true,
   });
 

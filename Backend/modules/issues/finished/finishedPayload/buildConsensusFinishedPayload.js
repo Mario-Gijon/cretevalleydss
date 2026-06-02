@@ -23,6 +23,7 @@ import {
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
 import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
+import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
 import {
   groupCompletedEvaluationsByPhase,
   loadConsensusAlternativeStageResultsOrThrow,
@@ -79,6 +80,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     criteriaWeightingEvaluationsByExpertId:
       context.criteriaWeightingEvaluationsByExpertId,
     criterionNames: context.criterionNames,
+    orderedLeafCriteria: context.orderedLeafCriteria,
   });
 
   const consensusRounds = [];
@@ -119,15 +121,22 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
       threshold: issue.consensusThreshold,
     });
     round.plotsGraphic = enrichedPlotsGraphic;
+    const collectiveEvaluations = buildFinishedCollectiveEvaluations({
+      stageResult,
+    });
+    const structureContext = await buildEvaluationStructureContext({
+      issue,
+      alternatives: context.alternatives,
+      leafCriteria: context.orderedLeafCriteria,
+      collectiveEvaluations,
+    });
 
     expertsRatings[phase] = await buildFinishedExpertRatingsByPhase({
-      issue,
       structure: expertRatingsContext.structure,
+      structureContext,
       evaluations: phaseEvaluations,
       stageResult,
-      collectiveEvaluations: buildFinishedCollectiveEvaluations({
-        stageResult,
-      }),
+      collectiveEvaluations,
       criteriaWeightsEvaluationByExpert:
         expertRatingsContext.criteriaWeightsEvaluationByExpert,
     });

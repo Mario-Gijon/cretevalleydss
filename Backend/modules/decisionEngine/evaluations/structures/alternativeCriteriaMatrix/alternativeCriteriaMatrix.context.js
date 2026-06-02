@@ -1,5 +1,3 @@
-import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
-
 export const buildCellKey = (alternativeName, criterionName) =>
   `${alternativeName}::${criterionName}`;
 
@@ -23,13 +21,9 @@ export const buildExpectedCellMetadata = ({ alternativeNames, criteria }) => {
   };
 };
 
-export const resolveAlternativesAndCriteria = async ({
-  issue,
-  alternatives,
-  criteria,
-}) => {
-  const normalizedAlternatives = Array.isArray(alternatives)
-    ? alternatives
+export const resolveAlternativesAndCriteria = async ({ structureContext }) => {
+  const normalizedAlternatives = Array.isArray(structureContext?.alternatives)
+    ? structureContext.alternatives
         .map((alternative) =>
           typeof alternative === "string"
             ? alternative
@@ -39,8 +33,8 @@ export const resolveAlternativesAndCriteria = async ({
         .filter(Boolean)
     : [];
 
-  const normalizedCriteria = Array.isArray(criteria)
-    ? criteria
+  const normalizedCriteria = Array.isArray(structureContext?.leafCriteria)
+    ? structureContext.leafCriteria
         .map((criterion) =>
           typeof criterion === "string"
             ? {
@@ -55,17 +49,8 @@ export const resolveAlternativesAndCriteria = async ({
         .filter((criterion) => criterion.name)
     : [];
 
-  if (normalizedAlternatives.length > 0 && normalizedCriteria.length > 0) {
-    return {
-      alternativeNames: normalizedAlternatives,
-      criteria: normalizedCriteria,
-    };
-  }
-
-  const issueContext = await getOrderedAlternativeAndCriterionNames({ issue });
-
   return {
-    alternativeNames: issueContext.alternativeNames,
-    criteria: issueContext.criteria,
+    alternativeNames: normalizedAlternatives,
+    criteria: normalizedCriteria,
   };
 };

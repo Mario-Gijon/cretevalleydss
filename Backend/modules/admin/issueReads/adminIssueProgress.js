@@ -1,5 +1,6 @@
 import { toIdString } from "../../../utils/common/ids.js";
 import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
+import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 import { buildParticipantExpertPayload } from "./adminIssueReadPayloads.js";
 
 const toProgressStats = (displayPayload) => {
@@ -51,12 +52,15 @@ const buildStructureProgressMeta = async ({
   const structure = getEvaluationStructureOrThrow(
     issue.alternativeEvaluationStructureKey
   );
-
-  const displayPayload = await structure.get({
-    storedEvaluation,
+  const structureContext = await buildEvaluationStructureContext({
     issue,
     alternatives: normalizeAlternativesForProgress(alternatives),
     criteria: normalizeCriteriaForProgress(criteria),
+  });
+
+  const displayPayload = await structure.get({
+    storedEvaluation,
+    structureContext,
     includeMeta: true,
   });
 

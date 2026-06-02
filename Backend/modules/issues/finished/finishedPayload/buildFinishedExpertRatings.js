@@ -10,6 +10,7 @@ export const buildFinishedExpertRatingsContext = async ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
   criterionNames,
+  orderedLeafCriteria = null,
 }) => {
   const resolvedStructure =
     structure || getFinishedAlternativeEvaluationStructureOrThrow({ issue });
@@ -21,13 +22,14 @@ export const buildFinishedExpertRatingsContext = async ({
       participations,
       criteriaWeightingEvaluationsByExpertId,
       criterionNames,
+      orderedLeafCriteria,
     }),
   };
 };
 
 export const buildFinishedExpertRatingsByPhase = async ({
-  issue,
   structure,
+  structureContext,
   evaluations,
   stageResult,
   collectiveEvaluations,
@@ -36,7 +38,7 @@ export const buildFinishedExpertRatingsByPhase = async ({
   const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
     structure,
     evaluations,
-    issue,
+    structureContext,
   });
 
   const ratings = {};

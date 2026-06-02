@@ -25,7 +25,7 @@ export const getFinishedAlternativeEvaluationStructureOrThrow = ({ issue }) => {
 export const buildFinishedExpertEvaluationsByEmail = async ({
   structure,
   evaluations,
-  issue,
+  structureContext,
 }) => {
   const expertEvaluations = {};
 
@@ -39,7 +39,7 @@ export const buildFinishedExpertEvaluationsByEmail = async ({
 
     expertEvaluations[expertEmail] = await structure.get({
       storedEvaluation: evaluation,
-      issue,
+      structureContext,
     });
   }
 

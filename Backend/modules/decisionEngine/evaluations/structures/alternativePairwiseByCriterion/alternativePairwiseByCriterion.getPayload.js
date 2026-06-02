@@ -7,18 +7,14 @@ import { buildEmptyCell } from "./alternativePairwiseByCriterion.payload.js";
 
 export const buildGetPayload = async ({
   storedEvaluation,
-  issue,
-  alternatives,
-  criteria,
+  structureContext,
 }) => {
   const {
     alternativeNames,
     criteria: resolvedCriteria,
     criterionNames,
   } = await resolveAlternativesAndCriteria({
-    issue,
-    alternatives,
-    criteria,
+    structureContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
     criteria: resolvedCriteria,

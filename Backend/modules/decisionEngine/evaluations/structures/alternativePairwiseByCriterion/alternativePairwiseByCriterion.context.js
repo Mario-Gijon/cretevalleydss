@@ -1,5 +1,3 @@
-import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
-
 export const buildComparisonKey = (alternativeA, alternativeB) =>
   `${alternativeA}::${alternativeB}`;
 
@@ -29,13 +27,9 @@ export const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) =>
   return expectedPairsByCriterion;
 };
 
-export const resolveAlternativesAndCriteria = async ({
-  issue,
-  alternatives,
-  criteria,
-}) => {
-  const normalizedAlternatives = Array.isArray(alternatives)
-    ? alternatives
+export const resolveAlternativesAndCriteria = async ({ structureContext }) => {
+  const normalizedAlternatives = Array.isArray(structureContext?.alternatives)
+    ? structureContext.alternatives
         .map((alternative) =>
           typeof alternative === "string"
             ? alternative
@@ -45,8 +39,8 @@ export const resolveAlternativesAndCriteria = async ({
         .filter(Boolean)
     : [];
 
-  const normalizedCriteria = Array.isArray(criteria)
-    ? criteria
+  const normalizedCriteria = Array.isArray(structureContext?.leafCriteria)
+    ? structureContext.leafCriteria
         .map((criterion) =>
           typeof criterion === "string"
             ? {
@@ -61,13 +55,9 @@ export const resolveAlternativesAndCriteria = async ({
         .filter((criterion) => criterion.name)
     : [];
 
-  if (normalizedAlternatives.length > 0 && normalizedCriteria.length > 0) {
-    return {
-      alternativeNames: normalizedAlternatives,
-      criteria: normalizedCriteria,
-      criterionNames: normalizedCriteria.map((criterion) => criterion.name),
-    };
-  }
-
-  return getOrderedAlternativeAndCriterionNames({ issue });
+  return {
+    alternativeNames: normalizedAlternatives,
+    criteria: normalizedCriteria,
+    criterionNames: normalizedCriteria.map((criterion) => criterion.name),
+  };
 };

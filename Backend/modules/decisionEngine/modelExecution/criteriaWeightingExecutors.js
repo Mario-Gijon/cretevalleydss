@@ -1,4 +1,5 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { buildEvaluationStructureContext } from "../evaluations/evaluationStructureContext.js";
 
 const executeManualCriteriaWeightingModel = async ({
   structure,
@@ -22,12 +23,15 @@ const executeManualCriteriaWeightingModel = async ({
     accumulator[criterionName] = 0;
     return accumulator;
   }, {});
+  const structureContext = await buildEvaluationStructureContext({
+    issue: requestPayload.context.issue,
+    leafCriteria: criteria,
+  });
 
   for (const evaluation of evaluations) {
     const displayPayload = await structure.get({
       storedEvaluation: evaluation,
-      issue: requestPayload.context.issue,
-      criteria,
+      structureContext,
     });
     const weightsByCriterion = displayPayload.weightsByCriterion;
 

@@ -7,6 +7,7 @@ import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
 import { getEvaluationStructureOrThrow } from "../../../decisionEngine/evaluations/evaluation.registry.js";
+import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
 
 export const resolveCriteriaWeightingPhase = async ({ issueId }) => {
   const latestCriteriaWeightingResult = await IssueStageResult.findOne({
@@ -243,6 +244,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
   criterionNames,
+  orderedLeafCriteria = null,
 }) => {
   const isRequired = resolveExpertWeightingRequired({
     issue,
@@ -255,7 +257,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
 
   if (isRequired && typeof criteriaWeightingStructure?.get !== "function") {
     throw createInternalError(
-      "Criteria weighting structure must implement get({ storedEvaluation, issue })",
+      "Criteria weighting structure must implement get({ storedEvaluation, structureContext })",
       {
         field: "criteriaWeightingStructureKey",
         details: {
@@ -267,6 +269,12 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
   }
 
   const mapByExpertEmail = {};
+  const structureContext = isRequired
+    ? await buildEvaluationStructureContext({
+        issue,
+        leafCriteria: orderedLeafCriteria,
+      })
+    : null;
 
   for (const participation of participations) {
     const expertId = toIdString(participation?.expert?._id || participation?.expert);
@@ -301,7 +309,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     const status = evaluation.completed === true ? "submitted" : "draft";
     const displayPayload = await criteriaWeightingStructure.get({
       storedEvaluation: evaluation,
-      issue,
+      structureContext,
     });
     const payload = isPlainObject(displayPayload) ? displayPayload : {};
     const weightsByCriterion = extractWeightsByCriterionFromDisplayPayload({

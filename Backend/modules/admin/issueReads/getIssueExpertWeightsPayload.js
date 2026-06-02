@@ -19,6 +19,7 @@ import {
   validateExpertIdOrThrow,
 } from "./adminIssueReadLoaders.js";
 import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
+import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 
 const resolveWeightsKind = ({
   leafNames,
@@ -134,12 +135,17 @@ export const getIssueExpertWeightsPayload = async ({
   const criteriaWeightingStructure = criteriaWeightingStructureKey
     ? getEvaluationStructureOrThrow(criteriaWeightingStructureKey)
     : null;
+  const criteriaWeightingStructureContext = criteriaWeightingStructure
+    ? await buildEvaluationStructureContext({
+        issue,
+        leafCriteria: orderedLeafCriteria,
+      })
+    : null;
 
   const criteriaWeightingDisplayPayload = criteriaWeightingStructure
     ? await criteriaWeightingStructure.get({
         storedEvaluation: weightDoc,
-        issue,
-        criteria: orderedLeafCriteria,
+        structureContext: criteriaWeightingStructureContext,
         includeMeta: true,
       })
     : null;
