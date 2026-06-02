@@ -6,10 +6,6 @@ import {
   buildExpectedPairsByCriterion,
 } from "./alternativePairwiseByCriterion.context.js";
 import { validateCompletedPairwiseEvaluationPayloadsOrThrow } from "./alternativePairwiseByCriterion.computeValidation.js";
-import {
-  buildDisplayMeta,
-  buildProgressMeta,
-} from "./alternativePairwiseByCriterion.display.js";
 import { buildGetPayload } from "./alternativePairwiseByCriterion.getPayload.js";
 import {
   normalizePayloadOrThrow,
@@ -19,36 +15,12 @@ import {
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  async get({
-    storedEvaluation,
-    structureContext,
-    includeMeta = false,
-  }) {
-    const { payload, context } = await buildGetPayload({
+  async get({ storedEvaluation, structureContext }) {
+    const { payload } = await buildGetPayload({
       storedEvaluation,
       structureContext,
     });
-
-    if (!includeMeta) {
-      return payload;
-    }
-
-    return {
-      ...payload,
-      meta: {
-        progress: buildProgressMeta({
-          storedEvaluation,
-          alternativeNames: context.alternativeNames,
-          criterionNames: context.criterionNames,
-        }).progress,
-        display: buildDisplayMeta({
-          alternativeNames: context.alternativeNames,
-          criterionNames: context.criterionNames,
-          storedEvaluation,
-          collectiveEvaluations: structureContext?.collectiveEvaluations ?? null,
-        }),
-      },
-    };
+    return payload;
   },
 
   async save({ mode, payload, structureContext }) {

@@ -1,10 +1,6 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
-import {
-  buildDisplayMeta,
-  buildProgressMeta,
-} from "./alternativeCriteriaMatrix.display.js";
 import { buildGetPayload } from "./alternativeCriteriaMatrix.getPayload.js";
 import {
   normalizePayloadOrThrow,
@@ -14,36 +10,12 @@ import {
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: "alternativeCriteriaMatrix",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  async get({
-    storedEvaluation,
-    structureContext,
-    includeMeta = false,
-  }) {
-    const { payload, context } = await buildGetPayload({
+  async get({ storedEvaluation, structureContext }) {
+    const { payload } = await buildGetPayload({
       storedEvaluation,
       structureContext,
     });
-
-    if (!includeMeta) {
-      return payload;
-    }
-
-    return {
-      ...payload,
-      meta: {
-        progress: buildProgressMeta({
-          storedEvaluation,
-          alternativeNames: context.alternativeNames,
-          criteria: context.criteria,
-        }).progress,
-        display: buildDisplayMeta({
-          alternativeNames: context.alternativeNames,
-          criteria: context.criteria,
-          storedEvaluation,
-          collectiveEvaluations: structureContext?.collectiveEvaluations ?? null,
-        }),
-      },
-    };
+    return payload;
   },
 
   async save({ mode, payload, structureContext }) {

@@ -17,6 +17,158 @@ const resolveCriterionName = (criterionEntry) => {
   return "";
 };
 
+const resolveAlternativeName = (alternativeEntry) => {
+  if (typeof alternativeEntry === "string") {
+    return alternativeEntry;
+  }
+
+  if (alternativeEntry && typeof alternativeEntry === "object") {
+    return String(alternativeEntry.name || "").trim();
+  }
+
+  return "";
+};
+
+const buildPairKey = (leftAlternative, rightAlternative) =>
+  `${leftAlternative}::${rightAlternative}`;
+
+const normalizePairwiseCell = (cell) => {
+  if (cell === null || cell === undefined) {
+    return {
+      value: "",
+      domain: null,
+    };
+  }
+
+  if (typeof cell === "object" && !Array.isArray(cell)) {
+    return {
+      value: cell?.value ?? "",
+      domain: cell?.domain ?? cell?.expressionDomain ?? null,
+      ...(cell?.isNeutralFallback ? { isNeutralFallback: true } : {}),
+    };
+  }
+
+  return {
+    value: cell,
+    domain: null,
+  };
+};
+
+const buildRowsFromPairMap = ({ criterionPairs, alternativeNames }) => {
+  if (!isPlainObject(criterionPairs)) {
+    return [];
+  }
+
+  return alternativeNames.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+
+    for (const colAlternative of alternativeNames) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          domain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      row[colAlternative] = normalizePairwiseCell(
+        criterionPairs?.[buildPairKey(rowAlternative, colAlternative)]
+      );
+    }
+
+    return row;
+  });
+};
+
+const buildRowsFromMatrix = ({ criterionMatrix, alternativeNames }) => {
+  if (!Array.isArray(criterionMatrix)) {
+    return [];
+  }
+
+  return alternativeNames.map((rowAlternative, rowIndex) => {
+    const row = { id: rowAlternative };
+    const sourceRow = Array.isArray(criterionMatrix[rowIndex])
+      ? criterionMatrix[rowIndex]
+      : [];
+
+    for (const [colIndex, colAlternative] of alternativeNames.entries()) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          domain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      row[colAlternative] = normalizePairwiseCell(sourceRow[colIndex]);
+    }
+
+    return row;
+  });
+};
+
+const buildRowsFromRows = ({ criterionRows, alternativeNames }) => {
+  if (!Array.isArray(criterionRows)) {
+    return [];
+  }
+
+  const rowMap = new Map(
+    criterionRows
+      .filter((row) => isPlainObject(row) && typeof row.id === "string")
+      .map((row) => [row.id, row])
+  );
+
+  return alternativeNames.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+    const sourceRow = rowMap.get(rowAlternative) || {};
+
+    for (const colAlternative of alternativeNames) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = {
+          value: "Neutral",
+          domain: null,
+          isNeutralFallback: true,
+        };
+        continue;
+      }
+
+      row[colAlternative] = normalizePairwiseCell(sourceRow[colAlternative]);
+    }
+
+    return row;
+  });
+};
+
+const normalizeCriterionRows = ({
+  criterionSource,
+  alternativeNames,
+}) => {
+  if (Array.isArray(criterionSource)) {
+    return criterionSource.length > 0 &&
+      isPlainObject(criterionSource[0]) &&
+      "id" in criterionSource[0]
+      ? buildRowsFromRows({
+          criterionRows: criterionSource,
+          alternativeNames,
+        })
+      : buildRowsFromMatrix({
+          criterionMatrix: criterionSource,
+          alternativeNames,
+        });
+  }
+
+  if (isPlainObject(criterionSource)) {
+    return buildRowsFromPairMap({
+      criterionPairs: criterionSource,
+      alternativeNames,
+    });
+  }
+
+  return [];
+};
+
 const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
   const {
     alternatives = [],
@@ -27,20 +179,53 @@ const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
     permitEdit = false,
     selectedCriterion,
   } = evaluationContext || {};
+  const alternativeNames = Array.isArray(alternatives)
+    ? alternatives.map(resolveAlternativeName).filter(Boolean)
+    : [];
 
   const criteriaFromContext = Array.isArray(criteria)
     ? criteria.map(resolveCriterionName).filter(Boolean)
     : [];
 
-  const evaluationsByCriterion = isPlainObject(payload) ? payload : {};
+  const evaluationsByCriterion =
+    isPlainObject(payload?.comparisonsByCriterion)
+      ? Object.fromEntries(
+          Object.entries(payload.comparisonsByCriterion).map(
+            ([criterionName, criterionPairs]) => [
+              criterionName,
+              buildRowsFromPairMap({
+                criterionPairs,
+                alternativeNames,
+              }),
+            ]
+          )
+        )
+      : isPlainObject(payload)
+        ? payload
+        : {};
+  const collectiveCriterionSource = isPlainObject(
+    collectivePayload?.comparisonsByCriterion
+  )
+    ? collectivePayload.comparisonsByCriterion
+    : collectivePayload;
   const collectiveEvaluationsByCriterion = isPlainObject(collectivePayload)
-    ? collectivePayload
+    ? Object.fromEntries(
+        Object.entries(collectiveCriterionSource).map(
+          ([criterionName, criterionSource]) => [
+            criterionName,
+            normalizeCriterionRows({
+              criterionSource,
+              alternativeNames,
+            }),
+          ]
+        )
+      )
     : {};
 
   const resolvedCriteria =
     criteriaFromContext.length > 0
       ? criteriaFromContext
-      : Object.keys(isPlainObject(evaluationsByCriterion) ? evaluationsByCriterion : {});
+      : Object.keys(evaluationsByCriterion);
 
   const visibleCriteria =
     selectedCriterion && resolvedCriteria.includes(selectedCriterion)

@@ -21,6 +21,27 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
   } = evaluationContext || {};
   const theme = useTheme();
   const apiRef = useGridApiRef();
+  const alternativeNames = Array.isArray(alternatives)
+    ? alternatives
+      .map((alternative) =>
+        typeof alternative === "string"
+          ? alternative
+          : String(alternative?.name || "").trim()
+      )
+      .filter(Boolean)
+    : [];
+  const criterionNames = Array.isArray(criteria)
+    ? criteria
+      .map((criterion) =>
+        typeof criterion === "string"
+          ? criterion
+          : String(criterion?.name || "").trim()
+      )
+      .filter(Boolean)
+    : [];
+
+  const buildCellKey = (alternativeName, criterionName) =>
+    `${alternativeName}::${criterionName}`;
 
   const getNumericRange = (domain) => {
     const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
@@ -62,6 +83,47 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
 
   const getValue = (cell) =>
     cell && typeof cell === "object" ? cell.value : cell;
+
+  const normalizeCell = (cell) => {
+    if (cell === null || cell === undefined) {
+      return { value: "", domain: null };
+    }
+
+    if (typeof cell === "object" && !Array.isArray(cell)) {
+      return {
+        value: cell?.value ?? "",
+        domain: cell?.domain ?? cell?.expressionDomain ?? null,
+      };
+    }
+
+    return {
+      value: cell,
+      domain: null,
+    };
+  };
+
+  const normalizeMatrixPayload = (source) => {
+    if (source?.cells && typeof source.cells === "object") {
+      return alternativeNames.reduce((rowsByAlternative, alternativeName) => {
+        rowsByAlternative[alternativeName] = criterionNames.reduce(
+          (cellsByCriterion, criterionName) => {
+            cellsByCriterion[criterionName] = normalizeCell(
+              source.cells?.[buildCellKey(alternativeName, criterionName)]
+            );
+            return cellsByCriterion;
+          },
+          {}
+        );
+        return rowsByAlternative;
+      }, {});
+    }
+
+    if (source && typeof source === "object" && !Array.isArray(source)) {
+      return source;
+    }
+
+    return {};
+  };
 
   const getCollectiveDisplayValue = (cell) => {
     if (cell == null) return null;
@@ -151,6 +213,9 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
     </Stack>
   );
 
+  const resolvedPayload = normalizeMatrixPayload(payload);
+  const resolvedCollectivePayload = normalizeMatrixPayload(collectivePayload);
+
   const columns = [
     {
       field: "id",
@@ -158,23 +223,23 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
       minWidth: 120,
       flex: 1,
     },
-    ...criteria.map((criterion) => ({
-      field: criterion,
-      headerName: criterion,
+    ...criterionNames.map((criterionName) => ({
+      field: criterionName,
+      headerName: criterionName,
       editable: permitEdit,
       flex: 1,
       minWidth: 120,
       valueGetter: (params) => {
-        const cell = params.row?.[criterion];
+        const cell = params.row?.[criterionName];
         if (!cell) return "";
         return typeof cell === "object" ? cell.value ?? "" : cell;
       },
       renderCell: (params) => {
         const rowId = params.row.id;
         const critName = params.field;
-        const cell = payload?.[rowId]?.[critName];
+        const cell = resolvedPayload?.[rowId]?.[critName];
         const collectiveValue = getCollectiveDisplayValue(
-          collectivePayload?.[rowId]?.[critName]
+          resolvedCollectivePayload?.[rowId]?.[critName]
         );
 
         if (cell == null) {
@@ -281,32 +346,32 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
       if (rawValue === "" || rawValue === null || rawValue === undefined) {
         nextCell = { value: "", domain: prevDomain };
       } else {
-      const numericValue = parseFloat(rawValue);
-      const { min, max, step } = getNumericRange(prevDomain);
+        const numericValue = parseFloat(rawValue);
+        const { min, max, step } = getNumericRange(prevDomain);
 
-      if (
-        Number.isNaN(numericValue) ||
-        numericValue < min ||
-        numericValue > max ||
-        !isStepAligned({
-          value: numericValue,
-          min,
-          max,
-          step,
-        })
-      ) {
-        nextCell = { value: "", domain: prevDomain };
-      } else {
-        nextCell = {
-          value: alignToStep({
+        if (
+          Number.isNaN(numericValue) ||
+          numericValue < min ||
+          numericValue > max ||
+          !isStepAligned({
             value: numericValue,
             min,
             max,
             step,
-          }),
-          domain: prevDomain,
-        };
-      }
+          })
+        ) {
+          nextCell = { value: "", domain: prevDomain };
+        } else {
+          nextCell = {
+            value: alignToStep({
+              value: numericValue,
+              min,
+              max,
+              step,
+            }),
+            domain: prevDomain,
+          };
+        }
       }
     } else if (prevDomainType === "linguistic") {
       const rawValue = getValue(raw) ?? "";
@@ -328,12 +393,15 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
     return resultRow;
   };
 
-  const rows = alternatives.map((alternative) => {
-    const row = { id: alternative };
+  const rows = alternativeNames.map((alternativeName) => {
+    const row = { id: alternativeName };
 
-    criteria.forEach((criterion) => {
-      row[criterion] =
-        payload?.[alternative]?.[criterion] ?? { value: "", domain: null };
+    criterionNames.forEach((criterionName) => {
+      row[criterionName] =
+        resolvedPayload?.[alternativeName]?.[criterionName] ?? {
+          value: "",
+          domain: null,
+        };
     });
 
     return row;

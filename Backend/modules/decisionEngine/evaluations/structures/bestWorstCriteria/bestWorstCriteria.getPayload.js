@@ -36,26 +36,6 @@ const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
   };
 };
 
-const orderObjectByKeys = (obj, orderedKeys) => {
-  const orderedObject = {};
-  const usedKeys = new Set();
-
-  for (const key of orderedKeys) {
-    orderedObject[key] = Object.prototype.hasOwnProperty.call(obj, key)
-      ? obj[key]
-      : null;
-    usedKeys.add(key);
-  }
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (!usedKeys.has(key)) {
-      orderedObject[key] = value;
-    }
-  }
-
-  return orderedObject;
-};
-
 const resolveCriterionNames = async ({ structureContext }) => {
   if (Array.isArray(structureContext?.leafCriteria) && structureContext.leafCriteria.length > 0) {
     return structureContext.leafCriteria
@@ -68,21 +48,6 @@ const resolveCriterionNames = async ({ structureContext }) => {
   }
 
   return [];
-};
-
-export const buildDisplayMeta = ({ storedEvaluation, criterionNames }) => {
-  const rawPayload = isPlainObject(storedEvaluation?.payload)
-    ? storedEvaluation.payload
-    : {};
-
-  return {
-    bwm: {
-      bestCriterion: rawPayload?.bestCriterion,
-      worstCriterion: rawPayload?.worstCriterion,
-      bestToOthers: orderObjectByKeys(rawPayload?.bestToOthers ?? {}, criterionNames),
-      othersToWorst: orderObjectByKeys(rawPayload?.othersToWorst ?? {}, criterionNames),
-    },
-  };
 };
 
 export const buildGetPayload = async ({

@@ -3,6 +3,29 @@ import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueE
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
 import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry.js";
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const resolveCriterionListFromEvaluation = ({ evaluation, leafNames }) => {
+  if (!isPlainObject(evaluation)) {
+    return [];
+  }
+
+  if (isPlainObject(evaluation.comparisonsByCriterion)) {
+    const criterionKeys = Object.keys(evaluation.comparisonsByCriterion);
+    if (Array.isArray(leafNames) && leafNames.length > 0) {
+      return leafNames.filter((name) => criterionKeys.includes(name));
+    }
+    return criterionKeys;
+  }
+
+  if (Array.isArray(leafNames) && leafNames.length > 0) {
+    return leafNames.filter((name) => Array.isArray(evaluation[name]));
+  }
+
+  return Object.keys(evaluation).filter((key) => Array.isArray(evaluation[key]));
+};
+
 /**
  * Hook for managing finished issue ratings state and data extraction.
  *
@@ -76,15 +99,10 @@ export const useFinishedIssueRatingsView = ({
 
     const selected = phaseRatings.expertEvaluations[selectedExpert];
 
-    if (!selected || Array.isArray(selected) || typeof selected !== "object") {
-      return [];
-    }
-
-    if (Array.isArray(leafNames) && leafNames.length) {
-      return leafNames.filter((name) => Array.isArray(selected[name]));
-    }
-
-    return Object.keys(selected).filter((key) => Array.isArray(selected[key]));
+    return resolveCriterionListFromEvaluation({
+      evaluation: selected,
+      leafNames,
+    });
   }, [selectedExpert, phaseRatings, leafNames]);
 
   const showCriterionSelector = useMemo(

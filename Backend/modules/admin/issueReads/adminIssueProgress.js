@@ -1,21 +1,7 @@
 import { toIdString } from "../../../utils/common/ids.js";
-import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
+import { buildProgressMeta as buildAlternativeCriteriaMatrixProgressMeta } from "../../decisionEngine/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.display.js";
+import { buildProgressMeta as buildAlternativePairwiseProgressMeta } from "../../decisionEngine/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.display.js";
 import { buildParticipantExpertPayload } from "./adminIssueReadPayloads.js";
-
-const toProgressStats = (displayPayload) => {
-  const progress = displayPayload?.meta?.progress;
-
-  const expectedItems = Number(progress?.expectedItems);
-  const totalItems = Number(progress?.totalItems);
-  const filledItems = Number(progress?.filledItems);
-
-  return {
-    expectedItems: Number.isFinite(expectedItems) ? expectedItems : 0,
-    totalItems: Number.isFinite(totalItems) ? totalItems : 0,
-    filledItems: Number.isFinite(filledItems) ? filledItems : 0,
-  };
-};
 
 const normalizeAlternativesForProgress = (alternatives = []) =>
   alternatives.map((alternative, index) => ({
@@ -43,28 +29,37 @@ export const buildPlaceholderCriteria = (count = 0) =>
     expressionDomain: null,
   }));
 
-const buildStructureProgressMeta = async ({
+export const resolveEvaluationProgressStats = async ({
   issue,
   storedEvaluation,
   alternatives = [],
   criteria = [],
 }) => {
-  const structure = getEvaluationStructureOrThrow(
-    issue.alternativeEvaluationStructureKey
+  const alternativeNames = normalizeAlternativesForProgress(alternatives).map(
+    (alternative) => alternative.name
   );
-  const structureContext = await buildEvaluationStructureContext({
-    issue,
-    alternatives: normalizeAlternativesForProgress(alternatives),
-    criteria: normalizeCriteriaForProgress(criteria),
-  });
+  const normalizedCriteria = normalizeCriteriaForProgress(criteria);
 
-  const displayPayload = await structure.get({
-    storedEvaluation,
-    structureContext,
-    includeMeta: true,
-  });
-
-  return toProgressStats(displayPayload);
+  switch (issue?.alternativeEvaluationStructureKey) {
+    case "alternativeCriteriaMatrix":
+      return buildAlternativeCriteriaMatrixProgressMeta({
+        storedEvaluation,
+        alternativeNames,
+        criteria: normalizedCriteria,
+      }).progress;
+    case "alternativePairwiseByCriterion":
+      return buildAlternativePairwiseProgressMeta({
+        storedEvaluation,
+        alternativeNames,
+        criterionNames: normalizedCriteria.map((criterion) => criterion.name),
+      }).progress;
+    default:
+      return {
+        expectedItems: 0,
+        totalItems: 0,
+        filledItems: 0,
+      };
+  }
 };
 
 export const resolveExpectedEvaluationCellsPerExpert = async ({
@@ -72,7 +67,7 @@ export const resolveExpectedEvaluationCellsPerExpert = async ({
   alternatives = [],
   criteria = [],
 }) => {
-  const progress = await buildStructureProgressMeta({
+  const progress = await resolveEvaluationProgressStats({
     issue,
     storedEvaluation: null,
     alternatives,
@@ -98,7 +93,7 @@ export const buildIssueEvaluationStatsByExpert = async ({
       lastEvaluationAt: null,
     };
 
-    const progress = await buildStructureProgressMeta({
+    const progress = await resolveEvaluationProgressStats({
       issue,
       storedEvaluation: evaluationDoc,
       alternatives,
@@ -144,7 +139,7 @@ export const buildIssueEvaluationStatsByIssue = async ({
       lastEvaluationAt: null,
     };
 
-    const progress = await buildStructureProgressMeta({
+    const progress = await resolveEvaluationProgressStats({
       issue,
       storedEvaluation: evaluationDoc,
       alternatives: alternativesByIssueId.get(issueId) || [],

@@ -1,10 +1,7 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
-import {
-  buildDisplayMeta,
-  buildGetPayload,
-} from "./manualCriteriaWeights.getPayload.js";
+import { buildGetPayload } from "./manualCriteriaWeights.getPayload.js";
 import {
   normalizeManualPayloadOrThrow,
   resolveAllowEmptyFromModeOrThrow,
@@ -15,25 +12,12 @@ export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",
   label: "Manual weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ storedEvaluation, structureContext, includeMeta = false }) {
-    const { payload, criterionNames } = await buildGetPayload({
+  async get({ storedEvaluation, structureContext }) {
+    const { payload } = await buildGetPayload({
       storedEvaluation,
       structureContext,
     });
-
-    if (!includeMeta) {
-      return payload;
-    }
-
-    return {
-      ...payload,
-      meta: {
-        display: buildDisplayMeta({
-          storedEvaluation,
-          criterionNames,
-        }),
-      },
-    };
+    return payload;
   },
 
   async save({ mode, payload, structureContext }) {

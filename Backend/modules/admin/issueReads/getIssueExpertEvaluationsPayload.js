@@ -13,7 +13,10 @@ import {
   buildAdminExpertIdentityPayload,
   buildAdminExpertParticipationPayload,
 } from "./adminIssueReadPayloads.js";
-import { resolveExpectedEvaluationCellsPerExpert } from "./adminIssueProgress.js";
+import {
+  resolveEvaluationProgressStats,
+  resolveExpectedEvaluationCellsPerExpert,
+} from "./adminIssueProgress.js";
 import {
   loadIssueForExpertEvaluationsOrThrow,
   validateIssueIdOrThrow,
@@ -22,21 +25,6 @@ import {
 import { createNotFoundError } from "../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
 import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
-
-const resolveFilledCells = (displayPayload) => {
-  const filledItems = Number(displayPayload?.meta?.progress?.filledItems);
-  return Number.isFinite(filledItems) ? filledItems : 0;
-};
-
-const resolveDisplayEvaluations = (displayPayload) => {
-  const evaluations = displayPayload?.meta?.display?.evaluations;
-  return evaluations && typeof evaluations === "object" ? evaluations : {};
-};
-
-const resolveDisplayCollectiveEvaluations = (displayPayload) => {
-  const collectiveEvaluations = displayPayload?.meta?.display?.collectiveEvaluations;
-  return collectiveEvaluations ?? null;
-};
 
 export const getIssueExpertEvaluationsPayload = async ({
   issueId,
@@ -109,15 +97,18 @@ export const getIssueExpertEvaluationsPayload = async ({
     collectiveEvaluations: collectiveSource,
   });
 
-  const displayPayload = await alternativeEvaluationStructure.get({
+  const evaluations = await alternativeEvaluationStructure.get({
     storedEvaluation: evaluationDoc,
     structureContext,
-    includeMeta: true,
+  });
+  const progress = await resolveEvaluationProgressStats({
+    issue,
+    storedEvaluation: evaluationDoc,
+    alternatives: orderedAlternatives,
+    criteria: orderedLeafCriteria,
   });
 
-  const filledCells = resolveFilledCells(displayPayload);
-  const evaluations = resolveDisplayEvaluations(displayPayload);
-  const collectiveEvaluations = resolveDisplayCollectiveEvaluations(displayPayload);
+  const filledCells = Number(progress?.filledItems) || 0;
   const lastEvaluationAt = evaluationDoc?.submittedAt || null;
 
   return {
@@ -138,6 +129,6 @@ export const getIssueExpertEvaluationsPayload = async ({
       lastEvaluationAt,
     },
     evaluations,
-    collectiveEvaluations,
+    collectiveEvaluations: collectiveSource,
   };
 };

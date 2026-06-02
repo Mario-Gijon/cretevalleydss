@@ -37,14 +37,12 @@ export const buildFinishedExpertEvaluationsByEmail = async ({
         ? expertEmailRaw.trim()
         : `expert_${expertId || "unknown"}`;
 
-    const displayPayload = await structure.get({
+    const payload = await structure.get({
       storedEvaluation: evaluation,
       structureContext,
-      includeMeta: true,
     });
 
-    expertEvaluations[expertEmail] =
-      displayPayload?.meta?.display?.evaluations ?? {};
+    expertEvaluations[expertEmail] = payload;
   }
 
   return expertEvaluations;

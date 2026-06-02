@@ -56,18 +56,8 @@ const resolveStructureLabel = ({ kind, criteriaWeightingStructure }) => {
   return "Criteria weights";
 };
 
-const resolveDisplayMeta = (displayPayload) => {
-  return displayPayload?.meta?.display &&
-    typeof displayPayload.meta.display === "object"
-    ? displayPayload.meta.display
-    : {};
-};
-
-const resolveBwmFromDisplayMeta = ({ displayMeta, leafNames }) => {
-  const bwmSource =
-    displayMeta?.bwm && typeof displayMeta.bwm === "object"
-      ? displayMeta.bwm
-      : {};
+const resolveBwmFromCanonicalPayload = ({ payload, leafNames }) => {
+  const bwmSource = isPlainObject(payload) ? payload : {};
 
   return {
     bestCriterion: bwmSource?.bestCriterion,
@@ -77,12 +67,12 @@ const resolveBwmFromDisplayMeta = ({ displayMeta, leafNames }) => {
   };
 };
 
-const resolveManualWeightsFromDisplayMeta = ({ displayMeta }) => {
-  if (!isPlainObject(displayMeta?.manualWeights)) {
+const resolveManualWeightsFromCanonicalPayload = ({ payload, leafNames }) => {
+  if (!isPlainObject(payload?.weightsByCriterion)) {
     return null;
   }
 
-  return displayMeta.manualWeights;
+  return orderObjectByKeys(payload.weightsByCriterion, leafNames);
 };
 
 export const getIssueExpertWeightsPayload = async ({
@@ -142,15 +132,13 @@ export const getIssueExpertWeightsPayload = async ({
       })
     : null;
 
-  const criteriaWeightingDisplayPayload = criteriaWeightingStructure
+  const criteriaWeightingPayload = criteriaWeightingStructure
     ? await criteriaWeightingStructure.get({
         storedEvaluation: weightDoc,
         structureContext: criteriaWeightingStructureContext,
-        includeMeta: true,
       })
     : null;
 
-  const displayMeta = resolveDisplayMeta(criteriaWeightingDisplayPayload);
   const kind = resolveWeightsKind({
     leafNames,
     criteriaWeightingStructureKey,
@@ -165,8 +153,14 @@ export const getIssueExpertWeightsPayload = async ({
         ? "submitted"
         : "draft";
 
-  const manualWeights = resolveManualWeightsFromDisplayMeta({ displayMeta });
-  const bwm = resolveBwmFromDisplayMeta({ displayMeta, leafNames });
+  const manualWeights = resolveManualWeightsFromCanonicalPayload({
+    payload: criteriaWeightingPayload,
+    leafNames,
+  });
+  const bwm = resolveBwmFromCanonicalPayload({
+    payload: criteriaWeightingPayload,
+    leafNames,
+  });
 
   return {
     issue: {
@@ -214,6 +208,7 @@ export const getIssueExpertWeightsPayload = async ({
       resolvedWeights,
       manualWeights,
       bwm,
+      bwmData: bwm,
       docMeta: weightDoc
         ? {
             completed: weightDoc.completed,

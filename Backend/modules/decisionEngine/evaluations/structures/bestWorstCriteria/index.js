@@ -1,10 +1,7 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
-import {
-  buildDisplayMeta,
-  buildGetPayload,
-} from "./bestWorstCriteria.getPayload.js";
+import { buildGetPayload } from "./bestWorstCriteria.getPayload.js";
 import {
   normalizePayloadOrThrow,
   validateSaveModeOrThrow,
@@ -15,25 +12,12 @@ export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",
   label: "Best-worst weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ storedEvaluation, structureContext, includeMeta = false }) {
-    const { payload, criterionNames } = await buildGetPayload({
+  async get({ storedEvaluation, structureContext }) {
+    const { payload } = await buildGetPayload({
       storedEvaluation,
       structureContext,
     });
-
-    if (!includeMeta) {
-      return payload;
-    }
-
-    return {
-      ...payload,
-      meta: {
-        display: buildDisplayMeta({
-          storedEvaluation,
-          criterionNames,
-        }),
-      },
-    };
+    return payload;
   },
 
   async save({ mode, payload, structureContext }) {

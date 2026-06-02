@@ -38,6 +38,7 @@ const AdminReadOnlyWeights = ({
   const { weights } = data;
   const kind = weights.kind;
   const expertWeightsByCriterion = weights.manualWeights || weights.singleLeafAutoWeights || null;
+  const bwmData = weights.bwm || weights.bwmData || null;
   const criteriaWeightsStatus = weights?.status || "notSubmitted";
   const criteriaRows =
     Array.isArray(weights?.leafCriteriaDetailed) && weights.leafCriteriaDetailed.length > 0
@@ -127,8 +128,8 @@ const AdminReadOnlyWeights = ({
           <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
             Per-criterion expert weights are unavailable for this structure.
           </Typography>
-          <AdminInfoRow label="Best criterion" value={weights?.bwmData?.bestCriterion || "—"} />
-          <AdminInfoRow label="Worst criterion" value={weights?.bwmData?.worstCriterion || "—"} />
+          <AdminInfoRow label="Best criterion" value={bwmData?.bestCriterion || "—"} />
+          <AdminInfoRow label="Worst criterion" value={bwmData?.worstCriterion || "—"} />
         </Stack>
       ) : null}
     </Stack>
