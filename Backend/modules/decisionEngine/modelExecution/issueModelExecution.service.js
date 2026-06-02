@@ -6,73 +6,7 @@ import {
 } from "./issueModelExecution.builder.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { executeApiModelRequest } from "./executeApiModelRequest.js";
-
-const computeManualCriteriaWeights = ({ structureKey, requestPayload }) => {
-  const criterionNames = requestPayload.context.criteria.map(
-    (criterion) => criterion.name
-  );
-  const evaluations = requestPayload.evaluations;
-
-  if (!Array.isArray(evaluations) || evaluations.length === 0) {
-    throw createBadRequestError("Manual criteria weights require completed evaluations", {
-      field: "evaluations",
-    });
-  }
-
-  const criteriaSums = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = 0;
-    return accumulator;
-  }, {});
-
-  for (const evaluation of evaluations) {
-    const weightsByCriterion = evaluation.payload.weightsByCriterion;
-    for (const criterionName of criterionNames) {
-      criteriaSums[criterionName] += Number(weightsByCriterion[criterionName]);
-    }
-  }
-
-  const averagedWeightsByCriterion = criterionNames.reduce(
-    (accumulator, criterionName) => {
-      accumulator[criterionName] =
-        criteriaSums[criterionName] / evaluations.length;
-      return accumulator;
-    },
-    {}
-  );
-
-  const totalAverage = criterionNames.reduce(
-    (total, criterionName) => total + averagedWeightsByCriterion[criterionName],
-    0
-  );
-
-  if (!(totalAverage > 0)) {
-    throw createBadRequestError(
-      "Manual criteria weights cannot be normalized because their total is not positive",
-      {
-        field: "payload.weightsByCriterion",
-      }
-    );
-  }
-
-  const weightsByCriterion = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] =
-      averagedWeightsByCriterion[criterionName] / totalAverage;
-    return accumulator;
-  }, {});
-
-  return {
-    message: "Criteria weights computed successfully",
-    consensusMeasure: null,
-    weightsByCriterion,
-    collectiveEvaluations: { weightsByCriterion },
-    modelExecution: {
-      kind: "local",
-      structureKey,
-      executedAt: new Date(),
-    },
-    rawOutput: {},
-  };
-};
+import { executeLocalCriteriaWeightingModelIfSupported } from "./criteriaWeightingExecutors.js";
 
 const executeCriteriaWeightingApiModel = async ({
   issue,
@@ -156,6 +90,7 @@ export const executeAlternativeEvaluationModel = async ({
 
 export const executeCriteriaWeightingModel = async ({
   issue,
+  structure,
   structureKey,
   evaluations,
   phase,
@@ -169,16 +104,16 @@ export const executeCriteriaWeightingModel = async ({
     phase,
   });
 
-  if (structureKey === "manualCriteriaWeights") {
-    const result = computeManualCriteriaWeights({
-      structureKey,
-      requestPayload,
-    });
+  const localExecutionResult = await executeLocalCriteriaWeightingModelIfSupported({
+    structure,
+    requestPayload,
+  });
 
+  if (localExecutionResult) {
     return buildCriteriaWeightingExecutionResult({
       structureKey,
-      message: result.message,
-      result,
+      message: localExecutionResult.message,
+      result: localExecutionResult,
     });
   }
 

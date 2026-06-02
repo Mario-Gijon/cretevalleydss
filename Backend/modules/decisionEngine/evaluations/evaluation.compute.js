@@ -445,6 +445,7 @@ const computeCriteriaWeightingStage = async ({
 
   return executeCriteriaWeightingModel({
     issue,
+    structure,
     structureKey: structure.key,
     evaluations,
     phase: issue.consensusPhase,
