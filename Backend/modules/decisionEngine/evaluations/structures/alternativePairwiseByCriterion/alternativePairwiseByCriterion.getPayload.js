@@ -2,8 +2,8 @@ import { isPlainObject } from "../../../../../utils/common/objects.js";
 import {
   buildExpectedPairsByCriterion,
   resolveAlternativesAndCriteria,
-} from "./pairwiseContext.js";
-import { buildEmptyCell } from "./pairwisePayload.js";
+} from "./alternativePairwiseByCriterion.context.js";
+import { buildEmptyCell } from "./alternativePairwiseByCriterion.payload.js";
 
 export const buildGetPayload = async ({
   storedEvaluation,

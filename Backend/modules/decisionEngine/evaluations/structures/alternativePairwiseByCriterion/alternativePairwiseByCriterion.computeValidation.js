@@ -1,6 +1,6 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { validateCellValueByDomainOrThrow } from "./pairwisePayload.js";
+import { validateCellValueByDomainOrThrow } from "./alternativePairwiseByCriterion.payload.js";
 
 const isNonEmptyValue = (value) =>
   !(value === "" || value === null || value === undefined);

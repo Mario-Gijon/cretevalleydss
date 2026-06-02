@@ -4,12 +4,12 @@ import {
 import {
   buildDisplayMeta,
   buildGetPayload,
-} from "./manualCriteriaWeightsGetPayload.js";
+} from "./manualCriteriaWeights.getPayload.js";
 import {
   normalizeManualPayloadOrThrow,
   resolveAllowEmptyFromModeOrThrow,
   validateSubmittedManualWeightsOrThrow,
-} from "./manualCriteriaWeightsPayload.js";
+} from "./manualCriteriaWeights.payload.js";
 
 export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",

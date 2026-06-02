@@ -4,12 +4,12 @@ import {
 import {
   buildDisplayMeta,
   buildGetPayload,
-} from "./bestWorstCriteriaGetPayload.js";
+} from "./bestWorstCriteria.getPayload.js";
 import {
   normalizePayloadOrThrow,
   validateSaveModeOrThrow,
   validateSubmittedBwmPayloadOrThrow,
-} from "./bestWorstCriteriaPayload.js";
+} from "./bestWorstCriteria.payload.js";
 
 export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",

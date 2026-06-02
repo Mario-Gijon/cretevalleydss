@@ -1,12 +1,12 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
-import { buildDisplayMeta, buildProgressMeta } from "./matrixDisplay.js";
-import { buildGetPayload } from "./matrixGetPayload.js";
+import { buildDisplayMeta, buildProgressMeta } from "./alternativeCriteriaMatrix.display.js";
+import { buildGetPayload } from "./alternativeCriteriaMatrix.getPayload.js";
 import {
   normalizePayloadOrThrow,
   resolveRequireValueFromModeOrThrow,
-} from "./matrixPayload.js";
+} from "./alternativeCriteriaMatrix.payload.js";
 
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: "alternativeCriteriaMatrix",

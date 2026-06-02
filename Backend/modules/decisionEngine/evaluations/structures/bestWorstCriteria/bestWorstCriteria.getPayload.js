@@ -1,6 +1,6 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { getOrderedCriterionNames } from "../shared/criteriaWeighting.helpers.js";
-import { normalizeText } from "./bestWorstCriteriaPayload.js";
+import { normalizeText } from "./bestWorstCriteria.payload.js";
 
 const buildEmptyComparisons = (criterionNames) =>
   criterionNames.reduce((accumulator, criterionName) => {

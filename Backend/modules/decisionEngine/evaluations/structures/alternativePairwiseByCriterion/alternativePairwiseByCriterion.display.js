@@ -1,6 +1,6 @@
 import { toIdString } from "../../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { buildComparisonKey } from "./pairwiseContext.js";
+import { buildComparisonKey } from "./alternativePairwiseByCriterion.context.js";
 
 const formatIssueSnapshotDomain = (domain) => {
   if (!domain) {

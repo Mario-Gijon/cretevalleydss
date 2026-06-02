@@ -3,7 +3,7 @@ import { isPlainObject } from "../../../../../utils/common/objects.js";
 import {
   buildExpectedPairsByCriterion,
   resolveAlternativesAndCriteria,
-} from "./pairwiseContext.js";
+} from "./alternativePairwiseByCriterion.context.js";
 
 export const buildEmptyCell = (expressionDomain = null) => ({
   value: "",

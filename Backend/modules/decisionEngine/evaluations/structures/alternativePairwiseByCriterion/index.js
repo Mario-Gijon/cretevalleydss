@@ -4,14 +4,14 @@ import {
 import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
 import {
   buildExpectedPairsByCriterion,
-} from "./pairwiseContext.js";
-import { validateCompletedPairwiseEvaluationPayloadsOrThrow } from "./pairwiseComputeValidation.js";
-import { buildDisplayMeta, buildProgressMeta } from "./pairwiseDisplay.js";
-import { buildGetPayload } from "./pairwiseGetPayload.js";
+} from "./alternativePairwiseByCriterion.context.js";
+import { validateCompletedPairwiseEvaluationPayloadsOrThrow } from "./alternativePairwiseByCriterion.computeValidation.js";
+import { buildDisplayMeta, buildProgressMeta } from "./alternativePairwiseByCriterion.display.js";
+import { buildGetPayload } from "./alternativePairwiseByCriterion.getPayload.js";
 import {
   normalizePayloadOrThrow,
   resolveRequireValueFromModeOrThrow,
-} from "./pairwisePayload.js";
+} from "./alternativePairwiseByCriterion.payload.js";
 
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",

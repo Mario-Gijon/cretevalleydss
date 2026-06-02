@@ -2,11 +2,11 @@ import { isPlainObject } from "../../../../../utils/common/objects.js";
 import {
   buildExpectedCellMetadata,
   resolveAlternativesAndCriteria,
-} from "./matrixContext.js";
+} from "./alternativeCriteriaMatrix.context.js";
 import {
   buildEmptyCell,
   validateCellValueByDomainOrThrow,
-} from "./matrixPayload.js";
+} from "./alternativeCriteriaMatrix.payload.js";
 
 export const buildGetPayload = async ({
   storedEvaluation,

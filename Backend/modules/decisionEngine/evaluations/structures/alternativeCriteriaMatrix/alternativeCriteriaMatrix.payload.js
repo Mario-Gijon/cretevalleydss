@@ -3,7 +3,7 @@ import { isPlainObject } from "../../../../../utils/common/objects.js";
 import {
   buildExpectedCellMetadata,
   resolveAlternativesAndCriteria,
-} from "./matrixContext.js";
+} from "./alternativeCriteriaMatrix.context.js";
 
 export const buildEmptyCell = (expressionDomain = null) => ({
   value: "",

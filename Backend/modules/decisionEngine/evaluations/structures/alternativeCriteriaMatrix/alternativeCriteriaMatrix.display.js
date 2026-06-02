@@ -1,6 +1,6 @@
 import { toIdString } from "../../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { buildCellKey } from "./matrixContext.js";
+import { buildCellKey } from "./alternativeCriteriaMatrix.context.js";
 
 const formatIssueSnapshotDomain = (domain) => {
   if (!domain) {
