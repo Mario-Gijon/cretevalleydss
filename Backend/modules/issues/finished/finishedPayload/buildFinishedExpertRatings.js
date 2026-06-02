@@ -1,22 +1,8 @@
-import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   buildFinishedExpertEvaluationsByEmail,
   getFinishedAlternativeEvaluationStructureOrThrow,
 } from "./buildFinishedEvaluationDisplayPayloads.js";
 import { buildCriteriaWeightsEvaluationByExpert } from "./buildFinishedCriteriaWeights.js";
-
-const resolveFinishedPayloadOptions = ({ structure }) => {
-  const options = isPlainObject(structure?.finishedPayloadOptions)
-    ? structure.finishedPayloadOptions
-    : {};
-
-  return {
-    includeNonConsensusConsensusMeasureInExpertRatings:
-      options.includeNonConsensusConsensusMeasureInExpertRatings === true,
-    includeCollectiveEvaluationsLocalizedByExpert:
-      options.includeCollectiveEvaluationsLocalizedByExpert === true,
-  };
-};
 
 export const buildFinishedExpertRatingsContext = async ({
   issue,
@@ -30,7 +16,6 @@ export const buildFinishedExpertRatingsContext = async ({
 
   return {
     structure: resolvedStructure,
-    options: resolveFinishedPayloadOptions({ structure: resolvedStructure }),
     criteriaWeightsEvaluationByExpert: await buildCriteriaWeightsEvaluationByExpert({
       issue,
       participations,
@@ -43,12 +28,10 @@ export const buildFinishedExpertRatingsContext = async ({
 export const buildFinishedExpertRatingsByPhase = async ({
   issue,
   structure,
-  options,
   evaluations,
   stageResult,
   collectiveEvaluations,
   criteriaWeightsEvaluationByExpert,
-  isConsensus,
 }) => {
   const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
     structure,
@@ -58,19 +41,9 @@ export const buildFinishedExpertRatingsByPhase = async ({
 
   const ratings = {};
 
-  if (
-    isConsensus === true ||
-    options?.includeNonConsensusConsensusMeasureInExpertRatings === true
-  ) {
-    ratings.consensusMeasure = stageResult?.consensusMeasure ?? null;
-  }
-
+  ratings.consensusMeasure = stageResult?.consensusMeasure ?? null;
   ratings.collectiveEvaluations = collectiveEvaluations;
-
-  if (options?.includeCollectiveEvaluationsLocalizedByExpert === true) {
-    ratings.collectiveEvaluationsLocalizedByExpert = null;
-  }
-
+  ratings.collectiveEvaluationsLocalizedByExpert = null;
   ratings.expertEvaluations = expertEvaluations;
   ratings.criteriaWeightsEvaluationByExpert = criteriaWeightsEvaluationByExpert;
 

@@ -800,10 +800,6 @@ const buildGetPayload = async ({
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  finishedPayloadOptions: {
-    includeNonConsensusConsensusMeasureInExpertRatings: true,
-    includeCollectiveEvaluationsLocalizedByExpert: true,
-  },
   async get({
     storedEvaluation,
     issue,

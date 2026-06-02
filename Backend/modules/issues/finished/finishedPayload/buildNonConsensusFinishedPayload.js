@@ -84,7 +84,6 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
   const expertsRatingsByPhase = await buildFinishedExpertRatingsByPhase({
     issue,
     structure: expertRatingsContext.structure,
-    options: expertRatingsContext.options,
     evaluations: loaded.completedAlternativeEvaluations,
     stageResult: latestAlternativeResult,
     collectiveEvaluations: buildFinishedCollectiveEvaluations({
@@ -92,7 +91,6 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
     }),
     criteriaWeightsEvaluationByExpert:
       expertRatingsContext.criteriaWeightsEvaluationByExpert,
-    isConsensus: false,
   });
 
   const modelExecution = buildModelExecutionPayload(latestAlternativeResult);

@@ -435,10 +435,6 @@ const buildGetPayload = async ({
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: "alternativeCriteriaMatrix",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  finishedPayloadOptions: {
-    includeNonConsensusConsensusMeasureInExpertRatings: false,
-    includeCollectiveEvaluationsLocalizedByExpert: false,
-  },
   async get({
     storedEvaluation,
     issue,

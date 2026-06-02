@@ -123,7 +123,6 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     expertsRatings[phase] = await buildFinishedExpertRatingsByPhase({
       issue,
       structure: expertRatingsContext.structure,
-      options: expertRatingsContext.options,
       evaluations: phaseEvaluations,
       stageResult,
       collectiveEvaluations: buildFinishedCollectiveEvaluations({
@@ -131,7 +130,6 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
       }),
       criteriaWeightsEvaluationByExpert:
         expertRatingsContext.criteriaWeightsEvaluationByExpert,
-      isConsensus: true,
     });
 
     alternativesRankings.push({
