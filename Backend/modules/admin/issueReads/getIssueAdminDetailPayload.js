@@ -12,6 +12,7 @@ import {
 } from "../../issues/shared/ordering.js";
 import { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "../../expressionDomains/buildIssueDomainConfig.js";
 
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   buildCriteriaTreeAdmin,
@@ -25,6 +26,51 @@ import {
   resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import { loadIssueForAdminDetailOrThrow } from "./adminIssueReadLoaders.js";
+
+const buildAdminFinalWeightsMaps = ({ issue, orderedLeafCriteria }) => {
+  const rawWeights = issue?.modelParameters?.weights;
+
+  if (rawWeights === undefined) {
+    return {
+      finalWeightsById: {},
+      finalWeightsByName: {},
+    };
+  }
+
+  if (!Array.isArray(rawWeights)) {
+    throw createInternalError("Issue modelParameters.weights must be an array when present", {
+      field: "modelParameters.weights",
+      details: {
+        issueId: toIdString(issue?._id),
+      },
+    });
+  }
+
+  if (rawWeights.length !== orderedLeafCriteria.length) {
+    throw createInternalError("Issue modelParameters.weights length does not match ordered leaf criteria", {
+      field: "modelParameters.weights",
+      details: {
+        issueId: toIdString(issue?._id),
+        expectedCount: orderedLeafCriteria.length,
+        receivedCount: rawWeights.length,
+      },
+    });
+  }
+
+  const finalWeightsById = {};
+  const finalWeightsByName = {};
+
+  orderedLeafCriteria.forEach((criterion, index) => {
+    const value = rawWeights[index];
+    finalWeightsById[toIdString(criterion._id)] = value;
+    finalWeightsByName[criterion.name] = value;
+  });
+
+  return {
+    finalWeightsById,
+    finalWeightsByName,
+  };
+};
 
 export const getIssueAdminDetailPayload = async ({ issueId }) => {
   const issue = await loadIssueForAdminDetailOrThrow({ issueId });
@@ -89,16 +135,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert();
 
   const criteriaTree = buildCriteriaTreeAdmin(allCriteria);
-
-  const finalWeightsArray = issue.modelParameters.weights;
-
-  const finalWeightsById = {};
-  const finalWeightsByName = {};
-
-  orderedLeafCriteria.forEach((criterion, index) => {
-    const value = finalWeightsArray[index];
-    finalWeightsById[toIdString(criterion._id)] = value;
-    finalWeightsByName[criterion.name] = value;
+  const { finalWeightsById, finalWeightsByName } = buildAdminFinalWeightsMaps({
+    issue,
+    orderedLeafCriteria,
   });
 
   const evaluationAggMap = await buildIssueEvaluationStatsByExpert({
