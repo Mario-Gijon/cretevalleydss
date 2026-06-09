@@ -1,9 +1,10 @@
 import { Alternative } from "../../../models/Alternatives.js";
-import { Consensus } from "../../../models/Consensus.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { Issue } from "../../../models/Issues.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import { getVisibleActiveIssueIdsForUser } from "../shared/queries.js";
 import { buildActiveIssueCollections } from "./groupActiveIssueRecords.js";
 import {
@@ -27,7 +28,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
 
   const adminIssueIdSet = new Set(adminIssueIds);
 
-  const [issues, allParticipations, alternatives, criteria, consensusPhases] =
+  const [issues, allParticipations, alternatives, criteria, alternativeStageResults] =
     await Promise.all([
       Issue.find({ _id: { $in: issueIds } })
         .populate("model")
@@ -43,7 +44,10 @@ export const getActiveIssuesPayload = async ({ userId }) => {
           "name type numericRange valueCount linguisticLabels"
         )
         .lean(),
-      Consensus.find({ issue: { $in: issueIds } }).lean(),
+      IssueStageResult.find({
+        issue: { $in: issueIds },
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      }).lean(),
     ]);
 
   const {
@@ -55,7 +59,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
     participations: allParticipations,
     alternatives,
     criteria,
-    consensusPhases,
+    alternativeStageResults,
   });
 
   const tasksByType = getEmptyTasksByType();

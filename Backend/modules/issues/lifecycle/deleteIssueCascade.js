@@ -1,5 +1,4 @@
 import { Alternative } from "../../../models/Alternatives.js";
-import { Consensus } from "../../../models/Consensus.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
@@ -18,7 +17,6 @@ export const deleteIssueCascade = async ({ issueId, session = null }) => {
     applyOptionalSession(Alternative.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Criterion.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Participation.deleteMany({ issue: issueId }), session),
-    applyOptionalSession(Consensus.deleteMany({ issue: issueId }), session),
     applyOptionalSession(Notification.deleteMany({ issue: issueId }), session),
     applyOptionalSession(IssueExpressionDomain.deleteMany({ issue: issueId }), session),
     applyOptionalSession(ExitUserIssue.deleteMany({ issue: issueId }), session),

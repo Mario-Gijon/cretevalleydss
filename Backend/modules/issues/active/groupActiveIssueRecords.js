@@ -21,19 +21,19 @@ export const buildActiveIssueCollections = ({
   participations,
   alternatives,
   criteria,
-  consensusPhases,
+  alternativeStageResults,
 }) => {
   const consensusByIssue = {};
 
-  for (const phaseDoc of consensusPhases) {
-    const issueId = toIdString(phaseDoc.issue);
+  for (const stageResult of alternativeStageResults) {
+    const issueId = toIdString(stageResult.issue);
     if (!issueId) continue;
 
     if (!consensusByIssue[issueId]) {
       consensusByIssue[issueId] = [];
     }
 
-    consensusByIssue[issueId].push(phaseDoc);
+    consensusByIssue[issueId].push(stageResult);
   }
 
   return {
@@ -50,16 +50,16 @@ export const buildActiveIssueCollections = ({
       Object.entries(consensusByIssue).map(([issueId, docs]) => [
         issueId,
         docs
-          .sort((left, right) => left.phase - right.phase)
-          .map((consensusDoc) => ({
-            phase: consensusDoc.phase,
-            computedAt: consensusDoc.timestamp,
-            consensusLevel: consensusDoc.level,
-            rankedAlternatives: consensusDoc.details.rankedAlternatives,
-            collectiveEvaluations: consensusDoc.collectiveEvaluations,
-            feedback: consensusDoc.details.feedback,
-            recommendations: consensusDoc.details.recommendations,
-            modelExecution: consensusDoc.details.modelExecution,
+          .sort((left, right) => left.consensusPhase - right.consensusPhase)
+          .map((stageResult) => ({
+            phase: stageResult.consensusPhase,
+            computedAt: stageResult.updatedAt || stageResult.createdAt || null,
+            consensusLevel: stageResult.consensusMeasure,
+            rankedAlternatives: stageResult.rankedAlternatives,
+            collectiveEvaluations: stageResult.collectiveEvaluations,
+            feedback: stageResult.rawOutput?.feedback,
+            recommendations: stageResult.rawOutput?.recommendations,
+            modelExecution: stageResult.modelExecution,
           })),
       ])
     ),

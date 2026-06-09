@@ -1,8 +1,6 @@
-
 import { Schema, model } from "mongoose";
 
 import { Alternative } from "./Alternatives.js";
-import { Consensus } from "./Consensus.js";
 import { Criterion } from "./Criteria.js";
 import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
 import { Participation } from "./Participations.js";
@@ -11,10 +9,6 @@ import { IssueStageResult } from "./IssueStageResults.js";
 import { IssueScenario } from "./IssueScenarios.js";
 import { Notification } from "./Notifications.js";
 import { ExitUserIssue } from "./ExitUserIssue.js";
-
-
-
-
 
 const issueSchema = new Schema(
   {
@@ -197,7 +191,6 @@ async function removeIssueDependencies(next) {
       IssueStageResult.deleteMany({ issue: this._id }),
       IssueScenario.deleteMany({ issue: this._id }),
       Participation.deleteMany({ issue: this._id }),
-      Consensus.deleteMany({ issue: this._id }),
       Notification.deleteMany({ issue: this._id }),
       ExitUserIssue.deleteMany({ issue: this._id }),
     ]);
@@ -209,6 +202,5 @@ async function removeIssueDependencies(next) {
 }
 
 issueSchema.pre("remove", removeIssueDependencies);
-
 
 export const Issue = model("Issue", issueSchema);
