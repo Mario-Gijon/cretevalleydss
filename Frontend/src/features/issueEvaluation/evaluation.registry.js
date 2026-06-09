@@ -7,8 +7,7 @@ export const EVALUATION_STRUCTURE_REGISTRY = Object.freeze({
   [manualCriteriaWeightsStructure.key]: manualCriteriaWeightsStructure,
   [bestWorstCriteriaStructure.key]: bestWorstCriteriaStructure,
   [alternativeCriteriaMatrixStructure.key]: alternativeCriteriaMatrixStructure,
-  [alternativePairwiseByCriterionStructure.key]:
-    alternativePairwiseByCriterionStructure,
+  [alternativePairwiseByCriterionStructure.key]: alternativePairwiseByCriterionStructure,
 });
 
 export const getEvaluationStructureEntry = (structureKey) =>
