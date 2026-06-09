@@ -101,6 +101,37 @@ export const buildScenarioExecutionContext = async ({
     .select("_id name type numericRange membershipFunction valueCount")
     .lean();
 
+  const existingSnapshotIds = new Set(
+    issueDomainSnapshots.map((snapshot) => toIdString(snapshot._id))
+  );
+  const missingSnapshotIds = issueDomainSnapshotIds.filter(
+    (snapshotId) => !existingSnapshotIds.has(toIdString(snapshotId))
+  );
+
+  if (missingSnapshotIds.length > 0) {
+    throw createInternalError("Issue expression domain snapshots are missing", {
+      field: "expressionDomain",
+      details: {
+        issueId: toIdString(issue._id),
+        missingSnapshotIds,
+      },
+    });
+  }
+
+  const invalidTypeSnapshotIds = issueDomainSnapshots
+    .filter((snapshot) => typeof snapshot.type !== "string" || snapshot.type.trim() === "")
+    .map((snapshot) => toIdString(snapshot._id));
+
+  if (invalidTypeSnapshotIds.length > 0) {
+    throw createInternalError("Issue expression domain snapshots have invalid type", {
+      field: "expressionDomain.type",
+      details: {
+        issueId: toIdString(issue._id),
+        snapshotIds: invalidTypeSnapshotIds,
+      },
+    });
+  }
+
   validateScenarioModelCompatibilityOrThrow({
     issue,
     targetRuntimeSnapshot,
@@ -270,7 +301,7 @@ export const buildScenarioExecutionContext = async ({
   };
 
   const usedDomainTypes = new Set(
-    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot?.type).filter(Boolean)
+    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot.type)
   );
   const domainType =
     usedDomainTypes.size === 1 ? Array.from(usedDomainTypes)[0] : null;

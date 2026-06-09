@@ -131,6 +131,6 @@ export const buildScenarioParametersOrThrow = ({
   return {
     paramsUsed: normalizedScenarioParameters,
     normalizedParams: normalizedScenarioParameters,
-    weightsUsed: Array.isArray(resolvedWeights) ? resolvedWeights : [],
+    weightsUsed: resolvedWeights === null ? [] : resolvedWeights,
   };
 };
