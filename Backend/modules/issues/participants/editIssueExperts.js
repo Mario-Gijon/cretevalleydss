@@ -13,8 +13,8 @@ import {
 export const editIssueExperts = async ({
   issueId,
   userId,
-  expertsToAdd = [],
-  expertsToRemove = [],
+  expertsToAdd,
+  expertsToRemove,
   session = null,
 }) => {
   const {

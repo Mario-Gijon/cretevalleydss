@@ -56,9 +56,7 @@ export const addExpertsToActiveIssue = async ({
           expert: expertUser._id,
           issue: issue._id,
           type: "invitation",
-          message: `You have been invited by ${
-            admin?.name || admin?.email || "admin"
-          } to participate in ${issue.name}.`,
+          message: `You have been invited by ${admin.name} to participate in ${issue.name}.`,
           read: false,
           requiresAction: true,
         }],

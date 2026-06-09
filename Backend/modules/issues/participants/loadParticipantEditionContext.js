@@ -4,7 +4,9 @@ import { mapIssueStageToExitStage } from "../lifecycle/index.js";
 import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 import {
+  createBadRequestError,
   createForbiddenError,
+  createInternalError,
 } from "../../../utils/common/errors.js";
 import { sameId } from "../../../utils/common/ids.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
@@ -14,15 +16,27 @@ import {
 } from "../shared/ordering.js";
 
 export const normalizeParticipantEditionRequest = ({
-  expertsToAdd = [],
-  expertsToRemove = [],
+  expertsToAdd,
+  expertsToRemove,
 }) => {
+  if (!Array.isArray(expertsToAdd)) {
+    throw createBadRequestError("expertsToAdd must be an array", {
+      field: "expertsToAdd",
+    });
+  }
+
+  if (!Array.isArray(expertsToRemove)) {
+    throw createBadRequestError("expertsToRemove must be an array", {
+      field: "expertsToRemove",
+    });
+  }
+
   const normalizedExpertsToAdd = Array.from(
-    new Set((expertsToAdd || []).map(normalizeEmail).filter(Boolean))
+    new Set(expertsToAdd.map(normalizeEmail).filter(Boolean))
   );
 
   const normalizedExpertsToRemove = Array.from(
-    new Set((expertsToRemove || []).map(normalizeEmail).filter(Boolean))
+    new Set(expertsToRemove.map(normalizeEmail).filter(Boolean))
   );
 
   const removeSet = new Set(normalizedExpertsToRemove);
@@ -68,6 +82,16 @@ export const loadParticipantEditionContext = async ({
     }),
     User.findById(userId).select("name email").session(session).lean(),
   ]);
+
+  if (!admin) {
+    throw createInternalError("Issue admin not found while editing experts", {
+      field: "userId",
+      details: {
+        issueId: issue._id,
+        userId,
+      },
+    });
+  }
 
   return {
     issue,
