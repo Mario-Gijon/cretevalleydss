@@ -37,8 +37,8 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
 
   const phaseList = alternativeStageResults.map((stageResult) =>
     normalizeConsensusPhaseOrThrow({
-      value: stageResult?.consensusPhase,
-      issueId: issue?._id,
+      value: stageResult.consensusPhase,
+      issueId: issue._id,
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     })
   );
@@ -97,7 +97,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
         {
           field: "evaluations",
           details: {
-            issueId: toIdString(issue?._id),
+            issueId: toIdString(issue._id),
             phase,
           },
         }

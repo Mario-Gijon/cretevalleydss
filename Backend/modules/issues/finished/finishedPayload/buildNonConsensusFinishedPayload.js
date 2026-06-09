@@ -32,8 +32,8 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
   });
 
   const phase = normalizeConsensusPhaseOrThrow({
-    value: latestAlternativeResult?.consensusPhase,
-    issueId: issue?._id,
+    value: latestAlternativeResult.consensusPhase,
+    issueId: issue._id,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
 

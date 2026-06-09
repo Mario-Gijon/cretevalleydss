@@ -117,17 +117,26 @@ export const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) =>
 };
 
 export const buildConsensusInfo = ({ issue, consensusRounds }) => {
+  if (!Array.isArray(consensusRounds) || consensusRounds.length === 0) {
+    throw createInternalError("Consensus rounds must be a non-empty array", {
+      field: "consensusRounds",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
   const consensusReachedRound = consensusRounds.find(
     (round) => round.finalizationReason === "consensusReached"
   );
-  const lastRound = consensusRounds[consensusRounds.length - 1] || null;
+  const lastRound = consensusRounds[consensusRounds.length - 1];
 
   return {
     threshold: issue.consensusThreshold ?? null,
     maxPhases: issue.consensusMaxPhases ?? null,
     currentPhase: issue.consensusPhase ?? null,
     consensusReachedPhase: consensusReachedRound?.phase ?? null,
-    finalizationReason: lastRound?.finalizationReason || null,
-    finalConsensusMeasure: lastRound?.consensusMeasure ?? null,
+    finalizationReason: lastRound.finalizationReason || null,
+    finalConsensusMeasure: lastRound.consensusMeasure,
   };
 };
