@@ -1,22 +1,74 @@
 import axios from "axios";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
 import { executeScenarioModel } from "../../decisionEngine/modelExecution/index.js";
+
+const normalizeScenarioCreationInputOrThrow = ({
+  targetModelId,
+  scenarioName,
+  paramOverrides,
+}) => {
+  if (typeof targetModelId !== "string" || targetModelId.trim() === "") {
+    throw createBadRequestError("targetModelId is required", {
+      field: "targetModelId",
+    });
+  }
+
+  const normalizedScenarioName =
+    scenarioName === undefined || scenarioName === null
+      ? ""
+      : typeof scenarioName === "string"
+        ? scenarioName.trim()
+        : null;
+
+  if (normalizedScenarioName === null) {
+    throw createBadRequestError("scenarioName must be a string", {
+      field: "scenarioName",
+    });
+  }
+
+  const normalizedParamOverrides =
+    paramOverrides === undefined || paramOverrides === null
+      ? {}
+      : isPlainObject(paramOverrides)
+        ? paramOverrides
+        : null;
+
+  if (normalizedParamOverrides === null) {
+    throw createBadRequestError("paramOverrides must be an object", {
+      field: "paramOverrides",
+    });
+  }
+
+  return {
+    targetModelId: targetModelId.trim(),
+    scenarioName: normalizedScenarioName,
+    paramOverrides: normalizedParamOverrides,
+  };
+};
 
 export const createIssueScenario = async ({
   userId,
   issueId,
   targetModelId,
-  scenarioName = "",
-  paramOverrides = {},
+  scenarioName,
+  paramOverrides,
   apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
   httpClient = axios,
 }) => {
+  const normalizedInput = normalizeScenarioCreationInputOrThrow({
+    targetModelId,
+    scenarioName,
+    paramOverrides,
+  });
+
   const context = await buildScenarioExecutionContext({
     issueId,
     userId,
-    targetModelId,
-    paramOverrides,
+    targetModelId: normalizedInput.targetModelId,
+    paramOverrides: normalizedInput.paramOverrides,
   });
 
   const {
@@ -33,7 +85,7 @@ export const createIssueScenario = async ({
   const scenario = await IssueScenario.create({
     issue: context.issue._id,
     createdBy: userId,
-    name: String(scenarioName || "").trim(),
+    name: normalizedInput.scenarioName,
     targetModel: context.targetModel._id,
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,

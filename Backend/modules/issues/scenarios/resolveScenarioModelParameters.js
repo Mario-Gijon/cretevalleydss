@@ -1,6 +1,7 @@
 import {
   createBadRequestError,
 } from "../../../utils/common/errors.js";
+import { isPlainObject } from "../../../utils/common/objects.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
 import {
   buildDefaultsResolved,
@@ -10,11 +11,7 @@ import {
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 
 export const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
-  if (paramOverrides == null) {
-    return {};
-  }
-
-  if (typeof paramOverrides !== "object" || Array.isArray(paramOverrides)) {
+  if (!isPlainObject(paramOverrides)) {
     throw createBadRequestError("paramOverrides must be an object", {
       field: "paramOverrides",
     });
@@ -90,12 +87,12 @@ export const resolveScenarioWeightsOrThrow = ({
   paramOverrides,
   criteria,
 }) => {
-  if (targetModel?.usesCriteriaWeights !== true) {
+  if (targetModel.usesCriteriaWeights !== true) {
     return null;
   }
 
   const criteriaCount = criteria.length;
-  const rawWeights = paramOverrides?.weights;
+  const rawWeights = paramOverrides.weights;
 
   return normalizeCrispWeightsOrThrow({
     rawWeights,

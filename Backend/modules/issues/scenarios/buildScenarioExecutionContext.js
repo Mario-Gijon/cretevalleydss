@@ -106,7 +106,7 @@ export const buildScenarioExecutionContext = async ({
     targetRuntimeSnapshot,
     issueDomainSnapshots,
     targetModel,
-    targetModelSupportedDomains: targetModel?.supportedDomains || null,
+    targetModelSupportedDomains: targetModel.supportedDomains,
   });
 
   validateEvaluationCoverageOrThrow({
@@ -125,20 +125,72 @@ export const buildScenarioExecutionContext = async ({
     });
 
   const evaluationsByExpertId = new Map(
-    completedEvaluations.map((evaluation) => [
-      toIdString(evaluation?.expert?._id || evaluation?.expert),
-      evaluation,
-    ])
+    completedEvaluations.map((evaluation) => {
+      if (!evaluation.expert || !evaluation.expert._id) {
+        throw createInternalError(
+          "Completed alternative evaluation is missing populated expert data",
+          {
+            field: "evaluations.expert",
+            details: {
+              issueId: toIdString(issue._id),
+              evaluationId: toIdString(evaluation._id),
+            },
+          }
+        );
+      }
+
+      return [
+        toIdString(evaluation.expert._id),
+        evaluation,
+      ];
+    })
   );
 
   const sortedParticipations = [...participations].sort((left, right) => {
-    const leftEmail = String(left?.expert?.email || "").trim();
-    const rightEmail = String(right?.expert?.email || "").trim();
-    return leftEmail.localeCompare(rightEmail);
+    if (!left.expert || !left.expert.email) {
+      throw createInternalError(
+        "Accepted participation is missing populated expert email",
+        {
+          field: "participations.expert.email",
+          details: {
+            issueId: toIdString(issue._id),
+            participationId: toIdString(left._id),
+          },
+        }
+      );
+    }
+
+    if (!right.expert || !right.expert.email) {
+      throw createInternalError(
+        "Accepted participation is missing populated expert email",
+        {
+          field: "participations.expert.email",
+          details: {
+            issueId: toIdString(issue._id),
+            participationId: toIdString(right._id),
+          },
+        }
+      );
+    }
+
+    return left.expert.email.localeCompare(right.expert.email);
   });
 
   const evaluationPayloads = sortedParticipations.map((participation) => {
-    const expertId = toIdString(participation?.expert?._id || participation?.expert);
+    if (!participation.expert || !participation.expert._id || !participation.expert.email) {
+      throw createInternalError(
+        "Accepted participation is missing populated expert data",
+        {
+          field: "participations.expert",
+          details: {
+            issueId: toIdString(issue._id),
+            participationId: toIdString(participation._id),
+          },
+        }
+      );
+    }
+
+    const expertId = toIdString(participation.expert._id);
     const evaluation = evaluationsByExpertId.get(expertId);
 
     if (!evaluation) {
@@ -154,13 +206,41 @@ export const buildScenarioExecutionContext = async ({
       );
     }
 
+    if (!evaluation.expert || !evaluation.expert.name || !evaluation.expert.email) {
+      throw createInternalError(
+        "Completed alternative evaluation is missing populated expert data",
+        {
+          field: "evaluations.expert",
+          details: {
+            issueId: toIdString(issue._id),
+            expertId,
+            evaluationId: toIdString(evaluation._id),
+          },
+        }
+      );
+    }
+
+    if (!evaluation.payload) {
+      throw createInternalError(
+        "Completed alternative evaluation is missing payload",
+        {
+          field: "evaluations.payload",
+          details: {
+            issueId: toIdString(issue._id),
+            expertId,
+            evaluationId: toIdString(evaluation._id),
+          },
+        }
+      );
+    }
+
     return {
       expert: {
         id: expertId,
-        name: evaluation?.expert?.name || "",
-        email: evaluation?.expert?.email || "",
+        name: evaluation.expert.name,
+        email: evaluation.expert.email,
       },
-      payload: evaluation?.payload || {},
+      payload: evaluation.payload,
     };
   });
 
@@ -208,7 +288,7 @@ export const buildScenarioExecutionContext = async ({
     paramsUsed,
     normalizedParams,
     weightsUsed,
-    expertsOrder: evaluationPayloads.map((entry) => entry.expert.email || entry.expert.id),
+    expertsOrder: evaluationPayloads.map((entry) => entry.expert.email),
     evaluationPhase: phase,
     evaluationPayloads,
     scenarioExecutionContext,
