@@ -214,7 +214,7 @@ export const removeIssue = async (req, res) => {
 };
 
 export const removeExpressionDomain = async (req, res) => {
-  const { id } = req.body;
+  const id = req.params.id;
 
   await removeUserExpressionDomain({
     domainId: id,
@@ -225,7 +225,8 @@ export const removeExpressionDomain = async (req, res) => {
 };
 
 export const updateExpressionDomain = async (req, res) => {
-  const { id, updatedDomain } = req.body;
+  const id = req.params.id;
+  const updatedDomain = req.body.updatedDomain;
   const userId = toIdString(req.uid);
 
   const session = await mongoose.startSession();
@@ -318,7 +319,7 @@ export const changeInvitationStatus = async (req, res) => {
 };
 
 export const removeNotificationById = async (req, res) => {
-  const notificationId = req.body?.notificationId;
+  const notificationId = req.params.notificationId;
 
   const result = await removeNotificationForUserUseCase({
     notificationId,

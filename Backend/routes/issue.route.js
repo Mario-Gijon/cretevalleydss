@@ -58,8 +58,8 @@ router
 
 router
   .route("/expression-domains/:id")
-  .patch(mapParamsToBody({ id: "id" }), asyncHandler(updateExpressionDomain))
-  .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeExpressionDomain));
+  .patch(asyncHandler(updateExpressionDomain))
+  .delete(asyncHandler(removeExpressionDomain));
 
 router.post("/", asyncHandler(createIssue));
 
@@ -90,7 +90,6 @@ router.post("/notifications/read-all", asyncHandler(markAllNotificationsAsRead))
 
 router.delete(
   "/notifications/:notificationId",
-  mapParamsToBody({ notificationId: "notificationId" }),
   asyncHandler(removeNotificationById)
 );
 
