@@ -1,15 +1,5 @@
 import { Schema, model } from "mongoose";
 
-import { Alternative } from "./Alternatives.js";
-import { Criterion } from "./Criteria.js";
-import { IssueExpressionDomain } from "./IssueExpressionDomains.js";
-import { Participation } from "./Participations.js";
-import { IssueEvaluation } from "./IssueEvaluations.js";
-import { IssueStageResult } from "./IssueStageResults.js";
-import { IssueScenario } from "./IssueScenarios.js";
-import { Notification } from "./Notifications.js";
-import { ExitUserIssue } from "./ExitUserIssue.js";
-
 const issueSchema = new Schema(
   {
     admin: {
@@ -180,27 +170,5 @@ const issueSchema = new Schema(
     minimize: false,
   }
 );
-
-async function removeIssueDependencies(next) {
-  try {
-    await Promise.all([
-      Alternative.deleteMany({ issue: this._id }),
-      Criterion.deleteMany({ issue: this._id }),
-      IssueExpressionDomain.deleteMany({ issue: this._id }),
-      IssueEvaluation.deleteMany({ issue: this._id }),
-      IssueStageResult.deleteMany({ issue: this._id }),
-      IssueScenario.deleteMany({ issue: this._id }),
-      Participation.deleteMany({ issue: this._id }),
-      Notification.deleteMany({ issue: this._id }),
-      ExitUserIssue.deleteMany({ issue: this._id }),
-    ]);
-
-    next();
-  } catch (error) {
-    next(error);
-  }
-}
-
-issueSchema.pre("remove", removeIssueDependencies);
 
 export const Issue = model("Issue", issueSchema);
