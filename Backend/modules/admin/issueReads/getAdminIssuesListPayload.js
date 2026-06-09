@@ -1,13 +1,14 @@
 import { Alternative } from "../../../models/Alternatives.js";
-import { Consensus } from "../../../models/Consensus.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Issue } from "../../../models/Issues.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import {
   getCreatorActionFlags,
   getIssueStageMeta,
@@ -95,7 +96,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("admin", "name email role accountConfirm")
     .populate(
       "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria supportsConsensus supportsConsensusSimulation"
+      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -189,14 +190,23 @@ export const getAdminIssuesListPayload = async ({
       },
     ]),
 
-    Consensus.aggregate([
-      { $match: { issue: { $in: issueIds } } },
+    IssueStageResult.aggregate([
+      {
+        $match: {
+          issue: { $in: issueIds },
+          stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        },
+      },
+      { $sort: { issue: 1, consensusPhase: -1, updatedAt: -1, createdAt: -1 } },
       {
         $group: {
           _id: "$issue",
           totalRounds: { $sum: 1 },
-          latestPhase: { $max: "$phase" },
-          latestTimestamp: { $max: "$timestamp" },
+          latestPhase: { $first: "$consensusPhase" },
+          latestConsensusMeasure: { $first: "$consensusMeasure" },
+          latestComputedAt: {
+            $first: { $ifNull: ["$updatedAt", "$createdAt"] },
+          },
         },
       },
     ]),
@@ -213,7 +223,7 @@ export const getAdminIssuesListPayload = async ({
 
     IssueEvaluation.find({
       issue: { $in: issueIds },
-      stage: "alternativeEvaluation",
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     })
       .select("issue completed submittedAt updatedAt")
       .lean(),
@@ -264,8 +274,9 @@ export const getAdminIssuesListPayload = async ({
 
       const consensusStats = consensusMap.get(issueId) || {
         totalRounds: 0,
-        latestPhase: 0,
-        latestTimestamp: null,
+        latestPhase: null,
+        latestConsensusMeasure: null,
+        latestComputedAt: null,
       };
 
       const evaluationStats = evaluationsMap.get(issueId) || {
@@ -288,7 +299,6 @@ export const getAdminIssuesListPayload = async ({
         active: issue.active,
         currentStage: issue.currentStage,
         currentStageMeta: getIssueStageMeta(issue.currentStage),
-        weightingMode: issue.weightingMode,
         isConsensus: issue.isConsensus,
         simulateConsensus: issue.simulateConsensus === true,
         consensusMaxPhases: issue.consensusMaxPhases,
@@ -314,8 +324,6 @@ export const getAdminIssuesListPayload = async ({
               modelAlternativeEvaluationStructureKey,
             criteriaWeightingStructureKey:
               issue.model.criteriaWeightingStructureKey,
-            isConsensus:
-              issue.model.lifecycleKind === "thresholdConsensus",
             supportsConsensus: issue.model.supportsConsensus === true,
             supportsConsensusSimulation:
               issue.model.supportsConsensusSimulation === true,
@@ -333,8 +341,10 @@ export const getAdminIssuesListPayload = async ({
           evaluationsDoneAccepted:
             participationStats.evaluationsDoneAccepted || 0,
           consensusRounds: consensusStats.totalRounds || 0,
-          latestConsensusPhase: consensusStats.latestPhase || 0,
-          latestConsensusAt: consensusStats.latestTimestamp || null,
+          latestConsensusPhase: consensusStats.latestPhase ?? null,
+          latestConsensusMeasure:
+            consensusStats.latestConsensusMeasure ?? null,
+          latestConsensusAt: consensusStats.latestComputedAt ?? null,
           scenarios: scenariosMap.get(issueId) || 0,
           expectedEvaluationCellsPerExpert: expectedPerExpert,
           totalFilledEvaluationCells: evaluationStats.submittedDocs || 0,
