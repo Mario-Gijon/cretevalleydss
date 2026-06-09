@@ -1,3 +1,4 @@
+import { createInternalError } from "../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   normalizeConsensusPhaseOrThrow,
@@ -103,17 +104,28 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
   });
 
   const modelExecution = buildModelExecutionPayload(latestAlternativeResult);
+
+  if (!isPlainObject(latestAlternativeResult.plotsGraphic)) {
+    throw createInternalError("IssueStageResult plotsGraphic must be an object", {
+      field: "plotsGraphic",
+      details: {
+        issueId: latestAlternativeResult.issue,
+        phase,
+      },
+    });
+  }
+
   const enrichedLatestPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-    plotsGraphic: latestAlternativeResult?.plotsGraphic || {},
+    plotsGraphic: latestAlternativeResult.plotsGraphic,
     evaluations: loaded.completedAlternativeEvaluations,
   });
 
   const consensusDetails = {
     modelExecution,
-    rawOutput: latestAlternativeResult?.rawOutput || {},
+    rawOutput: latestAlternativeResult.rawOutput,
     rankedAlternatives,
     plotsGraphic: enrichedLatestPlotsGraphic,
-    consensusMeasure: latestAlternativeResult?.consensusMeasure ?? null,
+    consensusMeasure: latestAlternativeResult.consensusMeasure,
   };
 
   return {

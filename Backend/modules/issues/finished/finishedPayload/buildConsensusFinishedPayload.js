@@ -89,9 +89,9 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
 
   for (const stageResult of alternativeStageResults) {
     const phase = Number(stageResult.consensusPhase);
-    const phaseEvaluations = completedByPhase.get(phase) || [];
+    const phaseEvaluations = completedByPhase.get(phase);
 
-    if (phaseEvaluations.length === 0) {
+    if (!phaseEvaluations || phaseEvaluations.length === 0) {
       throw createInternalError(
         "Completed alternative evaluations are missing for a consensus phase",
         {
@@ -112,7 +112,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     });
 
     const enrichedPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-      plotsGraphic: stageResult?.plotsGraphic || {},
+      plotsGraphic: stageResult.plotsGraphic,
       evaluations: phaseEvaluations,
     });
 
@@ -149,6 +149,24 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     consensusRounds.push(round);
   }
 
+  if (consensusRounds.length === 0) {
+    throw createInternalError("Consensus rounds are missing for finished consensus issue", {
+      field: "consensusRounds",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  if (alternativesRankings.length === 0) {
+    throw createInternalError("Alternative rankings are missing for finished consensus issue", {
+      field: "alternativesRankings",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
   const summary = buildFinishedSummaryFromContext({
     issue,
     context,
@@ -160,18 +178,40 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
 
   const latestRound = consensusRounds[consensusRounds.length - 1];
   const latestRankedAlternatives =
-    alternativesRankings[alternativesRankings.length - 1]?.rankedAlternatives || [];
+    alternativesRankings[alternativesRankings.length - 1].rankedAlternatives;
 
-  const modelExecution = latestRound?.modelExecution || {
-    rawOutput: latestRound?.rawOutput || {},
-  };
+  if (!Number.isInteger(issue.consensusPhase) || issue.consensusPhase <= 0) {
+    throw createInternalError("Issue consensusPhase must be a positive integer", {
+      field: "consensusPhase",
+      details: {
+        issueId: toIdString(issue._id),
+        consensusPhase: issue.consensusPhase,
+      },
+    });
+  }
 
-  const scatterPlotByPhase = Array(issue.consensusPhase || 0).fill(null);
+  const modelExecution = latestRound.modelExecution;
+
+  const scatterPlotByPhase = Array(issue.consensusPhase).fill(null);
   for (const stageResult of alternativeStageResults) {
     const phase = Number(stageResult.consensusPhase);
-    const phaseEvaluations = completedByPhase.get(phase) || [];
+    const phaseEvaluations = completedByPhase.get(phase);
+
+    if (!phaseEvaluations || phaseEvaluations.length === 0) {
+      throw createInternalError(
+        "Completed alternative evaluations are missing for a consensus phase",
+        {
+          field: "evaluations",
+          details: {
+            issueId: toIdString(issue._id),
+            phase,
+          },
+        }
+      );
+    }
+
     const plotsGraphic = enrichPlotsGraphicWithExpertLabels({
-      plotsGraphic: stageResult?.plotsGraphic || {},
+      plotsGraphic: stageResult.plotsGraphic,
       evaluations: phaseEvaluations,
     });
     if (
@@ -194,10 +234,23 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     threshold: issue.consensusThreshold ?? null,
   }));
 
-  const latestPhaseEvaluations =
-    completedByPhase.get(Number(latestRound?.phase)) || [];
+  const latestPhaseEvaluations = completedByPhase.get(Number(latestRound.phase));
+
+  if (!latestPhaseEvaluations || latestPhaseEvaluations.length === 0) {
+    throw createInternalError(
+      "Completed alternative evaluations are missing for the latest consensus phase",
+      {
+        field: "evaluations",
+        details: {
+          issueId: toIdString(issue._id),
+          phase: latestRound.phase,
+        },
+      }
+    );
+  }
+
   const latestRoundPlotsGraphic = enrichPlotsGraphicWithExpertLabels({
-    plotsGraphic: latestRound?.plotsGraphic || {},
+    plotsGraphic: latestRound.plotsGraphic,
     evaluations: latestPhaseEvaluations,
   });
 
@@ -217,10 +270,10 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     },
     consensusDetails: {
       modelExecution,
-      rawOutput: latestRound?.rawOutput || {},
+      rawOutput: latestRound.rawOutput,
       rankedAlternatives: latestRankedAlternatives,
       plotsGraphic: latestRoundPlotsGraphic,
-      consensusMeasure: latestRound?.consensusMeasure ?? null,
+      consensusMeasure: latestRound.consensusMeasure,
     },
     modelExecution,
     consensus: consensusRounds,
