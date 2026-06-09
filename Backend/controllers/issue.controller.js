@@ -503,20 +503,31 @@ export const submitIssueEvaluationByStage = async (req, res) => {
   const stage = req.params?.stage;
   const payload = req.body?.payload;
 
-  const result = await submitIssueEvaluation({
-    issueId,
-    userId: req.uid,
-    stage,
-    payload,
-  });
+  const session = await mongoose.startSession();
 
-  return sendSuccess(res, result.message, {
-    stage: result.stage,
-    structureKey: result.structureKey,
-    consensusPhase: result.consensusPhase,
-    completed: result.completed,
-    currentStage: result.currentStage,
-  });
+  try {
+    let result = null;
+
+    await session.withTransaction(async () => {
+      result = await submitIssueEvaluation({
+        issueId,
+        userId: req.uid,
+        stage,
+        payload,
+        session,
+      });
+    });
+
+    return sendSuccess(res, result.message, {
+      stage: result.stage,
+      structureKey: result.structureKey,
+      consensusPhase: result.consensusPhase,
+      completed: result.completed,
+      currentStage: result.currentStage,
+    });
+  } finally {
+    await endSessionSafely(session);
+  }
 };
 
 export const computeEvaluationStage = async (req, res) => {

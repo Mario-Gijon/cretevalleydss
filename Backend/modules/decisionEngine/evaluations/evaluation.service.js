@@ -54,12 +54,12 @@ const loadPreviousCollectiveReference = async ({ issue, stage }) => {
   };
 };
 
-const requireAcceptedParticipation = async ({ issueId, userId }) => {
+const requireAcceptedParticipation = async ({ issueId, userId, session = null }) => {
   const participation = await Participation.findOne({
     issue: issueId,
     expert: userId,
     invitationStatus: "accepted",
-  });
+  }).session(session);
 
   if (!participation) {
     throw createForbiddenError(
@@ -71,8 +71,11 @@ const requireAcceptedParticipation = async ({ issueId, userId }) => {
   }
 };
 
-const loadEvaluationContext = async ({ issueId, userId, stage }) => {
-  const issue = await getIssueByIdOrThrow(issueId, { lean: false });
+const loadEvaluationContext = async ({ issueId, userId, stage, session = null }) => {
+  const issue = await getIssueByIdOrThrow(issueId, {
+    lean: false,
+    session,
+  });
 
   if (issue.currentStage !== stage) {
     throw createBadRequestError(
@@ -91,6 +94,7 @@ const loadEvaluationContext = async ({ issueId, userId, stage }) => {
   await requireAcceptedParticipation({
     issueId: issue._id,
     userId,
+    session,
   });
 
   return {
@@ -105,13 +109,14 @@ const findStoredEvaluation = async ({
   userId,
   stage,
   consensusPhase,
+  session = null,
 }) => {
   return IssueEvaluation.findOne({
     issue: issueId,
     expert: userId,
     stage,
     consensusPhase,
-  });
+  }).session(session);
 };
 
 const upsertIssueEvaluation = async ({
@@ -122,6 +127,7 @@ const upsertIssueEvaluation = async ({
   payload,
   completed,
   submittedAt,
+  session = null,
 }) => {
   return IssueEvaluation.findOneAndUpdate(
     {
@@ -141,11 +147,17 @@ const upsertIssueEvaluation = async ({
       upsert: true,
       new: true,
       setDefaultsOnInsert: true,
+      session,
     }
   );
 };
 
-const markParticipationCompleted = async ({ issueId, userId, stage }) => {
+const markParticipationCompleted = async ({
+  issueId,
+  userId,
+  stage,
+  session = null,
+}) => {
   const completionUpdate =
     stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
       ? { weightsCompleted: true }
@@ -162,6 +174,7 @@ const markParticipationCompleted = async ({ issueId, userId, stage }) => {
     },
     {
       new: true,
+      session,
     }
   );
 
@@ -175,7 +188,11 @@ const markParticipationCompleted = async ({ issueId, userId, stage }) => {
   }
 };
 
-const advanceToWeightsFinishedAfterSubmit = async ({ issue, stage }) => {
+const advanceToWeightsFinishedAfterSubmit = async ({
+  issue,
+  stage,
+  session = null,
+}) => {
   if (stage !== EVALUATION_STAGES.CRITERIA_WEIGHTING) {
     return;
   }
@@ -184,6 +201,7 @@ const advanceToWeightsFinishedAfterSubmit = async ({ issue, stage }) => {
     issue: issue._id,
   })
     .select("expert invitationStatus weightsCompleted")
+    .session(session)
     .lean();
 
   const pendingParticipations = participations.filter(
@@ -209,7 +227,7 @@ const advanceToWeightsFinishedAfterSubmit = async ({ issue, stage }) => {
     issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING
   ) {
     issue.currentStage = ISSUE_STAGES.WEIGHTS_FINISHED;
-    await issue.save();
+    await issue.save({ session });
   }
 };
 
@@ -299,11 +317,13 @@ export const submitIssueEvaluation = async ({
   userId,
   stage,
   payload,
+  session = null,
 }) => {
   const { issue, structure } = await loadEvaluationContext({
     issueId,
     userId,
     stage,
+    session,
   });
 
   const structureContext = await buildEvaluationStructureContext({
@@ -324,15 +344,17 @@ export const submitIssueEvaluation = async ({
     payload: normalizedPayload,
     completed: true,
     submittedAt: new Date(),
+    session,
   });
 
   await markParticipationCompleted({
     issueId: issue._id,
     userId,
     stage,
+    session,
   });
 
-  await advanceToWeightsFinishedAfterSubmit({ issue, stage });
+  await advanceToWeightsFinishedAfterSubmit({ issue, stage, session });
 
   return {
     message: "Evaluation submitted successfully",
