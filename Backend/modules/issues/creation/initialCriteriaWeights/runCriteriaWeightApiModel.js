@@ -12,7 +12,7 @@ import { executeApiModelRequest } from "../../../decisionEngine/modelExecution/i
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
-  session,
+  session = null,
 }) => {
   const selectedModelId = resolvedConfig.criteriaWeightingModelId;
   const selectedModelKey = resolvedConfig.criteriaWeightingModelKey;
@@ -72,7 +72,7 @@ export const loadCriteriaWeightingApiModelContextOrThrow = async ({
   resolvedConfig,
   criteriaWeightingParameters,
   criterionNames,
-  session,
+  session = null,
 }) => {
   const criteriaWeightingModel = await loadCriteriaWeightingModelOrThrow({
     resolvedConfig,

@@ -35,24 +35,32 @@ import { applyIssueCreationOrdering } from "./applyIssueOrdering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";
+import { getOrderedLeafCriterionNamesFromInputOrThrow } from "./getOrderedLeafCriterionNamesFromInput.js";
 
-export const createIssue = async ({
-  issueInfo,
-  adminUserId,
-  session,
-  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-  httpClient = axios,
+const assertIssueNameAvailableOrThrow = async ({
+  issueName,
+  session = null,
 }) => {
-  const input = normalizeCreateIssueInput(issueInfo);
+  const existingIssue = await Issue.findOne({ name: issueName }).session(session);
 
-  const existingIssue = await Issue.findOne({ name: input.issueName }).session(
-    session
-  );
   if (existingIssue) {
     throw createConflictError("Issue name already exists", {
       field: "issueName",
     });
   }
+};
+
+export const prepareIssueCreation = async ({
+  issueInfo,
+  adminUserId,
+  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+  httpClient = axios,
+}) => {
+  const input = normalizeCreateIssueInput(issueInfo);
+
+  await assertIssueNameAvailableOrThrow({
+    issueName: input.issueName,
+  });
 
   const {
     model,
@@ -77,7 +85,6 @@ export const createIssue = async ({
     criteriaNodes: input.criteria,
     alternativesCount: input.uniqueAlternativeNames.length,
     uniqueExpertEmails: input.uniqueExpertEmails,
-    session,
   });
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
@@ -109,6 +116,107 @@ export const createIssue = async ({
     isConsensus,
     supportsConsensus: modelSupportsConsensus,
     supportsConsensusSimulation: modelSupportsConsensusSimulation,
+  });
+
+  const { criterionNames, isSingleLeafCriterion, orderedLeafCriteria } =
+    getOrderedLeafCriterionNamesFromInputOrThrow(input.criteria);
+
+  if (!isMultiCriteria && criterionNames.length > 1) {
+    throw createBadRequestError(
+      "Selected model does not support multiple criteria",
+      {
+        field: "criteria",
+      }
+    );
+  }
+
+  const { usedDomainIds, domainIdByCriterionName } =
+    resolveExpressionDomainConfigByLeafCriteriaOrThrow({
+      expressionDomainConfig: input.expressionDomainConfig,
+      leafCriteria: orderedLeafCriteria,
+    });
+
+  const domainDocs = await loadAccessibleExpressionDomains({
+    domainIdList: usedDomainIds,
+    userId: adminUserId,
+    modelSupportedDomains: model.supportedDomains,
+  });
+
+  const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({
+    model,
+    domainDocs,
+  });
+
+  const resolvedCriteriaWeighting =
+    await resolveCriteriaWeightingConfigOrThrow({
+      criteriaWeightingConfig: input.criteriaWeightingConfig,
+      criteriaWeightingParameters: input.criteriaWeightingParameters,
+      criterionNames,
+      isSingleLeafCriterion,
+      model,
+      fuzzyValueCount: fuzzyCriteriaWeightValueCount,
+      apiModelsBaseUrl,
+      httpClient,
+    });
+
+  return {
+    input,
+    adminUserId,
+    model,
+    admin,
+    adminEmail,
+    expertByEmail,
+    apiModelKey,
+    apiEndpoint,
+    alternativeEvaluationStructureKey,
+    modelSupportsConsensus,
+    simulateConsensus,
+    isConsensus,
+    consensusThreshold,
+    consensusMaxPhases,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+    usesCriteriaWeights,
+    normalizedModelParameters,
+    domainDocs,
+    domainIdByCriterionName,
+    resolvedCriteriaWeighting,
+  };
+};
+
+export const persistPreparedIssueCreation = async ({
+  preparedIssueCreation,
+  session,
+}) => {
+  const {
+    input,
+    adminUserId,
+    model,
+    admin,
+    adminEmail,
+    expertByEmail,
+    apiModelKey,
+    apiEndpoint,
+    alternativeEvaluationStructureKey,
+    modelSupportsConsensus,
+    simulateConsensus,
+    isConsensus,
+    consensusThreshold,
+    consensusMaxPhases,
+    modelFamilyKey,
+    modelVersion,
+    versionLabel,
+    usesCriteriaWeights,
+    normalizedModelParameters,
+    domainDocs,
+    domainIdByCriterionName,
+    resolvedCriteriaWeighting,
+  } = preparedIssueCreation;
+
+  await assertIssueNameAvailableOrThrow({
+    issueName: input.issueName,
+    session,
   });
 
   const issue = buildIssueCreationDocument({
@@ -147,52 +255,11 @@ export const createIssue = async ({
     leafCriteria,
     session,
   });
-
-  if (!isMultiCriteria && leafCriteria.length > 1) {
-    throw createBadRequestError(
-      "Selected model does not support multiple criteria",
-      {
-        field: "criteria",
-      }
-    );
-  }
-
-  const { criterionNames, isSingleLeafCriterion } = applyIssueCreationOrdering({
+  applyIssueCreationOrdering({
     issue,
     createdAlternatives,
     leafCriteria,
   });
-
-  const { usedDomainIds, domainIdByCriterionName } =
-    resolveExpressionDomainConfigByLeafCriteriaOrThrow({
-      expressionDomainConfig: input.expressionDomainConfig,
-      leafCriteria,
-    });
-
-  const domainDocs = await loadAccessibleExpressionDomains({
-    domainIdList: usedDomainIds,
-    userId: adminUserId,
-    modelSupportedDomains: model.supportedDomains,
-    session,
-  });
-
-  const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({
-    model,
-    domainDocs,
-  });
-
-  const resolvedCriteriaWeighting =
-    await resolveCriteriaWeightingConfigOrThrow({
-      criteriaWeightingConfig: input.criteriaWeightingConfig,
-      criteriaWeightingParameters: input.criteriaWeightingParameters,
-      criterionNames,
-      isSingleLeafCriterion,
-      model,
-      fuzzyValueCount: fuzzyCriteriaWeightValueCount,
-      apiModelsBaseUrl,
-      httpClient,
-      session,
-    });
 
   applyInitialCriteriaWeightsToIssue({
     issue,
@@ -201,8 +268,6 @@ export const createIssue = async ({
 
   const isCriteriaWeightingRequired =
     resolvedCriteriaWeighting.isCriteriaWeightingRequired;
-
-  await issue.save({ session });
 
   const { emailsToSend } = await createIssueParticipationsAndNotifications({
     issue,
@@ -221,6 +286,8 @@ export const createIssue = async ({
     domainIdByCriterionName,
     session,
   });
+
+  await issue.save({ session });
 
   return {
     issueName: input.issueName,

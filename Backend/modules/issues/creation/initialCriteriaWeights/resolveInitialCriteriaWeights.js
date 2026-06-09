@@ -166,7 +166,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   fuzzyValueCount = null,
   apiModelsBaseUrl,
   httpClient,
-  session,
+  session = null,
 }) => {
   ensureCriteriaNamesOrThrow(criterionNames);
 

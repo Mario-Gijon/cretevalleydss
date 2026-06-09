@@ -50,7 +50,10 @@ import {
 } from "../modules/issues/notifications/index.js";
 import { getFinishedIssueInfoPayload } from "../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
-import { createIssue as createIssueUseCase } from "../modules/issues/creation/index.js";
+import {
+  persistPreparedIssueCreation,
+  prepareIssueCreation,
+} from "../modules/issues/creation/index.js";
 
 
 import axios from "axios";
@@ -145,20 +148,24 @@ export const createExpressionDomain = async (req, res) => {
 };
 
 export const createIssue = async (req, res) => {
+  const issueInfo = req.body.issueInfo;
+  const preparedIssueCreation = await prepareIssueCreation({
+    issueInfo,
+    adminUserId: req.uid,
+    apiModelsBaseUrl:
+      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    httpClient: axios,
+  });
+
   const session = await mongoose.startSession();
 
   try {
-    const issueInfo = req.body.issueInfo;
     let result = null;
 
     await session.withTransaction(async () => {
-      result = await createIssueUseCase({
-        issueInfo,
-        adminUserId: req.uid,
+      result = await persistPreparedIssueCreation({
+        preparedIssueCreation,
         session,
-        apiModelsBaseUrl:
-          process.env.ORIGIN_APIMODELS || "http://localhost:7000",
-        httpClient: axios,
       });
     });
 

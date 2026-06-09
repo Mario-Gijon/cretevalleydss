@@ -25,7 +25,7 @@ export const loadCreateIssueActorsAndModel = async ({
   criteriaNodes,
   alternativesCount,
   uniqueExpertEmails,
-  session,
+  session = null,
 }) => {
   const existingModel = await IssueModel.findById(selectedModelId).session(session);
 
