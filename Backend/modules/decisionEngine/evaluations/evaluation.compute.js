@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
@@ -8,6 +10,7 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
+import { endSessionSafely } from "../../../utils/common/mongoose.js";
 import {
   EVALUATION_STAGES,
   ISSUE_STAGES,
@@ -111,11 +114,11 @@ const loadParticipationsForCompute = async ({ issueId, stage }) => {
 
   const incompleteAcceptedParticipations = acceptedParticipations.filter(
     (participation) => {
-    if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-      return participation.weightsCompleted !== true;
-    }
+      if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+        return participation.weightsCompleted !== true;
+      }
 
-    return participation.evaluationCompleted !== true;
+      return participation.evaluationCompleted !== true;
     }
   );
 
@@ -438,6 +441,29 @@ const applyComputeIssueUpdates = async ({
     didSetFinishedAt
   ) {
     await issue.save({ session });
+  }
+};
+
+const persistComputedStageInTransaction = async ({
+  session = null,
+  persist,
+}) => {
+  if (session) {
+    return persist(session);
+  }
+
+  const transactionSession = await mongoose.startSession();
+
+  try {
+    let persistResult = null;
+
+    await transactionSession.withTransaction(async () => {
+      persistResult = await persist(transactionSession);
+    });
+
+    return persistResult;
+  } finally {
+    await endSessionSafely(transactionSession);
   }
 };
 
@@ -881,20 +907,25 @@ export const computeIssueEvaluationStage = async ({
         computeResult,
       });
 
-    await saveStageResult({
-      issue,
-      stage,
-      computeResult: mapCriteriaWeightingResultToStageResult(
-        normalizedCriteriaWeightingResult
-      ),
-      lifecycleMetadata: null,
+    await persistComputedStageInTransaction({
       session,
-    });
+      persist: async (persistSession) => {
+        await saveStageResult({
+          issue,
+          stage,
+          computeResult: mapCriteriaWeightingResultToStageResult(
+            normalizedCriteriaWeightingResult
+          ),
+          lifecycleMetadata: null,
+          session: persistSession,
+        });
 
-    await applyCriteriaWeightingIssueUpdates({
-      issue,
-      orderedWeights: normalizedCriteriaWeightingResult.orderedWeights,
-      session,
+        await applyCriteriaWeightingIssueUpdates({
+          issue,
+          orderedWeights: normalizedCriteriaWeightingResult.orderedWeights,
+          session: persistSession,
+        });
+      },
     });
 
     return {
@@ -923,23 +954,28 @@ export const computeIssueEvaluationStage = async ({
     computeResult,
   });
 
-  await saveStageResult({
-    issue,
-    stage,
-    computeResult: lifecycleComputeResult,
-    lifecycleMetadata,
+  await persistComputedStageInTransaction({
     session,
-  });
+    persist: async (persistSession) => {
+      await saveStageResult({
+        issue,
+        stage,
+        computeResult: lifecycleComputeResult,
+        lifecycleMetadata,
+        session: persistSession,
+      });
 
-  await applyComputeIssueUpdates({
-    issue,
-    computeResult: lifecycleComputeResult,
-    session,
-  });
+      await applyComputeIssueUpdates({
+        issue,
+        computeResult: lifecycleComputeResult,
+        session: persistSession,
+      });
 
-  if (resetAlternativeEvaluationCompletion) {
-    await resetAlternativeRoundCompletion(issue._id, session);
-  }
+      if (resetAlternativeEvaluationCompletion) {
+        await resetAlternativeRoundCompletion(issue._id, persistSession);
+      }
+    },
+  });
 
   return {
     message: lifecycleComputeResult.message,
@@ -947,7 +983,7 @@ export const computeIssueEvaluationStage = async ({
     structureKey: structure.key,
     consensusPhase: issue.consensusPhase,
     currentStage: issue.currentStage,
-      result: {
+    result: {
       rankedAlternatives: lifecycleComputeResult.rankedAlternatives,
       collectiveEvaluations: lifecycleComputeResult.collectiveEvaluations,
       plotsGraphic: lifecycleComputeResult.plotsGraphic,
