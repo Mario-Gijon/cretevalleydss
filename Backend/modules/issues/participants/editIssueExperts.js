@@ -1,6 +1,5 @@
 import { User } from "../../../models/Users.js";
 
-import { sendExpertInvitationEmail } from "../../../services/email.service.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
   addExpertsToActiveIssue,
@@ -11,30 +10,12 @@ import {
   normalizeParticipantEditionRequest,
 } from "./loadParticipantEditionContext.js";
 
-const notifyParticipantChanges = async ({
-  invitationEmailsToSend,
-  issue,
-  admin,
-}) => {
-  for (const email of invitationEmailsToSend) {
-    try {
-      await sendExpertInvitationEmail({
-        expertEmail: email,
-        issueName: issue.name,
-        issueDescription: issue.description,
-        adminEmail: admin?.email || "",
-      });
-    } catch (error) {
-      console.error("Failed sending invitation email:", email, error);
-    }
-  }
-};
-
 export const editIssueExperts = async ({
   issueId,
   userId,
   expertsToAdd = [],
   expertsToRemove = [],
+  session = null,
 }) => {
   const {
     finalExpertsToAdd,
@@ -47,6 +28,7 @@ export const editIssueExperts = async ({
   const context = await loadParticipantEditionContext({
     issueId,
     userId,
+    session,
   });
 
   const allEmailsToFetch = Array.from(
@@ -54,7 +36,7 @@ export const editIssueExperts = async ({
   );
 
   const users = allEmailsToFetch.length
-    ? await User.find({ email: { $in: allEmailsToFetch } }).lean()
+    ? await User.find({ email: { $in: allEmailsToFetch } }).session(session).lean()
     : [];
 
   const userByEmail = new Map(
@@ -70,6 +52,7 @@ export const editIssueExperts = async ({
     leafCriteria: context.leafCriteria,
     currentPhase: context.currentPhase,
     stageForLog: context.stageForLog,
+    session,
   });
 
   await removeExpertsFromActiveIssue({
@@ -78,15 +61,16 @@ export const editIssueExperts = async ({
     userByEmail,
     currentPhase: context.currentPhase,
     stageForLog: context.stageForLog,
-  });
-
-  await notifyParticipantChanges({
-    invitationEmailsToSend,
-    issue: context.issue,
-    admin: context.admin,
+    session,
   });
 
   return {
     issueName: context.issue.name,
+    invitationEmailsToSend: invitationEmailsToSend.map((expertEmail) => ({
+      expertEmail,
+      issueName: context.issue.name,
+      issueDescription: context.issue.description,
+      adminEmail: context.admin.email,
+    })),
   };
 };

@@ -41,26 +41,32 @@ export const normalizeParticipantEditionRequest = ({
   };
 };
 
-export const loadParticipantEditionContext = async ({ issueId, userId }) => {
+export const loadParticipantEditionContext = async ({
+  issueId,
+  userId,
+  session = null,
+}) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     lean: false,
     populate: "model",
+    session,
   });
 
   if (!sameId(issue.admin, userId)) {
     throw createForbiddenError("Not authorized to edit this issue's experts.");
   }
 
-  await ensureIssueOrdersDb({ issueId: issue._id });
+  await ensureIssueOrdersDb({ issueId: issue._id, session });
 
   const [leafCriteria, admin] = await Promise.all([
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
+      session,
       select: "_id name type",
       lean: true,
     }),
-    User.findById(userId).select("name email").lean(),
+    User.findById(userId).select("name email").session(session).lean(),
   ]);
 
   return {

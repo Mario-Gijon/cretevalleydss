@@ -362,14 +362,37 @@ export const editExperts = async (req, res) => {
   const expertsToAdd = req.body.expertsToAdd;
   const expertsToRemove = req.body.expertsToRemove;
 
-  await editIssueExpertsUseCase({
-    issueId: id,
-    userId: req.uid,
-    expertsToAdd,
-    expertsToRemove,
-  });
+  const session = await mongoose.startSession();
 
-  return sendSuccess(res, "Experts updated successfully.");
+  try {
+    let result = null;
+
+    await session.withTransaction(async () => {
+      result = await editIssueExpertsUseCase({
+        issueId: id,
+        userId: req.uid,
+        expertsToAdd,
+        expertsToRemove,
+        session,
+      });
+    });
+
+    for (const emailPayload of result.invitationEmailsToSend) {
+      try {
+        await sendExpertInvitationEmail(emailPayload);
+      } catch (error) {
+        console.error(
+          "Failed sending invitation email:",
+          emailPayload.expertEmail,
+          error
+        );
+      }
+    }
+
+    return sendSuccess(res, "Experts updated successfully.");
+  } finally {
+    await endSessionSafely(session);
+  }
 };
 
 export const leaveIssue = async (req, res) => {
