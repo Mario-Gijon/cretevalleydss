@@ -163,6 +163,18 @@ export default function AdminIssuesSection() {
     setNewAdminId,
   } = useAdminIssuesSection();
 
+  const hasVisibleCollectivePayload = (value) => {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    if (value && typeof value === "object") {
+      return Object.keys(value).length > 0;
+    }
+
+    return value != null;
+  };
+
   const confirmToneByKey = {
     compute: "warning",
     resolve: "warning",
@@ -191,36 +203,46 @@ export default function AdminIssuesSection() {
   const confirmLabel = confirmLabelByKey[confirmAction?.key] || "Confirm";
   const confirmColor = confirmColorByKey[confirmAction?.key] || "info";
   const confirmIcon = confirmIconByKey[confirmAction?.key] || <InfoOutlinedIcon />;
-  const alternativeStructureLabelByKey = {
-    ["alternativeCriteriaMatrix"]: "Alternative-criteria matrix",
-    ["alternativePairwiseByCriterion"]:
-      "Pairwise alternatives by criterion",
-  };
-  const criteriaWeightingStructureLabelByKey = {
-    ["manualCriteriaWeights"]: "Manual criteria weights",
-    ["bestWorstCriteria"]: "BWM",
-  };
+  const issueCriteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
+    structureKey: issueDetail?.criteriaWeightingStructureKey,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  });
+  const criteriaWeightingStructureLabel =
+    issueCriteriaWeightingStructureEntry?.label ||
+    issueDetail?.criteriaWeightingStructureKey ||
+    "—";
+  const issueAlternativeEvaluationStructureEntry = getEvaluationStructureEntryForStage({
+    structureKey: issueDetail?.alternativeEvaluationStructureKey,
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  });
+  const alternativeEvaluationStructureLabel =
+    issueAlternativeEvaluationStructureEntry?.label ||
+    issueDetail?.alternativeEvaluationStructureKey ||
+    "—";
   const alternativeEvaluationStructureEntry = getEvaluationStructureEntryForStage({
     structureKey: expertEvaluations?.issue?.alternativeEvaluationStructureKey,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
   const AlternativeEvaluationViewComponent =
     alternativeEvaluationStructureEntry?.View || null;
-  const alternativeNamesForReview = safeArray(issueDetail?.alternatives)
-    .map((alternative) => alternative?.name)
-    .filter(Boolean);
-  const criterionNamesForReview = safeArray(issueDetail?.leafCriteria)
-    .map((criterion) => criterion?.name)
-    .filter(Boolean);
+  const orderedAlternativesForReview = safeArray(issueDetail?.alternatives)
+    .map((alternative) => ({
+      id: alternative?.id || alternative?._id || alternative?.name,
+      name: alternative?.name,
+    }))
+    .filter((alternative) => Boolean(alternative?.name));
+  const orderedLeafCriteriaForReview = safeArray(issueDetail?.leafCriteria)
+    .map((criterion) => ({
+      id: criterion?.id || criterion?._id || criterion?.name,
+      name: criterion?.name,
+      type: criterion?.type || null,
+      expressionDomain: criterion?.expressionDomain || null,
+    }))
+    .filter((criterion) => Boolean(criterion?.name));
   const shouldShowExpertWeights = Boolean(expertWeights?.weights);
-  const hasExpertCollectiveEvaluations = Array.isArray(
+  const hasExpertCollectiveEvaluations = hasVisibleCollectivePayload(
     expertEvaluations?.collectiveEvaluations
-  )
-    ? expertEvaluations.collectiveEvaluations.length > 0
-    : expertEvaluations?.collectiveEvaluations &&
-      typeof expertEvaluations.collectiveEvaluations === "object"
-      ? Object.keys(expertEvaluations.collectiveEvaluations).length > 0
-      : expertEvaluations?.collectiveEvaluations != null;
+  );
 
   useEffect(() => {
     setShowExpertCollective(false);
@@ -723,23 +745,11 @@ export default function AdminIssuesSection() {
                       <AdminInfoRow label="Stage" value={prettyStage(issueDetail)} />
                       <AdminInfoRow
                         label="Criteria weighting structure"
-                        value={
-                          criteriaWeightingStructureLabelByKey[
-                          issueDetail?.criteriaWeightingStructureKey
-                          ] ||
-                          issueDetail?.criteriaWeightingStructureKey ||
-                          "—"
-                        }
+                        value={criteriaWeightingStructureLabel}
                       />
                       <AdminInfoRow
                         label="Evaluation structure"
-                        value={
-                          alternativeStructureLabelByKey[
-                          issueDetail?.alternativeEvaluationStructureKey
-                          ] ||
-                          issueDetail?.alternativeEvaluationStructureKey ||
-                          "—"
-                        }
+                        value={alternativeEvaluationStructureLabel}
                       />
                       <AdminInfoRow label="Creation date" value={issueDetail?.creationDate || "—"} />
                       <AdminInfoRow label="Closure date" value={issueDetail?.closureDate || "—"} />
@@ -1458,8 +1468,8 @@ export default function AdminIssuesSection() {
                               structureKey:
                                 expertEvaluations?.issue
                                   ?.alternativeEvaluationStructureKey || "",
-                              alternatives: alternativeNamesForReview,
-                              criteria: criterionNamesForReview,
+                              alternatives: orderedAlternativesForReview,
+                              criteria: orderedLeafCriteriaForReview,
                               payload: expertEvaluations?.evaluations || {},
                               setPayload: () => { },
                               collectivePayload:

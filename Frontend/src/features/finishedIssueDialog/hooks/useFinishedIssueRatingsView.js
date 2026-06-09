@@ -3,29 +3,6 @@ import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueE
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
 import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry.js";
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const resolveCriterionListFromEvaluation = ({ evaluation, leafNames }) => {
-  if (!isPlainObject(evaluation)) {
-    return [];
-  }
-
-  if (isPlainObject(evaluation.comparisonsByCriterion)) {
-    const criterionKeys = Object.keys(evaluation.comparisonsByCriterion);
-    if (Array.isArray(leafNames) && leafNames.length > 0) {
-      return leafNames.filter((name) => criterionKeys.includes(name));
-    }
-    return criterionKeys;
-  }
-
-  if (Array.isArray(leafNames) && leafNames.length > 0) {
-    return leafNames.filter((name) => Array.isArray(evaluation[name]));
-  }
-
-  return Object.keys(evaluation).filter((key) => Array.isArray(evaluation[key]));
-};
-
 /**
  * Hook for managing finished issue ratings state and data extraction.
  *
@@ -49,6 +26,7 @@ const resolveCriterionListFromEvaluation = ({ evaluation, leafNames }) => {
  * @param {Object|null} params.viewIssue - Active finished issue view.
  * @param {number} params.currentPhaseIndex - Current consensus phase index.
  * @param {string[]} params.leafNames - Leaf criterion names for criterion list derivation.
+ * @param {Object[]} params.leafCriteria - Ordered leaf criteria for structure View context.
  * @param {boolean} params.hasSingleCriterion - Whether the issue has only one criterion.
  * @returns {Object} Ratings view model.
  */
@@ -56,6 +34,7 @@ export const useFinishedIssueRatingsView = ({
   viewIssue,
   currentPhaseIndex,
   leafNames,
+  leafCriteria,
   hasSingleCriterion,
 }) => {
   const [selectedExpert, setSelectedExpert] = useState("");
@@ -93,17 +72,8 @@ export const useFinishedIssueRatingsView = ({
   );
 
   const criterionList = useMemo(() => {
-    if (!selectedExpert || !phaseRatings?.expertEvaluations?.[selectedExpert]) {
-      return [];
-    }
-
-    const selected = phaseRatings.expertEvaluations[selectedExpert];
-
-    return resolveCriterionListFromEvaluation({
-      evaluation: selected,
-      leafNames,
-    });
-  }, [selectedExpert, phaseRatings, leafNames]);
+    return Array.isArray(leafNames) ? leafNames.filter(Boolean) : [];
+  }, [leafNames]);
 
   const showCriterionSelector = useMemo(
     () => criterionList.length > 1 && !hasSingleCriterion,
@@ -231,6 +201,7 @@ export const useFinishedIssueRatingsView = ({
   return {
     evaluationStructure,
     Matrix,
+    leafCriteria,
     selectedExpert,
     setSelectedExpert,
     selectedCriterion,

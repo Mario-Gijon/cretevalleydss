@@ -17,6 +17,7 @@ import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog
 import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
 
 /**
  * Ratings section of the finished issue dialog.
@@ -52,7 +53,7 @@ const RatingsSection = () => {
     finalCriteriaWeights,
     shouldShowExpertWeights,
     collectiveEvaluations,
-    leafNames,
+    leafCriteria,
     Matrix,
     unsupportedEvaluationStructure,
   } = ratingsSection;
@@ -70,12 +71,22 @@ const RatingsSection = () => {
   }
 
   const expertWeightStatus = criteriaWeightsEvaluation?.status || "notRequired";
-  const expertWeightsByCriterion =
-    criteriaWeightsEvaluation?.weightsByCriterion || null;
+  const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
+    structureKey:
+      criteriaWeightsEvaluation?.structureKey ||
+      viewIssue?.summary?.criteriaWeightingStructureKey,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  });
+  const CriteriaWeightingView = criteriaWeightingStructureEntry?.View || null;
 
   const finalWeightsRows = Array.isArray(finalCriteriaWeights?.weights)
     ? finalCriteriaWeights.weights
     : [];
+  const orderedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
+  const orderedAlternatives =
+    Array.isArray(viewIssue?.summary?.alternatives)
+      ? viewIssue.summary.alternatives
+      : [];
 
   const finalWeightsByCriterion = finalWeightsRows.reduce((accumulator, entry) => {
     if (entry?.criterionName) {
@@ -84,16 +95,9 @@ const RatingsSection = () => {
 
     return accumulator;
   }, {});
-
-  const criteriaNamesForWeights = [
-    ...new Set(
-      [
-        ...(Array.isArray(leafNames) ? leafNames : []),
-        ...finalWeightsRows.map((entry) => entry?.criterionName).filter(Boolean),
-        ...Object.keys(expertWeightsByCriterion || {}),
-      ].filter(Boolean)
-    ),
-  ];
+  const criteriaNamesForWeights = orderedLeafCriteria
+    .map((criterion) => criterion?.name)
+    .filter(Boolean);
 
   const formatNumericWeight = (value) => {
     const numeric = Number(value);
@@ -107,17 +111,6 @@ const RatingsSection = () => {
     }).format(Object.is(numeric, -0) ? 0 : numeric);
   };
 
-  const getExpertWeightDisplayValue = (criterionName) => {
-    const rawValue = expertWeightsByCriterion?.[criterionName];
-    const formatted = formatNumericWeight(rawValue);
-
-    if (formatted !== null) return formatted;
-    if (expertWeightStatus === "draft") return "Draft";
-    if (expertWeightStatus === "notRequired") return "Not required";
-
-    return "Not submitted";
-  };
-
   const getFinalWeightDisplayValue = (criterionName) => {
     const rawValue = finalWeightsByCriterion?.[criterionName];
     const formatted = formatNumericWeight(rawValue);
@@ -129,8 +122,8 @@ const RatingsSection = () => {
     issue: viewIssue,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     structureKey: ratingsSection.evaluationStructure || "",
-    alternatives: viewIssue?.summary?.alternatives || [],
-    criteria: leafNames || [],
+    alternatives: orderedAlternatives,
+    criteria: orderedLeafCriteria,
     payload: evaluations,
     setPayload: () => {},
     collectivePayload: collectiveEvaluations || {},
@@ -227,76 +220,81 @@ const RatingsSection = () => {
                 Weights
               </Typography>
 
-              {criteriaNamesForWeights.length > 0 ? (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "max-content max-content max-content",
-                    },
-                    columnGap: { xs: 0, sm: 2.5 },
-                    rowGap: 0.75,
-                    alignItems: "center",
-                    width: "fit-content",
-                    maxWidth: "100%",
+              {CriteriaWeightingView && criteriaWeightsEvaluation?.payload ? (
+                <CriteriaWeightingView
+                  evaluationContext={{
+                    criteria: orderedLeafCriteria,
+                    payload: criteriaWeightsEvaluation.payload,
+                    setPayload: () => {},
+                    permitEdit: false,
                   }}
-                >
-                  {criteriaNamesForWeights.map((criterionName) => (
-                    <Fragment key={criterionName}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 750,
-                          pr: { xs: 0, sm: 1 },
-                        }}
-                      >
-                        {criterionName}
-                      </Typography>
-
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          fontVariantNumeric: "tabular-nums",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Expert:{" "}
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ color: "text.primary", fontWeight: 700 }}
-                        >
-                          {getExpertWeightDisplayValue(criterionName)}
-                        </Typography>
-                      </Typography>
-
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          fontVariantNumeric: "tabular-nums",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Final:{" "}
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ color: "text.primary", fontWeight: 700 }}
-                        >
-                          {getFinalWeightDisplayValue(criterionName)}
-                        </Typography>
-                      </Typography>
-                    </Fragment>
-                  ))}
-                </Box>
+                />
+              ) : expertWeightStatus === "notRequired" ? (
+                <Typography variant="body2" color="text.secondary">
+                  Criteria weights are not required for this issue.
+                </Typography>
+              ) : expertWeightStatus === "notSubmitted" ? (
+                <Typography variant="body2" color="text.secondary">
+                  Expert did not submit criteria weights.
+                </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  No weights available
+                  No criteria-weight payload available.
                 </Typography>
               )}
+
+              {criteriaNamesForWeights.length > 0 ? (
+                <>
+                  <Divider sx={{ opacity: 0.14, my: 1.25 }} />
+
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: "max-content max-content",
+                      },
+                      columnGap: { xs: 0, sm: 2.5 },
+                      rowGap: 0.75,
+                      alignItems: "center",
+                      width: "fit-content",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    {criteriaNamesForWeights.map((criterionName) => (
+                      <Fragment key={criterionName}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 750,
+                            pr: { xs: 0, sm: 1 },
+                          }}
+                        >
+                          {criterionName}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            fontVariantNumeric: "tabular-nums",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Final:{" "}
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{ color: "text.primary", fontWeight: 700 }}
+                          >
+                            {getFinalWeightDisplayValue(criterionName)}
+                          </Typography>
+                        </Typography>
+                      </Fragment>
+                    ))}
+                  </Box>
+                </>
+              ) : null}
             </Box>
 
             <Divider sx={{ opacity: 0.14 }} />

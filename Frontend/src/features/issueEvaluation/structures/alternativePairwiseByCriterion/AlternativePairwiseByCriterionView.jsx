@@ -222,20 +222,25 @@ const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
       )
     : {};
 
-  const resolvedCriteria =
-    criteriaFromContext.length > 0
-      ? criteriaFromContext
-      : Object.keys(evaluationsByCriterion);
+  const resolvedCriteria = criteriaFromContext;
 
   const visibleCriteria =
     selectedCriterion && resolvedCriteria.includes(selectedCriterion)
       ? [selectedCriterion]
       : resolvedCriteria;
 
-  if (resolvedCriteria.length === 0) {
+  if (criteriaFromContext.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-        No pairwise evaluations found.
+        No criteria available.
+      </Typography>
+    );
+  }
+
+  if (alternativeNames.length === 0) {
+    return (
+      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+        No alternatives available.
       </Typography>
     );
   }
