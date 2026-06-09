@@ -187,7 +187,7 @@ export const getAllActiveIssues = async (req, res) => {
 };
 
 export const removeIssue = async (req, res) => {
-  const { id } = req.body;
+  const id = req.params.id;
   const userId = req.uid;
 
   const session = await mongoose.startSession();
@@ -297,10 +297,11 @@ export const markAllNotificationsAsRead = async (req, res) => {
 };
 
 export const changeInvitationStatus = async (req, res) => {
+  const id = req.params.id;
+  const action = req.body.action;
   const session = await mongoose.startSession();
 
   try {
-    const { id, action } = req.body;
     let result = null;
 
     await session.withTransaction(async () => {
@@ -330,7 +331,7 @@ export const removeNotificationById = async (req, res) => {
 };
 
 export const removeFinishedIssue = async (req, res) => {
-  const { id } = req.body;
+  const id = req.params.id;
   const userId = req.uid;
 
   const session = await mongoose.startSession();
@@ -357,7 +358,9 @@ export const removeFinishedIssue = async (req, res) => {
 };
 
 export const editExperts = async (req, res) => {
-  const { id, expertsToAdd = [], expertsToRemove = [] } = req.body;
+  const id = req.params.id;
+  const expertsToAdd = req.body.expertsToAdd;
+  const expertsToRemove = req.body.expertsToRemove;
 
   await editIssueExpertsUseCase({
     issueId: id,
@@ -370,7 +373,7 @@ export const editExperts = async (req, res) => {
 };
 
 export const leaveIssue = async (req, res) => {
-  const { id } = req.body;
+  const id = req.params.id;
   const userId = req.uid;
 
   const session = await mongoose.startSession();
@@ -395,7 +398,7 @@ export const leaveIssue = async (req, res) => {
 };
 
 export const getFinishedIssueInfo = async (req, res) => {
-  const { id } = req.body;
+  const id = req.params.id;
 
   const issueInfo = await getFinishedIssueInfoPayload({
     issueId: id,
@@ -405,12 +408,10 @@ export const getFinishedIssueInfo = async (req, res) => {
 };
 
 export const createIssueScenario = async (req, res) => {
-  const {
-    issueId,
-    targetModelId,
-    scenarioName = "",
-    paramOverrides = {},
-  } = req.body || {};
+  const issueId = req.params.id;
+  const targetModelId = req.body.targetModelId;
+  const scenarioName = req.body.scenarioName;
+  const paramOverrides = req.body.paramOverrides;
 
   const { scenarioId } = await createIssueScenarioUseCase({
     userId: req.uid,
@@ -431,7 +432,7 @@ export const createIssueScenario = async (req, res) => {
 };
 
 export const getIssueScenarios = async (req, res) => {
-  const { issueId } = req.body;
+  const issueId = req.params.id;
 
   const { scenarios } = await getIssueScenariosPayload({ issueId });
 
@@ -439,7 +440,7 @@ export const getIssueScenarios = async (req, res) => {
 };
 
 export const getScenarioById = async (req, res) => {
-  const { scenarioId } = req.body;
+  const scenarioId = req.params.scenarioId;
 
   const { scenario } = await getScenarioByIdPayload({ scenarioId });
 
@@ -447,7 +448,7 @@ export const getScenarioById = async (req, res) => {
 };
 
 export const removeScenario = async (req, res) => {
-  const { scenarioId } = req.body;
+  const scenarioId = req.params.scenarioId;
 
   await removeIssueScenario({
     scenarioId,

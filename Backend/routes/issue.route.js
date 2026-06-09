@@ -35,16 +35,6 @@ import { requireToken } from "../middlewares/requireToken.js";
 
 const router = Router();
 
-const mapParamsToBody = (mapping) => (req, _res, next) => {
-  req.body = req.body ?? {};
-
-  Object.entries(mapping).forEach(([bodyKey, paramKey]) => {
-    req.body[bodyKey] = req.params[paramKey];
-  });
-
-  next();
-};
-
 router.use(requireToken);
 
 router.get("/models", asyncHandler(modelsInfo));
@@ -69,18 +59,17 @@ router.get("/finished", asyncHandler(getAllFinishedIssues));
 
 router
   .route("/finished/:id")
-  .get(mapParamsToBody({ id: "id" }), asyncHandler(getFinishedIssueInfo))
-  .delete(mapParamsToBody({ id: "id" }), asyncHandler(removeFinishedIssue));
+  .get(asyncHandler(getFinishedIssueInfo))
+  .delete(asyncHandler(removeFinishedIssue));
 
-router.delete("/:id", mapParamsToBody({ id: "id" }), asyncHandler(removeIssue));
+router.delete("/:id", asyncHandler(removeIssue));
 
-router.post("/:id/leave", mapParamsToBody({ id: "id" }), asyncHandler(leaveIssue));
+router.post("/:id/leave", asyncHandler(leaveIssue));
 
-router.patch("/:id/experts", mapParamsToBody({ id: "id" }), asyncHandler(editExperts));
+router.patch("/:id/experts", asyncHandler(editExperts));
 
 router.post(
   "/:id/invitation-response",
-  mapParamsToBody({ id: "id" }),
   asyncHandler(changeInvitationStatus)
 );
 
@@ -100,12 +89,12 @@ router.get("/:id/evaluations/:stage", asyncHandler(getIssueEvaluationByStage));
 
 router
   .route("/:id/scenarios")
-  .get(mapParamsToBody({ issueId: "id" }), asyncHandler(getIssueScenarios))
-  .post(mapParamsToBody({ issueId: "id" }), asyncHandler(createIssueScenario));
+  .get(asyncHandler(getIssueScenarios))
+  .post(asyncHandler(createIssueScenario));
 
 router
   .route("/scenarios/:scenarioId")
-  .get(mapParamsToBody({ scenarioId: "scenarioId" }), asyncHandler(getScenarioById))
-  .delete(mapParamsToBody({ scenarioId: "scenarioId" }), asyncHandler(removeScenario));
+  .get(asyncHandler(getScenarioById))
+  .delete(asyncHandler(removeScenario));
 
 export default router;
