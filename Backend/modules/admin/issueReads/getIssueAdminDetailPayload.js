@@ -1,15 +1,16 @@
-import { Consensus } from "../../../models/Consensus.js";
 import { Criterion } from "../../../models/Criteria.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../../issues/shared/ordering.js";
+import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 import { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "../../expressionDomains/buildIssueDomainConfig.js";
 
 import { createInternalError } from "../../../utils/common/errors.js";
@@ -81,7 +82,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     allCriteria,
     participations,
     exits,
-    consensusDocs,
+    alternativeStageResults,
     scenarios,
     snapshots,
     evaluationDocs,
@@ -106,7 +107,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     ExitUserIssue.find({ issue: issueId, hidden: true })
       .populate("user", "name email role university accountConfirm")
       .lean(),
-    Consensus.find({ issue: issueId }).sort({ phase: 1 }).lean(),
+    IssueStageResult.find({
+      issue: issueId,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+    })
+      .sort({ consensusPhase: 1 })
+      .lean(),
     IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .select(
@@ -252,8 +258,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     (participation) => participation.invitationStatus === "declined"
   );
 
-  const latestConsensus = consensusDocs.length
-    ? consensusDocs[consensusDocs.length - 1]
+  const latestAlternativeStageResult = alternativeStageResults.length
+    ? alternativeStageResults[alternativeStageResults.length - 1]
     : null;
 
   const snapshotsSummary = {
@@ -291,7 +297,6 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       active: issue.active,
       currentStage: issue.currentStage,
       currentStageMeta: getIssueStageMeta(issue.currentStage),
-      weightingMode: issue.weightingMode,
       isConsensus: issue.isConsensus,
       simulateConsensus: issue.simulateConsensus === true,
       consensusMaxPhases: issue.consensusMaxPhases,
@@ -311,8 +316,10 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         ? {
           id: toIdString(issue.model._id),
           name: issue.model.name,
-          isConsensus:
-            issue.model.lifecycleKind === "thresholdConsensus",
+          alternativeEvaluationStructureKey:
+            issue.model.alternativeEvaluationStructureKey,
+          criteriaWeightingStructureKey:
+            issue.model.criteriaWeightingStructureKey,
           supportsConsensus: issue.model.supportsConsensus === true,
           supportsConsensusSimulation:
             issue.model.supportsConsensusSimulation === true,
@@ -338,10 +345,19 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       expressionDomainConfig,
       snapshots: snapshotsSummary,
       consensus: {
-        rounds: consensusDocs.length,
-        latestPhase: latestConsensus?.phase,
-        latestLevel: latestConsensus?.level,
-        latestAt: latestConsensus?.timestamp,
+        rounds: alternativeStageResults.length,
+        latestPhase: latestAlternativeStageResult?.consensusPhase ?? null,
+        latestConsensusMeasure:
+          latestAlternativeStageResult?.consensusMeasure ?? null,
+        latestAt:
+          latestAlternativeStageResult?.updatedAt ||
+          latestAlternativeStageResult?.createdAt ||
+          null,
+        roundsDetail: alternativeStageResults.map((stageResult) => ({
+          phase: stageResult.consensusPhase,
+          consensusMeasure: stageResult.consensusMeasure ?? null,
+          computedAt: stageResult.updatedAt || stageResult.createdAt || null,
+        })),
       },
       scenarios: scenarios.map((scenario) => ({
         id: toIdString(scenario._id),

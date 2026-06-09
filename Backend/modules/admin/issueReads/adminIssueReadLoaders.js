@@ -39,7 +39,7 @@ export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
       {
         path: "model",
         select:
-          "name alternativeEvaluationStructureKey criteriaWeightingStructureKey lifecycleKind isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation",
+          "name alternativeEvaluationStructureKey criteriaWeightingStructureKey isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation",
       },
     ],
     lean: true,
