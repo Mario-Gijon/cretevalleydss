@@ -353,6 +353,7 @@ export const useFinishedIssueDialogView = ({
     viewIssue,
     currentPhaseIndex,
     leafNames,
+    leafCriteria: leafCriteriaForParams,
     hasSingleCriterion,
   });
 
