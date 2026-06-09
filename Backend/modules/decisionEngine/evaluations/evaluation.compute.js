@@ -378,6 +378,68 @@ const saveStageResult = async ({
   consensusPhase = issue.consensusPhase,
   session = null,
 }) => {
+  let stageResultPayload = null;
+
+  if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
+    stageResultPayload = {
+      consensusMeasure: computeResult.consensusMeasure,
+      rankedAlternatives: [],
+      collectiveEvaluations: computeResult.collectiveEvaluations,
+      plotsGraphic: {},
+      modelExecution: withConsensusLifecycleInModelExecution({
+        modelExecution: computeResult.modelExecution,
+        consensusLifecycle: lifecycleMetadata,
+      }),
+      rawOutput: computeResult.rawOutput,
+    };
+  } else if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
+    if (!Array.isArray(computeResult.rankedAlternatives)) {
+      throw createInternalError(
+        "Alternative evaluation compute result rankedAlternatives must be an array",
+        {
+          field: "computeResult.rankedAlternatives",
+          details: {
+            issueId: issue?._id ?? null,
+            stage,
+          },
+        }
+      );
+    }
+
+    if (!isPlainObject(computeResult.plotsGraphic)) {
+      throw createInternalError(
+        "Alternative evaluation compute result plotsGraphic must be an object",
+        {
+          field: "computeResult.plotsGraphic",
+          details: {
+            issueId: issue?._id ?? null,
+            stage,
+          },
+        }
+      );
+    }
+
+    stageResultPayload = {
+      consensusMeasure: computeResult.consensusMeasure,
+      rankedAlternatives: computeResult.rankedAlternatives,
+      collectiveEvaluations: computeResult.collectiveEvaluations,
+      plotsGraphic: computeResult.plotsGraphic,
+      modelExecution: withConsensusLifecycleInModelExecution({
+        modelExecution: computeResult.modelExecution,
+        consensusLifecycle: lifecycleMetadata,
+      }),
+      rawOutput: computeResult.rawOutput,
+    };
+  } else {
+    throw createInternalError("Unsupported evaluation stage for stage result persistence", {
+      field: "stage",
+      details: {
+        issueId: issue?._id ?? null,
+        stage,
+      },
+    });
+  }
+
   await IssueStageResult.findOneAndUpdate(
     {
       issue: issue._id,
@@ -385,21 +447,7 @@ const saveStageResult = async ({
       consensusPhase,
     },
     {
-      $set: {
-        consensusMeasure: computeResult.consensusMeasure,
-        ...(Array.isArray(computeResult.rankedAlternatives)
-          ? { rankedAlternatives: computeResult.rankedAlternatives }
-          : {}),
-        collectiveEvaluations: computeResult.collectiveEvaluations,
-        ...(isPlainObject(computeResult.plotsGraphic)
-          ? { plotsGraphic: computeResult.plotsGraphic }
-          : {}),
-        modelExecution: withConsensusLifecycleInModelExecution({
-          modelExecution: computeResult.modelExecution,
-          consensusLifecycle: lifecycleMetadata,
-        }),
-        rawOutput: computeResult.rawOutput,
-      },
+      $set: stageResultPayload,
     },
     {
       upsert: true,
