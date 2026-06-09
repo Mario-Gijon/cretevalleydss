@@ -1,10 +1,8 @@
 import axios from "axios";
 import mongoose from "mongoose";
 
-         
 import { IssueModel } from "../models/IssueModels.js";
 
-          
 import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
 import {
   computeIssueEvaluationStage,
@@ -29,7 +27,6 @@ import {
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 
-        
 import {
   createBadRequestError,
   createConflictError,
@@ -42,7 +39,6 @@ import {
 } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import { getIssueByIdOrThrow } from "../modules/issues/shared/queries.js";
-
 
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
@@ -72,43 +68,36 @@ const throwIfDuplicateEmailError = (error) => {
   throw error;
 };
 
-const mapIssueModelCatalogItem = (model = {}) => {
+const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
 
   return {
     _id: id,
     id,
     name: model.name,
-    apiModelKey: model.apiModelKey || null,
+    apiModelKey: model.apiModelKey,
     isIssueModel: model.isIssueModel === true,
     isCriteriaWeightingModel: model.isCriteriaWeightingModel === true,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
-    apiEndpoint: model.apiEndpoint || null,
-    manifestSync: model.manifestSync || null,
+    apiEndpoint: model.apiEndpoint,
+    manifestSync: model.manifestSync,
     isMultiCriteria: model.isMultiCriteria,
     alternativeEvaluationStructureKey:
-      model.alternativeEvaluationStructureKey || null,
+      model.alternativeEvaluationStructureKey,
     criteriaWeightingStructureKey:
-      model.criteriaWeightingStructureKey || null,
+      model.criteriaWeightingStructureKey,
     usesCriteriaWeights: model.usesCriteriaWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
     supportsConsensus: model.supportsConsensus === true,
     supportsConsensusSimulation: model.supportsConsensusSimulation === true,
-    lifecycleKind: model.lifecycleKind || null,
-    apiInputFormat: model.apiInputFormat || null,
-    apiOutputFormat: model.apiOutputFormat || null,
-    parameters: Array.isArray(model.parameters) ? model.parameters : [],
-    modelInputFields: Array.isArray(model.modelInputFields)
-      ? model.modelInputFields
-      : [],
-    modelOutputFields: Array.isArray(model.modelOutputFields)
-      ? model.modelOutputFields
-      : [],
-    request: model.request || null,
-    response: model.response || null,
-    supportedDomains: model.supportedDomains || null,
+    parameters: model.parameters,
+    modelInputFields: model.modelInputFields,
+    modelOutputFields: model.modelOutputFields,
+    request: model.request,
+    response: model.response,
+    supportedDomains: model.supportedDomains,
     smallDescription: model.smallDescription,
     extendDescription: model.extendDescription,
     moreInfoUrl: model.moreInfoUrl,
