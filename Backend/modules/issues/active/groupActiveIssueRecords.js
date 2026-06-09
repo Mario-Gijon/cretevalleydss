@@ -2,12 +2,19 @@ import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 
-const groupByIssueId = (items, selector) => {
+const groupByIssueId = (items, selector, { recordType }) => {
   const grouped = {};
 
   for (const item of items) {
     const issueId = toIdString(selector(item));
-    if (!issueId) continue;
+    if (!issueId) {
+      throw createInternalError("Active issue record is missing a valid issue id", {
+        field: "issue",
+        details: {
+          recordType,
+        },
+      });
+    }
 
     if (!grouped[issueId]) {
       grouped[issueId] = [];
@@ -117,13 +124,17 @@ export const buildActiveIssueCollections = ({
   return {
     participationMap: groupByIssueId(
       participations,
-      (participation) => participation.issue
+      (participation) => participation.issue,
+      { recordType: "participation" }
     ),
     alternativesMap: groupByIssueId(
       alternatives,
-      (alternative) => alternative.issue
+      (alternative) => alternative.issue,
+      { recordType: "alternative" }
     ),
-    criteriaMap: groupByIssueId(criteria, (criterion) => criterion.issue),
+    criteriaMap: groupByIssueId(criteria, (criterion) => criterion.issue, {
+      recordType: "criterion",
+    }),
     consensusHistoryByIssue: Object.fromEntries(
       Object.entries(consensusByIssue).map(([issueId, docs]) => [
         issueId,

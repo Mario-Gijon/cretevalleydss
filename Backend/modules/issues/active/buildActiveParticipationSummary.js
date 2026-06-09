@@ -1,5 +1,28 @@
-import { sameId } from "../../../utils/common/ids.js";
+import { createInternalError } from "../../../utils/common/errors.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+
+const validateParticipationExpertOrThrow = (participation) => {
+  const expertId = toIdString(participation?.expert?._id);
+  const expertEmail =
+    typeof participation?.expert?.email === "string"
+      ? participation.expert.email.trim()
+      : "";
+
+  if (!participation.expert || !expertId || expertEmail === "") {
+    throw createInternalError("Participation expert data is invalid", {
+      field: "participations.expert",
+      details: {
+        participationId: toIdString(participation?._id),
+      },
+    });
+  }
+
+  return {
+    expertId,
+    expertEmail,
+  };
+};
 
 export const buildActiveParticipationSummary = ({
   issueParticipations,
@@ -7,14 +30,29 @@ export const buildActiveParticipationSummary = ({
   isAdminUser,
   stage,
 }) => {
-  const acceptedParticipations = issueParticipations.filter(
-    (participation) => participation.invitationStatus === "accepted"
+  const validatedParticipations = issueParticipations.map((participation) => ({
+    participation,
+    ...validateParticipationExpertOrThrow(participation),
+  }));
+
+  const acceptedParticipationsWithExpert = validatedParticipations.filter(
+    ({ participation }) => participation.invitationStatus === "accepted"
   );
-  const pendingParticipations = issueParticipations.filter(
-    (participation) => participation.invitationStatus === "pending"
+  const pendingParticipationsWithExpert = validatedParticipations.filter(
+    ({ participation }) => participation.invitationStatus === "pending"
   );
-  const declinedParticipations = issueParticipations.filter(
-    (participation) => participation.invitationStatus === "declined"
+  const declinedParticipationsWithExpert = validatedParticipations.filter(
+    ({ participation }) => participation.invitationStatus === "declined"
+  );
+
+  const acceptedParticipations = acceptedParticipationsWithExpert.map(
+    ({ participation }) => participation
+  );
+  const pendingParticipations = pendingParticipationsWithExpert.map(
+    ({ participation }) => participation
+  );
+  const declinedParticipations = declinedParticipationsWithExpert.map(
+    ({ participation }) => participation
   );
 
   const hasPending = pendingParticipations.length > 0;
@@ -26,12 +64,14 @@ export const buildActiveParticipationSummary = ({
     (participation) => participation.evaluationCompleted
   ).length;
 
-  const myParticipation = issueParticipations.find((participation) =>
-    sameId(participation.expert._id, userId)
+  const myParticipationEntry = validatedParticipations.find(({ expertId }) =>
+    sameId(expertId, userId)
   );
-  const acceptedUserParticipation = acceptedParticipations.find(
-    (participation) => sameId(participation.expert._id, userId)
+  const myParticipation = myParticipationEntry?.participation;
+  const acceptedUserParticipationEntry = acceptedParticipationsWithExpert.find(
+    ({ expertId }) => sameId(expertId, userId)
   );
+  const acceptedUserParticipation = acceptedUserParticipationEntry?.participation;
   const isExpertAccepted = acceptedUserParticipation !== undefined;
 
   let role = "viewer";
@@ -66,8 +106,9 @@ export const buildActiveParticipationSummary = ({
     );
   }
 
-  const evaluated = completedParticipations.some((participation) =>
-    sameId(participation.expert._id, userId)
+  const evaluated = validatedParticipations.some(
+    ({ participation, expertId }) =>
+      completedParticipations.includes(participation) && sameId(expertId, userId)
   );
 
   return {
@@ -84,17 +125,21 @@ export const buildActiveParticipationSummary = ({
       totalAccepted +
       pendingParticipations.length +
       declinedParticipations.length,
-    participatedExperts: completedParticipations
-      .map((participation) => participation.expert.email)
+    participatedExperts: validatedParticipations
+      .filter(({ participation }) => completedParticipations.includes(participation))
+      .map(({ expertEmail }) => expertEmail)
       .sort(),
-    pendingExperts: pendingParticipations
-      .map((participation) => participation.expert.email)
+    pendingExperts: pendingParticipationsWithExpert
+      .map(({ expertEmail }) => expertEmail)
       .sort(),
-    notAcceptedExperts: declinedParticipations
-      .map((participation) => participation.expert.email)
+    notAcceptedExperts: declinedParticipationsWithExpert
+      .map(({ expertEmail }) => expertEmail)
       .sort(),
-    acceptedButNotEvaluatedExperts: pendingEvaluationParticipations
-      .map((participation) => participation.expert.email)
+    acceptedButNotEvaluatedExperts: validatedParticipations
+      .filter(({ participation }) =>
+        pendingEvaluationParticipations.includes(participation)
+      )
+      .map(({ expertEmail }) => expertEmail)
       .sort(),
   };
 };
