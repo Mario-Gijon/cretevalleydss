@@ -62,34 +62,22 @@ export const modelsInfo = async (req, res) => {
         $or: [
           {
             isIssueModel: true,
-            $or: [
-              { visibleInIssueCreation: { $exists: false } },
-              { visibleInIssueCreation: { $ne: false } },
-            ],
+            visibleInIssueCreation: true,
           },
           {
             isCriteriaWeightingModel: true,
-            $or: [
-              { visibleInCriteriaWeighting: { $exists: false } },
-              { visibleInCriteriaWeighting: { $ne: false } },
-            ],
+            visibleInCriteriaWeighting: true,
           },
         ],
       },
-      {
-        $or: [
-          { manifestSync: { $exists: false } },
-          { "manifestSync.isStale": { $exists: false } },
-          { "manifestSync.isStale": false },
-        ],
-      },
+      { "manifestSync.isStale": false },
     ],
   })
     .select("-__v")
     .lean();
-  const issueModels = models.filter((model) => model?.isIssueModel === true);
+  const issueModels = models.filter((model) => model.isIssueModel === true);
   const criteriaWeightingModels = models.filter(
-    (model) => model?.isCriteriaWeightingModel === true
+    (model) => model.isCriteriaWeightingModel === true
   );
 
   return sendSuccess(res, "Models fetched successfully", {
