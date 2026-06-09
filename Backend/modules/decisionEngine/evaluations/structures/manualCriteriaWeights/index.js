@@ -20,6 +20,18 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     return payload;
   },
 
+  async getReadSummary({ storedEvaluation, structureContext }) {
+    const { payload } = await buildGetPayload({
+      storedEvaluation,
+      structureContext,
+    });
+
+    return {
+      manualWeights: payload.weightsByCriterion,
+      bwm: null,
+    };
+  },
+
   async save({ mode, payload, structureContext }) {
     const allowEmpty = resolveAllowEmptyFromModeOrThrow(mode);
 

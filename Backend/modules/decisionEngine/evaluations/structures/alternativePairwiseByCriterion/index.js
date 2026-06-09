@@ -4,9 +4,11 @@ import {
 import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
 import {
   buildExpectedPairsByCriterion,
+  resolveAlternativesAndCriteria,
 } from "./alternativePairwiseByCriterion.context.js";
 import { validateCompletedPairwiseEvaluationPayloadsOrThrow } from "./alternativePairwiseByCriterion.computeValidation.js";
 import { buildGetPayload } from "./alternativePairwiseByCriterion.getPayload.js";
+import { buildProgressMeta } from "./alternativePairwiseByCriterion.progress.js";
 import {
   normalizePayloadOrThrow,
   resolveRequireValueFromModeOrThrow,
@@ -21,6 +23,18 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
       structureContext,
     });
     return payload;
+  },
+
+  async getProgress({ storedEvaluation, structureContext }) {
+    const { alternativeNames, criterionNames } = await resolveAlternativesAndCriteria({
+      structureContext,
+    });
+
+    return buildProgressMeta({
+      storedEvaluation,
+      alternativeNames,
+      criterionNames,
+    }).progress;
   },
 
   async save({ mode, payload, structureContext }) {

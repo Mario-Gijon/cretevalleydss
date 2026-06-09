@@ -6,12 +6,10 @@ import { getOrderedLeafCriteriaDb } from "../../issues/shared/ordering.js";
 
 import { createNotFoundError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { isPlainObject } from "../../../utils/common/objects.js";
 import {
   buildAdminExpertIdentityPayload,
   buildAdminExpertParticipationPayload,
   formatIssueSnapshotDomain,
-  orderObjectByKeys,
 } from "./adminIssueReadPayloads.js";
 import {
   loadIssueForExpertWeightsOrThrow,
@@ -54,25 +52,6 @@ const resolveStructureLabel = ({ kind, criteriaWeightingStructure }) => {
   }
 
   return "Criteria weights";
-};
-
-const resolveBwmFromCanonicalPayload = ({ payload, leafNames }) => {
-  const bwmSource = isPlainObject(payload) ? payload : {};
-
-  return {
-    bestCriterion: bwmSource?.bestCriterion,
-    worstCriterion: bwmSource?.worstCriterion,
-    bestToOthers: orderObjectByKeys(bwmSource?.bestToOthers ?? {}, leafNames),
-    othersToWorst: orderObjectByKeys(bwmSource?.othersToWorst ?? {}, leafNames),
-  };
-};
-
-const resolveManualWeightsFromCanonicalPayload = ({ payload, leafNames }) => {
-  if (!isPlainObject(payload?.weightsByCriterion)) {
-    return null;
-  }
-
-  return orderObjectByKeys(payload.weightsByCriterion, leafNames);
 };
 
 export const getIssueExpertWeightsPayload = async ({
@@ -131,13 +110,12 @@ export const getIssueExpertWeightsPayload = async ({
         leafCriteria: orderedLeafCriteria,
       })
     : null;
-
-  const criteriaWeightingPayload = criteriaWeightingStructure
-    ? await criteriaWeightingStructure.get({
+  const readSummary = criteriaWeightingStructure?.getReadSummary
+    ? await criteriaWeightingStructure.getReadSummary({
         storedEvaluation: weightDoc,
         structureContext: criteriaWeightingStructureContext,
       })
-    : null;
+    : { manualWeights: null, bwm: null };
 
   const kind = resolveWeightsKind({
     leafNames,
@@ -152,15 +130,8 @@ export const getIssueExpertWeightsPayload = async ({
       : weightDoc.completed === true
         ? "submitted"
         : "draft";
-
-  const manualWeights = resolveManualWeightsFromCanonicalPayload({
-    payload: criteriaWeightingPayload,
-    leafNames,
-  });
-  const bwm = resolveBwmFromCanonicalPayload({
-    payload: criteriaWeightingPayload,
-    leafNames,
-  });
+  const manualWeights = readSummary.manualWeights;
+  const bwm = readSummary.bwm;
 
   return {
     issue: {

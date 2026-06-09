@@ -1,22 +1,36 @@
 import { toIdString } from "../../../utils/common/ids.js";
-import { buildProgressMeta as buildAlternativeCriteriaMatrixProgressMeta } from "../../decisionEngine/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.display.js";
-import { buildProgressMeta as buildAlternativePairwiseProgressMeta } from "../../decisionEngine/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.display.js";
+import { createInternalError } from "../../../utils/common/errors.js";
+import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
+import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 import { buildParticipantExpertPayload } from "./adminIssueReadPayloads.js";
 
 const normalizeAlternativesForProgress = (alternatives = []) =>
-  alternatives.map((alternative, index) => ({
-    name: String(
-      alternative?.name ?? alternative?.id ?? alternative?._id ?? `alternative_${index + 1}`
-    ),
-  }));
+  alternatives
+    .map((alternative, index) =>
+      String(
+        typeof alternative === "string"
+          ? alternative
+          : alternative?.name ??
+            alternative?.id ??
+            alternative?._id ??
+            `alternative_${index + 1}`
+      ).trim()
+    )
+    .filter(Boolean);
 
 const normalizeCriteriaForProgress = (criteria = []) =>
-  criteria.map((criterion, index) => ({
-    name: String(
-      criterion?.name ?? criterion?.id ?? criterion?._id ?? `criterion_${index + 1}`
-    ),
-    expressionDomain: criterion?.expressionDomain || null,
-  }));
+  criteria
+    .map((criterion, index) =>
+      String(
+        typeof criterion === "string"
+          ? criterion
+          : criterion?.name ??
+            criterion?.id ??
+            criterion?._id ??
+            `criterion_${index + 1}`
+      ).trim()
+    )
+    .filter(Boolean);
 
 export const buildPlaceholderAlternatives = (count = 0) =>
   Array.from({ length: Math.max(Number(count) || 0, 0) }, (_, index) => ({
@@ -35,31 +49,28 @@ export const resolveEvaluationProgressStats = async ({
   alternatives = [],
   criteria = [],
 }) => {
-  const alternativeNames = normalizeAlternativesForProgress(alternatives).map(
-    (alternative) => alternative.name
+  const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
+    issue?.alternativeEvaluationStructureKey
   );
-  const normalizedCriteria = normalizeCriteriaForProgress(criteria);
+  const structureContext = await buildEvaluationStructureContext({
+    issue,
+    alternatives: normalizeAlternativesForProgress(alternatives),
+    leafCriteria: normalizeCriteriaForProgress(criteria),
+  });
 
-  switch (issue?.alternativeEvaluationStructureKey) {
-    case "alternativeCriteriaMatrix":
-      return buildAlternativeCriteriaMatrixProgressMeta({
-        storedEvaluation,
-        alternativeNames,
-        criteria: normalizedCriteria,
-      }).progress;
-    case "alternativePairwiseByCriterion":
-      return buildAlternativePairwiseProgressMeta({
-        storedEvaluation,
-        alternativeNames,
-        criterionNames: normalizedCriteria.map((criterion) => criterion.name),
-      }).progress;
-    default:
-      return {
-        expectedItems: 0,
-        totalItems: 0,
-        filledItems: 0,
-      };
+  if (typeof alternativeEvaluationStructure?.getProgress !== "function") {
+    throw createInternalError(
+      `Evaluation structure '${String(issue?.alternativeEvaluationStructureKey || "")}' does not implement getProgress`,
+      {
+        field: "alternativeEvaluationStructureKey",
+      }
+    );
   }
+
+  return alternativeEvaluationStructure.getProgress({
+    storedEvaluation,
+    structureContext,
+  });
 };
 
 export const resolveExpectedEvaluationCellsPerExpert = async ({

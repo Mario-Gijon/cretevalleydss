@@ -1,7 +1,9 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants.js";
+import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.context.js";
 import { buildGetPayload } from "./alternativeCriteriaMatrix.getPayload.js";
+import { buildProgressMeta } from "./alternativeCriteriaMatrix.progress.js";
 import {
   normalizePayloadOrThrow,
   resolveRequireValueFromModeOrThrow,
@@ -16,6 +18,18 @@ export const alternativeCriteriaMatrixStructure = Object.freeze({
       structureContext,
     });
     return payload;
+  },
+
+  async getProgress({ storedEvaluation, structureContext }) {
+    const { alternativeNames, criteria } = await resolveAlternativesAndCriteria({
+      structureContext,
+    });
+
+    return buildProgressMeta({
+      storedEvaluation,
+      alternativeNames,
+      criteria,
+    }).progress;
   },
 
   async save({ mode, payload, structureContext }) {
