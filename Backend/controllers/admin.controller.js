@@ -104,10 +104,10 @@ const mapIssueModelCatalogItem = (model) => {
   };
 };
 
-const getModelCatalogSortRank = (model = {}) => {
+const getModelCatalogSortRank = (model) => {
   const visibleInIssueCreation = model.visibleInIssueCreation !== false;
   const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
-  const stale = model?.manifestSync?.isStale === true;
+  const stale = model.manifestSync.isStale === true;
 
   if (visibleInIssueCreation && !stale) return 0;
   if (visibleInIssueCreation) return 1;
@@ -136,7 +136,7 @@ export const getModelCatalogAdmin = async (_req, res) => {
 
       if (rankDifference !== 0) return rankDifference;
 
-      return String(left.name || "").localeCompare(String(right.name || ""));
+      return left.name.localeCompare(right.name);
     });
 
   return sendSuccess(res, "Model catalog retrieved successfully", {
