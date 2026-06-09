@@ -181,7 +181,7 @@ const loadEvaluationsForCompute = async ({
   return evaluations;
 };
 
-const resetAlternativeRoundCompletion = async (issueId) => {
+const resetAlternativeRoundCompletion = async (issueId, session = null) => {
   await Participation.updateMany(
     {
       issue: issueId,
@@ -191,6 +191,9 @@ const resetAlternativeRoundCompletion = async (issueId) => {
       $set: {
         evaluationCompleted: false,
       },
+    },
+    {
+      session,
     }
   );
 };
@@ -347,7 +350,11 @@ const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
   rawOutput: computeResult.rawOutput,
 });
 
-const applyCriteriaWeightingIssueUpdates = async ({ issue, orderedWeights }) => {
+const applyCriteriaWeightingIssueUpdates = async ({
+  issue,
+  orderedWeights,
+  session = null,
+}) => {
   const modelParameters = isPlainObject(issue?.modelParameters)
     ? { ...issue.modelParameters }
     : {};
@@ -357,7 +364,7 @@ const applyCriteriaWeightingIssueUpdates = async ({ issue, orderedWeights }) => 
     weights: orderedWeights,
   };
   issue.currentStage = ISSUE_STAGES.ALTERNATIVE_EVALUATION;
-  await issue.save();
+  await issue.save({ session });
 };
 
 const saveStageResult = async ({
@@ -366,6 +373,7 @@ const saveStageResult = async ({
   computeResult,
   lifecycleMetadata = null,
   consensusPhase = issue.consensusPhase,
+  session = null,
 }) => {
   await IssueStageResult.findOneAndUpdate(
     {
@@ -394,11 +402,16 @@ const saveStageResult = async ({
       upsert: true,
       new: true,
       setDefaultsOnInsert: true,
+      session,
     }
   );
 };
 
-const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
+const applyComputeIssueUpdates = async ({
+  issue,
+  computeResult,
+  session = null,
+}) => {
   const issueUpdateEntries = Object.entries(computeResult.issueUpdates);
   let didSetFinishedAt = false;
 
@@ -424,7 +437,7 @@ const applyComputeIssueUpdates = async ({ issue, computeResult }) => {
     computeResult.nextCurrentStage !== null ||
     didSetFinishedAt
   ) {
-    await issue.save();
+    await issue.save({ session });
   }
 };
 
@@ -606,6 +619,7 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
   acceptedParticipations,
   suggestions,
   nextPhase,
+  session = null,
 }) => {
   const expectedExpertIds = acceptedParticipations.map((participation) =>
     toIdString(participation.expert)
@@ -667,6 +681,7 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
         upsert: true,
         new: true,
         setDefaultsOnInsert: true,
+        session,
       }
     );
   }
@@ -687,6 +702,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
   evaluations,
   apiModelsBaseUrl,
   httpClient,
+  session = null,
 }) => {
   ensureSimulatedConsensusIssueConfigOrThrow({
     issue,
@@ -727,6 +743,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       computeResult: lifecycleComputeResult,
       lifecycleMetadata,
       consensusPhase: currentPhase,
+      session,
     });
 
     lastComputeResult = lifecycleComputeResult;
@@ -747,11 +764,12 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       acceptedParticipations,
       suggestions,
       nextPhase,
+      session,
     });
 
     currentPhase = nextPhase;
     issue.consensusPhase = currentPhase;
-    await issue.save();
+    await issue.save({ session });
 
     currentEvaluations = await loadEvaluationsForCompute({
       issueId: issue._id,
@@ -767,7 +785,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
   if (!issue.finishedAt) {
     issue.finishedAt = new Date();
   }
-  await issue.save();
+  await issue.save({ session });
 
   return {
     message: "Simulated consensus rounds computed successfully.",
@@ -802,6 +820,7 @@ export const computeIssueEvaluationStage = async ({
   stage,
   apiModelsBaseUrl,
   httpClient,
+  session = null,
 }) => {
   const { issue, structure } = await loadComputeContext({
     issueId,
@@ -834,6 +853,7 @@ export const computeIssueEvaluationStage = async ({
       evaluations,
       apiModelsBaseUrl,
       httpClient,
+      session,
     });
   }
 
@@ -868,11 +888,13 @@ export const computeIssueEvaluationStage = async ({
         normalizedCriteriaWeightingResult
       ),
       lifecycleMetadata: null,
+      session,
     });
 
     await applyCriteriaWeightingIssueUpdates({
       issue,
       orderedWeights: normalizedCriteriaWeightingResult.orderedWeights,
+      session,
     });
 
     return {
@@ -906,15 +928,17 @@ export const computeIssueEvaluationStage = async ({
     stage,
     computeResult: lifecycleComputeResult,
     lifecycleMetadata,
+    session,
   });
 
   await applyComputeIssueUpdates({
     issue,
     computeResult: lifecycleComputeResult,
+    session,
   });
 
   if (resetAlternativeEvaluationCompletion) {
-    await resetAlternativeRoundCompletion(issue._id);
+    await resetAlternativeRoundCompletion(issue._id, session);
   }
 
   return {
