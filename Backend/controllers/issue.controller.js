@@ -1,8 +1,6 @@
-
 import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 import { User } from "../models/Users.js";
-
 
 import {
   getUserFinishedIssueIds,
@@ -20,7 +18,6 @@ import {
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
 } from "../modules/decisionEngine/evaluations/index.js";
-
 
 import {
   getActiveIssuesPayload,
@@ -54,7 +51,6 @@ import {
   persistPreparedIssueCreation,
   prepareIssueCreation,
 } from "../modules/issues/creation/index.js";
-
 
 import axios from "axios";
 import mongoose from "mongoose";
@@ -473,8 +469,8 @@ export const removeScenario = async (req, res) => {
 };
 
 export const getIssueEvaluationByStage = async (req, res) => {
-  const issueId = req.params?.id || req.body?.id;
-  const stage = req.params?.stage;
+  const issueId = req.params.id;
+  const stage = req.params.stage;
 
   const result = await getIssueEvaluationPayload({
     issueId,
@@ -486,9 +482,9 @@ export const getIssueEvaluationByStage = async (req, res) => {
 };
 
 export const saveIssueEvaluationByStage = async (req, res) => {
-  const issueId = req.params?.id || req.body?.id;
-  const stage = req.params?.stage;
-  const payload = req.body?.payload;
+  const issueId = req.params.id;
+  const stage = req.params.stage;
+  const payload = req.body.payload;
 
   const result = await saveIssueEvaluationDraft({
     issueId,
@@ -506,9 +502,9 @@ export const saveIssueEvaluationByStage = async (req, res) => {
 };
 
 export const submitIssueEvaluationByStage = async (req, res) => {
-  const issueId = req.params?.id || req.body?.id;
-  const stage = req.params?.stage;
-  const payload = req.body?.payload;
+  const issueId = req.params.id;
+  const stage = req.params.stage;
+  const payload = req.body.payload;
 
   const session = await mongoose.startSession();
 
@@ -538,8 +534,8 @@ export const submitIssueEvaluationByStage = async (req, res) => {
 };
 
 export const computeEvaluationStage = async (req, res) => {
-  const issueId = req.params?.id || req.body?.id;
-  const stage = req.params?.stage;
+  const issueId = req.params.id;
+  const stage = req.params.stage;
 
   const result = await computeIssueEvaluationStage({
     issueId,
