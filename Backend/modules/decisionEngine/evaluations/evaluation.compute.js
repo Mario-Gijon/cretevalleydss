@@ -205,10 +205,13 @@ const withConsensusLifecycleInModelExecution = ({
   modelExecution,
   consensusLifecycle,
 }) => {
-  const normalizedModelExecution =
-    isPlainObject(modelExecution)
-      ? { ...modelExecution }
-      : {};
+  if (!isPlainObject(modelExecution)) {
+    throw createInternalError("Compute result modelExecution must be an object", {
+      field: "computeResult.modelExecution",
+    });
+  }
+
+  const normalizedModelExecution = { ...modelExecution };
 
   if (consensusLifecycle === null || consensusLifecycle === undefined) {
     return normalizedModelExecution;
@@ -312,7 +315,7 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
   const { criterionNames } = await getOrderedCriterionNames({ issue });
   const normalizedWeightsByCriterion = {};
   const orderedWeights = criterionNames.map((criterionName) => {
-    if (!hasOwnKey(computeResult.weightsByCriterion || {}, criterionName)) {
+    if (!hasOwnKey(computeResult.weightsByCriterion, criterionName)) {
       throw createBadRequestError(
         `Criteria weighting compute result is missing weight for criterion '${criterionName}'`,
         {
@@ -358,9 +361,16 @@ const applyCriteriaWeightingIssueUpdates = async ({
   orderedWeights,
   session = null,
 }) => {
-  const modelParameters = isPlainObject(issue?.modelParameters)
-    ? { ...issue.modelParameters }
-    : {};
+  if (!isPlainObject(issue.modelParameters)) {
+    throw createInternalError("Issue modelParameters must be an object", {
+      field: "issue.modelParameters",
+      details: {
+        issueId: issue?._id ?? null,
+      },
+    });
+  }
+
+  const modelParameters = { ...issue.modelParameters };
 
   issue.modelParameters = {
     ...modelParameters,
