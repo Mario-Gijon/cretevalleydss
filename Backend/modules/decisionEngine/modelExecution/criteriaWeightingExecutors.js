@@ -1,5 +1,4 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { buildEvaluationStructureContext } from "../evaluations/evaluationStructureContext.js";
 
 const executeManualCriteriaWeightingModel = async ({
   structure,
@@ -8,6 +7,26 @@ const executeManualCriteriaWeightingModel = async ({
   const structureKey = structure?.key;
   const criteria = requestPayload?.context?.criteria;
   const evaluations = requestPayload?.evaluations;
+
+  if (!Array.isArray(criteria) || criteria.length === 0) {
+    throw createBadRequestError(
+      "Manual criteria weights require criteria context",
+      {
+        field: "context.criteria",
+      }
+    );
+  }
+
+  for (const criterion of criteria) {
+    if (typeof criterion?.name !== "string" || criterion.name.trim() === "") {
+      throw createBadRequestError(
+        "Manual criteria weights require every criterion to have a name",
+        {
+          field: "context.criteria",
+        }
+      );
+    }
+  }
 
   if (!Array.isArray(evaluations) || evaluations.length === 0) {
     throw createBadRequestError(
@@ -23,10 +42,12 @@ const executeManualCriteriaWeightingModel = async ({
     accumulator[criterionName] = 0;
     return accumulator;
   }, {});
-  const structureContext = await buildEvaluationStructureContext({
-    issue: requestPayload.context.issue,
+  const structureContext = {
+    issue: requestPayload?.context?.issue,
+    alternatives: [],
     leafCriteria: criteria,
-  });
+    collectiveEvaluations: null,
+  };
 
   for (const evaluation of evaluations) {
     const displayPayload = await structure.get({
