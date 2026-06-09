@@ -20,23 +20,6 @@ export const bestWorstCriteriaStructure = Object.freeze({
     return payload;
   },
 
-  async getReadSummary({ storedEvaluation, structureContext }) {
-    const { payload } = await buildGetPayload({
-      storedEvaluation,
-      structureContext,
-    });
-
-    return {
-      manualWeights: null,
-      bwm: {
-        bestCriterion: payload.bestCriterion,
-        worstCriterion: payload.worstCriterion,
-        bestToOthers: payload.bestToOthers,
-        othersToWorst: payload.othersToWorst,
-      },
-    };
-  },
-
   async save({ mode, payload, structureContext }) {
     validateSaveModeOrThrow(mode);
 

@@ -14,21 +14,34 @@ const normalizeScaleInput = (value) => {
 };
 
 const BestWorstCriteriaView = ({
+  evaluationContext,
   creationContext = null,
   criterionNames: directCriterionNames,
   payload: directPayload,
   setPayload: directSetPayload,
   disabled = false,
 }) => {
+  const context = evaluationContext || {};
   const criterionNamesSource =
-    directCriterionNames ?? creationContext?.criterionNames ?? [];
+    directCriterionNames ??
+    context.criterionNames ??
+    (Array.isArray(context.criteria)
+      ? context.criteria.map((criterion) =>
+          typeof criterion === "string"
+            ? criterion
+            : String(criterion?.name || criterion?.criterionName || "").trim()
+        )
+      : creationContext?.criterionNames) ??
+    [];
   const names = criterionNamesSource;
-  const providedPayload = directPayload ?? creationContext?.payload;
+  const providedPayload = directPayload ?? context.payload ?? creationContext?.payload;
   const payload =
     providedPayload && Object.keys(providedPayload).length > 0
       ? providedPayload
       : buildEmptyBestWorstCriteriaPayload(names);
-  const setPayload = directSetPayload ?? creationContext?.setPayload;
+  const setPayload = directSetPayload ?? context.setPayload ?? creationContext?.setPayload;
+  const permitEdit = context.permitEdit !== false && !disabled;
+  const isReadOnly = !permitEdit || typeof setPayload !== "function";
 
   const bestComparisonNames = names.filter((name) => name !== payload.bestCriterion);
   const worstComparisonNames = names.filter((name) => name !== payload.worstCriterion);
@@ -44,6 +57,10 @@ const BestWorstCriteriaView = ({
   )}ch`;
 
   const updateBestCriterion = (bestCriterion) => {
+    if (isReadOnly) {
+      return;
+    }
+
     const previousBestCriterion = payload.bestCriterion;
 
     const next = {
@@ -74,6 +91,10 @@ const BestWorstCriteriaView = ({
   };
 
   const updateWorstCriterion = (worstCriterion) => {
+    if (isReadOnly) {
+      return;
+    }
+
     const previousWorstCriterion = payload.worstCriterion;
 
     const next = {
@@ -104,6 +125,10 @@ const BestWorstCriteriaView = ({
   };
 
   const updateBestToOthersValue = (criterionName, value) => {
+    if (isReadOnly) {
+      return;
+    }
+
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
@@ -117,6 +142,10 @@ const BestWorstCriteriaView = ({
   };
 
   const updateOthersToWorstValue = (criterionName, value) => {
+    if (isReadOnly) {
+      return;
+    }
+
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
@@ -156,7 +185,7 @@ const BestWorstCriteriaView = ({
         type="number"
         size="small"
         color="info"
-        disabled={disabled}
+        disabled={isReadOnly}
         value={value ?? ""}
         onKeyDown={preventInvalidNumberKeys}
         onChange={(event) => onChange(name, event.target.value)}
@@ -170,14 +199,6 @@ const BestWorstCriteriaView = ({
     return (
       <Typography variant="caption" color="text.secondary">
         No criteria available.
-      </Typography>
-    );
-  }
-
-  if (typeof setPayload !== "function") {
-    return (
-      <Typography variant="caption" color="text.secondary">
-        Criteria weighting payload is not editable in this context.
       </Typography>
     );
   }
@@ -198,7 +219,7 @@ const BestWorstCriteriaView = ({
             label="Best criterion"
             size="small"
             color="info"
-            disabled={disabled}
+            disabled={isReadOnly}
             value={payload.bestCriterion}
             onChange={(event) => updateBestCriterion(event.target.value)}
           >
@@ -251,7 +272,7 @@ const BestWorstCriteriaView = ({
             label="Worst criterion"
             size="small"
             color="info"
-            disabled={disabled}
+            disabled={isReadOnly}
             value={payload.worstCriterion}
             onChange={(event) => updateWorstCriterion(event.target.value)}
           >

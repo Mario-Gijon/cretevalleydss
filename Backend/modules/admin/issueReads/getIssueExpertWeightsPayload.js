@@ -110,12 +110,12 @@ export const getIssueExpertWeightsPayload = async ({
         leafCriteria: orderedLeafCriteria,
       })
     : null;
-  const readSummary = criteriaWeightingStructure?.getReadSummary
-    ? await criteriaWeightingStructure.getReadSummary({
+  const criteriaWeightingPayload = criteriaWeightingStructure
+    ? await criteriaWeightingStructure.get({
         storedEvaluation: weightDoc,
         structureContext: criteriaWeightingStructureContext,
       })
-    : { manualWeights: null, bwm: null };
+    : null;
 
   const kind = resolveWeightsKind({
     leafNames,
@@ -130,8 +130,6 @@ export const getIssueExpertWeightsPayload = async ({
       : weightDoc.completed === true
         ? "submitted"
         : "draft";
-  const manualWeights = readSummary.manualWeights;
-  const bwm = readSummary.bwm;
 
   return {
     issue: {
@@ -163,6 +161,7 @@ export const getIssueExpertWeightsPayload = async ({
         kind,
         criteriaWeightingStructure,
       }),
+      payload: criteriaWeightingPayload,
       leafCriteria: leafNames,
       leafCriteriaDetailed: orderedLeafCriteria.map((criterion) => ({
         criterionId: toIdString(criterion._id),
@@ -177,9 +176,9 @@ export const getIssueExpertWeightsPayload = async ({
             }
           : null,
       resolvedWeights,
-      manualWeights,
-      bwm,
-      bwmData: bwm,
+      manualWeights: null,
+      bwm: null,
+      bwmData: null,
       docMeta: weightDoc
         ? {
             completed: weightDoc.completed,

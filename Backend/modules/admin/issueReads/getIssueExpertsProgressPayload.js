@@ -2,11 +2,6 @@ import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Participation } from "../../../models/Participations.js";
 
-import {
-  getOrderedAlternativesDb,
-  getOrderedLeafCriteriaDb,
-} from "../../issues/shared/ordering.js";
-
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   buildExpertProgressRow,
@@ -19,25 +14,11 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   const issue = await loadIssueForExpertsProgressOrThrow({ issueId });
 
   const [
-    alternatives,
-    leafCriteria,
     participations,
     exits,
     evaluationAgg,
     weightDocs,
   ] = await Promise.all([
-    getOrderedAlternativesDb({
-      issueId,
-      issueDoc: issue,
-      select: "_id name",
-      lean: true,
-    }),
-    getOrderedLeafCriteriaDb({
-      issueId,
-      issueDoc: issue,
-      select: "_id name",
-      lean: true,
-    }),
     Participation.find({ issue: issueId })
       .populate("expert", "name email role university accountConfirm")
       .lean(),
@@ -48,27 +29,20 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       issue: issueId,
       stage: "alternativeEvaluation",
     })
-      .select("expert payload completed submittedAt")
+      .select("expert completed submittedAt updatedAt")
       .lean(),
     IssueEvaluation.find({
       issue: issueId,
       stage: "criteriaWeighting",
     })
-      .select("expert payload completed submittedAt")
+      .select("expert completed submittedAt updatedAt")
       .lean(),
   ]);
 
-  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert({
-    issue,
-    alternatives,
-    criteria: leafCriteria,
-  });
+  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert();
 
   const evaluationMap = await buildIssueEvaluationStatsByExpert({
-    issue,
     evaluationDocs: evaluationAgg,
-    alternatives,
-    criteria: leafCriteria,
   });
 
   const weightMap = new Map(
@@ -91,8 +65,13 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       participation,
       evaluationStats: evaluationMap.get(expertId) || {
         totalDocs: 0,
-        filledDocs: 0,
+        submittedDocs: 0,
+        draftDocs: 0,
         lastEvaluationAt: null,
+        latestStatus: "notSubmitted",
+        latestCompleted: false,
+        latestSubmittedAt: null,
+        latestUpdatedAt: null,
       },
       weightDoc: weightMap.get(expertId),
       expectedEvaluationCells: expectedPerExpert,
@@ -114,8 +93,13 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
         exit,
         evaluationStats: evaluationMap.get(expertId) || {
           totalDocs: 0,
-          filledDocs: 0,
+          submittedDocs: 0,
+          draftDocs: 0,
           lastEvaluationAt: null,
+          latestStatus: "notSubmitted",
+          latestCompleted: false,
+          latestSubmittedAt: null,
+          latestUpdatedAt: null,
         },
         weightDoc: weightMap.get(expertId),
         expectedEvaluationCells: expectedPerExpert,

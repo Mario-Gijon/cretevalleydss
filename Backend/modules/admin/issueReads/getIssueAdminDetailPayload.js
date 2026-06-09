@@ -73,24 +73,20 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       issue: issueId,
       stage: "alternativeEvaluation",
     })
-      .select("expert payload completed submittedAt")
+      .select("expert completed submittedAt updatedAt")
       .lean(),
     IssueEvaluation.find({
       issue: issueId,
       stage: "criteriaWeighting",
     })
-      .select("expert payload completed submittedAt")
+      .select("expert completed submittedAt updatedAt")
       .lean(),
   ]);
 
   const alternativesCount = orderedAlternatives.length;
   const leafCriteriaCount = orderedLeafCriteria.length;
 
-  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert({
-    issue,
-    alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
-  });
+  const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert();
 
   const criteriaTree = buildCriteriaTreeAdmin(allCriteria);
 
@@ -106,10 +102,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   });
 
   const evaluationAggMap = await buildIssueEvaluationStatsByExpert({
-    issue,
     evaluationDocs,
-    alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
   });
 
   const weightDocMap = new Map(
@@ -144,8 +137,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     const expertId = toIdString(participation.expert?._id || participation.expert);
     const evaluationStats = evaluationAggMap.get(expertId) || {
       totalDocs: 0,
-      filledDocs: 0,
+      submittedDocs: 0,
+      draftDocs: 0,
       lastEvaluationAt: null,
+      latestStatus: "notSubmitted",
+      latestCompleted: false,
+      latestSubmittedAt: null,
+      latestUpdatedAt: null,
     };
     const weightDoc = weightDocMap.get(expertId) || null;
     const exitInfo = exitMap.get(expertId) || null;
@@ -160,14 +158,19 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       entryPhase: participation.entryPhase,
       entryStage: participation.entryStage,
       progress: {
+        status: evaluationStats.latestStatus,
+        completed: evaluationStats.latestCompleted === true,
         expectedEvaluationCells: expectedPerExpert,
         totalEvaluationDocs: evaluationStats.totalDocs,
-        filledEvaluationDocs: evaluationStats.filledDocs,
+        submittedEvaluationDocs: evaluationStats.submittedDocs || 0,
+        draftEvaluationDocs: evaluationStats.draftDocs || 0,
+        filledEvaluationDocs:
+          evaluationStats.latestCompleted === true ? 1 : 0,
         evaluationProgressPct:
-          expectedPerExpert > 0
-            ? (evaluationStats.filledDocs / expectedPerExpert) * 100
-            : 0,
+          evaluationStats.latestCompleted === true ? 100 : 0,
         lastEvaluationAt: evaluationStats.lastEvaluationAt,
+        submittedAt: evaluationStats.latestSubmittedAt || null,
+        updatedAt: evaluationStats.latestUpdatedAt || null,
         hasWeightDoc: !!weightDoc,
         weightDocCompleted: weightDoc?.completed,
         weightDocPhase: weightDoc?.consensusPhase,
@@ -221,9 +224,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       .length,
   };
 
-  const totalFilledEvaluationCells = Array.from(
+  const totalSubmittedEvaluationDocs = Array.from(
     evaluationAggMap.values()
-  ).reduce((accumulator, row) => accumulator + (row.filledDocs || 0), 0);
+  ).reduce((accumulator, row) => accumulator + (row.submittedDocs || 0), 0);
+  const totalDraftEvaluationDocs = Array.from(
+    evaluationAggMap.values()
+  ).reduce((accumulator, row) => accumulator + (row.draftDocs || 0), 0);
   const expressionDomainConfig =
     buildExpressionDomainConfigFromLeafCriteriaOrThrow({
       leafCriteria: orderedLeafCriteria,
@@ -327,7 +333,9 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         weightsDoneAccepted: acceptedExpertsWithWeightsDone,
         evaluationsDoneAccepted: acceptedExpertsWithEvaluationsDone,
         expectedEvaluationCellsPerExpert: expectedPerExpert,
-        totalFilledEvaluationCells,
+        totalFilledEvaluationCells: totalSubmittedEvaluationDocs,
+        totalSubmittedEvaluationDocs,
+        totalDraftEvaluationDocs,
       },
       creatorActionsState: getCreatorActionFlags({
         issue,

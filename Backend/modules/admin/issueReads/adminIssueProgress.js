@@ -1,98 +1,47 @@
 import { toIdString } from "../../../utils/common/ids.js";
-import { createInternalError } from "../../../utils/common/errors.js";
-import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 import { buildParticipantExpertPayload } from "./adminIssueReadPayloads.js";
 
-const normalizeAlternativesForProgress = (alternatives = []) =>
-  alternatives
-    .map((alternative, index) =>
-      String(
-        typeof alternative === "string"
-          ? alternative
-          : alternative?.name ??
-            alternative?.id ??
-            alternative?._id ??
-            `alternative_${index + 1}`
-      ).trim()
-    )
-    .filter(Boolean);
-
-const normalizeCriteriaForProgress = (criteria = []) =>
-  criteria
-    .map((criterion, index) =>
-      String(
-        typeof criterion === "string"
-          ? criterion
-          : criterion?.name ??
-            criterion?.id ??
-            criterion?._id ??
-            `criterion_${index + 1}`
-      ).trim()
-    )
-    .filter(Boolean);
-
-export const buildPlaceholderAlternatives = (count = 0) =>
-  Array.from({ length: Math.max(Number(count) || 0, 0) }, (_, index) => ({
-    name: `alternative_${index + 1}`,
-  }));
-
-export const buildPlaceholderCriteria = (count = 0) =>
-  Array.from({ length: Math.max(Number(count) || 0, 0) }, (_, index) => ({
-    name: `criterion_${index + 1}`,
-    expressionDomain: null,
-  }));
-
-export const resolveEvaluationProgressStats = async ({
-  issue,
-  storedEvaluation,
-  alternatives = [],
-  criteria = [],
-}) => {
-  const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
-    issue?.alternativeEvaluationStructureKey
-  );
-  const structureContext = await buildEvaluationStructureContext({
-    issue,
-    alternatives: normalizeAlternativesForProgress(alternatives),
-    leafCriteria: normalizeCriteriaForProgress(criteria),
-  });
-
-  if (typeof alternativeEvaluationStructure?.getProgress !== "function") {
-    throw createInternalError(
-      `Evaluation structure '${String(issue?.alternativeEvaluationStructureKey || "")}' does not implement getProgress`,
-      {
-        field: "alternativeEvaluationStructureKey",
-      }
-    );
+export const resolveStoredEvaluationStatus = (storedEvaluation) => {
+  if (!storedEvaluation) {
+    return {
+      status: "notSubmitted",
+      completed: false,
+      submittedAt: null,
+      updatedAt: null,
+      lastActivityAt: null,
+    };
   }
 
-  return alternativeEvaluationStructure.getProgress({
-    storedEvaluation,
-    structureContext,
-  });
+  const completed = storedEvaluation.completed === true;
+  const submittedAt = storedEvaluation.submittedAt || null;
+  const updatedAt = storedEvaluation.updatedAt || null;
+
+  return {
+    status: completed ? "submitted" : "draft",
+    completed,
+    submittedAt,
+    updatedAt,
+    lastActivityAt: submittedAt || updatedAt,
+  };
 };
 
-export const resolveExpectedEvaluationCellsPerExpert = async ({
-  issue,
-  alternatives = [],
-  criteria = [],
+export const resolveEvaluationProgressStats = async ({
+  storedEvaluation,
 }) => {
-  const progress = await resolveEvaluationProgressStats({
-    issue,
-    storedEvaluation: null,
-    alternatives,
-    criteria,
-  });
+  const statusMeta = resolveStoredEvaluationStatus(storedEvaluation);
 
-  return progress.expectedItems;
+  return {
+    ...statusMeta,
+    expectedItems: 1,
+    totalItems: storedEvaluation ? 1 : 0,
+    filledItems: statusMeta.completed ? 1 : 0,
+  };
 };
+
+export const resolveExpectedEvaluationCellsPerExpert = async () => 1;
 
 export const buildIssueEvaluationStatsByExpert = async ({
-  issue,
   evaluationDocs = [],
-  alternatives = [],
-  criteria = [],
 }) => {
   const statsByExpert = new Map();
 
@@ -100,27 +49,34 @@ export const buildIssueEvaluationStatsByExpert = async ({
     const expertId = toIdString(evaluationDoc.expert);
     const previous = statsByExpert.get(expertId) || {
       totalDocs: 0,
-      filledDocs: 0,
+      submittedDocs: 0,
+      draftDocs: 0,
       lastEvaluationAt: null,
+      latestStatus: "notSubmitted",
+      latestCompleted: false,
+      latestSubmittedAt: null,
+      latestUpdatedAt: null,
     };
 
     const progress = await resolveEvaluationProgressStats({
-      issue,
       storedEvaluation: evaluationDoc,
-      alternatives,
-      criteria,
     });
-    const submittedAt = evaluationDoc.submittedAt || null;
+    const lastActivityAt = progress.lastActivityAt;
 
     previous.totalDocs += progress.totalItems;
-    previous.filledDocs += progress.filledItems;
+    previous.submittedDocs += progress.completed ? 1 : 0;
+    previous.draftDocs += progress.status === "draft" ? 1 : 0;
 
     if (
-      submittedAt &&
+      lastActivityAt &&
       (!previous.lastEvaluationAt ||
-        new Date(submittedAt) > new Date(previous.lastEvaluationAt))
+        new Date(lastActivityAt) > new Date(previous.lastEvaluationAt))
     ) {
-      previous.lastEvaluationAt = submittedAt;
+      previous.lastEvaluationAt = lastActivityAt;
+      previous.latestStatus = progress.status;
+      previous.latestCompleted = progress.completed;
+      previous.latestSubmittedAt = progress.submittedAt;
+      previous.latestUpdatedAt = progress.updatedAt;
     }
 
     statsByExpert.set(expertId, previous);
@@ -132,8 +88,6 @@ export const buildIssueEvaluationStatsByExpert = async ({
 export const buildIssueEvaluationStatsByIssue = async ({
   evaluationDocs = [],
   issuesById = new Map(),
-  alternativesByIssueId = new Map(),
-  criteriaByIssueId = new Map(),
 }) => {
   const statsByIssue = new Map();
 
@@ -146,27 +100,26 @@ export const buildIssueEvaluationStatsByIssue = async ({
     }
 
     const previous = statsByIssue.get(issueId) || {
-      filledCells: 0,
+      totalDocs: 0,
+      submittedDocs: 0,
+      draftDocs: 0,
       lastEvaluationAt: null,
     };
 
     const progress = await resolveEvaluationProgressStats({
-      issue,
       storedEvaluation: evaluationDoc,
-      alternatives: alternativesByIssueId.get(issueId) || [],
-      criteria: criteriaByIssueId.get(issueId) || [],
     });
-
-    previous.filledCells += progress.filledItems;
-
-    const submittedAt = evaluationDoc.submittedAt || null;
+    const lastActivityAt = progress.lastActivityAt;
+    previous.totalDocs += progress.totalItems;
+    previous.submittedDocs += progress.completed ? 1 : 0;
+    previous.draftDocs += progress.status === "draft" ? 1 : 0;
 
     if (
-      submittedAt &&
+      lastActivityAt &&
       (!previous.lastEvaluationAt ||
-        new Date(submittedAt) > new Date(previous.lastEvaluationAt))
+        new Date(lastActivityAt) > new Date(previous.lastEvaluationAt))
     ) {
-      previous.lastEvaluationAt = submittedAt;
+      previous.lastEvaluationAt = lastActivityAt;
     }
 
     statsByIssue.set(issueId, previous);
@@ -209,14 +162,18 @@ export const buildExpertProgressRow = ({
     }
     : null,
   progress: {
+    status: evaluationStats.latestStatus || "notSubmitted",
+    completed: evaluationStats.latestCompleted === true,
     expectedEvaluationCells,
     totalEvaluationDocs: evaluationStats.totalDocs,
-    filledEvaluationDocs: evaluationStats.filledDocs,
-    evaluationProgressPct:
-      expectedEvaluationCells > 0
-        ? ((evaluationStats.filledDocs || 0) / expectedEvaluationCells) * 100
-        : 0,
+    submittedEvaluationDocs: evaluationStats.submittedDocs || 0,
+    draftEvaluationDocs: evaluationStats.draftDocs || 0,
+    filledEvaluationDocs:
+      evaluationStats.latestCompleted === true ? 1 : 0,
+    evaluationProgressPct: evaluationStats.latestCompleted === true ? 100 : 0,
     lastEvaluationAt: evaluationStats.lastEvaluationAt,
+    submittedAt: evaluationStats.latestSubmittedAt || null,
+    updatedAt: evaluationStats.latestUpdatedAt || null,
     hasWeightDoc: !!weightDoc,
     weightDocCompleted: weightDoc?.completed,
     weightDocPhase: weightDoc?.consensusPhase,

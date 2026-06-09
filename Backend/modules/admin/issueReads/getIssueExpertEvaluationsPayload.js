@@ -15,7 +15,6 @@ import {
 } from "./adminIssueReadPayloads.js";
 import {
   resolveEvaluationProgressStats,
-  resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import {
   loadIssueForExpertEvaluationsOrThrow,
@@ -81,11 +80,6 @@ export const getIssueExpertEvaluationsPayload = async ({
 
   const collectiveSource =
     latestAlternativeStageResult?.collectiveEvaluations || null;
-  const expectedCells = await resolveExpectedEvaluationCellsPerExpert({
-    issue,
-    alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
-  });
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     issue.alternativeEvaluationStructureKey
@@ -102,14 +96,8 @@ export const getIssueExpertEvaluationsPayload = async ({
     structureContext,
   });
   const progress = await resolveEvaluationProgressStats({
-    issue,
     storedEvaluation: evaluationDoc,
-    alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
   });
-
-  const filledCells = Number(progress?.filledItems) || 0;
-  const lastEvaluationAt = evaluationDoc?.submittedAt || null;
 
   return {
     issue: {
@@ -124,9 +112,13 @@ export const getIssueExpertEvaluationsPayload = async ({
     expert: buildAdminExpertIdentityPayload(expert, expertId),
     participation: buildAdminExpertParticipationPayload(participation),
     stats: {
-      expectedCells,
-      filledCells,
-      lastEvaluationAt,
+      status: progress.status,
+      completed: progress.completed,
+      submittedAt: progress.submittedAt,
+      updatedAt: progress.updatedAt,
+      expectedCells: 1,
+      filledCells: progress.completed ? 1 : 0,
+      lastEvaluationAt: progress.lastActivityAt,
     },
     evaluations,
     collectiveEvaluations: collectiveSource,

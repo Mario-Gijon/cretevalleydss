@@ -1,17 +1,9 @@
 import {
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-
-import { formatWeightValue } from "../adminIssues.utils";
-import AdminInfoRow from "./AdminInfoRow";
+import { getEvaluationStructureEntryForStage } from "../../../../issueEvaluation/evaluation.registry";
+import { EVALUATION_STAGES } from "../../../../issueEvaluation/evaluation.constants";
 
 /**
  * Vista de solo lectura para pesos del experto en admin issues.
@@ -23,10 +15,7 @@ import AdminInfoRow from "./AdminInfoRow";
 const AdminReadOnlyWeights = ({
   data,
   leafCriteria = [],
-  finalWeights = {},
 }) => {
-  const theme = useTheme();
-
   if (!data?.weights) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -36,10 +25,6 @@ const AdminReadOnlyWeights = ({
   }
 
   const { weights } = data;
-  const kind = weights.kind;
-  const expertWeightsByCriterion = weights.manualWeights || weights.singleLeafAutoWeights || null;
-  const bwmData = weights.bwm || weights.bwmData || null;
-  const criteriaWeightsStatus = weights?.status || "notSubmitted";
   const criteriaRows =
     Array.isArray(weights?.leafCriteriaDetailed) && weights.leafCriteriaDetailed.length > 0
       ? weights.leafCriteriaDetailed.map((criterion) => ({
@@ -54,6 +39,15 @@ const AdminReadOnlyWeights = ({
         type: criterion?.type || null,
         expressionDomain: criterion?.expressionDomain || null,
       }));
+  const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
+    structureKey: weights?.structureKey,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+  });
+  const CriteriaWeightingView = criteriaWeightingStructureEntry?.View || null;
+  const hasCanonicalPayload =
+    weights?.payload &&
+    typeof weights.payload === "object" &&
+    !Array.isArray(weights.payload);
 
   return (
     <Stack spacing={1.25}>
@@ -61,77 +55,28 @@ const AdminReadOnlyWeights = ({
         {weights?.structureLabel || "Criteria weights"}
       </Typography>
 
-      {Array.isArray(criteriaRows) && criteriaRows.length > 0 ? (
-        <TableContainer
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-            bgcolor: alpha(theme.palette.common.white, 0.02),
-            overflowX: "auto",
+      {!weights?.structureKey || !hasCanonicalPayload ? (
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+          {weights?.status === "notRequired"
+            ? "Criteria weights are not required for this issue."
+            : weights?.kind === "singleLeaf"
+              ? "Single-criterion weights are resolved automatically."
+              : "No criteria-weight payload available."}
+        </Typography>
+      ) : !CriteriaWeightingView ? (
+        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+          Criteria-weighting structure does not expose a reusable renderer.
+        </Typography>
+      ) : (
+        <CriteriaWeightingView
+          evaluationContext={{
+            criteria: criteriaRows,
+            payload: weights.payload,
+            setPayload: () => {},
+            permitEdit: false,
           }}
-        >
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 160 }}>
-                  Criterion
-                </TableCell>
-                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
-                  Expert weight
-                </TableCell>
-                <TableCell sx={{ fontWeight: 950, bgcolor: "#1a2a2fcf", minWidth: 140 }}>
-                  Final weight
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {criteriaRows.map((criterion) => {
-                const criterionName = criterion?.name || "—";
-                const expertRawValue = expertWeightsByCriterion?.[criterionName];
-                const hasExpertValue = Number.isFinite(Number(expertRawValue));
-
-                return (
-                  <TableRow key={criterion?.id || criterionName}>
-                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                      <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                        {criterionName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                      <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                        {hasExpertValue
-                          ? formatWeightValue(Number(expertRawValue))
-                          : criteriaWeightsStatus === "notRequired"
-                            ? "Not required"
-                            : criteriaWeightsStatus === "notSubmitted"
-                              ? "Not submitted"
-                              : criteriaWeightsStatus === "draft"
-                                ? "Draft"
-                                : "Unavailable"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
-                      <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                        {formatWeightValue(finalWeights?.[criterionName])}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : null}
-
-      {kind === "bestWorstCriteria" ? (
-        <Stack spacing={1.1}>
-          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-            Per-criterion expert weights are unavailable for this structure.
-          </Typography>
-          <AdminInfoRow label="Best criterion" value={bwmData?.bestCriterion || "—"} />
-          <AdminInfoRow label="Worst criterion" value={bwmData?.worstCriterion || "—"} />
-        </Stack>
-      ) : null}
+        />
+      )}
     </Stack>
   );
 };

@@ -212,8 +212,7 @@ export default function AdminIssuesSection() {
   const criterionNamesForReview = safeArray(issueDetail?.leafCriteria)
     .map((criterion) => criterion?.name)
     .filter(Boolean);
-  const shouldShowExpertWeights =
-    safeArray(issueDetail?.leafCriteria).length > 1;
+  const shouldShowExpertWeights = Boolean(expertWeights?.weights);
   const hasExpertCollectiveEvaluations = Array.isArray(
     expertEvaluations?.collectiveEvaluations
   )
@@ -1147,7 +1146,7 @@ export default function AdminIssuesSection() {
                           </TableRow>
                         ) : (
                           issueExpertsProgress.map((row) => {
-                            const progressPct = row?.progress?.evaluationProgressPct || 0;
+                            const evaluationStatus = row?.progress?.status || "notSubmitted";
                             const email = row?.expert?.email || "";
                             const isMarkedForRemove = expertsToRemove.includes(email);
                             const canMarkRemove =
@@ -1201,10 +1200,13 @@ export default function AdminIssuesSection() {
                                 <TableCell sx={{ borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}` }}>
                                   <Stack spacing={0.25}>
                                     <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                                      {row?.progress?.filledEvaluationDocs || 0}/{row?.progress?.expectedEvaluationCells || 0}
+                                      {evaluationStatus}
                                     </Typography>
                                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                                      {progressPct}%
+                                      Submitted docs: {row?.progress?.submittedEvaluationDocs || 0}
+                                      {row?.progress?.draftEvaluationDocs
+                                        ? ` · Draft docs: ${row.progress.draftEvaluationDocs}`
+                                        : ""}
                                     </Typography>
                                   </Stack>
                                 </TableCell>
@@ -1331,7 +1333,7 @@ export default function AdminIssuesSection() {
                           {selectedExpertProgress?.currentParticipant ? "Current participant" : "Exited"}
                         </AdminMetaChip>
                         <AdminMetaChip tone={getProgressTone(selectedExpertProgress?.progress?.evaluationProgressPct || 0)}>
-                          Progress: {selectedExpertProgress?.progress?.evaluationProgressPct || 0}%
+                          Evaluation: {selectedExpertProgress?.progress?.status || "notSubmitted"}
                         </AdminMetaChip>
                       </Stack>
                     </>
@@ -1377,7 +1379,6 @@ export default function AdminIssuesSection() {
                           <AdminReadOnlyWeights
                             data={expertWeights}
                             leafCriteria={safeArray(issueDetail?.leafCriteria)}
-                            finalWeights={issueDetail?.finalWeights || {}}
                           />
                         </Paper>
                       ) : null}
@@ -1391,9 +1392,9 @@ export default function AdminIssuesSection() {
                         </Stack>
 
                         <Stack spacing={0.75}>
-                          <AdminInfoRow label="Expected cells" value={expertEvaluations?.stats?.expectedCells ?? "—"} />
-                          <AdminInfoRow label="Filled cells" value={expertEvaluations?.stats?.filledCells ?? "—"} />
-                          <AdminInfoRow label="Last saved" value={formatDateTime(expertEvaluations?.stats?.lastEvaluationAt)} />
+                          <AdminInfoRow label="Status" value={expertEvaluations?.stats?.status || "notSubmitted"} />
+                          <AdminInfoRow label="Submitted at" value={formatDateTime(expertEvaluations?.stats?.submittedAt)} />
+                          <AdminInfoRow label="Last activity" value={formatDateTime(expertEvaluations?.stats?.lastEvaluationAt)} />
                           <AdminInfoRow label="Invitation status" value={expertEvaluations?.participation?.invitationStatus || "—"} />
                         </Stack>
                       </Paper>
