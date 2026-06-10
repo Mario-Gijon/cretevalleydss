@@ -3,11 +3,11 @@ import { alpha, useTheme } from "@mui/material/styles";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
-import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
-import { getFinishedIssueDialogAuroraBg } from "../../styles/finishedIssueDialog.styles";
-import { FinishedIssueDialogProvider } from "../../context/finishedIssueDialog.provider";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { getFinishedIssueDialogAuroraBg } from "../styles/finishedIssueDialog.styles";
+import { FinishedIssueDialogProvider } from "../context/finishedIssueDialog.provider";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import FinishedIssueDialogHeader from "./FinishedIssueDialogHeader";
 import FinishedIssueDialogLayout from "./FinishedIssueDialogLayout";
 

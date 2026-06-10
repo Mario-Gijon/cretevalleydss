@@ -5,14 +5,14 @@ import TuneIcon from "@mui/icons-material/Tune";
 import LayersIcon from "@mui/icons-material/Layers";
 import ScienceIcon from "@mui/icons-material/Science";
 
-import ModelParamsView from "./shared/ModelParamsView";
+import ModelParamsView from "./components/ModelParamsView";
 import {
   Pill,
   SectionCard,
   SummaryAccordionRow,
-} from "../shared/FinishedIssueDialogPrimitives";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import ModelsSectionAddDialog from "./ModelsSectionAddDialog";
+} from "../components/FinishedIssueDialogPrimitives";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import ModelsSectionAddDialog from "./components/ModelsSectionAddDialog";
 
 /**
  * Seccion Models del dialogo de issue finalizado.

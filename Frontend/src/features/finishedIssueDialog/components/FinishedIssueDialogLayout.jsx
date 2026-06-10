@@ -1,14 +1,14 @@
 import { Box } from "@mui/material";
 
-import { getFinishedIssueDialogGridAreas } from "../../styles/finishedIssueDialog.styles";
-import SummarySection from "../sections/SummarySection";
-import RankingSection from "../sections/RankingSection";
-import AnalysisSection from "../sections/AnalysisSection";
-import ModelSpecificOutputSection from "../sections/ModelSpecificOutputSection";
-import ModelsSection from "../sections/ModelsSection";
-import GraphsSection from "../sections/GraphsSection";
-import RatingsSection from "../sections/RatingsSection";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { getFinishedIssueDialogGridAreas } from "../styles/finishedIssueDialog.styles";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import AnalysisSection from "../overview/AnalysisSection";
+import RankingSection from "../overview/RankingSection";
+import SummarySection from "../overview/SummarySection";
+import GraphsSection from "../graphs/GraphsSection";
+import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
+import ModelsSection from "../models/ModelsSection";
+import RatingsSection from "../evaluations/RatingsSection";
 
 /**
  * Layout grid del contenido del dialogo de issue finalizado.

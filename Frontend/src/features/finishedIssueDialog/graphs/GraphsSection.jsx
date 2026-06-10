@@ -4,11 +4,11 @@ import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
-import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
-import { AnalyticalScatterChart } from "../charts/AnalyticalScatterChart";
-import { AnalyticalConsensusLineChart } from "../charts/AnalyticalConsensusLineChart";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import { normalizePlotsGraphic } from "../../logic/buildFinishedIssueGraphs";
+import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { AnalyticalScatterChart } from "./components/AnalyticalScatterChart";
+import { AnalyticalConsensusLineChart } from "./components/AnalyticalConsensusLineChart";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import { normalizePlotsGraphic } from "../logic/buildFinishedIssueGraphs";
 
 /**
  * Seccion Graphs del dialogo de issue finalizado.

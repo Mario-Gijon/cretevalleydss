@@ -2,7 +2,7 @@ import { Box, Backdrop, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
-import { FinishedIssueDialog } from "../../finishedIssueDialog/components/dialog/FinishedIssueDialog";
+import { FinishedIssueDialog } from "../../finishedIssueDialog/components/FinishedIssueDialog";
 import FinishedIssuesHeader from "./FinishedIssuesHeader";
 import FinishedIssuesCards from "./FinishedIssuesCards";
 import FinishedIssueRemoveDialog from "./FinishedIssueRemoveDialog";

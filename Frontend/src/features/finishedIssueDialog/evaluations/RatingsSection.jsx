@@ -12,12 +12,12 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
-import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import UnsupportedEvaluationStructureAlert from "../shared/UnsupportedEvaluationStructureAlert";
+import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
-import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
+import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry";
 
 /**
  * Ratings section of the finished issue dialog.

@@ -4,8 +4,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
-import { Pill } from "../shared/FinishedIssueDialogPrimitives";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { Pill } from "./FinishedIssueDialogPrimitives";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 
 /**
  * Cabecera sticky del dialogo de issue finalizado.

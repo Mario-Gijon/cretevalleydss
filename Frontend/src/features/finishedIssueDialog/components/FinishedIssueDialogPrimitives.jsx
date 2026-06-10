@@ -3,11 +3,11 @@ import { alpha, useTheme } from "@mui/material/styles";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 
-import { GlassPaper } from "../../../../components/StyledComponents/GlassPaper";
+import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
 import {
   getFinishedIssueDialogAuroraBg,
   getFinishedIssueDialogGlassSx,
-} from "../../styles/finishedIssueDialog.styles";
+} from "../styles/finishedIssueDialog.styles";
 
 /**
  * Pill visual reutilizable para estados en el dialogo.

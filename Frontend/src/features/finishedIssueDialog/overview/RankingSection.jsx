@@ -2,8 +2,8 @@ import { Chip, List, ListItem, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
-import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 
 /**
  * Seccion Ranking del dialogo de issue finalizado.

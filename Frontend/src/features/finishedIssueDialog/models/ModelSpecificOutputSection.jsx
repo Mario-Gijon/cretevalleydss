@@ -10,7 +10,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
+import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
 
 const buildMetadataRows = (modelExecution) => {
   if (!modelExecution || typeof modelExecution !== "object") return [];

@@ -17,7 +17,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import ModelsSectionParametersForm from "./ModelsSectionParametersForm";
-import { Pill } from "../shared/FinishedIssueDialogPrimitives";
+import { Pill } from "../../components/FinishedIssueDialogPrimitives";
 import { getFinishedIssueDialogAuroraBg } from "../../styles/finishedIssueDialog.styles";
 import {
   getCompatReason,

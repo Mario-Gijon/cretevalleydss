@@ -1,14 +1,14 @@
 import { Divider, List, Stack, Typography } from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
-import { CriterionItem } from "../shared/CriterionItem";
+import { CriterionItem } from "./components/CriterionItem";
 import {
   Pill,
   Row,
   SectionCard,
   SummaryAccordionRow,
-} from "../shared/FinishedIssueDialogPrimitives";
-import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+} from "../components/FinishedIssueDialogPrimitives";
+import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 
 /**
  * Seccion Summary del dialogo de issue finalizado.
