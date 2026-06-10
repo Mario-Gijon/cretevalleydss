@@ -1,4 +1,4 @@
-import CreateIssueFlow from "../../../features/createIssue/components/CreateIssueFlow";
+import CreateIssueView from "../../../features/createIssue/components/CreateIssueView";
 
 /**
  * Wrapper de ruta para mantener la URL actual de creación.
@@ -6,7 +6,7 @@ import CreateIssueFlow from "../../../features/createIssue/components/CreateIssu
  * @returns {JSX.Element}
  */
 const CreateIssuePage = () => {
-  return <CreateIssueFlow />;
+  return <CreateIssueView />;
 };
 
 export default CreateIssuePage;

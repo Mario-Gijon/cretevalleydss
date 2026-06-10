@@ -6,9 +6,9 @@ import {
 import {
   pruneCreateIssueParameterValues,
 } from "../../modelParameters";
-import { modelUsesCriteriaWeights } from "../utils/criteriaWeighting.model";
 import {
   CREATE_ISSUE_CRITERIA_WEIGHTING_MODES,
+  modelUsesCriteriaWeights,
   resolveAssignedFuzzyValueCount,
   validateCreateIssueFuzzyCriteriaWeighting,
   validateCreateIssueManualCriteriaWeighting,

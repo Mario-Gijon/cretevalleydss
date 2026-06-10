@@ -44,7 +44,7 @@ import {
   isFuzzyCriteriaWeightModel,
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
-} from "../utils/criteriaWeighting.model";
+} from "../logic/createIssueCriteriaWeighting";
 import {
   CRITERIA_WEIGHTING_MODES,
   normalizeMode,

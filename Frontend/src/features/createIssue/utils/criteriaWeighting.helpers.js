@@ -1,4 +1,4 @@
-import { buildDefaultFuzzyWeightVector } from "./criteriaWeighting.model";
+import { buildDefaultFuzzyWeightVector } from "../logic/createIssueCriteriaWeighting";
 
 export const CRITERIA_WEIGHTING_MODES = Object.freeze({
   CREATOR_FUZZY: "creatorFuzzy",

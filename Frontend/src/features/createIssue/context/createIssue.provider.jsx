@@ -1,5 +1,5 @@
 import { CreateIssueContext } from "./createIssue.context";
-import { useCreateIssueFlow } from "../hooks/useCreateIssueFlow";
+import { useCreateIssue } from "../hooks/useCreateIssue";
 
 /**
  * Provider local del feature createIssue.
@@ -12,10 +12,10 @@ import { useCreateIssueFlow } from "../hooks/useCreateIssueFlow";
  * @returns {JSX.Element}
  */
 export const CreateIssueProvider = ({ children }) => {
-  const flow = useCreateIssueFlow();
+  const createIssueState = useCreateIssue();
 
   return (
-    <CreateIssueContext.Provider value={flow}>
+    <CreateIssueContext.Provider value={createIssueState}>
       {children}
     </CreateIssueContext.Provider>
   );

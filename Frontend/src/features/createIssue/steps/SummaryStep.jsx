@@ -39,11 +39,9 @@ import {
 } from "../components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
-import {
-  getRemainingTime,
-  setDefaults,
-} from "../utils/createIssue.utils";
-import { buildDefaultCriteriaWeightingConfig } from "../utils/criteriaWeighting.model";
+import { getRemainingTime } from "../logic/createIssueDates";
+import { setDefaults } from "../logic/createIssueModelParameters";
+import { buildDefaultCriteriaWeightingConfig } from "../logic/createIssueCriteriaWeighting";
 import {
   getExpressionDomainAssignmentsByCriterion,
 } from "../../../utils/domainAssignments.utils";

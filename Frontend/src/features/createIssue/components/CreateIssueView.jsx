@@ -45,7 +45,7 @@ import {
  *
  * @returns {JSX.Element}
  */
-const CreateIssueFlowContent = () => {
+const CreateIssueViewContent = () => {
   const theme = useTheme();
 
   const {
@@ -217,12 +217,12 @@ const CreateIssueFlowContent = () => {
  *
  * @returns {JSX.Element}
  */
-const CreateIssueFlow = () => {
+const CreateIssueView = () => {
   return (
     <CreateIssueProvider>
-      <CreateIssueFlowContent />
+      <CreateIssueViewContent />
     </CreateIssueProvider>
   );
 };
 
-export default CreateIssueFlow;
+export default CreateIssueView;

@@ -5,23 +5,22 @@ import utc from "dayjs/plugin/utc";
 
 import { createIssue } from "../../../services/issue.service";
 import {
-  setDefaults,
-  updateParamValues,
-  validateIssueDescription,
-  validateIssueName,
-} from "../utils/createIssue.utils";
-import {
   getCreateIssueModelParameters,
 } from "../../modelParameters";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import {
   buildInitialExpressionDomainConfig,
 } from "../../../utils/domainAssignments.utils";
-import {
-  buildDefaultCriteriaWeightingConfig,
-} from "../utils/criteriaWeighting.model";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import {
+  validateIssueDescription,
+  validateIssueName,
+} from "../logic/createIssueFieldValidation";
+import {
+  setDefaults,
+  updateParamValues,
+} from "../logic/createIssueModelParameters";
 import {
   buildStoredCreateIssueData,
   persistStoredCreateIssueData,
@@ -34,6 +33,7 @@ import {
 import {
   isCreateIssueCriteriaWeightingConfigOnDefault,
   isCreateIssueDeepEqual,
+  buildDefaultCriteriaWeightingConfig,
   resolveAssignedFuzzyValueCount,
 } from "../logic/createIssueCriteriaWeighting";
 import { buildCreateIssueRequestPayload } from "../logic/createIssuePayload";
@@ -54,7 +54,7 @@ dayjs.extend(utc);
  *
  * @returns {Object}
  */
-export const useCreateIssueFlow = () => {
+export const useCreateIssue = () => {
   const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } =
     useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -481,4 +481,4 @@ export const useCreateIssueFlow = () => {
   };
 };
 
-export default useCreateIssueFlow;
+export default useCreateIssue;

@@ -16,7 +16,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { filterModels } from "../utils/createIssue.utils";
+import { filterModels } from "../logic/createIssueModelSelection";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
