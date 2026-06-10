@@ -251,7 +251,10 @@ export const createUserAdmin = async (req, res) => {
 export const updateUserAdmin = async (req, res) => {
   try {
     const result = await updateAdminUserUseCase({
-      payload: req.body,
+      payload: {
+        ...req.body,
+        id: req.params.id,
+      },
     });
 
     return sendSuccess(
@@ -267,7 +270,7 @@ export const updateUserAdmin = async (req, res) => {
 };
 
 export const deleteUserAdmin = async (req, res) => {
-  const id = req.body?.id;
+  const id = req.params.id;
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid user id is required", {
@@ -316,7 +319,7 @@ export const getAllIssuesAdmin = async (req, res) => {
 
 export const getIssueAdminById = async (req, res) => {
   const data = await getIssueAdminDetailPayload({
-    issueId: req.params?.id,
+    issueId: req.params.id,
   });
 
   return sendSuccess(res, "Issue detail fetched successfully", data);
@@ -324,7 +327,7 @@ export const getIssueAdminById = async (req, res) => {
 
 export const getIssueExpertsProgressAdmin = async (req, res) => {
   const data = await getIssueExpertsProgressPayload({
-    issueId: req.params?.id,
+    issueId: req.params.id,
   });
 
   return sendSuccess(
@@ -336,8 +339,8 @@ export const getIssueExpertsProgressAdmin = async (req, res) => {
 
 export const getIssueExpertEvaluationsAdmin = async (req, res) => {
   const data = await getIssueExpertEvaluationsPayload({
-    issueId: req.params?.issueId,
-    expertId: req.params?.expertId,
+    issueId: req.params.issueId,
+    expertId: req.params.expertId,
   });
 
   return sendSuccess(
@@ -349,8 +352,8 @@ export const getIssueExpertEvaluationsAdmin = async (req, res) => {
 
 export const getIssueExpertWeightsAdmin = async (req, res) => {
   const data = await getIssueExpertWeightsPayload({
-    issueId: req.params?.issueId,
-    expertId: req.params?.expertId,
+    issueId: req.params.issueId,
+    expertId: req.params.expertId,
   });
 
   return sendSuccess(res, "Expert weights fetched successfully", data);
@@ -358,8 +361,8 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
 
 export const reassignIssueAdminAdmin = async (req, res) => {
   const result = await reassignIssueAdminUseCase({
-    issueId: req.body?.issueId,
-    newAdminId: req.body?.newAdminId,
+    issueId: req.params.id,
+    newAdminId: req.body.newAdminId,
   });
 
   return sendSuccess(
@@ -373,7 +376,7 @@ export const reassignIssueAdminAdmin = async (req, res) => {
 };
 
 export const editIssueExpertsAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.params.id;
 
   const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
@@ -382,12 +385,8 @@ export const editIssueExpertsAdmin = async (req, res) => {
   const result = await editIssueExpertsUseCase({
     issueId,
     userId: creatorUserId,
-    expertsToAdd: Array.isArray(req.body?.expertsToAdd)
-      ? req.body.expertsToAdd
-      : [],
-    expertsToRemove: Array.isArray(req.body?.expertsToRemove)
-      ? req.body.expertsToRemove
-      : [],
+    expertsToAdd: req.body.expertsToAdd,
+    expertsToRemove: req.body.expertsToRemove,
   });
 
   return sendSuccess(
@@ -400,7 +399,7 @@ export const editIssueExpertsAdmin = async (req, res) => {
 };
 
 export const computeIssueWeightsAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.params.id;
 
   const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
@@ -432,7 +431,7 @@ export const computeIssueWeightsAdmin = async (req, res) => {
 };
 
 export const resolveIssueAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.params.id;
 
   const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
@@ -468,7 +467,7 @@ export const resolveIssueAdmin = async (req, res) => {
 };
 
 export const removeIssueAdmin = async (req, res) => {
-  const issueId = req.body?.issueId || req.body?.id;
+  const issueId = req.params.id;
   const session = await mongoose.startSession();
 
   try {

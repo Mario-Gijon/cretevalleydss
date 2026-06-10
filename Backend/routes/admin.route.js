@@ -27,16 +27,6 @@ import { requireAdmin } from "../middlewares/requireAdmin.js";
 
 const router = Router();
 
-const mapParamsToBody = (mapping) => (req, _res, next) => {
-  req.body = req.body ?? {};
-
-  Object.entries(mapping).forEach(([bodyKey, paramKey]) => {
-    req.body[bodyKey] = req.params[paramKey];
-  });
-
-  next();
-};
-
 router
   .route("/experts")
   .get(requireToken, requireAdmin, asyncHandler(getAllUsersAdmin))
@@ -72,30 +62,15 @@ router.post(
 
 router
   .route("/experts/:id")
-  .patch(
-    requireToken,
-    requireAdmin,
-    mapParamsToBody({ id: "id" }),
-    asyncHandler(updateUserAdmin)
-  )
-  .delete(
-    requireToken,
-    requireAdmin,
-    mapParamsToBody({ id: "id" }),
-    asyncHandler(deleteUserAdmin)
-  );
+  .patch(requireToken, requireAdmin, asyncHandler(updateUserAdmin))
+  .delete(requireToken, requireAdmin, asyncHandler(deleteUserAdmin));
 
 router.get("/issues", requireToken, requireAdmin, asyncHandler(getAllIssuesAdmin));
 
 router
   .route("/issues/:id")
   .get(requireToken, requireAdmin, asyncHandler(getIssueAdminById))
-  .delete(
-    requireToken,
-    requireAdmin,
-    mapParamsToBody({ issueId: "id" }),
-    asyncHandler(removeIssueAdmin)
-  );
+  .delete(requireToken, requireAdmin, asyncHandler(removeIssueAdmin));
 
 router.get(
   "/issues/:id/experts/progress",
@@ -122,7 +97,6 @@ router.patch(
   "/issues/:id/admin",
   requireToken,
   requireAdmin,
-  mapParamsToBody({ issueId: "id" }),
   asyncHandler(reassignIssueAdminAdmin)
 );
 
@@ -130,7 +104,6 @@ router.patch(
   "/issues/:id/experts",
   requireToken,
   requireAdmin,
-  mapParamsToBody({ issueId: "id" }),
   asyncHandler(editIssueExpertsAdmin)
 );
 
@@ -138,7 +111,6 @@ router.post(
   "/issues/:id/weights/compute",
   requireToken,
   requireAdmin,
-  mapParamsToBody({ issueId: "id" }),
   asyncHandler(computeIssueWeightsAdmin)
 );
 
@@ -146,7 +118,6 @@ router.post(
   "/issues/:id/resolve",
   requireToken,
   requireAdmin,
-  mapParamsToBody({ issueId: "id" }),
   asyncHandler(resolveIssueAdmin)
 );
 
