@@ -1,6 +1,12 @@
 import { useMemo } from "react";
-import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
+import { Stack, Box, Drawer, Divider, Tabs, Tab, IconButton, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ViewListIcon from "@mui/icons-material/ViewList";
+import CategoryIcon from "@mui/icons-material/Category";
+import TimelineIcon from "@mui/icons-material/Timeline";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   countLeafCriteria,
   getIssueDrawerAlternatives,
@@ -9,17 +15,27 @@ import {
   getIssueDrawerParticipation,
   getIssueDrawerPermissions,
   getLeafCriterionNames,
-} from "../../../logic/activeIssueDrawerDetails.js";
-import { IssueDetailsDrawerTabPanel } from "./IssueDetailsDrawer.parts.jsx";
-import IssueDetailsOverviewTab from "../tabs/IssueDetailsOverviewTab.jsx";
-import IssueDetailsCriteriaTab from "../tabs/IssueDetailsCriteriaTab.jsx";
-import IssueDetailsAlternativesTab from "../tabs/IssueDetailsAlternativesTab.jsx";
-import IssueDetailsTimelineTab from "../tabs/IssueDetailsTimelineTab.jsx";
-import IssueDetailsDrawerHeader from "./IssueDetailsDrawerHeader.jsx";
-import IssueDetailsDrawerEmptyState from "./IssueDetailsDrawerEmptyState.jsx";
-import { buildDrawerTabs } from "../config/IssueDetailsDrawer.tabs.js";
-import { getNextActionMeta } from "../../../logic/activeIssuesMeta.js";
-import IssueExpertsSection from "../../../../issueExperts/components/IssueExpertsSection.jsx";
+} from "../../logic/activeIssueDrawerDetails.js";
+import ActiveIssueOverview from "./ActiveIssueOverview.jsx";
+import ActiveIssueCriteria from "./ActiveIssueCriteria.jsx";
+import ActiveIssueAlternatives from "./ActiveIssueAlternatives.jsx";
+import ActiveIssueTimeline from "./ActiveIssueTimeline.jsx";
+import ActiveIssueDrawerHeader from "./ActiveIssueDrawerHeader.jsx";
+import { getNextActionMeta } from "../../logic/activeIssuesMeta.js";
+import IssueExpertsSection from "../../../issueExperts/components/IssueExpertsSection.jsx";
+
+const BASE_DRAWER_TABS = [
+  { key: "overview", label: "Overview", icon: InfoOutlinedIcon },
+  { key: "alts", label: "Alternatives", icon: ViewListIcon },
+  { key: "criteria", label: "Criteria", icon: CategoryIcon },
+  { key: "timeline", label: "Timeline", icon: TimelineIcon },
+];
+
+const ADMIN_DRAWER_TAB = {
+  key: "experts",
+  label: "Experts",
+  icon: PeopleAltIcon,
+};
 
 /**
  * Drawer principal de detalles del issue activo.
@@ -27,7 +43,7 @@ import IssueExpertsSection from "../../../../issueExperts/components/IssueExpert
  * @param {Object} props Props del componente.
  * @returns {JSX.Element}
  */
-const IssueDetailsDrawer = ({
+const ActiveIssueDrawer = ({
   open,
   onClose,
   onMinimize,
@@ -75,7 +91,13 @@ const IssueDetailsDrawer = ({
   }, [selectedIssue]);
 
   const drawerTabs = useMemo(() => {
-    return buildDrawerTabs(selectedIssue);
+    if (!selectedIssue) {
+      return [];
+    }
+
+    return selectedIssue.isAdmin
+      ? [...BASE_DRAWER_TABS, ADMIN_DRAWER_TAB]
+      : BASE_DRAWER_TABS;
   }, [selectedIssue]);
 
   const finalWeights = useMemo(() => {
@@ -140,10 +162,24 @@ const IssueDetailsDrawer = ({
       }}
     >
       {!selectedIssue ? (
-        <IssueDetailsDrawerEmptyState onClose={onClose} />
+        <Stack sx={{ p: 3 }} spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 980 }}>
+              Issue details
+            </Typography>
+
+            <IconButton onClick={onClose}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Select an issue to see details.
+          </Typography>
+        </Stack>
       ) : (
         <Stack sx={{ height: "100%" }}>
-          <IssueDetailsDrawerHeader
+          <ActiveIssueDrawerHeader
             selectedIssue={selectedIssue}
             alternativesCount={alternatives.length}
             criteriaCount={criteriaCount}
@@ -184,33 +220,31 @@ const IssueDetailsDrawer = ({
           </Box>
 
           <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pt: 2, pb: 2 }}>
-            <IssueDetailsDrawerTabPanel value={drawerTab} index={0}>
-              <IssueDetailsOverviewTab {...overviewProps} />
-            </IssueDetailsDrawerTabPanel>
+            {drawerTab === 0 ? <ActiveIssueOverview {...overviewProps} /> : null}
 
-            <IssueDetailsDrawerTabPanel value={drawerTab} index={1}>
-              <IssueDetailsAlternativesTab alternatives={alternatives} />
-            </IssueDetailsDrawerTabPanel>
+            {drawerTab === 1 ? (
+              <ActiveIssueAlternatives alternatives={alternatives} />
+            ) : null}
 
-            <IssueDetailsDrawerTabPanel value={drawerTab} index={2}>
-              <IssueDetailsCriteriaTab
+            {drawerTab === 2 ? (
+              <ActiveIssueCriteria
                 selectedIssue={selectedIssue}
                 criteriaCount={criteriaCount}
                 finalWeights={finalWeights}
               />
-            </IssueDetailsDrawerTabPanel>
+            ) : null}
 
-            <IssueDetailsDrawerTabPanel value={drawerTab} index={3}>
-              <IssueDetailsTimelineTab
+            {drawerTab === 3 ? (
+              <ActiveIssueTimeline
                 selectedIssue={selectedIssue}
                 deadlineLabel={deadlineLabel}
               />
-            </IssueDetailsDrawerTabPanel>
+            ) : null}
 
-            {selectedIssue.isAdmin ? (
-              <IssueDetailsDrawerTabPanel value={drawerTab} index={4}>
+            {selectedIssue.isAdmin && drawerTab === 4 ? (
+              <Box sx={{ minHeight: 0 }}>
                 <IssueExpertsSection />
-              </IssueDetailsDrawerTabPanel>
+              </Box>
             ) : null}
           </Box>
 
@@ -221,4 +255,4 @@ const IssueDetailsDrawer = ({
   );
 };
 
-export default IssueDetailsDrawer;
+export default ActiveIssueDrawer;

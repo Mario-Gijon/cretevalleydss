@@ -1,16 +1,16 @@
 import { Box, Paper, Stack } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import ActiveIssuesHeader from "../panels/ActiveIssuesHeader";
-import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../../styles/activeIssues.styles";
-import TaskCenter from "../panels/TaskCenter/TaskCenter";
-import IssuesGrid from "../panels/IssueGrid/IssuesGrid";
+import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
+import { getActiveIssuesPageHeaderAuroraBg, getActiveIssuesPageHeaderGlassSx } from "../styles/activeIssues.styles";
+import TaskCenter from "./TaskCenter";
+import ActiveIssuesGrid from "./ActiveIssuesGrid";
 /**
  * Layout de escritorio para la pantalla de issues activos.
  *
  * @param {Object} props Props del componente.
  * @returns {JSX.Element}
  */
-const ActiveIssuesDesktopLayout = ({
+const ActiveIssuesDesktopView = ({
   filteredIssues,
   overview,
   refreshing,
@@ -67,7 +67,7 @@ const ActiveIssuesDesktopLayout = ({
           }}
         >
           <Box sx={{ minWidth: 0, height: "100%" }}>
-            <ActiveIssuesHeader
+            <ActiveIssuesToolbar
               isLgUp
               overview={overview}
               refreshing={refreshing}
@@ -110,9 +110,9 @@ const ActiveIssuesDesktopLayout = ({
         </Box>
       </Paper>
 
-      <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
+      <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 0 }} />
     </Stack>
   );
 };
 
-export default ActiveIssuesDesktopLayout;
+export default ActiveIssuesDesktopView;

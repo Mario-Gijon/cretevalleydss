@@ -8,57 +8,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { getIssueDetailsDrawerPanelSx } from "./IssueDetailsDrawer.styles";
-
-/**
- * Fila clave/valor usada en paneles de información.
- *
- * @param {Object} props Props del componente.
- * @param {string} props.k Etiqueta izquierda.
- * @param {*} props.v Valor mostrado.
- * @returns {JSX.Element}
- */
-export const IssueDetailsDrawerKeyValueRow = ({ k, v }) => {
-  return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
-      <Typography
-        variant="caption"
-        sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}
-      >
-        {k}
-      </Typography>
-
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 850, wordBreak: "break-word" }}
-      >
-        {v ?? "—"}
-      </Typography>
-    </Stack>
-  );
-};
-
-/**
- * Contenedor simple para renderizar el contenido
- * de una tab concreta del drawer.
- *
- * @param {Object} props Props del componente.
- * @param {number} props.value Índice activo.
- * @param {number} props.index Índice del panel.
- * @param {*} props.children Contenido interno.
- * @returns {JSX.Element|null}
- */
-export const IssueDetailsDrawerTabPanel = ({
-  value,
-  index,
-  children,
-}) => {
-  if (value !== index) {
-    return null;
-  }
-
-  return <Box sx={{ minHeight: 0 }}>{children}</Box>;
-};
+import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
 
 /**
  * Badge visual para el tipo de criterio.
@@ -67,7 +17,7 @@ export const IssueDetailsDrawerTabPanel = ({
  * @param {string} props.type Tipo del criterio.
  * @returns {JSX.Element|null}
  */
-export const IssueDetailsDrawerCriteriaTypeBadge = ({ type }) => {
+const ActiveIssueCriteriaTypeBadge = ({ type }) => {
   const theme = useTheme();
 
   if (!type) {
@@ -111,7 +61,7 @@ export const IssueDetailsDrawerCriteriaTypeBadge = ({ type }) => {
  * @param {number} props.depth Profundidad actual.
  * @returns {JSX.Element}
  */
-export const IssueDetailsDrawerCriterionTree = ({
+const ActiveIssueCriteriaTree = ({
   nodes = [],
   finalWeights = {},
   formatWeight,
@@ -181,7 +131,7 @@ export const IssueDetailsDrawerCriterionTree = ({
 
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                 {showType ? (
-                  <IssueDetailsDrawerCriteriaTypeBadge type={node?.type} />
+                  <ActiveIssueCriteriaTypeBadge type={node?.type} />
                 ) : null}
 
                 {leafWeight ? (
@@ -234,7 +184,7 @@ export const IssueDetailsDrawerCriterionTree = ({
                 </Typography>
 
                 {showType ? (
-                  <IssueDetailsDrawerCriteriaTypeBadge type={node?.type} />
+                  <ActiveIssueCriteriaTypeBadge type={node?.type} />
                 ) : null}
 
                 <Box
@@ -259,7 +209,7 @@ export const IssueDetailsDrawerCriterionTree = ({
             </AccordionSummary>
 
             <AccordionDetails sx={{ pt: 0 }}>
-              <IssueDetailsDrawerCriterionTree
+              <ActiveIssueCriteriaTree
                 nodes={children}
                 finalWeights={finalWeights}
                 formatWeight={formatWeight}
@@ -272,3 +222,5 @@ export const IssueDetailsDrawerCriterionTree = ({
     </Stack>
   );
 };
+
+export default ActiveIssueCriteriaTree;

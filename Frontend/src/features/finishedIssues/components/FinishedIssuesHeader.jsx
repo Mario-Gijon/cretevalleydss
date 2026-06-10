@@ -25,7 +25,7 @@ import {
   getActiveIssuesAuroraBg,
   getActiveIssuesPanelGlassSx,
 } from "../../activeIssues/styles/activeIssues.styles";
-import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
+import ActiveIssuesPill from "../../activeIssues/components/ActiveIssuesPill";
 
 /**
  * Cabecera de filtros y métricas de la pantalla de issues finalizados.

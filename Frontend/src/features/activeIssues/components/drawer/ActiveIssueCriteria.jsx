@@ -1,12 +1,10 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CategoryIcon from "@mui/icons-material/Category";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
-import {
-  IssueDetailsDrawerCriterionTree,
-} from "../shell/IssueDetailsDrawer.parts";
-import { formatIssueDrawerWeight } from "../../../logic/activeIssueDrawerDetails";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
+import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import ActiveIssueCriteriaTree from "./ActiveIssueCriteriaTree";
+import { formatIssueDrawerWeight } from "../../logic/activeIssueDrawerDetails";
+import ActiveIssuesPill from "../ActiveIssuesPill";
 
 /**
  * Pestaña Criteria del drawer de detalles del issue.
@@ -20,7 +18,7 @@ import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
  * @param {Object} props.finalWeights Pesos finales visibles.
  * @returns {JSX.Element}
  */
-const IssueDetailsCriteriaTab = ({
+const ActiveIssueCriteria = ({
   selectedIssue,
   criteriaCount,
   finalWeights,
@@ -44,7 +42,7 @@ const IssueDetailsCriteriaTab = ({
         </Typography>
 
         <Box sx={{ mt: 1.25 }}>
-          <IssueDetailsDrawerCriterionTree
+          <ActiveIssueCriteriaTree
             nodes={selectedIssue?.criteria || []}
             finalWeights={finalWeights}
             formatWeight={formatIssueDrawerWeight}
@@ -55,4 +53,4 @@ const IssueDetailsCriteriaTab = ({
   );
 };
 
-export default IssueDetailsCriteriaTab;
+export default ActiveIssueCriteria;

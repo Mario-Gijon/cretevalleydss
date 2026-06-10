@@ -22,13 +22,10 @@ import CalculateIcon from "@mui/icons-material/Calculate";
 import GavelIcon from "@mui/icons-material/Gavel";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { stageLabel } from "../../../logic/activeIssuesMeta";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
-import {
-  IssueDetailsDrawerKeyValueRow,
-} from "../shell/IssueDetailsDrawer.parts";
-import IssueParticipationChart from "../../shared/IssueParticipationChart";
+import { stageLabel } from "../../logic/activeIssuesMeta";
+import ActiveIssuesPill from "../ActiveIssuesPill";
+import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
 import { IssueModelParametersView } from "../../../../modelParameters";
 
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
@@ -41,6 +38,26 @@ const ALTERNATIVE_STRUCTURE_LABELS = {
   alternativePairwiseByCriterion: "Pairwise alternatives by criterion",
 };
 
+const ActiveIssueInfoRow = ({ label, value }) => {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
+      <Typography
+        variant="caption"
+        sx={{ color: "text.secondary", fontWeight: 950, minWidth: 150 }}
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 850, wordBreak: "break-word" }}
+      >
+        {value ?? "—"}
+      </Typography>
+    </Stack>
+  );
+};
+
 /**
  * Pestaña Overview del drawer de detalles del issue.
  *
@@ -50,7 +67,7 @@ const ALTERNATIVE_STRUCTURE_LABELS = {
  * @param {Object} props Props del componente.
  * @returns {JSX.Element}
  */
-const IssueDetailsOverviewTab = ({
+const ActiveIssueOverview = ({
   selectedIssue,
   drawerAction,
   DrawerActionIcon,
@@ -292,33 +309,33 @@ const IssueDetailsOverviewTab = ({
 
         <AccordionDetails sx={{ pt: 0 }}>
           <Stack spacing={1.1}>
-            <IssueDetailsDrawerKeyValueRow k="Creator" v={selectedIssue?.creator} />
-            <IssueDetailsDrawerKeyValueRow k="Description" v={selectedIssue?.description} />
-            <IssueDetailsDrawerKeyValueRow k="Creation date" v={selectedIssue?.creationDate} />
-            <IssueDetailsDrawerKeyValueRow k="Closure date" v={deadlineLabel} />
-            <IssueDetailsDrawerKeyValueRow
-              k="Stage"
-              v={stageLabel(selectedIssue?.currentStage)}
+            <ActiveIssueInfoRow label="Creator" value={selectedIssue?.creator} />
+            <ActiveIssueInfoRow label="Description" value={selectedIssue?.description} />
+            <ActiveIssueInfoRow label="Creation date" value={selectedIssue?.creationDate} />
+            <ActiveIssueInfoRow label="Closure date" value={deadlineLabel} />
+            <ActiveIssueInfoRow
+              label="Stage"
+              value={stageLabel(selectedIssue?.currentStage)}
             />
-            <IssueDetailsDrawerKeyValueRow
-              k="Criteria weighting structure"
-              v={
+            <ActiveIssueInfoRow
+              label="Criteria weighting structure"
+              value={
                 CRITERIA_WEIGHTING_STRUCTURE_LABELS[
                   selectedIssue?.criteriaWeightingStructureKey
                 ] || selectedIssue?.criteriaWeightingStructureKey || "—"
               }
             />
-            <IssueDetailsDrawerKeyValueRow
-              k="Alternative evaluation structure"
-              v={
+            <ActiveIssueInfoRow
+              label="Alternative evaluation structure"
+              value={
                 ALTERNATIVE_STRUCTURE_LABELS[
                   selectedIssue?.alternativeEvaluationStructureKey
                 ] || selectedIssue?.alternativeEvaluationStructureKey || "—"
               }
             />
-            <IssueDetailsDrawerKeyValueRow
-              k="Consensus"
-              v={String(Boolean(selectedIssue?.isConsensus))}
+            <ActiveIssueInfoRow
+              label="Consensus"
+              value={String(Boolean(selectedIssue?.isConsensus))}
             />
           </Stack>
         </AccordionDetails>
@@ -393,7 +410,7 @@ const IssueDetailsOverviewTab = ({
               justifyContent={"center"}
               alignItems={"center"}
             >
-              <IssueParticipationChart
+              <ActiveIssueParticipationChart
                 total={totalExperts}
                 participated={participatedExperts}
                 notEvaluated={notEvaluatedExperts}
@@ -459,4 +476,4 @@ const IssueDetailsOverviewTab = ({
   );
 };
 
-export default IssueDetailsOverviewTab;
+export default ActiveIssueOverview;

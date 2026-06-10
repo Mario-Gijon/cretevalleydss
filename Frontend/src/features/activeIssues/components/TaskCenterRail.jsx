@@ -19,13 +19,13 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import {
   resolveActiveIssuesToneColor,
-} from "../../../logic/activeIssuesMeta";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "../../../logic/activeIssuesTaskCenter";
+} from "../logic/activeIssuesMeta";
+import ActiveIssuesPill from "./ActiveIssuesPill";
+import { formatTaskCenterDeadlineMini } from "../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   taskCenterHideScrollbarXSx,
-} from "./styles/taskCenter.styles";
+} from "./TaskCenter.styles";
 
 /**
  * Variante horizontal del task center.

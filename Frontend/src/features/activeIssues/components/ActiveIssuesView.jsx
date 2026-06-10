@@ -10,9 +10,9 @@ import { useActiveIssuesListing } from "../hooks/useActiveIssuesListing";
 import { useActiveIssueActions } from "../hooks/useActiveIssueActions";
 import { useActiveIssuesScreenSync } from "../hooks/useActiveIssuesScreenSync";
 import { useActiveIssueConfirm } from "../hooks/useActiveIssueConfirm";
-import ActiveIssuesDesktopLayout from "./layout/ActiveIssuesDesktopLayout";
-import ActiveIssuesMobileLayout from "./layout/ActiveIssuesMobileLayout";
-import ActiveIssuesOverlays from "./shared/ActiveIssuesOverlays";
+import ActiveIssuesDesktopView from "./ActiveIssuesDesktopView";
+import ActiveIssuesMobileView from "./ActiveIssuesMobileView";
+import ActiveIssuesOverlays from "./ActiveIssuesOverlays";
 import IssueExpertsProvider from "../../issueExperts/context/issueExperts.provider.jsx";
 
 /**
@@ -133,7 +133,7 @@ const ActiveIssuesView = () => {
     <>
       <Box p={{xs: 1, sm:0}}>
         {isLgUp ? (
-          <ActiveIssuesDesktopLayout
+          <ActiveIssuesDesktopView
             filteredIssues={filteredIssues}
             totalIssues={activeIssues.length}
             overview={overview}
@@ -154,7 +154,7 @@ const ActiveIssuesView = () => {
             openDetailsById={openDetailsById}
           />
         ) : (
-          <ActiveIssuesMobileLayout
+          <ActiveIssuesMobileView
             isMobile={isMobile}
             filteredIssues={filteredIssues}
             overview={overview}

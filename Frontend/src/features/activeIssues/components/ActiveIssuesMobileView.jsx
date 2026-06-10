@@ -8,11 +8,11 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ActiveIssuesHeader from "../panels/ActiveIssuesHeader"
-import ActiveIssuesPill from "../shared/ActiveIssuesPill";
-import { getActiveIssuesTasksAccordionGlassSx } from "../../styles/activeIssues.styles";
-import TaskCenter from "../panels/TaskCenter/TaskCenter";
-import IssuesGrid from "../panels/IssueGrid/IssuesGrid";
+import ActiveIssuesToolbar from "./ActiveIssuesToolbar";
+import ActiveIssuesPill from "./ActiveIssuesPill";
+import { getActiveIssuesTasksAccordionGlassSx } from "../styles/activeIssues.styles";
+import TaskCenter from "./TaskCenter";
+import ActiveIssuesGrid from "./ActiveIssuesGrid";
 
 /**
  * Layout responsive para tablet y móvil en la pantalla
@@ -21,7 +21,7 @@ import IssuesGrid from "../panels/IssueGrid/IssuesGrid";
  * @param {Object} props Props del componente.
  * @returns {JSX.Element}
  */
-const ActiveIssuesMobileLayout = ({
+const ActiveIssuesMobileView = ({
   isMobile,
   filteredIssues,
   overview,
@@ -45,7 +45,7 @@ const ActiveIssuesMobileLayout = ({
 
   return (
     <>
-      <ActiveIssuesHeader
+      <ActiveIssuesToolbar
         isLgUp={false}
         overview={overview}
         refreshing={refreshing}
@@ -123,9 +123,9 @@ const ActiveIssuesMobileLayout = ({
         </Accordion>
       )}
 
-      <IssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
+      <ActiveIssuesGrid issues={filteredIssues} onOpenIssue={openDetails} sx={{ mt: 2 }} />
     </>
   );
 };
 
-export default ActiveIssuesMobileLayout;
+export default ActiveIssuesMobileView;

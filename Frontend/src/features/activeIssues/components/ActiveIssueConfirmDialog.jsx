@@ -4,7 +4,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
 const TONE_CONFIRM_COLORS = {
   warning: "warning",

@@ -1,6 +1,6 @@
 import { Grid } from "@mui/material";
 
-import IssueCard from "./IssueCard";
+import ActiveIssueCard from "./ActiveIssueCard";
 
 /**
  * Grid principal de issues activos.
@@ -11,11 +11,11 @@ import IssueCard from "./IssueCard";
  * @param {Object} props.sx Estilos adicionales del grid.
  * @returns {JSX.Element}
  */
-const IssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
+const ActiveIssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
   return (
     <Grid container spacing={1.5} sx={sx}>
       {(issues || []).map((issue) => (
-        <IssueCard
+        <ActiveIssueCard
           key={issue.id}
           issue={issue}
           onOpenIssue={onOpenIssue}
@@ -25,4 +25,4 @@ const IssuesGrid = ({ issues = [], onOpenIssue, sx }) => {
   );
 };
 
-export default IssuesGrid;
+export default ActiveIssuesGrid;

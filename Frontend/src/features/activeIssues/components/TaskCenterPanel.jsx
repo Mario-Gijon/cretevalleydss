@@ -21,13 +21,13 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import {
   resolveActiveIssuesToneColor,
   stageLabel,
-} from "../../../logic/activeIssuesMeta";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "../../../logic/activeIssuesTaskCenter";
+} from "../logic/activeIssuesMeta";
+import ActiveIssuesPill from "./ActiveIssuesPill";
+import { formatTaskCenterDeadlineMini } from "../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   getTaskCenterScrollbarSx,
-} from "./styles/taskCenter.styles";
+} from "./TaskCenter.styles";
 
 /**
  * Variante en panel del task center.

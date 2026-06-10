@@ -46,7 +46,7 @@ import {
   getExpressionDomainAssignmentsByCriterion,
 } from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
-import ActiveIssuesPill from "../../activeIssues/components/shared/ActiveIssuesPill";
+import ActiveIssuesPill from "../../activeIssues/components/ActiveIssuesPill";
 import {
   getCreateIssueSummaryAccordionSx,
   getCreateIssueSummaryAlternativeItemSx,

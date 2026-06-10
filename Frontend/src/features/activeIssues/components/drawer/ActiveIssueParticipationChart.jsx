@@ -19,13 +19,13 @@ ChartJS.register(ArcElement, Tooltip);
  * @param {number} props.declined Número de expertos que rechazaron.
  * @returns {JSX.Element}
  */
-const IssueParticipationChart = ({
+const ActiveIssueParticipationChart = ({
   total,
   participated = 0,
   pending = 0,
   notEvaluated = 0,
   declined = 0,
-  size=100,
+  size = 100,
 }) => {
   const valuesSum =
     Number(participated) +
@@ -100,4 +100,4 @@ const IssueParticipationChart = ({
   );
 };
 
-export default IssueParticipationChart;
+export default ActiveIssueParticipationChart;

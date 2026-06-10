@@ -1,11 +1,11 @@
 import { Backdrop } from "@mui/material";
 
-import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import IssueDetailsDrawer from "../drawer/shell/IssueDetailsDrawer";
-import ActiveIssueConfirmDialog from "../dialogs/ActiveIssueConfirmDialog";
-import IssueExpertsDialogs from "../../../issueExperts/components/IssueExpertsDialogs.jsx";
-import EvaluationDialogHost from "../../../issueEvaluation/components/EvaluationDialogHost.jsx";
-import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants.js";
+import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import ActiveIssueDrawer from "./drawer/ActiveIssueDrawer";
+import ActiveIssueConfirmDialog from "./ActiveIssueConfirmDialog";
+import IssueExpertsDialogs from "../../issueExperts/components/IssueExpertsDialogs.jsx";
+import EvaluationDialogHost from "../../issueEvaluation/components/EvaluationDialogHost.jsx";
+import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.
@@ -51,7 +51,7 @@ const ActiveIssuesOverlays = ({
         <CircularLoading color="secondary" size={50} height="50vh" />
       </Backdrop>
 
-      <IssueDetailsDrawer
+      <ActiveIssueDrawer
         open={drawerOpen}
         onClose={closeDrawer}
         onMinimize={minimizeDrawerOnly}

@@ -1,8 +1,8 @@
 import { Box, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ViewListIcon from "@mui/icons-material/ViewList";
-import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
+import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import ActiveIssuesPill from "../ActiveIssuesPill";
 
 /**
  * Pestaña Alternatives del drawer de detalles del issue.
@@ -11,7 +11,7 @@ import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
  * @param {Array} props.alternatives Lista de alternativas.
  * @returns {JSX.Element}
  */
-const IssueDetailsAlternativesTab = ({ alternatives = [] }) => {
+const ActiveIssueAlternatives = ({ alternatives = [] }) => {
   const theme = useTheme();
 
   return (
@@ -61,4 +61,4 @@ const IssueDetailsAlternativesTab = ({ alternatives = [] }) => {
   );
 };
 
-export default IssueDetailsAlternativesTab;
+export default ActiveIssueAlternatives;

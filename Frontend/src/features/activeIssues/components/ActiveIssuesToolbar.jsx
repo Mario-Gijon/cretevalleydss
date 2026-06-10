@@ -27,8 +27,8 @@ import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import {
   getActiveIssuesPageHeaderAuroraBg,
   getActiveIssuesPageHeaderGlassSx,
-} from "../../styles/activeIssues.styles";
-import ActiveIssuesTinyStat from "../shared/ActiveIssuesTinyStat";
+} from "../styles/activeIssues.styles";
+import ActiveIssuesTinyStat from "./ActiveIssuesTinyStat";
 
 /**
  * Cabecera de la pantalla de issues activos.
@@ -51,7 +51,7 @@ import ActiveIssuesTinyStat from "../shared/ActiveIssuesTinyStat";
  * @param {Object} props.paperSx Estilos adicionales del Paper.
  * @returns {JSX.Element}
  */
-const ActiveIssuesHeader = ({
+const ActiveIssuesToolbar = ({
   isLgUp,
   overview,
   refreshing,
@@ -277,4 +277,4 @@ const ActiveIssuesHeader = ({
   );
 };
 
-export default ActiveIssuesHeader;
+export default ActiveIssuesToolbar;

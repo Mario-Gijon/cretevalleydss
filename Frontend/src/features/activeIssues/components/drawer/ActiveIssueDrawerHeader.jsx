@@ -7,10 +7,10 @@ import CategoryIcon from "@mui/icons-material/Category";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
-import { stageLabel } from "../../../logic/activeIssuesMeta";
-import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import ActiveIssuesTinyStat from "../../shared/ActiveIssuesTinyStat";
-import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.styles";
+import { stageLabel } from "../../logic/activeIssuesMeta";
+import ActiveIssuesPill from "../ActiveIssuesPill";
+import ActiveIssuesTinyStat from "../ActiveIssuesTinyStat";
+import { getIssueDetailsDrawerCrystalBorder } from "./ActiveIssueDrawer.styles";
 
 /**
  * Cabecera principal del drawer de detalles del issue.
@@ -24,7 +24,7 @@ import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.styles"
  * @param {Function} props.onClose Acción de cierre.
  * @returns {JSX.Element}
  */
-const IssueDetailsDrawerHeader = ({
+const ActiveIssueDrawerHeader = ({
   selectedIssue,
   alternativesCount,
   criteriaCount,
@@ -149,4 +149,4 @@ const IssueDetailsDrawerHeader = ({
   );
 };
 
-export default IssueDetailsDrawerHeader;
+export default ActiveIssueDrawerHeader;

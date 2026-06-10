@@ -7,7 +7,7 @@ import {
   buildTaskCenterRailItems,
   buildTaskCenterSections,
   filterTaskCenterGroups,
-} from "../../../logic/activeIssuesTaskCenter";
+} from "../logic/activeIssuesTaskCenter";
 import TaskCenterRail from "./TaskCenterRail";
 import TaskCenterPanel from "./TaskCenterPanel";
 
