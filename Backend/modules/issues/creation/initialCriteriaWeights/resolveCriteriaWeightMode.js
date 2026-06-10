@@ -86,12 +86,21 @@ export const resolveCriteriaWeightingModeConfigOrThrow = (rawConfig) => {
     );
   }
 
+  if (rawConfig.payload !== undefined && !isPlainObject(rawConfig.payload)) {
+    throw createBadRequestError(
+      "criteriaWeightingConfig.payload must be an object",
+      {
+        field: "criteriaWeightingConfig.payload",
+      }
+    );
+  }
+
   return {
     mode,
     source: modeConfig.source,
     method: modeConfig.method,
     structureKey: modeConfig.structureKey,
-    payload: isPlainObject(rawConfig.payload) ? rawConfig.payload : {},
+    payload: rawConfig.payload === undefined ? {} : rawConfig.payload,
     criteriaWeightingModelKey: normalizeNonEmptyString(
       rawConfig.criteriaWeightingModelKey
     ),

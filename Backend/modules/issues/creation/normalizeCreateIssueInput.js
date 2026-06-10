@@ -1,12 +1,72 @@
-import {
-  getUniqueTrimmedStrings,
-  normalizeEmail,
-  normalizeOptionalString,
-  normalizeString,
-} from "../../../utils/common/strings.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
+
+const normalizeWhitespace = (value) => value.trim().replace(/\s+/g, " ");
+
+const requireNonEmptyStringOrThrow = ({ value, field, message }) => {
+  if (typeof value !== "string") {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  const normalizedValue = normalizeWhitespace(value);
+  if (!normalizedValue) {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  return normalizedValue;
+};
+
+const normalizeOptionalStringOrThrow = ({ value, field, message }) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  const normalizedValue = normalizeWhitespace(value);
+  return normalizedValue === "" ? null : normalizedValue;
+};
+
+const normalizeUniqueStringArrayOrThrow = ({
+  values,
+  field,
+  itemMessage,
+  lower = false,
+}) => {
+  const uniqueValues = [];
+  const seenValues = new Set();
+
+  for (const value of values) {
+    if (typeof value !== "string") {
+      throw createBadRequestError(itemMessage, {
+        field,
+      });
+    }
+
+    let normalizedValue = normalizeWhitespace(value);
+    if (lower) {
+      normalizedValue = normalizedValue.toLowerCase();
+    }
+
+    if (!normalizedValue || seenValues.has(normalizedValue)) {
+      continue;
+    }
+
+    seenValues.add(normalizedValue);
+    uniqueValues.push(normalizedValue);
+  }
+
+  return uniqueValues;
+};
 
 const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
   return criteriaNodes.map((node) => {
@@ -16,14 +76,16 @@ const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
       });
     }
 
-    const name = normalizeString(node.name);
-    if (!name) {
-      throw createBadRequestError("Criterion name is required", {
-        field: "criteria",
-      });
-    }
-
-    const type = normalizeString(node.type);
+    const name = requireNonEmptyStringOrThrow({
+      value: node.name,
+      field: "criteria",
+      message: "Criterion name is required",
+    });
+    const type = requireNonEmptyStringOrThrow({
+      value: node.type,
+      field: "criteria",
+      message: "Criterion type is required",
+    });
     const rawChildren = node.children;
 
     if (rawChildren !== undefined && !Array.isArray(rawChildren)) {
@@ -59,11 +121,24 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
 
   const issueInfo = rawIssueInfo;
 
-  const issueName = normalizeString(issueInfo.issueName);
-  const issueDescription = normalizeOptionalString(issueInfo.issueDescription);
-  const selectedModelId = normalizeString(issueInfo.selectedModelId);
+  const issueName = requireNonEmptyStringOrThrow({
+    value: issueInfo.issueName,
+    field: "issueName",
+    message: "Issue name is required",
+  });
+  const issueDescription = normalizeOptionalStringOrThrow({
+    value: issueInfo.issueDescription,
+    field: "issueDescription",
+    message: "issueDescription must be a string",
+  });
+  const selectedModelId = requireNonEmptyStringOrThrow({
+    value: issueInfo.selectedModelId,
+    field: "selectedModelId",
+    message: "selectedModelId is required",
+  });
   const alternatives = issueInfo.alternatives;
-  const isConsensus = issueInfo.isConsensus === true;
+  const hasIsConsensus = hasOwnKey(issueInfo, "isConsensus");
+  const isConsensus = hasIsConsensus ? issueInfo.isConsensus : false;
   const hasSimulateConsensus = hasOwnKey(issueInfo, "simulateConsensus");
   const simulateConsensus = hasSimulateConsensus
     ? issueInfo.simulateConsensus
@@ -78,15 +153,9 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
   const criteriaWeightingConfig = issueInfo.criteriaWeightingConfig;
   const criteriaWeightingParameters = issueInfo.criteriaWeightingParameters;
 
-  if (!issueName) {
-    throw createBadRequestError("Issue name is required", {
-      field: "issueName",
-    });
-  }
-
-  if (!selectedModelId) {
-    throw createBadRequestError("selectedModelId is required", {
-      field: "selectedModelId",
+  if (hasIsConsensus && typeof isConsensus !== "boolean") {
+    throw createBadRequestError("isConsensus must be a boolean", {
+      field: "isConsensus",
     });
   }
 
@@ -121,14 +190,23 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  const uniqueAlternativeNames = getUniqueTrimmedStrings(alternatives);
+  const uniqueAlternativeNames = normalizeUniqueStringArrayOrThrow({
+    values: alternatives,
+    field: "alternatives",
+    itemMessage: "Each alternative must be a string",
+  });
   if (uniqueAlternativeNames.length <= 1) {
     throw createBadRequestError("Must be at least two valid alternatives", {
       field: "alternatives",
     });
   }
 
-  const uniqueExpertEmails = Array.from(new Set(addedExperts.map(normalizeEmail).filter(Boolean)));
+  const uniqueExpertEmails = normalizeUniqueStringArrayOrThrow({
+    values: addedExperts,
+    field: "addedExperts",
+    itemMessage: "Each expert email must be a string",
+    lower: true,
+  });
 
   if (uniqueExpertEmails.length === 0) {
     throw createBadRequestError("Must be at least one expert", {
@@ -165,7 +243,11 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  const mode = normalizeString(expressionDomainConfig.mode);
+  const mode = requireNonEmptyStringOrThrow({
+    value: expressionDomainConfig.mode,
+    field: "expressionDomainConfig.mode",
+    message: "expressionDomainConfig.mode must be 'global' or 'byCriterion'",
+  });
   if (mode !== "global" && mode !== "byCriterion") {
     throw createBadRequestError("expressionDomainConfig.mode must be 'global' or 'byCriterion'", {
       field: "expressionDomainConfig",
@@ -176,7 +258,11 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     mode === "global"
       ? {
         mode,
-        globalDomainId: normalizeString(expressionDomainConfig.globalDomainId),
+        globalDomainId: requireNonEmptyStringOrThrow({
+          value: expressionDomainConfig.globalDomainId,
+          field: "expressionDomainConfig.globalDomainId",
+          message: "expressionDomainConfig.globalDomainId is required",
+        }),
       }
       : {
         mode,
@@ -184,8 +270,18 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
           ? Object.fromEntries(
             Object.entries(expressionDomainConfig.domainsByCriterion).map(
               ([criterionName, domainId]) => [
-                normalizeString(criterionName),
-                normalizeString(domainId),
+                requireNonEmptyStringOrThrow({
+                  value: criterionName,
+                  field: "expressionDomainConfig.domainsByCriterion",
+                  message:
+                    "expressionDomainConfig.domainsByCriterion contains an invalid criterion name",
+                }),
+                requireNonEmptyStringOrThrow({
+                  value: domainId,
+                  field: "expressionDomainConfig.domainsByCriterion",
+                  message:
+                    "expressionDomainConfig.domainsByCriterion contains an invalid domain id",
+                }),
               ]
             )
           )
@@ -211,8 +307,11 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     closureDate,
     consensusMaxPhases,
     consensusThreshold,
-    paramValues: paramValues ?? {},
+    paramValues: paramValues === undefined ? {} : paramValues,
     criteriaWeightingConfig,
-    criteriaWeightingParameters: criteriaWeightingParameters ?? {},
+    criteriaWeightingParameters:
+      criteriaWeightingParameters === undefined
+        ? {}
+        : criteriaWeightingParameters,
   };
 };

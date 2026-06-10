@@ -1,4 +1,5 @@
 import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
+import { createInternalError } from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
 
 export const createIssueDomainSnapshots = async ({
@@ -6,17 +7,27 @@ export const createIssueDomainSnapshots = async ({
   domainDocs,
   session,
 }) => {
-  if (!Array.isArray(domainDocs) || domainDocs.length === 0) {
-    return new Map();
+  if (domainDocs.length === 0) {
+    throw createInternalError("Issue expression domains are required", {
+      field: "expressionDomainConfig",
+      details: {
+        issueId: toIdString(issueId),
+      },
+    });
   }
 
   const uniqueDomainsById = new Map();
 
   for (const domain of domainDocs) {
-    const domainId = toIdString(domain?._id);
+    const domainId = toIdString(domain._id);
 
     if (!domainId) {
-      continue;
+      throw createInternalError("Expression domain id is invalid", {
+        field: "expressionDomainConfig",
+        details: {
+          issueId: toIdString(issueId),
+        },
+      });
     }
 
     uniqueDomainsById.set(domainId, domain);
@@ -31,11 +42,11 @@ export const createIssueDomainSnapshots = async ({
     type: domain.type,
     numericRange: domain.type === "numeric" ? domain.numericRange : undefined,
     membershipFunction:
-      domain.type === "linguistic" ? domain.membershipFunction || null : null,
-    valueCount: domain.type === "linguistic" ? domain.valueCount ?? null : null,
-    valuesMode: domain.type === "linguistic" ? domain.valuesMode || null : null,
+      domain.type === "linguistic" ? domain.membershipFunction : null,
+    valueCount: domain.type === "linguistic" ? domain.valueCount : null,
+    valuesMode: domain.type === "linguistic" ? domain.valuesMode : null,
     linguisticLabels:
-      domain.type === "linguistic" ? domain.linguisticLabels || [] : [],
+      domain.type === "linguistic" ? domain.linguisticLabels : [],
   }));
 
   const createdSnapshots = await IssueExpressionDomain.insertMany(
@@ -49,7 +60,19 @@ export const createIssueDomainSnapshots = async ({
   const snapshotMap = new Map();
 
   for (const snapshot of createdSnapshots) {
-    snapshotMap.set(toIdString(snapshot.sourceDomain), snapshot._id);
+    const sourceDomainId = toIdString(snapshot.sourceDomain);
+
+    if (!sourceDomainId) {
+      throw createInternalError("Issue expression domain snapshot sourceDomain is invalid", {
+        field: "sourceDomain",
+        details: {
+          issueId: toIdString(issueId),
+          snapshotId: toIdString(snapshot._id),
+        },
+      });
+    }
+
+    snapshotMap.set(sourceDomainId, snapshot._id);
   }
 
   return snapshotMap;

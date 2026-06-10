@@ -1,5 +1,6 @@
-import { createBadRequestError } from "../../utils/common/errors.js";
+import { createInternalError } from "../../utils/common/errors.js";
 import { createIssueDomainSnapshots } from "./createIssueDomainSnapshots.js";
+import { toIdString } from "../../utils/common/ids.js";
 
 export const assignIssueExpressionDomainSnapshotsOrThrow = async ({
   issueId,
@@ -20,10 +21,15 @@ export const assignIssueExpressionDomainSnapshotsOrThrow = async ({
     const snapshotId = snapshotIdBySourceDomainId.get(sourceDomainId);
 
     if (!snapshotId) {
-      throw createBadRequestError(
+      throw createInternalError(
         `Missing IssueExpressionDomain snapshot for criterion '${criterionName}'`,
         {
-          field: "expressionDomainConfig",
+          field: "expressionDomain",
+          details: {
+            issueId: toIdString(issueId),
+            criterionName,
+            sourceDomainId,
+          },
         }
       );
     }

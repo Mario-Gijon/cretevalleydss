@@ -1,22 +1,32 @@
 import { createInternalError } from "../../utils/common/errors.js";
 import { toIdString } from "../../utils/common/ids.js";
 
-const normalizeCriterionName = (criterion) => String(criterion?.name || "").trim();
+const requireCriterionNameOrThrow = ({ criterion, field }) => {
+  if (typeof criterion.name !== "string" || criterion.name.trim() === "") {
+    throw createInternalError("Leaf criterion name is invalid", {
+      field,
+      details: {
+        criterionId: toIdString(criterion._id),
+      },
+    });
+  }
+
+  return criterion.name.trim();
+};
 
 export const buildExpressionDomainAssignmentsByCriterionOrThrow = ({
   leafCriteria,
   field = "expressionDomain",
 }) => {
-  const criteriaList = Array.isArray(leafCriteria) ? leafCriteria : [];
   const assignments = {};
 
-  for (const criterion of criteriaList) {
-    const criterionName = normalizeCriterionName(criterion);
-    if (!criterionName) {
-      continue;
-    }
+  for (const criterion of leafCriteria) {
+    const criterionName = requireCriterionNameOrThrow({
+      criterion,
+      field: "criteria.name",
+    });
 
-    const snapshotId = toIdString(criterion?.expressionDomain);
+    const snapshotId = toIdString(criterion.expressionDomain);
     if (!snapshotId) {
       throw createInternalError(
         `Leaf criterion '${criterionName}' is missing expression domain snapshot`,
@@ -24,7 +34,7 @@ export const buildExpressionDomainAssignmentsByCriterionOrThrow = ({
           field,
           details: {
             criterionName,
-            criterionId: toIdString(criterion?._id),
+            criterionId: toIdString(criterion._id),
           },
         }
       );
@@ -46,7 +56,7 @@ export const buildExpressionDomainConfigFromLeafCriteriaOrThrow = ({
   });
 
   const uniqueSnapshotIds = Array.from(
-    new Set(Object.values(domainsByCriterion).filter(Boolean))
+    new Set(Object.values(domainsByCriterion))
   );
 
   if (uniqueSnapshotIds.length === 0) {

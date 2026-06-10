@@ -21,108 +21,117 @@ const normalizeApiModelKey = (value) => {
   return normalizedKey || null;
 };
 
-export const validateIssueModelRuntimeConfigOrThrow = (model) => {
-  const modelName = normalizeNonEmptyString(model?.name) || "unknown";
-  const runtimeErrors = [];
+const pushRuntimeErrorIfMissingString = ({
+  runtimeErrors,
+  field,
+  value,
+  message = "must be a non-empty string",
+}) => {
+  const normalizedValue = normalizeNonEmptyString(value);
 
-  const apiModelKey = normalizeApiModelKey(model?.apiModelKey);
+  if (!normalizedValue) {
+    runtimeErrors.push({
+      field,
+      message,
+      value,
+    });
+  }
+
+  return normalizedValue;
+};
+
+export const validateIssueModelRuntimeConfigOrThrow = (model) => {
+  const modelName = normalizeNonEmptyString(model.name) || "unknown";
+  const runtimeErrors = [];
+  const apiEndpoint = model.apiEndpoint;
+
+  const apiModelKey = normalizeApiModelKey(model.apiModelKey);
   if (!apiModelKey) {
     runtimeErrors.push({
       field: "apiModelKey",
       message: "must be a non-empty string",
-      value: model?.apiModelKey,
+      value: model.apiModelKey,
     });
   }
 
-  const endpointPath = normalizeEndpointPath(model?.apiEndpoint?.path);
+  const endpointPath = apiEndpoint
+    ? normalizeEndpointPath(apiEndpoint.path)
+    : null;
   if (!endpointPath) {
     runtimeErrors.push({
       field: "apiEndpoint.path",
       message: "must be a non-empty string",
-      value: model?.apiEndpoint?.path,
+      value: apiEndpoint ? apiEndpoint.path : undefined,
     });
   }
 
-  const alternativeEvaluationStructureKey = normalizeNonEmptyString(
-    model?.alternativeEvaluationStructureKey
-  );
-  if (!alternativeEvaluationStructureKey) {
-    runtimeErrors.push({
-      field: "alternativeEvaluationStructureKey",
-      message: "is required",
-      value: model?.alternativeEvaluationStructureKey,
-    });
-  }
+  const alternativeEvaluationStructureKey = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "alternativeEvaluationStructureKey",
+    message: "is required",
+    value: model.alternativeEvaluationStructureKey,
+  });
 
-  if (typeof model?.supportsConsensus !== "boolean") {
+  if (typeof model.supportsConsensus !== "boolean") {
     runtimeErrors.push({
       field: "supportsConsensus",
       message: "must be boolean",
-      value: model?.supportsConsensus,
+      value: model.supportsConsensus,
     });
   }
-  if (typeof model?.supportsConsensusSimulation !== "boolean") {
+  if (typeof model.supportsConsensusSimulation !== "boolean") {
     runtimeErrors.push({
       field: "supportsConsensusSimulation",
       message: "must be boolean",
-      value: model?.supportsConsensusSimulation,
+      value: model.supportsConsensusSimulation,
     });
   }
-  if (typeof model?.usesCriteriaWeights !== "boolean") {
+  if (typeof model.usesCriteriaWeights !== "boolean") {
     runtimeErrors.push({
       field: "usesCriteriaWeights",
       message: "must be boolean",
-      value: model?.usesCriteriaWeights,
+      value: model.usesCriteriaWeights,
     });
   }
-  if (typeof model?.usesFuzzyCriteriaWeights !== "boolean") {
+  if (typeof model.usesFuzzyCriteriaWeights !== "boolean") {
     runtimeErrors.push({
       field: "usesFuzzyCriteriaWeights",
       message: "must be boolean",
-      value: model?.usesFuzzyCriteriaWeights,
+      value: model.usesFuzzyCriteriaWeights,
     });
   }
-  if (typeof model?.usesCriterionTypes !== "boolean") {
+  if (typeof model.usesCriterionTypes !== "boolean") {
     runtimeErrors.push({
       field: "usesCriterionTypes",
       message: "must be boolean",
-      value: model?.usesCriterionTypes,
+      value: model.usesCriterionTypes,
     });
   }
-  if (typeof model?.isMultiCriteria !== "boolean") {
+  if (typeof model.isMultiCriteria !== "boolean") {
     runtimeErrors.push({
       field: "isMultiCriteria",
       message: "must be boolean",
-      value: model?.isMultiCriteria,
+      value: model.isMultiCriteria,
     });
   }
 
-  const modelFamilyKey = normalizeNonEmptyString(model?.modelFamilyKey);
-  if (!modelFamilyKey) {
-    runtimeErrors.push({
-      field: "modelFamilyKey",
-      message: "must be a non-empty string",
-      value: model?.modelFamilyKey,
-    });
-  }
+  const modelFamilyKey = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "modelFamilyKey",
+    value: model.modelFamilyKey,
+  });
 
-  const modelVersion = normalizeNonEmptyString(model?.modelVersion);
-  if (!modelVersion) {
-    runtimeErrors.push({
-      field: "modelVersion",
-      message: "must be a non-empty string",
-      value: model?.modelVersion,
-    });
-  }
+  const modelVersion = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "modelVersion",
+    value: model.modelVersion,
+  });
 
-  const versionLabel = normalizeNonEmptyString(model?.versionLabel);
-  if (!versionLabel) {
-    runtimeErrors.push({
-      field: "versionLabel",
-      message: "must be a non-empty string",
-      value: model?.versionLabel,
-    });
-  }
+  const versionLabel = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "versionLabel",
+    value: model.versionLabel,
+  });
 
   if (runtimeErrors.length > 0) {
     const firstError = runtimeErrors[0];
@@ -145,9 +154,11 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
   return {
     apiModelKey,
     apiEndpoint: {
-      method: normalizeNonEmptyString(model?.apiEndpoint?.method) || null,
+      method: apiEndpoint ? normalizeNonEmptyString(apiEndpoint.method) : null,
       path: endpointPath,
-      operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
+      operationId: apiEndpoint
+        ? normalizeNonEmptyString(apiEndpoint.operationId)
+        : null,
     },
     alternativeEvaluationStructureKey,
     supportsConsensus: model.supportsConsensus,

@@ -1,4 +1,5 @@
 import { createBadRequestError } from "../../utils/common/errors.js";
+import { isPlainObject } from "../../utils/common/objects.js";
 import { getEditableUserExpressionDomainOrThrow } from "./getEditableExpressionDomain.js";
 import { normalizeNewExpressionDomainPayload } from "./normalizeExpressionDomainPayload.js";
 
@@ -8,7 +9,7 @@ export const updateUserExpressionDomain = async ({
   updatedDomain,
   session = null,
 }) => {
-  if (!updatedDomain || typeof updatedDomain !== "object") {
+  if (!isPlainObject(updatedDomain)) {
     throw createBadRequestError("updatedDomain is required", {
       field: "updatedDomain",
     });

@@ -57,7 +57,7 @@ export const resolveIssueConsensusConfigOrThrow = ({
     };
   }
 
-  if (!Number.isInteger(consensusMaxPhases) || Number(consensusMaxPhases) <= 0) {
+  if (!Number.isInteger(consensusMaxPhases) || consensusMaxPhases <= 0) {
     throw createBadRequestError("consensusMaxPhases must be a positive integer", {
       code: "INVALID_CONSENSUS_MAX_PHASES",
       field: "consensusMaxPhases",

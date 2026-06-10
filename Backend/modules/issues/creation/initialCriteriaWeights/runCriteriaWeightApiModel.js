@@ -137,7 +137,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
         consensusMaxPhases: null,
       },
       criteria: criterionNames.map((criterionName, index) => ({
-        id: String(index + 1),
+        id: `${index + 1}`,
         name: criterionName,
         type: null,
       })),

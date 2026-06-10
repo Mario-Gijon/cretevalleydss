@@ -1,27 +1,14 @@
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { toIdString } from "../../utils/common/ids.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
-import { isPlainObject } from "../../utils/common/objects.js";
 import { isSupportedDomainForModel } from "./domainCompatibility.js";
 
 export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   expressionDomainConfig,
   leafCriteria,
 }) => {
-  const mode = String(expressionDomainConfig.mode).trim();
+  const mode = expressionDomainConfig.mode;
   const leafCriterionNames = leafCriteria.map((criterion) => criterion.name);
-
-  if (leafCriterionNames.length === 0) {
-    throw createBadRequestError("At least one leaf criterion is required", {
-      field: "expressionDomainConfig",
-    });
-  }
-
-  if (mode !== "global" && mode !== "byCriterion") {
-    throw createBadRequestError("expressionDomainConfig.mode must be 'global' or 'byCriterion'", {
-      field: "expressionDomainConfig",
-    });
-  }
 
   const domainIdByCriterionName = new Map();
   const usedDomainIds = new Set();
@@ -46,15 +33,7 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
   }
 
   const rawDomainsByCriterion = expressionDomainConfig.domainsByCriterion;
-  if (!isPlainObject(rawDomainsByCriterion)) {
-    throw createBadRequestError("expressionDomainConfig.domainsByCriterion is required", {
-      field: "expressionDomainConfig",
-    });
-  }
-
-  const providedCriterionNames = Object.keys(rawDomainsByCriterion)
-    .map((name) => String(name || "").trim())
-    .filter(Boolean);
+  const providedCriterionNames = Object.keys(rawDomainsByCriterion);
   const expectedCriterionNameSet = new Set(leafCriterionNames);
 
   const missingCriterionNames = leafCriterionNames.filter(
@@ -123,7 +102,7 @@ export const loadAccessibleExpressionDomains = async ({
     .session(session);
 
   const existingDomainIds = new Set(
-    domainDocs.map((domain) => toIdString(domain._id)).filter(Boolean)
+    domainDocs.map((domain) => toIdString(domain._id))
   );
 
   const missingDomains = domainIdList.filter(

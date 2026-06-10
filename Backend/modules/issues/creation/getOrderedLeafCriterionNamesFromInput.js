@@ -3,12 +3,6 @@ import { compareNameId } from "../shared/ordering.js";
 
 const collectLeafCriteriaFromInput = (nodes, leafCriteria = []) => {
   for (const node of nodes) {
-    if (!Array.isArray(node.children)) {
-      throw createInternalError("Normalized criterion node children must be an array", {
-        field: "criteria",
-      });
-    }
-
     if (node.children.length === 0) {
       leafCriteria.push({
         name: node.name,

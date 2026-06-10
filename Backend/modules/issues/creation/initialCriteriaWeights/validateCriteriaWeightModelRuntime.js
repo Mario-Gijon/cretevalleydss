@@ -21,73 +21,82 @@ const normalizeApiModelKey = (value) => {
   return normalizedKey || null;
 };
 
-export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
-  const modelName = normalizeNonEmptyString(model?.name) || "unknown";
-  const runtimeErrors = [];
+const pushRuntimeErrorIfMissingString = ({
+  runtimeErrors,
+  field,
+  value,
+  message = "must be a non-empty string",
+}) => {
+  const normalizedValue = normalizeNonEmptyString(value);
 
-  if (model?.isCriteriaWeightingModel !== true) {
+  if (!normalizedValue) {
     runtimeErrors.push({
-      field: "isCriteriaWeightingModel",
-      message: "must be true",
-      value: model?.isCriteriaWeightingModel,
+      field,
+      message,
+      value,
     });
   }
 
-  const apiModelKey = normalizeApiModelKey(model?.apiModelKey);
+  return normalizedValue;
+};
+
+export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
+  const modelName = normalizeNonEmptyString(model.name) || "unknown";
+  const runtimeErrors = [];
+  const apiEndpoint = model.apiEndpoint;
+
+  if (model.isCriteriaWeightingModel !== true) {
+    runtimeErrors.push({
+      field: "isCriteriaWeightingModel",
+      message: "must be true",
+      value: model.isCriteriaWeightingModel,
+    });
+  }
+
+  const apiModelKey = normalizeApiModelKey(model.apiModelKey);
   if (!apiModelKey) {
     runtimeErrors.push({
       field: "apiModelKey",
       message: "must be a non-empty string",
-      value: model?.apiModelKey,
+      value: model.apiModelKey,
     });
   }
 
-  const endpointPath = normalizeEndpointPath(model?.apiEndpoint?.path);
+  const endpointPath = apiEndpoint
+    ? normalizeEndpointPath(apiEndpoint.path)
+    : null;
   if (!endpointPath) {
     runtimeErrors.push({
       field: "apiEndpoint.path",
       message: "must be a non-empty string",
-      value: model?.apiEndpoint?.path,
+      value: apiEndpoint ? apiEndpoint.path : undefined,
     });
   }
 
-  const criteriaWeightingStructureKey = normalizeNonEmptyString(
-    model?.criteriaWeightingStructureKey
-  );
-  if (!criteriaWeightingStructureKey) {
-    runtimeErrors.push({
-      field: "criteriaWeightingStructureKey",
-      message: "is required",
-      value: model?.criteriaWeightingStructureKey,
-    });
-  }
+  const criteriaWeightingStructureKey = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "criteriaWeightingStructureKey",
+    message: "is required",
+    value: model.criteriaWeightingStructureKey,
+  });
 
-  const modelFamilyKey = normalizeNonEmptyString(model?.modelFamilyKey);
-  if (!modelFamilyKey) {
-    runtimeErrors.push({
-      field: "modelFamilyKey",
-      message: "must be a non-empty string",
-      value: model?.modelFamilyKey,
-    });
-  }
+  const modelFamilyKey = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "modelFamilyKey",
+    value: model.modelFamilyKey,
+  });
 
-  const modelVersion = normalizeNonEmptyString(model?.modelVersion);
-  if (!modelVersion) {
-    runtimeErrors.push({
-      field: "modelVersion",
-      message: "must be a non-empty string",
-      value: model?.modelVersion,
-    });
-  }
+  const modelVersion = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "modelVersion",
+    value: model.modelVersion,
+  });
 
-  const versionLabel = normalizeNonEmptyString(model?.versionLabel);
-  if (!versionLabel) {
-    runtimeErrors.push({
-      field: "versionLabel",
-      message: "must be a non-empty string",
-      value: model?.versionLabel,
-    });
-  }
+  const versionLabel = pushRuntimeErrorIfMissingString({
+    runtimeErrors,
+    field: "versionLabel",
+    value: model.versionLabel,
+  });
 
   if (runtimeErrors.length > 0) {
     const firstError = runtimeErrors[0];
@@ -110,9 +119,11 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
   return {
     apiModelKey,
     apiEndpoint: {
-      method: normalizeNonEmptyString(model?.apiEndpoint?.method) || null,
+      method: apiEndpoint ? normalizeNonEmptyString(apiEndpoint.method) : null,
       path: endpointPath,
-      operationId: normalizeNonEmptyString(model?.apiEndpoint?.operationId) || null,
+      operationId: apiEndpoint
+        ? normalizeNonEmptyString(apiEndpoint.operationId)
+        : null,
     },
     criteriaWeightingStructureKey,
     modelFamilyKey,

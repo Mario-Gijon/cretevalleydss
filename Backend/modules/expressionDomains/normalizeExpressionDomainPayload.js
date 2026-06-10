@@ -3,10 +3,35 @@ import {
   createBadRequestError,
   createForbiddenError,
 } from "../../utils/common/errors.js";
-import { normalizeString } from "../../utils/common/strings.js";
+import { isPlainObject } from "../../utils/common/objects.js";
+
+const normalizeWhitespace = (value) => value.trim().replace(/\s+/g, " ");
+
+const requireNonEmptyStringOrThrow = ({ value, field, message }) => {
+  if (typeof value !== "string") {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  const normalizedValue = normalizeWhitespace(value);
+  if (!normalizedValue) {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  return normalizedValue;
+};
 
 export const normalizeNewExpressionDomainPayload = (payload) => {
-  let {
+  if (!isPlainObject(payload)) {
+    throw createBadRequestError("Expression domain payload must be an object", {
+      field: "payload",
+    });
+  }
+
+  const {
     name,
     type,
     numericRange,
@@ -14,10 +39,17 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     valuesMode,
     linguisticLabels,
     isGlobal,
-  } = payload || {};
-
-  name = normalizeString(name);
-  type = normalizeString(type);
+  } = payload;
+  const normalizedName = requireNonEmptyStringOrThrow({
+    value: name,
+    field: "name",
+    message: "Name is required",
+  });
+  const normalizedType = requireNonEmptyStringOrThrow({
+    value: type,
+    field: "type",
+    message: "Invalid type",
+  });
 
   if (isGlobal === true) {
     throw createForbiddenError(
@@ -31,20 +63,14 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     });
   }
 
-  if (!name) {
-    throw createBadRequestError("Name is required", {
-      field: "name",
-    });
-  }
-
-  if (!["numeric", "linguistic"].includes(type)) {
+  if (!["numeric", "linguistic"].includes(normalizedType)) {
     throw createBadRequestError("Invalid type", {
       field: "type",
     });
   }
 
-  if (type === "numeric") {
-    if (!numericRange || numericRange.min == null || numericRange.max == null) {
+  if (normalizedType === "numeric") {
+    if (!isPlainObject(numericRange)) {
       throw createBadRequestError(
         "numericRange.min and numericRange.max are required for numeric domains",
         {
@@ -53,14 +79,27 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
       );
     }
 
-    const min = Number(numericRange.min);
-    const max = Number(numericRange.max);
-    const step =
-      numericRange.step == null || numericRange.step === ""
-        ? null
-        : Number(numericRange.step);
+    const { min, max, step: rawStep } = numericRange;
+    if (min == null || max == null) {
+      throw createBadRequestError(
+        "numericRange.min and numericRange.max are required for numeric domains",
+        {
+          field: "numericRange",
+        }
+      );
+    }
 
-    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    const step =
+      rawStep == null || rawStep === ""
+        ? null
+        : rawStep;
+
+    if (
+      typeof min !== "number" ||
+      !Number.isFinite(min) ||
+      typeof max !== "number" ||
+      !Number.isFinite(max)
+    ) {
       throw createBadRequestError("min/max must be numbers", {
         field: "numericRange",
       });
@@ -72,15 +111,18 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
       });
     }
 
-    if (step != null && (!Number.isFinite(step) || step <= 0)) {
+    if (
+      step != null &&
+      (typeof step !== "number" || !Number.isFinite(step) || step <= 0)
+    ) {
       throw createBadRequestError("step must be null or a positive number", {
         field: "numericRange",
       });
     }
 
     return {
-      name,
-      type,
+      name: normalizedName,
+      type: normalizedType,
       numericRange: { min, max, step },
       membershipFunction: null,
       valueCount: null,
@@ -96,7 +138,11 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   const normalizedValuesMode =
     valuesMode == null || valuesMode === ""
       ? "automatic"
-      : normalizeString(valuesMode);
+      : requireNonEmptyStringOrThrow({
+        value: valuesMode,
+        field: "valuesMode",
+        message: "valuesMode must be 'automatic' or 'custom'",
+      });
 
   if (!["automatic", "custom"].includes(normalizedValuesMode)) {
     throw createBadRequestError("valuesMode must be 'automatic' or 'custom'", {
@@ -116,14 +162,18 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
   const seenLabels = new Set();
 
   const normalizedLabels = linguisticLabels.map((labelItem) => {
-    const label = normalizeString(labelItem?.label);
-    const values = labelItem?.values;
-
-    if (!label) {
-      throw createBadRequestError("Label is required", {
+    if (!isPlainObject(labelItem)) {
+      throw createBadRequestError("Each linguistic label must be an object", {
         field: "linguisticLabels",
       });
     }
+
+    const label = requireNonEmptyStringOrThrow({
+      value: labelItem.label,
+      field: "linguisticLabels",
+      message: "Label is required",
+    });
+    const values = labelItem.values;
 
     if (seenLabels.has(label)) {
       throw createBadRequestError(`Duplicated label '${label}'`, {
@@ -141,22 +191,24 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
       );
     }
 
-    const numericValues = values.map(Number);
-
-    if (!numericValues.every(Number.isFinite)) {
+    if (
+      values.some(
+        (value) => typeof value !== "number" || !Number.isFinite(value)
+      )
+    ) {
       throw createBadRequestError("values must be numbers", {
         field: "linguisticLabels",
       });
     }
 
-    if (!numericValues.every((item) => item >= 0 && item <= 1)) {
+    if (!values.every((item) => item >= 0 && item <= 1)) {
       throw createBadRequestError("values must be in range [0, 1]", {
         field: "linguisticLabels",
       });
     }
 
-    for (let index = 1; index < numericValues.length; index += 1) {
-      if (numericValues[index] < numericValues[index - 1]) {
+    for (let index = 1; index < values.length; index += 1) {
+      if (values[index] < values[index - 1]) {
         throw createBadRequestError(
           "values must be ordered (non-decreasing)",
           {
@@ -168,13 +220,13 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
 
     return {
       label,
-      values: numericValues,
+      values,
     };
   });
 
   return {
-    name,
-    type,
+    name: normalizedName,
+    type: normalizedType,
     numericRange: null,
     membershipFunction: membershipDefinition.key,
     valueCount: derivedValueCount,

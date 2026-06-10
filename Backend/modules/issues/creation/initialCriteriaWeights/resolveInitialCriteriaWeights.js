@@ -132,7 +132,7 @@ export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
   const valueCounts = new Set();
 
   for (const domain of linguisticDomains) {
-    const valueCount = Number(domain.valueCount);
+    const valueCount = domain.valueCount;
     if (!Number.isInteger(valueCount) || valueCount < 2) {
       throw createBadRequestError(
         "Fuzzy criteria weights require a valid linguistic valueCount",
