@@ -8,7 +8,7 @@ import { SectionCard } from "../shared/FinishedIssueDialogPrimitives";
 import { AnalyticalScatterChart } from "../charts/AnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../charts/AnalyticalConsensusLineChart";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import { normalizePlotsGraphic } from "../../utils/finishedIssueDialog.utils";
+import { normalizePlotsGraphic } from "../../logic/buildFinishedIssueGraphs";
 
 /**
  * Seccion Graphs del dialogo de issue finalizado.

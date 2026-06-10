@@ -11,21 +11,27 @@ import {
 import { useFinishedIssueRatingsView } from "./useFinishedIssueRatingsView.js";
 import {
   applyScenarioToIssueInfo,
+} from "../logic/buildFinishedIssueView";
+import {
   buildParamsResolved,
   buildPseudoParametersFromValues,
   cleanParamsForSend,
   filterOutWeightsParams,
+  modelUsesScenarioCriteriaWeights,
+  validateScenarioCriteriaWeights,
+  validateParams,
+} from "../logic/buildFinishedScenarioParameters";
+import {
   getCompatReason,
+  isModelCompatible,
+} from "../logic/buildFinishedScenarioRuns";
+import {
   getLastPhaseIndex,
   getLeafCriteriaNamesFallback,
   getRoundsCount,
   hasSingleLeafCriterion,
-  isModelCompatible,
-  modelUsesScenarioCriteriaWeights,
-  safeJsonStringify,
-  validateScenarioCriteriaWeights,
-  validateParams,
-} from "../utils/finishedIssueDialog.utils";
+} from "../logic/selectFinishedIssuePhase";
+import { buildFinishedModelOutputView } from "../logic/buildFinishedModelOutputView";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const unwrap = (response) =>
@@ -33,66 +39,22 @@ const unwrap = (response) =>
     ? response.data
     : response;
 
-const isPlainObject = (value) =>
-  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const safeJsonStringify = (value) => {
+  try {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      }
+      return value;
+    }
 
-const hasModelSpecificOutput = (value) => {
-  if (value === null || value === undefined) return false;
-  if (isPlainObject(value)) return Object.keys(value).length > 0;
-  return true;
-};
-
-const formatExecutedAt = (value) => {
-  if (!value) return null;
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleString();
-};
-
-const firstDefinedValue = (values = []) => {
-  for (const value of values) {
-    if (value !== null && value !== undefined) return value;
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return typeof value === "string" ? value : String(value);
   }
-  return null;
-};
-
-const resolveModelSpecificOutput = ({ viewIssue, currentPhaseIndex }) => {
-  const selectedPhase = Number(currentPhaseIndex) + 1;
-  const findByPhase = (entries = []) =>
-    entries.find((entry) => Number(entry?.phase) === selectedPhase) || null;
-
-  const selectedRound =
-    findByPhase(Array.isArray(viewIssue?.consensusHistory) ? viewIssue.consensusHistory : []) ||
-    findByPhase(Array.isArray(viewIssue?.consensusRounds) ? viewIssue.consensusRounds : []) ||
-    findByPhase(Array.isArray(viewIssue?.consensus) ? viewIssue.consensus : []);
-
-  const selectedRoundModelExecution =
-    selectedRound?.modelExecution || selectedRound?.details?.modelExecution || null;
-
-  const modelExecution = firstDefinedValue([
-    selectedRoundModelExecution,
-    viewIssue?.modelExecution,
-    viewIssue?.consensusDetails?.modelExecution,
-    viewIssue?.selectedScenario?.outputs?.modelExecution,
-  ]);
-
-  const rawOutput = firstDefinedValue([
-    selectedRoundModelExecution?.rawOutput,
-    viewIssue?.modelExecution?.rawOutput,
-    viewIssue?.consensusDetails?.modelExecution?.rawOutput,
-    viewIssue?.selectedScenario?.outputs?.rawOutput,
-    viewIssue?.selectedScenario?.outputs?.standardResult?.rawOutput,
-    modelExecution?.rawOutput,
-  ]);
-
-  return {
-    rawOutput,
-    modelExecution:
-      modelExecution ||
-      (rawOutput !== null && rawOutput !== undefined ? { rawOutput } : null),
-  };
 };
 
 /**
@@ -682,20 +644,14 @@ export const useFinishedIssueDialogView = ({
 
   const selectedRunLabel = selectedRunKey === "base" ? "Base" : getRunLabel(selectedRunMeta);
 
-  const { rawOutput, modelExecution } = resolveModelSpecificOutput({
+  const {
+    rawOutput,
+    rawOutputExists,
+    modelExecution,
+  } = buildFinishedModelOutputView({
     viewIssue,
     currentPhaseIndex,
   });
-  const rawOutputExists = hasModelSpecificOutput(rawOutput);
-
-  const modelExecutionMeta = modelExecution
-    ? {
-      modelName: modelExecution?.modelName ?? null,
-      modelKey: modelExecution?.modelKey ?? null,
-      executedAt: formatExecutedAt(modelExecution?.executedAt ?? null),
-    }
-    : null;
-
   const rawOutputPretty = rawOutputExists ? safeJsonStringify(rawOutput) : "";
 
   return {
@@ -745,7 +701,7 @@ export const useFinishedIssueDialogView = ({
     modelSpecificOutputSection: {
       rawOutput: rawOutputExists ? rawOutput : null,
       rawOutputPretty,
-      modelExecution: modelExecutionMeta,
+      modelExecution,
       hasOutput: rawOutputExists,
     },
     modelsSection: {

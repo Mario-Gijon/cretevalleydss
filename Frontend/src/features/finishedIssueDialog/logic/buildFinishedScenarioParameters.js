@@ -1,26 +1,3 @@
-import { extractLeafCriteria } from "../../issueEvaluation/shared/leafCriteria.utils";
-
-const countLeafCriteria = (nodes) => {
-  if (!Array.isArray(nodes) || nodes.length === 0) return 0;
-
-  let count = 0;
-  const stack = [...nodes];
-
-  while (stack.length) {
-    const node = stack.pop();
-    if (!node) continue;
-
-    const children = Array.isArray(node.children) ? node.children : [];
-    if (children.length === 0) {
-      count += 1;
-    } else {
-      stack.push(...children);
-    }
-  }
-
-  return count;
-};
-
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -30,175 +7,20 @@ const normalizeNonEmptyString = (value) => {
   return normalized.length > 0 ? normalized : null;
 };
 
-const getParameterExpectedLength = (parameter, leafCount) => {
-  if (parameter?.scope === "perCriterion") return leafCount;
-  const length = parameter?.restrictions?.length;
-  return typeof length === "number" ? length : null;
-};
-
-/**
- * Obtiene el numero de criterios hoja del issue.
- *
- * @param {Object} source Datos del issue.
- * @returns {number}
- */
-export const getLeafCriteriaCountFromIssue = (source) => {
-  if (Array.isArray(source?.modelParams?.leafCriteria)) {
-    return source.modelParams.leafCriteria.length;
-  }
-
-  if (Array.isArray(source?.modelParams?.base?.leafCriteria)) {
-    return source.modelParams.base.leafCriteria.length;
-  }
-
-  if (Array.isArray(source?.summary?.criteria)) {
-    return countLeafCriteria(source.summary.criteria);
-  }
-
-  if (Array.isArray(source?.criteria)) {
-    return countLeafCriteria(source.criteria);
-  }
-
-  return 0;
-};
-
-/**
- * Indica si el issue tiene un unico criterio hoja.
- *
- * @param {Object} source Datos del issue.
- * @returns {boolean}
- */
-export const hasSingleLeafCriterion = (source) =>
-  getLeafCriteriaCountFromIssue(source) === 1;
-
-/**
- * Stringify seguro para visualizar parametros.
- *
- * @param {*} value Valor a serializar.
- * @returns {string}
- */
-export const safeJsonStringify = (value) => {
-  try {
-    if (value === null || value === undefined) return "";
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return "";
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-        return JSON.stringify(JSON.parse(trimmed), null, 2);
-      }
-      return value;
-    }
-
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return typeof value === "string" ? value : String(value);
-  }
-};
-
-/**
- * Devuelve el ultimo indice de fase disponible en ratings.
- *
- * @param {Object} issueInfo Datos del issue.
- * @returns {number}
- */
-export const getLastPhaseIndex = (issueInfo) => {
-  const phaseFromRounds = (rounds = []) => {
-    const phases = rounds
-      .map((round) => Number(round?.phase))
-      .filter((phase) => Number.isInteger(phase) && phase > 0);
-    if (phases.length === 0) return null;
-    return Math.max(...phases);
-  };
-
-  const historyPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
-  );
-  if (historyPhase) return historyPhase - 1;
-
-  const roundsPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
-  );
-  if (roundsPhase) return roundsPhase - 1;
-
-  const consensusPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
-  );
-  if (consensusPhase) return consensusPhase - 1;
-
-  const keys = Object.keys(issueInfo?.expertsRatings || {})
-    .map((key) => parseInt(key, 10))
-    .filter((key) => !Number.isNaN(key));
-
-  const last = Math.max(...keys, 0) - 1;
-  return Math.max(0, last);
-};
-
-/**
- * Calcula el numero de rondas del issue.
- *
- * @param {Object} issueInfo Datos del issue.
- * @returns {number}
- */
-export const getRoundsCount = (issueInfo) => {
-  const phaseFromRounds = (rounds = []) => {
-    const phases = rounds
-      .map((round) => Number(round?.phase))
-      .filter((phase) => Number.isInteger(phase) && phase > 0);
-    if (phases.length === 0) return null;
-    return Math.max(...phases);
-  };
-
-  const historyPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
-  );
-  if (historyPhase) return historyPhase;
-
-  const roundsPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
-  );
-  if (roundsPhase) return roundsPhase;
-
-  const consensusPhase = phaseFromRounds(
-    Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
-  );
-  if (consensusPhase) return consensusPhase;
-
-  const fromConsensus = issueInfo?.summary?.consensusInfo?.consensusReachedPhase;
-  if (typeof fromConsensus === "number" && fromConsensus > 0) return fromConsensus;
-
-  const keys = Object.keys(issueInfo?.expertsRatings || {})
-    .map((key) => parseInt(key, 10))
-    .filter((key) => !Number.isNaN(key));
-
-  const derived = Math.max(...keys, 0);
-  if (derived > 0) return derived;
-
-  const rankings = issueInfo?.alternativesRankings;
-  if (Array.isArray(rankings) && rankings.length) return rankings.length;
-
-  return 0;
-};
-
-/**
- * Clona objeto de parametros en superficie.
- *
- * @param {Object} obj Parametros base.
- * @returns {Object}
- */
-export const stripWeights = (obj) => {
+const stripWeights = (obj) => {
   if (!obj || typeof obj !== "object") return {};
   const { weights, ...rest } = obj;
   void weights;
   return rest;
 };
 
-/**
- * Clona profundo de parametros para visualizacion.
- *
- * @param {*} value Parametros base.
- * @returns {*}
- */
-export const stripWeightsDeep = (value) => stripWeights(value);
+const stripWeightsDeep = (value) => stripWeights(value);
+
+const getParameterExpectedLength = (parameter, leafCount) => {
+  if (parameter?.scope === "perCriterion") return leafCount;
+  const length = parameter?.restrictions?.length;
+  return typeof length === "number" ? length : null;
+};
 
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
@@ -210,12 +32,6 @@ export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
 const isCriteriaWeightsParameter = (parameter) =>
   parameter?.parameterStructureKey === "criteriaWeights";
 
-/**
- * Filtra el parametro `weights` de una coleccion de parametros.
- *
- * @param {Array} params Parametros del modelo.
- * @returns {Array}
- */
 export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
 
@@ -346,28 +162,6 @@ const getScenarioParameterDefinitions = (model) => {
   return syntheticWeights ? [...params, syntheticWeights] : params;
 };
 
-/**
- * Quita datos de pesos de la definicion de modelo.
- *
- * @param {Object} model Modelo del backend.
- * @returns {Object}
- */
-export const omitWeightsFromModel = (model) => {
-  if (!model || typeof model !== "object") return model;
-
-  return {
-    ...model,
-    parameters: resolveScenarioModelParameters(model),
-    defaultsResolved: stripWeightsDeep(model.defaultsResolved),
-  };
-};
-
-/**
- * Construye parametros "pseudo" cuando no hay schema.
- *
- * @param {Object} values Valores base.
- * @returns {Array}
- */
 export const buildPseudoParametersFromValues = (values) => {
   const source = values && typeof values === "object" ? values : {};
 
@@ -401,42 +195,14 @@ export const buildPseudoParametersFromValues = (values) => {
     });
 };
 
-/**
- * Convierte un valor a numero o vacio.
- *
- * @param {*} value Valor de entrada.
- * @returns {number|string}
- */
-export const toNumberOrEmpty = (value) => {
-  if (value === "" || value === null || value === undefined) return "";
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : "";
-};
-
-/**
- * Limita un numero por minimo y maximo.
- *
- * @param {number} number Numero a limitar.
- * @param {number|null} min Minimo.
- * @param {number|null} max Maximo.
- * @returns {number}
- */
-export const clamp = (number, min, max) => {
+const clamp = (number, min, max) => {
   if (!Number.isFinite(number)) return number;
   if (min != null && Number.isFinite(min) && number < min) return min;
   if (max != null && Number.isFinite(max) && number > max) return max;
   return number;
 };
 
-/**
- * Asegura longitud fija para arrays.
- *
- * @param {Array} arr Array de entrada.
- * @param {number} len Longitud final.
- * @param {*} filler Valor de relleno.
- * @returns {Array}
- */
-export const ensureArrayLen = (arr, len, filler = "") => {
+const ensureArrayLen = (arr, len, filler = "") => {
   const next = Array.isArray(arr) ? [...arr] : [];
   if (next.length < len) return [...next, ...Array(len - next.length).fill(filler)];
   if (next.length > len) return next.slice(0, len);
@@ -499,162 +265,6 @@ const validateIntervalByRestrictions = ({ pair, restrictions }) => {
   if (ordered === "nonDecreasing" && !(left <= right)) return false;
 
   return true;
-};
-
-/**
- * Obtiene nombres de criterios hoja desde summary.
- *
- * @param {Array} summaryCriteria Arbol de criterios.
- * @returns {Array}
- */
-export const getLeafCriteriaNamesFallback = (summaryCriteria) => {
-  try {
-    const leaf = extractLeafCriteria(summaryCriteria || []);
-    return leaf.map((criterion) => criterion?.name).filter(Boolean);
-  } catch {
-    return [];
-  }
-};
-
-const getEvaluationCompatibilityFlag = (model) => {
-  return model?.compatibility?.alternativeEvaluationStructure;
-};
-
-const isFinitePoint = (point) =>
-  Array.isArray(point) &&
-  point.length === 2 &&
-  Number.isFinite(Number(point[0])) &&
-  Number.isFinite(Number(point[1]));
-
-const normalizePoint = (point) => ({
-  x: Number(point[0]),
-  y: Number(point[1]),
-});
-
-export const normalizePlotsGraphic = (plotsGraphic) => {
-  if (!plotsGraphic || typeof plotsGraphic !== "object") {
-    return null;
-  }
-
-  const expertPointsRaw = Array.isArray(plotsGraphic.expert_points)
-    ? plotsGraphic.expert_points
-    : Array.isArray(plotsGraphic.expertPoints)
-      ? plotsGraphic.expertPoints
-      : null;
-
-  const collectivePointRaw = Array.isArray(plotsGraphic.collective_point)
-    ? plotsGraphic.collective_point
-    : Array.isArray(plotsGraphic.collectivePoint)
-      ? plotsGraphic.collectivePoint
-      : null;
-
-  const reason =
-    typeof plotsGraphic.reason === "string" && plotsGraphic.reason.trim()
-      ? plotsGraphic.reason.trim()
-      : null;
-
-  const labelsRaw = Array.isArray(plotsGraphic.expert_labels)
-    ? plotsGraphic.expert_labels
-    : [];
-  const pointsByEmailRaw =
-    plotsGraphic.expert_points_by_email &&
-    typeof plotsGraphic.expert_points_by_email === "object"
-      ? plotsGraphic.expert_points_by_email
-      : null;
-
-  const expertPoints = [];
-
-  if (pointsByEmailRaw) {
-    for (const [label, point] of Object.entries(pointsByEmailRaw)) {
-      if (!isFinitePoint(point)) continue;
-      expertPoints.push({
-        label: String(label),
-        ...normalizePoint(point),
-      });
-    }
-  } else if (Array.isArray(expertPointsRaw)) {
-    expertPointsRaw.forEach((point, index) => {
-      if (!isFinitePoint(point)) return;
-      const labelCandidate = labelsRaw[index];
-      const label =
-        typeof labelCandidate === "string" && labelCandidate.trim()
-          ? labelCandidate.trim()
-          : `Expert ${index + 1}`;
-
-      expertPoints.push({
-        label,
-        ...normalizePoint(point),
-      });
-    });
-  }
-
-  const collectivePoint = isFinitePoint(collectivePointRaw)
-    ? {
-        label: "Collective",
-        ...normalizePoint(collectivePointRaw),
-      }
-    : null;
-
-  return {
-    expertPoints,
-    collectivePoint,
-    reason,
-    raw: plotsGraphic,
-    isValid:
-      expertPoints.length > 0 &&
-      isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
-  };
-};
-
-/**
- * Comprueba compatibilidad del modelo seleccionado.
- *
- * @param {Object} model Modelo candidato.
- * @returns {boolean}
- */
-export const isModelCompatible = (model) => {
-  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
-    return model.scenarioCompatibility.compatible === true;
-  }
-
-  const evalCompat = getEvaluationCompatibilityFlag(model);
-  const domainCompat = model?.compatibility?.domain;
-  const consensusCompatible = model?.supportsConsensus !== true;
-
-  if (evalCompat === false) return false;
-  if (domainCompat === false) return false;
-  if (!consensusCompatible) return false;
-
-  return true;
-};
-
-/**
- * Motivo de incompatibilidad mostrado en UI.
- *
- * @param {Object} model Modelo candidato.
- * @param {string|null} domainType Dominio del issue.
- * @returns {string}
- */
-export const getCompatReason = (model, domainType) => {
-  if (model?.scenarioCompatibility && typeof model.scenarioCompatibility === "object") {
-    const reasons = Array.isArray(model.scenarioCompatibility.reasons)
-      ? model.scenarioCompatibility.reasons.filter(Boolean)
-      : [];
-    return reasons.join(" · ");
-  }
-
-  const reasons = [];
-  const evalCompat = getEvaluationCompatibilityFlag(model);
-
-  if (evalCompat === false) reasons.push("Evaluation structure mismatch");
-  if (model?.compatibility?.domain === false) {
-    reasons.push(domainType ? `No ${domainType} support` : "Domain not supported");
-  }
-  if (model?.supportsConsensus === true) {
-    reasons.push("Consensus scenarios are not supported");
-  }
-
-  return reasons.join(" · ");
 };
 
 const resolveCriterionMapLeafRows = (leafCriteria = []) => {
@@ -778,14 +388,6 @@ const buildCriterionMapFromDefaults = ({ param, leafCriteria }) => {
   return out;
 };
 
-/**
- * Construye valores resueltos a partir del schema del modelo.
- *
- * @param {Object} params Parametros de entrada.
- * @param {Object} params.model Modelo seleccionado.
- * @param {number} params.leafCount Numero de criterios hoja.
- * @returns {Object}
- */
 export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => {
   const out = isPlainObject(model?.defaultsResolved)
     ? stripWeightsDeep(model.defaultsResolved)
@@ -871,12 +473,6 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
   return out;
 };
 
-/**
- * Limpia parametros para payload de creacion de escenario.
- *
- * @param {Object} params Parametros de entrada.
- * @returns {Object}
- */
 export const cleanParamsForSend = ({
   model,
   values,
@@ -1054,12 +650,6 @@ export const cleanParamsForSend = ({
   return out;
 };
 
-/**
- * Valida parametros antes de crear un nuevo escenario.
- *
- * @param {Object} params Parametros de entrada.
- * @returns {{ok: boolean, msg?: string}}
- */
 export const validateParams = ({
   model,
   values,
@@ -1371,131 +961,4 @@ export const validateParams = ({
   }
 
   return { ok: true };
-};
-
-const deepClone = (value) =>
-  typeof structuredClone === "function"
-    ? structuredClone(value)
-    : JSON.parse(JSON.stringify(value));
-
-const normalizeScenarioRanking = ({ standardResult }) => {
-  const fromRankedAlternatives = Array.isArray(standardResult?.rankedAlternatives)
-    ? standardResult.rankedAlternatives
-    : [];
-  if (!fromRankedAlternatives.length) return [];
-
-  return fromRankedAlternatives
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return null;
-      if (typeof entry.name !== "string" || !entry.name.trim()) return null;
-      const score = Number(entry.score);
-      if (!Number.isFinite(score)) return null;
-      const rank = Number(entry.rank);
-      if (!Number.isInteger(rank) || rank <= 0) return null;
-
-      return {
-        alternativeId:
-          typeof entry.alternativeId === "string" ? entry.alternativeId : null,
-        name: entry.name.trim(),
-        score,
-        rank,
-      };
-    })
-    .filter(Boolean)
-    .sort((left, right) => left.rank - right.rank);
-};
-
-/**
- * Proyecta un escenario de simulacion sobre la estructura base del issue.
- *
- * @param {Object} baseIssueInfo Datos base del issue.
- * @param {Object} scenario Escenario cargado.
- * @returns {Object}
- */
-export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
-  const out = deepClone(baseIssueInfo || {});
-  const scenarioOutputs = scenario?.outputs || {};
-  const standardResult = scenarioOutputs?.standardResult || {};
-  const modelExecutionOutput = scenarioOutputs?.modelExecution || null;
-  const scenarioRawOutput =
-    scenarioOutputs?.rawOutput ??
-    standardResult?.rawOutput ??
-    modelExecutionOutput?.rawOutput ??
-    null;
-  const scenarioEvaluationStructure =
-    scenario?.targetAlternativeEvaluationStructureKey ||
-    scenario?.alternativeEvaluationStructureKey ||
-    null;
-  const normalizedRanking = normalizeScenarioRanking({ standardResult });
-  const collectiveEvaluations =
-    standardResult?.collectiveEvaluations &&
-    typeof standardResult.collectiveEvaluations === "object"
-      ? standardResult.collectiveEvaluations
-      : null;
-
-  out.summary = {
-    ...(out.summary || {}),
-    model: scenario?.targetModelName || out?.summary?.model,
-    modelName: scenario?.targetModelName || out?.summary?.modelName,
-    targetModelName: scenario?.targetModelName,
-    alternativeEvaluationStructureKey:
-      scenarioEvaluationStructure || out?.summary?.alternativeEvaluationStructureKey,
-    modelParameters:
-      scenario?.config?.normalizedModelParameters ||
-      scenario?.config?.modelParameters ||
-      out?.summary?.modelParameters,
-  };
-
-  out.modelParams = { ...(out.modelParams || {}) };
-  out.modelParams.base = {
-    ...(out.modelParams.base || {}),
-    modelName: scenario?.targetModelName || out.modelParams.base?.modelName,
-    alternativeEvaluationStructureKey:
-      scenarioEvaluationStructure ||
-      out.modelParams.base?.alternativeEvaluationStructureKey,
-    paramsSaved:
-      scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
-    paramsResolved:
-      scenario?.config?.normalizedModelParameters ||
-      out.modelParams.base?.paramsResolved,
-  };
-
-  out.alternativesRankings = [{ phase: 1, rankedAlternatives: normalizedRanking }];
-  out.consensus = [];
-  out.consensusHistory = [];
-  out.consensusRounds = [];
-  out.consensusDetails = {
-    modelExecution: modelExecutionOutput,
-    rankedAlternatives: normalizedRanking,
-    plotsGraphic: standardResult?.plotsGraphic || {},
-  };
-  out.modelExecution =
-    modelExecutionOutput ||
-    (scenarioRawOutput !== null && scenarioRawOutput !== undefined
-      ? { rawOutput: scenarioRawOutput }
-      : null);
-  out.selectedScenario = {
-    config: scenario?.config || null,
-    outputs: scenarioOutputs,
-  };
-
-  const scatterPlot = standardResult?.plotsGraphic;
-  const normalizedPlotsGraphic = normalizePlotsGraphic(scatterPlot);
-  if (normalizedPlotsGraphic) {
-    out.analyticalGraphs = {
-      ...(out.analyticalGraphs || {}),
-      plotsGraphic: scatterPlot,
-      ...(normalizedPlotsGraphic.isValid ? { scatterPlot: [scatterPlot] } : {}),
-    };
-  }
-
-  if (collectiveEvaluations && out?.expertsRatings && typeof out.expertsRatings === "object") {
-    for (const key of Object.keys(out.expertsRatings)) {
-      if (out.expertsRatings[key]) {
-        out.expertsRatings[key].collectiveEvaluations = collectiveEvaluations;
-      }
-    }
-  }
-
-  return out;
 };

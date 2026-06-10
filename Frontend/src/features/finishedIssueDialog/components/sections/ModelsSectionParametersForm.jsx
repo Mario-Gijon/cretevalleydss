@@ -5,7 +5,7 @@ import {
   ParameterFieldHost,
 } from "../../../modelParameters";
 import ModelsSectionScenarioWeightsField from "./ModelsSectionScenarioWeightsField";
-import { modelUsesScenarioCriteriaWeights } from "../../utils/finishedIssueDialog.utils";
+import { modelUsesScenarioCriteriaWeights } from "../../logic/buildFinishedScenarioParameters";
 
 const ModelsSectionParametersForm = ({
   model,

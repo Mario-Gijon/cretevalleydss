@@ -22,7 +22,7 @@ import { getFinishedIssueDialogAuroraBg } from "../../styles/finishedIssueDialog
 import {
   getCompatReason,
   isModelCompatible,
-} from "../../utils/finishedIssueDialog.utils";
+} from "../../logic/buildFinishedScenarioRuns";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 
 /**

@@ -3,7 +3,7 @@ import { Box, Stack, TextField, Typography } from "@mui/material";
 import {
   formatScenarioWeightValue,
   modelUsesScenarioCriteriaWeights,
-} from "../../utils/finishedIssueDialog.utils";
+} from "../../logic/buildFinishedScenarioParameters";
 
 const FIELD_HEIGHT = 36;
 

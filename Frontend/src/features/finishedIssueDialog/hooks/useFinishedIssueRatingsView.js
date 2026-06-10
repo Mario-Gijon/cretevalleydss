@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { resolveFinishedIssueEvaluationStructure } from "../utils/finishedIssueEvaluationStructure.js";
+import { resolveFinishedIssueEvaluationStructure } from "../logic/resolveFinishedIssueEvaluationStructure";
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
 import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry.js";
 
