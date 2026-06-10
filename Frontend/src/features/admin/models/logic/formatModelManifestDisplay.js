@@ -1,14 +1,14 @@
-export const asArray = (value) => (Array.isArray(value) ? value : []);
-
-export const count = (value) => asArray(value).length;
-
-export const formatBoolean = (value, trueText = "Yes", falseText = "No") => {
+export const formatModelManifestBoolean = (
+  value,
+  trueText = "Yes",
+  falseText = "No"
+) => {
   if (value === true) return trueText;
   if (value === false) return falseText;
   return "Unknown";
 };
 
-export const toTitle = (value) => {
+export const toModelManifestTitle = (value) => {
   const text = String(value || "").replace(/[_-]+/g, " ").trim();
   if (!text) return "Unknown";
 
@@ -18,7 +18,7 @@ export const toTitle = (value) => {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
-export const valueToText = (value) => {
+export const modelManifestValueToText = (value) => {
   if (value === null || value === undefined) return "null";
   if (typeof value === "string") return value || "empty";
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -30,10 +30,11 @@ export const valueToText = (value) => {
   }
 };
 
-export const getModelDisplayName = (row = {}) =>
+export const getModelManifestDisplayName = (row = {}) =>
   row.displayName || row.mongoName || row.apiModelKey || "Unknown model";
 
-export const isVisibleInCreate = (row = {}) => row.visibleInIssueCreation !== false;
+export const isModelVisibleInCreateIssue = (row = {}) =>
+  row.visibleInIssueCreation !== false;
 
-export const getCatalogVisibilityLabel = (row = {}) =>
-  isVisibleInCreate(row) ? "Active" : "Inactive";
+export const getModelCatalogVisibilityLabel = (row = {}) =>
+  isModelVisibleInCreateIssue(row) ? "Active" : "Inactive";

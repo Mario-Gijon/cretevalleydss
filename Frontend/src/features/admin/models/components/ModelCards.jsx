@@ -3,16 +3,16 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { getAdminIssueDetailCardSx } from "../../issues/styles/adminIssues.styles";
 import {
-  formatBoolean,
-  getCatalogVisibilityLabel,
-  getModelDisplayName,
-  isVisibleInCreate,
-  toTitle,
-} from "../utils/modelManifest.formatters";
+  formatModelManifestBoolean,
+  getModelCatalogVisibilityLabel,
+  getModelManifestDisplayName,
+  isModelVisibleInCreateIssue,
+  toModelManifestTitle,
+} from "../logic/formatModelManifestDisplay";
 import {
-  getSeverityForSyncState,
-  getSyncState,
-} from "../utils/modelManifest.severity";
+  getModelManifestSyncSeverity,
+  getModelManifestSyncState,
+} from "../logic/getModelManifestSeverity";
 import CatalogVisibilitySwitch from "./CatalogVisibilitySwitch";
 import FieldGrid from "./FieldGrid";
 import StatusChip from "./StatusChip";
@@ -26,7 +26,7 @@ export default function ModelCards({
   return (
     <Stack spacing={1}>
       {rows.map((row, index) => {
-        const visible = isVisibleInCreate(row);
+        const visible = isModelVisibleInCreateIssue(row);
         const loadingVisibility = visibilityBusyId === row.mongoId;
 
         return (
@@ -38,7 +38,7 @@ export default function ModelCards({
             <Stack spacing={1}>
               <Stack spacing={0.7}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
-                  {getModelDisplayName(row)}
+                  {getModelManifestDisplayName(row)}
                 </Typography>
 
                 <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
@@ -47,13 +47,15 @@ export default function ModelCards({
                     label={row.isIssueModel ? "Issue model" : "Non-issue model"}
                     severity={row.isIssueModel ? "success" : "info"}
                   />
-                  <StatusChip label={toTitle(row.lifecycleKind)} />
+                  <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
                   <StatusChip
-                    label={getSyncState(row)}
-                    severity={getSeverityForSyncState(getSyncState(row))}
+                    label={getModelManifestSyncState(row)}
+                    severity={getModelManifestSyncSeverity(
+                      getModelManifestSyncState(row)
+                    )}
                   />
                   <StatusChip
-                    label={getCatalogVisibilityLabel(row)}
+                    label={getModelCatalogVisibilityLabel(row)}
                     severity={visible ? "success" : "error"}
                   />
                 </Stack>
@@ -61,23 +63,26 @@ export default function ModelCards({
 
               <FieldGrid
                 rows={[
-                  { label: "Catalog", value: getCatalogVisibilityLabel(row) },
-                  { label: "Lifecycle", value: toTitle(row.lifecycleKind) },
+                  { label: "Catalog", value: getModelCatalogVisibilityLabel(row) },
+                  { label: "Lifecycle", value: toModelManifestTitle(row.lifecycleKind) },
                   {
                     label: "Alternative structure",
-                    value: toTitle(row.alternativeEvaluationStructureKey),
+                    value: toModelManifestTitle(row.alternativeEvaluationStructureKey),
                   },
                   {
                     label: "Uses criteria weights",
-                    value: formatBoolean(row.usesCriteriaWeights),
+                    value: formatModelManifestBoolean(row.usesCriteriaWeights),
                   },
                   {
                     label: "Uses fuzzy weights",
-                    value: formatBoolean(row.usesFuzzyCriteriaWeights),
+                    value: formatModelManifestBoolean(row.usesFuzzyCriteriaWeights),
                   },
                   { label: "Input", value: row.apiInputFormat },
                   { label: "Output", value: row.apiOutputFormat },
-                  { label: "Issue model", value: formatBoolean(row.isIssueModel) },
+                  {
+                    label: "Issue model",
+                    value: formatModelManifestBoolean(row.isIssueModel),
+                  },
                 ]}
               />
 

@@ -8,23 +8,28 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { getAdminIssuesSectionPanelSx } from "../issues/styles/adminIssues.styles";
+import ModelCatalogTab from "./components/ModelCatalogTab";
 import ModelDetailDialog from "./components/ModelDetailDialog";
+import ModelManifestReviewTab from "./components/ModelManifestReviewTab";
+import ModelManifestSyncTab from "./components/ModelManifestSyncTab";
 import useAdminModelCatalog from "./hooks/useAdminModelCatalog";
 import useModelManifestActions from "./hooks/useModelManifestActions";
-import CatalogTab from "./tabs/CatalogTab";
-import ManifestSyncTab from "./tabs/ManifestSyncTab";
-import ReviewTab from "./tabs/ReviewTab";
-import { TABS } from "./utils/modelManifest.constants";
 import {
-  enrichCatalogRowsWithDryRun,
-  normalizeRowsFromCatalog,
-  normalizeRowsFromDryRun,
-  sortModelRowsByName,
-} from "./utils/modelManifest.normalizers";
+  mergeModelCatalogRowsWithDryRun,
+  normalizeModelCatalogRows,
+  normalizeModelManifestDryRunRows,
+  sortModelManifestRowsByName,
+} from "./logic/buildModelManifestRows";
+
+const MODEL_MANIFEST_TABS = {
+  CATALOG: 0,
+  SYNC: 1,
+  REVIEW: 2,
+};
 
 export default function ModelManifestSyncPanel() {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState(TABS.CATALOG);
+  const [activeTab, setActiveTab] = useState(MODEL_MANIFEST_TABS.CATALOG);
   const [selectedModel, setSelectedModel] = useState(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
@@ -42,16 +47,22 @@ export default function ModelManifestSyncPanel() {
     updateVisibility,
   } = useModelManifestActions({
     onCatalogShouldRefresh: loadCatalog,
-    onAfterSync: () => setActiveTab(TABS.SYNC),
+    onAfterSync: () => setActiveTab(MODEL_MANIFEST_TABS.SYNC),
   });
 
-  const dryRunRows = useMemo(() => normalizeRowsFromDryRun(dryRunReport), [dryRunReport]);
+  const dryRunRows = useMemo(
+    () => normalizeModelManifestDryRunRows(dryRunReport),
+    [dryRunReport]
+  );
 
-  const catalogRows = useMemo(() => normalizeRowsFromCatalog(catalogModels), [catalogModels]);
+  const catalogRows = useMemo(
+    () => normalizeModelCatalogRows(catalogModels),
+    [catalogModels]
+  );
 
   const modelRows = useMemo(() => {
-    const rows = enrichCatalogRowsWithDryRun(catalogRows, dryRunRows);
-    return sortModelRowsByName(rows);
+    const rows = mergeModelCatalogRowsWithDryRun(catalogRows, dryRunRows);
+    return sortModelManifestRowsByName(rows);
   }, [catalogRows, dryRunRows]);
 
   const handleConfirmSync = async () => {
@@ -98,8 +109,8 @@ export default function ModelManifestSyncPanel() {
           </Box>
         </Paper>
 
-        {activeTab === TABS.CATALOG && (
-          <CatalogTab
+        {activeTab === MODEL_MANIFEST_TABS.CATALOG && (
+          <ModelCatalogTab
             rows={modelRows}
             report={dryRunReport}
             loadingCatalog={loadingCatalog}
@@ -110,8 +121,8 @@ export default function ModelManifestSyncPanel() {
           />
         )}
 
-        {activeTab === TABS.SYNC && (
-          <ManifestSyncTab
+        {activeTab === MODEL_MANIFEST_TABS.SYNC && (
+          <ModelManifestSyncTab
             report={dryRunReport}
             syncResult={syncResult}
             loadingDryRun={loadingDryRun}
@@ -122,7 +133,9 @@ export default function ModelManifestSyncPanel() {
           />
         )}
 
-        {activeTab === TABS.REVIEW && <ReviewTab report={dryRunReport} />}
+        {activeTab === MODEL_MANIFEST_TABS.REVIEW && (
+          <ModelManifestReviewTab report={dryRunReport} />
+        )}
       </Stack>
 
       <ModelDetailDialog

@@ -7,18 +7,19 @@ import EmptyState from "../components/EmptyState";
 import MetricCard from "../components/MetricCard";
 import ReviewList from "../components/ReviewList";
 import SectionCard from "../components/SectionCard";
-import { count } from "../utils/modelManifest.formatters";
-import { flattenTechnicalDifferences } from "../utils/modelManifest.normalizers";
+import { flattenModelManifestTechnicalDifferences } from "../logic/buildModelManifestRows";
+
+const countItems = (value) => (Array.isArray(value) ? value.length : 0);
 
 function SyncSummary({ report }) {
   if (!report) return <EmptyState>Run a dry-run to see synchronization readiness.</EmptyState>;
 
   const manifest = report?.manifest || {};
   const summary = report?.summary || {};
-  const technicalDifferences = flattenTechnicalDifferences(report);
+  const technicalDifferences = flattenModelManifestTechnicalDifferences(report);
   const reviewNeeded =
-    count(summary.missingInMongo) +
-    count(summary.missingInManifest) +
+    countItems(summary.missingInMongo) +
+    countItems(summary.missingInManifest) +
     technicalDifferences.length;
 
   return (
@@ -42,7 +43,11 @@ function SyncSummary({ report }) {
         helper={reviewNeeded > 0 ? "Inspect Review tab" : "No technical differences"}
         severity={reviewNeeded > 0 ? "warning" : "success"}
       />
-      <MetricCard label="Not syncable" value={count(summary.notSyncable)} helper="Expected for services" />
+      <MetricCard
+        label="Not syncable"
+        value={countItems(summary.notSyncable)}
+        helper="Expected for services"
+      />
     </Box>
   );
 }
@@ -51,8 +56,8 @@ function SyncResult({ result }) {
   if (!result) return <EmptyState>No synchronization has been executed in this session.</EmptyState>;
 
   const summary = result?.summary || {};
-  const unchangedCount = summary.unchanged ?? count(result.unchanged);
-  const updatedCount = summary.updated ?? count(result.updated);
+  const unchangedCount = summary.unchanged ?? countItems(result.unchanged);
+  const updatedCount = summary.updated ?? countItems(result.updated);
 
   return (
     <Stack spacing={1.1}>
@@ -73,7 +78,11 @@ function SyncResult({ result }) {
           },
         }}
       >
-        <MetricCard label="Created" value={summary.created ?? count(result.created)} severity="success" />
+        <MetricCard
+          label="Created"
+          value={summary.created ?? countItems(result.created)}
+          severity="success"
+        />
         <MetricCard
           label="Updated"
           value={updatedCount}
@@ -86,12 +95,20 @@ function SyncResult({ result }) {
           helper={unchangedCount > 0 ? "Already synchronized" : "No unchanged models"}
           severity="success"
         />
-        <MetricCard label="Skipped" value={summary.skipped ?? count(result.skipped)} severity="warning" />
-        <MetricCard label="Stale" value={summary.stale ?? count(result.stale)} severity="warning" />
+        <MetricCard
+          label="Skipped"
+          value={summary.skipped ?? countItems(result.skipped)}
+          severity="warning"
+        />
+        <MetricCard
+          label="Stale"
+          value={summary.stale ?? countItems(result.stale)}
+          severity="warning"
+        />
         <MetricCard
           label="Warnings"
-          value={summary.warnings ?? count(result.warnings)}
-          severity={count(result.warnings) > 0 ? "warning" : "success"}
+          value={summary.warnings ?? countItems(result.warnings)}
+          severity={countItems(result.warnings) > 0 ? "warning" : "success"}
         />
       </Box>
 
@@ -149,7 +166,7 @@ function SyncResult({ result }) {
   );
 }
 
-export default function ManifestSyncTab({
+export default function ModelManifestSyncTab({
   report,
   syncResult,
   loadingDryRun,

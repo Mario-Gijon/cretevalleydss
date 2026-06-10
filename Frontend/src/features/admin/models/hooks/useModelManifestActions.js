@@ -6,7 +6,7 @@ import {
   syncModelManifest,
   updateModelCatalogVisibility,
 } from "../../../../services/admin.service";
-import { isVisibleInCreate } from "../utils/modelManifest.formatters";
+import { isModelVisibleInCreateIssue } from "../logic/formatModelManifestDisplay";
 
 export default function useModelManifestActions({ onCatalogShouldRefresh, onAfterSync } = {}) {
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -77,7 +77,7 @@ export default function useModelManifestActions({ onCatalogShouldRefresh, onAfte
     async (row) => {
       if (!row?.mongoId) return false;
 
-      const nextVisibility = !isVisibleInCreate(row);
+      const nextVisibility = !isModelVisibleInCreateIssue(row);
 
       setVisibilityBusyId(row.mongoId);
       setErrorMessage("");

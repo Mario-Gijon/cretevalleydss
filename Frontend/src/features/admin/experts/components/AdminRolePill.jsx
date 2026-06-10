@@ -1,7 +1,7 @@
 import { Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { pillSx } from "../adminExperts.utils";
+import { getAdminExpertPillSx } from "../styles/adminExperts.styles";
 
 /**
  * Chip de rol para una fila de experto.
@@ -19,7 +19,7 @@ const AdminRolePill = ({ role }) => {
       label={role || "user"}
       size="small"
       variant="outlined"
-      sx={pillSx(theme, tone)}
+      sx={getAdminExpertPillSx(theme, tone)}
     />
   );
 };

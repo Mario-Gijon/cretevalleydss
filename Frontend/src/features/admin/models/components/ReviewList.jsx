@@ -10,7 +10,6 @@ import { alpha } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { getAdminIssueDetailCardSx } from "../../issues/styles/adminIssues.styles";
-import { asArray } from "../utils/modelManifest.formatters";
 import StatusChip from "./StatusChip";
 
 export default function ReviewList({
@@ -19,7 +18,7 @@ export default function ReviewList({
   renderItem,
   emptyText = "No review items detected.",
 }) {
-  const list = asArray(items);
+  const list = Array.isArray(items) ? items : [];
 
   return (
     <Accordion

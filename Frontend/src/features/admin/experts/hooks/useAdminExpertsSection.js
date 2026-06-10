@@ -9,7 +9,11 @@ import {
   getAllUsers,
   updateUser,
 } from "../../../../services/admin.service";
-import { emptyForm, normalize } from "../adminExperts.utils";
+import {
+  buildAdminExpertEditForm,
+  createEmptyAdminExpertForm,
+} from "../logic/adminExpertFormState";
+import { filterAdminExperts } from "../logic/filterAdminExperts";
 
 /**
  * Gestiona el estado y acciones de la seccion Admin Experts.
@@ -31,7 +35,7 @@ export const useAdminExpertsSection = () => {
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState("create");
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(createEmptyAdminExpertForm());
 
   const [confirmDelete, setConfirmDelete] = useState({
     open: false,
@@ -69,51 +73,28 @@ export const useAdminExpertsSection = () => {
   }, []);
 
   const filteredExperts = useMemo(() => {
-    const q = normalize(search);
-
-    return (experts || []).filter((expert) => {
-      const matchesSearch =
-        !q ||
-        normalize(expert?.name).includes(q) ||
-        normalize(expert?.email).includes(q) ||
-        normalize(expert?.university).includes(q) ||
-        normalize(expert?.role).includes(q) ||
-        normalize(expert?.accountCreation).includes(q);
-
-      const matchesStatus =
-        statusFilter === "all"
-          ? true
-          : statusFilter === "confirmed"
-            ? Boolean(expert?.accountConfirm)
-            : !expert?.accountConfirm;
-
-      return matchesSearch && matchesStatus;
+    return filterAdminExperts({
+      experts,
+      search,
+      statusFilter,
     });
   }, [experts, search, statusFilter]);
 
   const openCreate = () => {
     setFormMode("create");
-    setForm({ ...emptyForm, accountConfirm: true, role: "user" });
+    setForm(createEmptyAdminExpertForm());
     setFormOpen(true);
   };
 
   const openEdit = (expert) => {
     setFormMode("edit");
-    setForm({
-      id: expert?.id || "",
-      name: expert?.name || "",
-      university: expert?.university || "",
-      email: expert?.email || "",
-      password: "",
-      accountConfirm: Boolean(expert?.accountConfirm),
-      role: expert?.role || "user",
-    });
+    setForm(buildAdminExpertEditForm(expert));
     setFormOpen(true);
   };
 
   const closeForm = () => {
     setFormOpen(false);
-    setForm(emptyForm);
+    setForm(createEmptyAdminExpertForm());
   };
 
   const onChangeForm = (field) => (e) => {

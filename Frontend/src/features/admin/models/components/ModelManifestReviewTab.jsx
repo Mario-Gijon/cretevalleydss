@@ -3,18 +3,23 @@ import { Stack } from "@mui/material";
 import EmptyState from "../components/EmptyState";
 import ReviewList from "../components/ReviewList";
 import SectionCard from "../components/SectionCard";
-import { asArray, count, toTitle, valueToText } from "../utils/modelManifest.formatters";
-import { flattenTechnicalDifferences } from "../utils/modelManifest.normalizers";
+import {
+  modelManifestValueToText,
+  toModelManifestTitle,
+} from "../logic/formatModelManifestDisplay";
+import { flattenModelManifestTechnicalDifferences } from "../logic/buildModelManifestRows";
 
-export default function ReviewTab({ report }) {
-  const technicalDifferences = flattenTechnicalDifferences(report);
+const countItems = (value) => (Array.isArray(value) ? value.length : 0);
+
+export default function ModelManifestReviewTab({ report }) {
+  const technicalDifferences = flattenModelManifestTechnicalDifferences(report);
   const summary = report?.summary || {};
-  const warnings = asArray(report?.warnings);
+  const warnings = Array.isArray(report?.warnings) ? report.warnings : [];
   const hasReviewItems =
     technicalDifferences.length > 0 ||
-    count(summary.missingInMongo) > 0 ||
-    count(summary.missingInManifest) > 0 ||
-    count(summary.notSyncable) > 0 ||
+    countItems(summary.missingInMongo) > 0 ||
+    countItems(summary.missingInManifest) > 0 ||
+    countItems(summary.notSyncable) > 0 ||
     warnings.length > 0;
 
   if (!report) {
@@ -38,7 +43,7 @@ export default function ReviewTab({ report }) {
             title="Technical differences"
             items={technicalDifferences}
             renderItem={(item) =>
-              `${item.model} - ${item.field} - Mongo: ${valueToText(item.mongoValue)} - Manifest: ${valueToText(item.manifestValue)}`
+              `${item.model} - ${item.field} - Mongo: ${modelManifestValueToText(item.mongoValue)} - Manifest: ${modelManifestValueToText(item.manifestValue)}`
             }
           />
           <ReviewList
@@ -55,7 +60,7 @@ export default function ReviewTab({ report }) {
             title="Not syncable"
             items={summary.notSyncable}
             renderItem={(item) =>
-              `${item?.key || "unknown"} - ${toTitle(item?.role)} - ${toTitle(item?.status)} - ${item?.reason || "No reason"}`
+              `${item?.key || "unknown"} - ${toModelManifestTitle(item?.role)} - ${toModelManifestTitle(item?.status)} - ${item?.reason || "No reason"}`
             }
           />
           <ReviewList title="Warnings" items={warnings} renderItem={(item) => item} />

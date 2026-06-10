@@ -1,17 +1,51 @@
-import { asArray, count } from "./modelManifest.formatters";
-import { getSyncState } from "./modelManifest.severity";
+import { getModelManifestSyncState } from "./getModelManifestSeverity";
 
-export const normalizeRowsFromDryRun = (report) => {
+const asList = (value) => (Array.isArray(value) ? value : []);
+const countEntries = (value) => asList(value).length;
+
+const getCatalogSyncState = (model = {}) => {
+  if (model?.manifestSync?.isStale) return "Stale";
+  if (model?.manifestSync?.lastSyncedAt) return "Synced";
+  if (model?.apiModelKey) return "Available";
+  return "Unknown";
+};
+
+const normalizeModelManifestIdentity = (value) =>
+  String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[-_\s]+/g, " ");
+
+const getModelManifestIdentityCandidates = (row = {}) =>
+  [row.apiModelKey, row.mongoId, row.mongoName, row.displayName]
+    .map(normalizeModelManifestIdentity)
+    .filter(Boolean);
+
+const indexModelManifestRows = (rows) => {
+  const index = new Map();
+
+  asList(rows).forEach((row) => {
+    getModelManifestIdentityCandidates(row).forEach((identity) => {
+      if (!index.has(identity)) {
+        index.set(identity, row);
+      }
+    });
+  });
+
+  return index;
+};
+
+export const normalizeModelManifestDryRunRows = (report) => {
   if (Array.isArray(report?.modelRows)) {
     return report.modelRows.map((row) => ({
       ...row,
-      syncState: getSyncState(row),
+      syncState: getModelManifestSyncState(row),
     }));
   }
 
   const rows = [];
 
-  asArray(report?.matches).forEach((match) => {
+  asList(report?.matches).forEach((match) => {
     rows.push({
       apiModelKey: match.manifestKey,
       displayName: match.manifestDisplayName,
@@ -19,12 +53,12 @@ export const normalizeRowsFromDryRun = (report) => {
       mongoId: match.mongoId,
       matched: true,
       matchedBy: match.matchedBy,
-      differences: asArray(match.differences),
-      syncState: count(match.differences) > 0 ? "Has differences" : "Synced",
+      differences: asList(match.differences),
+      syncState: countEntries(match.differences) > 0 ? "Has differences" : "Synced",
     });
   });
 
-  asArray(report?.summary?.missingInMongo).forEach((item) => {
+  asList(report?.summary?.missingInMongo).forEach((item) => {
     rows.push({
       apiModelKey: item.key,
       displayName: item.displayName,
@@ -33,7 +67,7 @@ export const normalizeRowsFromDryRun = (report) => {
     });
   });
 
-  asArray(report?.summary?.missingInManifest).forEach((item) => {
+  asList(report?.summary?.missingInManifest).forEach((item) => {
     rows.push({
       mongoName: item.mongoName,
       mongoId: item.mongoId,
@@ -42,7 +76,7 @@ export const normalizeRowsFromDryRun = (report) => {
     });
   });
 
-  asArray(report?.summary?.notSyncable).forEach((item) => {
+  asList(report?.summary?.notSyncable).forEach((item) => {
     rows.push({
       apiModelKey: item.key,
       displayName: item.key,
@@ -57,15 +91,8 @@ export const normalizeRowsFromDryRun = (report) => {
   return rows;
 };
 
-export const getCatalogSyncState = (model = {}) => {
-  if (model?.manifestSync?.isStale) return "Stale";
-  if (model?.manifestSync?.lastSyncedAt) return "Synced";
-  if (model?.apiModelKey) return "Available";
-  return "Unknown";
-};
-
-export const normalizeRowsFromCatalog = (models = []) =>
-  asArray(models).map((model) => ({
+export const normalizeModelCatalogRows = (models = []) =>
+  asList(models).map((model) => ({
     apiModelKey: model?.apiModelKey || null,
     displayName: model?.name || "Unknown model",
     mongoName: model?.name || "Unknown model",
@@ -74,8 +101,8 @@ export const normalizeRowsFromCatalog = (models = []) =>
     visibleInIssueCreation: model?.visibleInIssueCreation !== false,
     apiInputFormat: model?.apiInputFormat || null,
     apiOutputFormat: model?.apiOutputFormat || null,
-    modelInputFields: asArray(model?.modelInputFields),
-    modelOutputFields: asArray(model?.modelOutputFields),
+    modelInputFields: asList(model?.modelInputFields),
+    modelOutputFields: asList(model?.modelOutputFields),
     lifecycleKind: model?.lifecycleKind || null,
     safeToCreateIssueModel: null,
     alternativeEvaluationStructureKey:
@@ -87,7 +114,7 @@ export const normalizeRowsFromCatalog = (models = []) =>
     isMultiCriteria: model?.isMultiCriteria,
     supportedDomains: model?.supportedDomains || null,
     endpoint: model?.apiEndpoint || null,
-    parameters: asArray(model?.parameters),
+    parameters: asList(model?.parameters),
     request: model?.request ?? null,
     response: model?.response ?? null,
     manifestSync: model?.manifestSync || null,
@@ -101,50 +128,25 @@ export const normalizeRowsFromCatalog = (models = []) =>
     syncState: getCatalogSyncState(model),
   }));
 
-export const normalizeModelIdentity = (value) =>
-  String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[-_\s]+/g, " ");
+export const mergeModelCatalogRowsWithDryRun = (catalogRows, dryRunRows) => {
+  if (asList(dryRunRows).length === 0) return catalogRows;
 
-export const getRowIdentityCandidates = (row = {}) =>
-  [row.apiModelKey, row.mongoId, row.mongoName, row.displayName]
-    .map(normalizeModelIdentity)
-    .filter(Boolean);
+  const dryRunIndex = indexModelManifestRows(dryRunRows);
 
-export const indexDryRunRows = (rows) => {
-  const index = new Map();
-
-  asArray(rows).forEach((row) => {
-    getRowIdentityCandidates(row).forEach((identity) => {
-      if (!index.has(identity)) {
-        index.set(identity, row);
-      }
-    });
-  });
-
-  return index;
-};
-
-export const enrichCatalogRowsWithDryRun = (catalogRows, dryRunRows) => {
-  if (asArray(dryRunRows).length === 0) return catalogRows;
-
-  const dryRunIndex = indexDryRunRows(dryRunRows);
-
-  return asArray(catalogRows).map((row) => {
-    const dryRunRow = getRowIdentityCandidates(row)
+  return asList(catalogRows).map((row) => {
+    const dryRunRow = getModelManifestIdentityCandidates(row)
       .map((identity) => dryRunIndex.get(identity))
       .find(Boolean);
 
     if (!dryRunRow) return row;
 
-    const differences = asArray(dryRunRow.differences);
-    const dryRunSyncState = getSyncState(dryRunRow);
+    const differences = asList(dryRunRow.differences);
+    const dryRunSyncState = getModelManifestSyncState(dryRunRow);
     const syncState =
       differences.length > 0 ||
-        ["Has differences", "Missing in manifest", "Review needed", "Stale"].includes(
-          dryRunSyncState
-        )
+      ["Has differences", "Missing in manifest", "Review needed", "Stale"].includes(
+        dryRunSyncState
+      )
         ? dryRunSyncState
         : row.syncState;
 
@@ -160,9 +162,9 @@ export const enrichCatalogRowsWithDryRun = (catalogRows, dryRunRows) => {
   });
 };
 
-export const flattenTechnicalDifferences = (report) =>
-  asArray(report?.summary?.technicalDifferences).flatMap((item) =>
-    asArray(item?.differences).map((difference) => ({
+export const flattenModelManifestTechnicalDifferences = (report) =>
+  asList(report?.summary?.technicalDifferences).flatMap((item) =>
+    asList(item?.differences).map((difference) => ({
       model: item?.manifestKey || item?.mongoName || "Unknown model",
       mongoId: item?.mongoId || null,
       field: difference?.field || "unknown",
@@ -172,27 +174,26 @@ export const flattenTechnicalDifferences = (report) =>
     }))
   );
 
-export function sortModelRowsByName(rows = []) {
-  return [...rows].sort((a, b) => {
-    const nameA = (
-      a.displayName ||
-      a.mongoName ||
-      a.name ||
-      a.apiModelKey ||
+export const sortModelManifestRowsByName = (rows = []) => {
+  return [...rows].sort((left, right) => {
+    const leftName = (
+      left.displayName ||
+      left.mongoName ||
+      left.name ||
+      left.apiModelKey ||
+      ""
+    ).toString();
+    const rightName = (
+      right.displayName ||
+      right.mongoName ||
+      right.name ||
+      right.apiModelKey ||
       ""
     ).toString();
 
-    const nameB = (
-      b.displayName ||
-      b.mongoName ||
-      b.name ||
-      b.apiModelKey ||
-      ""
-    ).toString();
-
-    return nameA.localeCompare(nameB, "en", {
+    return leftName.localeCompare(rightName, "en", {
       sensitivity: "base",
       numeric: true,
     });
   });
-}
+};

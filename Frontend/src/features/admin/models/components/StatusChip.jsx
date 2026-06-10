@@ -1,7 +1,7 @@
 import { Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { chipSx } from "../utils/modelManifest.styles";
+import { getModelManifestChipSx } from "../styles/modelManifest.styles";
 
 export default function StatusChip({ label, severity = "info" }) {
   const theme = useTheme();
@@ -11,7 +11,7 @@ export default function StatusChip({ label, severity = "info" }) {
       size="small"
       label={label || "Unknown"}
       variant="outlined"
-      sx={chipSx(theme, severity)}
+      sx={getModelManifestChipSx(theme, severity)}
     />
   );
 }

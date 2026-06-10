@@ -43,10 +43,12 @@ import { ConfirmationDialog } from "../../../components/StyledComponents/Confirm
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { getActiveIssuesAuroraBg } from "../../activeIssues/styles/activeIssues.styles";
 import {
-  formatDateTime,
-  pillSx,
-  sectionPanelSx,
-} from "./adminExperts.utils";
+  formatAdminExpertDateTime,
+} from "./logic/formatAdminExpertDisplay";
+import {
+  getAdminExpertPillSx,
+  getAdminExpertsSectionPanelSx,
+} from "./styles/adminExperts.styles";
 import AdminRolePill from "./components/AdminRolePill";
 import AdminStatusPill from "./components/AdminStatusPill";
 import { useAdminExpertsSection } from "./hooks/useAdminExpertsSection";
@@ -90,7 +92,7 @@ export default function AdminExpertsSection() {
       </Backdrop>
 
       <Stack spacing={1}>
-        <Paper elevation={0} sx={{ ...sectionPanelSx(theme), p: 1 }}>
+        <Paper elevation={0} sx={{ ...getAdminExpertsSectionPanelSx(theme), p: 1 }}>
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <Stack
               direction={{ xs: "column", xl: "row" }}
@@ -334,7 +336,7 @@ export default function AdminExpertsSection() {
                             <Stack direction="row" spacing={0.8} alignItems="center">
                               <AccessTimeOutlinedIcon sx={{ fontSize: 16, opacity: 0.72 }} />
                               <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                                {formatDateTime(expert?.accountCreation)}
+                                {formatAdminExpertDateTime(expert?.accountCreation)}
                               </Typography>
                             </Stack>
                           </TableCell>
@@ -344,7 +346,10 @@ export default function AdminExpertsSection() {
                               label={expert?.stats?.activeIssues || 0}
                               size="small"
                               variant="outlined"
-                              sx={pillSx(theme, (expert?.stats?.activeIssues || 0) > 0 ? "warning" : "info")}
+                              sx={getAdminExpertPillSx(
+                                theme,
+                                (expert?.stats?.activeIssues || 0) > 0 ? "warning" : "info"
+                              )}
                             />
                           </TableCell>
 
@@ -353,7 +358,7 @@ export default function AdminExpertsSection() {
                               label={expert?.stats?.finishedIssues || 0}
                               size="small"
                               variant="outlined"
-                              sx={pillSx(theme, "info")}
+                              sx={getAdminExpertPillSx(theme, "info")}
                             />
                           </TableCell>
 
@@ -362,7 +367,10 @@ export default function AdminExpertsSection() {
                               label={expert?.stats?.domainsOwned || 0}
                               size="small"
                               variant="outlined"
-                              sx={pillSx(theme, (expert?.stats?.domainsOwned || 0) > 0 ? "success" : "info")}
+                              sx={getAdminExpertPillSx(
+                                theme,
+                                (expert?.stats?.domainsOwned || 0) > 0 ? "success" : "info"
+                              )}
                             />
                           </TableCell>
 
@@ -371,7 +379,10 @@ export default function AdminExpertsSection() {
                               label={ownIssues}
                               size="small"
                               variant="outlined"
-                              sx={pillSx(theme, ownIssues > 0 ? "error" : "secondary")}
+                              sx={getAdminExpertPillSx(
+                                theme,
+                                ownIssues > 0 ? "error" : "secondary"
+                              )}
                             />
                           </TableCell>
 
@@ -693,19 +704,19 @@ export default function AdminExpertsSection() {
                 label={`Active: ${confirmDelete.expert?.stats?.activeIssues || 0}`}
                 size="small"
                 variant="outlined"
-                sx={pillSx(theme, "warning")}
+                sx={getAdminExpertPillSx(theme, "warning")}
               />
               <Chip
                 label={`Finished: ${confirmDelete.expert?.stats?.finishedIssues || 0}`}
                 size="small"
                 variant="outlined"
-                sx={pillSx(theme, "info")}
+                sx={getAdminExpertPillSx(theme, "info")}
               />
               <Chip
                 label={`Domains: ${confirmDelete.expert?.stats?.domainsOwned || 0}`}
                 size="small"
                 variant="outlined"
-                sx={pillSx(theme, "success")}
+                sx={getAdminExpertPillSx(theme, "success")}
               />
             </Stack>
 

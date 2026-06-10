@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { getAdminModelCatalog } from "../../../../services/admin.service";
-import { asArray } from "../utils/modelManifest.formatters";
 
 export default function useAdminModelCatalog() {
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -28,7 +27,9 @@ export default function useAdminModelCatalog() {
           return false;
         }
 
-        setCatalogModels(asArray(response?.data?.models));
+        setCatalogModels(
+          Array.isArray(response?.data?.models) ? response.data.models : []
+        );
         return true;
       } catch (error) {
         console.error(error);

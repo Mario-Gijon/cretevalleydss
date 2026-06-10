@@ -1,11 +1,11 @@
 import { Paper, Stack, Typography } from "@mui/material";
 
 import { getAdminIssueDetailCardSx } from "../../issues/styles/adminIssues.styles";
-import { asArray, valueToText } from "../utils/modelManifest.formatters";
+import { modelManifestValueToText } from "../logic/formatModelManifestDisplay";
 import EmptyState from "./EmptyState";
 
 export default function TechnicalDifferencesList({ differences }) {
-  const items = asArray(differences);
+  const items = Array.isArray(differences) ? differences : [];
 
   if (items.length === 0) return <EmptyState>No technical differences.</EmptyState>;
 
@@ -22,10 +22,10 @@ export default function TechnicalDifferencesList({ differences }) {
               {difference?.field || "Unknown field"}
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
-              Mongo: {valueToText(difference?.mongoValue)}
+              Mongo: {modelManifestValueToText(difference?.mongoValue)}
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
-              Manifest: {valueToText(difference?.manifestValue)}
+              Manifest: {modelManifestValueToText(difference?.manifestValue)}
             </Typography>
           </Stack>
         </Paper>

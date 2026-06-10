@@ -11,20 +11,20 @@ import {
 import { alpha } from "@mui/material/styles";
 
 import {
-  formatBoolean,
-  getModelDisplayName,
-  isVisibleInCreate,
-  toTitle,
-} from "../utils/modelManifest.formatters";
+  formatModelManifestBoolean,
+  getModelManifestDisplayName,
+  isModelVisibleInCreateIssue,
+  toModelManifestTitle,
+} from "../logic/formatModelManifestDisplay";
 import {
-  getSeverityForSyncState,
-  getSyncState,
-} from "../utils/modelManifest.severity";
+  getModelManifestSyncSeverity,
+  getModelManifestSyncState,
+} from "../logic/getModelManifestSeverity";
 import {
-  modelTableBodyCellSx,
-  modelTableContainerSx,
-  modelTableHeadCellSx,
-} from "../utils/modelManifest.styles";
+  getModelCatalogTableBodyCellSx,
+  getModelCatalogTableContainerSx,
+  getModelCatalogTableHeadCellSx,
+} from "../styles/modelManifest.styles";
 import CatalogVisibilitySwitch from "./CatalogVisibilitySwitch";
 import StatusChip from "./StatusChip";
 
@@ -47,7 +47,7 @@ export default function ModelsTable({
   visibilityBusyId,
 }) {
   return (
-    <TableContainer sx={(theme) => modelTableContainerSx(theme)}>
+    <TableContainer sx={(theme) => getModelCatalogTableContainerSx(theme)}>
       <Table stickyHeader size="small">
         <TableHead>
           <TableRow>
@@ -55,7 +55,7 @@ export default function ModelsTable({
               <TableCell
                 key={head}
                 align={head === "Active" ? "center" : "left"}
-                sx={(theme) => modelTableHeadCellSx(theme)}
+                sx={(theme) => getModelCatalogTableHeadCellSx(theme)}
               >
                 {head}
               </TableCell>
@@ -65,8 +65,8 @@ export default function ModelsTable({
 
         <TableBody>
           {rows.map((row, index) => {
-            const syncState = getSyncState(row);
-            const visible = isVisibleInCreate(row);
+            const syncState = getModelManifestSyncState(row);
+            const visible = isModelVisibleInCreateIssue(row);
             const loadingVisibility = visibilityBusyId === row.mongoId;
 
             return (
@@ -96,13 +96,13 @@ export default function ModelsTable({
               >
                 <TableCell
                   sx={(theme) => ({
-                    ...modelTableBodyCellSx(theme),
+                    ...getModelCatalogTableBodyCellSx(theme),
                     minWidth: 230,
                   })}
                 >
                   <Stack spacing={0.15}>
                     <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                      {getModelDisplayName(row)}
+                      {getModelManifestDisplayName(row)}
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                       ID: {row.mongoId || "No Mongo id"}
@@ -110,47 +110,50 @@ export default function ModelsTable({
                   </Stack>
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <StatusChip label={row.apiModelKey || "No key"} />
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
-                    {toTitle(row.lifecycleKind)}
+                    {toModelManifestTitle(row.lifecycleKind)}
                   </Typography>
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
-                    {toTitle(row.alternativeEvaluationStructureKey)}
+                    {toModelManifestTitle(row.alternativeEvaluationStructureKey)}
                   </Typography>
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
                     {row.apiInputFormat || "Unknown"}
                   </Typography>
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
                     {row.apiOutputFormat || "Unknown"}
                   </Typography>
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
-                  {formatBoolean(row.isIssueModel)}
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
+                  {formatModelManifestBoolean(row.isIssueModel)}
                 </TableCell>
 
-                <TableCell sx={(theme) => modelTableBodyCellSx(theme)}>
-                  <StatusChip label={syncState} severity={getSeverityForSyncState(syncState)} />
+                <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
+                  <StatusChip
+                    label={syncState}
+                    severity={getModelManifestSyncSeverity(syncState)}
+                  />
                 </TableCell>
 
                 <TableCell
                   align="center"
                   onClick={(event) => event.stopPropagation()}
                   sx={(theme) => ({
-                    ...modelTableBodyCellSx(theme),
+                    ...getModelCatalogTableBodyCellSx(theme),
                     minWidth: 88,
                   })}
                 >

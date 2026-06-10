@@ -1,6 +1,6 @@
 import { alpha } from "@mui/material/styles";
 
-export const chipSx = (theme, severity = "info") => {
+export const getModelManifestChipSx = (theme, severity = "info") => {
   const color = theme.palette[severity]?.main || theme.palette.info.main;
 
   return {
@@ -13,7 +13,7 @@ export const chipSx = (theme, severity = "info") => {
   };
 };
 
-export const modelTableContainerSx = (theme) => ({
+export const getModelCatalogTableContainerSx = (theme) => ({
   maxHeight: "64vh",
   borderRadius: 3,
   border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
@@ -34,7 +34,7 @@ export const modelTableContainerSx = (theme) => ({
   },
 });
 
-export const modelTableHeadCellSx = (theme) => ({
+export const getModelCatalogTableHeadCellSx = (theme) => ({
   fontWeight: 950,
   color: alpha(theme.palette.common.white, 0.84),
   borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
@@ -43,7 +43,7 @@ export const modelTableHeadCellSx = (theme) => ({
   whiteSpace: "nowrap",
 });
 
-export const modelTableBodyCellSx = (theme) => ({
+export const getModelCatalogTableBodyCellSx = (theme) => ({
   borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
   py: 1.15,
 });

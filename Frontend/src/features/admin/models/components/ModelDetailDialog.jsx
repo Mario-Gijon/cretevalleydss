@@ -18,17 +18,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import {
-  count,
-  formatBoolean,
-  getCatalogVisibilityLabel,
-  getModelDisplayName,
-  toTitle,
-  valueToText,
-} from "../utils/modelManifest.formatters";
+  formatModelManifestBoolean,
+  getModelCatalogVisibilityLabel,
+  getModelManifestDisplayName,
+  modelManifestValueToText,
+  toModelManifestTitle,
+} from "../logic/formatModelManifestDisplay";
 import {
-  getSeverityForSyncState,
-  getSyncState,
-} from "../utils/modelManifest.severity";
+  getModelManifestSyncSeverity,
+  getModelManifestSyncState,
+} from "../logic/getModelManifestSeverity";
 import EmptyState from "./EmptyState";
 import FieldGrid from "./FieldGrid";
 import ParametersTable from "./ParametersTable";
@@ -42,7 +41,7 @@ export default function ModelDetailDialog({ row, open, onClose }) {
 
   if (!row) return null;
 
-  const syncState = getSyncState(row);
+  const syncState = getModelManifestSyncState(row);
 
   return (
     <Dialog
@@ -67,7 +66,7 @@ export default function ModelDetailDialog({ row, open, onClose }) {
         <Stack direction="row" spacing={1} alignItems="flex-start" justifyContent="space-between">
           <Stack spacing={0.7} sx={{ minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 980, overflowWrap: "anywhere" }}>
-              {getModelDisplayName(row)}
+              {getModelManifestDisplayName(row)}
             </Typography>
             <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
               <StatusChip label={row.apiModelKey || "No key"} />
@@ -75,8 +74,11 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 label={row.isIssueModel ? "Issue model" : "Non-issue model"}
                 severity={row.isIssueModel ? "success" : "info"}
               />
-              <StatusChip label={toTitle(row.lifecycleKind)} />
-              <StatusChip label={syncState} severity={getSeverityForSyncState(syncState)} />
+              <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
+              <StatusChip
+                label={syncState}
+                severity={getModelManifestSyncSeverity(syncState)}
+              />
             </Stack>
           </Stack>
           <IconButton onClick={onClose}>
@@ -93,10 +95,16 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 { label: "Key", value: row.apiModelKey },
                 { label: "Mongo name", value: row.mongoName },
                 { label: "Mongo id", value: row.mongoId },
-                { label: "Lifecycle", value: toTitle(row.lifecycleKind) },
-                { label: "Issue model", value: formatBoolean(row.isIssueModel) },
-                { label: "Create Issue visibility", value: getCatalogVisibilityLabel(row) },
-                { label: "Safe to create IssueModel", value: formatBoolean(row.safeToCreateIssueModel) },
+                { label: "Lifecycle", value: toModelManifestTitle(row.lifecycleKind) },
+                { label: "Issue model", value: formatModelManifestBoolean(row.isIssueModel) },
+                {
+                  label: "Create Issue visibility",
+                  value: getModelCatalogVisibilityLabel(row),
+                },
+                {
+                  label: "Safe to create IssueModel",
+                  value: formatModelManifestBoolean(row.safeToCreateIssueModel),
+                },
               ]}
             />
           </SectionCard>
@@ -106,25 +114,34 @@ export default function ModelDetailDialog({ row, open, onClose }) {
               rows={[
                 {
                   label: "Alternative structure",
-                  value: toTitle(row.alternativeEvaluationStructureKey),
+                  value: toModelManifestTitle(row.alternativeEvaluationStructureKey),
                 },
                 {
                   label: "Uses criteria weights",
-                  value: formatBoolean(row.usesCriteriaWeights),
+                  value: formatModelManifestBoolean(row.usesCriteriaWeights),
                 },
                 {
                   label: "Uses fuzzy criteria weights",
-                  value: formatBoolean(row.usesFuzzyCriteriaWeights),
+                  value: formatModelManifestBoolean(row.usesFuzzyCriteriaWeights),
                 },
                 {
                   label: "Uses criterion types",
-                  value: formatBoolean(row.usesCriterionTypes),
+                  value: formatModelManifestBoolean(row.usesCriterionTypes),
                 },
-                { label: "Consensus", value: formatBoolean(row.isConsensus) },
-                { label: "Multi criteria", value: formatBoolean(row.isMultiCriteria) },
+                {
+                  label: "Consensus",
+                  value: formatModelManifestBoolean(row.isConsensus),
+                },
+                {
+                  label: "Multi criteria",
+                  value: formatModelManifestBoolean(row.isMultiCriteria),
+                },
                 { label: "Input format", value: row.apiInputFormat },
                 { label: "Output format", value: row.apiOutputFormat },
-                { label: "Supported domains", value: valueToText(row.supportedDomains) },
+                {
+                  label: "Supported domains",
+                  value: modelManifestValueToText(row.supportedDomains),
+                },
               ]}
             />
           </SectionCard>
@@ -147,16 +164,19 @@ export default function ModelDetailDialog({ row, open, onClose }) {
             <FieldGrid
               rows={[
                 { label: "Sync state", value: syncState },
-                { label: "Matched", value: formatBoolean(row.matched) },
+                { label: "Matched", value: formatModelManifestBoolean(row.matched) },
                 { label: "Matched by", value: row.matchedBy },
                 { label: "Reason", value: row.reason },
-                { label: "Manifest sync", value: valueToText(row.manifestSync) },
+                {
+                  label: "Manifest sync",
+                  value: modelManifestValueToText(row.manifestSync),
+                },
               ]}
             />
           </SectionCard>
 
           <SectionCard title="Raw technical differences">
-            {count(row.differences) > 0 ? (
+            {Array.isArray(row.differences) && row.differences.length > 0 ? (
               <TechnicalDifferencesList differences={row.differences} />
             ) : (
               <EmptyState>No dry-run differences loaded for this model.</EmptyState>

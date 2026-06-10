@@ -8,11 +8,11 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
-import { asArray, valueToText } from "../utils/modelManifest.formatters";
+import { modelManifestValueToText } from "../logic/formatModelManifestDisplay";
 import EmptyState from "./EmptyState";
 
 export default function ParametersTable({ parameters }) {
-  const items = asArray(parameters);
+  const items = Array.isArray(parameters) ? parameters : [];
 
   if (items.length === 0) return <EmptyState>No parameters declared.</EmptyState>;
 
@@ -37,7 +37,7 @@ export default function ParametersTable({ parameters }) {
               <TableCell sx={{ fontWeight: 900 }}>{parameter?.name || "Unknown"}</TableCell>
               <TableCell>{parameter?.type || "Unknown"}</TableCell>
               <TableCell sx={{ overflowWrap: "anywhere" }}>
-                {valueToText(parameter?.restrictions || {})}
+                {modelManifestValueToText(parameter?.restrictions || {})}
               </TableCell>
             </TableRow>
           ))}

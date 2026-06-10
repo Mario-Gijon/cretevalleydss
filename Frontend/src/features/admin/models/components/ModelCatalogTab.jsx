@@ -6,11 +6,17 @@ import MetricCard from "../components/MetricCard";
 import ModelCards from "../components/ModelCards";
 import ModelsTable from "../components/ModelsTable";
 import SectionCard from "../components/SectionCard";
-import { REVIEW_SYNC_STATES } from "../utils/modelManifest.constants";
-import { flattenTechnicalDifferences } from "../utils/modelManifest.normalizers";
-import { getSyncState } from "../utils/modelManifest.severity";
+import { flattenModelManifestTechnicalDifferences } from "../logic/buildModelManifestRows";
+import { getModelManifestSyncState } from "../logic/getModelManifestSeverity";
 
-export default function CatalogTab({
+const REVIEW_SYNC_STATES = [
+  "Has differences",
+  "Missing in Mongo",
+  "Missing in manifest",
+  "Stale",
+];
+
+export default function ModelCatalogTab({
   rows,
   report,
   loadingCatalog,
@@ -21,8 +27,10 @@ export default function CatalogTab({
 }) {
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down("md"));
-  const technicalDifferences = flattenTechnicalDifferences(report);
-  const reviewNeeded = rows.filter((row) => REVIEW_SYNC_STATES.includes(getSyncState(row))).length;
+  const technicalDifferences = flattenModelManifestTechnicalDifferences(report);
+  const reviewNeeded = rows.filter((row) =>
+    REVIEW_SYNC_STATES.includes(getModelManifestSyncState(row))
+  ).length;
 
   return (
     <Stack spacing={1.2}>
@@ -40,13 +48,13 @@ export default function CatalogTab({
         <MetricCard label="Catalog rows" value={rows.length} helper="Persisted in MongoDB" />
         <MetricCard
           label="Synced"
-          value={rows.filter((row) => getSyncState(row) === "Synced").length}
+          value={rows.filter((row) => getModelManifestSyncState(row) === "Synced").length}
           helper="Manifest metadata applied"
           severity="success"
         />
         <MetricCard
           label="Available"
-          value={rows.filter((row) => getSyncState(row) === "Available").length}
+          value={rows.filter((row) => getModelManifestSyncState(row) === "Available").length}
           helper="Persisted without manifest sync"
         />
         <MetricCard

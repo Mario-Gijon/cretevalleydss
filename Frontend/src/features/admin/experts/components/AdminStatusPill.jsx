@@ -1,7 +1,7 @@
 import { Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { pillSx } from "../adminExperts.utils";
+import { getAdminExpertPillSx } from "../styles/adminExperts.styles";
 
 /**
  * Chip de estado de confirmacion para una fila de experto.
@@ -18,7 +18,7 @@ const AdminStatusPill = ({ confirmed }) => {
       label={confirmed ? "Confirmed" : "Pending"}
       size="small"
       variant="outlined"
-      sx={pillSx(theme, confirmed ? "success" : "warning")}
+      sx={getAdminExpertPillSx(theme, confirmed ? "success" : "warning")}
     />
   );
 };
