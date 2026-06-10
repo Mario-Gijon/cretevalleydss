@@ -10,10 +10,10 @@ export const buildFinishedExpertRatingsContext = async ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
   criterionNames,
-  orderedLeafCriteria = null,
+  orderedLeafCriteria,
 }) => {
   const resolvedStructure =
-    structure || getFinishedAlternativeEvaluationStructureOrThrow({ issue });
+    structure ?? getFinishedAlternativeEvaluationStructureOrThrow({ issue });
 
   return {
     structure: resolvedStructure,
@@ -43,7 +43,7 @@ export const buildFinishedExpertRatingsByPhase = async ({
 
   const ratings = {};
 
-  ratings.consensusMeasure = stageResult?.consensusMeasure ?? null;
+  ratings.consensusMeasure = stageResult.consensusMeasure ?? null;
   ratings.collectiveEvaluations = collectiveEvaluations;
   ratings.collectiveEvaluationsLocalizedByExpert = null;
   ratings.expertEvaluations = expertEvaluations;

@@ -3,7 +3,13 @@ import { createBadRequestError } from "../../../utils/common/errors.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
 export const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
-  const cleanTargetModelId = String(targetModelId || "").trim();
+  if (typeof targetModelId !== "string") {
+    throw createBadRequestError("targetModelId is required", {
+      field: "targetModelId",
+    });
+  }
+
+  const cleanTargetModelId = targetModelId.trim();
 
   if (!cleanTargetModelId) {
     throw createBadRequestError("targetModelId is required", {
@@ -40,7 +46,7 @@ export const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
     });
   }
 
-  if (targetModel?.manifestSync?.isStale === true) {
+  if (targetModel.manifestSync.isStale === true) {
     throw createBadRequestError("Target model is stale and cannot be used for simulation", {
       field: "targetModelId",
       details: {

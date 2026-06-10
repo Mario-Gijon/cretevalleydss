@@ -15,10 +15,11 @@ const executeCriteriaWeightingApiModel = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
-  const apiEndpointPath = String(issue?.criteriaWeightingApiEndpoint?.path || "").trim();
-  const apiModelKey = String(issue?.criteriaWeightingApiModelKey || "").trim();
+  const apiEndpoint = issue.criteriaWeightingApiEndpoint;
+  const apiEndpointPath = apiEndpoint && apiEndpoint.path;
+  const apiModelKey = issue.criteriaWeightingApiModelKey;
 
-  if (!apiEndpointPath) {
+  if (typeof apiEndpointPath !== "string" || apiEndpointPath.trim() === "") {
     throw createBadRequestError(
       "Issue does not define a criteria weighting ApiModels endpoint path",
       {
@@ -27,7 +28,7 @@ const executeCriteriaWeightingApiModel = async ({
     );
   }
 
-  if (!apiModelKey) {
+  if (typeof apiModelKey !== "string" || apiModelKey.trim() === "") {
     throw createBadRequestError(
       "Issue does not define a criteria weighting ApiModels model key",
       {
@@ -46,7 +47,7 @@ const executeCriteriaWeightingApiModel = async ({
 
   return buildCriteriaWeightingExecutionResult({
     structureKey,
-    message: result?.message,
+    message: result.message,
     result,
   });
 };

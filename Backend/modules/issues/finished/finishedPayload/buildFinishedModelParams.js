@@ -25,7 +25,7 @@ export const buildBaseModelParamsPayload = ({
     leafCount,
   });
 
-  const baseParamsSaved = issue.modelParameters || {};
+  const baseParamsSaved = issue.modelParameters;
   const baseParamsResolved = mergeParamsResolved({
     defaultsResolved: baseDefaultsResolved,
     savedParams: baseParamsSaved,

@@ -145,7 +145,6 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
     },
     finalCriteriaWeights: context.finalCriteriaWeights,
     analyticalGraphs:
-      isPlainObject(enrichedLatestPlotsGraphic) &&
       Object.keys(enrichedLatestPlotsGraphic).length > 0
         ? {
             plotsGraphic: enrichedLatestPlotsGraphic,

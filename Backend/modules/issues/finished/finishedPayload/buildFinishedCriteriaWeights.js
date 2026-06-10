@@ -115,7 +115,7 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
 }) => {
   const leafCount = orderedLeafCriteria.length;
   const modelParameters = issue.modelParameters;
-  const sourceWeights = modelParameters?.weights;
+  const sourceWeights = modelParameters.weights;
 
   if (!sourceWeights) {
     if (leafCount === 1) {
@@ -246,7 +246,7 @@ export const resolveExpertWeightingRequired = ({
 };
 
 const extractWeightsByCriterionFromDisplayPayload = ({ payload, criterionNames }) => {
-  const sourceWeightsByCriterion = payload?.weightsByCriterion;
+  const sourceWeightsByCriterion = payload.weightsByCriterion;
   if (!isPlainObject(sourceWeightsByCriterion)) {
     return null;
   }
@@ -268,7 +268,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
   criterionNames,
-  orderedLeafCriteria = null,
+  orderedLeafCriteria,
 }) => {
   const isRequired = resolveExpertWeightingRequired({
     issue,
@@ -279,7 +279,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     ? getEvaluationStructureOrThrow(issue.criteriaWeightingStructureKey)
     : null;
 
-  if (isRequired && typeof criteriaWeightingStructure?.get !== "function") {
+  if (isRequired && typeof criteriaWeightingStructure.get !== "function") {
     throw createInternalError(
       "Criteria weighting structure must implement get({ storedEvaluation, structureContext })",
       {
@@ -301,18 +301,17 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     : null;
 
   for (const participation of participations) {
-    const expertId = toIdString(participation?.expert?._id || participation?.expert);
+    const expert = participation.expert;
+    const expertId = expert ? toIdString(expert._id) : null;
     const expertEmail =
-      typeof participation?.expert?.email === "string"
-        ? participation.expert.email.trim()
-        : "";
+      expert && typeof expert.email === "string" ? expert.email.trim() : "";
 
     if (!expertId) {
       throw createInternalError("Finished participation expert id is invalid", {
         field: "participations.expert",
         details: {
           issueId: toIdString(issue._id),
-          participationId: toIdString(participation?._id) || null,
+          participationId: toIdString(participation._id),
         },
       });
     }
@@ -322,7 +321,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
         field: "participations.expert.email",
         details: {
           issueId: toIdString(issue._id),
-          participationId: toIdString(participation?._id) || null,
+          participationId: toIdString(participation._id),
         },
       });
     }
@@ -361,7 +360,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
           field: "payload",
           details: {
             issueId: toIdString(issue._id),
-            evaluationId: toIdString(evaluation._id) || null,
+            evaluationId: toIdString(evaluation._id),
             criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
           },
         }

@@ -1,5 +1,6 @@
 import { getOrderedAlternativeAndCriterionNames } from "../evaluations/structures/shared/alternativeEvaluation.helpers.js";
 import { createInternalError } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
@@ -7,13 +8,10 @@ import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.j
 const isFiniteOrNull = (value) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
 
-const normalizeModelParameters = (modelParameters) =>
-  isPlainObject(modelParameters) ? modelParameters : {};
-
 const normalizeEvaluationsPayload = (evaluations) =>
   evaluations.map((evaluation) => ({
     expert: {
-      id: String(evaluation.expert._id),
+      id: toIdString(evaluation.expert._id),
       name: evaluation.expert.name,
       email: evaluation.expert.email,
     },
@@ -30,28 +28,28 @@ export const buildIssueModelRequestPayload = async ({
     await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
-    modelParameters: normalizeModelParameters(issue.modelParameters),
+    modelParameters: issue.modelParameters,
     evaluations: normalizeEvaluationsPayload(evaluations),
     context: {
       issue: {
-        id: String(issue._id),
+        id: toIdString(issue._id),
         name: issue.name,
         consensusThreshold:
-          typeof issue?.consensusThreshold === "number" &&
+          typeof issue.consensusThreshold === "number" &&
           Number.isFinite(issue.consensusThreshold)
             ? issue.consensusThreshold
             : null,
         consensusMaxPhases:
-          Number.isInteger(issue?.consensusMaxPhases) && issue.consensusMaxPhases > 0
+          Number.isInteger(issue.consensusMaxPhases) && issue.consensusMaxPhases > 0
             ? issue.consensusMaxPhases
             : null,
       },
       alternatives: alternatives.map((alternative) => ({
-        id: String(alternative._id),
+        id: toIdString(alternative._id),
         name: alternative.name,
       })),
       criteria: criteria.map((criterion) => ({
-        id: String(criterion._id),
+        id: toIdString(criterion._id),
         name: criterion.name,
         type: criterion.type,
       })),
@@ -75,24 +73,24 @@ export const buildCriteriaWeightingRequestPayload = async ({
   const { criteria } = await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
-    modelParameters: normalizeModelParameters(issue.criteriaWeightingParameters),
+    modelParameters: issue.criteriaWeightingParameters,
     evaluations: normalizeEvaluationsPayload(evaluations),
     context: {
       issue: {
-        id: String(issue._id),
+        id: toIdString(issue._id),
         name: issue.name,
         consensusThreshold:
-          typeof issue?.consensusThreshold === "number" &&
+          typeof issue.consensusThreshold === "number" &&
           Number.isFinite(issue.consensusThreshold)
             ? issue.consensusThreshold
             : null,
         consensusMaxPhases:
-          Number.isInteger(issue?.consensusMaxPhases) && issue.consensusMaxPhases > 0
+          Number.isInteger(issue.consensusMaxPhases) && issue.consensusMaxPhases > 0
             ? issue.consensusMaxPhases
             : null,
       },
       criteria: criteria.map((criterion) => ({
-        id: String(criterion._id),
+        id: toIdString(criterion._id),
         name: criterion.name,
         type: criterion.type,
       })),

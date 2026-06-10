@@ -41,7 +41,7 @@ export const loadLatestAlternativeStageResultOrThrow = async ({ issue }) => {
       {
         field: "stageResult",
         details: {
-          issueId: toIdString(issue?._id),
+          issueId: toIdString(issue._id),
           stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
         },
       }
@@ -59,13 +59,13 @@ export const loadConsensusAlternativeStageResultsOrThrow = async ({ issue }) => 
     .sort({ consensusPhase: 1 })
     .lean();
 
-  if (!Array.isArray(alternativeStageResults) || alternativeStageResults.length === 0) {
+  if (alternativeStageResults.length === 0) {
     throw createInternalError(
       "Finished consensus issue requires alternative evaluation stage results",
       {
         field: "stageResults",
         details: {
-          issueId: toIdString(issue?._id),
+          issueId: toIdString(issue._id),
           stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
         },
       }

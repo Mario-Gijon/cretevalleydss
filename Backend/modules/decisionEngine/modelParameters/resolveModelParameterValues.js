@@ -17,9 +17,7 @@ const ensureLen = (arr, len, filler = null) => {
 export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const resolved = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
-  const modelParameters = Array.isArray(modelDoc?.parameters)
-    ? modelDoc.parameters
-    : [];
+  const modelParameters = modelDoc.parameters;
 
   for (const parameter of modelParameters) {
     const { type, default: defaultValue } = parameter;
@@ -76,9 +74,9 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
     resolved[name] = defaultValue;
   }
 
-  if (modelDoc?.usesCriteriaWeights === true && safeLeafCount > 0) {
-    if (modelDoc?.usesFuzzyCriteriaWeights === true) {
-      const fuzzyValueCount = Number(modelDoc?.fuzzyWeightsValueCount);
+  if (modelDoc.usesCriteriaWeights === true && safeLeafCount > 0) {
+    if (modelDoc.usesFuzzyCriteriaWeights === true) {
+      const fuzzyValueCount = modelDoc.fuzzyWeightsValueCount;
       if (Number.isInteger(fuzzyValueCount) && fuzzyValueCount >= 2) {
         if (safeLeafCount === 1) {
           resolved.weights = [Array.from({ length: fuzzyValueCount }, () => 1)];

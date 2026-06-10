@@ -6,22 +6,16 @@ import { buildAvailableModelsPayload } from "./buildFinishedScenarioModels.js";
 import { buildModelParamsPayloadOrThrow } from "./buildFinishedModelParams.js";
 
 export const requireFinishedIssueModelOrThrow = ({ issue }) => {
-  const populatedModel = issue?.model;
+  const populatedModel = issue.model;
 
-  const isPopulatedModelObject =
-    populatedModel &&
-    typeof populatedModel === "object" &&
-    populatedModel !== null &&
-    !Array.isArray(populatedModel);
-  const hasRequiredFields =
-    isPopulatedModelObject &&
-    populatedModel._id !== undefined &&
-    typeof populatedModel.name === "string" &&
-    populatedModel.name.trim() &&
-    populatedModel.parameters !== undefined &&
-    typeof populatedModel.usesCriteriaWeights === "boolean";
-
-  if (!hasRequiredFields) {
+  if (
+    !populatedModel ||
+    populatedModel._id === undefined ||
+    typeof populatedModel.name !== "string" ||
+    populatedModel.name.trim() === "" ||
+    populatedModel.parameters === undefined ||
+    typeof populatedModel.usesCriteriaWeights !== "boolean"
+  ) {
     throw createInternalError("Finished issue model must be populated", {
       field: "model",
       details: {
@@ -62,7 +56,8 @@ export const buildCriteriaWeightingEvaluationsByExpertId = ({
 }) => {
   return new Map(
     criteriaWeightingEvaluations.map((evaluation) => {
-      const expertId = toIdString(evaluation?.expert?._id || evaluation?.expert);
+      const expert = evaluation.expert;
+      const expertId = expert ? toIdString(expert._id) : null;
 
       if (!expertId) {
         throw createInternalError(
@@ -70,8 +65,8 @@ export const buildCriteriaWeightingEvaluationsByExpertId = ({
           {
             field: "evaluations.expert",
             details: {
-              issueId: toIdString(evaluation?.issue) || null,
-              evaluationId: toIdString(evaluation?._id) || null,
+              issueId: toIdString(evaluation.issue),
+              evaluationId: toIdString(evaluation._id),
             },
           }
         );

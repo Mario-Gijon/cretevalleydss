@@ -20,7 +20,7 @@ export const buildAvailableModelsPayload = ({
   }
 
   const linguisticDomains = issueDomainSnapshots.filter(
-    (domain) => domain?.type === "linguistic"
+    (domain) => domain.type === "linguistic"
   );
 
   for (const domain of linguisticDomains) {
@@ -31,7 +31,7 @@ export const buildAvailableModelsPayload = ({
           field: "issueDomainSnapshots.valueCount",
           details: {
             issueId: toIdString(issue._id),
-            domainId: toIdString(domain?._id) || null,
+            domainId: toIdString(domain._id),
             valueCount: domain.valueCount,
           },
         }
@@ -58,12 +58,12 @@ export const buildAvailableModelsPayload = ({
       id: toIdString(modelDoc._id),
       name: modelDoc.name,
       alternativeEvaluationStructureKey:
-        modelDoc.alternativeEvaluationStructureKey || null,
-      supportsConsensus: modelDoc.supportsConsensus === true,
+        modelDoc.alternativeEvaluationStructureKey,
+      supportsConsensus: modelDoc.supportsConsensus,
       isMultiCriteria: modelDoc.isMultiCriteria,
-      usesCriteriaWeights: modelDoc.usesCriteriaWeights === true,
-      usesFuzzyCriteriaWeights: modelDoc.usesFuzzyCriteriaWeights === true,
-      usesCriterionTypes: modelDoc.usesCriterionTypes === true,
+      usesCriteriaWeights: modelDoc.usesCriteriaWeights,
+      usesFuzzyCriteriaWeights: modelDoc.usesFuzzyCriteriaWeights,
+      usesCriterionTypes: modelDoc.usesCriterionTypes,
       fuzzyWeightsValueCount,
       smallDescription: modelDoc.smallDescription,
       moreInfoUrl: modelDoc.moreInfoUrl,

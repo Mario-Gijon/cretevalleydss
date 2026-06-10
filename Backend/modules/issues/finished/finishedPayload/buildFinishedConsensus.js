@@ -5,22 +5,22 @@ import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
 import { buildRankedAlternativesPayloadOrThrow } from "./buildFinishedRankings.js";
 
 export const buildModelExecutionPayload = (stageResult) => {
-  if (!isPlainObject(stageResult?.modelExecution)) {
+  if (!isPlainObject(stageResult.modelExecution)) {
     throw createInternalError("IssueStageResult modelExecution must be an object", {
       field: "modelExecution",
       details: {
-        issueId: toIdString(stageResult?.issue),
-        phase: stageResult?.consensusPhase ?? null,
+        issueId: toIdString(stageResult.issue),
+        phase: stageResult.consensusPhase,
       },
     });
   }
 
-  if (!isPlainObject(stageResult?.rawOutput)) {
+  if (!isPlainObject(stageResult.rawOutput)) {
     throw createInternalError("IssueStageResult rawOutput must be an object", {
       field: "rawOutput",
       details: {
-        issueId: toIdString(stageResult?.issue),
-        phase: stageResult?.consensusPhase ?? null,
+        issueId: toIdString(stageResult.issue),
+        phase: stageResult.consensusPhase,
       },
     });
   }
@@ -33,73 +33,64 @@ export const buildModelExecutionPayload = (stageResult) => {
 
 export const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) => {
   const phase = normalizeConsensusPhaseOrThrow({
-    value: stageResult?.consensusPhase,
-    issueId: stageResult?.issue,
-    stage: stageResult?.stage,
+    value: stageResult.consensusPhase,
+    issueId: stageResult.issue,
+    stage: stageResult.stage,
   });
 
   if (
-    typeof stageResult?.consensusMeasure !== "number" ||
+    typeof stageResult.consensusMeasure !== "number" ||
     !Number.isFinite(stageResult.consensusMeasure)
   ) {
     throw createInternalError("IssueStageResult consensusMeasure must be finite", {
       field: "consensusMeasure",
       details: {
-        issueId: toIdString(stageResult?.issue),
+        issueId: toIdString(stageResult.issue),
         phase,
       },
     });
   }
 
+  const modelExecution = buildModelExecutionPayload(stageResult);
   const rankedAlternatives = buildRankedAlternativesPayloadOrThrow({ stageResult });
-  if (!isPlainObject(stageResult?.collectiveEvaluations)) {
+  if (!isPlainObject(stageResult.collectiveEvaluations)) {
     throw createInternalError("IssueStageResult collectiveEvaluations must be an object", {
       field: "collectiveEvaluations",
       details: {
-        issueId: toIdString(stageResult?.issue),
+        issueId: toIdString(stageResult.issue),
         phase,
       },
     });
   }
 
-  if (!isPlainObject(stageResult?.modelExecution?.consensusLifecycle)) {
+  if (!isPlainObject(modelExecution.consensusLifecycle)) {
     throw createInternalError("IssueStageResult modelExecution.consensusLifecycle must be an object", {
       field: "modelExecution.consensusLifecycle",
       details: {
-        issueId: toIdString(stageResult?.issue),
+        issueId: toIdString(stageResult.issue),
         phase,
       },
     });
   }
 
-  if (!isPlainObject(stageResult?.plotsGraphic)) {
+  if (!isPlainObject(stageResult.plotsGraphic)) {
     throw createInternalError("IssueStageResult plotsGraphic must be an object", {
       field: "plotsGraphic",
       details: {
-        issueId: toIdString(stageResult?.issue),
-        phase,
-      },
-    });
-  }
-
-  if (!isPlainObject(stageResult?.rawOutput)) {
-    throw createInternalError("IssueStageResult rawOutput must be an object", {
-      field: "rawOutput",
-      details: {
-        issueId: toIdString(stageResult?.issue),
+        issueId: toIdString(stageResult.issue),
         phase,
       },
     });
   }
 
   const collectiveEvaluations = stageResult.collectiveEvaluations;
-  const lifecycle = stageResult.modelExecution.consensusLifecycle;
+  const lifecycle = modelExecution.consensusLifecycle;
 
   const consensusReached =
     lifecycle.consensusReached === true ||
     (Number.isFinite(threshold) && stageResult.consensusMeasure >= threshold);
   const maxPhasesReached = lifecycle.maxPhasesReached === true;
-  const finalizationReason = lifecycle.finalizationReason || null;
+  const finalizationReason = lifecycle.finalizationReason ?? null;
 
   return {
     phase,
@@ -108,7 +99,7 @@ export const buildConsensusRoundPayloadOrThrow = ({ stageResult, threshold }) =>
     consensusReached,
     maxPhasesReached,
     finalizationReason,
-    modelExecution: buildModelExecutionPayload(stageResult),
+    modelExecution,
     collectiveEvaluations,
     plotsGraphic: stageResult.plotsGraphic,
     rawOutput: stageResult.rawOutput,
@@ -135,8 +126,8 @@ export const buildConsensusInfo = ({ issue, consensusRounds }) => {
     threshold: issue.consensusThreshold ?? null,
     maxPhases: issue.consensusMaxPhases ?? null,
     currentPhase: issue.consensusPhase ?? null,
-    consensusReachedPhase: consensusReachedRound?.phase ?? null,
-    finalizationReason: lastRound.finalizationReason || null,
+    consensusReachedPhase: consensusReachedRound ? consensusReachedRound.phase : null,
+    finalizationReason: lastRound.finalizationReason ?? null,
     finalConsensusMeasure: lastRound.consensusMeasure,
   };
 };

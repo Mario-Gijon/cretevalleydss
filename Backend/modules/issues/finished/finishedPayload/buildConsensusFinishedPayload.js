@@ -87,8 +87,8 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const alternativesRankings = [];
   const expertsRatings = {};
 
-  for (const stageResult of alternativeStageResults) {
-    const phase = Number(stageResult.consensusPhase);
+  for (const [index, stageResult] of alternativeStageResults.entries()) {
+    const phase = phaseList[index];
     const phaseEvaluations = completedByPhase.get(phase);
 
     if (!phaseEvaluations || phaseEvaluations.length === 0) {
@@ -193,8 +193,8 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const modelExecution = latestRound.modelExecution;
 
   const scatterPlotByPhase = Array(issue.consensusPhase).fill(null);
-  for (const stageResult of alternativeStageResults) {
-    const phase = Number(stageResult.consensusPhase);
+  for (const [index, stageResult] of alternativeStageResults.entries()) {
+    const phase = phaseList[index];
     const phaseEvaluations = completedByPhase.get(phase);
 
     if (!phaseEvaluations || phaseEvaluations.length === 0) {
@@ -234,7 +234,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     threshold: issue.consensusThreshold ?? null,
   }));
 
-  const latestPhaseEvaluations = completedByPhase.get(Number(latestRound.phase));
+  const latestPhaseEvaluations = completedByPhase.get(latestRound.phase);
 
   if (!latestPhaseEvaluations || latestPhaseEvaluations.length === 0) {
     throw createInternalError(
