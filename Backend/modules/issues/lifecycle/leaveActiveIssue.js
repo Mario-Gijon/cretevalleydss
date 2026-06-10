@@ -9,8 +9,46 @@ import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 import {
   createBadRequestError,
   createForbiddenError,
+  createInternalError,
 } from "../../../utils/common/errors.js";
-import { sameId } from "../../../utils/common/ids.js";
+import { sameId, toIdString } from "../../../utils/common/ids.js";
+
+const requireNonEmptyId = (value, field) => {
+  const id = toIdString(value);
+
+  if (!id) {
+    throw createInternalError(`Exit user issue ${field} is invalid`, {
+      field,
+      details: {
+        [field]: value ?? null,
+      },
+    });
+  }
+
+  return id;
+};
+
+const requirePositiveInteger = (value, field, details) => {
+  if (!Number.isInteger(value) || value < 1) {
+    throw createInternalError(`Exit user issue ${field} is invalid`, {
+      field,
+      details,
+    });
+  }
+
+  return value;
+};
+
+const requireNonEmptyString = (value, field, details) => {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw createInternalError(`Exit user issue ${field} is invalid`, {
+      field,
+      details,
+    });
+  }
+
+  return value.trim();
+};
 
 export const registerUserExit = async ({
   issueId,
@@ -20,30 +58,47 @@ export const registerUserExit = async ({
   reason,
   session = null,
 }) => {
+  const normalizedIssueId = requireNonEmptyId(issueId, "issueId");
+  const normalizedUserId = requireNonEmptyId(userId, "userId");
+  const validatedPhase = requirePositiveInteger(phase, "phase", {
+    issueId: normalizedIssueId,
+    userId: normalizedUserId,
+    phase,
+  });
+  const validatedStage = requireNonEmptyString(stage, "stage", {
+    issueId: normalizedIssueId,
+    userId: normalizedUserId,
+    stage,
+  });
+  const validatedReason = requireNonEmptyString(reason, "reason", {
+    issueId: normalizedIssueId,
+    userId: normalizedUserId,
+    reason,
+  });
   const now = new Date();
 
   const historyEntry = {
     timestamp: now,
-    phase,
-    stage,
+    phase: validatedPhase,
+    stage: validatedStage,
     action: "exited",
-    reason,
+    reason: validatedReason,
   };
 
   await applyOptionalSession(
     ExitUserIssue.findOneAndUpdate(
-      { issue: issueId, user: userId },
+      { issue: normalizedIssueId, user: normalizedUserId },
       {
         $setOnInsert: {
-          issue: issueId,
-          user: userId,
+          issue: normalizedIssueId,
+          user: normalizedUserId,
         },
         $set: {
           hidden: true,
           timestamp: now,
-          phase,
-          stage,
-          reason,
+          phase: validatedPhase,
+          stage: validatedStage,
+          reason: validatedReason,
         },
         $push: {
           history: historyEntry,
@@ -94,7 +149,9 @@ export const leaveActiveIssue = async ({
   );
 
   const currentPhase = issue.consensusPhase;
-  const stageForLog = mapIssueStageToExitStage(issue.currentStage);
+  const stageForLog = mapIssueStageToExitStage(issue.currentStage, {
+    issueId: issue._id,
+  });
 
   await registerUserExit({
     issueId: issue._id,

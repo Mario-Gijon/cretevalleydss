@@ -1,12 +1,10 @@
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import { createInternalError } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
-export const resolveIssueExitPhase = async ({
-  issueId,
-  fallbackIfMissing,
-  session = null,
-}) => {
+export const resolveIssueExitPhase = async ({ issueId, session = null }) => {
   const latestAlternativeStageResult = await applyOptionalSession(
     IssueStageResult.findOne({
       issue: issueId,
@@ -15,7 +13,21 @@ export const resolveIssueExitPhase = async ({
     session
   );
 
-  return latestAlternativeStageResult
-    ? latestAlternativeStageResult.consensusPhase + 1
-    : fallbackIfMissing;
+  if (!latestAlternativeStageResult) {
+    return 1;
+  }
+
+  const { consensusPhase } = latestAlternativeStageResult;
+
+  if (!Number.isInteger(consensusPhase) || consensusPhase < 1) {
+    throw createInternalError("IssueStageResult consensusPhase is invalid", {
+      field: "consensusPhase",
+      details: {
+        issueId: toIdString(issueId) || null,
+        consensusPhase,
+      },
+    });
+  }
+
+  return consensusPhase + 1;
 };

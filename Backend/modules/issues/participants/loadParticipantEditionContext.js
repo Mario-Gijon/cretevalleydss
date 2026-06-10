@@ -98,6 +98,8 @@ export const loadParticipantEditionContext = async ({
     admin,
     leafCriteria,
     currentPhase: issue.consensusPhase,
-    stageForLog: mapIssueStageToExitStage(issue.currentStage),
+    stageForLog: mapIssueStageToExitStage(issue.currentStage, {
+      issueId: issue._id,
+    }),
   };
 };

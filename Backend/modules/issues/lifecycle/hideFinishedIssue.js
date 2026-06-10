@@ -2,7 +2,7 @@ import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
-import { getIssueByIdOrThrow, getNextConsensusPhase } from "../shared/queries.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 import { registerUserExit } from "./leaveActiveIssue.js";
 import { deleteIssueCascade } from "./deleteIssueCascade.js";
@@ -60,8 +60,13 @@ export const hideFinishedIssueForUser = async ({
     );
   }
 
-  const currentPhase = await getNextConsensusPhase(issue._id);
-  const stageForLog = mapIssueStageToExitStage(issue.currentStage);
+  const currentPhase = await resolveIssueExitPhase({
+    issueId: issue._id,
+    session,
+  });
+  const stageForLog = mapIssueStageToExitStage(issue.currentStage, {
+    issueId: issue._id,
+  });
 
   await registerUserExit({
     issueId: issue._id,
@@ -112,17 +117,15 @@ export const hideFinishedIssueForDeletedUser = async ({
   reason,
   session = null,
 }) => {
-  const phase = await resolveIssueExitPhase({
-    issueId: issue._id,
-    fallbackIfMissing: null,
-    session,
-  });
+  const phase = await resolveIssueExitPhase({ issueId: issue._id, session });
 
   await registerUserExit({
     issueId: issue._id,
     userId,
     phase,
-    stage: mapIssueStageToExitStage(issue.currentStage),
+    stage: mapIssueStageToExitStage(issue.currentStage, {
+      issueId: issue._id,
+    }),
     reason,
     session,
   });

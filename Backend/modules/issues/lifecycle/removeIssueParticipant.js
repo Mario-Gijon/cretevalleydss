@@ -7,6 +7,7 @@ import { registerUserExit } from "./leaveActiveIssue.js";
 import { deleteIssueCascade } from "./deleteIssueCascade.js";
 import { resolveIssueExitPhase } from "./resolveIssueExitPhase.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
 const syncActiveIssueStageAfterUserRemoval = async ({
   issue,
@@ -67,7 +68,23 @@ export const removeIssueParticipantFromActiveIssue = async ({
     ),
   ]);
 
-  const evaluationsDeletedCount = deleteIssueEvaluationsResult.deletedCount || 0;
+  const { deletedCount } = deleteIssueEvaluationsResult;
+
+  if (typeof deletedCount !== "number") {
+    throw createInternalError(
+      "IssueEvaluation deleteMany result deletedCount is invalid",
+      {
+        field: "deletedCount",
+        details: {
+          issueId: issue._id,
+          userId,
+          deletedCount,
+        },
+      }
+    );
+  }
+
+  const evaluationsDeletedCount = deletedCount;
 
   const remainingParticipations = await applyOptionalSession(
     Participation.find({ issue: issue._id }),
@@ -87,17 +104,15 @@ export const removeIssueParticipantFromActiveIssue = async ({
     };
   }
 
-  const phase = await resolveIssueExitPhase({
-    issueId: issue._id,
-    fallbackIfMissing: 1,
-    session,
-  });
+  const phase = await resolveIssueExitPhase({ issueId: issue._id, session });
 
   await registerUserExit({
     issueId: issue._id,
     userId,
     phase,
-    stage: mapIssueStageToExitStage(issue.currentStage),
+    stage: mapIssueStageToExitStage(issue.currentStage, {
+      issueId: issue._id,
+    }),
     reason,
     session,
   });
