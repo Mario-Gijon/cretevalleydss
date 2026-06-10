@@ -8,6 +8,7 @@ import {
 export const removeNotificationForUser = async ({
   notificationId,
   userId,
+  session = null,
 }) => {
   if (!notificationId) {
     throw createBadRequestError("Notification id is required", {
@@ -15,16 +16,24 @@ export const removeNotificationForUser = async ({
     });
   }
 
-  const notification = await Notification.findOne({
+  const notificationQuery = Notification.findOne({
     _id: notificationId,
     expert: userId,
   });
+  if (session) {
+    notificationQuery.session(session);
+  }
+  const notification = await notificationQuery;
 
   if (!notification) {
     throw createNotFoundError("Notification not found");
   }
 
-  await Notification.deleteOne({ _id: notification._id });
+  const deleteQuery = Notification.deleteOne({ _id: notification._id });
+  if (session) {
+    deleteQuery.session(session);
+  }
+  await deleteQuery;
 
   return {
     message: "Notification removed successfully",
