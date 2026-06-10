@@ -5,7 +5,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import AdminTag from "./AdminTag";
-import { findAdminSectionByKey } from "../utils/adminSections";
+import { findAdminSectionByKey } from "../adminSections";
 import { getAdminPanelSx, getAdminToneColor } from "../styles/admin.styles";
 
 /**

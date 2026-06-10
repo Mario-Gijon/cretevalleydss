@@ -11,7 +11,7 @@ import {
   getAdminSectionCardSx,
   getAdminToneColor,
 } from "../styles/admin.styles";
-import { ADMIN_SECTIONS } from "../utils/adminSections";
+import { ADMIN_SECTIONS } from "../adminSections";
 
 /**
  * Pantalla principal del modulo admin con acceso a secciones.
