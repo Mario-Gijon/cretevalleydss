@@ -2,6 +2,7 @@ import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Participation } from "../../../models/Participations.js";
 
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   buildExpertProgressRow,
@@ -9,6 +10,22 @@ import {
   resolveExpectedEvaluationCellsPerExpert,
 } from "./adminIssueProgress.js";
 import { loadIssueForExpertsProgressOrThrow } from "./adminIssueReadLoaders.js";
+
+const requireParticipationExpertId = ({ participation, issueId }) => {
+  const expertId = toIdString(participation.expert?._id || participation.expert);
+
+  if (!expertId) {
+    throw createInternalError("Participation expert id is invalid", {
+      field: "participations.expert",
+      details: {
+        issueId,
+        participationId: toIdString(participation._id) || null,
+      },
+    });
+  }
+
+  return expertId;
+};
 
 export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   const issue = await loadIssueForExpertsProgressOrThrow({ issueId });
@@ -51,12 +68,18 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
 
   const currentParticipantIds = new Set(
     participations.map((participation) =>
-      toIdString(participation.expert?._id || participation.expert)
+      requireParticipationExpertId({
+        participation,
+        issueId: toIdString(issue._id),
+      })
     )
   );
 
   const rows = participations.map((participation) => {
-    const expertId = toIdString(participation.expert?._id || participation.expert);
+    const expertId = requireParticipationExpertId({
+      participation,
+      issueId: toIdString(issue._id),
+    });
 
     return buildExpertProgressRow({
       expert: participation.expert,

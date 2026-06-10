@@ -61,10 +61,24 @@ export const buildCriteriaWeightingEvaluationsByExpertId = ({
   criteriaWeightingEvaluations,
 }) => {
   return new Map(
-    criteriaWeightingEvaluations.map((evaluation) => [
-      toIdString(evaluation?.expert?._id || evaluation?.expert),
-      evaluation,
-    ])
+    criteriaWeightingEvaluations.map((evaluation) => {
+      const expertId = toIdString(evaluation?.expert?._id || evaluation?.expert);
+
+      if (!expertId) {
+        throw createInternalError(
+          "Criteria weighting evaluation expert id is invalid",
+          {
+            field: "evaluations.expert",
+            details: {
+              issueId: toIdString(evaluation?.issue) || null,
+              evaluationId: toIdString(evaluation?._id) || null,
+            },
+          }
+        );
+      }
+
+      return [expertId, evaluation];
+    })
   );
 };
 

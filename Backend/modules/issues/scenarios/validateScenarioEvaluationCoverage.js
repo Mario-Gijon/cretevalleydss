@@ -32,6 +32,8 @@ export const validateEvaluationCoverageOrThrow = ({
   const { missingExpertIds } = getAcceptedExpertsMissingCompletedEvaluations({
     acceptedParticipations,
     completedEvaluations,
+    issueId: toIdString(issue._id),
+    phase,
   });
 
   if (missingExpertIds.length > 0) {

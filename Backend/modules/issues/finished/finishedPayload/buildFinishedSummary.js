@@ -1,4 +1,22 @@
+import { createInternalError } from "../../../../utils/common/errors.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 import { buildIssueCriteriaTree } from "../../shared/criteriaTree.js";
+
+const requireExpertEmail = ({ expert, field, issueId, recordId = null }) => {
+  const email = typeof expert?.email === "string" ? expert.email.trim() : "";
+
+  if (!email) {
+    throw createInternalError("Finished issue expert email is invalid", {
+      field,
+      details: {
+        issueId,
+        recordId,
+      },
+    });
+  }
+
+  return email;
+};
 
 export const mapCriteriaTreeToSummaryShape = (node) => ({
   _id: node.id,
@@ -24,10 +42,17 @@ export const attachWeightsToTree = (node, weightMap) => {
 };
 
 export const buildParticipationsSummary = ({ participations, completedEvaluations }) => {
+  const issueId =
+    toIdString(participations[0]?.issue || completedEvaluations[0]?.issue) || null;
   const completedExpertEmails = new Set(
-    completedEvaluations
-      .map((evaluation) => evaluation?.expert?.email)
-      .filter((email) => typeof email === "string" && email.trim())
+    completedEvaluations.map((evaluation) =>
+      requireExpertEmail({
+        expert: evaluation.expert,
+        field: "evaluations.expert.email",
+        issueId,
+        recordId: toIdString(evaluation._id) || null,
+      })
+    )
   );
 
   const participated = [...completedExpertEmails].sort((left, right) =>
@@ -35,9 +60,15 @@ export const buildParticipationsSummary = ({ participations, completedEvaluation
   );
 
   const notAccepted = participations
-    .filter((participation) => participation?.invitationStatus === "declined")
-    .map((participation) => participation?.expert?.email)
-    .filter((email) => typeof email === "string" && email.trim())
+    .filter((participation) => participation.invitationStatus === "declined")
+    .map((participation) =>
+      requireExpertEmail({
+        expert: participation.expert,
+        field: "participations.expert.email",
+        issueId,
+        recordId: toIdString(participation._id) || null,
+      })
+    )
     .sort((left, right) => left.localeCompare(right));
 
   return {

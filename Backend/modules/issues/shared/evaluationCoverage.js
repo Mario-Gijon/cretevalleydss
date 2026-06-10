@@ -1,18 +1,48 @@
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
+
+const requireExpertId = ({ record, source, issueId = null, phase = null }) => {
+  const expertId = toIdString(record?.expert?._id || record?.expert);
+
+  if (!expertId) {
+    throw createInternalError(`${source} expert id is invalid`, {
+      field: `${source}.expert`,
+      details: {
+        issueId,
+        phase,
+        recordId: toIdString(record?._id) || null,
+      },
+    });
+  }
+
+  return expertId;
+};
 
 export const getAcceptedExpertsMissingCompletedEvaluations = ({
   acceptedParticipations,
   completedEvaluations,
+  issueId = null,
+  phase = null,
 }) => {
   const acceptedExpertIds = new Set(
     acceptedParticipations.map((participation) =>
-      toIdString(participation?.expert?._id || participation?.expert)
+      requireExpertId({
+        record: participation,
+        source: "participations",
+        issueId,
+        phase,
+      })
     )
   );
 
   const completedExpertIds = new Set(
     completedEvaluations.map((evaluation) =>
-      toIdString(evaluation?.expert?._id || evaluation?.expert)
+      requireExpertId({
+        record: evaluation,
+        source: "evaluations",
+        issueId,
+        phase,
+      })
     )
   );
 
