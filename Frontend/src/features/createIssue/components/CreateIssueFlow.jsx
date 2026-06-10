@@ -27,9 +27,9 @@ import { SummaryStep } from "../steps/SummaryStep";
 import { ColorlibConnector, ColorlibStepIcon } from "./StepperLibConnector";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
-import { steps } from "../utils/createIssue.utils";
 import { CreateIssueProvider } from "../context/createIssue.provider";
 import { useCreateIssueContext } from "../context/createIssue.context";
+import { CREATE_ISSUE_STEPS as steps } from "../logic/createIssueSummary";
 import {
   contentSx,
   getCreateIssueFooterSx,

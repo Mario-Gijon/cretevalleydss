@@ -5,20 +5,6 @@ import {
 } from "../../modelParameters";
 
 /**
- * Pasos del flujo de creación de issues.
- *
- * @type {string[]}
- */
-export const steps = [
-  "Model",
-  "Alternatives",
-  "Criteria",
-  "Experts",
-  "Expression domain",
-  "Summary",
-];
-
-/**
  * Valida el nombre del issue.
  *
  * @param {string} issueName Nombre del issue.
@@ -271,27 +257,4 @@ export const updateParamValues = (prev, selectedModel, criteria) => {
     selectedModel,
     leafCriteria: criteria,
   });
-};
-
-/**
- * Lee el estado persistido del flujo createIssue desde localStorage.
- *
- * @param {string} storageKey Clave de almacenamiento.
- * @returns {Object}
- */
-export const readStoredCreateIssueData = (storageKey) => {
-  if (typeof window === "undefined") return {};
-
-  try {
-    const raw = localStorage.getItem(storageKey);
-    const parsed = raw ? JSON.parse(raw) : {};
-
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    return parsed;
-  } catch {
-    return {};
-  }
 };
