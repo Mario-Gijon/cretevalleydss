@@ -1,5 +1,6 @@
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
+import { isPlainObject } from "../../../../utils/common/objects.js";
 import { buildIssueCriteriaTree } from "../../shared/criteriaTree.js";
 
 const requireExpertEmail = ({ expert, field, issueId, recordId = null }) => {
@@ -80,27 +81,79 @@ export const buildParticipationsSummary = ({ participations, completedEvaluation
 export const buildSummarySection = ({
   issue,
   model,
+  finalCriteriaWeights,
   criteria,
   orderedLeafCriteria,
   alternatives,
   experts,
   consensusInfo,
 }) => {
-  const { criteriaTree } = buildIssueCriteriaTree(criteria, issue);
-  const weights = Array.isArray(issue?.modelParameters?.weights)
-    ? issue.modelParameters.weights
-    : [];
+  const issueName = typeof issue.name === "string" ? issue.name.trim() : "";
+  const admin = issue.admin;
+  const modelName = typeof model.name === "string" ? model.name.trim() : "";
 
-  const weightMap = orderedLeafCriteria.reduce((accumulator, criterion, index) => {
-    accumulator[criterion.name] = weights[index];
+  if (!issueName) {
+    throw createInternalError("Finished issue name is invalid", {
+      field: "issue.name",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  if (!admin || typeof admin !== "object") {
+    throw createInternalError("Finished issue admin is invalid", {
+      field: "issue.admin",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  const adminEmail = typeof admin.email === "string" ? admin.email.trim() : "";
+
+  if (!adminEmail) {
+    throw createInternalError("Finished issue admin email is invalid", {
+      field: "issue.admin.email",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  if (!modelName) {
+    throw createInternalError("Finished issue model name is invalid", {
+      field: "model.name",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  if (!isPlainObject(finalCriteriaWeights.weightsByCriterion)) {
+    throw createInternalError(
+      "Finished issue finalCriteriaWeights.weightsByCriterion must be an object",
+      {
+        field: "finalCriteriaWeights.weightsByCriterion",
+        details: {
+          issueId: toIdString(issue._id),
+        },
+      }
+    );
+  }
+
+  const { criteriaTree } = buildIssueCriteriaTree(criteria, issue);
+  const weightMap = orderedLeafCriteria.reduce((accumulator, criterion) => {
+    accumulator[criterion.name] =
+      finalCriteriaWeights.weightsByCriterion[criterion.name];
     return accumulator;
   }, {});
 
   return {
-    name: issue.name,
-    admin: issue?.admin?.email || null,
+    name: issueName,
+    admin: adminEmail,
     description: issue.description,
-    model: model?.name || null,
+    model: modelName,
     criteria: criteriaTree
       .map(mapCriteriaTreeToSummaryShape)
       .map((node) => attachWeightsToTree(node, weightMap)),
@@ -109,7 +162,7 @@ export const buildSummarySection = ({
     closureDate: issue.closureDate,
     alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
     criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-    isConsensus: issue?.isConsensus === true,
+    isConsensus: issue.isConsensus === true,
     consensusInfo,
     experts,
   };

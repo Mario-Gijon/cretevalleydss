@@ -25,7 +25,7 @@ export const requireFinishedIssueModelOrThrow = ({ issue }) => {
     throw createInternalError("Finished issue model must be populated", {
       field: "model",
       details: {
-        issueId: toIdString(issue?._id),
+        issueId: toIdString(issue._id),
       },
     });
   }
@@ -42,7 +42,7 @@ export const validateFinishedAlternativesAndLeafCriteriaOrThrow = ({
     throw createInternalError("Finished issue alternatives are required", {
       field: "alternatives",
       details: {
-        issueId: toIdString(issue?._id),
+        issueId: toIdString(issue._id),
       },
     });
   }
@@ -51,7 +51,7 @@ export const validateFinishedAlternativesAndLeafCriteriaOrThrow = ({
     throw createInternalError("Finished issue leaf criteria are required", {
       field: "criteria",
       details: {
-        issueId: toIdString(issue?._id),
+        issueId: toIdString(issue._id),
       },
     });
   }
@@ -107,7 +107,7 @@ export const buildFinishedPayloadContextOrThrow = async ({
   const finalCriteriaWeights = await resolveFinalCriteriaWeightsOrThrow({
     issue,
     orderedLeafCriteria,
-    modelUsesWeights: model?.usesCriteriaWeights === true,
+    modelUsesWeights: model.usesCriteriaWeights === true,
   });
 
   const leafCount = orderedLeafCriteria.length;
@@ -164,6 +164,7 @@ export const buildFinishedSummaryFromContext = ({
   return buildSummarySection({
     issue,
     model: context.model,
+    finalCriteriaWeights: context.finalCriteriaWeights,
     criteria: context.criteria,
     orderedLeafCriteria: context.orderedLeafCriteria,
     alternatives: context.alternatives,

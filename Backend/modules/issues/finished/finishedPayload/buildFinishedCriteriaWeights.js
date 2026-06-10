@@ -43,14 +43,32 @@ export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
     return null;
   }
 
-  const sourceWeightsByCriterion = isPlainObject(stageResult?.weightsByCriterion)
-    ? stageResult.weightsByCriterion
-    : isPlainObject(stageResult?.collectiveEvaluations?.weightsByCriterion)
-      ? stageResult.collectiveEvaluations.weightsByCriterion
-      : null;
+  if (!isPlainObject(stageResult.collectiveEvaluations)) {
+    throw createInternalError(
+      "Criteria weighting stage result collectiveEvaluations must be an object",
+      {
+        field: "collectiveEvaluations",
+        details: {
+          issueId: toIdString(issue._id),
+          stageResultId: toIdString(stageResult._id) || null,
+        },
+      }
+    );
+  }
+
+  const sourceWeightsByCriterion = stageResult.collectiveEvaluations.weightsByCriterion;
 
   if (!isPlainObject(sourceWeightsByCriterion)) {
-    return null;
+    throw createInternalError(
+      "Criteria weighting stage result weightsByCriterion must be an object",
+      {
+        field: "collectiveEvaluations.weightsByCriterion",
+        details: {
+          issueId: toIdString(issue._id),
+          stageResultId: toIdString(stageResult._id) || null,
+        },
+      }
+    );
   }
 
   const weights = orderedLeafCriteria.map((criterion) => {
@@ -64,7 +82,7 @@ export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
         {
           field: "collectiveEvaluations.weightsByCriterion",
           details: {
-            issueId: toIdString(issue?._id),
+            issueId: toIdString(issue._id),
             criterionName,
           },
         }
@@ -96,9 +114,8 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
   modelUsesWeights,
 }) => {
   const leafCount = orderedLeafCriteria.length;
-  const sourceWeights = Array.isArray(issue?.modelParameters?.weights)
-    ? issue.modelParameters.weights
-    : null;
+  const modelParameters = issue.modelParameters;
+  const sourceWeights = modelParameters?.weights;
 
   if (!sourceWeights) {
     if (leafCount === 1) {
@@ -124,7 +141,7 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
       throw createInternalError("Finished issue is missing final criteria weights", {
         field: "modelParameters.weights",
         details: {
-          issueId: toIdString(issue?._id),
+          issueId: toIdString(issue._id),
           criteriaCount: leafCount,
         },
       });
@@ -137,11 +154,21 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
     };
   }
 
+  if (!Array.isArray(sourceWeights)) {
+    throw createInternalError("Finished issue modelParameters.weights is invalid", {
+      field: "modelParameters.weights",
+      details: {
+        issueId: toIdString(issue._id),
+        criteriaCount: leafCount,
+      },
+    });
+  }
+
   if (sourceWeights.length < leafCount) {
     throw createInternalError("Finished issue modelParameters.weights is incomplete", {
       field: "modelParameters.weights",
       details: {
-        issueId: toIdString(issue?._id),
+        issueId: toIdString(issue._id),
         expectedCount: leafCount,
         receivedCount: sourceWeights.length,
       },
@@ -154,7 +181,7 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
       throw createInternalError("Finished issue modelParameters.weights is invalid", {
         field: `modelParameters.weights[${index}]`,
         details: {
-          issueId: toIdString(issue?._id),
+          issueId: toIdString(issue._id),
           criterionName: criterion.name,
         },
       });
@@ -205,20 +232,17 @@ export const resolveExpertWeightingRequired = ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
 }) => {
-  if (!issue?.criteriaWeightingStructureKey) {
+  if (!issue.criteriaWeightingStructureKey) {
     return false;
   }
 
-  if (
-    criteriaWeightingEvaluationsByExpertId &&
-    criteriaWeightingEvaluationsByExpertId.size > 0
-  ) {
+  if (criteriaWeightingEvaluationsByExpertId.size > 0) {
     return true;
   }
 
-  return Array.isArray(participations)
-    ? participations.some((participation) => participation?.weightsCompleted === true)
-    : false;
+  return participations.some(
+    (participation) => participation.weightsCompleted === true
+  );
 };
 
 const extractWeightsByCriterionFromDisplayPayload = ({ payload, criterionNames }) => {
@@ -252,7 +276,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     criteriaWeightingEvaluationsByExpertId,
   });
   const criteriaWeightingStructure = isRequired
-    ? getEvaluationStructureOrThrow(issue?.criteriaWeightingStructureKey)
+    ? getEvaluationStructureOrThrow(issue.criteriaWeightingStructureKey)
     : null;
 
   if (isRequired && typeof criteriaWeightingStructure?.get !== "function") {
@@ -261,8 +285,8 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
       {
         field: "criteriaWeightingStructureKey",
         details: {
-          issueId: toIdString(issue?._id),
-          criteriaWeightingStructureKey: issue?.criteriaWeightingStructureKey || null,
+          issueId: toIdString(issue._id),
+          criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
         },
       }
     );
@@ -278,16 +302,35 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
 
   for (const participation of participations) {
     const expertId = toIdString(participation?.expert?._id || participation?.expert);
-    const expertEmailRaw = participation?.expert?.email;
     const expertEmail =
-      typeof expertEmailRaw === "string" && expertEmailRaw.trim()
-        ? expertEmailRaw.trim()
-        : `expert_${expertId || "unknown"}`;
+      typeof participation?.expert?.email === "string"
+        ? participation.expert.email.trim()
+        : "";
+
+    if (!expertId) {
+      throw createInternalError("Finished participation expert id is invalid", {
+        field: "participations.expert",
+        details: {
+          issueId: toIdString(issue._id),
+          participationId: toIdString(participation?._id) || null,
+        },
+      });
+    }
+
+    if (!expertEmail) {
+      throw createInternalError("Finished participation expert email is invalid", {
+        field: "participations.expert.email",
+        details: {
+          issueId: toIdString(issue._id),
+          participationId: toIdString(participation?._id) || null,
+        },
+      });
+    }
 
     if (!isRequired) {
       mapByExpertEmail[expertEmail] = {
         status: "notRequired",
-        structureKey: issue.criteriaWeightingStructureKey || null,
+        structureKey: issue.criteriaWeightingStructureKey,
         payload: null,
         weightsByCriterion: null,
       };
@@ -299,7 +342,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     if (!evaluation) {
       mapByExpertEmail[expertEmail] = {
         status: "notSubmitted",
-        structureKey: issue.criteriaWeightingStructureKey || null,
+        structureKey: issue.criteriaWeightingStructureKey,
         payload: null,
         weightsByCriterion: null,
       };
@@ -311,15 +354,29 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
       storedEvaluation: evaluation,
       structureContext,
     });
-    const payload = isPlainObject(displayPayload) ? displayPayload : {};
+    if (!isPlainObject(displayPayload)) {
+      throw createInternalError(
+        "Criteria weighting structure display payload must be an object",
+        {
+          field: "payload",
+          details: {
+            issueId: toIdString(issue._id),
+            evaluationId: toIdString(evaluation._id) || null,
+            criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+          },
+        }
+      );
+    }
+
+    const payload = displayPayload;
     const weightsByCriterion = extractWeightsByCriterionFromDisplayPayload({
-      payload: displayPayload,
+      payload,
       criterionNames,
     });
 
     mapByExpertEmail[expertEmail] = {
       status,
-      structureKey: issue.criteriaWeightingStructureKey || null,
+      structureKey: issue.criteriaWeightingStructureKey,
       payload,
       weightsByCriterion,
     };

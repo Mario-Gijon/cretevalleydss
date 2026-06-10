@@ -20,11 +20,8 @@ const ISSUE_MODELS_SELECT =
 const loadAvailableIssueModels = async () => {
   return IssueModel.find({
     isIssueModel: true,
-    $or: [
-      { manifestSync: { $exists: false } },
-      { "manifestSync.isStale": { $exists: false } },
-      { "manifestSync.isStale": false },
-    ],
+    visibleInIssueCreation: true,
+    "manifestSync.isStale": false,
   })
     .select(ISSUE_MODELS_SELECT)
     .lean();
@@ -213,9 +210,20 @@ export const loadFinishedConsensusData = async ({
 export const groupCompletedEvaluationsByPhase = ({ evaluations }) => {
   return evaluations.reduce(
     (accumulator, evaluation) => {
-      const phase = Number(evaluation?.consensusPhase);
+      const phase = Number(evaluation.consensusPhase);
+
       if (!Number.isInteger(phase) || phase < 1) {
-        return accumulator;
+        throw createInternalError(
+          "Finished evaluation consensusPhase is invalid",
+          {
+            field: "consensusPhase",
+            details: {
+              issueId: toIdString(evaluation.issue) || null,
+              evaluationId: toIdString(evaluation._id) || null,
+              consensusPhase: evaluation.consensusPhase,
+            },
+          }
+        );
       }
 
       if (!accumulator.has(phase)) {

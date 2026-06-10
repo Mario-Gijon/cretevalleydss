@@ -1,3 +1,4 @@
+import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { buildDefaultsResolved } from "../../../decisionEngine/modelParameters/resolveModelParameterValues.js";
 import { buildScenarioCompatibilityMetadata } from "../../scenarios/validateScenarioModelCompatibility.js";
@@ -9,12 +10,38 @@ export const buildAvailableModelsPayload = ({
   issueDomainSnapshots,
   leafCount,
 }) => {
+  if (!Array.isArray(issueDomainSnapshots)) {
+    throw createInternalError("Finished issue domain snapshots must be an array", {
+      field: "issueDomainSnapshots",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
+  const linguisticDomains = issueDomainSnapshots.filter(
+    (domain) => domain?.type === "linguistic"
+  );
+
+  for (const domain of linguisticDomains) {
+    if (!Number.isInteger(domain.valueCount) || domain.valueCount < 2) {
+      throw createInternalError(
+        "Finished linguistic issue domain snapshot valueCount is invalid",
+        {
+          field: "issueDomainSnapshots.valueCount",
+          details: {
+            issueId: toIdString(issue._id),
+            domainId: toIdString(domain?._id) || null,
+            valueCount: domain.valueCount,
+          },
+        }
+      );
+    }
+  }
+
   const linguisticValueCounts = Array.from(
     new Set(
-      (Array.isArray(issueDomainSnapshots) ? issueDomainSnapshots : [])
-        .filter((domain) => domain?.type === "linguistic")
-        .map((domain) => Number(domain?.valueCount))
-        .filter((valueCount) => Number.isInteger(valueCount) && valueCount >= 2)
+      linguisticDomains.map((domain) => domain.valueCount)
     )
   );
   const fuzzyWeightsValueCount =
