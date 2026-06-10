@@ -28,6 +28,46 @@ import {
 } from "./adminIssueProgress.js";
 import { loadIssueForAdminDetailOrThrow } from "./adminIssueReadLoaders.js";
 
+const requireParticipationExpertOrThrow = ({ participation, issueId }) => {
+  const expert = participation.expert;
+  const expertId = expert ? toIdString(expert._id) : null;
+
+  if (!expertId) {
+    throw createInternalError("Participation expert id is invalid", {
+      field: "participations.expert",
+      details: {
+        issueId,
+        participationId: toIdString(participation._id),
+      },
+    });
+  }
+
+  return {
+    expert,
+    expertId,
+  };
+};
+
+const requireExitUserOrThrow = ({ exit, issueId }) => {
+  const user = exit.user;
+  const userId = user ? toIdString(user._id) : null;
+
+  if (!userId) {
+    throw createInternalError("Exit user id is invalid", {
+      field: "exits.user",
+      details: {
+        issueId,
+        exitId: toIdString(exit._id),
+      },
+    });
+  }
+
+  return {
+    user,
+    userId,
+  };
+};
+
 const buildAdminFinalWeightsMaps = ({ issue, orderedLeafCriteria }) => {
   const rawWeights = issue?.modelParameters?.weights;
 
@@ -75,6 +115,7 @@ const buildAdminFinalWeightsMaps = ({ issue, orderedLeafCriteria }) => {
 
 export const getIssueAdminDetailPayload = async ({ issueId }) => {
   const issue = await loadIssueForAdminDetailOrThrow({ issueId });
+  const normalizedIssueId = toIdString(issue._id);
 
   const [
     orderedAlternatives,
@@ -153,10 +194,24 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
   const weightDocMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
   );
+  const validatedParticipations = participations.map((participation) => ({
+    participation,
+    ...requireParticipationExpertOrThrow({
+      participation,
+      issueId: normalizedIssueId,
+    }),
+  }));
+  const validatedExits = exits.map((exit) => ({
+    exit,
+    ...requireExitUserOrThrow({
+      exit,
+      issueId: normalizedIssueId,
+    }),
+  }));
 
   const exitMap = new Map(
-    exits.map((exit) => [
-      toIdString(exit.user?._id || exit.user),
+    validatedExits.map(({ exit, user, userId }) => [
+      userId,
       {
         hidden: exit.hidden,
         timestamp: exit.timestamp,
@@ -164,22 +219,20 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         stage: exit.stage,
         reason: exit.reason,
         history: exit.history,
-        user: exit.user
-          ? {
-            id: toIdString(exit.user._id),
-            name: exit.user.name,
-            email: exit.user.email,
-            role: exit.user.role,
-            university: exit.user.university,
-            accountConfirm: exit.user.accountConfirm,
-          }
-          : null,
+        user: {
+          id: userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          university: user.university,
+          accountConfirm: user.accountConfirm,
+        },
       },
     ])
   );
 
-  const participantsDetailed = participations.map((participation) => {
-    const expertId = toIdString(participation.expert?._id || participation.expert);
+  const participantsDetailed = validatedParticipations.map(
+    ({ participation, expert, expertId }) => {
     const evaluationStats = evaluationAggMap.get(expertId) || {
       totalDocs: 0,
       submittedDocs: 0,
@@ -194,7 +247,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     const exitInfo = exitMap.get(expertId) || null;
 
     return {
-      expert: buildParticipantExpertPayload(participation.expert, expertId),
+      expert: buildParticipantExpertPayload(expert, expertId),
       currentParticipant: true,
       invitationStatus: participation.invitationStatus,
       weightsCompleted: participation.weightsCompleted,
@@ -223,20 +276,19 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       },
       exitInfo,
     };
-  });
-
-  const currentParticipantIds = new Set(
-    participations.map((participation) =>
-      toIdString(participation.expert?._id || participation.expert)
-    )
+    }
   );
 
-  const exitedUsersDetailed = exits
+  const currentParticipantIds = new Set(
+    validatedParticipations.map(({ expertId }) => expertId)
+  );
+
+  const exitedUsersDetailed = validatedExits
     .filter(
-      (exit) => !currentParticipantIds.has(toIdString(exit.user?._id || exit.user))
+      ({ userId }) => !currentParticipantIds.has(userId)
     )
-    .map((exit) => ({
-      expert: buildParticipantExpertPayload(exit.user, toIdString(exit.user)),
+    .map(({ exit, user, userId }) => ({
+      expert: buildParticipantExpertPayload(user, userId),
       currentParticipant: false,
       exitInfo: {
         hidden: exit.hidden,

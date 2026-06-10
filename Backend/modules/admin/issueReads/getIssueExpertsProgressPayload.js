@@ -11,24 +11,49 @@ import {
 } from "./adminIssueProgress.js";
 import { loadIssueForExpertsProgressOrThrow } from "./adminIssueReadLoaders.js";
 
-const requireParticipationExpertId = ({ participation, issueId }) => {
-  const expertId = toIdString(participation.expert?._id || participation.expert);
+const requireParticipationExpertOrThrow = ({ participation, issueId }) => {
+  const expert = participation.expert;
+  const expertId = expert ? toIdString(expert._id) : null;
 
   if (!expertId) {
     throw createInternalError("Participation expert id is invalid", {
       field: "participations.expert",
       details: {
         issueId,
-        participationId: toIdString(participation._id) || null,
+        participationId: toIdString(participation._id),
       },
     });
   }
 
-  return expertId;
+  return {
+    expert,
+    expertId,
+  };
+};
+
+const requireExitUserOrThrow = ({ exit, issueId }) => {
+  const user = exit.user;
+  const userId = user ? toIdString(user._id) : null;
+
+  if (!userId) {
+    throw createInternalError("Exit user id is invalid", {
+      field: "exits.user",
+      details: {
+        issueId,
+        exitId: toIdString(exit._id),
+      },
+    });
+  }
+
+  return {
+    user,
+    userId,
+  };
 };
 
 export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   const issue = await loadIssueForExpertsProgressOrThrow({ issueId });
+  const normalizedIssueId = toIdString(issue._id);
 
   const [
     participations,
@@ -65,24 +90,28 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
   const weightMap = new Map(
     weightDocs.map((weightDoc) => [toIdString(weightDoc.expert), weightDoc])
   );
+  const validatedParticipations = participations.map((participation) => ({
+    participation,
+    ...requireParticipationExpertOrThrow({
+      participation,
+      issueId: normalizedIssueId,
+    }),
+  }));
+  const validatedExits = exits.map((exit) => ({
+    exit,
+    ...requireExitUserOrThrow({
+      exit,
+      issueId: normalizedIssueId,
+    }),
+  }));
 
   const currentParticipantIds = new Set(
-    participations.map((participation) =>
-      requireParticipationExpertId({
-        participation,
-        issueId: toIdString(issue._id),
-      })
-    )
+    validatedParticipations.map(({ expertId }) => expertId)
   );
 
-  const rows = participations.map((participation) => {
-    const expertId = requireParticipationExpertId({
-      participation,
-      issueId: toIdString(issue._id),
-    });
-
+  const rows = validatedParticipations.map(({ participation, expert, expertId }) => {
     return buildExpertProgressRow({
-      expert: participation.expert,
+      expert,
       expertId,
       currentParticipant: true,
       participation,
@@ -101,20 +130,18 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
     });
   });
 
-  for (const exit of exits) {
-    const expertId = toIdString(exit.user?._id || exit.user);
-
-    if (currentParticipantIds.has(expertId)) {
+  for (const { exit, user, userId } of validatedExits) {
+    if (currentParticipantIds.has(userId)) {
       continue;
     }
 
     rows.push(
       buildExpertProgressRow({
-        expert: exit.user,
-        expertId,
+        expert: user,
+        expertId: userId,
         currentParticipant: false,
         exit,
-        evaluationStats: evaluationMap.get(expertId) || {
+        evaluationStats: evaluationMap.get(userId) || {
           totalDocs: 0,
           submittedDocs: 0,
           draftDocs: 0,
@@ -124,7 +151,7 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
           latestSubmittedAt: null,
           latestUpdatedAt: null,
         },
-        weightDoc: weightMap.get(expertId),
+        weightDoc: weightMap.get(userId),
         expectedEvaluationCells: expectedPerExpert,
       })
     );

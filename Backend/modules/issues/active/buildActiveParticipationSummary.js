@@ -3,17 +3,17 @@ import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { ISSUE_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
 
 const validateParticipationExpertOrThrow = (participation) => {
-  const expertId = toIdString(participation?.expert?._id);
-  const expertEmail =
-    typeof participation?.expert?.email === "string"
-      ? participation.expert.email.trim()
-      : "";
+  const expert = participation.expert;
+  const expertId = expert ? toIdString(expert._id) : null;
+  const expertEmail = expert && typeof expert.email === "string"
+    ? expert.email.trim()
+    : "";
 
-  if (!participation.expert || !expertId || expertEmail === "") {
+  if (!expert || !expertId || expertEmail === "") {
     throw createInternalError("Participation expert data is invalid", {
       field: "participations.expert",
       details: {
-        participationId: toIdString(participation?._id),
+        participationId: toIdString(participation._id),
       },
     });
   }

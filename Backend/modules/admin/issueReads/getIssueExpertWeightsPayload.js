@@ -4,7 +4,10 @@ import { User } from "../../../models/Users.js";
 
 import { getOrderedLeafCriteriaDb } from "../../issues/shared/ordering.js";
 
-import { createNotFoundError } from "../../../utils/common/errors.js";
+import {
+  createInternalError,
+  createNotFoundError,
+} from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   buildAdminExpertIdentityPayload,
@@ -19,6 +22,53 @@ import {
 import { getEvaluationStructureOrThrow } from "../../decisionEngine/evaluations/index.js";
 import { buildEvaluationStructureContext } from "../../decisionEngine/evaluations/evaluationStructureContext.js";
 
+const requireCriteriaWeightingStructureOrThrow = ({
+  criteriaWeightingStructureKey,
+  issueId,
+}) => {
+  const criteriaWeightingStructure = getEvaluationStructureOrThrow(
+    criteriaWeightingStructureKey
+  );
+
+  if (
+    typeof criteriaWeightingStructure.key !== "string" ||
+    criteriaWeightingStructure.key.trim() === ""
+  ) {
+    throw createInternalError("Criteria weighting structure key is invalid", {
+      field: "criteriaWeightingStructure.key",
+      details: {
+        issueId,
+        criteriaWeightingStructureKey,
+      },
+    });
+  }
+
+  if (
+    typeof criteriaWeightingStructure.label !== "string" ||
+    criteriaWeightingStructure.label.trim() === ""
+  ) {
+    throw createInternalError("Criteria weighting structure label is invalid", {
+      field: "criteriaWeightingStructure.label",
+      details: {
+        issueId,
+        criteriaWeightingStructureKey,
+      },
+    });
+  }
+
+  if (typeof criteriaWeightingStructure.get !== "function") {
+    throw createInternalError("Criteria weighting structure get is invalid", {
+      field: "criteriaWeightingStructure.get",
+      details: {
+        issueId,
+        criteriaWeightingStructureKey,
+      },
+    });
+  }
+
+  return criteriaWeightingStructure;
+};
+
 const resolveWeightsKind = ({
   leafNames,
   criteriaWeightingStructureKey,
@@ -32,7 +82,7 @@ const resolveWeightsKind = ({
     return "notRequired";
   }
 
-  return criteriaWeightingStructure?.key || "unknown";
+  return criteriaWeightingStructure.key;
 };
 
 const resolveStructureLabel = ({ kind, criteriaWeightingStructure }) => {
@@ -44,14 +94,7 @@ const resolveStructureLabel = ({ kind, criteriaWeightingStructure }) => {
     return "Not required";
   }
 
-  if (
-    typeof criteriaWeightingStructure?.label === "string" &&
-    criteriaWeightingStructure.label.trim()
-  ) {
-    return criteriaWeightingStructure.label.trim();
-  }
-
-  return "Criteria weights";
+  return criteriaWeightingStructure.label.trim();
 };
 
 export const getIssueExpertWeightsPayload = async ({
@@ -102,7 +145,10 @@ export const getIssueExpertWeightsPayload = async ({
 
   const criteriaWeightingStructureKey = issue.criteriaWeightingStructureKey || null;
   const criteriaWeightingStructure = criteriaWeightingStructureKey
-    ? getEvaluationStructureOrThrow(criteriaWeightingStructureKey)
+    ? requireCriteriaWeightingStructureOrThrow({
+        criteriaWeightingStructureKey,
+        issueId: toIdString(issue._id),
+      })
     : null;
   const criteriaWeightingStructureContext = criteriaWeightingStructure
     ? await buildEvaluationStructureContext({
