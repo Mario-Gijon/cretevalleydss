@@ -1,18 +1,3 @@
-import { buildDefaultFuzzyWeightVector } from "../logic/createIssueCriteriaWeighting";
-
-export const CRITERIA_WEIGHTING_MODES = Object.freeze({
-  CREATOR_FUZZY: "creatorFuzzy",
-  CREATOR_MANUAL: "creatorManual",
-  EXPERT_MANUAL: "expertManual",
-  CREATOR_API_MODEL: "creatorApiModel",
-  EXPERT_API_MODEL: "expertApiModel",
-});
-
-export const normalizeMode = (mode) =>
-  typeof mode === "string" && mode.trim()
-    ? mode.trim()
-    : CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
-
 export const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -32,6 +17,20 @@ export const isDeepEqual = (left, right) => {
   }
 
   return false;
+};
+
+export const buildDefaultFuzzyWeightVector = (valueCount) => {
+  if (!Number.isInteger(valueCount) || valueCount <= 1) {
+    return [];
+  }
+
+  const min = 0.25;
+  const max = 0.75;
+  const step = (max - min) / (valueCount - 1);
+
+  return Array.from({ length: valueCount }, (_, index) =>
+    Number((min + step * index).toFixed(10))
+  );
 };
 
 export const buildEqualWeightsByCriterion = (leafCriteria) => {
@@ -60,138 +59,13 @@ export const buildEqualWeightsByCriterion = (leafCriteria) => {
   return weightsByCriterion;
 };
 
-export const buildConfigByMode = ({ mode, leafCriteria }) => {
-  const resolvedMode = normalizeMode(mode);
-
-  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_FUZZY) {
-    return {
-      mode: resolvedMode,
-      source: "creator",
-      method: "fuzzy",
-      structureKey: null,
-      payload: {},
-    };
-  }
-
-  if (resolvedMode === CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL) {
-    return {
-      mode: resolvedMode,
-      source: "creator",
-      method: "manual",
-      structureKey: "manualCriteriaWeights",
-      payload: {
-        weightsByCriterion: buildEqualWeightsByCriterion(leafCriteria),
-      },
-    };
-  }
-
-  return {
-    mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
-    source: "experts",
-    method: "manual",
-    structureKey: "manualCriteriaWeights",
-    payload: {},
-  };
-};
-
-export const buildApiCriteriaWeightingConfig = ({
-  mode,
-  leafCriteria,
-  criteriaWeightingModel,
-}) => {
-  void leafCriteria;
-  const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
-  const structureKey = String(
-    criteriaWeightingModel?.criteriaWeightingStructureKey || ""
-  ).trim();
-  const modelId = String(criteriaWeightingModel?._id || criteriaWeightingModel?.id || "").trim();
-  const modelKey = String(criteriaWeightingModel?.apiModelKey || "").trim();
-
-  return {
-    mode: isCreatorMode
-      ? CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL
-      : CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
-    source: isCreatorMode ? "creator" : "experts",
-    method: "apiModel",
-    structureKey: structureKey || null,
-    criteriaWeightingModelId: modelId || null,
-    criteriaWeightingModelKey: modelKey || null,
-    criteriaWeightingParameters: {},
-    payload: {},
-  };
-};
-
 export const formatDisplayNumber = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return "";
   return parsed.toFixed(2);
 };
 
-export const resolveAssignedDomainIds = ({
-  expressionDomainConfig,
-  leafCriteria,
-}) => {
-  const mode = String(expressionDomainConfig?.mode || "").trim();
-  const leafNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion) => String(criterion?.name || "").trim())
-    .filter(Boolean);
-  const domainIds = new Set();
-
-  if (mode === "global") {
-    const globalDomainId = String(expressionDomainConfig?.globalDomainId || "").trim();
-    if (globalDomainId) {
-      domainIds.add(globalDomainId);
-    }
-    return Array.from(domainIds);
-  }
-
-  if (mode !== "byCriterion") {
-    return [];
-  }
-
-  const domainsByCriterion =
-    expressionDomainConfig?.domainsByCriterion &&
-    typeof expressionDomainConfig.domainsByCriterion === "object" &&
-    !Array.isArray(expressionDomainConfig.domainsByCriterion)
-      ? expressionDomainConfig.domainsByCriterion
-      : {};
-
-  for (const criterionName of leafNames) {
-    const domainId = String(domainsByCriterion[criterionName] || "").trim();
-    if (domainId) {
-      domainIds.add(domainId);
-    }
-  }
-
-  return Array.from(domainIds);
-};
-
-export const collectLeafCriteriaByRoot = (criteria) => {
-  const byRoot = {};
-
-  const collectLeaves = (nodes = [], rootName) => {
-    for (const node of nodes) {
-      const children = Array.isArray(node?.children) ? node.children : [];
-      if (children.length === 0) {
-        if (!byRoot[rootName]) byRoot[rootName] = [];
-        byRoot[rootName].push(node);
-        continue;
-      }
-
-      collectLeaves(children, rootName);
-    }
-  };
-
-  for (const rootCriterion of Array.isArray(criteria) ? criteria : []) {
-    const rootName = rootCriterion?.name;
-    if (!rootName) continue;
-    collectLeaves([rootCriterion], rootName);
-  }
-
-  return byRoot;
-};
-
-const buildEqualValues = ({ count, total }) => {
+export const buildEqualValues = ({ count, total }) => {
   if (!Number.isInteger(count) || count <= 0) return [];
   const safeTotal = Number.isFinite(total) && total > 0 ? total : 1;
   const base = Number((safeTotal / count).toFixed(6));

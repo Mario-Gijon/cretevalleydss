@@ -4,21 +4,23 @@ import { Alert, Box, Stack, Typography } from "@mui/material";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import {
+  CRITERIA_WEIGHTING_MODES,
+  buildApiCriteriaWeightingConfig,
+  buildConfigByMode,
+  normalizeMode,
+} from "../../logic/createIssueCriteriaWeightingModes";
+import {
   isFuzzyCriteriaWeightModel,
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
 } from "../../logic/createIssueCriteriaWeighting";
+import { resolveAssignedDomainIds } from "../../logic/createIssueAssignedDomains";
+import { collectLeafCriteriaByRoot } from "../../logic/createIssueCriteriaTree";
 import {
-  CRITERIA_WEIGHTING_MODES,
-  buildApiCriteriaWeightingConfig,
-  buildConfigByMode,
-  collectLeafCriteriaByRoot,
   isDeepEqual,
   normalizeFuzzyWeightsByRoot,
   normalizeManualWeightsByRoot,
-  normalizeMode,
-  resolveAssignedDomainIds,
-} from "../../utils/criteriaWeighting.helpers";
+} from "../../logic/createIssueCriteriaWeightValues";
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
 import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";

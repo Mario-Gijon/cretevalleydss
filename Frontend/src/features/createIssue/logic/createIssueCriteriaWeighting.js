@@ -1,9 +1,12 @@
-import { resolveAssignedDomainIdsFromExpressionDomainConfig } from "../../../utils/domainAssignments.utils";
 import {
   CRITERIA_WEIGHTING_MODES,
+} from "./createIssueCriteriaWeightingModes";
+import {
   isDeepEqual,
   isPlainObject,
-} from "../utils/criteriaWeighting.helpers";
+  buildDefaultFuzzyWeightVector,
+} from "./createIssueCriteriaWeightValues";
+import { resolveAssignedDomainIds } from "./createIssueAssignedDomains";
 
 export const CREATE_ISSUE_CRITERIA_WEIGHTING_MODES = CRITERIA_WEIGHTING_MODES;
 export const isCreateIssueDeepEqual = isDeepEqual;
@@ -50,20 +53,6 @@ export const resolveFuzzyCriteriaWeightValueCount = (domains = []) => {
   );
 
   return valueCounts.length === 1 ? valueCounts[0] : null;
-};
-
-export const buildDefaultFuzzyWeightVector = (valueCount) => {
-  if (!Number.isInteger(valueCount) || valueCount <= 1) {
-    return [];
-  }
-
-  const min = 0.25;
-  const max = 0.75;
-  const step = (max - min) / (valueCount - 1);
-
-  return Array.from({ length: valueCount }, (_, index) =>
-    Number((min + step * index).toFixed(10))
-  );
 };
 
 const buildDefaultFuzzyWeightsByCriterion = ({
@@ -161,7 +150,7 @@ export const resolveAssignedFuzzyValueCount = ({
   globalDomains,
   expressionDomains,
 }) => {
-  const assignedDomainIds = resolveAssignedDomainIdsFromExpressionDomainConfig({
+  const assignedDomainIds = resolveAssignedDomainIds({
     expressionDomainConfig,
     leafCriteria,
   });

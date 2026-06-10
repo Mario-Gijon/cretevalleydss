@@ -48,8 +48,8 @@ import {
 import {
   CRITERIA_WEIGHTING_MODES,
   normalizeMode,
-  resolveAssignedDomainIds,
-} from "../utils/criteriaWeighting.helpers";
+} from "../logic/createIssueCriteriaWeightingModes";
+import { resolveAssignedDomainIds } from "../logic/createIssueAssignedDomains";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriteriaWeightingPanel } from "../components/criteriaWeighting/CriteriaWeightingPanel";
 

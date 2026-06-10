@@ -1,7 +1,7 @@
 import { Stack, TextField, Typography } from "@mui/material";
 
-import { buildDefaultFuzzyWeightVector } from "../../logic/createIssueCriteriaWeighting";
-import { formatDisplayNumber } from "../../utils/criteriaWeighting.helpers";
+import { buildDefaultFuzzyWeightVector } from "../../logic/createIssueCriteriaWeightValues";
+import { formatDisplayNumber } from "../../logic/createIssueCriteriaWeightValues";
 
 const weightInputSx = {
   width: 82,
