@@ -3,7 +3,6 @@ import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import {
   createBadRequestError,
-  createInternalError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { toIdString, uniqueIdStrings } from "../../../utils/common/ids.js";
@@ -45,29 +44,6 @@ export const getIssueByIdOrThrow = async (issueId, options = {}) => {
   }
 
   return issue;
-};
-
-export const getNextConsensusPhase = async (issueId) => {
-  const issue = await Issue.findById(issueId).select("consensusPhase").lean();
-  if (!issue) {
-    throw createNotFoundError("Issue not found", {
-      field: "issueId",
-    });
-  }
-
-  const phase = issue.consensusPhase;
-
-  if (!Number.isInteger(phase) || phase < 1) {
-    throw createInternalError("Issue consensusPhase is invalid", {
-      field: "consensusPhase",
-      details: {
-        issueId,
-        consensusPhase: issue.consensusPhase,
-      },
-    });
-  }
-
-  return phase;
 };
 
 export const getAcceptedParticipation = async (issueId, userId) =>
