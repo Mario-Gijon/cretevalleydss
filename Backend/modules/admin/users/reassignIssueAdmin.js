@@ -3,6 +3,7 @@ import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
 
 import {
   createBadRequestError,
+  createInternalError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
@@ -56,10 +57,19 @@ export const reassignIssueAdmin = async ({
     });
   }
 
+  if (!issue.admin || typeof issue.admin !== "object") {
+    throw createInternalError("Issue admin must be populated for reassignment", {
+      field: "issue.admin",
+      details: {
+        issueId: toIdString(issue._id),
+      },
+    });
+  }
+
   const oldAdmin = buildAdminUserIdentityPayload(issue.admin);
   const nextAdmin = buildAdminUserIdentityPayload(newAdmin);
 
-  if (sameId(issue.admin?._id || issue.admin, newAdmin._id)) {
+  if (sameId(issue.admin._id, newAdmin._id)) {
     return {
       message: `Issue ${issue.name} is already assigned to ${newAdmin.email}`,
       issue: {

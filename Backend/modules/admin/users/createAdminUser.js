@@ -14,6 +14,12 @@ export const createAdminUser = async ({
   payload,
   session = null,
 }) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw createBadRequestError("Request payload is required", {
+      field: "payload",
+    });
+  }
+
   let {
     name = "",
     university = "",
@@ -21,7 +27,7 @@ export const createAdminUser = async ({
     password = "",
     accountConfirm = true,
     role = "user",
-  } = payload || {};
+  } = payload;
 
   name = String(name).trim();
   university = String(university).trim();
@@ -76,8 +82,13 @@ export const createAdminUser = async ({
     });
   }
 
-  const finalAccountConfirm =
-    role === "admin" ? true : Boolean(accountConfirm);
+  if (role !== "admin" && typeof accountConfirm !== "boolean") {
+    throw createBadRequestError("accountConfirm must be boolean", {
+      field: "accountConfirm",
+    });
+  }
+
+  const finalAccountConfirm = role === "admin" ? true : accountConfirm;
 
   const newUser = new User({
     name,

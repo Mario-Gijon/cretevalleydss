@@ -15,6 +15,12 @@ export const updateAdminUser = async ({
   payload,
   session = null,
 }) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw createBadRequestError("Request payload is required", {
+      field: "payload",
+    });
+  }
+
   const {
     id,
     name,
@@ -23,7 +29,7 @@ export const updateAdminUser = async ({
     password,
     accountConfirm,
     role,
-  } = payload || {};
+  } = payload;
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid user id is required", {

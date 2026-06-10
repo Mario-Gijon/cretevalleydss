@@ -1,7 +1,8 @@
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
 export const normalizeAdminManagedRole = (role) =>
-  String(role || "user").trim().toLowerCase();
+  String(role ?? "user").trim().toLowerCase();
 
 export const buildAdminManagedUserPayload = (user) => ({
   id: toIdString(user._id),
@@ -14,14 +15,30 @@ export const buildAdminManagedUserPayload = (user) => ({
 });
 
 export const buildAdminUserIdentityPayload = (user) => {
-  if (!user) {
-    return null;
+  if (!user || typeof user !== "object") {
+    throw createInternalError("Admin user identity source is invalid", {
+      field: "user",
+    });
+  }
+
+  const id = toIdString(user._id);
+  const name = typeof user.name === "string" ? user.name.trim() : "";
+  const email = typeof user.email === "string" ? user.email.trim() : "";
+  const role = typeof user.role === "string" ? user.role.trim() : "";
+
+  if (!id || !name || !email || !role) {
+    throw createInternalError("Admin user identity data is invalid", {
+      field: "user",
+      details: {
+        userId: id || null,
+      },
+    });
   }
 
   return {
-    id: toIdString(user._id),
-    name: user.name,
-    email: user.email,
-    role: user.role,
+    id,
+    name,
+    email,
+    role,
   };
 };

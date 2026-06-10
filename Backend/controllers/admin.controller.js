@@ -267,7 +267,7 @@ export const updateUserAdmin = async (req, res) => {
 };
 
 export const deleteUserAdmin = async (req, res) => {
-  const { id } = req.body || {};
+  const id = req.body?.id;
 
   if (!id || !isValidObjectIdLike(id)) {
     throw createBadRequestError("Valid user id is required", {

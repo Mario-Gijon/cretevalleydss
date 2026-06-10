@@ -6,6 +6,7 @@ import { User } from "../../../models/Users.js";
 
 import {
   createBadRequestError,
+  createInternalError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
@@ -58,15 +59,63 @@ export const deleteAdminUser = async ({
     session
   );
 
-  const issueIds = [...new Set(participations.map((item) => toIdString(item.issue)))];
+  const issueIds = [];
+  const seenIssueIds = new Set();
+  const participationsByIssueId = new Map();
+
+  for (const participation of participations) {
+    const issueId = toIdString(participation.issue);
+
+    if (!issueId) {
+      throw createInternalError("Participation issue id is invalid", {
+        field: "participations.issue",
+        details: {
+          participationId: toIdString(participation._id) || null,
+          userId: toIdString(user._id),
+        },
+      });
+    }
+
+    if (participationsByIssueId.has(issueId)) {
+      throw createInternalError(
+        "Duplicate participation found for issue while deleting admin user",
+        {
+          field: "participations.issue",
+          details: {
+            issueId,
+            userId: toIdString(user._id),
+          },
+        }
+      );
+    }
+
+    participationsByIssueId.set(issueId, participation);
+
+    if (!seenIssueIds.has(issueId)) {
+      seenIssueIds.add(issueId);
+      issueIds.push(issueId);
+    }
+  }
 
   const issues = issueIds.length
     ? await applyOptionalSession(Issue.find({ _id: { $in: issueIds } }), session)
     : [];
 
-  const participationsByIssueId = new Map(
-    participations.map((participation) => [toIdString(participation.issue), participation])
-  );
+  if (issues.length !== issueIds.length) {
+    const foundIssueIds = new Set(issues.map((issue) => toIdString(issue._id)));
+    const missingIssueId = issueIds.find((issueId) => !foundIssueIds.has(issueId));
+
+    throw createInternalError(
+      "Participation references an issue that was not found while deleting admin user",
+      {
+        field: "participations.issue",
+        details: {
+          issueId: missingIssueId || null,
+          userId: toIdString(user._id),
+        },
+      }
+    );
+  }
 
   const summary = {
     activeIssuesUpdated: 0,
@@ -92,6 +141,15 @@ export const deleteAdminUser = async ({
     }),
     session
   );
+
+  if (typeof deleteDomainsResult.deletedCount !== "number") {
+    throw createInternalError("ExpressionDomain deleteMany result is invalid", {
+      field: "deletedCount",
+      details: {
+        userId: toIdString(user._id),
+      },
+    });
+  }
 
   summary.domainsDeleted = deleteDomainsResult.deletedCount;
 

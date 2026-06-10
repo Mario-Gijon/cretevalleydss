@@ -3,6 +3,7 @@ import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import { User } from "../../../models/Users.js";
 
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
 const buildAdminUsersFilter = ({
@@ -126,15 +127,51 @@ export const getAdminUsersListPayload = async ({
   }
 
   for (const participation of participations) {
-    if (!participation.issue) {
-      continue;
-    }
-
     const key = toIdString(participation.expert);
     const stats = participationStatsMap.get(key);
+    const issueId = toIdString(participation.issue?._id);
+
+    if (!key) {
+      throw createInternalError("Participation expert id is invalid", {
+        field: "participations.expert",
+        details: {
+          participationId: toIdString(participation._id) || null,
+        },
+      });
+    }
+
+    if (!participation.issue || !issueId) {
+      throw createInternalError("Participation issue must be populated", {
+        field: "participations.issue",
+        details: {
+          participationId: toIdString(participation._id) || null,
+          userId: key,
+        },
+      });
+    }
 
     if (!stats) {
-      continue;
+      throw createInternalError(
+        "Participation expert was not found in admin users list aggregation",
+        {
+          field: "participations.expert",
+          details: {
+            participationId: toIdString(participation._id) || null,
+            userId: key,
+            issueId,
+          },
+        }
+      );
+    }
+
+    if (typeof participation.issue.active !== "boolean") {
+      throw createInternalError("Participation issue active flag is invalid", {
+        field: "participations.issue.active",
+        details: {
+          participationId: toIdString(participation._id) || null,
+          issueId,
+        },
+      });
     }
 
     if (participation.issue.active) {
@@ -147,6 +184,19 @@ export const getAdminUsersListPayload = async ({
   return {
     users: users.map((user) => {
       const userId = toIdString(user._id);
+      const participationStats = participationStatsMap.get(userId);
+
+      if (!participationStats) {
+        throw createInternalError(
+          "User participation stats are missing in admin users list aggregation",
+          {
+            field: "users._id",
+            details: {
+              userId,
+            },
+          }
+        );
+      }
 
       return {
         id: userId,
@@ -157,9 +207,8 @@ export const getAdminUsersListPayload = async ({
         accountConfirm: user.accountConfirm,
         accountCreation: user.accountCreation,
         stats: {
-          activeIssues: participationStatsMap.get(userId)?.activeIssues || 0,
-          finishedIssues:
-            participationStatsMap.get(userId)?.finishedIssues || 0,
+          activeIssues: participationStats.activeIssues,
+          finishedIssues: participationStats.finishedIssues,
           domainsOwned: domainsMap.get(userId) || 0,
           ownedIssues: ownedIssuesMap.get(userId) || {
             total: 0,

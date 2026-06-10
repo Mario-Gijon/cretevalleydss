@@ -3,6 +3,7 @@ import {
   removeIssueParticipantFromActiveIssue,
 } from "../../issues/lifecycle/index.js";
 
+import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
 const ACCOUNT_DELETED_BY_ADMIN_REASON = "Expert account deleted by admin";
@@ -15,10 +16,20 @@ export const removeDeletedUserFromIssues = async ({
   session = null,
 }) => {
   for (const issue of issues) {
-    const participation = participationsByIssueId.get(toIdString(issue._id));
+    const issueId = toIdString(issue._id);
+    const participation = participationsByIssueId.get(issueId);
 
     if (!participation) {
-      continue;
+      throw createInternalError(
+        "Issue participation is missing while deleting admin user",
+        {
+          field: "participations.issue",
+          details: {
+            issueId,
+            userId: toIdString(user._id),
+          },
+        }
+      );
     }
 
     if (issue.active) {
@@ -31,7 +42,7 @@ export const removeDeletedUserFromIssues = async ({
       });
 
       summary.activeIssueEvaluationsDeleted +=
-        removeActiveResult.evaluationsDeletedCount || 0;
+        removeActiveResult.evaluationsDeletedCount;
 
       if (removeActiveResult.issueDeleted) {
         summary.activeIssuesDeleted += 1;
