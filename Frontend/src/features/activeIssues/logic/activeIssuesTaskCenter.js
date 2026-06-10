@@ -1,5 +1,5 @@
 /**
- * Convierte la severidad recibida en un tono visual del módulo.
+ * Convierte la severidad recibida en un tono visual del modulo.
  *
  * @param {string} severity Severidad recibida.
  * @returns {string}
@@ -14,9 +14,9 @@ export const resolveTaskCenterToneFromSeverity = (severity) => {
 };
 
 /**
- * Formatea una fecha límite compacta para el task center.
+ * Formatea una fecha limite compacta para el task center.
  *
- * @param {Object|null} deadline Información de deadline.
+ * @param {Object|null} deadline Informacion de deadline.
  * @returns {string|null}
  */
 export const formatTaskCenterDeadlineMini = (deadline) => {
@@ -32,9 +32,7 @@ export const formatTaskCenterDeadlineMini = (deadline) => {
 };
 
 /**
- * Construye las secciones visibles del task center,
- * priorizando la respuesta del servidor y usando
- * el fallback legacy si hace falta.
+ * Construye las secciones visibles del task center.
  *
  * @param {Object|null} taskCenter Task center del servidor.
  * @param {Array} taskGroups Fallback legacy.
@@ -55,14 +53,12 @@ export const buildTaskCenterSections = (taskCenter, taskGroups = []) => {
       .filter((section) => section.items.length > 0);
   }
 
-  const legacyGroups = Array.isArray(taskGroups) ? taskGroups : [];
-
-  return legacyGroups
+  return taskGroups
     .map((group) => ({
       ...group,
       isServer: false,
     }))
-    .filter((group) => (group.items || []).length > 0);
+    .filter((group) => group.items.length > 0);
 };
 
 /**
@@ -82,7 +78,7 @@ export const buildTaskCenterOptions = (sections = []) => {
 };
 
 /**
- * Filtra las secciones visibles según el tipo activo.
+ * Filtra las secciones visibles segun el tipo activo.
  *
  * @param {Array} sections Secciones visibles.
  * @param {string} taskType Tipo de tarea seleccionado.

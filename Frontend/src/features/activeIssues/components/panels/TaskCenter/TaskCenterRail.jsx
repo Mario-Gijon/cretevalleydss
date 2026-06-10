@@ -19,9 +19,9 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import {
   resolveActiveIssuesToneColor,
-} from "../../../utils/activeIssues.meta";
+} from "../../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "./utils/taskCenter.utils";
+import { formatTaskCenterDeadlineMini } from "../../../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   taskCenterHideScrollbarXSx,

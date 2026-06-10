@@ -1,9 +1,3 @@
-/**
- * Devuelve el primer booleano válido de la lista.
- *
- * @param {...*} values Valores candidatos.
- * @returns {boolean}
- */
 const pickBoolean = (...values) => {
   for (const value of values) {
     if (typeof value === "boolean") {
@@ -14,22 +8,10 @@ const pickBoolean = (...values) => {
   return false;
 };
 
-/**
- * Resuelve el bloque de permisos expuesto por la UI del issue.
- *
- * @param {Object|null} issue Issue seleccionado.
- * @returns {Object|null}
- */
 const getIssueUiPermissions = (issue) => {
   return issue?.ui?.permissions || issue?.ui?.actions || issue?.ui || null;
 };
 
-/**
- * Indica si el usuario puede evaluar alternativas.
- *
- * @param {Object|null} issue Issue seleccionado.
- * @returns {boolean}
- */
 const canEvaluateAlternatives = (issue) => {
   const permissions = getIssueUiPermissions(issue);
 
@@ -40,12 +22,6 @@ const canEvaluateAlternatives = (issue) => {
   );
 };
 
-/**
- * Indica si el usuario puede evaluar pesos.
- *
- * @param {Object|null} issue Issue seleccionado.
- * @returns {boolean}
- */
 const canEvaluateWeights = (issue) => {
   const permissions = getIssueUiPermissions(issue);
 
@@ -56,12 +32,6 @@ const canEvaluateWeights = (issue) => {
   );
 };
 
-/**
- * Indica si el usuario puede computar pesos.
- *
- * @param {Object|null} issue Issue seleccionado.
- * @returns {boolean}
- */
 const canComputeWeights = (issue) => {
   const permissions = getIssueUiPermissions(issue);
 
@@ -72,12 +42,6 @@ const canComputeWeights = (issue) => {
   );
 };
 
-/**
- * Indica si el usuario puede resolver el issue.
- *
- * @param {Object|null} issue Issue seleccionado.
- * @returns {boolean}
- */
 const canResolveIssue = (issue) => {
   const permissions = getIssueUiPermissions(issue);
 
@@ -128,29 +92,7 @@ export const formatIssueDrawerWeight = (value) => {
 };
 
 /**
- * Formatea un valor de modelParameters para mostrarlo.
- *
- * @param {*} value Valor del parámetro.
- * @returns {string}
- */
-export const formatIssueDrawerParamValue = (value) => {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-
-  if (Array.isArray(value)) {
-    return value.length <= 8 ? value.join(", ") : `[${value.length} items]`;
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
-};
-
-/**
- * Devuelve la fecha límite legible del issue.
+ * Devuelve la fecha limite legible del issue.
  *
  * @param {Object|null} issue Issue seleccionado.
  * @returns {string}
@@ -184,7 +126,7 @@ export const getIssueDrawerFinalWeights = (issue) => {
 };
 
 /**
- * Resume los contadores de participación visibles en el drawer.
+ * Resume los contadores de participacion visibles en el drawer.
  *
  * @param {Object|null} issue Issue seleccionado.
  * @returns {Object}
@@ -208,44 +150,38 @@ export const getIssueDrawerParticipation = (issue) => {
 };
 
 /**
- * Construye la lista ordenada de model parameters.
+ * Devuelve los nombres de los criterios hoja del issue.
  *
- * @param {Object|null} issue Issue seleccionado.
+ * @param {Array} nodes Arbol de criterios.
  * @returns {Array}
  */
-export const buildIssueDrawerModelParamsList = (issue) => {
-  const modelParams =
-    issue?.modelParameters || issue?.ui?.modelParameters || {};
-
-  return Object.entries(modelParams)
-    .sort(([leftKey], [rightKey]) =>
-      String(leftKey).localeCompare(String(rightKey))
-    )
-    .map(([key, value]) => ({
-      k: key,
-      v: formatIssueDrawerParamValue(value),
-    }));
-};
-
-export const getLeafCriteria = (nodes = []) => {
-  const leaves = [];
+export const getLeafCriterionNames = (nodes = []) => {
+  const names = [];
   const stack = Array.isArray(nodes) ? [...nodes] : [];
 
-  while (stack.length) {
+  while (stack.length > 0) {
     const node = stack.pop();
     if (!node) continue;
 
     const children = Array.isArray(node.children) ? node.children : [];
 
     if (children.length === 0) {
-      leaves.push(node);
+      if (typeof node?.name === "string" && node.name.trim()) {
+        names.push(node.name);
+      }
       continue;
     }
 
     stack.push(...children);
   }
 
-  return leaves;
+  return names;
 };
 
-export const countLeafCriteria = (nodes = []) => getLeafCriteria(nodes).length;
+/**
+ * Cuenta los criterios hoja visibles del issue.
+ *
+ * @param {Array} nodes Arbol de criterios.
+ * @returns {number}
+ */
+export const countLeafCriteria = (nodes = []) => getLeafCriterionNames(nodes).length;

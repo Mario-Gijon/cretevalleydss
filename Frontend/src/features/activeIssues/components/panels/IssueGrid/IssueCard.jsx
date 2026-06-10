@@ -5,7 +5,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import {
   getNextActionMeta,
   resolveActiveIssuesToneColor,
-} from "../../../utils/activeIssues.meta";
+} from "../../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 import IssueDeadlineBar from "./IssueDeadlineBar";
 import IssueStageStepper from "./IssueStageStepper";

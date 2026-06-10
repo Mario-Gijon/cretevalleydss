@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { resolveActiveIssuesToneColor } from "../../utils/activeIssues.meta";
+import { resolveActiveIssuesToneColor } from "../../logic/activeIssuesMeta";
 
 /**
  * Indicador visual circular usado dentro de la pill.

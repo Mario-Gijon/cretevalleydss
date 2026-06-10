@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import { Stack, Box, Drawer, Divider, Tabs, Tab } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { countLeafCriteria } from "../utils/issueDetailsDrawer.utils.js";
 import {
+  countLeafCriteria,
   getIssueDrawerAlternatives,
   getIssueDrawerDeadlineLabel,
   getIssueDrawerFinalWeights,
   getIssueDrawerParticipation,
   getIssueDrawerPermissions,
-} from "../utils/issueDetailsDrawer.utils.js";
+  getLeafCriterionNames,
+} from "../../../logic/activeIssueDrawerDetails.js";
 import { IssueDetailsDrawerTabPanel } from "./IssueDetailsDrawer.parts.jsx";
 import IssueDetailsOverviewTab from "../tabs/IssueDetailsOverviewTab.jsx";
 import IssueDetailsCriteriaTab from "../tabs/IssueDetailsCriteriaTab.jsx";
@@ -17,31 +18,8 @@ import IssueDetailsTimelineTab from "../tabs/IssueDetailsTimelineTab.jsx";
 import IssueDetailsDrawerHeader from "./IssueDetailsDrawerHeader.jsx";
 import IssueDetailsDrawerEmptyState from "./IssueDetailsDrawerEmptyState.jsx";
 import { buildDrawerTabs } from "../config/IssueDetailsDrawer.tabs.js";
-import { getNextActionMeta } from "../../../utils/activeIssues.meta.js";
+import { getNextActionMeta } from "../../../logic/activeIssuesMeta.js";
 import IssueExpertsSection from "../../../../issueExperts/components/IssueExpertsSection.jsx";
-
-const getLeafNames = (nodes = []) => {
-  const names = [];
-  const visit = (nodeList) => {
-    if (!Array.isArray(nodeList)) return;
-
-    nodeList.forEach((node) => {
-      const children = Array.isArray(node?.children) ? node.children : [];
-
-      if (children.length === 0) {
-        if (typeof node?.name === "string" && node.name.trim()) {
-          names.push(node.name);
-        }
-        return;
-      }
-
-      visit(children);
-    });
-  };
-
-  visit(nodes);
-  return names;
-};
 
 /**
  * Drawer principal de detalles del issue activo.
@@ -105,7 +83,7 @@ const IssueDetailsDrawer = ({
   }, [selectedIssue]);
 
   const leafNames = useMemo(() => {
-    return getLeafNames(selectedIssue?.criteria || []);
+    return getLeafCriterionNames(selectedIssue?.criteria || []);
   }, [selectedIssue?.criteria]);
 
   const permissions = useMemo(() => {

@@ -21,9 +21,9 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import {
   resolveActiveIssuesToneColor,
   stageLabel,
-} from "../../../utils/activeIssues.meta";
+} from "../../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "./utils/taskCenter.utils";
+import { formatTaskCenterDeadlineMini } from "../../../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   getTaskCenterScrollbarSx,

@@ -1,7 +1,7 @@
 import { Avatar, Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { getActiveIssuesPageHeaderAuroraBg } from "../../styles/activeIssues.styles";
-import { resolveActiveIssuesToneColor } from "../../utils/activeIssues.meta";
+import { resolveActiveIssuesToneColor } from "../../logic/activeIssuesMeta";
 
 /**
  * Tarjeta de métrica compacta usada en cabeceras y paneles

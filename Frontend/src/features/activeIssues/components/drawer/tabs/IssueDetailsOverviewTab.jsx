@@ -22,7 +22,7 @@ import CalculateIcon from "@mui/icons-material/Calculate";
 import GavelIcon from "@mui/icons-material/Gavel";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { stageLabel } from "../../../utils/activeIssues.meta";
+import { stageLabel } from "../../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles";
 import {

@@ -5,7 +5,7 @@ import { getIssueDetailsDrawerPanelSx } from "../shell/IssueDetailsDrawer.styles
 import {
   IssueDetailsDrawerCriterionTree,
 } from "../shell/IssueDetailsDrawer.parts";
-import { formatIssueDrawerWeight } from "../utils/issueDetailsDrawer.utils";
+import { formatIssueDrawerWeight } from "../../../logic/activeIssueDrawerDetails";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 
 /**

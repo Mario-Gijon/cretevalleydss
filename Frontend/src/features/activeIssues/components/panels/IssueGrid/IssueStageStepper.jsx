@@ -1,11 +1,11 @@
 import { Box, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { resolveActiveIssuesToneColor } from "../../../utils/activeIssues.meta";
+import { resolveActiveIssuesToneColor } from "../../../logic/activeIssuesMeta";
 import {
   buildIssueWorkflowSteps,
   resolveIssueCurrentStepKey,
-} from "./utils/issuesGrid.utils";
+} from "../../../logic/activeIssueWorkflow";
 import { issuesGridHideScrollbarSx } from "./styles/issuesGrid.styles";
 
 /**

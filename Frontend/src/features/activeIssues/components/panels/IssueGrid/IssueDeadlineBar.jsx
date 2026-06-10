@@ -2,7 +2,7 @@ import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
-import { computeIssueDeadlineProgress } from "./utils/issuesGrid.utils";
+import { computeIssueDeadlineProgress } from "../../../logic/activeIssueDeadline";
 import { getIssueDeadlineColorByProgress } from "./styles/issuesGrid.styles";
 
 /**

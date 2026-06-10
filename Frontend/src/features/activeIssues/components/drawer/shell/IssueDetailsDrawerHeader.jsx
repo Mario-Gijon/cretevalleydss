@@ -7,7 +7,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
-import { stageLabel } from "../../../utils/activeIssues.meta";
+import { stageLabel } from "../../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../../shared/ActiveIssuesPill";
 import ActiveIssuesTinyStat from "../../shared/ActiveIssuesTinyStat";
 import { getIssueDetailsDrawerCrystalBorder } from "./IssueDetailsDrawer.styles";

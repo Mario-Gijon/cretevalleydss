@@ -5,7 +5,7 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 /**
- * Resuelve la paleta visual usada por los tonos del módulo.
+ * Resuelve la paleta visual usada por los tonos del modulo.
  *
  * @param {string} tone Tono visual.
  * @returns {Object}
@@ -18,12 +18,6 @@ export const resolveActiveIssuesToneColor = (tone) => {
   return { dot: "#0288d1", text: "info.main" };
 };
 
-/**
- * Convierte una clave camelCase en una etiqueta legible.
- *
- * @param {string} value Valor a transformar.
- * @returns {string}
- */
 const toTitleCase = (value) => {
   return (value || "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -47,12 +41,6 @@ export const stageLabel = (stage) => {
   return map[stage] || toTitleCase(stage) || "—";
 };
 
-/**
- * Mapea las claves del servidor al formato usado por la UI.
- *
- * @param {string} key Clave recibida del servidor.
- * @returns {string|null}
- */
 const mapServerStatusKey = (key) => {
   if (!key) return null;
 
@@ -70,13 +58,6 @@ const mapServerStatusKey = (key) => {
   return normalizedKey;
 };
 
-/**
- * Resuelve el tono visual principal de una acción.
- *
- * @param {string} rawKey Clave original del servidor.
- * @param {Object} issue Issue evaluado.
- * @returns {string}
- */
 const toneFromServerRawKey = (rawKey, issue) => {
   const key = String(rawKey || "");
 
@@ -89,10 +70,7 @@ const toneFromServerRawKey = (rawKey, issue) => {
 };
 
 /**
- * Devuelve la meta visual de la siguiente acción del issue.
- *
- * Prioriza la información enviada por el servidor y usa
- * flags locales cuando todavía no existe meta enriquecida.
+ * Devuelve la meta visual de la siguiente accion del issue.
  *
  * @param {Object} issue Issue a evaluar.
  * @returns {Object}
