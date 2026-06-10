@@ -13,7 +13,7 @@ import { useActiveIssueConfirm } from "../hooks/useActiveIssueConfirm";
 import ActiveIssuesDesktopLayout from "./layout/ActiveIssuesDesktopLayout";
 import ActiveIssuesMobileLayout from "./layout/ActiveIssuesMobileLayout";
 import ActiveIssuesOverlays from "./shared/ActiveIssuesOverlays";
-import IssueExpertsFlowProvider from "../../issueExperts/context/issueExpertsFlow.provider.jsx";
+import IssueExpertsProvider from "../../issueExperts/context/issueExperts.provider.jsx";
 
 /**
  * Vista principal del feature de issues activos.
@@ -179,7 +179,7 @@ const ActiveIssuesView = () => {
       </Box>
 
 
-      <IssueExpertsFlowProvider
+      <IssueExpertsProvider
         selectedIssue={selectedIssue}
         initialExperts={initialExperts}
         showSnackbarAlert={showSnackbarAlert}
@@ -209,7 +209,7 @@ const ActiveIssuesView = () => {
           closeConfirm={closeConfirm}
           runConfirm={runConfirm}
         />
-      </IssueExpertsFlowProvider>
+      </IssueExpertsProvider>
     </>
   );
 };

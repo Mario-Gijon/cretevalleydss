@@ -1,6 +1,6 @@
 import AddExpertsPickerDialog from "../dialogs/AddExpertsPickerDialog.jsx";
 import AddExpertsDomainsDialog from "../dialogs/AddExpertsDomainsDialog.jsx";
-import { useIssueExpertsFlowContext } from "../context/issueExpertsFlow.context.js";
+import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 
 /**
  * Agrupa los diálogos propios del flujo de expertos.
@@ -18,7 +18,7 @@ const IssueExpertsDialogs = () => {
     setOpenAddExpertsDialog,
     setOpenAssignDomainsDialog,
     handleConfirmDomains,
-  } = useIssueExpertsFlowContext();
+  } = useIssueExpertsContext();
 
   return (
     <>

@@ -16,7 +16,7 @@ import { updateIssueExperts } from "../services/issueExperts.service.js";
  * @param {Function} params.setBusy Setter del estado global de acciones ocupadas.
  * @returns {Object}
  */
-export const useIssueExpertsFlow = ({
+export const useIssueExperts = ({
   selectedIssue,
   initialExperts = [],
   showSnackbarAlert,
@@ -202,4 +202,4 @@ export const useIssueExpertsFlow = ({
   };
 };
 
-export default useIssueExpertsFlow;
+export default useIssueExperts;

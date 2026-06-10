@@ -14,7 +14,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import PersonRemoveAlt1Icon from "@mui/icons-material/PersonRemoveAlt1";
 
-import { useIssueExpertsFlowContext } from "../context/issueExpertsFlow.context.js";
+import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 import { getIssueExpertsPanelSx } from "../styles/issueExperts.styles.js";
 import IssueExpertsPill from "./IssueExpertsPill.jsx";
 import { buildIssueExpertsGroups } from "../utils/issueExperts.groups.js";
@@ -40,7 +40,7 @@ const IssueExpertsSection = () => {
     expertsToAdd,
     setOpenAddExpertsDialog,
     saveExpertsChanges,
-  } = useIssueExpertsFlowContext();
+  } = useIssueExpertsContext();
 
   if (!selectedIssue) {
     return null;

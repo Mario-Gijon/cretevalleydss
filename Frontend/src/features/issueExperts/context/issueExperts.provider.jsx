@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 
-import IssueExpertsFlowContext from "./issueExpertsFlow.context.js";
-import { useIssueExpertsFlow } from "../hooks/useIssueExpertsFlow.js";
+import IssueExpertsContext from "./issueExperts.context.js";
+import { useIssueExperts } from "../hooks/useIssueExperts.js";
 
 /**
  * Provider del flujo de edición de expertos del issue.
@@ -18,7 +18,7 @@ import { useIssueExpertsFlow } from "../hooks/useIssueExpertsFlow.js";
  * @param {*} props.children Contenido envuelto por el provider.
  * @returns {JSX.Element}
  */
-const IssueExpertsFlowProvider = ({
+const IssueExpertsProvider = ({
   selectedIssue,
   initialExperts = [],
   showSnackbarAlert,
@@ -26,14 +26,14 @@ const IssueExpertsFlowProvider = ({
   setBusy,
   children,
 }) => {
-  const flow = useIssueExpertsFlow({
+  const issueExpertsState = useIssueExperts({
     selectedIssue,
     initialExperts,
     showSnackbarAlert,
     refresh,
     setBusy,
   });
-  const { resetExpertsEdition } = flow;
+  const { resetExpertsEdition } = issueExpertsState;
 
   useEffect(() => {
     resetExpertsEdition();
@@ -42,15 +42,15 @@ const IssueExpertsFlowProvider = ({
   const value = useMemo(() => {
     return {
       selectedIssue,
-      ...flow,
+      ...issueExpertsState,
     };
-  }, [selectedIssue, flow]);
+  }, [selectedIssue, issueExpertsState]);
 
   return (
-    <IssueExpertsFlowContext.Provider value={value}>
+    <IssueExpertsContext.Provider value={value}>
       {children}
-    </IssueExpertsFlowContext.Provider>
+    </IssueExpertsContext.Provider>
   );
 };
 
-export default IssueExpertsFlowProvider;
+export default IssueExpertsProvider;
