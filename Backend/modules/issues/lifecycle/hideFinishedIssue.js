@@ -19,13 +19,30 @@ import {
 } from "../../../utils/common/ids.js";
 
 const getFinishedIssueExitPhase = (issue) => {
+  if (!issue || typeof issue !== "object") {
+    throw createInternalError("Finished issue is invalid", {
+      field: "issue",
+    });
+  }
+
+  const issueId = toIdString(issue._id);
+
+  if (!issueId) {
+    throw createInternalError("Finished issue is invalid", {
+      field: "issue",
+      details: {
+        issueId: null,
+      },
+    });
+  }
+
   const { consensusPhase } = issue;
 
   if (!Number.isInteger(consensusPhase) || consensusPhase < 1) {
     throw createInternalError("Issue consensusPhase is invalid", {
       field: "consensusPhase",
       details: {
-        issueId: toIdString(issue?._id) || null,
+        issueId,
         consensusPhase,
       },
     });
@@ -38,6 +55,28 @@ export const getFinishedIssueVisibleUserIds = async ({
   issue,
   session = null,
 }) => {
+  const issueId = toIdString(issue?._id);
+
+  if (!issueId) {
+    throw createInternalError("Finished issue is invalid", {
+      field: "issue",
+      details: {
+        issueId: null,
+      },
+    });
+  }
+
+  const adminId = toIdString(issue.admin);
+
+  if (!adminId) {
+    throw createInternalError("Finished issue admin is invalid", {
+      field: "admin",
+      details: {
+        issueId,
+      },
+    });
+  }
+
   const acceptedParticipations = await applyOptionalSession(
     Participation.find({
       issue: issue._id,
@@ -48,10 +87,32 @@ export const getFinishedIssueVisibleUserIds = async ({
     session
   );
 
-  return uniqueIdStrings([
-    issue.admin,
-    ...acceptedParticipations.map((participation) => participation.expert),
-  ]);
+  const visibleUserIds = [adminId];
+  const seenIds = new Set(visibleUserIds);
+
+  for (const participation of acceptedParticipations) {
+    const expertId = toIdString(participation.expert);
+
+    if (!expertId) {
+      throw createInternalError(
+        "Finished issue participation expert is invalid",
+        {
+          field: "participations.expert",
+          details: {
+            issueId,
+            participationId: toIdString(participation._id) || null,
+          },
+        }
+      );
+    }
+
+    if (!seenIds.has(expertId)) {
+      seenIds.add(expertId);
+      visibleUserIds.push(expertId);
+    }
+  }
+
+  return visibleUserIds;
 };
 
 export const hideFinishedIssueForUser = async ({

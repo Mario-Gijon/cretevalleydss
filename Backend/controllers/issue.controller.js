@@ -413,7 +413,7 @@ export const leaveIssue = async (req, res) => {
     });
 
     return sendSuccess(res, "You have left the issue successfully", {
-      issueName: result?.issueName || null,
+      issueName: result.issueName,
     });
   } finally {
     await endSessionSafely(session);
