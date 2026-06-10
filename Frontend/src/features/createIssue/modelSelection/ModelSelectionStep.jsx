@@ -29,7 +29,7 @@ import {
   getCreateIssueStepInputSx,
 } from "../styles/createIssueStep.styles";
 
-export const ModelStep = () => {
+export const ModelSelectionStep = () => {
   const theme = useTheme();
   const { models } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();

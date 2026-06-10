@@ -32,11 +32,11 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import "dayjs/locale/en-gb";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { CriterionAccordion } from "../components/CriterionAccordion";
+import { CriterionAccordion } from "./components/CriterionAccordion";
 import {
   getRenderableNormalModelParameters,
   ModelParameters,
-} from "../components/ModelParameters";
+} from "./components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
 import { getRemainingTime } from "../logic/createIssueDates";

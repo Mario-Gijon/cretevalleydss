@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 
-import { getLeafCriteria } from "../../../utils/criteria.utils";
-import { getCreateIssueModelParameters, ParameterFieldHost } from "../../modelParameters";
+import { getLeafCriteria } from "../../../../utils/criteria.utils";
+import { getCreateIssueModelParameters, ParameterFieldHost } from "../../../modelParameters";
 
 export const getRenderableNormalModelParameters = (selectedModel) =>
   getCreateIssueModelParameters(selectedModel);

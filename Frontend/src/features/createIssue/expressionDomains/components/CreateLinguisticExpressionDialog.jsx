@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import {
   Alert,
   Button,
@@ -21,23 +21,23 @@ import {
 import { useTheme } from "@mui/material/styles";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import UpdateIcon from "@mui/icons-material/Update";
-import { FuzzyPreviewChart } from "../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
-import { createExpressionDomain, updateExpressionDomain } from "../../../services/issue.service";
-import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
+import { createExpressionDomain, updateExpressionDomain } from "../../../../services/issue.service";
+import { useIssuesDataContext } from "../../../../context/issues/issues.context";
+import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 import {
   getCreateIssueCompactDialogActionsSx,
   getCreateIssueCompactDialogContentSx,
   getCreateIssueCompactDialogTitleSx,
-} from "../styles/createIssueStep.styles";
+} from "../../styles/createIssueStep.styles";
 import {
   buildAutomaticLinguisticLabels,
   DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
   getLinguisticMembershipDefinitionOrDefault,
   LINGUISTIC_MEMBERSHIP_FUNCTIONS,
   validateLinguisticLabelValues,
-} from "../../../utils/linguisticMembershipFunctions";
+} from "../../../../utils/linguisticMembershipFunctions";
 
 const normalizeLabelPayload = (labels = []) =>
   labels.map((labelItem, index) => ({

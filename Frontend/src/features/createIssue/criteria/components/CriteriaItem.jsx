@@ -18,7 +18,7 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 
-import { CriterionWeightField } from "./criteria/CriterionWeightField";
+import { CriterionWeightField } from "./CriterionWeightField";
 
 export const CriteriaItem = ({
   item,

@@ -17,12 +17,12 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import DoneIcon from "@mui/icons-material/Done";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
-import { ModelStep } from "../steps/ModelStep";
-import { AlternativesStep } from "../steps/AlternativesStep";
-import { CriteriaStep } from "../steps/CriteriaStep";
-import { ExpertsStep } from "../steps/ExpertsStep";
-import { ExpressionDomainStep } from "../steps/ExpressionDomainStep";
-import { SummaryStep } from "../steps/SummaryStep";
+import { AlternativesStep } from "../alternatives/AlternativesStep";
+import { CriteriaStep } from "../criteria/CriteriaStep";
+import { ExpertsStep } from "../experts/ExpertsStep";
+import { ExpressionDomainStep } from "../expressionDomains/ExpressionDomainStep";
+import { ModelSelectionStep } from "../modelSelection/ModelSelectionStep";
+import { SummaryStep } from "../summary/SummaryStep";
 
 import { ColorlibConnector, ColorlibStepIcon } from "./StepperLibConnector";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
@@ -125,7 +125,7 @@ const CreateIssueViewContent = () => {
 
         <Box sx={contentSx}>
           <Stack sx={{ width: "100%", minHeight: 0, mt: 2 }}>
-            {activeStep === 0 && <ModelStep />}
+            {activeStep === 0 && <ModelSelectionStep />}
             {activeStep === 1 && <AlternativesStep />}
             {activeStep === 2 && <CriteriaStep />}
             {activeStep === 3 && <ExpertsStep />}

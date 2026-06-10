@@ -14,17 +14,17 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { useEffect, useState } from "react";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
-import { GlassPaper } from "../../../components/StyledComponents/GlassPaper";
-import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
-import { FuzzyPreviewChart } from "../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
-import { useIssuesDataContext } from "../../../context/issues/issues.context";
+import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { GlassPaper } from "../../../../components/StyledComponents/GlassPaper";
+import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
+import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
+import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import {
   getCreateIssueCompactDialogActionsSx,
   getCreateIssueCompactDialogContentSx,
   getCreateIssueCompactDialogTitleSx,
-} from "../styles/createIssueStep.styles";
-import { getLinguisticMembershipDefinition } from "../../../utils/linguisticMembershipFunctions";
+} from "../../styles/createIssueStep.styles";
+import { getLinguisticMembershipDefinition } from "../../../../utils/linguisticMembershipFunctions";
 
 export const ViewExpressionsDomainDialog = ({
   open,

@@ -27,7 +27,7 @@ import {
   removeCriteriaItemRecursively,
   validateCriterion,
 } from "../../../utils/criteria.utils";
-import { CriteriaItem } from "../components/CriteriaItem";
+import { CriteriaItem } from "./components/CriteriaItem";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
@@ -51,7 +51,7 @@ import {
 } from "../logic/createIssueCriteriaWeightingModes";
 import { resolveAssignedDomainIds } from "../logic/createIssueAssignedDomains";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { CriteriaWeightingPanel } from "../components/criteriaWeighting/CriteriaWeightingPanel";
+import { CriteriaWeightingPanel } from "./components/CriteriaWeightingPanel";
 
 const WEIGHT_DECIMALS = 3;
 const WEIGHT_SUM_TOLERANCE = 0.01;

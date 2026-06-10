@@ -17,8 +17,8 @@ import TuneIcon from "@mui/icons-material/Tune";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { CreateLinguisticExpressionDialog } from "../components/CreateLinguisticExpressionDialog";
-import { ViewExpressionsDomainDialog } from "../components/ViewExpressionsDomainDialog";
+import { CreateLinguisticExpressionDialog } from "./components/CreateLinguisticExpressionDialog";
+import { ViewExpressionsDomainDialog } from "./components/ViewExpressionsDomainDialog";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { removeExpressionDomain } from "../../../services/issue.service";
 import { useCreateIssueContext } from "../context/createIssue.context";

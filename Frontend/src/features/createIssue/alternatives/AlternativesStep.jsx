@@ -20,7 +20,7 @@ import {
   removeAlternative,
   saveEditAlternative,
 } from "../logic/createIssueAlternatives";
-import { AlternativeItem } from "../components/AlternativeItem.jsx";
+import { AlternativeItem } from "./components/AlternativeItem.jsx";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useCreateIssueContext } from "../context/createIssue.context";
 import {
