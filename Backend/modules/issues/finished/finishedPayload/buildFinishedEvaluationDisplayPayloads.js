@@ -3,23 +3,52 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 export const getFinishedAlternativeEvaluationStructureOrThrow = ({ issue }) => {
-  const structureKey = issue?.alternativeEvaluationStructureKey;
+  const structureKey = issue.alternativeEvaluationStructureKey;
   const structure = getEvaluationStructureOrThrow(structureKey);
 
-  if (typeof structure?.get !== "function") {
+  if (typeof structure.get !== "function") {
     throw createInternalError(
       "Finished issue evaluation structure does not support display payload retrieval",
       {
         field: "alternativeEvaluationStructureKey",
         details: {
-          issueId: toIdString(issue?._id),
-          alternativeEvaluationStructureKey: structureKey || null,
+          issueId: toIdString(issue._id),
+          alternativeEvaluationStructureKey: structureKey,
         },
       }
     );
   }
 
   return structure;
+};
+
+const requireFinishedEvaluationExpertOrThrow = (evaluation) => {
+  const expert = evaluation.expert;
+  if (!expert || typeof expert !== "object") {
+    throw createInternalError("Finished evaluation expert data is invalid", {
+      field: "evaluations.expert",
+      details: {
+        issueId: toIdString(evaluation.issue),
+        evaluationId: toIdString(evaluation._id),
+      },
+    });
+  }
+
+  const expertId = toIdString(expert._id);
+  const expertEmail =
+    typeof expert.email === "string" ? expert.email.trim() : "";
+
+  if (!expertId || !expertEmail) {
+    throw createInternalError("Finished evaluation expert data is invalid", {
+      field: "evaluations.expert",
+      details: {
+        issueId: toIdString(evaluation.issue),
+        evaluationId: toIdString(evaluation._id),
+      },
+    });
+  }
+
+  return expertEmail;
 };
 
 export const buildFinishedExpertEvaluationsByEmail = async ({
@@ -30,12 +59,7 @@ export const buildFinishedExpertEvaluationsByEmail = async ({
   const expertEvaluations = {};
 
   for (const evaluation of evaluations) {
-    const expertId = toIdString(evaluation?.expert?._id || evaluation?.expert);
-    const expertEmailRaw = evaluation?.expert?.email;
-    const expertEmail =
-      typeof expertEmailRaw === "string" && expertEmailRaw.trim()
-        ? expertEmailRaw.trim()
-        : `expert_${expertId || "unknown"}`;
+    const expertEmail = requireFinishedEvaluationExpertOrThrow(evaluation);
 
     const payload = await structure.get({
       storedEvaluation: evaluation,

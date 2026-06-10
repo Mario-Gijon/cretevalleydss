@@ -11,6 +11,16 @@ import {
   normalizeAdminManagedRole,
 } from "./adminUserPayloads.js";
 
+const requireStringForUpdateOrThrow = ({ value, field, message }) => {
+  if (typeof value !== "string") {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  return value.trim();
+};
+
 export const updateAdminUser = async ({
   payload,
   session = null,
@@ -46,7 +56,11 @@ export const updateAdminUser = async ({
   }
 
   if (name !== undefined) {
-    const cleanName = String(name).trim();
+    const cleanName = requireStringForUpdateOrThrow({
+      value: name,
+      field: "name",
+      message: "Name must be a string",
+    });
 
     if (!cleanName) {
       throw createBadRequestError("Name can not be empty", {
@@ -58,7 +72,11 @@ export const updateAdminUser = async ({
   }
 
   if (university !== undefined) {
-    const cleanUniversity = String(university).trim();
+    const cleanUniversity = requireStringForUpdateOrThrow({
+      value: university,
+      field: "university",
+      message: "University must be a string",
+    });
 
     if (!cleanUniversity) {
       throw createBadRequestError("University can not be empty", {
@@ -70,7 +88,11 @@ export const updateAdminUser = async ({
   }
 
   if (email !== undefined) {
-    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanEmail = requireStringForUpdateOrThrow({
+      value: email,
+      field: "email",
+      message: "Email must be a string",
+    }).toLowerCase();
 
     if (!cleanEmail) {
       throw createBadRequestError("Email can not be empty", {
@@ -96,6 +118,12 @@ export const updateAdminUser = async ({
   }
 
   if (role !== undefined) {
+    if (typeof role !== "string") {
+      throw createBadRequestError("Invalid role", {
+        field: "role",
+      });
+    }
+
     const cleanRole = normalizeAdminManagedRole(role);
 
     if (!["user", "admin"].includes(cleanRole)) {
@@ -113,17 +141,23 @@ export const updateAdminUser = async ({
     user.accountConfirm = accountConfirm;
   }
 
-  if (password !== undefined && String(password).trim() !== "") {
-    const cleanPassword = String(password).trim();
+  if (password !== undefined) {
+    const cleanPassword = requireStringForUpdateOrThrow({
+      value: password,
+      field: "password",
+      message: "Password must be a string",
+    });
 
-    if (cleanPassword.length < 6) {
-      throw createBadRequestError("Password must be at least 6 characters", {
-        field: "password",
-      });
+    if (cleanPassword !== "") {
+      if (cleanPassword.length < 6) {
+        throw createBadRequestError("Password must be at least 6 characters", {
+          field: "password",
+        });
+      }
+
+      user.password = cleanPassword;
+      user.markModified("password");
     }
-
-    user.password = cleanPassword;
-    user.markModified("password");
   }
 
   await user.save({ session });

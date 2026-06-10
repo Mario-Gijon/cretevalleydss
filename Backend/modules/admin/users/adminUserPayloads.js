@@ -1,8 +1,17 @@
 import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 
-export const normalizeAdminManagedRole = (role) =>
-  String(role ?? "user").trim().toLowerCase();
+export const normalizeAdminManagedRole = (role) => {
+  if (role === undefined || role === null) {
+    return "user";
+  }
+
+  if (typeof role !== "string") {
+    return null;
+  }
+
+  return role.trim().toLowerCase();
+};
 
 export const buildAdminManagedUserPayload = (user) => ({
   id: toIdString(user._id),

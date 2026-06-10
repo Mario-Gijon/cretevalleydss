@@ -44,8 +44,7 @@ export const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
   }
 
   const normalizedWeights = rawWeights.map((value, index) => {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
       throw createBadRequestError(
         `Scenario weight [${index}] must be a finite number`,
         {
@@ -54,7 +53,7 @@ export const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
       );
     }
 
-    if (numericValue < 0 || numericValue > 1) {
+    if (value < 0 || value > 1) {
       throw createBadRequestError(
         `Scenario weight [${index}] must be between 0 and 1`,
         {
@@ -63,7 +62,7 @@ export const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
       );
     }
 
-    return numericValue;
+    return value;
   });
 
   const total = normalizedWeights.reduce((sum, value) => sum + value, 0);

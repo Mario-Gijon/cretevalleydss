@@ -10,6 +10,24 @@ import {
   normalizeAdminManagedRole,
 } from "./adminUserPayloads.js";
 
+const normalizeRequiredStringOrThrow = ({ value, field, message, lower = false }) => {
+  if (typeof value !== "string") {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  const normalizedValue = lower ? value.trim().toLowerCase() : value.trim();
+
+  if (!normalizedValue) {
+    throw createBadRequestError(message, {
+      field,
+    });
+  }
+
+  return normalizedValue;
+};
+
 export const createAdminUser = async ({
   payload,
   session = null,
@@ -26,38 +44,31 @@ export const createAdminUser = async ({
     email = "",
     password = "",
     accountConfirm = true,
-    role = "user",
+    role,
   } = payload;
 
-  name = String(name).trim();
-  university = String(university).trim();
-  email = String(email).trim().toLowerCase();
-  password = String(password).trim();
+  name = normalizeRequiredStringOrThrow({
+    value: name,
+    field: "name",
+    message: "Name is required",
+  });
+  university = normalizeRequiredStringOrThrow({
+    value: university,
+    field: "university",
+    message: "University is required",
+  });
+  email = normalizeRequiredStringOrThrow({
+    value: email,
+    field: "email",
+    message: "Email is required",
+    lower: true,
+  });
+  password = normalizeRequiredStringOrThrow({
+    value: password,
+    field: "password",
+    message: "Password is required",
+  });
   role = normalizeAdminManagedRole(role);
-
-  if (!name) {
-    throw createBadRequestError("Name is required", {
-      field: "name",
-    });
-  }
-
-  if (!university) {
-    throw createBadRequestError("University is required", {
-      field: "university",
-    });
-  }
-
-  if (!email) {
-    throw createBadRequestError("Email is required", {
-      field: "email",
-    });
-  }
-
-  if (!password) {
-    throw createBadRequestError("Password is required", {
-      field: "password",
-    });
-  }
 
   if (password.length < 6) {
     throw createBadRequestError("Password must be at least 6 characters", {

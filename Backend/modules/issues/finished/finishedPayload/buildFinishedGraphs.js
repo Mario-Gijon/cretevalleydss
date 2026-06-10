@@ -1,34 +1,70 @@
+import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
-import { isPlainObject } from "../../../../utils/common/objects.js";
+
+const buildExpertLabelOrThrow = (evaluation) => {
+  const expert = evaluation.expert;
+  if (!expert || typeof expert !== "object") {
+    throw createInternalError("Finished evaluation expert label is invalid", {
+      field: "evaluations.expert",
+      details: {
+        issueId: toIdString(evaluation.issue),
+        evaluationId: toIdString(evaluation._id),
+      },
+    });
+  }
+
+  const email = typeof expert.email === "string" ? expert.email.trim() : "";
+
+  if (email) {
+    return email;
+  }
+
+  const name = typeof expert.name === "string" ? expert.name.trim() : "";
+
+  if (name) {
+    return name;
+  }
+
+  throw createInternalError("Finished evaluation expert label is invalid", {
+    field: "evaluations.expert",
+    details: {
+      issueId: toIdString(evaluation.issue),
+      evaluationId: toIdString(evaluation._id),
+    },
+  });
+};
 
 export const enrichPlotsGraphicWithExpertLabels = ({
   plotsGraphic,
   evaluations,
 }) => {
-  if (!isPlainObject(plotsGraphic)) {
-    return plotsGraphic;
+  const issueId = evaluations.length > 0 ? toIdString(evaluations[0].issue) : null;
+  const rawExpertPoints = plotsGraphic.expert_points;
+
+  if (rawExpertPoints !== undefined && !Array.isArray(rawExpertPoints)) {
+    throw createInternalError("Finished plotsGraphic expert_points must be an array", {
+      field: "plotsGraphic.expert_points",
+      details: {
+        issueId,
+      },
+    });
   }
 
-  const expertPoints = Array.isArray(plotsGraphic.expert_points)
-    ? plotsGraphic.expert_points
-    : [];
+  const expertPoints = rawExpertPoints === undefined ? [] : rawExpertPoints;
+  const expertLabels = evaluations.map(buildExpertLabelOrThrow);
 
-  const expertLabels = (Array.isArray(evaluations) ? evaluations : [])
-    .map((evaluation) => {
-      const email = evaluation?.expert?.email;
-      if (typeof email === "string" && email.trim()) {
-        return email.trim();
-      }
+  for (let index = 0; index < expertPoints.length; index += 1) {
+    const point = expertPoints[index];
 
-      const name = evaluation?.expert?.name;
-      if (typeof name === "string" && name.trim()) {
-        return name.trim();
-      }
-
-      const expertId = toIdString(evaluation?.expert?._id || evaluation?.expert);
-      return expertId ? `expert_${expertId}` : null;
-    })
-    .filter(Boolean);
+    if (!Array.isArray(point) || point.length !== 2) {
+      throw createInternalError("Finished plotsGraphic expert point is malformed", {
+        field: `plotsGraphic.expert_points[${index}]`,
+        details: {
+          issueId,
+        },
+      });
+    }
+  }
 
   const expertPointsByEmail = {};
   const matchedLength = Math.min(expertPoints.length, expertLabels.length);
@@ -36,9 +72,7 @@ export const enrichPlotsGraphicWithExpertLabels = ({
   for (let index = 0; index < matchedLength; index += 1) {
     const label = expertLabels[index];
     const point = expertPoints[index];
-    if (!label || !Array.isArray(point) || point.length !== 2) {
-      continue;
-    }
+
     expertPointsByEmail[label] = point;
   }
 
