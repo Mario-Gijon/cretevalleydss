@@ -4,7 +4,7 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import { LinearProgress } from "@mui/material";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 
 dayjs.extend(customParseFormat);
 

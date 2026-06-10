@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 
 /**
  * Badge visual para el tipo de criterio.

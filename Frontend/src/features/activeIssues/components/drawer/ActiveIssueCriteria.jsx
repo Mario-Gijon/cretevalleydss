@@ -1,7 +1,7 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CategoryIcon from "@mui/icons-material/Category";
-import { getIssueDetailsDrawerPanelSx } from "./ActiveIssueDrawer.styles";
+import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueCriteriaTree from "./ActiveIssueCriteriaTree";
 import { formatIssueDrawerWeight } from "../../logic/activeIssueDrawerDetails";
 import ActiveIssuesPill from "../ActiveIssuesPill";

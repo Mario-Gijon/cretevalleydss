@@ -18,7 +18,7 @@ import {
   IssuesGridCard,
   getIssueDeadlineColorByProgress,
   issuesGridHideScrollbarSx,
-} from "./ActiveIssuesGrid.styles";
+} from "../styles/ActiveIssuesGrid.styles";
 
 const ActiveIssueDeadlineBar = ({ issue }) => {
   const theme = useTheme();

@@ -25,7 +25,7 @@ import { formatTaskCenterDeadlineMini } from "../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   taskCenterHideScrollbarXSx,
-} from "./TaskCenter.styles";
+} from "../styles/TaskCenter.styles";
 
 /**
  * Variante horizontal del task center.
