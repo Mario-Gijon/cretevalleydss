@@ -7,7 +7,7 @@ import SyncIcon from "@mui/icons-material/Sync";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
-import { sectionPanelSx } from "../adminIssues/adminIssues.utils";
+import { getAdminIssuesSectionPanelSx } from "../adminIssues/styles/adminIssues.styles";
 import ModelDetailDialog from "./components/ModelDetailDialog";
 import useAdminModelCatalog from "./hooks/useAdminModelCatalog";
 import useModelManifestActions from "./hooks/useModelManifestActions";
@@ -62,7 +62,10 @@ export default function ModelManifestSyncPanel() {
   return (
     <>
       <Stack spacing={1.25}>
-        <Paper elevation={0} sx={{ ...sectionPanelSx(theme), px: 1, py: 0.45 }}>
+        <Paper
+          elevation={0}
+          sx={{ ...getAdminIssuesSectionPanelSx(theme), px: 1, py: 0.45 }}
+        >
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <Tabs
               value={activeTab}

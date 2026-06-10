@@ -1,14 +1,14 @@
 import { Paper, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { detailCardSx } from "../../adminIssues/adminIssues.utils";
+import { getAdminIssueDetailCardSx } from "../../adminIssues/styles/adminIssues.styles";
 
 export default function MetricCard({ label, value, helper, severity = "info" }) {
   const theme = useTheme();
   const color = theme.palette[severity]?.main || theme.palette.info.main;
 
   return (
-    <Paper elevation={0} sx={{ ...detailCardSx(theme), p: 1.15 }}>
+    <Paper elevation={0} sx={{ ...getAdminIssueDetailCardSx(theme), p: 1.15 }}>
       <Stack spacing={0.35}>
         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
           {label}

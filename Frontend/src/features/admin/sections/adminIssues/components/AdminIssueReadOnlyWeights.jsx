@@ -12,7 +12,7 @@ import { EVALUATION_STAGES } from "../../../../issueEvaluation/evaluation.consta
  * @param {object} props.data
  * @returns {JSX.Element}
  */
-const AdminReadOnlyWeights = ({
+const AdminIssueReadOnlyWeights = ({
   data,
   leafCriteria = [],
 }) => {
@@ -81,4 +81,4 @@ const AdminReadOnlyWeights = ({
   );
 };
 
-export default AdminReadOnlyWeights;
+export default AdminIssueReadOnlyWeights;

@@ -1,7 +1,10 @@
 import { Avatar, Paper, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { detailCardSx, toneColor } from "../adminIssues.utils";
+import {
+  getAdminIssueDetailCardSx,
+  getAdminIssueToneColor,
+} from "../styles/adminIssues.styles";
 
 /**
  * Tarjeta compacta de metrica para la seccion de admin issues.
@@ -13,15 +16,15 @@ import { detailCardSx, toneColor } from "../adminIssues.utils";
  * @param {string} [props.tone]
  * @returns {JSX.Element}
  */
-const AdminStatCard = ({ icon, label, value, tone = "info" }) => {
+const AdminIssuesStatCard = ({ icon, label, value, tone = "info" }) => {
   const theme = useTheme();
-  const color = toneColor(theme, tone);
+  const color = getAdminIssueToneColor(theme, tone);
 
   return (
     <Paper
       elevation={0}
       sx={{
-        ...detailCardSx(theme),
+        ...getAdminIssueDetailCardSx(theme),
         p: 1.1,
         minWidth: 0,
       }}
@@ -61,4 +64,4 @@ const AdminStatCard = ({ icon, label, value, tone = "info" }) => {
   );
 };
 
-export default AdminStatCard;
+export default AdminIssuesStatCard;

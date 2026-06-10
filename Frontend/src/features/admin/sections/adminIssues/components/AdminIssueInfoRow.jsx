@@ -8,7 +8,7 @@ import { Stack, Typography } from "@mui/material";
  * @param {*} props.value
  * @returns {JSX.Element}
  */
-const AdminInfoRow = ({ label, value }) => (
+const AdminIssueInfoRow = ({ label, value }) => (
   <Stack
     direction={{ xs: "column", sm: "row" }}
     spacing={0.8}
@@ -29,4 +29,4 @@ const AdminInfoRow = ({ label, value }) => (
   </Stack>
 );
 
-export default AdminInfoRow;
+export default AdminIssueInfoRow;

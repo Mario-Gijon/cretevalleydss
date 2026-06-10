@@ -9,7 +9,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import { detailCardSx } from "../../adminIssues/adminIssues.utils";
+import { getAdminIssueDetailCardSx } from "../../adminIssues/styles/adminIssues.styles";
 import { asArray } from "../utils/modelManifest.formatters";
 import StatusChip from "./StatusChip";
 
@@ -51,7 +51,7 @@ export default function ReviewList({
               <Paper
                 key={`${title}-${index}`}
                 elevation={0}
-                sx={(theme) => ({ ...detailCardSx(theme), p: 1 })}
+                sx={(theme) => ({ ...getAdminIssueDetailCardSx(theme), p: 1 })}
               >
                 <Typography
                   variant="body2"

@@ -1,7 +1,7 @@
 import { Button, Paper, Stack, Typography } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import { detailCardSx } from "../../adminIssues/adminIssues.utils";
+import { getAdminIssueDetailCardSx } from "../../adminIssues/styles/adminIssues.styles";
 import {
   formatBoolean,
   getCatalogVisibilityLabel,
@@ -33,7 +33,7 @@ export default function ModelCards({
           <Paper
             key={`${row.apiModelKey || row.mongoId || row.mongoName || index}-card`}
             elevation={0}
-            sx={(theme) => ({ ...detailCardSx(theme), p: 1.2 })}
+            sx={(theme) => ({ ...getAdminIssueDetailCardSx(theme), p: 1.2 })}
           >
             <Stack spacing={1}>
               <Stack spacing={0.7}>

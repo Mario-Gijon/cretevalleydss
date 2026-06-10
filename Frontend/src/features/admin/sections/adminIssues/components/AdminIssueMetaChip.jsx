@@ -1,7 +1,7 @@
 import { Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import { pillSx } from "../adminIssues.utils";
+import { getAdminIssuePillSx } from "../styles/adminIssues.styles";
 
 /**
  * Chip de metadatos para la seccion de admin issues.
@@ -11,7 +11,7 @@ import { pillSx } from "../adminIssues.utils";
  * @param {*} props.children
  * @returns {JSX.Element}
  */
-const AdminMetaChip = ({ tone = "info", children }) => {
+const AdminIssueMetaChip = ({ tone = "info", children }) => {
   const theme = useTheme();
 
   return (
@@ -19,9 +19,9 @@ const AdminMetaChip = ({ tone = "info", children }) => {
       label={children}
       size="small"
       variant="outlined"
-      sx={pillSx(theme, tone)}
+      sx={getAdminIssuePillSx(theme, tone)}
     />
   );
 };
 
-export default AdminMetaChip;
+export default AdminIssueMetaChip;

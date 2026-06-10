@@ -27,7 +27,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 
 import { GlassDialog } from "../../../../../components/StyledComponents/GlassDialog";
 import { getActiveIssuesAuroraBg } from "../../../../activeIssues/styles/activeIssues.styles";
-import { normalize, safeArray } from "../adminIssues.utils";
+import { normalizeAdminIssueText } from "../logic/getAdminIssueStatusDisplay";
 
 /**
  * Dialogo para seleccionar expertos a anadir en admin issues.
@@ -41,7 +41,7 @@ import { normalize, safeArray } from "../adminIssues.utils";
  * @param {Function} props.setExpertsToAdd
  * @returns {JSX.Element}
  */
-const AdminAddExpertsPickerDialog = ({
+const AdminIssueAddExpertsDialog = ({
   open,
   onClose,
   loading,
@@ -57,13 +57,15 @@ const AdminAddExpertsPickerDialog = ({
   }, [open]);
 
   const filteredExperts = useMemo(() => {
-    const query = normalize(searchFilter);
+    const query = normalizeAdminIssueText(searchFilter);
     if (!query) return availableExperts;
 
-    return safeArray(availableExperts).filter((expert) => {
-      const name = normalize(expert?.name);
-      const email = normalize(expert?.email);
-      const university = normalize(expert?.university);
+    const experts = Array.isArray(availableExperts) ? availableExperts : [];
+
+    return experts.filter((expert) => {
+      const name = normalizeAdminIssueText(expert?.name);
+      const email = normalizeAdminIssueText(expert?.email);
+      const university = normalizeAdminIssueText(expert?.university);
       return name.includes(query) || email.includes(query) || university.includes(query);
     });
   }, [availableExperts, searchFilter]);
@@ -304,4 +306,4 @@ const AdminAddExpertsPickerDialog = ({
   );
 };
 
-export default AdminAddExpertsPickerDialog;
+export default AdminIssueAddExpertsDialog;

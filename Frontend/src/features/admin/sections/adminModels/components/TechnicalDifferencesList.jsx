@@ -1,6 +1,6 @@
 import { Paper, Stack, Typography } from "@mui/material";
 
-import { detailCardSx } from "../../adminIssues/adminIssues.utils";
+import { getAdminIssueDetailCardSx } from "../../adminIssues/styles/adminIssues.styles";
 import { asArray, valueToText } from "../utils/modelManifest.formatters";
 import EmptyState from "./EmptyState";
 
@@ -15,7 +15,7 @@ export default function TechnicalDifferencesList({ differences }) {
         <Paper
           key={`${difference?.field || "field"}-${index}`}
           elevation={0}
-          sx={(theme) => ({ ...detailCardSx(theme), p: 1 })}
+          sx={(theme) => ({ ...getAdminIssueDetailCardSx(theme), p: 1 })}
         >
           <Stack spacing={0.35}>
             <Typography variant="body2" sx={{ fontWeight: 950 }}>
