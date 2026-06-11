@@ -29,7 +29,7 @@ import {
   loginFormInitialErrors,
   loginFormInitialValues,
 } from "../constants/loginForm.constants";
-import { validateLoginForm } from "../utils/loginForm.validation";
+import { validateLoginForm } from "../logic/validateLoginForm";
 import { authCardContentSx, getAuthCardSx } from "../styles/auth.styles";
 
 const LogInForm = () => {

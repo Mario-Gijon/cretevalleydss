@@ -16,7 +16,7 @@ import {
   validateName,
   validatePassword,
   validateUniversity,
-} from "../utils/validationUtils";
+} from "../logic/validateAccountSettingsFields";
 
 const DEFAULT_FIELD_COLORS = Object.freeze({
   name: "secondary",

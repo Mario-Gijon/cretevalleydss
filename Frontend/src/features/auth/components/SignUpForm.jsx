@@ -30,7 +30,7 @@ import {
   signupFormInitialErrors,
   signupFormInitialValues,
 } from "../constants/signupForm.constants";
-import { validateSignupForm } from "../utils/signupForm.validation";
+import { validateSignupForm } from "../logic/validateSignupForm";
 import { authCardContentSx, getAuthCardSx } from "../styles/auth.styles";
 
 const SignUpForm = () => {

@@ -6,7 +6,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 
 import UELogoDarkSVG from "../../../assets/eu_dark.svg?react";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { notifyAuthStatusFromCookies } from "../utils/authStatus.utils";
+import { notifyAuthStatusFromCookies } from "../logic/notifyAuthStatusFromCookies";
 import {
   authFooterContainerSx,
   authLayoutContainerSx,

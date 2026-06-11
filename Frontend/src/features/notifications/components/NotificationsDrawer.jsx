@@ -15,7 +15,7 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-import { formatNotificationDate } from "../utils/notifications.utils";
+import { formatNotificationDate } from "../logic/notificationDisplay";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
 /**
