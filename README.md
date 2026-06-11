@@ -86,3 +86,9 @@ The platform is designed to support different decision-making models, including:
 Frontend/
 Backend/
 ApiModels/
+docs/
+```
+
+## Development
+
+For the additive local Docker development setup, see [docs/development.md](docs/development.md).

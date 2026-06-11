@@ -1,0 +1,8 @@
+FROM oven/bun:1
+
+WORKDIR /app
+
+COPY ./Frontend/package.json ./Frontend/bun.lockb ./
+RUN bun install --frozen-lockfile
+
+EXPOSE 5173
