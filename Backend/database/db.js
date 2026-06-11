@@ -11,17 +11,18 @@ const isMongoConnectionActive = () => {
 };
 
 export const connectDB = async () => {
-  const mongoUri = process.env.URI_MONGODB;
+  const mongoUri = process.env.MONGODB_URI || process.env.URI_MONGODB;
+  const dbName = process.env.MONGODB_DB_NAME;
 
   if (!mongoUri) {
-    throw new Error("URI_MONGODB is not defined");
+    throw new Error("MONGODB_URI or URI_MONGODB is not defined");
   }
 
   if (isMongoConnectionActive()) {
     return mongoose.connection;
   }
 
-  await mongoose.connect(mongoUri);
+  await mongoose.connect(mongoUri, dbName ? { dbName } : undefined);
   console.log("Connected to MongoDB");
 
   return mongoose.connection;

@@ -9,9 +9,6 @@ __pycache__/
 *.py[cod]
 .venv/
 
-# Ignorar archivos de entorno (por seguridad)
-*.env
-
 # Ignorar logs y otros archivos innecesarios
 *.log
 .DS_Store
@@ -29,6 +26,21 @@ build_and_push.sh
 .env.*
 !.env.example
 !.env.*.example
+
+Backend/.env
+Backend/.env.*
+!Backend/.env.example
+!Backend/.env.*.example
+
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
+!Frontend/.env.*.example
+
+ApiModels/.env
+ApiModels/.env.*
+!ApiModels/.env.example
+!ApiModels/.env.*.example
 
 # Python cache
 __pycache__/
