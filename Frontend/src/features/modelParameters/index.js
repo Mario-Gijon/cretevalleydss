@@ -4,15 +4,15 @@ export {
   buildCreateIssueParameterDefaults,
   updateCreateIssueParameterValues,
   pruneCreateIssueParameterValues,
-} from "./modelParameter.helpers";
+} from "./logic/modelParameterValueState";
 
 export {
   PARAMETER_FIELD_REGISTRY,
   resolveParameterFieldEntry,
   resolveParameterField,
-} from "./parameter.registry";
+} from "./modelParameterRegistry";
 
-export { ParameterFieldHost } from "./ParameterFieldHost";
-export { ParameterReadOnlyHost } from "./ParameterReadOnlyHost";
+export { ParameterFieldHost } from "./components/ParameterFieldHost";
+export { ParameterReadOnlyHost } from "./components/ParameterReadOnlyHost";
 
-export { IssueModelParametersView } from "./IssueModelParametersView";
+export { IssueModelParametersView } from "./components/IssueModelParametersView";

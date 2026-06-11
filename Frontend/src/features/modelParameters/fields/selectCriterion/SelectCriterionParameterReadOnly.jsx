@@ -1,54 +1,11 @@
 import { Box, Typography } from "@mui/material";
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import {
+  buildCriterionParameterRows,
+  resolveCriterionRowValue,
+} from "../../logic/modelParameterCriteria";
 
 const formatValue = (value) =>
   value === null || value === undefined || value === "" ? "—" : String(value);
-
-const resolveLeafRows = ({ leafCriteria, leafNames }) => {
-  const rowsFromCriteria = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion, index) => {
-      const key = String(
-        criterion?.id ||
-          criterion?._id ||
-          criterion?.key ||
-          criterion?.name ||
-          ""
-      ).trim();
-      const name = String(criterion?.name || "").trim() || `Criterion ${index + 1}`;
-      if (!key && !name) return null;
-
-      return { key, name };
-    })
-    .filter(Boolean);
-
-  if (rowsFromCriteria.length > 0) return rowsFromCriteria;
-
-  return (Array.isArray(leafNames) ? leafNames : [])
-    .map((name) => {
-      const normalizedName = String(name || "").trim();
-      if (!normalizedName) return null;
-
-      return {
-        key: normalizedName,
-        name: normalizedName,
-      };
-    })
-    .filter(Boolean);
-};
-
-const resolveShownValue = ({ value, parameter, rowKey }) => {
-  if (isPlainObject(value) && Object.prototype.hasOwnProperty.call(value, rowKey)) {
-    return value[rowKey];
-  }
-
-  if (!isPlainObject(value) && value !== undefined && value !== null && value !== "") {
-    return value;
-  }
-
-  return parameter?.default;
-};
 
 export const SelectCriterionParameterReadOnly = ({
   parameter,
@@ -56,7 +13,7 @@ export const SelectCriterionParameterReadOnly = ({
   leafCriteria,
   leafNames,
 }) => {
-  const rows = resolveLeafRows({ leafCriteria, leafNames });
+  const rows = buildCriterionParameterRows({ leafCriteria, leafNames });
 
   if (rows.length === 0) {
     return (
@@ -104,9 +61,9 @@ export const SelectCriterionParameterReadOnly = ({
           }}
         >
           {formatValue(
-            resolveShownValue({
+            resolveCriterionRowValue({
               value,
-              parameter,
+              defaultValue: parameter.default,
               rowKey: row.key,
             })
           )}

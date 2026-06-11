@@ -49,8 +49,8 @@ export const IntervalGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const restrictions = parameter?.restrictions || {};
-  const label = parameter?.label || parameter?.key || "Parameter";
+  const restrictions = parameter.restrictions || {};
+  const label = parameter.label || parameter.key;
   const currentValues = ensureLength(value);
 
   return (

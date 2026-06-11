@@ -33,7 +33,10 @@ export const PARAMETER_FIELD_REGISTRY = Object.freeze({
 });
 
 export const resolveParameterFieldEntry = (parameter) => {
-  const parameterKey = parameter?.key || "unknown";
+  const parameterKey =
+    typeof parameter?.key === "string" && parameter.key.trim()
+      ? parameter.key
+      : "<unknown>";
   const structureKey =
     typeof parameter?.parameterStructureKey === "string"
       ? parameter.parameterStructureKey.trim()

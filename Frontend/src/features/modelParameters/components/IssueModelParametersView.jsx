@@ -2,12 +2,10 @@ import { useMemo } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ParameterReadOnlyHost from "./ParameterReadOnlyHost";
+import { isPlainObject } from "../logic/isPlainObject";
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const normalizeParamKey = (parameter) => parameter?.key || "";
-const normalizeParamLabel = (parameter) => parameter?.label || normalizeParamKey(parameter);
+const getParameterKey = (parameter) => parameter.key;
+const getParameterLabel = (parameter) => parameter.label || parameter.key;
 
 const hasRealValue = (value) => {
   if (value === null || value === undefined || value === "") return false;
@@ -116,6 +114,7 @@ const RawWeightsView = ({ value, leafNames }) => {
     </Box>
   );
 };
+
 const RawValueView = ({ paramKey, value, leafNames }) => {
   if (paramKey === "weights") {
     return <RawWeightsView value={value} leafNames={leafNames} />;
@@ -155,29 +154,19 @@ const RawValueView = ({ paramKey, value, leafNames }) => {
 
 export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
   const params = useMemo(() => (Array.isArray(parameters) ? parameters : []), [parameters]);
-  const valuesObject = useMemo(
-    () => (isPlainObject(values) ? values : {}),
-    [values]
-  );
+  const valuesObject = useMemo(() => (isPlainObject(values) ? values : {}), [values]);
 
   const declaredKeys = useMemo(
-    () =>
-      new Set(
-        params
-          .map((parameter) => normalizeParamKey(parameter))
-          .filter(Boolean)
-      ),
+    () => new Set(params.map((parameter) => getParameterKey(parameter))),
     [params]
   );
 
   const visibleDeclaredParams = useMemo(() => {
     return params.filter((parameter) => {
-      const key = normalizeParamKey(parameter);
-      if (!key) return false;
-
+      const key = getParameterKey(parameter);
       const hasCurrentValue = Object.prototype.hasOwnProperty.call(valuesObject, key);
       const currentValue = hasCurrentValue ? valuesObject[key] : undefined;
-      const fallbackValue = parameter?.default;
+      const fallbackValue = parameter.default;
 
       return hasRealValue(currentValue) || hasRealValue(fallbackValue);
     });
@@ -202,16 +191,14 @@ export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
     <Stack spacing={1} sx={{ minWidth: 0 }}>
       <Box>
         {visibleDeclaredParams.map((parameter) => {
-          const key = normalizeParamKey(parameter);
-          if (!key) return null;
-
-          const label = normalizeParamLabel(parameter);
+          const key = getParameterKey(parameter);
+          const label = getParameterLabel(parameter);
           const value = Object.prototype.hasOwnProperty.call(valuesObject, key)
             ? valuesObject[key]
-            : parameter?.default;
+            : parameter.default;
 
           return (
-            <ParamRow key={parameter?._id || key} name={label}>
+            <ParamRow key={parameter._id || key} name={label}>
               <ParameterReadOnlyHost
                 parameter={parameter}
                 value={value}

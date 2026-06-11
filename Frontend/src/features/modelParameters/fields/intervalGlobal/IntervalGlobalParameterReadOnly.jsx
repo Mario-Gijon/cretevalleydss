@@ -3,7 +3,7 @@ import { Typography } from "@mui/material";
 const isEmpty = (value) => value === null || value === undefined || value === "";
 
 export const IntervalGlobalParameterReadOnly = ({ parameter, value }) => {
-  const shown = value ?? parameter?.default;
+  const shown = value ?? parameter.default;
 
   if (isEmpty(shown)) {
     return (

@@ -1,4 +1,9 @@
 import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { isPlainObject } from "../../logic/isPlainObject";
+import {
+  buildCriterionParameterRows,
+  resolveCriterionRowValue,
+} from "../../logic/modelParameterCriteria";
 
 const FIELD_HEIGHT = 36;
 
@@ -29,47 +34,8 @@ const textFieldSx = {
   },
 };
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
 const readAllowedValues = (parameter) =>
-  Array.isArray(parameter?.restrictions?.allowed) ? parameter.restrictions.allowed : [];
-
-const resolveLeafRows = ({ context }) => {
-  const leafCriteria =
-    context?.leafCriteria ||
-    context?.criteria ||
-    context?.leafCriteriaForParams ||
-    [];
-
-  return (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion, index) => {
-      const key = String(
-        criterion?.id ||
-          criterion?._id ||
-          criterion?.key ||
-          criterion?.name ||
-          ""
-      ).trim();
-      const name = String(criterion?.name || "").trim() || `Criterion ${index + 1}`;
-      if (!key && !name) return null;
-
-      return { key, name };
-    })
-    .filter(Boolean);
-};
-
-const resolveCurrentValue = ({ value, parameter, criterionKey }) => {
-  if (isPlainObject(value) && Object.prototype.hasOwnProperty.call(value, criterionKey)) {
-    return value[criterionKey];
-  }
-
-  if (!isPlainObject(value) && value !== undefined && value !== null && value !== "") {
-    return value;
-  }
-
-  return parameter?.default ?? "";
-};
+  Array.isArray(parameter.restrictions?.allowed) ? parameter.restrictions.allowed : [];
 
 export const SelectCriterionParameterField = ({
   parameter,
@@ -79,9 +45,9 @@ export const SelectCriterionParameterField = ({
   error = "",
   context,
 }) => {
-  const rows = resolveLeafRows({ context });
+  const rows = buildCriterionParameterRows({ context });
   const allowed = readAllowedValues(parameter);
-  const label = parameter?.label || parameter?.key || "Parameter";
+  const label = parameter.label || parameter.key;
 
   if (rows.length === 0) {
     return (
@@ -122,10 +88,10 @@ export const SelectCriterionParameterField = ({
             variant="outlined"
             color="secondary"
             size="small"
-            value={resolveCurrentValue({
+            value={resolveCriterionRowValue({
               value,
-              parameter,
-              criterionKey: row.key,
+              defaultValue: parameter.default ?? "",
+              rowKey: row.key,
             })}
             onChange={(event) => {
               const previous = isPlainObject(value) ? value : {};

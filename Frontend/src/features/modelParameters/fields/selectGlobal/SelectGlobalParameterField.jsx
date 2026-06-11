@@ -3,7 +3,7 @@ import { Stack, Typography, TextField, MenuItem } from "@mui/material";
 const FIELD_HEIGHT = 36;
 
 const readAllowedValues = (parameter) =>
-  Array.isArray(parameter?.restrictions?.allowed) ? parameter.restrictions.allowed : [];
+  Array.isArray(parameter.restrictions?.allowed) ? parameter.restrictions.allowed : [];
 
 const labelSx = {
   height: FIELD_HEIGHT,
@@ -35,7 +35,7 @@ export const SelectGlobalParameterField = ({
   error = "",
 }) => {
   const allowed = readAllowedValues(parameter);
-  const label = parameter?.label || parameter?.key || "Parameter";
+  const label = parameter.label || parameter.key;
 
   return (
     <Stack spacing={0.35}>

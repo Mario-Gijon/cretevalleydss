@@ -26,7 +26,7 @@ import { stageLabel } from "../../logic/activeIssuesMeta";
 import ActiveIssuesPill from "../ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
-import { IssueModelParametersView } from "../../../../modelParameters";
+import { IssueModelParametersView } from "../../../modelParameters";
 
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
   manualCriteriaWeights: "Manual criteria weights",

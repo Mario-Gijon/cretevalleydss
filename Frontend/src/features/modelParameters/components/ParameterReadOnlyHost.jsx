@@ -1,4 +1,4 @@
-import { resolveParameterFieldEntry } from "./parameter.registry";
+import { resolveParameterFieldEntry } from "../modelParameterRegistry";
 
 export const ParameterReadOnlyHost = ({
   parameter,

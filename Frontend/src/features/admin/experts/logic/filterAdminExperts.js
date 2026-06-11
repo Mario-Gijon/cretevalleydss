@@ -1,4 +1,4 @@
-import { removeAccents } from "../../../utils/text.utils";
+import { removeAccents } from "../../../../utils/text.utils";
 
 export const normalizeAdminExpertText = (value) => {
   return removeAccents(String(value ?? "").toLowerCase().trim());

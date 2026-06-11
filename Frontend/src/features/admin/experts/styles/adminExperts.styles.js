@@ -1,6 +1,6 @@
 import { alpha } from "@mui/material/styles";
 
-import { getActiveIssuesHeaderGlassSx as glassSxBase } from "../../activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesHeaderGlassSx as glassSxBase } from "../../../activeIssues/styles/activeIssues.styles";
 
 export const getAdminExpertToneColor = (theme, tone) => {
   if (tone === "success") return theme.palette.success.main;
