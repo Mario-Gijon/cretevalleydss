@@ -8,7 +8,7 @@ const apiInstance = new brevo.TransactionalEmailsApi();
 
 const DEFAULT_SENDER = {
   name: "Crete Valley DSS",
-  email: "cretevalleydss@ujaen.es",
+  email: process.env.CRETEVALLEY_EMAIL || "cretevalleydss@ujaen.es",
 };
 
 apiInstance.setApiKey(
