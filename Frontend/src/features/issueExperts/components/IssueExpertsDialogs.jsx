@@ -1,5 +1,5 @@
-import AddExpertsPickerDialog from "../dialogs/AddExpertsPickerDialog.jsx";
-import AddExpertsDomainsDialog from "../dialogs/AddExpertsDomainsDialog.jsx";
+import AddExpertsPickerDialog from "./AddExpertsPickerDialog.jsx";
+import AddExpertsDomainsDialog from "./AddExpertsDomainsDialog.jsx";
 import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 
 /**

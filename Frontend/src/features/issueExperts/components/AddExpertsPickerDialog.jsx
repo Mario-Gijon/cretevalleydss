@@ -27,7 +27,7 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { getIssueExpertsAuroraBg } from "../styles/issueExperts.styles.js";
-import { normalizeIssueExpertsSearchValue } from "../utils/issueExperts.search.js";
+import { searchIssueExperts } from "../logic/searchIssueExperts.js";
 
 /**
  * Diálogo para seleccionar expertos antes de asignarles dominios.
@@ -57,22 +57,9 @@ const AddExpertsPickerDialog = ({
   }, [open]);
 
   const filteredExperts = useMemo(() => {
-    const query = normalizeIssueExpertsSearchValue(searchFilter);
-
-    if (!query) {
-      return availableExperts;
-    }
-
-    return availableExperts.filter((expert) => {
-      const name = normalizeIssueExpertsSearchValue(expert?.name);
-      const email = normalizeIssueExpertsSearchValue(expert?.email);
-      const university = normalizeIssueExpertsSearchValue(expert?.university);
-
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        university.includes(query)
-      );
+    return searchIssueExperts({
+      experts: availableExperts,
+      query: searchFilter,
     });
   }, [availableExperts, searchFilter]);
 

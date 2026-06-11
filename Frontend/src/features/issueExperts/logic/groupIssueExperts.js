@@ -4,7 +4,7 @@
  * @param {Object|null} issue Issue actual.
  * @returns {Array}
  */
-export const buildIssueExpertsGroups = (issue) => {
+export const groupIssueExperts = (issue) => {
   return [
     {
       key: "participated",
@@ -29,4 +29,4 @@ export const buildIssueExpertsGroups = (issue) => {
   ];
 };
 
-export default buildIssueExpertsGroups;
+export default groupIssueExperts;

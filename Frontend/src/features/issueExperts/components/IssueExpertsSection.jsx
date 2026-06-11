@@ -17,7 +17,7 @@ import PersonRemoveAlt1Icon from "@mui/icons-material/PersonRemoveAlt1";
 import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 import { getIssueExpertsPanelSx } from "../styles/issueExperts.styles.js";
 import IssueExpertsPill from "./IssueExpertsPill.jsx";
-import { buildIssueExpertsGroups } from "../utils/issueExperts.groups.js";
+import { groupIssueExperts } from "../logic/groupIssueExperts.js";
 
 /**
  * Sección principal del flujo de expertos del issue.
@@ -46,7 +46,7 @@ const IssueExpertsSection = () => {
     return null;
   }
 
-  const expertGroups = buildIssueExpertsGroups(selectedIssue);
+  const expertGroups = groupIssueExperts(selectedIssue);
 
   return (
     <Stack spacing={1.5}>

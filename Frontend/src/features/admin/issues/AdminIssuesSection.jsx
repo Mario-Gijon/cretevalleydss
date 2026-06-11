@@ -11,7 +11,7 @@ import {
   removeIssueAdminAction,
   resolveIssueAdminAction,
 } from "../../../services/admin.service";
-import AddExpertsDomainsDialog from "../../issueExperts/dialogs/AddExpertsDomainsDialog";
+import AddExpertsDomainsDialog from "../../issueExperts/components/AddExpertsDomainsDialog";
 import AdminIssueActionConfirmDialog from "./components/AdminIssueActionConfirmDialog";
 import AdminIssueAddExpertsDialog from "./components/AdminIssueAddExpertsDialog";
 import AdminIssueDetailDialog from "./components/AdminIssueDetailDialog";
