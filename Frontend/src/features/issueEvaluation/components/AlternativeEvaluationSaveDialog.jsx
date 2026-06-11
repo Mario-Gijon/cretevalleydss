@@ -1,7 +1,7 @@
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import ExitToAppOutlinedIcon from "@mui/icons-material/ExitToAppOutlined";
 
-import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
 /**
  * Confirmación para guardar borrador o salir sin guardar.

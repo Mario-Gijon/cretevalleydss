@@ -13,9 +13,9 @@ import {
   submitIssueEvaluationPayload,
 } from "../../services/issueEvaluation.service";
 import { EVALUATION_STAGES } from "../../evaluation.constants";
-import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
-import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
-import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
+import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
+import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
+import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
 import {
   buildEmptyBestWorstCriteriaPayload,

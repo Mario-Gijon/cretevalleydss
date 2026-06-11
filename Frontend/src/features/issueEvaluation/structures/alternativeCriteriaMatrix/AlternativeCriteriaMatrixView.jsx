@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.utils";
+import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
 
 /**
  * Matriz de evaluación directa alternativa x criterio.

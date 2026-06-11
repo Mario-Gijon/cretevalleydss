@@ -24,9 +24,9 @@ import {
   inputSx,
   sectionSx,
 } from "../../styles/weightEvaluationDialog.styles";
-import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
-import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
-import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
+import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
+import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
+import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 
 const sumWeights = (criterionNames, valuesByCriterion) =>
   criterionNames.reduce((sum, name) => sum + Number(valuesByCriterion[name] ?? 0), 0);

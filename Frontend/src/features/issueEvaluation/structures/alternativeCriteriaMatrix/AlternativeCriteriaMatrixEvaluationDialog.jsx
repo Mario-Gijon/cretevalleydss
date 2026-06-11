@@ -9,12 +9,12 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import AlternativeCriteriaMatrixView from "./AlternativeCriteriaMatrixView";
-import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
-import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
-import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
+import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
+import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
+import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { validateDirectEvaluations } from "./directEvaluation.validation";
-import { sectionSx } from "../../shared/alternativeEvaluationDialog.styles";
+import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles";
 import {
   fetchIssueEvaluation,
   saveIssueEvaluation,

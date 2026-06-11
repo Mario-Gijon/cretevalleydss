@@ -1,7 +1,7 @@
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
-import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
+import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 
 /**
  * Confirmación para enviar evaluaciones.

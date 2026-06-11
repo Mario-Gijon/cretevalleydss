@@ -8,7 +8,7 @@ import {
 
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { EVALUATION_STAGES } from "../evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../evaluation.registry";
+import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
 
 const getIssueStructureKeyByStage = (issue, stage) => {
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {

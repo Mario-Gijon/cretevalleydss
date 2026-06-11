@@ -1,4 +1,4 @@
-import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
+import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluationStructureRegistry";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
 
 export const pickInitialAdminIssueExpertId = (rows = []) => {

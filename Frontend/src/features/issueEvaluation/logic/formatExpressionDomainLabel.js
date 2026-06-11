@@ -1,13 +1,13 @@
-const isNumericDomain = (domain) => domain?.type === "numeric";
-const isLinguisticDomain = (domain) => domain?.type === "linguistic";
+const isNumericDomain = (domain) => domain.type === "numeric";
+const isLinguisticDomain = (domain) => domain.type === "linguistic";
 
 export const formatExpressionDomainLabel = (domain) => {
   if (!domain) return "No domain";
 
   if (isNumericDomain(domain)) {
-    const min = domain?.numericRange?.min;
-    const max = domain?.numericRange?.max;
-    const step = domain?.numericRange?.step;
+    const min = domain.numericRange?.min;
+    const max = domain.numericRange?.max;
+    const step = domain.numericRange?.step;
     const hasBounds = Number.isFinite(min) && Number.isFinite(max);
     const isDiscrete = Number(step) === 1;
 
@@ -22,8 +22,8 @@ export const formatExpressionDomainLabel = (domain) => {
 
   if (isLinguisticDomain(domain)) {
     const labelsCount =
-      Number(domain?.valueCount) ||
-      (Array.isArray(domain?.linguisticLabels)
+      Number(domain.valueCount) ||
+      (Array.isArray(domain.linguisticLabels)
         ? domain.linguisticLabels.length
         : 0);
 
@@ -32,6 +32,5 @@ export const formatExpressionDomainLabel = (domain) => {
       : "Linguistic";
   }
 
-  return domain?.name || "No domain";
+  return domain.name || "No domain";
 };
-

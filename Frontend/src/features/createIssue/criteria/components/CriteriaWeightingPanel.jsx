@@ -23,7 +23,7 @@ import {
 } from "../../logic/createIssueCriteriaWeightValues";
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluation.registry";
+import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluationStructureRegistry";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,

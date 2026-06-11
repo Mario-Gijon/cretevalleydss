@@ -1,6 +1,6 @@
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, Chip, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../utils/formatDisplayNumber.utils";
+import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {

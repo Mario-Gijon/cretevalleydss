@@ -17,7 +17,7 @@ import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.co
 import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluation.registry";
+import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluationStructureRegistry";
 
 /**
  * Ratings section of the finished issue dialog.

@@ -9,7 +9,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import { formatExpressionDomainLabel } from "../utils/expressionDomainDisplay.utils";
+import { formatExpressionDomainLabel } from "../logic/formatExpressionDomainLabel";
 
 const ExpressionDomainSummaryButton = ({ criteria = [] }) => {
   const theme = useTheme();
@@ -17,11 +17,11 @@ const ExpressionDomainSummaryButton = ({ criteria = [] }) => {
 
   const rows = useMemo(
     () =>
-      (criteria || [])
-        .filter((criterion) => criterion?.isLeaf)
+      criteria
+        .filter((criterion) => criterion.isLeaf)
         .map((criterion) => ({
-          name: criterion?.name || "-",
-          domain: criterion?.expressionDomain || null,
+          name: criterion.name || "-",
+          domain: criterion.expressionDomain || null,
         }))
         .filter((row) => row.domain),
     [criteria]
@@ -88,4 +88,3 @@ const ExpressionDomainSummaryButton = ({ criteria = [] }) => {
 };
 
 export default ExpressionDomainSummaryButton;
-

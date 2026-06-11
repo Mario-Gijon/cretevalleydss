@@ -1,4 +1,4 @@
-import { extractLeafCriteria } from "../../issueEvaluation/shared/leafCriteria.utils";
+import { extractLeafCriteria } from "../../issueEvaluation/logic/extractIssueEvaluationLeafCriteria";
 
 const countLeafCriteria = (nodes) => {
   if (!Array.isArray(nodes) || nodes.length === 0) return 0;

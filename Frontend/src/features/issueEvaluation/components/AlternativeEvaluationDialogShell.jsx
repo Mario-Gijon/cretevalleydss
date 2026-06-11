@@ -14,13 +14,13 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import CloseIcon from "@mui/icons-material/Close";
 
-import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
+import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
+import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import {
   auroraBg,
   softIconBtnSx,
-} from "../alternativeEvaluationDialog.styles.js";
-import ExpressionDomainSummaryButton from "../../components/ExpressionDomainSummaryButton";
+} from "../styles/alternativeEvaluationDialog.styles.js";
+import ExpressionDomainSummaryButton from "./ExpressionDomainSummaryButton";
 
 /**
  * Shell compartido para los diálogos de evaluación de alternativas.

@@ -13,13 +13,13 @@ import { useSnackbarAlertContext } from "../../../../context/snackbarAlert/snack
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import CriterionCompactSelector from "./CriterionCompactSelector";
 import AlternativePairwiseByCriterionView from "./AlternativePairwiseByCriterionView";
-import AlternativeEvaluationSaveDialog from "../../shared/components/AlternativeEvaluationSaveDialog";
-import AlternativeEvaluationSubmitDialog from "../../shared/components/AlternativeEvaluationSubmitDialog";
-import AlternativeEvaluationDialogShell from "../../shared/components/AlternativeEvaluationDialogShell";
+import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
+import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
+import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import {
   sectionSx,
-} from "../../shared/alternativeEvaluationDialog.styles";
+} from "../../styles/alternativeEvaluationDialog.styles";
 import {
   fetchIssueEvaluation,
   saveIssueEvaluation,
