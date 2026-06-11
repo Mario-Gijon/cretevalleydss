@@ -23,10 +23,9 @@ import {
 const ActiveIssueDeadlineBar = ({ issue }) => {
   const theme = useTheme();
 
-  const hasServerDeadline = Boolean(issue?.ui?.deadline?.hasDeadline);
-  const hasLegacyDeadline = Boolean(issue?.closureDate);
+  const hasServerDeadline = issue.ui.deadline.hasDeadline;
 
-  if (!hasServerDeadline && !hasLegacyDeadline) {
+  if (!hasServerDeadline) {
     return (
       <Box
         sx={{
@@ -48,7 +47,7 @@ const ActiveIssueDeadlineBar = ({ issue }) => {
   const data = computeIssueDeadlineProgress(issue);
   const progress = data?.progress ?? 0;
   const daysLeft = data?.daysLeft;
-  const label = data?.label || issue?.closureDate || "—";
+  const label = data?.label || issue.closureDate;
   const barColor = getIssueDeadlineColorByProgress(theme, progress);
 
   const tooltip =

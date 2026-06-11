@@ -21,7 +21,10 @@ import {
   resolveActiveIssuesToneColor,
 } from "../logic/activeIssuesMeta";
 import ActiveIssuesPill from "./ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "../logic/activeIssuesTaskCenter";
+import {
+  formatTaskCenterDeadlineLabel,
+  formatTaskCenterDeadlineMini,
+} from "../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   taskCenterHideScrollbarXSx,
@@ -222,14 +225,12 @@ const TaskCenterRail = ({
             {railItems.map((item) => {
               const accent = resolveActiveIssuesToneColor(item.tone).dot;
               const deadlineMini = formatTaskCenterDeadlineMini(item.deadline);
-              const deadlineTooltip = item.deadline?.hasDeadline
-                ? item.deadline?.deadline
-                : null;
+              const deadlineTooltip = formatTaskCenterDeadlineLabel(item.deadline);
 
               return (
                 <Box
                   key={item.key}
-                  onClick={() => openItem(item)}
+                  onClick={() => openItem(item.issueId)}
                   sx={{
                     cursor: "pointer",
                     minWidth: 240,

@@ -20,12 +20,10 @@ import TaskCenterPanel from "./TaskCenterPanel";
  *
  * @param {Object} props Props del componente.
  * @param {Object|null} props.taskCenter Task center del servidor.
- * @param {Array} props.taskGroups Fallback legacy de grupos.
  * @param {number|null} props.tasksCount Número total de tareas.
  * @param {string} props.taskType Tipo de tarea seleccionado.
  * @param {Function} props.setTaskType Setter del filtro de tarea.
  * @param {Function} props.onOpenIssueId Abre un issue por id.
- * @param {Function} props.onOpenIssue Abre un issue legacy.
  * @param {number|string} props.height Altura del panel.
  * @param {number} props.minHeight Altura mínima del panel.
  * @param {string} props.variant Variante visual del componente.
@@ -33,12 +31,10 @@ import TaskCenterPanel from "./TaskCenterPanel";
  */
 const TaskCenter = ({
   taskCenter,
-  taskGroups,
   tasksCount,
   taskType,
   setTaskType,
   onOpenIssueId,
-  onOpenIssue,
   height = 350,
   minHeight = 260,
   variant = "panel",
@@ -50,8 +46,8 @@ const TaskCenter = ({
   const railRef = useRef(null);
 
   const sections = useMemo(() => {
-    return buildTaskCenterSections(taskCenter, taskGroups);
-  }, [taskCenter, taskGroups]);
+    return buildTaskCenterSections(taskCenter);
+  }, [taskCenter]);
 
   const total = tasksCount ?? taskCenter?.total ?? 0;
 
@@ -71,25 +67,15 @@ const TaskCenter = ({
   const resolvedMaxHeight = height === "auto" ? "none" : height;
 
   /**
-   * Abre el issue asociado a una tarea según el origen
-   * de los datos del task center.
+   * Abre el issue asociado a una tarea del task center.
    *
-   * @param {Object|null} payload Tarea seleccionada.
+   * @param {string|null} issueId Id del issue.
    * @returns {void}
    */
-  const openItem = (payload) => {
-    if (!payload) return;
+  const openItem = (issueId) => {
+    if (!issueId || typeof onOpenIssueId !== "function") return;
 
-    if (payload.isServer) {
-      if (typeof onOpenIssueId === "function") {
-        onOpenIssueId(payload.issueId);
-      }
-      return;
-    }
-
-    if (typeof onOpenIssue === "function") {
-      onOpenIssue(payload.raw);
-    }
+    onOpenIssueId(issueId);
   };
 
   /**

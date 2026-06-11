@@ -1,57 +1,3 @@
-const pickBoolean = (...values) => {
-  for (const value of values) {
-    if (typeof value === "boolean") {
-      return value;
-    }
-  }
-
-  return false;
-};
-
-const getIssueUiPermissions = (issue) => {
-  return issue?.ui?.permissions || issue?.ui?.actions || issue?.ui || null;
-};
-
-const canEvaluateAlternatives = (issue) => {
-  const permissions = getIssueUiPermissions(issue);
-
-  return pickBoolean(
-    permissions?.evaluateAlternatives,
-    permissions?.canEvaluateAlternatives,
-    issue?.statusFlags?.canEvaluateAlternatives
-  );
-};
-
-const canEvaluateWeights = (issue) => {
-  const permissions = getIssueUiPermissions(issue);
-
-  return pickBoolean(
-    permissions?.evaluateWeights,
-    permissions?.canEvaluateWeights,
-    issue?.statusFlags?.canEvaluateWeights
-  );
-};
-
-const canComputeWeights = (issue) => {
-  const permissions = getIssueUiPermissions(issue);
-
-  return pickBoolean(
-    permissions?.computeWeights,
-    permissions?.canComputeWeights,
-    issue?.statusFlags?.canComputeWeights
-  );
-};
-
-const canResolveIssue = (issue) => {
-  const permissions = getIssueUiPermissions(issue);
-
-  return pickBoolean(
-    permissions?.resolveIssue,
-    permissions?.canResolveIssue,
-    issue?.statusFlags?.canResolveIssue
-  );
-};
-
 /**
  * Devuelve el conjunto de permisos derivados del issue.
  *
@@ -59,11 +5,13 @@ const canResolveIssue = (issue) => {
  * @returns {Object}
  */
 export const getIssueDrawerPermissions = (issue) => {
+  const permissions = issue?.ui?.permissions;
+
   return {
-    canEvaluateAlternatives: canEvaluateAlternatives(issue),
-    canEvaluateWeights: canEvaluateWeights(issue),
-    canComputeWeights: canComputeWeights(issue),
-    canResolveIssue: canResolveIssue(issue),
+    canEvaluateAlternatives: permissions?.evaluateAlternatives === true,
+    canEvaluateWeights: permissions?.evaluateWeights === true,
+    canComputeWeights: permissions?.computeWeights === true,
+    canResolveIssue: permissions?.resolveIssue === true,
   };
 };
 
@@ -78,17 +26,11 @@ export const formatIssueDrawerWeight = (value) => {
     return null;
   }
 
-  const numberValue = Number(value);
-
-  if (Number.isNaN(numberValue)) {
-    return String(value);
+  if (value >= 0 && value <= 1) {
+    return `${(value * 100).toFixed(2)}%`;
   }
 
-  if (numberValue >= 0 && numberValue <= 1) {
-    return `${(numberValue * 100).toFixed(2)}%`;
-  }
-
-  return numberValue.toFixed(4).replace(/\.?0+$/, "");
+  return value.toFixed(4).replace(/\.?0+$/, "");
 };
 
 /**
@@ -99,10 +41,10 @@ export const formatIssueDrawerWeight = (value) => {
  */
 export const getIssueDrawerDeadlineLabel = (issue) => {
   if (issue?.ui?.deadline?.hasDeadline) {
-    return issue?.ui?.deadline?.deadline;
+    return issue.closureDate;
   }
 
-  return issue?.closureDate || "—";
+  return "—";
 };
 
 /**
@@ -112,7 +54,7 @@ export const getIssueDrawerDeadlineLabel = (issue) => {
  * @returns {Array}
  */
 export const getIssueDrawerAlternatives = (issue) => {
-  return Array.isArray(issue?.alternatives) ? issue.alternatives : [];
+  return issue ? issue.alternatives : [];
 };
 
 /**
@@ -122,7 +64,7 @@ export const getIssueDrawerAlternatives = (issue) => {
  * @returns {Object}
  */
 export const getIssueDrawerFinalWeights = (issue) => {
-  return issue?.finalWeights || issue?.ui?.finalWeights || {};
+  return issue ? issue.finalWeights : {};
 };
 
 /**
@@ -132,20 +74,22 @@ export const getIssueDrawerFinalWeights = (issue) => {
  * @returns {Object}
  */
 export const getIssueDrawerParticipation = (issue) => {
+  if (!issue) {
+    return {
+      totalExperts: 0,
+      pendingExperts: 0,
+      participatedExperts: 0,
+      notEvaluatedExperts: 0,
+      declinedExperts: 0,
+    };
+  }
+
   return {
-    totalExperts: issue?.totalExperts ?? 0,
-    pendingExperts: Array.isArray(issue?.pendingExperts)
-      ? issue.pendingExperts.length
-      : 0,
-    participatedExperts: Array.isArray(issue?.participatedExperts)
-      ? issue.participatedExperts.length
-      : 0,
-    notEvaluatedExperts: Array.isArray(issue?.acceptedButNotEvaluatedExperts)
-      ? issue.acceptedButNotEvaluatedExperts.length
-      : 0,
-    declinedExperts: Array.isArray(issue?.notAcceptedExperts)
-      ? issue.notAcceptedExperts.length
-      : 0,
+    totalExperts: issue.totalExperts,
+    pendingExperts: issue.pendingExperts.length,
+    participatedExperts: issue.participatedExperts.length,
+    notEvaluatedExperts: issue.acceptedButNotEvaluatedExperts.length,
+    declinedExperts: issue.notAcceptedExperts.length,
   };
 };
 
@@ -157,18 +101,14 @@ export const getIssueDrawerParticipation = (issue) => {
  */
 export const getLeafCriterionNames = (nodes = []) => {
   const names = [];
-  const stack = Array.isArray(nodes) ? [...nodes] : [];
+  const stack = [...nodes];
 
   while (stack.length > 0) {
     const node = stack.pop();
-    if (!node) continue;
-
-    const children = Array.isArray(node.children) ? node.children : [];
+    const children = node.children;
 
     if (children.length === 0) {
-      if (typeof node?.name === "string" && node.name.trim()) {
-        names.push(node.name);
-      }
+      names.push(node.name);
       continue;
     }
 

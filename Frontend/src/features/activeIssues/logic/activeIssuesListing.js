@@ -14,20 +14,18 @@ const parseIssueDateDDMMYYYY = (value) => {
 const sortActiveIssues = (issues, sortBy) => {
   const list = [...issues];
 
-  const compareByName = (a, b) =>
-    String(a?.name || "").localeCompare(String(b?.name || ""));
+  const compareByName = (a, b) => a.name.localeCompare(b.name);
 
   const creationTimestamp = (issue) => {
-    const fromCreatedAt = new Date(issue?.createdAt || 0).getTime();
+    const fromCreatedAt = new Date(issue.createdAt).getTime();
     if (Number.isFinite(fromCreatedAt) && fromCreatedAt > 0) {
       return fromCreatedAt;
     }
 
-    return parseIssueDateDDMMYYYY(issue?.creationDate);
+    return parseIssueDateDDMMYYYY(issue.creationDate);
   };
 
-  const finalizationTimestamp = (issue) =>
-    parseIssueDateDDMMYYYY(issue?.closureDate);
+  const finalizationTimestamp = (issue) => parseIssueDateDDMMYYYY(issue.closureDate);
 
   if (sortBy === "creationDate") {
     list.sort((a, b) => {
@@ -93,87 +91,6 @@ export const buildFilteredActiveIssues = ({
 };
 
 /**
- * Construye el fallback legacy de grupos de tareas.
- *
- * @param {Array} activeIssues Lista de issues activos.
- * @returns {Array}
- */
-export const buildLegacyTaskGroups = (activeIssues) => {
-  const groups = [
-    {
-      key: "evalAlt",
-      title: "Evaluate alternatives",
-      tone: "info",
-      icon: null,
-      match: (issue) => issue?.statusFlags?.canEvaluateAlternatives,
-    },
-    {
-      key: "evalW",
-      title: "Evaluate weights",
-      tone: "info",
-      icon: null,
-      match: (issue) => issue?.statusFlags?.canEvaluateWeights,
-    },
-    {
-      key: "computeW",
-      title: "Compute weights (admin)",
-      tone: "warning",
-      icon: null,
-      match: (issue) => issue?.isAdmin && issue?.statusFlags?.canComputeWeights,
-    },
-    {
-      key: "resolve",
-      title: "Resolve (admin)",
-      tone: "warning",
-      icon: null,
-      match: (issue) => issue?.isAdmin && issue?.statusFlags?.canResolveIssue,
-    },
-  ];
-
-  return groups
-    .map((group) => ({ ...group, items: activeIssues.filter(group.match) }))
-    .filter((group) => group.items.length > 0);
-};
-
-/**
- * Indica si el task center del servidor trae tareas utiles.
- *
- * @param {Object|null} taskCenter Task center recibido del servidor.
- * @returns {boolean}
- */
-export const taskCenterHasTasks = (taskCenter) => {
-  const sections = taskCenter?.sections;
-
-  return (
-    Array.isArray(sections) &&
-    sections.some(
-      (section) => Array.isArray(section?.items) && section.items.length > 0
-    )
-  );
-};
-
-/**
- * Devuelve el numero total de tareas visible.
- *
- * @param {Object} params Parametros de recuento.
- * @param {Array} params.taskGroupsLegacy Grupos legacy.
- * @param {Object|null} params.taskCenter Task center del servidor.
- * @returns {number}
- */
-export const resolveTasksCount = ({ taskGroupsLegacy, taskCenter }) => {
-  const legacyTotalTasks = taskGroupsLegacy.reduce(
-    (accumulator, group) => accumulator + group.items.length,
-    0
-  );
-
-  if (taskCenterHasTasks(taskCenter) && typeof taskCenter?.total === "number") {
-    return taskCenter.total;
-  }
-
-  return legacyTotalTasks;
-};
-
-/**
  * Construye el resumen superior del dashboard de issues activos.
  *
  * @param {Object} params Parametros del resumen.
@@ -182,9 +99,9 @@ export const resolveTasksCount = ({ taskGroupsLegacy, taskCenter }) => {
  * @returns {Object}
  */
 export const buildActiveIssuesOverview = ({ activeIssues, tasksCount }) => {
-  const adminCount = activeIssues.filter((issue) => issue?.isAdmin).length;
+  const adminCount = activeIssues.filter((issue) => issue.isAdmin).length;
   const readyResolve = activeIssues.filter(
-    (issue) => issue?.statusFlags?.canResolveIssue
+    (issue) => issue.statusFlags.canResolveIssue
   ).length;
 
   return {

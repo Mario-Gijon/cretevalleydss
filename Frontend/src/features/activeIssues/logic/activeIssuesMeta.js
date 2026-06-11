@@ -44,7 +44,7 @@ export const stageLabel = (stage) => {
 const mapServerStatusKey = (key) => {
   if (!key) return null;
 
-  const normalizedKey = String(key);
+  const normalizedKey = key;
 
   if (normalizedKey === "resolveIssue") return "resolve";
   if (normalizedKey === "computeWeights") return "computeW";
@@ -59,7 +59,7 @@ const mapServerStatusKey = (key) => {
 };
 
 const toneFromServerRawKey = (rawKey, issue) => {
-  const key = String(rawKey || "");
+  const key = rawKey;
 
   if (key === "evaluateWeights" || key === "evaluateAlternatives") return "info";
   if (key === "waitingAdmin" || key === "waitingExperts") return "success";
@@ -76,9 +76,9 @@ const toneFromServerRawKey = (rawKey, issue) => {
  * @returns {Object}
  */
 export const getNextActionMeta = (issue) => {
-  const serverKeyRaw = issue?.ui?.statusKey || issue?.nextAction?.key;
+  const serverKeyRaw = issue.ui.statusKey;
   const serverKey = mapServerStatusKey(serverKeyRaw);
-  const serverTitle = issue?.ui?.statusLabel || issue?.nextAction?.label;
+  const serverTitle = issue.ui.statusLabel;
   const tone = toneFromServerRawKey(serverKeyRaw, issue);
 
   const serverMap = {
@@ -86,7 +86,7 @@ export const getNextActionMeta = (issue) => {
       key: "waitingAdmin",
       title:
         serverTitle ||
-        (issue?.currentStage === "weightsFinished"
+        (issue.currentStage === "weightsFinished"
           ? "Waiting for admin to compute weights"
           : "Waiting for admin to resolve"),
       tone,
@@ -134,14 +134,14 @@ export const getNextActionMeta = (issue) => {
     return serverMap[serverKey];
   }
 
-  const flags = issue?.statusFlags || {};
+  const flags = issue.statusFlags;
 
   if (flags.waitingAdmin) return serverMap.waitingAdmin;
   if (flags.canEvaluateWeights) return serverMap.evalW;
   if (flags.canComputeWeights) return serverMap.computeW;
   if (flags.canEvaluateAlternatives) return serverMap.evalA;
   if (flags.canResolveIssue) return serverMap.resolve;
-  if (issue?.currentStage === "finished") return serverMap.finished;
+  if (issue.currentStage === "finished") return serverMap.finished;
 
   return serverMap.waitingExperts;
 };

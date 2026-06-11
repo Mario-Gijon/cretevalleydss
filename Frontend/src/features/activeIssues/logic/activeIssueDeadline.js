@@ -23,46 +23,30 @@ const parseIssueGridDateDDMMYYYY = (value) => {
 export const computeIssueDeadlineProgress = (issue) => {
   const serverDeadline = issue?.ui?.deadline;
 
-  if (serverDeadline?.hasDeadline && typeof serverDeadline.daysLeft === "number") {
-    const end = parseIssueGridDateDDMMYYYY(issue?.closureDate);
-    const start = parseIssueGridDateDDMMYYYY(issue?.creationDate);
-    const now = Date.now();
+  if (!serverDeadline?.hasDeadline || typeof serverDeadline.daysLeft !== "number") {
+    return null;
+  }
 
-    if (end) {
-      const fallbackTotal = 1000 * 60 * 60 * 24 * 30;
-      const baseStart = start || end - fallbackTotal;
-      const total = Math.max(1, end - baseStart);
-      const progress = clamp01((now - baseStart) / total);
+  const end = parseIssueGridDateDDMMYYYY(issue.closureDate);
+  const start = parseIssueGridDateDDMMYYYY(issue.creationDate);
+  const now = Date.now();
 
-      return {
-        progress,
-        daysLeft: serverDeadline.daysLeft,
-        label: issue?.closureDate,
-      };
-    }
-
+  if (!end) {
     return {
       progress: 0,
       daysLeft: serverDeadline.daysLeft,
-      label: issue?.closureDate,
+      label: issue.closureDate,
     };
   }
 
-  const end = parseIssueGridDateDDMMYYYY(issue?.closureDate);
-
-  if (!end) return null;
-
-  const start = parseIssueGridDateDDMMYYYY(issue?.creationDate);
-  const now = Date.now();
   const fallbackTotal = 1000 * 60 * 60 * 24 * 30;
   const baseStart = start || end - fallbackTotal;
   const total = Math.max(1, end - baseStart);
   const progress = clamp01((now - baseStart) / total);
-  const daysLeft = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
 
   return {
     progress,
-    daysLeft,
-    label: issue?.closureDate,
+    daysLeft: serverDeadline.daysLeft,
+    label: issue.closureDate,
   };
 };

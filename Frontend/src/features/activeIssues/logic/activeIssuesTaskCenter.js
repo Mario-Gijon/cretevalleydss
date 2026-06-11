@@ -31,32 +31,36 @@ export const formatTaskCenterDeadlineMini = (deadline) => {
   return `${daysLeft}d`;
 };
 
+export const formatTaskCenterDeadlineLabel = (deadline) => {
+  if (!deadline?.hasDeadline || !deadline.iso) return null;
+
+  const date = new Date(deadline.iso);
+  const timestamp = date.getTime();
+
+  if (Number.isNaN(timestamp)) return null;
+
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
 /**
  * Construye las secciones visibles del task center.
  *
  * @param {Object|null} taskCenter Task center del servidor.
- * @param {Array} taskGroups Fallback legacy.
  * @returns {Array}
  */
-export const buildTaskCenterSections = (taskCenter, taskGroups = []) => {
+export const buildTaskCenterSections = (taskCenter) => {
   const serverSections = taskCenter?.sections;
 
-  if (Array.isArray(serverSections) && serverSections.length > 0) {
-    return serverSections
-      .map((section) => ({
-        key: section.key,
-        title: section.title,
-        tone: resolveTaskCenterToneFromSeverity(section.severity),
-        items: Array.isArray(section.items) ? section.items : [],
-        isServer: true,
-      }))
-      .filter((section) => section.items.length > 0);
-  }
-
-  return taskGroups
-    .map((group) => ({
-      ...group,
-      isServer: false,
+  return (serverSections || [])
+    .map((section) => ({
+      key: section.key,
+      title: section.title,
+      tone: resolveTaskCenterToneFromSeverity(section.severity),
+      items: section.items,
     }))
     .filter((group) => group.items.length > 0);
 };
@@ -102,36 +106,17 @@ export const buildTaskCenterRailItems = (groupsFiltered = []) => {
   const railItems = [];
 
   for (const group of groupsFiltered) {
-    const tone = group.tone || "info";
-    const isServer = Boolean(group.isServer);
+    const tone = group.tone;
 
-    for (const item of group.items || []) {
-      if (isServer) {
-        railItems.push({
-          key: `${group.key}:${item.issueId}`,
-          isServer: true,
-          tone,
-          groupTitle: group.title,
-          issueId: item.issueId,
-          issueName: item.issueName,
-          stage: item.stage,
-          deadline: item.deadline,
-          raw: item,
-        });
-
-        continue;
-      }
-
+    for (const item of group.items) {
       railItems.push({
-        key: `${group.key}:${item.id}`,
-        isServer: false,
+        key: `${group.key}:${item.issueId}`,
         tone,
         groupTitle: group.title,
-        issueId: item.id,
-        issueName: item.name,
-        stage: item.currentStage,
-        deadline: item.ui?.deadline || null,
-        raw: item,
+        issueId: item.issueId,
+        issueName: item.issueName,
+        stage: item.stage,
+        deadline: item.deadline,
       });
     }
   }

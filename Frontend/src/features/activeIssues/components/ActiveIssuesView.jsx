@@ -63,7 +63,6 @@ const ActiveIssuesView = () => {
     sortBy,
     taskType,
     filteredIssues,
-    taskGroupsLegacy,
     tasksCount,
     overview,
     setQuery,
@@ -146,7 +145,6 @@ const ActiveIssuesView = () => {
             sortBy={sortBy}
             setSortBy={setSortBy}
             taskCenter={taskCenter}
-            taskGroupsLegacy={taskGroupsLegacy}
             tasksCount={tasksCount}
             taskType={taskType}
             setTaskType={setTaskType}
@@ -167,7 +165,6 @@ const ActiveIssuesView = () => {
             sortBy={sortBy}
             setSortBy={setSortBy}
             taskCenter={taskCenter}
-            taskGroupsLegacy={taskGroupsLegacy}
             tasksCount={tasksCount}
             taskType={taskType}
             setTaskType={setTaskType}

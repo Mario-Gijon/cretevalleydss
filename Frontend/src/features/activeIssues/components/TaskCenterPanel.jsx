@@ -23,7 +23,10 @@ import {
   stageLabel,
 } from "../logic/activeIssuesMeta";
 import ActiveIssuesPill from "./ActiveIssuesPill";
-import { formatTaskCenterDeadlineMini } from "../logic/activeIssuesTaskCenter";
+import {
+  formatTaskCenterDeadlineLabel,
+  formatTaskCenterDeadlineMini,
+} from "../logic/activeIssuesTaskCenter";
 import {
   getTaskCenterGlassSx,
   getTaskCenterScrollbarSx,
@@ -154,12 +157,11 @@ const TaskCenterPanel = ({
           ) : (
             <Stack spacing={1.05} sx={{ pb: 0.5 }}>
               {groupsFiltered.map((group) => {
-                const tone = group.tone || "info";
+                const tone = group.tone;
                 const accent = alpha(
                   resolveActiveIssuesToneColor(tone).dot,
                   0.55
                 );
-                const isServer = Boolean(group.isServer);
 
                 return (
                   <Box
@@ -221,27 +223,18 @@ const TaskCenterPanel = ({
 
                     <List disablePadding sx={{ py: 0.5 }}>
                       {group.items.map((item) => {
-                        const issueId = isServer ? item.issueId : item.id;
-                        const issueName = isServer ? item.issueName : item.name;
-                        const stage = isServer ? item.stage : item.currentStage;
-
-                        const deadlineMini = isServer
-                          ? formatTaskCenterDeadlineMini(item.deadline)
-                          : formatTaskCenterDeadlineMini(item?.ui?.deadline);
-
-                        const deadlineTooltip =
-                          isServer && item.deadline?.hasDeadline
-                            ? item.deadline.deadline
-                            : item?.ui?.deadline?.deadline;
-
-                        const payload = isServer
-                          ? { isServer: true, issueId: item.issueId, raw: item }
-                          : { isServer: false, issueId: item.id, raw: item };
+                        const issueId = item.issueId;
+                        const issueName = item.issueName;
+                        const stage = item.stage;
+                        const deadlineMini = formatTaskCenterDeadlineMini(item.deadline);
+                        const deadlineTooltip = formatTaskCenterDeadlineLabel(
+                          item.deadline
+                        );
 
                         return (
                           <ListItemButton
                             key={issueId}
-                            onClick={() => openItem(payload)}
+                            onClick={() => openItem(issueId)}
                             sx={{
                               mx: 0.75,
                               mt: 1,

@@ -3,8 +3,6 @@ import { useMemo, useState } from "react";
 import {
   buildActiveIssuesOverview,
   buildFilteredActiveIssues,
-  buildLegacyTaskGroups,
-  resolveTasksCount,
 } from "../logic/activeIssuesListing";
 
 /**
@@ -43,26 +41,13 @@ export const useActiveIssuesListing = ({
   }, [activeIssues, query, searchBy, sortBy]);
 
   /**
-   * Fallback legacy para task center mientras no lleguen
-   * secciones del servidor.
-   *
-   * @returns {Array}
-   */
-  const taskGroupsLegacy = useMemo(() => {
-    return buildLegacyTaskGroups(activeIssues);
-  }, [activeIssues]);
-
-  /**
    * Número total de tareas visible en la pantalla.
    *
    * @returns {number}
    */
   const tasksCount = useMemo(() => {
-    return resolveTasksCount({
-      taskCenter,
-      taskGroupsLegacy,
-    });
-  }, [taskCenter, taskGroupsLegacy]);
+    return typeof taskCenter?.total === "number" ? taskCenter.total : 0;
+  }, [taskCenter]);
 
   /**
    * Resumen superior del dashboard de issues activos.
@@ -82,7 +67,6 @@ export const useActiveIssuesListing = ({
     sortBy,
     taskType,
     filteredIssues,
-    taskGroupsLegacy,
     tasksCount,
     overview,
     setQuery,

@@ -12,20 +12,19 @@ const parseIssueDateDDMMYYYY = (value) => {
 export const sortFinishedIssues = (issues, sortBy) => {
   const list = [...issues];
 
-  const compareByName = (a, b) =>
-    String(a?.name || "").localeCompare(String(b?.name || ""));
+  const compareByName = (a, b) => a.name.localeCompare(b.name);
 
   const creationTimestamp = (issue) => {
-    const fromCreatedAt = new Date(issue?.createdAt || 0).getTime();
+    const fromCreatedAt = new Date(issue.createdAt).getTime();
     if (Number.isFinite(fromCreatedAt) && fromCreatedAt > 0) {
       return fromCreatedAt;
     }
 
-    return parseIssueDateDDMMYYYY(issue?.creationDate);
+    return parseIssueDateDDMMYYYY(issue.creationDate);
   };
 
   const finalizationTimestamp = (issue) => {
-    const fromFinishedAt = new Date(issue?.finishedAt || 0).getTime();
+    const fromFinishedAt = new Date(issue.finishedAt).getTime();
     if (Number.isFinite(fromFinishedAt) && fromFinishedAt > 0) {
       return fromFinishedAt;
     }
@@ -48,7 +47,7 @@ export const sortFinishedIssues = (issues, sortBy) => {
     list.forEach((issue) => {
       const timestamp = finalizationTimestamp(issue);
       if (timestamp > 0) {
-        const updatedAt = new Date(issue?.updatedAt || 0).getTime();
+        const updatedAt = new Date(issue.updatedAt).getTime();
         withFinishedAt.push({
           issue,
           timestamp,

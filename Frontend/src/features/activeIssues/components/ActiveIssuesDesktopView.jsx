@@ -22,7 +22,6 @@ const ActiveIssuesDesktopView = ({
   sortBy,
   setSortBy,
   taskCenter,
-  taskGroupsLegacy,
   tasksCount,
   taskType,
   setTaskType,
@@ -98,12 +97,10 @@ const ActiveIssuesDesktopView = ({
               variant="rail"
               height="100%"
               minHeight="100%"
-              taskGroups={!taskCenter ? taskGroupsLegacy : null}
               tasksCount={tasksCount}
               taskCenter={taskCenter}
               taskType={taskType}
               setTaskType={setTaskType}
-              onOpenIssue={openDetails}
               onOpenIssueId={openDetailsById}
             />
           </Box>

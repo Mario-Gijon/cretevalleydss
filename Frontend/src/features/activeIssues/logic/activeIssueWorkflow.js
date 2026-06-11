@@ -5,28 +5,11 @@
  * @returns {boolean}
  */
 export const detectIssueAlternativeConsensus = (issue) => {
-  if (issue?.ui?.hasAlternativeConsensus === true) return true;
-  if (issue?.ui?.hasAlternativeConsensus === false) return false;
+  if (!issue) return false;
+  if (issue.ui.hasAlternativeConsensus) return true;
 
-  const serverSteps = issue?.ui?.workflowSteps;
-
-  if (
-    Array.isArray(serverSteps) &&
-    serverSteps.some((step) => step?.key === "alternativeConsensus")
-  ) {
-    return true;
-  }
-
-  const flags = issue?.statusFlags || {};
-
-  return Boolean(
-    issue?.isConsensus ||
-      flags.alternativeConsensusActive ||
-      flags.waitingAlternativeConsensus ||
-      flags.consensusAlternativesActive ||
-      flags.altConsensusActive ||
-      issue?.alternativeConsensusActive ||
-      issue?.consensusAlternativesActive
+  return issue.ui.workflowSteps.some(
+    (step) => step.key === "alternativeConsensus"
   );
 };
 
@@ -37,16 +20,16 @@ export const detectIssueAlternativeConsensus = (issue) => {
  * @returns {Array}
  */
 export const buildIssueWorkflowSteps = (issue) => {
-  const serverSteps = issue?.ui?.workflowSteps;
+  if (!issue) return [];
 
-  if (Array.isArray(serverSteps) && serverSteps.length > 0) {
+  const serverSteps = issue.ui.workflowSteps;
+
+  if (serverSteps.length > 0) {
     return serverSteps;
   }
 
   const hasAlternativeConsensus = detectIssueAlternativeConsensus(issue);
-  const hasCriteriaWeighting =
-    issue?.ui?.hasCriteriaWeighting === true ||
-    Boolean(issue?.criteriaWeightingStructureKey);
+  const hasCriteriaWeighting = issue.ui.hasCriteriaWeighting === true;
 
   return [
     ...(hasCriteriaWeighting
@@ -64,11 +47,9 @@ export const buildIssueWorkflowSteps = (issue) => {
 };
 
 const mapIssueServerStatusToStepKey = (issue) => {
-  const rawKey = issue?.ui?.statusKey || issue?.nextAction?.key;
+  const key = issue.ui.statusKey;
 
-  if (!rawKey) return null;
-
-  const key = String(rawKey);
+  if (!key) return null;
 
   if (key === "evaluateWeights") {
     return "criteriaWeighting";
@@ -107,7 +88,7 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
     return steps?.[0]?.key || "criteriaWeighting";
   }
 
-  if (issue?.currentStage === "finished") {
+  if (issue.currentStage === "finished") {
     return "__done__";
   }
 
@@ -121,8 +102,8 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
     return serverStepKey;
   }
 
-  const flags = issue?.statusFlags || {};
-  const stage = issue?.currentStage;
+  const flags = issue.statusFlags;
+  const stage = issue.currentStage;
 
   if (
     steps.some((step) => step.key === "alternativeConsensus") &&
@@ -150,10 +131,6 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
 
   if (stage === "criteriaWeighting") {
     return "criteriaWeighting";
-  }
-
-  if (stage === "alternativeEvaluation") {
-    return "alternativeEvaluation";
   }
 
   return "criteriaWeighting";

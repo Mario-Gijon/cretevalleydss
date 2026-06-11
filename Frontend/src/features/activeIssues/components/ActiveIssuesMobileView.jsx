@@ -34,7 +34,6 @@ const ActiveIssuesMobileView = ({
   sortBy,
   setSortBy,
   taskCenter,
-  taskGroupsLegacy,
   tasksCount,
   taskType,
   setTaskType,
@@ -63,12 +62,10 @@ const ActiveIssuesMobileView = ({
         <Box sx={{ mt: 2 }}>
           <TaskCenter
             variant="rail"
-            taskGroups={!taskCenter ? taskGroupsLegacy : null}
             tasksCount={tasksCount}
             taskCenter={taskCenter}
             taskType={taskType}
             setTaskType={setTaskType}
-            onOpenIssue={openDetails}
             onOpenIssueId={openDetailsById}
             height="auto"
             minHeight={132}
@@ -110,11 +107,9 @@ const ActiveIssuesMobileView = ({
             <TaskCenter
               variant="panel"
               taskCenter={taskCenter}
-              taskGroups={!taskCenter ? taskGroupsLegacy : null}
               tasksCount={tasksCount}
               taskType={taskType}
               setTaskType={setTaskType}
-              onOpenIssue={openDetails}
               onOpenIssueId={openDetailsById}
               height="auto"
               minHeight={260}

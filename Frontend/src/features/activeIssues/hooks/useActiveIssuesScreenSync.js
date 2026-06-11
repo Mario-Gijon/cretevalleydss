@@ -35,7 +35,7 @@ export const useActiveIssuesScreenSync = ({
   useEffect(() => {
     if (issueCreated?.success) {
       showSnackbarAlert(
-        issueCreated?.message || issueCreated?.msg || "Issue created successfully",
+        issueCreated?.message || "Issue created successfully",
         "success"
       );
       setIssueCreated("");

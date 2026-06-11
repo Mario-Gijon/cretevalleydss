@@ -5,7 +5,7 @@
  * @returns {string}
  */
 export const normalizeActiveIssueValue = (value) => {
-  return value == null ? "" : String(value).toLowerCase();
+  return value ? value.toLowerCase() : "";
 };
 
 /**
@@ -17,19 +17,17 @@ export const normalizeActiveIssueValue = (value) => {
  */
 export const criteriaContainsQuery = (nodes, query) => {
   if (!query) return true;
-  if (!Array.isArray(nodes) || nodes.length === 0) return false;
+  if (nodes.length === 0) return false;
 
   const stack = [...nodes];
 
   while (stack.length > 0) {
     const node = stack.pop();
-    if (!node) continue;
-
-    if (normalizeActiveIssueValue(node?.name).includes(query)) {
+    if (normalizeActiveIssueValue(node.name).includes(query)) {
       return true;
     }
 
-    if (Array.isArray(node?.children) && node.children.length > 0) {
+    if (node.children.length > 0) {
       stack.push(...node.children);
     }
   }
@@ -47,21 +45,7 @@ export const criteriaContainsQuery = (nodes, query) => {
 export const adminContainsQuery = (issue, query) => {
   if (!query) return true;
 
-  const candidates = [
-    issue?.creator,
-    issue?.adminEmail,
-    issue?.adminName,
-    issue?.admin?.email,
-    issue?.admin?.name,
-    issue?.createdBy?.email,
-    issue?.createdBy?.name,
-    issue?.owner?.email,
-    issue?.owner?.name,
-  ];
-
-  return candidates.some((candidate) =>
-    normalizeActiveIssueValue(candidate).includes(query)
-  );
+  return normalizeActiveIssueValue(issue.creator).includes(query);
 };
 
 /**
@@ -74,17 +58,9 @@ export const adminContainsQuery = (issue, query) => {
 export const alternativesContainsQuery = (issue, query) => {
   if (!query) return true;
 
-  const alternatives = Array.isArray(issue?.alternatives) ? issue.alternatives : [];
-
-  return alternatives.some((alternative) => {
-    if (typeof alternative === "string") {
-      return normalizeActiveIssueValue(alternative).includes(query);
-    }
-
-    return normalizeActiveIssueValue(
-      alternative?.name || alternative?.title || alternative?.label
-    ).includes(query);
-  });
+  return issue.alternatives.some((alternative) =>
+    normalizeActiveIssueValue(alternative).includes(query)
+  );
 };
 
 /**
@@ -100,11 +76,11 @@ export const issueMatchesSearch = (issue, query, searchBy) => {
 
   if (!normalizedQuery) return true;
 
-  const byIssue = normalizeActiveIssueValue(issue?.name).includes(normalizedQuery);
-  const byModel = normalizeActiveIssueValue(issue?.model?.name).includes(normalizedQuery);
+  const byIssue = normalizeActiveIssueValue(issue.name).includes(normalizedQuery);
+  const byModel = normalizeActiveIssueValue(issue.model.name).includes(normalizedQuery);
   const byAdmin = adminContainsQuery(issue, normalizedQuery);
   const byAlternatives = alternativesContainsQuery(issue, normalizedQuery);
-  const byCriteria = criteriaContainsQuery(issue?.criteria, normalizedQuery);
+  const byCriteria = criteriaContainsQuery(issue.criteria, normalizedQuery);
 
   if (searchBy === "issue") return byIssue;
   if (searchBy === "model") return byModel;

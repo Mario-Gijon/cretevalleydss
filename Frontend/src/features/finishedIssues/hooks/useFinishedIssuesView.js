@@ -45,7 +45,7 @@ export const useFinishedIssuesView = () => {
     if (!issueCreated?.success) return;
 
     showSnackbarAlert(
-      issueCreated?.message || issueCreated?.msg || "Issue created successfully",
+      issueCreated?.message || "Issue created successfully",
       "success"
     );
     setIssueCreated("");
