@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 
-import {
-  finishedIssueMatchesSearch,
-  sortFinishedIssues,
-} from "../utils/finishedIssues.filters";
+import { buildFinishedIssuesOverview } from "../logic/buildFinishedIssuesOverview";
+import { filterFinishedIssues } from "../logic/filterFinishedIssues";
+import { sortFinishedIssues } from "../logic/sortFinishedIssues";
 
 /**
  * Gestiona la búsqueda, ordenación y métricas derivadas
@@ -27,11 +26,11 @@ export const useFinishedIssuesListing = ({ finishedIssues = [] }) => {
    * @returns {Array}
    */
   const filteredIssuesBase = useMemo(() => {
-    const safeIssues = Array.isArray(finishedIssues) ? finishedIssues : [];
-
-    return safeIssues.filter((issue) =>
-      finishedIssueMatchesSearch(issue, query, searchBy)
-    );
+    return filterFinishedIssues({
+      finishedIssues,
+      query,
+      searchBy,
+    });
   }, [finishedIssues, query, searchBy]);
 
   /**
@@ -49,14 +48,10 @@ export const useFinishedIssuesListing = ({ finishedIssues = [] }) => {
    * @returns {Object}
    */
   const overview = useMemo(() => {
-    const safeIssues = Array.isArray(finishedIssues) ? finishedIssues : [];
-
-    return {
-      total: safeIssues.length,
-      admin: safeIssues.filter((issue) => issue?.isAdmin).length,
-      withClosure: safeIssues.filter((issue) => Boolean(issue?.closureDate)).length,
-      filtered: filteredIssues.length,
-    };
+    return buildFinishedIssuesOverview({
+      finishedIssues,
+      filteredCount: filteredIssues.length,
+    });
   }, [finishedIssues, filteredIssues.length]);
 
   return {
