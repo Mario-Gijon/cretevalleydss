@@ -28,7 +28,7 @@ import { HideOnScroll } from "./shared/ResponsiveNavbar.shared";
 import {
   getNavbarPagesForRole,
   samePageLinkNavigation,
-} from "./utils/ResponsiveNavbar.utils";
+} from "./logic/ResponsiveNavbar.navigation";
 
 export const ResponsiveNavbar = (props) => {
   const auth = useAuthContext();

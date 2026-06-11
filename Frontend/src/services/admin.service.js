@@ -5,7 +5,7 @@ import {
   jsonRequest,
   requestJson,
   safeJson,
-} from "./service.utils.js";
+} from "./httpRequest.service.js";
 
 /**
  * Ejecuta una petición autenticada del módulo admin y devuelve el payload JSON.

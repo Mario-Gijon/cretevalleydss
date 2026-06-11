@@ -1,5 +1,5 @@
 import { authFetch } from "../utils/authFetch";
-import { API, jsonRequest, requestJson } from "./service.utils.js";
+import { API, jsonRequest, requestJson } from "./httpRequest.service.js";
 
 /**
  * Normaliza el id de un issue recibido como string o como objeto.

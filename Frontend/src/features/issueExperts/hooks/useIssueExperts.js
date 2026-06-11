@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { updateIssueExperts } from "../services/issueExperts.service.js";
+import { editExperts } from "../../../services/issue.service.js";
 
 /**
  * Gestiona el flujo de edición de expertos del issue seleccionado.
@@ -115,7 +115,7 @@ export const useIssueExperts = ({
 
     setBusy((prev) => ({ ...prev, editExperts: true }));
 
-    const response = await updateIssueExperts(
+    const response = await editExperts(
       selectedIssue.id,
       expertsToAdd,
       expertsToRemove,

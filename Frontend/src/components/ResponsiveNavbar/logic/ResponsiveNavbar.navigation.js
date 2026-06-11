@@ -31,14 +31,14 @@ export const samePageLinkNavigation = (event) => {
  */
 export const getNavbarPagesForRole = (pages, isAdmin) => {
   const adminPage = { label: "Admin", url: "/dashboard/admin", path: "/dashboard/admin" };
-  const cloned = Array.isArray(pages) ? [...pages] : [];
+  const cloned = [...pages];
 
-  const alreadyHasAdmin = cloned.some((page) => page?.label === "Admin");
+  const alreadyHasAdmin = cloned.some((page) => page.label === "Admin");
   if (!alreadyHasAdmin) {
-    const modelsIndex = cloned.findIndex((page) => page?.label === "Models");
+    const modelsIndex = cloned.findIndex((page) => page.label === "Models");
     if (modelsIndex >= 0) cloned.splice(modelsIndex + 1, 0, adminPage);
     else cloned.push(adminPage);
   }
 
-  return isAdmin ? cloned : cloned.filter((page) => page?.label !== "Admin");
+  return isAdmin ? cloned : cloned.filter((page) => page.label !== "Admin");
 };

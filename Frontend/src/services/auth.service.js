@@ -9,7 +9,7 @@ import {
   buildNetworkErrorResponse,
   jsonRequest,
   safeJson,
-} from "./service.utils.js";
+} from "./httpRequest.service.js";
 
 export const EmptyAuthState = {
   university: "",
