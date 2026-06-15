@@ -151,7 +151,6 @@ export default function ModelDetailDialog({ row, open, onClose }) {
               rows={[
                 { label: "Method", value: row.endpoint?.method },
                 { label: "Path", value: row.endpoint?.path },
-                { label: "Operation id", value: row.endpoint?.operationId },
               ]}
             />
           </SectionCard>

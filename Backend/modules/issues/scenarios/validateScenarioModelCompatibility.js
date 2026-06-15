@@ -86,21 +86,6 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     targetModel.usesFuzzyCriteriaWeights;
   const targetUsesCriterionTypes = targetModel.usesCriterionTypes;
   const targetIsMultiCriteria = targetModel.isMultiCriteria;
-  const targetModelFamilyKey = getRequiredTrimmedRuntimeString({
-    targetModel,
-    field: "modelFamilyKey",
-    value: targetModel.modelFamilyKey,
-  });
-  const targetModelVersion = getRequiredTrimmedRuntimeString({
-    targetModel,
-    field: "modelVersion",
-    value: targetModel.modelVersion,
-  });
-  const targetVersionLabel = getRequiredTrimmedRuntimeString({
-    targetModel,
-    field: "versionLabel",
-    value: targetModel.versionLabel,
-  });
 
   if (!endpointPath) {
     throw createInternalError(
@@ -120,7 +105,6 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     targetApiEndpoint: {
       method: apiEndpoint.method,
       path: endpointPath,
-      operationId: apiEndpoint.operationId,
     },
     targetAlternativeEvaluationStructureKey,
     targetSupportsConsensus,
@@ -128,9 +112,6 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     targetUsesFuzzyCriteriaWeights,
     targetUsesCriterionTypes,
     targetIsMultiCriteria,
-    targetModelFamilyKey,
-    targetModelVersion,
-    targetVersionLabel,
   };
 };
 

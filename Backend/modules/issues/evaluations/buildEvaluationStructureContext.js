@@ -397,7 +397,7 @@ const loadModelSummary = async ({ issue }) => {
       ? issueModel
       : issueModelId
         ? await IssueModel.findById(issueModelId)
-            .select("_id name apiModelKey modelFamilyKey versionLabel")
+            .select("_id name apiModelKey")
             .lean()
         : null;
 
@@ -412,18 +412,6 @@ const loadModelSummary = async ({ issue }) => {
         ? issue.apiModelKey
         : typeof loadedModel?.apiModelKey === "string"
           ? loadedModel.apiModelKey
-          : null,
-    modelFamilyKey:
-      typeof issue?.modelFamilyKey === "string"
-        ? issue.modelFamilyKey
-        : typeof loadedModel?.modelFamilyKey === "string"
-          ? loadedModel.modelFamilyKey
-          : null,
-    versionLabel:
-      typeof issue?.versionLabel === "string"
-        ? issue.versionLabel
-        : typeof loadedModel?.versionLabel === "string"
-          ? loadedModel.versionLabel
           : null,
   };
 };

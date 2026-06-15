@@ -115,24 +115,6 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     });
   }
 
-  const modelFamilyKey = pushRuntimeErrorIfMissingString({
-    runtimeErrors,
-    field: "modelFamilyKey",
-    value: model.modelFamilyKey,
-  });
-
-  const modelVersion = pushRuntimeErrorIfMissingString({
-    runtimeErrors,
-    field: "modelVersion",
-    value: model.modelVersion,
-  });
-
-  const versionLabel = pushRuntimeErrorIfMissingString({
-    runtimeErrors,
-    field: "versionLabel",
-    value: model.versionLabel,
-  });
-
   if (runtimeErrors.length > 0) {
     const firstError = runtimeErrors[0];
     const fieldSummary = runtimeErrors
@@ -156,9 +138,6 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     apiEndpoint: {
       method: apiEndpoint ? normalizeNonEmptyString(apiEndpoint.method) : null,
       path: endpointPath,
-      operationId: apiEndpoint
-        ? normalizeNonEmptyString(apiEndpoint.operationId)
-        : null,
     },
     alternativeEvaluationStructureKey,
     supportsConsensus: model.supportsConsensus,
@@ -167,8 +146,5 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights,
     usesCriterionTypes: model.usesCriterionTypes,
     isMultiCriteria: model.isMultiCriteria,
-    modelFamilyKey,
-    modelVersion,
-    versionLabel,
   };
 };

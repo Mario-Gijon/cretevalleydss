@@ -56,16 +56,12 @@ class ModelDefinition:
     handler: Callable[[Any], Any]
     summary: str
     description: str
-    operation_id: str
     display_name: str
 
     small_description: str
     extend_description: str
     response_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
 
-    model_family_key: str | None = None
-    model_version: str = "1.0.0"
-    version_label: str = "v1"
     more_info_url: str | None = None
     is_issue_model: bool = True
     is_criteria_weighting_model: bool = False
@@ -81,12 +77,6 @@ class ModelDefinition:
 
     supported_domains: list[str] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
-
-    @property
-    def family_key(self) -> str:
-        """Devuelve la familia del modelo usando `api_model_key` como valor por defecto."""
-
-        return self.model_family_key or self.api_model_key
 
     def __post_init__(self) -> None:
         """Valida el contrato interno mínimo de metadata."""
@@ -128,11 +118,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "current consensus level, and supports iterative consensus phases until the "
             "required threshold is reached or the process is finalized."
         ),
-        operation_id="executeHerreraViedmaCrp",
         response_examples=HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
         display_name="Herrera Viedma CRP",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativePairwiseByCriterion",
         supports_consensus=True,
@@ -221,11 +208,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "types to identify the alternative with the best compromise between closeness "
             "to the ideal and distance from the worst reference solution."
         ),
-        operation_id="executeTopsis",
         response_examples=TOPSIS_RESPONSE_EXAMPLES,
         display_name="TOPSIS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -254,11 +238,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "clear and interpretable group ranking is needed without requiring criterion "
             "weights."
         ),
-        operation_id="executeBorda",
         response_examples=BORDA_RESPONSE_EXAMPLES,
         display_name="BORDA",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -287,11 +268,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "each alternative with an optimal reference alternative to produce a final "
             "ranking."
         ),
-        operation_id="executeAras",
         response_examples=ARAS_RESPONSE_EXAMPLES,
         display_name="ARAS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -317,11 +295,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "evaluations. It is useful when expert assessments are uncertain, qualitative, "
             "or expressed through linguistic labels instead of precise numeric values."
         ),
-        operation_id="executeFuzzyTopsis",
         response_examples=FUZZY_TOPSIS_RESPONSE_EXAMPLES,
         display_name="Fuzzy TOPSIS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -350,11 +325,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "solutions. It supports direct crisp decision matrices with criterion "
             "weights and max/min criteria."
         ),
-        operation_id="executeMarcos",
         response_examples=MARCOS_RESPONSE_EXAMPLES,
         display_name="MARCOS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -384,11 +356,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "It is useful when exact criteria weights are not fixed but lower and "
             "upper bounds are known."
         ),
-        operation_id="executePrometheeVi",
         response_examples=PROMETHEE_VI_RESPONSE_EXAMPLES,
         display_name="PROMETHEE VI",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -525,11 +494,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "regret, producing a ranking that highlights the best compromise solution "
             "under weighted benefit and cost criteria."
         ),
-        operation_id="executeVikor",
         response_examples=VIKOR_RESPONSE_EXAMPLES,
         display_name="VIKOR",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -571,11 +537,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "scores through a configurable lambda coefficient, supporting weighted "
             "benefit and cost criteria."
         ),
-        operation_id="executeWaspas",
         response_examples=WASPAS_RESPONSE_EXAMPLES,
         display_name="WASPAS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -617,11 +580,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "from the average and penalized for negative distance, producing a final "
             "appraisal score under weighted benefit and cost criteria."
         ),
-        operation_id="executeEdas",
         response_examples=EDAS_RESPONSE_EXAMPLES,
         display_name="EDAS",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         alternative_evaluation_structure_key="alternativeCriteriaMatrix",
         supports_consensus=False,
@@ -650,11 +610,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "completed expert weightsByCriterion payloads, averages them by "
             "criterion, and normalizes the final group weights so they sum to one."
         ),
-        operation_id="executeManualCriteriaWeights",
         response_examples=MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
         display_name="Manual Criteria Weights",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         is_issue_model=False,
         is_criteria_weighting_model=True,
@@ -685,11 +642,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "criterion, and the remaining criteria. In this system it supports the "
             "weighting workflow rather than acting as a final issue resolution model."
         ),
-        operation_id="executeBwm",
         response_examples=BWM_RESPONSE_EXAMPLES,
         display_name="BWM",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         is_issue_model=False,
         is_criteria_weighting_model=True,
@@ -720,11 +674,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
             "consensus-related workflows and analysis, rather than being exposed as a "
             "standard issue resolution model in the public catalog."
         ),
-        operation_id="executeCmcc",
         response_examples=CMCC_RESPONSE_EXAMPLES,
         display_name="CMCC",
-        model_version="1.0.0",
-        version_label="v1",
         more_info_url=None,
         is_issue_model=False,
         alternative_evaluation_structure_key=None,

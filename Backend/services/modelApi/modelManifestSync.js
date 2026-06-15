@@ -326,8 +326,6 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
 
   return {
     manifest: {
-      manifestVersion: manifest?.manifestVersion ?? null,
-      apiVersion: manifest?.apiVersion ?? null,
       totalModels: manifestModels.length,
       syncableModels: manifestModels.filter((model) => !getSyncBlockerReason(model))
         .length,

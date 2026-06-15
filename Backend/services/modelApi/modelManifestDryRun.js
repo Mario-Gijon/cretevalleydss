@@ -172,8 +172,6 @@ const buildNotSyncableModels = (manifestModels) => {
 
 const buildManifestSummary = (manifest, manifestModels, syncableManifestModels) => {
   return {
-    manifestVersion: manifest?.manifestVersion ?? null,
-    apiVersion: manifest?.apiVersion ?? null,
     totalModels: manifestModels.length,
     syncableModels: syncableManifestModels.length,
     nonSyncableModels: manifestModels.length - syncableManifestModels.length,
@@ -225,12 +223,6 @@ const buildModelRow = ({
       manifestProjection?.supportsConsensusSimulation ??
       mongoModel?.supportsConsensusSimulation ??
       null,
-    modelFamilyKey:
-      manifestProjection?.modelFamilyKey ?? mongoModel?.modelFamilyKey ?? null,
-    modelVersion:
-      manifestProjection?.modelVersion ?? mongoModel?.modelVersion ?? null,
-    versionLabel:
-      manifestProjection?.versionLabel ?? mongoModel?.versionLabel ?? null,
     isMultiCriteria:
       manifestProjection?.isMultiCriteria ?? mongoModel?.isMultiCriteria ?? null,
     usesCriteriaWeights:

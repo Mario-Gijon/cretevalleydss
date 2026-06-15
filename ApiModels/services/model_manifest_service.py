@@ -1,17 +1,8 @@
-"""Construcción del manifest técnico de modelos."""
+"""Construcción del manifest público de modelos."""
 
 from typing import Any
 
 from registry.model_definitions import MODEL_DEFINITIONS, ModelDefinition
-
-MANIFEST_VERSION = "1.0"
-API_VERSION = "1.0.0"
-API_CONTRACT = {
-    "success": "boolean",
-    "message": "string",
-    "data": "object|null",
-    "error": "object|null",
-}
 
 
 def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
@@ -70,15 +61,11 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
     return {
         "apiModelKey": model.api_model_key,
         "displayName": model.display_name,
-        "modelFamilyKey": model.family_key,
-        "modelVersion": model.model_version,
-        "versionLabel": model.version_label,
         "isIssueModel": model.is_issue_model,
         "isCriteriaWeightingModel": model.is_criteria_weighting_model,
         "apiEndpoint": {
             "method": "POST",
             "path": model.api_endpoint_path,
-            "operationId": model.operation_id,
         },
         "smallDescription": model.small_description,
         "extendDescription": model.extend_description,
@@ -104,11 +91,8 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
 
 
 def build_model_manifest() -> dict[str, Any]:
-    """Construye el manifest técnico read-only desde las definiciones de ApiModels."""
+    """Construye el manifest read-only desde las definiciones de ApiModels."""
 
     return {
-        "manifestVersion": MANIFEST_VERSION,
-        "apiVersion": API_VERSION,
-        "contract": API_CONTRACT,
         "models": [_build_manifest_entry(model) for model in MODEL_DEFINITIONS],
     }

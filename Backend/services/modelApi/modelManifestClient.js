@@ -1,8 +1,6 @@
 import axios from "axios";
 
 import { AppError, isAppError } from "../../utils/common/errors.js";
-import { hasOwnKey } from "../../utils/common/objects.js";
-
 const MODEL_MANIFEST_PATH = "/models/manifest";
 
 const joinUrl = (baseUrl, path) => {
@@ -36,33 +34,6 @@ const validateManifestData = (data) => {
 
   if (!Array.isArray(data.models)) {
     throw createInvalidManifestError("Model manifest models must be an array");
-  }
-
-  if (typeof data.manifestVersion !== "string") {
-    throw createInvalidManifestError(
-      "Model manifest version is missing or invalid"
-    );
-  }
-
-  if (typeof data.apiVersion !== "string") {
-    throw createInvalidManifestError("Model manifest API version is invalid");
-  }
-
-  if (!data.contract || typeof data.contract !== "object") {
-    throw createInvalidManifestError("Model manifest contract is invalid");
-  }
-
-  const missingContractKeys = ["success", "message", "data", "error"].filter(
-    (key) => !hasOwnKey(data.contract || {}, key)
-  );
-
-  if (missingContractKeys.length > 0) {
-    throw createInvalidManifestError(
-      "Model manifest contract is missing standard keys",
-      {
-        missingContractKeys,
-      }
-    );
   }
 
   return data;
@@ -143,7 +114,7 @@ export const fetchModelManifest = async ({
 
   if (!isStandardApiResponse(payload)) {
     throw createInvalidManifestError(
-      "Model manifest response does not use the standard API contract",
+      "Model manifest response does not use the expected success payload shape",
       {
         requiredKeys: ["success", "message", "data"],
       }

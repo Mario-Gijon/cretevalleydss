@@ -90,9 +90,6 @@ export const createIssueScenario = async ({
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
     targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
-    targetModelFamilyKey: context.targetRuntimeSnapshot.targetModelFamilyKey,
-    targetModelVersion: context.targetRuntimeSnapshot.targetModelVersion,
-    targetVersionLabel: context.targetRuntimeSnapshot.targetVersionLabel,
     targetAlternativeEvaluationStructureKey:
       context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
     targetSupportsConsensus: context.targetRuntimeSnapshot.targetSupportsConsensus,

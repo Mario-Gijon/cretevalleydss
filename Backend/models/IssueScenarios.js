@@ -46,25 +46,6 @@ const issueScenarioSchema = new Schema(
         required: true,
         trim: true,
       },
-      operationId: {
-        type: String,
-        trim: true,
-      },
-    },
-    targetModelFamilyKey: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    targetModelVersion: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    targetVersionLabel: {
-      type: String,
-      required: true,
-      trim: true,
     },
     targetAlternativeEvaluationStructureKey: {
       type: String,

@@ -122,8 +122,6 @@ export const buildEvaluationContext = ({
       id: null,
       name: null,
       apiModelKey: null,
-      modelFamilyKey: null,
-      versionLabel: null,
     },
     parameters: {
       modelParameters: {},

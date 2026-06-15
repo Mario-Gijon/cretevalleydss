@@ -43,9 +43,6 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensusSimulation,
     usesCriteriaWeights,
     isMultiCriteria,
-    modelFamilyKey,
-    modelVersion,
-    versionLabel,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
@@ -97,9 +94,6 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensusSimulation,
     usesCriteriaWeights,
     isMultiCriteria,
-    modelFamilyKey,
-    modelVersion,
-    versionLabel,
     normalizedModelParameters:
       normalizedModelParametersWithoutCriteriaWeights,
   };

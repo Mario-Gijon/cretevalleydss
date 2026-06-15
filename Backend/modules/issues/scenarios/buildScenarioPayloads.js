@@ -11,7 +11,6 @@ const mapScenarioListItem = (scenario) => ({
   name: scenario?.name || "",
   targetModelId: toIdString(scenario?.targetModel),
   targetModelName: scenario?.targetModelName || null,
-  targetVersionLabel: scenario?.targetVersionLabel || null,
   domainType: scenario?.domainType ?? null,
   alternativeEvaluationStructureKey:
     scenario?.alternativeEvaluationStructureKey ||
@@ -38,9 +37,6 @@ const mapScenarioDetail = (scenarioDoc) => ({
   targetModelName: scenarioDoc?.targetModelName || null,
   targetApiModelKey: scenarioDoc?.targetApiModelKey || null,
   targetApiEndpoint: scenarioDoc?.targetApiEndpoint || null,
-  targetModelFamilyKey: scenarioDoc?.targetModelFamilyKey || null,
-  targetModelVersion: scenarioDoc?.targetModelVersion || null,
-  targetVersionLabel: scenarioDoc?.targetVersionLabel || null,
   targetAlternativeEvaluationStructureKey:
     scenarioDoc?.targetAlternativeEvaluationStructureKey || null,
   targetSupportsConsensus: scenarioDoc?.targetSupportsConsensus === true,
@@ -74,7 +70,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModel targetModelName targetVersionLabel domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey status createdAt createdBy"
+      "_id name targetModel targetModelName domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey status createdAt createdBy"
     )
     .populate("createdBy", "email name")
     .lean();

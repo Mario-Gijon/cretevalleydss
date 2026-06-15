@@ -64,7 +64,6 @@ for model_definition in MODEL_DEFINITIONS:
         response_model_exclude_none=True,
         summary=model_definition.summary,
         description=model_definition.description,
-        operation_id=model_definition.operation_id,
         name=model_definition.api_model_key,
         responses=_build_responses(model_definition),
     )

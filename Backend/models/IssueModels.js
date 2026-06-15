@@ -126,21 +126,6 @@ const issueModelSchema = new Schema({
     required: true,
     index: true,
   },
-  modelFamilyKey: {
-    type: String,
-    trim: true,
-    required: true,
-  },
-  modelVersion: {
-    type: String,
-    trim: true,
-    required: true,
-  },
-  versionLabel: {
-    type: String,
-    trim: true,
-    required: true,
-  },
   isIssueModel: {
     type: Boolean,
     required: true,
@@ -174,24 +159,9 @@ const issueModelSchema = new Schema({
       trim: true,
       required: true,
     },
-    operationId: {
-      type: String,
-      trim: true,
-      default: null,
-    },
   },
   manifestSync: {
     source: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    manifestVersion: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    apiVersion: {
       type: String,
       trim: true,
       default: null,

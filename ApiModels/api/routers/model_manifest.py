@@ -12,7 +12,6 @@ router = APIRouter(tags=["Model Manifest"])
     response_model_exclude_none=False,
     summary="Get model manifest",
     description="Devuelve el manifest técnico read-only de modelos publicados por ApiModels.",
-    operation_id="getModelManifest",
 )
 async def get_model_manifest():
     """Devuelve el manifest técnico sin ejecutar modelos ni consultar servicios externos."""

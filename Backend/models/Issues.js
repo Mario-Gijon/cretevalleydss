@@ -27,25 +27,6 @@ const issueSchema = new Schema(
         required: true,
         trim: true,
       },
-      operationId: {
-        type: String,
-        trim: true,
-      },
-    },
-    modelFamilyKey: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    modelVersion: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    versionLabel: {
-      type: String,
-      required: true,
-      trim: true,
     },
     name: {
       type: String,
@@ -86,11 +67,6 @@ const issueSchema = new Schema(
         default: null,
       },
       path: {
-        type: String,
-        trim: true,
-        default: null,
-      },
-      operationId: {
         type: String,
         trim: true,
         default: null,

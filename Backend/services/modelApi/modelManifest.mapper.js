@@ -76,7 +76,6 @@ export const normalizeEndpoint = (apiEndpoint, { emptyValue = null } = {}) => {
   return {
     method: normalizeNonEmptyString(apiEndpoint.method),
     path,
-    operationId: normalizeNonEmptyString(apiEndpoint.operationId),
   };
 };
 
@@ -197,9 +196,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const criteriaWeightingStructureKey = normalizeNonEmptyString(
     manifestModel?.criteriaWeightingStructureKey
   );
-  const modelFamilyKey = normalizeNonEmptyString(manifestModel?.modelFamilyKey);
-  const modelVersion = normalizeNonEmptyString(manifestModel?.modelVersion);
-  const versionLabel = normalizeNonEmptyString(manifestModel?.versionLabel);
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
@@ -213,9 +209,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (isCriteriaWeightingModel && !criteriaWeightingStructureKey) {
     missingFields.push("criteriaWeightingStructureKey");
   }
-  if (!modelFamilyKey) missingFields.push("modelFamilyKey");
-  if (!modelVersion) missingFields.push("modelVersion");
-  if (!versionLabel) missingFields.push("versionLabel");
   if (typeof manifestModel?.isIssueModel !== "boolean") {
     missingFields.push("isIssueModel");
   }
@@ -247,9 +240,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
 export const buildManifestTechnicalProjection = (manifestModel) => ({
   apiModelKey: normalizeNonEmptyString(manifestModel?.apiModelKey),
   displayName: normalizeNonEmptyString(manifestModel?.displayName),
-  modelFamilyKey: normalizeNonEmptyString(manifestModel?.modelFamilyKey),
-  modelVersion: normalizeNonEmptyString(manifestModel?.modelVersion),
-  versionLabel: normalizeNonEmptyString(manifestModel?.versionLabel),
   isIssueModel: manifestModel?.isIssueModel === true,
   isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
   visibleInIssueCreation: manifestModel?.isIssueModel === true,
@@ -289,8 +279,6 @@ export const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
     name: displayName,
     manifestSync: {
       source: MANIFEST_SYNC_SOURCE,
-      manifestVersion: manifest?.manifestVersion ?? null,
-      apiVersion: manifest?.apiVersion ?? null,
       lastSyncedAt: now,
       lastSeenAt: now,
       isStale: false,

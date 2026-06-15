@@ -345,13 +345,7 @@ export const useFinishedIssueDialogView = ({
     const customName = run?.name || run?.scenarioName;
     if (customName) return customName;
 
-    const modelName = run?.targetModelName || run?.modelName || "Model run";
-    const versionLabel =
-      typeof run?.targetVersionLabel === "string"
-        ? run.targetVersionLabel.trim()
-        : "";
-
-    return versionLabel ? `${modelName} · ${versionLabel}` : modelName;
+    return run?.targetModelName || run?.modelName || "Model run";
   };
 
   const useSchemaAdd = Array.isArray(availableModelsRaw);
