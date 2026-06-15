@@ -1,11 +1,13 @@
 import {
   isAllowedValue,
-  isWithinRange,
   normalizeNonEmptyString,
   normalizeNumberValue,
+} from "../parameterValues.js";
+import { isWithinRange } from "../parameterRestrictions.js";
+import {
   toInvalid,
   toValid,
-} from "../modelParameter.shared.js";
+} from "../parameterValidationResult.js";
 import { hasOwnKey, isPlainObject } from "../../../../utils/common/objects.js";
 
 const buildLeafCriterionIndex = (leafCriteria) => {

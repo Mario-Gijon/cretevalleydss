@@ -9,7 +9,7 @@ import { validateAndNormalizeFuzzyArrayParameter } from "./handlers/fuzzyArray.p
 import { validateAndNormalizeCriteriaWeightsParameter } from "./handlers/criteriaWeights.parameter.js";
 import { validateAndNormalizeFuzzyCriteriaWeightsParameter } from "./handlers/fuzzyCriteriaWeights.parameter.js";
 import { validateAndNormalizeCriterionMapParameter } from "./handlers/criterionMap.parameter.js";
-import { normalizeNonEmptyString } from "./modelParameter.shared.js";
+import { normalizeNonEmptyString } from "./parameterValues.js";
 
 export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
   ["numberGlobal", validateAndNormalizeNumberParameter],

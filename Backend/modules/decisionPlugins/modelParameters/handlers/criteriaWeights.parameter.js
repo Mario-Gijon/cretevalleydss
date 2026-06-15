@@ -1,9 +1,6 @@
-import {
-  buildEqualCrispWeights,
-  toInvalid,
-  toValid,
-} from "../modelParameter.shared.js";
+import { buildEqualCrispWeights } from "../criteriaWeightDefaults.js";
 import { validateAndNormalizeCrispCriteriaWeightArray } from "../criteriaWeightValues.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};

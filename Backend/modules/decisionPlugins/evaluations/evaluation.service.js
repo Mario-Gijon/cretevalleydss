@@ -10,7 +10,7 @@ import {
   EVALUATION_STAGES,
   ISSUE_STAGES,
 } from "./evaluation.constants.js";
-import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "./evaluationStructureRegistry.js";
 import { buildEvaluationStructureContext } from "./evaluationStructureContext.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 

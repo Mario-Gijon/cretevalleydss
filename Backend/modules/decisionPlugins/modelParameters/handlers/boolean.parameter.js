@@ -1,4 +1,5 @@
-import { isAllowedValue, toInvalid, toValid } from "../modelParameter.shared.js";
+import { isAllowedValue } from "../parameterValues.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeBooleanParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};

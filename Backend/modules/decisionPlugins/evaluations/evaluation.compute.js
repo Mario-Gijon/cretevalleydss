@@ -15,7 +15,7 @@ import {
   EVALUATION_STAGES,
   ISSUE_STAGES,
 } from "./evaluation.constants.js";
-import { getEvaluationStructureOrThrow } from "./evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "./evaluationStructureRegistry.js";
 import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
 import {
   executeAlternativeEvaluationModel,

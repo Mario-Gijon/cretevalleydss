@@ -1,9 +1,6 @@
-import {
-  buildEqualFuzzyWeights,
-  toInvalid,
-  toValid,
-} from "../modelParameter.shared.js";
+import { buildEqualFuzzyWeights } from "../criteriaWeightDefaults.js";
 import { validateAndNormalizeFuzzyCriteriaWeightArray } from "../criteriaWeightValues.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, context }) => {
   let candidate = value;

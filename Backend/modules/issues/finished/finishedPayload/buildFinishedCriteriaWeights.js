@@ -6,7 +6,7 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
-import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 import { buildEvaluationStructureContext } from "../../../decisionPlugins/evaluations/evaluationStructureContext.js";
 
 export const resolveCriteriaWeightingPhase = async ({ issueId }) => {

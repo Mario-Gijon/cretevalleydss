@@ -1,4 +1,4 @@
-import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 
 export const isFinishedIssue = (issue) =>
   issue?.currentStage === "finished" && issue?.active === false;

@@ -1,19 +1,21 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import {
   extractLeafCriteriaMetadata,
+} from "./criteriaMetadata.js";
+import {
   getValueType,
   isMissingParameterValue,
   normalizeNonEmptyString,
   resolveParameterKey,
-} from "./modelParameter.shared.js";
+} from "./parameterValues.js";
 import {
   throwInvalidModelParametersError,
   throwUnknownModelParametersError,
-} from "./modelParameter.errors.js";
+} from "./modelParameterErrors.js";
 import {
   MODEL_PARAMETER_STRUCTURE_REGISTRY,
   resolveParameterStructureKey,
-} from "./modelParameter.registry.js";
+} from "./parameterStructureRegistry.js";
 import { hasOwnKey } from "../../../utils/common/objects.js";
 
 export const validateAndNormalizeModelParametersOrThrow = ({

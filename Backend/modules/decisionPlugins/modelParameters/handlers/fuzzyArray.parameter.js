@@ -1,11 +1,12 @@
 import {
   normalizeNonEmptyString,
   normalizeNumberValue,
+} from "../parameterValues.js";
+import {
   resolveExpectedArrayLength,
-  toInvalid,
-  toValid,
   validateOrderedRule,
-} from "../modelParameter.shared.js";
+} from "../parameterRestrictions.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeFuzzyArrayParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};

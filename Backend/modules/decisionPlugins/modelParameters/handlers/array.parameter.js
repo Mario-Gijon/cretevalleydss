@@ -1,13 +1,17 @@
 import {
   isAllowedValue,
-  isWithinRange,
   normalizeNonEmptyString,
   normalizeNumberValue,
+} from "../parameterValues.js";
+import {
+  isWithinRange,
   resolveExpectedArrayLength,
+  validateOrderedRule,
+} from "../parameterRestrictions.js";
+import {
   toInvalid,
   toValid,
-  validateOrderedRule,
-} from "../modelParameter.shared.js";
+} from "../parameterValidationResult.js";
 
 export const validateAndNormalizeArrayParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};

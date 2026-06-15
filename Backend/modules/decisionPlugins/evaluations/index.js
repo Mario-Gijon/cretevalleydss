@@ -6,7 +6,7 @@ export {
 
 export {
   getEvaluationStructureOrThrow,
-} from "./evaluation.registry.js";
+} from "./evaluationStructureRegistry.js";
 
 export {
   getIssueEvaluationPayload,

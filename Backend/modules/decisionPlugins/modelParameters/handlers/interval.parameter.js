@@ -1,10 +1,14 @@
 import {
-  isWithinRange,
   normalizeNumberValue,
+} from "../parameterValues.js";
+import {
+  isWithinRange,
+  validateOrderedRule,
+} from "../parameterRestrictions.js";
+import {
   toInvalid,
   toValid,
-  validateOrderedRule,
-} from "../modelParameter.shared.js";
+} from "../parameterValidationResult.js";
 
 export const validateAndNormalizeIntervalParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};

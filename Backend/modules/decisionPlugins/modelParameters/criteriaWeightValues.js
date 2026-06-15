@@ -1,7 +1,5 @@
-import {
-  WEIGHT_SUM_TOLERANCE,
-  normalizeNumberValue,
-} from "./modelParameter.shared.js";
+import { WEIGHT_SUM_TOLERANCE } from "./criteriaWeightDefaults.js";
+import { normalizeNumberValue } from "./parameterValues.js";
 
 const toInvalid = (code, details = {}) => ({ ok: false, error: { code, ...details } });
 const toValid = (value) => ({ ok: true, value });

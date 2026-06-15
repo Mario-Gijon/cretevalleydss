@@ -1,10 +1,12 @@
 import {
   isAllowedValue,
-  isWithinRange,
   normalizeNumberValue,
+} from "../parameterValues.js";
+import { isWithinRange } from "../parameterRestrictions.js";
+import {
   toInvalid,
   toValid,
-} from "../modelParameter.shared.js";
+} from "../parameterValidationResult.js";
 
 export const validateAndNormalizeNumberParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};

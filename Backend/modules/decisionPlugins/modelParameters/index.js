@@ -1,1 +1,1 @@
-export { validateAndNormalizeModelParametersOrThrow } from "./modelParameter.validation.js";
+export { validateAndNormalizeModelParametersOrThrow } from "./validateAndNormalizeModelParameters.js";
