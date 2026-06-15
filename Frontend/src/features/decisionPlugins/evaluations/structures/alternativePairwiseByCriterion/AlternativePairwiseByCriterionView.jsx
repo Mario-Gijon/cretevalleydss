@@ -1,10 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
 import CriterionCompactSelector from "./components/CriterionCompactSelector";
-import { sectionSx } from "../../styles/evaluationStructure.styles";
 
 const AlternativePairwiseByCriterionView = (
   {
@@ -17,7 +15,6 @@ const AlternativePairwiseByCriterionView = (
   },
   ref
 ) => {
-  const theme = useTheme();
   const alternativeItems = Array.isArray(evaluationContext?.alternatives?.items)
     ? evaluationContext.alternatives.items
     : [];
@@ -75,7 +72,6 @@ const AlternativePairwiseByCriterionView = (
     <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
       <Box
         sx={{
-          ...sectionSx(theme),
           width: "100%",
           maxWidth: "none",
           minWidth: 0,

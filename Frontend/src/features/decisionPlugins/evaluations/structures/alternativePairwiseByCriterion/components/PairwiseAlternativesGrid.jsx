@@ -440,46 +440,6 @@ const PairwiseAlternativesGrid = ({
       }}
       sx={{
         ...buildEvaluationMatrixDataGridSx(theme),
-        "& .MuiDataGrid-columnHeader": {
-          borderRight: "1px solid rgba(255,255,255,0.075)",
-        },
-
-        "& .MuiDataGrid-cell": {
-          borderRight: "1px solid rgba(255,255,255,0.075)",
-        },
-
-        "& .MuiDataGrid-cell:last-of-type, & .MuiDataGrid-columnHeader:last-of-type": {
-          borderRight: "none",
-        },
-
-        "& .diagonal-cell": {
-          backgroundColor: "rgba(255,255,255,0.035)",
-          color: theme.palette.text.disabled,
-          fontWeight: "bold",
-          pointerEvents: "none",
-          cursor: "not-allowed",
-        },
-
-        "& .MuiDataGrid-row:hover": {
-          backgroundColor: "transparent",
-        },
-
-        "& .MuiDataGrid-cell:hover": {
-          backgroundColor: "transparent",
-        },
-
-        "& .first-column": {
-          backgroundColor: "rgba(75,210,207,0.04)",
-          borderRight: "1px solid rgba(255,255,255,0.075)",
-          fontWeight: 800,
-        },
-
-        "& .grid-cell": {
-          backgroundColor: "rgba(5, 15, 28, 0.35)",
-        },
-        "& .MuiDataGrid-columnHeader[data-field='id']": {
-          backgroundColor: "rgba(75,210,207,0.04)",
-        },
       }}
     />
   );

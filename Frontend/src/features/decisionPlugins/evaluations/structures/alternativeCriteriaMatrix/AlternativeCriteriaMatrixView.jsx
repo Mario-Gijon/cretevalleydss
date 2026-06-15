@@ -3,7 +3,6 @@ import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../styles/evaluationMatrixTable.styles";
-import { sectionSx } from "../../styles/evaluationStructure.styles";
 
 const getNumericRange = (domain) => {
   const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
@@ -410,7 +409,6 @@ const AlternativeCriteriaMatrixView = (
   return (
     <Box
       sx={{
-        ...sectionSx(theme),
         width: "100%",
         maxWidth: "none",
         minWidth: 0,
@@ -434,19 +432,6 @@ const AlternativeCriteriaMatrixView = (
         processRowUpdate={handleProcessRowUpdate}
         sx={{
           ...buildEvaluationMatrixDataGridSx(theme),
-          "& .MuiDataGrid-cell:last-of-type, & .MuiDataGrid-columnHeader:last-of-type": {
-            borderRight: "none",
-          },
-          "& .MuiDataGrid-cell[data-field='id']": {
-            backgroundColor: "rgba(75,210,207,0.04)",
-            fontWeight: 800,
-          },
-          "& .MuiDataGrid-columnHeader[data-field='id']": {
-            backgroundColor: "rgba(75,210,207,0.04)",
-          },
-          "& .MuiDataGrid-row:hover": {
-            backgroundColor: "transparent",
-          },
         }}
       />
     </Box>

@@ -16,7 +16,7 @@ const isStandardApiResponse = (payload) => {
     typeof payload === "object" &&
     typeof payload.success === "boolean" &&
     typeof payload.message === "string" &&
-    hasOwnKey(payload || {}, "data")
+    Object.hasOwn(payload, "data")
   );
 };
 

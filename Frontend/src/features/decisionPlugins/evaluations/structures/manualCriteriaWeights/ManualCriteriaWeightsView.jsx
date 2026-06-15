@@ -1,8 +1,5 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { Box, Stack, TextField, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-
-import { inputSx, sectionSx } from "../../styles/evaluationStructure.styles";
 
 const ManualCriteriaWeightsView = (
   {
@@ -14,7 +11,6 @@ const ManualCriteriaWeightsView = (
   },
   ref
 ) => {
-  const theme = useTheme();
   const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
     ? evaluationContext.criteria.leafNames
     : [];
@@ -38,13 +34,13 @@ const ManualCriteriaWeightsView = (
 
   return (
     <Stack spacing={2.2} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
-      <Box sx={{ ...sectionSx(theme), width: "100%", maxWidth: "none", minWidth: 0 }}>
+      <Box sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
         <Stack spacing={1.25}>
           <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
             Rate each criterion between 0 and 1
           </Typography>
 
-          <Box sx={{ ...inputSx(theme), width: "100%", minWidth: 0 }}>
+          <Box sx={{ width: "100%", minWidth: 0 }}>
             <Stack spacing={1.1} sx={{ pt: 1 }}>
               {criterionNames.map((criterionName) => (
                 <TextField
@@ -53,6 +49,7 @@ const ManualCriteriaWeightsView = (
                   type="number"
                   size="small"
                   color="info"
+                  variant="outlined"
                   disabled={isReadOnly}
                   value={weightsByCriterion[criterionName] ?? ""}
                   onChange={(event) => {
@@ -69,7 +66,7 @@ const ManualCriteriaWeightsView = (
                       },
                     }));
                   }}
-                  inputProps={{ min: 0, max: 1, step: 0.01 }}
+                  inputProps={{ min: 0, max: 1, step: 0.1 }}
                 />
               ))}
             </Stack>
