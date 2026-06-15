@@ -1,7 +1,7 @@
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../../logic/formatCollectiveDisplayValue";
-import { buildEvaluationMatrixDataGridSx } from "../../../styles/evaluationMatrixTable.styles";
+import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
+import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {

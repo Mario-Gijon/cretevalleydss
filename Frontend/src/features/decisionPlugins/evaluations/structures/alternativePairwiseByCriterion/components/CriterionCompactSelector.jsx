@@ -10,7 +10,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
-import { softIconBtnSx } from "../../../styles/evaluationStructure.styles";
+import { softIconBtnSx } from "../../shared/evaluationStructure.styles";
 
 const CriterionCompactSelector = ({
   criteria = [],
