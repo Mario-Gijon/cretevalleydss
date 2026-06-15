@@ -8,6 +8,9 @@ export const CRITERIA_WEIGHTING_MODES = Object.freeze({
   EXPERT_API_MODEL: "expertApiModel",
 });
 
+export const MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY =
+  "manual_criteria_weights";
+
 export const normalizeMode = (mode) =>
   typeof mode === "string" && mode.trim()
     ? mode.trim()
@@ -73,3 +76,7 @@ export const buildApiCriteriaWeightingConfig = ({
     payload: {},
   };
 };
+
+export const isManualCriteriaWeightingApiModel = (criteriaWeightingModel) =>
+  String(criteriaWeightingModel?.apiModelKey || "").trim() ===
+  MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY;

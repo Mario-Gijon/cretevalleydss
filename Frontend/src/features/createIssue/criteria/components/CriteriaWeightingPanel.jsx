@@ -5,8 +5,10 @@ import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import {
   CRITERIA_WEIGHTING_MODES,
+  MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY,
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
+  isManualCriteriaWeightingApiModel,
   normalizeMode,
 } from "../../logic/createIssueCriteriaWeightingModes";
 import {
@@ -91,6 +93,20 @@ export const CriteriaWeightingPanel = ({
       ),
     [criteriaWeightingModels]
   );
+  const manualCriteriaWeightingModel = useMemo(
+    () =>
+      availableCriteriaWeightingModels.find((modelItem) =>
+        isManualCriteriaWeightingApiModel(modelItem)
+      ) || null,
+    [availableCriteriaWeightingModels]
+  );
+  const visibleApiCriteriaWeightingModels = useMemo(
+    () =>
+      availableCriteriaWeightingModels.filter(
+        (modelItem) => !isManualCriteriaWeightingApiModel(modelItem)
+      ),
+    [availableCriteriaWeightingModels]
+  );
   const selectedApiCriteriaWeightingModel = useMemo(() => {
     const selectedModelId = String(
       criteriaWeightingConfig?.criteriaWeightingModelId || ""
@@ -122,6 +138,15 @@ export const CriteriaWeightingPanel = ({
   );
   const SelectedCriteriaWeightingView =
     selectedCriteriaWeightingStructureEntry?.View || null;
+
+  const getCriteriaWeightingModelLabel = (criteriaModel) => {
+    const baseLabel =
+      criteriaModel?.displayName || criteriaModel?.name || "Model";
+
+    return String(baseLabel)
+      .replace(/\s*criteria\s*weights?\s*$/i, "")
+      .trim();
+  };
 
   const updateConfig = (nextConfig, options = {}) => {
     const markDirty = options?.markDirty === true;
@@ -242,6 +267,17 @@ export const CriteriaWeightingPanel = ({
   }
 
   const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
+  const selectedCriteriaWeightingModelKey = String(
+    safeConfig?.criteriaWeightingModelKey || ""
+  ).trim();
+  const selectedCriteriaWeightingModelId = String(
+    safeConfig?.criteriaWeightingModelId || ""
+  ).trim();
+  const manualByExpertsSelected =
+    mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ||
+    (mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
+      selectedCriteriaWeightingModelKey ===
+        MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY);
 
   return (
     <Stack
@@ -320,31 +356,32 @@ export const CriteriaWeightingPanel = ({
           <CriteriaWeightingMethodCard
             title="Manual by experts"
             description="Experts evaluate later"
-            selected={mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL}
-            disabled={isSingleCriterion}
+            selected={manualByExpertsSelected}
+            disabled={isSingleCriterion || !manualCriteriaWeightingModel}
             onClick={() =>
               updateConfig(
-                buildConfigByMode({
-                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
+                buildApiCriteriaWeightingConfig({
+                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
                   leafCriteria,
+                  criteriaWeightingModel: manualCriteriaWeightingModel,
                 }),
                 { markDirty: true }
               )
             }
           />
 
-          {availableCriteriaWeightingModels.map((criteriaModel) => {
+          {visibleApiCriteriaWeightingModels.map((criteriaModel) => {
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
-              (String(safeConfig?.criteriaWeightingModelId || "").trim() === modelId ||
-                String(safeConfig?.criteriaWeightingModelKey || "").trim() ===
+              (selectedCriteriaWeightingModelId === modelId ||
+                selectedCriteriaWeightingModelKey ===
                   String(criteriaModel?.apiModelKey || "").trim());
 
             return (
               <CriteriaWeightingMethodCard
                 key={`${String(modelId || criteriaModel?.apiModelKey)}-creator`}
-                title={criteriaModel?.name || criteriaModel?.displayName || "Model"}
+                title={getCriteriaWeightingModelLabel(criteriaModel)}
                 description="Compute now"
                 selected={selected}
                 disabled={isSingleCriterion}
@@ -362,18 +399,18 @@ export const CriteriaWeightingPanel = ({
             );
           })}
 
-          {availableCriteriaWeightingModels.map((criteriaModel) => {
+          {visibleApiCriteriaWeightingModels.map((criteriaModel) => {
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
-              (String(safeConfig?.criteriaWeightingModelId || "").trim() === modelId ||
-                String(safeConfig?.criteriaWeightingModelKey || "").trim() ===
+              (selectedCriteriaWeightingModelId === modelId ||
+                selectedCriteriaWeightingModelKey ===
                   String(criteriaModel?.apiModelKey || "").trim());
 
             return (
               <CriteriaWeightingMethodCard
                 key={`${String(modelId || criteriaModel?.apiModelKey)}-expert`}
-                title={`${criteriaModel?.name || criteriaModel?.displayName || "Model"} by experts`}
+                title={`${getCriteriaWeightingModelLabel(criteriaModel)} by experts`}
                 description="Experts evaluate later"
                 selected={selected}
                 disabled={isSingleCriterion}
@@ -393,13 +430,22 @@ export const CriteriaWeightingPanel = ({
         </Stack>
       )}
 
-      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ? (
+      {!isFuzzyModel && !isSingleCriterion && !manualCriteriaWeightingModel ? (
+        <Alert severity="warning">
+          Manual expert weighting is unavailable because the manual criteria weighting
+          ApiModel is missing.
+        </Alert>
+      ) : null}
+
+      {manualByExpertsSelected ? (
         <Alert severity="info">
           Criteria weights will be collected from experts and aggregated before alternative evaluation.
         </Alert>
       ) : null}
 
-      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL ? (
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
+      selectedCriteriaWeightingModelKey !==
+        MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY ? (
         <Alert severity="info">
           Preferences will be collected from experts and aggregated before alternative evaluation.
         </Alert>
