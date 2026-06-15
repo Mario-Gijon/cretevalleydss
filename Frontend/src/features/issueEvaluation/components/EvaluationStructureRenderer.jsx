@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Box } from "@mui/material";
 
 import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
@@ -71,14 +72,16 @@ const EvaluationStructureRenderer = ({
   }
 
   return (
-    <View
-      evaluationContext={evaluationContext}
-      evaluationPayload={evaluationPayload}
-      setEvaluationPayload={NOOP}
-      collectivePayload={adaptedCollectivePayload}
-      readOnly={readOnly === true}
-      loading={loading === true}
-    />
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      <View
+        evaluationContext={evaluationContext}
+        evaluationPayload={evaluationPayload}
+        setEvaluationPayload={NOOP}
+        collectivePayload={adaptedCollectivePayload}
+        readOnly={readOnly === true}
+        loading={loading === true}
+      />
+    </Box>
   );
 };
 

@@ -387,25 +387,34 @@ const AlternativeCriteriaMatrixView = (
     preparePayloadRead: flushPendingEdits,
   }));
 
+  const handleCellClick = (params) => {
+    if (!permitEdit) {
+      return;
+    }
+
+    if (params.field === "id") {
+      return;
+    }
+
+    if (!params.isEditable) {
+      return;
+    }
+
+    apiRef.current.startCellEditMode({
+      id: params.id,
+      field: params.field,
+    });
+  };
+
   return (
     <Box
       sx={{
         ...sectionSx(theme),
-        maxWidth: 1400,
-        mx: "auto",
+        width: "100%",
+        maxWidth: "none",
+        minWidth: 0,
         p: { xs: 1, sm: 1.5 },
-        "& .MuiDataGrid-cell": {
-          alignItems: "center",
-        },
-        "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-          outline: "none",
-        },
-        "& .MuiDataGrid-columnHeaders": {
-          bgcolor: theme.palette.background.paper,
-        },
-        "& .MuiDataGrid-main": {
-          overflow: "hidden",
-        },
+        overflow: "hidden",
       }}
     >
       <DataGrid
@@ -417,25 +426,45 @@ const AlternativeCriteriaMatrixView = (
         disableColumnSelector
         disableRowSelectionOnClick
         hideFooter
+        onCellClick={handleCellClick}
         density="compact"
         rows={rows}
         columns={columns}
         processRowUpdate={handleProcessRowUpdate}
         sx={{
+          width: "100%",
+          minWidth: 0,
+
           "& .MuiDataGrid-cell": {
             alignItems: "center",
+            borderRight: "1px solid rgba(255,255,255,0.075)",
           },
+
+          "& .MuiDataGrid-columnHeader": {
+            borderRight: "1px solid rgba(255,255,255,0.075)",
+          },
+
+          "& .MuiDataGrid-cell:last-of-type, & .MuiDataGrid-columnHeader:last-of-type": {
+            borderRight: "none",
+          },
+
           "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
             outline: "none",
           },
+
           "& .MuiDataGrid-columnHeaders": {
             bgcolor: theme.palette.background.paper,
           },
+
           "& .MuiDataGrid-iconButtonContainer": {
             display: "none",
           },
+
           "& .MuiDataGrid-sortIcon": {
             display: "none",
+          },
+          "& .MuiDataGrid-row:hover": {
+            backgroundColor: "transparent",
           },
         }}
       />

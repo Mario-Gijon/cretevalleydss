@@ -167,22 +167,24 @@ const RatingsSection = () => {
               </Typography>
 
               {criteriaWeightsEvaluation?.payload ? (
-                <EvaluationStructureRenderer
-                  issue={{
-                    ...viewIssue,
-                    criteria: Array.isArray(viewIssue?.summary?.criteria)
-                      ? viewIssue.summary.criteria
-                      : [],
-                  }}
-                  stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
-                  structureKey={
-                    criteriaWeightsEvaluation?.structureKey ||
-                    viewIssue?.summary?.criteriaWeightingStructureKey ||
-                    ""
-                  }
-                  backendPayload={criteriaWeightsEvaluation.payload}
-                  readOnly
-                />
+                <Box sx={{ width: "100%", minWidth: 0 }}>
+                  <EvaluationStructureRenderer
+                    issue={{
+                      ...viewIssue,
+                      criteria: Array.isArray(viewIssue?.summary?.criteria)
+                        ? viewIssue.summary.criteria
+                        : [],
+                    }}
+                    stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
+                    structureKey={
+                      criteriaWeightsEvaluation?.structureKey ||
+                      viewIssue?.summary?.criteriaWeightingStructureKey ||
+                      ""
+                    }
+                    backendPayload={criteriaWeightsEvaluation.payload}
+                    readOnly
+                  />
+                </Box>
               ) : expertWeightStatus === "notRequired" ? (
                 <Typography variant="body2" color="text.secondary">
                   Criteria weights are not required for this issue.
@@ -255,22 +257,24 @@ const RatingsSection = () => {
           </>
         ) : null}
 
-        <EvaluationStructureRenderer
-          issue={{
-            ...viewIssue,
-            alternatives: Array.isArray(viewIssue?.summary?.alternatives)
-              ? viewIssue.summary.alternatives
-              : [],
-            criteria: Array.isArray(viewIssue?.summary?.criteria)
-              ? viewIssue.summary.criteria
-              : [],
-          }}
-          stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
-          structureKey={evaluationStructure}
-          backendPayload={evaluations || {}}
-          collectivePayload={showCollective ? collectiveEvaluations || null : null}
-          readOnly
-        />
+        <Box sx={{ width: "100%", minWidth: 0 }}>
+          <EvaluationStructureRenderer
+            issue={{
+              ...viewIssue,
+              alternatives: Array.isArray(viewIssue?.summary?.alternatives)
+                ? viewIssue.summary.alternatives
+                : [],
+              criteria: Array.isArray(viewIssue?.summary?.criteria)
+                ? viewIssue.summary.criteria
+                : [],
+            }}
+            stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
+            structureKey={evaluationStructure}
+            backendPayload={evaluations || {}}
+            collectivePayload={showCollective ? collectiveEvaluations || null : null}
+            readOnly
+          />
+        </Box>
       </Stack>
     </SectionCard>
   );

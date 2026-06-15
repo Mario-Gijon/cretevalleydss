@@ -40,14 +40,14 @@ const ManualCriteriaWeightsView = (
   }
 
   return (
-    <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
-      <Box sx={sectionSx(theme)}>
+    <Stack spacing={2.2} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
+      <Box sx={{ ...sectionSx(theme), width: "100%", maxWidth: "none", minWidth: 0 }}>
         <Stack spacing={1.25}>
           <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
             Rate each criterion between 0 and 1
           </Typography>
 
-          <Box sx={inputSx(theme)}>
+          <Box sx={{ ...inputSx(theme), width: "100%", minWidth: 0 }}>
             <Stack spacing={1.1} sx={{ pt: 1 }}>
               {criterionNames.map((criterionName) => (
                 <TextField

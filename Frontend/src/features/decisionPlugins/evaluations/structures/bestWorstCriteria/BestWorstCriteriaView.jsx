@@ -196,13 +196,14 @@ const BestWorstCriteriaView = (
   }
 
   return (
-    <Stack spacing={1.25} sx={{ pt: 1.5 }}>
+    <Stack spacing={1.25} sx={{ pt: 1.5, width: "100%", maxWidth: "none", minWidth: 0 }}>
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={{ xs: 2, md: 5 }}
         alignItems="flex-start"
+        sx={{ width: "100%", minWidth: 0 }}
       >
-        <Stack spacing={0.75}>
+        <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
           <TextField
             select
             variant="outlined"
@@ -246,7 +247,7 @@ const BestWorstCriteriaView = (
           }}
         />
 
-        <Stack spacing={0.75}>
+        <Stack spacing={0.75} sx={{ flex: 1, minWidth: 0 }}>
           <TextField
             select
             variant="outlined"

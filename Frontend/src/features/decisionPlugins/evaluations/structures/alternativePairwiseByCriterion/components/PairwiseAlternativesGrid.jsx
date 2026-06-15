@@ -1,6 +1,6 @@
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../../../issueEvaluation/logic/formatCollectiveDisplayValue";
+import { formatCollectiveDisplayValue } from "../../../../../issueEvaluation/logic/formatCollectiveDisplayValue";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {
@@ -156,7 +156,7 @@ const preserveCellShape = (previousCell, nextValue) => {
  * @param {boolean} [props.permitEdit=true]
  * @returns {JSX.Element}
  */
-const PairwiseAlternativeMatrix = ({
+const PairwiseAlternativesGrid = ({
   alternatives,
   evaluations,
   setEvaluations,
@@ -164,6 +164,8 @@ const PairwiseAlternativeMatrix = ({
   permitEdit = true,
 }) => {
   const theme = useTheme();
+
+  const apiRef = useGridApiRef();
 
   const evaluationRows = Array.isArray(evaluations) ? evaluations : [];
   const collectiveRows = Array.isArray(collectiveEvaluations)
@@ -389,6 +391,29 @@ const PairwiseAlternativeMatrix = ({
     };
   };
 
+  const handleCellClick = (params) => {
+    if (!permitEdit) {
+      return;
+    }
+
+    if (params.field === "id") {
+      return;
+    }
+
+    if (params.row.id === params.field) {
+      return;
+    }
+
+    if (!params.isEditable) {
+      return;
+    }
+
+    apiRef.current.startCellEditMode({
+      id: params.id,
+      field: params.field,
+    });
+  };
+
   return (
     <DataGrid
       rows={sortedEvaluations}
@@ -402,6 +427,8 @@ const PairwiseAlternativeMatrix = ({
       experimentalFeatures={{ newEditingApi: true }}
       disableRowSelectionOnClick
       disableColumnSelector
+      apiRef={apiRef}
+      onCellClick={handleCellClick}
       density="compact"
       isCellEditable={(params) => permitEdit && params.row.id !== params.field}
       getRowId={(row) => row.id}
@@ -417,6 +444,22 @@ const PairwiseAlternativeMatrix = ({
         return "grid-cell";
       }}
       sx={{
+        maxWidth: "100%",
+        minWidth: "60%",
+        backgroundColor: "rgba(5, 41, 55, 0.01)",
+
+        "& .MuiDataGrid-columnHeader": {
+          borderRight: "1px solid rgba(255,255,255,0.075)",
+        },
+
+        "& .MuiDataGrid-cell": {
+          borderRight: "1px solid rgba(255,255,255,0.075)",
+        },
+
+        "& .MuiDataGrid-cell:last-of-type, & .MuiDataGrid-columnHeader:last-of-type": {
+          borderRight: "none",
+        },
+
         "& .diagonal-cell": {
           backgroundColor: theme.palette.action.disabledBackground,
           color: theme.palette.text.disabled,
@@ -424,28 +467,41 @@ const PairwiseAlternativeMatrix = ({
           pointerEvents: "none",
           cursor: "not-allowed",
         },
-        "& .MuiDataGrid-row:hover": { backgroundColor: "transparent" },
-        "& .MuiDataGrid-cell:hover": { backgroundColor: "transparent" },
+
+        "& .MuiDataGrid-row:hover": {
+          backgroundColor: "transparent",
+        },
+
+        "& .MuiDataGrid-cell:hover": {
+          backgroundColor: "transparent",
+        },
+
         "& .first-column": {
           borderRight: `2px solid ${theme.palette.divider}`,
           fontWeight: "bold",
         },
+
         "& .grid-cell": {
-          borderRight: `1px solid ${theme.palette.divider}`,
           borderBottom: `1px solid ${theme.palette.divider}`,
         },
-        maxWidth: "100%",
-        minWidth: "60%",
-        backgroundColor: "rgba(5, 41, 55, 0.01)",
+
         "& .MuiDataGrid-withBorderColor": {
           backgroundColor: "rgba(1, 12, 29, 0.8)",
           backdropFilter: "blur(15px)",
           WebkitBackdropFilter: "blur(15px)",
           fontWeight: "bold",
         },
+
+        "& .MuiDataGrid-iconButtonContainer": {
+          display: "none",
+        },
+
+        "& .MuiDataGrid-sortIcon": {
+          display: "none",
+        },
       }}
     />
   );
 };
 
-export default PairwiseAlternativeMatrix;
+export default PairwiseAlternativesGrid;

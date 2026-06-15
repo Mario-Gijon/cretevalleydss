@@ -2,8 +2,8 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix";
-import CriterionCompactSelector from "./CriterionCompactSelector";
+import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
+import CriterionCompactSelector from "./components/CriterionCompactSelector";
 import { sectionSx } from "../../../../issueEvaluation/styles/alternativeEvaluationDialog.styles";
 
 const AlternativePairwiseByCriterionView = (
@@ -72,10 +72,13 @@ const AlternativePairwiseByCriterionView = (
   const currentCriterionName = criterionNames[safeCurrentCriterionIndex] || null;
 
   return (
-    <Stack spacing={1.25} sx={{ maxWidth: 1200, mx: "auto" }}>
+    <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
       <Box
         sx={{
           ...sectionSx(theme),
+          width: "100%",
+          maxWidth: "none",
+          minWidth: 0,
           p: { xs: 1, sm: 1.5 },
           overflow: "hidden",
         }}
@@ -103,7 +106,7 @@ const AlternativePairwiseByCriterionView = (
                 {currentCriterionName}
               </Typography>
 
-              <PairwiseAlternativeMatrix
+              <PairwiseAlternativesGrid
                 alternatives={alternativeNames}
                 evaluations={evaluationsByCriterion?.[currentCriterionName] || []}
                 setEvaluations={(nextRows) => {
