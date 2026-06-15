@@ -1,8 +1,9 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../../../issueEvaluation/logic/formatCollectiveDisplayValue";
-import { sectionSx } from "../../../../issueEvaluation/styles/alternativeEvaluationDialog.styles";
+import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
+import { buildEvaluationMatrixDataGridSx } from "../../styles/evaluationMatrixTable.styles";
+import { sectionSx } from "../../styles/evaluationStructure.styles";
 
 const getNumericRange = (domain) => {
   const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
@@ -432,36 +433,16 @@ const AlternativeCriteriaMatrixView = (
         columns={columns}
         processRowUpdate={handleProcessRowUpdate}
         sx={{
-          width: "100%",
-          minWidth: 0,
-
-          "& .MuiDataGrid-cell": {
-            alignItems: "center",
-            borderRight: "1px solid rgba(255,255,255,0.075)",
-          },
-
-          "& .MuiDataGrid-columnHeader": {
-            borderRight: "1px solid rgba(255,255,255,0.075)",
-          },
-
+          ...buildEvaluationMatrixDataGridSx(theme),
           "& .MuiDataGrid-cell:last-of-type, & .MuiDataGrid-columnHeader:last-of-type": {
             borderRight: "none",
           },
-
-          "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-            outline: "none",
+          "& .MuiDataGrid-cell[data-field='id']": {
+            backgroundColor: "rgba(75,210,207,0.04)",
+            fontWeight: 800,
           },
-
-          "& .MuiDataGrid-columnHeaders": {
-            bgcolor: theme.palette.background.paper,
-          },
-
-          "& .MuiDataGrid-iconButtonContainer": {
-            display: "none",
-          },
-
-          "& .MuiDataGrid-sortIcon": {
-            display: "none",
+          "& .MuiDataGrid-columnHeader[data-field='id']": {
+            backgroundColor: "rgba(75,210,207,0.04)",
           },
           "& .MuiDataGrid-row:hover": {
             backgroundColor: "transparent",

@@ -2,10 +2,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { Box, Stack, TextField, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import {
-  inputSx,
-  sectionSx,
-} from "../../../../issueEvaluation/styles/weightEvaluationDialog.styles";
+import { inputSx, sectionSx } from "../../styles/evaluationStructure.styles";
 
 const ManualCriteriaWeightsView = (
   {

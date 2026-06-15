@@ -1,6 +1,7 @@
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../../../../issueEvaluation/logic/formatCollectiveDisplayValue";
+import { formatCollectiveDisplayValue } from "../../../logic/formatCollectiveDisplayValue";
+import { buildEvaluationMatrixDataGridSx } from "../../../styles/evaluationMatrixTable.styles";
 
 const getCellValue = (cell) => {
   if (cell === "" || cell == null) {
@@ -172,13 +173,8 @@ const PairwiseAlternativesGrid = ({
     ? collectiveEvaluations
     : [];
 
-  const sortedAlternatives = [...(alternatives || [])].sort((a, b) =>
-    a.localeCompare(b)
-  );
-
-  const sortedEvaluations = [...evaluationRows].sort((a, b) =>
-    a.id.localeCompare(b.id)
-  );
+  const orderedAlternatives = Array.isArray(alternatives) ? alternatives : [];
+  const orderedEvaluations = evaluationRows;
 
   const columns = [
     {
@@ -187,7 +183,7 @@ const PairwiseAlternativesGrid = ({
       minWidth: 90,
       flex: 1,
     },
-    ...sortedAlternatives.map((alternative) => ({
+    ...orderedAlternatives.map((alternative) => ({
       field: alternative,
       headerName: alternative,
       editable: permitEdit,
@@ -281,7 +277,7 @@ const PairwiseAlternativesGrid = ({
       return oldRow;
     }
 
-    const changedField = sortedAlternatives.find((field) => {
+    const changedField = orderedAlternatives.find((field) => {
       const newValue = getCellNumericValue(newRow[field]);
       const oldValue = getCellNumericValue(oldRow[field]);
       return newValue !== oldValue;
@@ -416,13 +412,12 @@ const PairwiseAlternativesGrid = ({
 
   return (
     <DataGrid
-      rows={sortedEvaluations}
+      rows={orderedEvaluations}
       columns={columns}
       disableColumnMenu
       hideFooter
       disableColumnFilter
       disableColumnSorting
-      disableSelectionOnClick
       processRowUpdate={handleProcessRowUpdate}
       experimentalFeatures={{ newEditingApi: true }}
       disableRowSelectionOnClick
@@ -444,10 +439,7 @@ const PairwiseAlternativesGrid = ({
         return "grid-cell";
       }}
       sx={{
-        maxWidth: "100%",
-        minWidth: "60%",
-        backgroundColor: "rgba(5, 41, 55, 0.01)",
-
+        ...buildEvaluationMatrixDataGridSx(theme),
         "& .MuiDataGrid-columnHeader": {
           borderRight: "1px solid rgba(255,255,255,0.075)",
         },
@@ -461,7 +453,7 @@ const PairwiseAlternativesGrid = ({
         },
 
         "& .diagonal-cell": {
-          backgroundColor: theme.palette.action.disabledBackground,
+          backgroundColor: "rgba(255,255,255,0.035)",
           color: theme.palette.text.disabled,
           fontWeight: "bold",
           pointerEvents: "none",
@@ -477,27 +469,16 @@ const PairwiseAlternativesGrid = ({
         },
 
         "& .first-column": {
-          borderRight: `2px solid ${theme.palette.divider}`,
-          fontWeight: "bold",
+          backgroundColor: "rgba(75,210,207,0.04)",
+          borderRight: "1px solid rgba(255,255,255,0.075)",
+          fontWeight: 800,
         },
 
         "& .grid-cell": {
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: "rgba(5, 15, 28, 0.35)",
         },
-
-        "& .MuiDataGrid-withBorderColor": {
-          backgroundColor: "rgba(1, 12, 29, 0.8)",
-          backdropFilter: "blur(15px)",
-          WebkitBackdropFilter: "blur(15px)",
-          fontWeight: "bold",
-        },
-
-        "& .MuiDataGrid-iconButtonContainer": {
-          display: "none",
-        },
-
-        "& .MuiDataGrid-sortIcon": {
-          display: "none",
+        "& .MuiDataGrid-columnHeader[data-field='id']": {
+          backgroundColor: "rgba(75,210,207,0.04)",
         },
       }}
     />

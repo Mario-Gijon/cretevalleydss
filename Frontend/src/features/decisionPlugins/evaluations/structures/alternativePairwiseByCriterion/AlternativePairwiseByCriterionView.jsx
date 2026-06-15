@@ -4,7 +4,7 @@ import { useTheme } from "@mui/material/styles";
 
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
 import CriterionCompactSelector from "./components/CriterionCompactSelector";
-import { sectionSx } from "../../../../issueEvaluation/styles/alternativeEvaluationDialog.styles";
+import { sectionSx } from "../../styles/evaluationStructure.styles";
 
 const AlternativePairwiseByCriterionView = (
   {
