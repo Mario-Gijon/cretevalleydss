@@ -6,8 +6,8 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
-import { EVALUATION_STAGES } from "../evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 import {
   fetchIssueEvaluation,

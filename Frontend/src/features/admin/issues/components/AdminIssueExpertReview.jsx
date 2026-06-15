@@ -18,7 +18,7 @@ import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 import ExpressionDomainSummaryButton from "../../../issueEvaluation/components/ExpressionDomainSummaryButton";
-import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
 import EvaluationStructureRenderer from "../../../issueEvaluation/components/EvaluationStructureRenderer";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 import AdminIssueMetaChip from "./AdminIssueMetaChip";

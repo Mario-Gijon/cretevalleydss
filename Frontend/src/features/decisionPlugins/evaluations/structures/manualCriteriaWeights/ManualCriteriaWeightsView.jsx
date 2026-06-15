@@ -5,7 +5,7 @@ import { useTheme } from "@mui/material/styles";
 import {
   inputSx,
   sectionSx,
-} from "../../styles/weightEvaluationDialog.styles";
+} from "../../../../issueEvaluation/styles/weightEvaluationDialog.styles";
 
 const ManualCriteriaWeightsView = (
   {

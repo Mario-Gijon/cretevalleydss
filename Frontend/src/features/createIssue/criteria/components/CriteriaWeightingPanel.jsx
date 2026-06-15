@@ -22,8 +22,8 @@ import {
   normalizeManualWeightsByRoot,
 } from "../../logic/createIssueCriteriaWeightValues";
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
-import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluationStructureRegistry";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
+import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,

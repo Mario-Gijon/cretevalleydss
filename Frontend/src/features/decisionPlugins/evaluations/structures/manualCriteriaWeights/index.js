@@ -1,4 +1,4 @@
-import { EVALUATION_STAGES } from "../../evaluation.constants";
+import { EVALUATION_STAGES } from "../../evaluationStages";
 import ManualCriteriaWeightsView from "./ManualCriteriaWeightsView";
 import { manualCriteriaWeightsAdapter } from "./manualCriteriaWeights.adapter";
 

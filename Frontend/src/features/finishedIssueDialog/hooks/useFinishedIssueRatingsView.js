@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { resolveFinishedIssueEvaluationStructure } from "../logic/resolveFinishedIssueEvaluationStructure";
-import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants.js";
-import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluationStructureRegistry.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 
 /**
  * Hook for managing finished issue ratings state and data extraction.

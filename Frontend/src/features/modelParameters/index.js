@@ -11,7 +11,7 @@ export {
   PARAMETER_FIELD_REGISTRY,
   resolveParameterFieldEntry,
   resolveParameterField,
-} from "./modelParameterRegistry";
+} from "../decisionPlugins/modelParameters/modelParameterRegistry";
 
 export { ParameterFieldHost } from "./components/ParameterFieldHost";
 export { ParameterReadOnlyHost } from "./components/ParameterReadOnlyHost";

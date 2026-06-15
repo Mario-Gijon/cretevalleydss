@@ -1,4 +1,4 @@
-import { EVALUATION_STAGES } from "../../evaluation.constants";
+import { EVALUATION_STAGES } from "../../evaluationStages";
 import AlternativePairwiseByCriterionView from "./AlternativePairwiseByCriterionView";
 import { alternativePairwiseByCriterionAdapter } from "./alternativePairwiseByCriterion.adapter";
 

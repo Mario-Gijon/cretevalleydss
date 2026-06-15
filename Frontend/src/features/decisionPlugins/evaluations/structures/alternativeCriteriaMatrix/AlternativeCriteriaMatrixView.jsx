@@ -1,8 +1,8 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
-import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
-import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles";
+import { formatCollectiveDisplayValue } from "../../../../issueEvaluation/logic/formatCollectiveDisplayValue";
+import { sectionSx } from "../../../../issueEvaluation/styles/alternativeEvaluationDialog.styles";
 
 const getNumericRange = (domain) => {
   const min = Number(domain?.numericRange?.min ?? domain?.range?.min);

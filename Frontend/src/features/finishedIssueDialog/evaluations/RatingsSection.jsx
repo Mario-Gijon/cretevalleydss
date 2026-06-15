@@ -16,7 +16,7 @@ import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
-import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
 import EvaluationStructureRenderer from "../../issueEvaluation/components/EvaluationStructureRenderer";
 
 /**

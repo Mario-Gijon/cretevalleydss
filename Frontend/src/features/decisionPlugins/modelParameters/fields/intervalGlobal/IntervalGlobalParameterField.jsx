@@ -1,5 +1,5 @@
 import { Stack, Typography, TextField } from "@mui/material";
-import { handleNumberInput } from "../../../../utils/handleTwoDecimals";
+import { handleNumberInput } from "../../../../../utils/handleTwoDecimals";
 
 const FIELD_HEIGHT = 36;
 

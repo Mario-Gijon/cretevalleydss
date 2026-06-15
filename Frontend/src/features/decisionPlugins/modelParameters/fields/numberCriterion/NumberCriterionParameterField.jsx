@@ -1,9 +1,9 @@
-import { Box, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import { isPlainObject } from "../../logic/isPlainObject";
+import { Box, Stack, TextField, Typography } from "@mui/material";
+import { isPlainObject } from "../../../../modelParameters/logic/isPlainObject";
 import {
   buildCriterionParameterRows,
   resolveCriterionRowValue,
-} from "../../logic/modelParameterCriteria";
+} from "../../../../modelParameters/logic/modelParameterCriteria";
 
 const FIELD_HEIGHT = 36;
 
@@ -23,30 +23,38 @@ const titleSx = {
 };
 
 const textFieldSx = {
-  width: 128,
+  width: 96,
   "& .MuiOutlinedInput-root": {
     height: FIELD_HEIGHT,
   },
-  "& .MuiSelect-select": {
+  "& input": {
     py: 0,
-    display: "flex",
-    alignItems: "center",
   },
 };
 
-const requireAllowedValues = (parameter) => {
-  const allowed = parameter.restrictions?.allowed;
-
-  if (!Array.isArray(allowed)) {
-    throw new Error(
-      `[modelParameters] Missing allowed values for criterion parameter "${parameter.key}".`
-    );
+const normalizeNumberInput = (rawValue) => {
+  if (rawValue === "" || rawValue === null || rawValue === undefined) {
+    return "";
   }
 
-  return allowed;
+  const normalized = String(rawValue).replace(",", ".");
+  const clean = normalized.replace(/[^0-9.-]/g, "");
+
+  const startsWithMinus = clean.startsWith("-");
+  const withoutExtraMinus = clean.replace(/-/g, "");
+  const [integerPart = "", ...decimalParts] = withoutExtraMinus.split(".");
+  const decimalPart = decimalParts.join("");
+
+  const sign = startsWithMinus ? "-" : "";
+
+  if (!normalized.includes(".")) {
+    return `${sign}${integerPart}`;
+  }
+
+  return `${sign}${integerPart}.${decimalPart}`;
 };
 
-export const SelectCriterionParameterField = ({
+export const NumberCriterionParameterField = ({
   parameter,
   value,
   onChange,
@@ -55,8 +63,7 @@ export const SelectCriterionParameterField = ({
   context,
 }) => {
   const rows = buildCriterionParameterRows({ context });
-  const allowed = requireAllowedValues(parameter);
-  const { label, default: defaultValue = "" } = parameter;
+  const { label, default: defaultValue = "", restrictions = {} } = parameter;
 
   if (rows.length === 0) {
     return (
@@ -93,7 +100,7 @@ export const SelectCriterionParameterField = ({
         {rows.map((row) => (
           <TextField
             key={`input-${row.key}`}
-            select
+            type="text"
             variant="outlined"
             color="secondary"
             size="small"
@@ -106,19 +113,17 @@ export const SelectCriterionParameterField = ({
               const previous = isPlainObject(value) ? value : {};
               onChange({
                 ...previous,
-                [row.key]: event.target.value,
+                [row.key]: normalizeNumberInput(event.target.value),
               });
+            }}
+            inputProps={{
+              min: restrictions.min ?? undefined,
+              max: restrictions.max ?? undefined,
             }}
             sx={textFieldSx}
             disabled={disabled}
             error={Boolean(error)}
-          >
-            {allowed.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
         ))}
       </Box>
 
@@ -131,4 +136,4 @@ export const SelectCriterionParameterField = ({
   );
 };
 
-export default SelectCriterionParameterField;
+export default NumberCriterionParameterField;

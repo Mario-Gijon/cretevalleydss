@@ -7,8 +7,8 @@ import {
 } from "@mui/material";
 
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
-import { EVALUATION_STAGES } from "../evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import EvaluationStructureDialog from "./EvaluationStructureDialog";
 
 const getIssueStructureKeyByStage = (issue, stage) => {

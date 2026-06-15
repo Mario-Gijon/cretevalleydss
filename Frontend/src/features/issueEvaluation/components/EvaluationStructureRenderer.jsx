@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 
 const NOOP = () => {};

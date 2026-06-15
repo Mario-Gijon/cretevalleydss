@@ -1,4 +1,4 @@
-import { resolveParameterFieldEntry } from "../modelParameterRegistry";
+import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameters/modelParameterRegistry";
 
 export const ParameterFieldHost = ({
   parameter,

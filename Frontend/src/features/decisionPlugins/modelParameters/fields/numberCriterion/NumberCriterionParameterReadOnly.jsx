@@ -2,12 +2,19 @@ import { Box, Typography } from "@mui/material";
 import {
   buildCriterionParameterRows,
   resolveCriterionRowValue,
-} from "../../logic/modelParameterCriteria";
+} from "../../../../modelParameters/logic/modelParameterCriteria";
 
-const formatValue = (value) =>
-  value === null || value === undefined || value === "" ? "—" : String(value);
+const formatNumber = (value) => {
+  const parsed = Number(value);
 
-export const SelectCriterionParameterReadOnly = ({
+  if (!Number.isFinite(parsed)) {
+    return value === null || value === undefined || value === "" ? "—" : String(value);
+  }
+
+  return Number(parsed.toFixed(3)).toString();
+};
+
+export const NumberCriterionParameterReadOnly = ({
   parameter,
   value,
   leafCriteria,
@@ -60,7 +67,7 @@ export const SelectCriterionParameterReadOnly = ({
             textAlign: "center",
           }}
         >
-          {formatValue(
+          {formatNumber(
             resolveCriterionRowValue({
               value,
               defaultValue: parameter.default,
@@ -73,4 +80,4 @@ export const SelectCriterionParameterReadOnly = ({
   );
 };
 
-export default SelectCriterionParameterReadOnly;
+export default NumberCriterionParameterReadOnly;
