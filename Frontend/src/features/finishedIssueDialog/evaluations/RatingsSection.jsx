@@ -18,6 +18,7 @@ import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluat
 import { Fragment } from "react";
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants";
 import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluationStructureRegistry";
+import { buildEvaluationViewContext } from "../../issueEvaluation/context/buildEvaluationViewContext";
 
 /**
  * Ratings section of the finished issue dialog.
@@ -70,6 +71,10 @@ const RatingsSection = () => {
     return null;
   }
 
+  const structureEntry = getEvaluationStructureEntryForStage({
+    structureKey: ratingsSection.evaluationStructure || "",
+    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  });
   const expertWeightStatus = criteriaWeightsEvaluation?.status || "notRequired";
   const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
     structureKey:
@@ -118,19 +123,35 @@ const RatingsSection = () => {
     return formatted ?? "—";
   };
 
-  const evaluationContext = {
+  const evaluationViewContext = buildEvaluationViewContext({
     issue: viewIssue,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-    structureKey: ratingsSection.evaluationStructure || "",
+    structure: structureEntry,
     alternatives: orderedAlternatives,
-    criteria: orderedLeafCriteria,
-    payload: evaluations,
-    setPayload: () => {},
-    collectivePayload: collectiveEvaluations || {},
-    permitEdit: false,
+    criteriaTree: Array.isArray(viewIssue?.summary?.criteria)
+      ? viewIssue.summary.criteria
+      : [],
+    leafCriteria: orderedLeafCriteria,
+    payloadValue: evaluations || {},
+    collectiveValue: collectiveEvaluations || {},
+    collectiveVisible: showCollective,
+    setCollectiveVisible: setShowCollective,
+    readOnly: true,
     selectedCriterion,
     setSelectedCriterion,
-  };
+  });
+
+  const criteriaWeightsViewContext = buildEvaluationViewContext({
+    issue: viewIssue,
+    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+    structure: criteriaWeightingStructureEntry,
+    criteriaTree: Array.isArray(viewIssue?.summary?.criteria)
+      ? viewIssue.summary.criteria
+      : [],
+    leafCriteria: orderedLeafCriteria,
+    payloadValue: criteriaWeightsEvaluation?.payload || {},
+    readOnly: true,
+  });
 
   return (
     <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
@@ -222,12 +243,7 @@ const RatingsSection = () => {
 
               {CriteriaWeightingView && criteriaWeightsEvaluation?.payload ? (
                 <CriteriaWeightingView
-                  evaluationContext={{
-                    criteria: orderedLeafCriteria,
-                    payload: criteriaWeightsEvaluation.payload,
-                    setPayload: () => {},
-                    permitEdit: false,
-                  }}
+                  evaluationViewContext={criteriaWeightsViewContext}
                 />
               ) : expertWeightStatus === "notRequired" ? (
                 <Typography variant="body2" color="text.secondary">
@@ -301,7 +317,7 @@ const RatingsSection = () => {
           </>
         ) : null}
 
-        <Matrix evaluationContext={evaluationContext} />
+        <Matrix evaluationViewContext={evaluationViewContext} />
       </Stack>
     </SectionCard>
   );

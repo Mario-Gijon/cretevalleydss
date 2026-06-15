@@ -12,25 +12,24 @@ const resolveCriterionName = (criterionEntry) => {
   return "";
 };
 
-const ManualCriteriaWeightsView = ({
-  evaluationContext,
-  criteria: directCriteria,
-  payload: directPayload,
-  setPayload: directSetPayload,
-  disabled = false,
-}) => {
-  const context = evaluationContext || {};
-  const criteriaSource = directCriteria ?? context.criteria ?? [];
-  const criterionNames = Array.isArray(criteriaSource)
-    ? criteriaSource.map(resolveCriterionName).filter(Boolean)
-    : [];
-  const payload = directPayload ?? context.payload ?? {};
-  const setPayload = directSetPayload ?? context.setPayload;
-  const permitEdit = context.permitEdit !== false && !disabled;
-  const isReadOnly = !permitEdit || typeof setPayload !== "function";
+const ManualCriteriaWeightsView = ({ evaluationViewContext }) => {
+  const {
+    criteria,
+    payload,
+    ui,
+  } = evaluationViewContext || {};
+  const criterionNames = Array.isArray(criteria?.leafItems)
+    ? criteria.leafItems.map(resolveCriterionName).filter(Boolean)
+    : Array.isArray(criteria?.leafNames)
+      ? criteria.leafNames
+      : [];
+  const payloadValue = payload?.value ?? {};
+  const setPayloadValue = payload?.setValue;
+  const isReadOnly =
+    ui?.readOnly === true || ui?.loading === true || typeof setPayloadValue !== "function";
   const weightsByCriterion =
-    payload && typeof payload === "object" && !Array.isArray(payload)
-      ? payload.weightsByCriterion || {}
+    payloadValue && typeof payloadValue === "object" && !Array.isArray(payloadValue)
+      ? payloadValue.weightsByCriterion || {}
       : {};
 
   if (criterionNames.length === 0) {
@@ -58,7 +57,7 @@ const ManualCriteriaWeightsView = ({
             }
 
             const raw = event.target.value;
-            setPayload((previous) => ({
+            setPayloadValue((previous) => ({
               ...(previous && typeof previous === "object" ? previous : {}),
               weightsByCriterion: {
                 ...((previous && previous.weightsByCriterion) || {}),

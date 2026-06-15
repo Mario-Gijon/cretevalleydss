@@ -169,28 +169,36 @@ const normalizeCriterionRows = ({
   return [];
 };
 
-const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
+const AlternativePairwiseByCriterionView = ({ evaluationViewContext }) => {
   const {
-    alternatives = [],
-    criteria = [],
+    alternatives,
+    criteria,
     payload,
-    setPayload,
-    collectivePayload = {},
-    permitEdit = false,
-    selectedCriterion,
-  } = evaluationContext || {};
-  const alternativeNames = Array.isArray(alternatives)
-    ? alternatives.map(resolveAlternativeName).filter(Boolean)
+    collective,
+    ui,
+  } = evaluationViewContext || {};
+  const alternativeItems = Array.isArray(alternatives?.items)
+    ? alternatives.items
     : [];
-
-  const criteriaFromContext = Array.isArray(criteria)
-    ? criteria.map(resolveCriterionName).filter(Boolean)
-    : [];
+  const alternativeNames = Array.isArray(alternatives?.names)
+    ? alternatives.names
+    : alternativeItems.map(resolveAlternativeName).filter(Boolean);
+  const criteriaFromContext = Array.isArray(criteria?.leafItems)
+    ? criteria.leafItems.map(resolveCriterionName).filter(Boolean)
+    : Array.isArray(criteria?.leafNames)
+      ? criteria.leafNames
+      : [];
+  const payloadValue = payload?.value ?? {};
+  const setPayloadValue = payload?.setValue;
+  const collectivePayload =
+    collective?.visible === true ? collective?.value ?? {} : {};
+  const permitEdit = ui?.readOnly !== true && ui?.loading !== true;
+  const selectedCriterion = ui?.selectedCriterion ?? null;
 
   const evaluationsByCriterion =
-    isPlainObject(payload?.comparisonsByCriterion)
+    isPlainObject(payloadValue?.comparisonsByCriterion)
       ? Object.fromEntries(
-          Object.entries(payload.comparisonsByCriterion).map(
+          Object.entries(payloadValue.comparisonsByCriterion).map(
             ([criterionName, criterionPairs]) => [
               criterionName,
               buildRowsFromPairMap({
@@ -200,8 +208,8 @@ const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
             ]
           )
         )
-      : isPlainObject(payload)
-        ? payload
+      : isPlainObject(payloadValue)
+        ? payloadValue
         : {};
   const collectiveCriterionSource = isPlainObject(
     collectivePayload?.comparisonsByCriterion
@@ -254,14 +262,14 @@ const AlternativePairwiseByCriterionView = ({ evaluationContext }) => {
           </Typography>
 
           <PairwiseAlternativeMatrix
-            alternatives={alternatives}
+            alternatives={alternativeItems}
             evaluations={evaluationsByCriterion?.[criterionName] || []}
             setEvaluations={(nextRows) => {
               if (!permitEdit) {
                 return;
               }
 
-              setPayload?.((previous) => ({
+              setPayloadValue?.((previous) => ({
                 ...(isPlainObject(previous) ? previous : {}),
                 [criterionName]: nextRows,
               }));

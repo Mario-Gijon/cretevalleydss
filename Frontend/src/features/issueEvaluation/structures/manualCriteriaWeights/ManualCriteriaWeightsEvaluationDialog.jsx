@@ -3,8 +3,6 @@ import {
   Box,
   Button,
   Stack,
-  TextField,
-  Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
@@ -27,6 +25,9 @@ import {
 import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
+import ManualCriteriaWeightsView from "./ManualCriteriaWeightsView";
+import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
+import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
 
 const sumWeights = (criterionNames, valuesByCriterion) =>
   criterionNames.reduce((sum, name) => sum + Number(valuesByCriterion[name] ?? 0), 0);
@@ -63,12 +64,42 @@ const ManualCriteriaWeightsEvaluationDialog = ({
 
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: "manualCriteriaWeights",
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      }),
+    []
+  );
 
   const [weightsByCriterion, setWeightsByCriterion] = useState({});
   const [initialData, setInitialData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
+  const evaluationViewContext = useMemo(
+    () =>
+      buildEvaluationViewContext({
+        issue,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        structure: structureEntry,
+        criteriaTree: issue?.criteria || [],
+        leafCriteria,
+        payloadValue: { weightsByCriterion },
+        setPayload: (updater) => {
+          setWeightsByCriterion((previous) => {
+            const previousPayload = { weightsByCriterion: previous };
+            const nextPayload =
+              typeof updater === "function" ? updater(previousPayload) : updater;
+            return nextPayload?.weightsByCriterion || {};
+          });
+        },
+        loading,
+        readOnly: false,
+      }),
+    [issue, structureEntry, leafCriteria, weightsByCriterion, loading]
+  );
 
   useEffect(() => {
     if (!isOpen || !issue?.id) return;
@@ -232,31 +263,11 @@ const ManualCriteriaWeightsEvaluationDialog = ({
       >
         <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
           <Box sx={sectionSx(theme)}>
-            <Stack spacing={1.25}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
-                Rate each criterion between 0 and 1
-              </Typography>
-
-              {criterionNames.map((name) => (
-                <TextField
-                  key={name}
-                  label={name}
-                  type="number"
-                  size="small"
-                  color="info"
-                  value={weightsByCriterion[name] ?? ""}
-                  onChange={(event) => {
-                    const raw = event.target.value;
-                    setWeightsByCriterion((prev) => ({
-                      ...prev,
-                      [name]: raw === "" ? "" : Number(raw),
-                    }));
-                  }}
-                  inputProps={{ min: 0, max: 1, step: 0.01 }}
-                  sx={inputSx(theme)}
-                />
-              ))}
-            </Stack>
+            <Box sx={{ ...inputSx(theme), p: 0 }}>
+              <ManualCriteriaWeightsView
+                evaluationViewContext={evaluationViewContext}
+              />
+            </Box>
           </Box>
         </Stack>
       </AlternativeEvaluationDialogShell>

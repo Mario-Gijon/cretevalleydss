@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluat
 import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
+import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
 import {
   sectionSx,
 } from "../../styles/alternativeEvaluationDialog.styles";
@@ -28,6 +29,7 @@ import {
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
 
 const buildPairKey = (altA, altB) => `${altA}::${altB}`;
 
@@ -313,6 +315,14 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
   const alternatives = useMemo(() => issue?.alternatives || [], [issue?.alternatives]);
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: "alternativePairwiseByCriterion",
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      }),
+    []
+  );
 
   useEffect(() => {
     setCurrentCriterionIndex(0);
@@ -320,30 +330,48 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
 
   const currentCriterion = leafCriteria[currentCriterionIndex] || leafCriteria[0] || null;
   const criterionId = currentCriterion?.name;
-  const evaluationContext = useMemo(
-    () => ({
-      issue,
-      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      structureKey: "alternativePairwiseByCriterion",
-      alternatives,
-      criteria: criterionNames,
-      payload: evaluations,
-      setPayload: setEvaluations,
-      collectivePayload: collectiveVisible
-        ? collectiveEvaluationsByCriterion || {}
-        : {},
-      permitEdit: true,
-      selectedCriterion: criterionId || "",
-      setSelectedCriterion: () => {},
-    }),
+  const handleSelectedCriterionChange = useCallback(
+    (criterionName) => {
+      const nextIndex = leafCriteria.findIndex(
+        (criterion) => criterion?.name === criterionName
+      );
+
+      if (nextIndex >= 0) {
+        setCurrentCriterionIndex(nextIndex);
+      }
+    },
+    [leafCriteria]
+  );
+  const evaluationViewContext = useMemo(
+    () =>
+      buildEvaluationViewContext({
+        issue,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        structure: structureEntry,
+        alternatives,
+        criteriaTree: issue?.criteria || [],
+        leafCriteria,
+        payloadValue: evaluations,
+        setPayload: setEvaluations,
+        collectiveValue: collectiveEvaluationsByCriterion || {},
+        collectiveVisible,
+        setCollectiveVisible,
+        loading,
+        readOnly: false,
+        selectedCriterion: criterionId || null,
+        setSelectedCriterion: handleSelectedCriterionChange,
+      }),
     [
       issue,
       alternatives,
-      criterionNames,
+      structureEntry,
+      leafCriteria,
       evaluations,
-      collectiveVisible,
       collectiveEvaluationsByCriterion,
+      collectiveVisible,
+      loading,
       criterionId,
+      handleSelectedCriterionChange,
     ]
   );
 
@@ -526,7 +554,7 @@ const AlternativePairwiseByCriterionEvaluationDialog = ({
             />
 
             <AlternativePairwiseByCriterionView
-              evaluationContext={evaluationContext}
+              evaluationViewContext={evaluationViewContext}
             />
           </Box>
         </Stack>

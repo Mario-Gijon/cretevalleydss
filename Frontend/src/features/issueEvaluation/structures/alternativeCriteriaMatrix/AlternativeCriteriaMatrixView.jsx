@@ -7,38 +7,30 @@ import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDispla
  * Matriz de evaluación directa alternativa x criterio.
  *
  * @param {Object} props
- * @param {Object} props.evaluationContext
+ * @param {Object} props.evaluationViewContext
  * @returns {JSX.Element}
  */
-const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
+const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
   const {
-    alternatives = [],
-    criteria = [],
+    alternatives,
+    criteria,
     payload,
-    setPayload,
-    collectivePayload = {},
-    permitEdit = true,
-  } = evaluationContext || {};
+    collective,
+    ui,
+  } = evaluationViewContext || {};
   const theme = useTheme();
   const apiRef = useGridApiRef();
-  const alternativeNames = Array.isArray(alternatives)
-    ? alternatives
-      .map((alternative) =>
-        typeof alternative === "string"
-          ? alternative
-          : String(alternative?.name || "").trim()
-      )
-      .filter(Boolean)
+  const alternativeNames = Array.isArray(alternatives?.names)
+    ? alternatives.names
     : [];
-  const criterionNames = Array.isArray(criteria)
-    ? criteria
-      .map((criterion) =>
-        typeof criterion === "string"
-          ? criterion
-          : String(criterion?.name || "").trim()
-      )
-      .filter(Boolean)
+  const criterionNames = Array.isArray(criteria?.leafNames)
+    ? criteria.leafNames
     : [];
+  const payloadValue = payload?.value ?? {};
+  const setPayloadValue = payload?.setValue;
+  const collectivePayload =
+    collective?.visible === true ? collective?.value ?? {} : {};
+  const permitEdit = ui?.readOnly !== true && ui?.loading !== true;
 
   const buildCellKey = (alternativeName, criterionName) =>
     `${alternativeName}::${criterionName}`;
@@ -213,7 +205,7 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
     </Stack>
   );
 
-  const resolvedPayload = normalizeMatrixPayload(payload);
+  const resolvedPayload = normalizeMatrixPayload(payloadValue);
   const resolvedCollectivePayload = normalizeMatrixPayload(collectivePayload);
 
   const columns = [
@@ -279,7 +271,7 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
                   onChange={(event) => {
                     const newValue = event.target.value;
 
-                    setPayload?.((prev) => ({
+                    setPayloadValue?.((prev) => ({
                       ...prev,
                       [rowId]: {
                         ...(prev?.[rowId] || {}),
@@ -382,7 +374,7 @@ const AlternativeCriteriaMatrixView = ({ evaluationContext }, ref) => {
 
     const resultRow = { ...newRow, [changedField]: nextCell };
 
-    setPayload?.((prev) => ({
+    setPayloadValue?.((prev) => ({
       ...prev,
       [resultRow.id]: {
         ...(prev?.[resultRow.id] || {}),

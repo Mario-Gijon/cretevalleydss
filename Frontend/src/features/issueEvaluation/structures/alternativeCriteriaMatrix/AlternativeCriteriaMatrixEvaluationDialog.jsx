@@ -15,6 +15,7 @@ import AlternativeEvaluationDialogShell from "../../components/AlternativeEvalua
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { validateDirectEvaluations } from "./directEvaluation.validation";
 import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles";
+import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
 import {
   fetchIssueEvaluation,
   saveIssueEvaluation,
@@ -23,6 +24,7 @@ import {
 import {
   EVALUATION_STAGES,
 } from "../../evaluation.constants";
+import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
 
 const buildKey = (alternativeName, criterionName) => `${alternativeName}::${criterionName}`;
 
@@ -132,25 +134,40 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
   const alternatives = useMemo(() => issue?.alternatives || [], [issue?.alternatives]);
-  const evaluationContext = useMemo(
-    () => ({
-      issue,
-      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-      structureKey: "alternativeCriteriaMatrix",
-      alternatives,
-      criteria: criterionNames,
-      payload: evaluations,
-      setPayload: setEvaluations,
-      collectivePayload: collectiveVisible ? collectiveEvaluations || {} : {},
-      permitEdit: true,
-    }),
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: "alternativeCriteriaMatrix",
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      }),
+    []
+  );
+  const evaluationViewContext = useMemo(
+    () =>
+      buildEvaluationViewContext({
+        issue,
+        stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+        structure: structureEntry,
+        alternatives,
+        criteriaTree: issue?.criteria || [],
+        leafCriteria,
+        payloadValue: evaluations,
+        setPayload: setEvaluations,
+        collectiveValue: collectiveEvaluations || {},
+        collectiveVisible,
+        setCollectiveVisible,
+        loading,
+        readOnly: false,
+      }),
     [
       issue,
       alternatives,
-      criterionNames,
+      structureEntry,
+      leafCriteria,
       evaluations,
-      collectiveVisible,
       collectiveEvaluations,
+      collectiveVisible,
+      loading,
     ]
   );
 
@@ -330,7 +347,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
           {issue && !loading && (
             <AlternativeCriteriaMatrixView
               ref={matrixRef}
-              evaluationContext={evaluationContext}
+              evaluationViewContext={evaluationViewContext}
             />
           )}
         </Box>

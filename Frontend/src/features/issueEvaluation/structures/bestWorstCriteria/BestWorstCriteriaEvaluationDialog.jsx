@@ -17,6 +17,8 @@ import AlternativeEvaluationDialogShell from "../../components/AlternativeEvalua
 import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
+import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
+import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
 import {
   buildEmptyBestWorstCriteriaPayload,
   validateBestWorstCriteriaPayload,
@@ -28,6 +30,14 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
 
   const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
   const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
+  const structureEntry = useMemo(
+    () =>
+      getEvaluationStructureEntryForStage({
+        structureKey: "bestWorstCriteria",
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      }),
+    []
+  );
 
   const [bwmPayload, setBwmPayload] = useState(
     buildEmptyBestWorstCriteriaPayload(criterionNames)
@@ -36,6 +46,21 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const evaluationViewContext = useMemo(
+    () =>
+      buildEvaluationViewContext({
+        issue,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+        structure: structureEntry,
+        criteriaTree: issue?.criteria || [],
+        leafCriteria,
+        payloadValue: bwmPayload,
+        setPayload: setBwmPayload,
+        loading,
+        readOnly: false,
+      }),
+    [issue, structureEntry, leafCriteria, bwmPayload, loading]
+  );
 
   useEffect(() => {
     if (!isOpen || !issue?.id) return;
@@ -170,10 +195,7 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
         }
       >
         <BestWorstCriteriaView
-          criterionNames={criterionNames}
-          payload={bwmPayload}
-          setPayload={setBwmPayload}
-          disabled={loading}
+          evaluationViewContext={evaluationViewContext}
         />
       </AlternativeEvaluationDialogShell>
 
