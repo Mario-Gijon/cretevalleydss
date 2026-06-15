@@ -6,13 +6,10 @@ import {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveCriterionNames = (evaluationContext) =>
-  evaluationContext?.criteria?.leafNames || [];
-
 export const bestWorstCriteriaAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
     return buildEmptyBestWorstCriteriaPayload(
-      resolveCriterionNames(evaluationContext)
+      evaluationContext.criteria.leafNames
     );
   },
 
@@ -22,12 +19,12 @@ export const bestWorstCriteriaAdapter = Object.freeze({
     }
 
     return buildEmptyBestWorstCriteriaPayload(
-      resolveCriterionNames(evaluationContext)
+      evaluationContext.criteria.leafNames
     );
   },
 
   toBackendPayload({ evaluationPayload }) {
-    return isPlainObject(evaluationPayload) ? evaluationPayload : {};
+    return evaluationPayload;
   },
 
   validate({ evaluationContext, evaluationPayload, mode }) {
@@ -36,7 +33,7 @@ export const bestWorstCriteriaAdapter = Object.freeze({
     }
 
     const message = validateBestWorstCriteriaPayload({
-      criterionNames: resolveCriterionNames(evaluationContext),
+      criterionNames: evaluationContext.criteria.leafNames,
       payload: evaluationPayload,
     });
 

@@ -1,6 +1,3 @@
-const resolveCriterionNames = (evaluationContext) =>
-  evaluationContext?.criteria?.leafNames || [];
-
 const buildEmptyWeightsByCriterion = (criterionNames) =>
   Object.fromEntries(criterionNames.map((name) => [name, ""]));
 
@@ -29,12 +26,12 @@ const sumWeights = (criterionNames, valuesByCriterion) =>
 
 export const manualCriteriaWeightsAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
-    const criterionNames = resolveCriterionNames(evaluationContext);
+    const criterionNames = evaluationContext.criteria.leafNames;
     return { weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames) };
   },
 
   fromBackendPayload({ evaluationContext, backendPayload }) {
-    const criterionNames = resolveCriterionNames(evaluationContext);
+    const criterionNames = evaluationContext.criteria.leafNames;
     return {
       weightsByCriterion: normalizeDraftWeights(
         criterionNames,
@@ -45,12 +42,7 @@ export const manualCriteriaWeightsAdapter = Object.freeze({
 
   toBackendPayload({ evaluationPayload }) {
     return {
-      weightsByCriterion:
-        evaluationPayload?.weightsByCriterion &&
-        typeof evaluationPayload.weightsByCriterion === "object" &&
-        !Array.isArray(evaluationPayload.weightsByCriterion)
-          ? evaluationPayload.weightsByCriterion
-          : {},
+      weightsByCriterion: evaluationPayload.weightsByCriterion,
     };
   },
 
@@ -59,8 +51,8 @@ export const manualCriteriaWeightsAdapter = Object.freeze({
       return { valid: true };
     }
 
-    const criterionNames = resolveCriterionNames(evaluationContext);
-    const weightsByCriterion = evaluationPayload?.weightsByCriterion || {};
+    const criterionNames = evaluationContext.criteria.leafNames;
+    const weightsByCriterion = evaluationPayload.weightsByCriterion;
 
     for (const name of criterionNames) {
       const value = weightsByCriterion[name];

@@ -89,8 +89,12 @@ const EvaluationStructureDialog = ({
       );
       try {
         const response = await fetchIssueEvaluation(issue.id, stage);
-        const responseEvaluationContext =
-          response?.data?.evaluationContext || fallbackEvaluationContext;
+        const responseEvaluationContext = response?.data?.evaluationContext;
+
+        if (!responseEvaluationContext) {
+          throw new Error("Missing evaluationContext in evaluation response.");
+        }
+
         const nextEvaluationPayload = adapter.fromBackendPayload({
           evaluationContext: responseEvaluationContext,
           backendPayload: response?.data?.payload || null,
@@ -107,6 +111,10 @@ const EvaluationStructureDialog = ({
         setShowCollective(nextCollectivePayload !== null);
         setInitialSnapshot(JSON.stringify(nextEvaluationPayload));
       } catch {
+        showSnackbarAlert(
+          "Could not load evaluation context for this evaluation.",
+          "error"
+        );
         const fallbackPayload = adapter.createEmptyPayload({
           evaluationContext: fallbackEvaluationContext,
         });
@@ -121,7 +129,7 @@ const EvaluationStructureDialog = ({
     };
 
     loadEvaluation();
-  }, [isOpen, issue?.id, stage, adapter, fallbackEvaluationContext]);
+  }, [isOpen, issue?.id, stage, adapter, fallbackEvaluationContext, showSnackbarAlert]);
 
   const preparePayloadRead = async () => {
     if (typeof viewRef.current?.preparePayloadRead === "function") {

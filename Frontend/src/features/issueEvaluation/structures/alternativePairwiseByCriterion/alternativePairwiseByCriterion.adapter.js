@@ -4,15 +4,6 @@ const buildPairKey = (leftAlternative, rightAlternative) =>
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveAlternativeNames = (evaluationContext) =>
-  evaluationContext?.alternatives?.names || [];
-
-const resolveCriterionNames = (evaluationContext) =>
-  evaluationContext?.criteria?.leafNames || [];
-
-const resolveCriterionDomain = (evaluationContext, criterionName) =>
-  evaluationContext?.domains?.byCriterionName?.[criterionName] || null;
-
 const buildCell = ({ value = "", domain = null, isNeutralFallback = false }) => ({
   value,
   domain,
@@ -50,7 +41,7 @@ const buildRowsFromPairMap = ({
 const buildMatrixPayload = ({
   alternativeNames,
   criterionNames,
-  evaluationContext,
+  domainsByCriterionName,
   comparisonsByCriterion = {},
 }) =>
   Object.fromEntries(
@@ -59,7 +50,7 @@ const buildMatrixPayload = ({
       buildRowsFromPairMap({
         alternativeNames,
         criterionPairs: comparisonsByCriterion?.[criterionName] || {},
-        domain: resolveCriterionDomain(evaluationContext, criterionName),
+        domain: domainsByCriterionName[criterionName],
       }),
     ])
   );
@@ -222,32 +213,24 @@ const validatePairwisePayload = ({
 export const alternativePairwiseByCriterionAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
     return buildMatrixPayload({
-      alternativeNames: resolveAlternativeNames(evaluationContext),
-      criterionNames: resolveCriterionNames(evaluationContext),
-      evaluationContext,
+      alternativeNames: evaluationContext.alternatives.names,
+      criterionNames: evaluationContext.criteria.leafNames,
+      domainsByCriterionName: evaluationContext.domains.byCriterionName,
     });
   },
 
   fromBackendPayload({ evaluationContext, backendPayload }) {
-    const comparisonsByCriterion = isPlainObject(
-      backendPayload?.comparisonsByCriterion
-    )
-      ? backendPayload.comparisonsByCriterion
-      : isPlainObject(backendPayload)
-        ? backendPayload
-        : {};
-
     return buildMatrixPayload({
-      alternativeNames: resolveAlternativeNames(evaluationContext),
-      criterionNames: resolveCriterionNames(evaluationContext),
-      evaluationContext,
-      comparisonsByCriterion,
+      alternativeNames: evaluationContext.alternatives.names,
+      criterionNames: evaluationContext.criteria.leafNames,
+      domainsByCriterionName: evaluationContext.domains.byCriterionName,
+      comparisonsByCriterion: backendPayload?.comparisonsByCriterion || {},
     });
   },
 
   toBackendPayload({ evaluationContext, evaluationPayload }) {
-    const alternativeNames = resolveAlternativeNames(evaluationContext);
-    const criterionNames = resolveCriterionNames(evaluationContext);
+    const alternativeNames = evaluationContext.alternatives.names;
+    const criterionNames = evaluationContext.criteria.leafNames;
     const comparisonsByCriterion = {};
 
     for (const criterionName of criterionNames) {
@@ -281,8 +264,8 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
 
   validate({ evaluationContext, evaluationPayload, mode }) {
     return validatePairwisePayload({
-      alternativeNames: resolveAlternativeNames(evaluationContext),
-      criterionNames: resolveCriterionNames(evaluationContext),
+      alternativeNames: evaluationContext.alternatives.names,
+      criterionNames: evaluationContext.criteria.leafNames,
       evaluationPayload,
       allowEmpty: mode === "draft",
     });
@@ -293,8 +276,8 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
       return null;
     }
 
-    const criterionNames = resolveCriterionNames(evaluationContext);
-    const alternativeNames = resolveAlternativeNames(evaluationContext);
+    const criterionNames = evaluationContext.criteria.leafNames;
+    const alternativeNames = evaluationContext.alternatives.names;
     const output = {};
 
     for (const criterionName of criterionNames) {
@@ -302,7 +285,7 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
       const mappedRows = buildCollectiveRows({
         criterionSource: criterionCollective,
         alternativeNames,
-        domain: resolveCriterionDomain(evaluationContext, criterionName),
+        domain: evaluationContext.domains.byCriterionName[criterionName],
       });
 
       if (mappedRows) {
