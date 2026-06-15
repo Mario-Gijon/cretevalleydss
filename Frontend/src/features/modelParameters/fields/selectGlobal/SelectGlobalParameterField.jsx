@@ -2,8 +2,17 @@ import { Stack, Typography, TextField, MenuItem } from "@mui/material";
 
 const FIELD_HEIGHT = 36;
 
-const readAllowedValues = (parameter) =>
-  Array.isArray(parameter.restrictions?.allowed) ? parameter.restrictions.allowed : [];
+const requireAllowedValues = (parameter) => {
+  const allowed = parameter.restrictions?.allowed;
+
+  if (!Array.isArray(allowed)) {
+    throw new Error(
+      `[modelParameters] Missing allowed values for global parameter "${parameter.key}".`
+    );
+  }
+
+  return allowed;
+};
 
 const labelSx = {
   height: FIELD_HEIGHT,
@@ -34,8 +43,8 @@ export const SelectGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const allowed = readAllowedValues(parameter);
-  const label = parameter.label || parameter.key;
+  const allowed = requireAllowedValues(parameter);
+  const { label } = parameter;
 
   return (
     <Stack spacing={0.35}>
@@ -56,8 +65,8 @@ export const SelectGlobalParameterField = ({
           error={Boolean(error)}
         >
           {allowed.map((option) => (
-            <MenuItem key={String(option)} value={option}>
-              {String(option)}
+            <MenuItem key={option} value={option}>
+              {option}
             </MenuItem>
           ))}
         </TextField>

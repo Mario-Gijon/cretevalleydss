@@ -63,8 +63,7 @@ export const NumberCriterionParameterField = ({
   context,
 }) => {
   const rows = buildCriterionParameterRows({ context });
-  const label = parameter.label || parameter.key;
-  const restrictions = parameter.restrictions || {};
+  const { label, default: defaultValue = "", restrictions = {} } = parameter;
 
   if (rows.length === 0) {
     return (
@@ -107,7 +106,7 @@ export const NumberCriterionParameterField = ({
             size="small"
             value={resolveCriterionRowValue({
               value,
-              defaultValue: parameter.default ?? "",
+              defaultValue,
               rowKey: row.key,
             })}
             onChange={(event) => {
@@ -118,8 +117,8 @@ export const NumberCriterionParameterField = ({
               });
             }}
             inputProps={{
-              min: restrictions?.min ?? undefined,
-              max: restrictions?.max ?? undefined,
+              min: restrictions.min ?? undefined,
+              max: restrictions.max ?? undefined,
             }}
             sx={textFieldSx}
             disabled={disabled}

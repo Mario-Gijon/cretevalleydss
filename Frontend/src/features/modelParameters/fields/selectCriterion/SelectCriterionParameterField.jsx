@@ -34,8 +34,17 @@ const textFieldSx = {
   },
 };
 
-const readAllowedValues = (parameter) =>
-  Array.isArray(parameter.restrictions?.allowed) ? parameter.restrictions.allowed : [];
+const requireAllowedValues = (parameter) => {
+  const allowed = parameter.restrictions?.allowed;
+
+  if (!Array.isArray(allowed)) {
+    throw new Error(
+      `[modelParameters] Missing allowed values for criterion parameter "${parameter.key}".`
+    );
+  }
+
+  return allowed;
+};
 
 export const SelectCriterionParameterField = ({
   parameter,
@@ -46,8 +55,8 @@ export const SelectCriterionParameterField = ({
   context,
 }) => {
   const rows = buildCriterionParameterRows({ context });
-  const allowed = readAllowedValues(parameter);
-  const label = parameter.label || parameter.key;
+  const allowed = requireAllowedValues(parameter);
+  const { label, default: defaultValue = "" } = parameter;
 
   if (rows.length === 0) {
     return (
@@ -90,7 +99,7 @@ export const SelectCriterionParameterField = ({
             size="small"
             value={resolveCriterionRowValue({
               value,
-              defaultValue: parameter.default ?? "",
+              defaultValue,
               rowKey: row.key,
             })}
             onChange={(event) => {
@@ -105,8 +114,8 @@ export const SelectCriterionParameterField = ({
             error={Boolean(error)}
           >
             {allowed.map((option) => (
-              <MenuItem key={String(option)} value={option}>
-                {String(option)}
+              <MenuItem key={option} value={option}>
+                {option}
               </MenuItem>
             ))}
           </TextField>

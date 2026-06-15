@@ -29,9 +29,8 @@ export const NumberGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const restrictions = parameter.restrictions || {};
-  const label = parameter.label || parameter.key;
-  const isInteger = parameter.type === "integer" || parameter.valueType === "integer";
+  const { restrictions = {}, label, type, valueType } = parameter;
+  const isInteger = type === "integer" || valueType === "integer";
 
   return (
     <Stack spacing={0.35}>
@@ -58,8 +57,8 @@ export const NumberGlobalParameterField = ({
             onChange(handleNumberInput(raw));
           }}
           inputProps={{
-            min: restrictions?.min ?? undefined,
-            max: restrictions?.max ?? undefined,
+            min: restrictions.min ?? undefined,
+            max: restrictions.max ?? undefined,
             step: isInteger ? 1 : 0.1,
           }}
           sx={{

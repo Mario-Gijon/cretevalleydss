@@ -49,8 +49,7 @@ export const IntervalGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const restrictions = parameter.restrictions || {};
-  const label = parameter.label || parameter.key;
+  const { restrictions = {}, label } = parameter;
   const currentValues = ensureLength(value);
 
   return (
@@ -79,8 +78,8 @@ export const IntervalGlobalParameterField = ({
                 onChange(next);
               }}
               inputProps={{
-                min: restrictions?.min ?? undefined,
-                max: restrictions?.max ?? undefined,
+                min: restrictions.min ?? undefined,
+                max: restrictions.max ?? undefined,
                 step: 0.1,
               }}
               sx={textFieldSx}
