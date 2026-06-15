@@ -1,6 +1,6 @@
 import {
   EVALUATION_STAGES,
-} from "../../evaluation.constants.js";
+} from "../../evaluationStages.js";
 import { buildGetPayload } from "./alternativeCriteriaMatrix.getPayload.js";
 import {
   normalizePayloadOrThrow,

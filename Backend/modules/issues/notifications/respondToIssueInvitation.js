@@ -1,5 +1,5 @@
 import { Participation } from "../../../models/Participations.js";
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 import {
   buildParticipationEntryMetadata,
   isSingleLeafCriterionCount,

@@ -23,7 +23,7 @@ import {
 } from "./adminIssueReadLoaders.js";
 import { createNotFoundError } from "../../../utils/common/errors.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../decisionPlugins/evaluations/evaluationStructureContext.js";
+import { buildEvaluationStructureContext } from "../../issues/evaluations/index.js";
 
 export const getIssueExpertEvaluationsPayload = async ({
   issueId,

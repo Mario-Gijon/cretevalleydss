@@ -1,4 +1,4 @@
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "./issueStages.js";
 
 export const PARTICIPATION_ENTRY_STAGES = Object.freeze({
   CRITERIA_WEIGHTING: "criteriaWeighting",

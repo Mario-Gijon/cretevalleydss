@@ -1,5 +1,5 @@
 import { createInternalError } from "../../../utils/common/errors.js";
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 
 const WEIGHTS_OPTIONAL_STAGES = new Set([
   ISSUE_STAGES.CRITERIA_WEIGHTING,

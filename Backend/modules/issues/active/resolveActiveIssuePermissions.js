@@ -1,4 +1,4 @@
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 import { ACTIVE_ACTION_META, ACTIVE_STATUS_META } from "./activeIssueUiCatalog.js";
 
 export const resolveActiveIssuePermissions = ({

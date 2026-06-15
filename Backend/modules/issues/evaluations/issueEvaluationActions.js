@@ -1,17 +1,17 @@
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
-import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
 } from "../../../utils/common/errors.js";
 import {
   EVALUATION_STAGES,
-  ISSUE_STAGES,
-} from "./evaluation.constants.js";
-import { getEvaluationStructureOrThrow } from "./evaluationStructureRegistry.js";
-import { buildEvaluationStructureContext } from "./evaluationStructureContext.js";
+} from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
+import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
+import { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 
 const getStructureForIssueStage = ({ issue, stage }) => {

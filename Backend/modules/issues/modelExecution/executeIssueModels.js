@@ -3,10 +3,10 @@ import {
   buildCriteriaWeightingRequestPayload,
   buildIssueModelExecutionResult,
   buildIssueModelRequestPayload,
-} from "./issueModelExecution.builder.js";
+} from "./buildIssueModelExecutionArtifacts.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { executeApiModelRequest } from "./executeApiModelRequest.js";
-import { executeLocalCriteriaWeightingModelIfSupported } from "./criteriaWeightingExecutors.js";
+import { executeLocalCriteriaWeightingModelIfSupported } from "./executeLocalCriteriaWeightingModel.js";
 
 const executeCriteriaWeightingApiModel = async ({
   issue,

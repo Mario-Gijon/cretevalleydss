@@ -24,4 +24,10 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   }
+  ,
+  "exclude": [
+    "modules/decisionPlugins/**/modelParameter.shared.js",
+    "node_modules",
+    "dist"
+  ]
 }

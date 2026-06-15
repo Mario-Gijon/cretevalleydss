@@ -2,11 +2,11 @@ import { Criterion } from "../../../models/Criteria.js";
 import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { getOrderedAlternativesDb } from "../../issues/shared/ordering.js";
+import { getOrderedAlternativesDb } from "../shared/ordering.js";
 import {
   getOrderedAlternativeAndCriterionNames,
   serializeIssueExpressionDomainSnapshot,
-} from "./structures/shared/alternativeEvaluation.helpers.js";
+} from "./evaluationStructureData.js";
 
 const hasUsableSerializedExpressionDomain = (expressionDomain) =>
   Boolean(

@@ -3,7 +3,7 @@ import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { buildScenarioExecutionContext } from "./buildScenarioExecutionContext.js";
-import { executeScenarioModel } from "../../decisionPlugins/modelExecution/index.js";
+import { executeScenarioModel } from "../modelExecution/index.js";
 
 const normalizeScenarioCreationInputOrThrow = ({
   targetModelId,

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
-import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
+import { getIssueByIdOrThrow } from "../shared/queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
@@ -13,16 +13,17 @@ import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { endSessionSafely } from "../../../utils/common/mongoose.js";
 import {
   EVALUATION_STAGES,
-  ISSUE_STAGES,
-} from "./evaluation.constants.js";
-import { getEvaluationStructureOrThrow } from "./evaluationStructureRegistry.js";
-import { resolveEvaluationComputeLifecycle } from "./evaluation.lifecycle.js";
+} from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
+import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
+import { resolveEvaluationComputeLifecycle } from "./resolveEvaluationComputeLifecycle.js";
 import {
   executeAlternativeEvaluationModel,
   executeCriteriaWeightingModel,
 } from "../modelExecution/index.js";
-import { buildEvaluationStructureContext } from "./evaluationStructureContext.js";
-import { getOrderedCriterionNames } from "./structures/shared/criteriaWeighting.helpers.js";
+import { buildEvaluationStructureContext } from "../evaluations/buildEvaluationStructureContext.js";
+import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
+import { getOrderedCriterionNames } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
@@ -559,11 +560,17 @@ const computeAlternativeEvaluationStage = async ({
   apiModelsBaseUrl,
   httpClient,
 }) => {
+  const evaluationStructureData =
+    typeof structure?.validateBeforeCompute === "function"
+      ? await getOrderedAlternativeAndCriterionNames({ issue })
+      : null;
+
   if (typeof structure?.validateBeforeCompute === "function") {
     await structure.validateBeforeCompute({
       issue,
       evaluations,
       phase,
+      ...evaluationStructureData,
     });
   }
 

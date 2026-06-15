@@ -1,7 +1,7 @@
 import {
   EVALUATION_STAGES,
-  ISSUE_STAGES,
-} from "./evaluation.constants.js";
+} from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 import {
   createBadRequestError,
   createInternalError,

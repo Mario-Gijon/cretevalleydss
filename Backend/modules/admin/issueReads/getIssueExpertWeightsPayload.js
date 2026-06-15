@@ -20,7 +20,7 @@ import {
   validateExpertIdOrThrow,
 } from "./adminIssueReadLoaders.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/index.js";
-import { buildEvaluationStructureContext } from "../../decisionPlugins/evaluations/evaluationStructureContext.js";
+import { buildEvaluationStructureContext } from "../../issues/evaluations/index.js";
 
 const requireCriteriaWeightingStructureOrThrow = ({
   criteriaWeightingStructureKey,

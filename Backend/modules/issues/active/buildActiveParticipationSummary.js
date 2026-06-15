@@ -1,6 +1,6 @@
 import { createInternalError } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 
 const validateParticipationExpertOrThrow = (participation) => {
   const expert = participation.expert;

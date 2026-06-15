@@ -5,7 +5,7 @@ import { decorateCriteriaTree } from "../shared/criteriaTree.js";
 import { ACTIVE_STAGE_META, ACTIVE_STATUS_KEYS } from "./activeIssueUiCatalog.js";
 import { buildDeadlineInfo } from "./buildActiveDeadlineInfo.js";
 import { buildActiveWorkflowSteps } from "./buildActiveWorkflowSteps.js";
-import { ISSUE_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { ISSUE_STAGES } from "../shared/issueStages.js";
 import {
   buildActiveParticipationSummary,
 } from "./buildActiveParticipationSummary.js";

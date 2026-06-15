@@ -10,7 +10,7 @@ import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../../issues/shared/ordering.js";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "../../expressionDomains/buildIssueDomainConfig.js";
 
 import { createInternalError } from "../../../utils/common/errors.js";

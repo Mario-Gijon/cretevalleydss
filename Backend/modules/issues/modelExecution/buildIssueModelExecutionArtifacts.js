@@ -1,4 +1,4 @@
-import { getOrderedAlternativeAndCriterionNames } from "../evaluations/structures/shared/alternativeEvaluation.helpers.js";
+import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";

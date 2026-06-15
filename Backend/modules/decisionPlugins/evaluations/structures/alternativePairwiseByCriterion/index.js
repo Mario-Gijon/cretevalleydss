@@ -1,7 +1,6 @@
 import {
   EVALUATION_STAGES,
-} from "../../evaluation.constants.js";
-import { getOrderedAlternativeAndCriterionNames } from "../shared/alternativeEvaluation.helpers.js";
+} from "../../evaluationStages.js";
 import {
   buildExpectedPairsByCriterion,
 } from "./alternativePairwiseByCriterion.context.js";
@@ -33,9 +32,12 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
     });
   },
 
-  async validateBeforeCompute({ evaluations, issue }) {
-    const { alternativeNames, criteria, criterionNames } =
-      await getOrderedAlternativeAndCriterionNames({ issue });
+  async validateBeforeCompute({
+    evaluations,
+    alternativeNames,
+    criteria,
+    criterionNames,
+  }) {
     const expectedPairsByCriterion = buildExpectedPairsByCriterion({
       criteria,
       alternativeNames,

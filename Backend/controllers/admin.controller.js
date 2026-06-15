@@ -6,7 +6,7 @@ import { IssueModel } from "../models/IssueModels.js";
 import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
 import {
   computeIssueEvaluationStage,
-} from "../modules/decisionPlugins/evaluations/index.js";
+} from "../modules/issues/computation/index.js";
 import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
 
 import {

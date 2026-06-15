@@ -1,10 +1,10 @@
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../../../../issues/shared/ordering.js";
-import { IssueExpressionDomain } from "../../../../../models/IssueExpressionDomains.js";
-import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { toIdString } from "../../../../../utils/common/ids.js";
+} from "../shared/ordering.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 
 export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
   const [alternatives, criteria] = await Promise.all([

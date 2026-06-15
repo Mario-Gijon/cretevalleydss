@@ -8,7 +8,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
-import { executeApiModelRequest } from "../../../decisionPlugins/modelExecution/index.js";
+import { executeApiModelRequest } from "../../modelExecution/index.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,

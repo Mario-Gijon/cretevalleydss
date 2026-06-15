@@ -14,10 +14,12 @@ import { endSessionSafely } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import {
   computeIssueEvaluationStage,
+} from "../modules/issues/computation/index.js";
+import {
   getIssueEvaluationPayload,
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
-} from "../modules/decisionPlugins/evaluations/index.js";
+} from "../modules/issues/evaluations/index.js";
 
 import {
   getActiveIssuesPayload,
