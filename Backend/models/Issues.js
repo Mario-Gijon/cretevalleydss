@@ -161,8 +161,8 @@ const issueSchema = new Schema(
     ],
     consensusPhase: {
       type: Number,
-      min: 1,
-      default: 1,
+      min: 0,
+      default: 0,
     },
   },
   {

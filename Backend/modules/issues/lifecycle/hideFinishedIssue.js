@@ -38,7 +38,7 @@ const getFinishedIssueExitPhase = (issue) => {
 
   const { consensusPhase } = issue;
 
-  if (!Number.isInteger(consensusPhase) || consensusPhase < 1) {
+  if (!Number.isInteger(consensusPhase) || consensusPhase < 0) {
     throw createInternalError("Issue consensusPhase is invalid", {
       field: "consensusPhase",
       details: {

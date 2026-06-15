@@ -19,7 +19,7 @@ export const resolveIssueExitPhase = async ({ issueId, session = null }) => {
 
   const { consensusPhase } = latestAlternativeStageResult;
 
-  if (!Number.isInteger(consensusPhase) || consensusPhase < 1) {
+  if (!Number.isInteger(consensusPhase) || consensusPhase < 0) {
     throw createInternalError("IssueStageResult consensusPhase is invalid", {
       field: "consensusPhase",
       details: {

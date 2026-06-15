@@ -42,8 +42,8 @@ export const buildActiveIssueCollections = ({
       });
     }
 
-    if (!Number.isInteger(stageResult.consensusPhase) || stageResult.consensusPhase <= 0) {
-      throw createInternalError("IssueStageResult consensusPhase must be a positive integer", {
+    if (!Number.isInteger(stageResult.consensusPhase) || stageResult.consensusPhase < 0) {
+      throw createInternalError("IssueStageResult consensusPhase must be a non-negative integer", {
         field: "consensusPhase",
         details: {
           issueId,

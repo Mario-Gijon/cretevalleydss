@@ -38,7 +38,7 @@ export const buildIssueCreationDocument = ({
     alternativeEvaluationStructureKey,
     supportsConsensus,
     simulateConsensus,
-    consensusPhase: 1,
+    consensusPhase: 0,
     isConsensus,
     name: issueName,
     description: issueDescription,

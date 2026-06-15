@@ -72,7 +72,7 @@ export const resolveEvaluationComputeLifecycle = ({
   }
 
   const currentConsensusPhase = issue?.consensusPhase;
-  if (!Number.isInteger(currentConsensusPhase) || currentConsensusPhase < 1) {
+  if (!Number.isInteger(currentConsensusPhase) || currentConsensusPhase < 0) {
     throw createInternalError("Issue consensusPhase is invalid", {
       field: "consensusPhase",
       details: {

@@ -52,6 +52,9 @@ const cloneSerializable = (value, fallback) => {
 const normalizePositiveIntegerOrNull = (value) =>
   Number.isInteger(value) && value > 0 ? value : null;
 
+const normalizeNonNegativeIntegerOrNull = (value) =>
+  Number.isInteger(value) && value >= 0 ? value : null;
+
 const normalizeFiniteNumberOrNull = (value) =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
@@ -434,7 +437,7 @@ const loadPreviousCollectiveEvaluations = async ({
     return {};
   }
 
-  if (!Number.isInteger(consensusPhase) || consensusPhase <= 1) {
+  if (!Number.isInteger(consensusPhase) || consensusPhase <= 0) {
     return {};
   }
 
@@ -466,8 +469,8 @@ export const buildEvaluationStructureContext = async ({
   });
   const resolvedStage = resolvedStructure?.stage || stage || null;
   const resolvedConsensusPhase =
-    normalizePositiveIntegerOrNull(consensusPhase) ??
-    normalizePositiveIntegerOrNull(issue?.consensusPhase);
+    normalizeNonNegativeIntegerOrNull(consensusPhase) ??
+    normalizeNonNegativeIntegerOrNull(issue?.consensusPhase);
 
   const [alternativeItems, leafItems, criteriaDocs, model] = await Promise.all([
     serializeAlternativeItemsOrThrow({ issue, alternatives }),

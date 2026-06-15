@@ -141,7 +141,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
         name: criterionName,
         type: null,
       })),
-      consensusPhase: 1,
+      consensusPhase: 0,
       previousStageResult: null,
       structure: {
         key: criteriaWeightingRuntime.criteriaWeightingStructureKey,

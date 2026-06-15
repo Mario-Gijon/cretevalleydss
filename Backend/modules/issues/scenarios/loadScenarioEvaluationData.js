@@ -25,7 +25,7 @@ export const resolveLatestAlternativeResultOrThrow = async ({ issue }) => {
 
   const phase = latestAlternativeResult.consensusPhase;
 
-  if (!Number.isInteger(phase) || phase < 1) {
+  if (!Number.isInteger(phase) || phase < 0) {
     throw createInternalError("Alternative evaluation result has invalid consensus phase", {
       field: "consensusPhase",
       details: {

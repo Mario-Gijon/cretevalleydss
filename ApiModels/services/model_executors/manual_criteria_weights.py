@@ -1,3 +1,4 @@
+import math
 from typing import Any
 
 from fastapi.responses import JSONResponse
@@ -68,6 +69,11 @@ def execute_manual_criteria_weights(
                         f"Manual criteria weights payload has invalid weightsByCriterion['{criterion_name}']"
                     )
 
+                if not math.isfinite(numeric_weight):
+                    return error_response(
+                        f"Manual criteria weights payload has non-finite weightsByCriterion['{criterion_name}']"
+                    )
+
                 criteria_sums[criterion_name] += numeric_weight
 
         averaged_weights_by_criterion = {
@@ -76,7 +82,7 @@ def execute_manual_criteria_weights(
         }
 
         total_average = sum(averaged_weights_by_criterion.values())
-        if total_average <= 0:
+        if not math.isfinite(total_average) or total_average <= 0:
             return error_response(
                 "Manual criteria weights cannot be normalized because their total is not positive"
             )

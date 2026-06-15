@@ -6,7 +6,7 @@ import { toIdString } from "../../../../utils/common/ids.js";
 import { getAcceptedExpertsMissingCompletedEvaluations } from "../../shared/evaluationCoverage.js";
 
 export const normalizeConsensusPhaseOrThrow = ({ value, issueId, stage }) => {
-  if (!Number.isInteger(value) || value < 1) {
+  if (!Number.isInteger(value) || value < 0) {
     throw createInternalError("IssueStageResult has invalid consensusPhase", {
       field: "consensusPhase",
       details: {

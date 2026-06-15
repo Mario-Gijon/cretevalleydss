@@ -24,7 +24,7 @@ const firstDefinedValue = (values = []) => {
 };
 
 const resolveModelSpecificOutput = ({ viewIssue, currentPhaseIndex }) => {
-  const selectedPhase = Number(currentPhaseIndex) + 1;
+  const selectedPhase = Number(currentPhaseIndex);
   const findByPhase = (entries = []) =>
     entries.find((entry) => Number(entry?.phase) === selectedPhase) || null;
 

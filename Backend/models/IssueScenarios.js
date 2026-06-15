@@ -117,7 +117,7 @@ const issueScenarioSchema = new Schema(
     inputs: {
       consensusPhaseUsed: {
         type: Number,
-        default: 1,
+        default: 0,
       },
       expertsOrder: {
         type: [String],

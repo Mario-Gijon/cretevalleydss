@@ -17,8 +17,8 @@ const issueStageResultSchema = new Schema(
     consensusPhase: {
       type: Number,
       required: true,
-      min: 1,
-      default: 1,
+      min: 0,
+      default: 0,
       index: true,
     },
     consensusMeasure: {

@@ -9,6 +9,7 @@ import {
   SummaryAccordionRow,
 } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import { formatConsensusRoundLabel } from "../logic/formatConsensusRoundLabel";
 
 /**
  * Seccion Summary del dialogo de issue finalizado.
@@ -137,7 +138,13 @@ const SummarySection = () => {
             />
             <Row
               label="Consensus reached phase"
-              value={viewIssue.summary.consensusInfo.consensusReachedPhase ?? "—"}
+              value={
+                Number.isInteger(viewIssue.summary.consensusInfo.consensusReachedPhase)
+                  ? formatConsensusRoundLabel(
+                      viewIssue.summary.consensusInfo.consensusReachedPhase
+                    )
+                  : "—"
+              }
             />
             <Row
               label="Finalization reason"

@@ -66,7 +66,7 @@ export const buildActiveIssueView = ({
   const uiStage =
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
     issue.isConsensus &&
-    issue.consensusPhase > 1
+    issue.consensusPhase > 0
       ? ALTERNATIVE_CONSENSUS_UI_STAGE
       : stage;
 

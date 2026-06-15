@@ -29,6 +29,7 @@ import {
   loadConsensusAlternativeStageResultsOrThrow,
   loadFinishedConsensusData,
 } from "./loadFinishedPayloadData.js";
+import { formatConsensusRoundLabel } from "../../shared/formatConsensusRoundLabel.js";
 
 export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const alternativeStageResults = await loadConsensusAlternativeStageResultsOrThrow({
@@ -184,8 +185,8 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const latestRankedAlternatives =
     alternativesRankings[alternativesRankings.length - 1].rankedAlternatives;
 
-  if (!Number.isInteger(issue.consensusPhase) || issue.consensusPhase <= 0) {
-    throw createInternalError("Issue consensusPhase must be a positive integer", {
+  if (!Number.isInteger(issue.consensusPhase) || issue.consensusPhase < 0) {
+    throw createInternalError("Issue consensusPhase must be a non-negative integer", {
       field: "consensusPhase",
       details: {
         issueId: toIdString(issue._id),
@@ -196,7 +197,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
 
   const modelExecution = latestRound.modelExecution;
 
-  const scatterPlotByPhase = Array(issue.consensusPhase).fill(null);
+  const scatterPlotByPhase = Array(issue.consensusPhase + 1).fill(null);
   for (const [index, stageResult] of alternativeStageResults.entries()) {
     const phase = phaseList[index];
     const phaseEvaluations = completedByPhase.get(phase);
@@ -220,11 +221,11 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     });
     if (
       Number.isInteger(phase) &&
-      phase > 0 &&
+      phase >= 0 &&
       isPlainObject(plotsGraphic) &&
       Object.keys(plotsGraphic).length > 0
     ) {
-      scatterPlotByPhase[phase - 1] = plotsGraphic;
+      scatterPlotByPhase[phase] = plotsGraphic;
     }
   }
 
@@ -266,7 +267,9 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     analyticalGraphs: {
       ...(hasScatterData ? { scatterPlot: scatterPlotByPhase } : {}),
       consensusLevelLineChart: {
-        labels: consensusLineSeries.map((entry) => `Round ${entry.phase}`),
+        labels: consensusLineSeries.map((entry) =>
+          formatConsensusRoundLabel(entry.phase)
+        ),
         data: consensusLineSeries.map((entry) => entry.consensusMeasure),
         threshold: issue.consensusThreshold ?? null,
         series: consensusLineSeries,

@@ -8,7 +8,7 @@ export const loadPreviousCollectiveReference = async ({ issue, stage }) => {
   }
 
   const currentConsensusPhase = Number(issue?.consensusPhase);
-  if (!Number.isInteger(currentConsensusPhase) || currentConsensusPhase <= 1) {
+  if (!Number.isInteger(currentConsensusPhase) || currentConsensusPhase <= 0) {
     return null;
   }
 

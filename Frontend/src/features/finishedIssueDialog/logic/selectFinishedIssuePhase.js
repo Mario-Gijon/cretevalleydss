@@ -24,7 +24,7 @@ const countLeafCriteria = (nodes) => {
 const getLastPhaseFromRounds = (rounds = []) => {
   const phases = rounds
     .map((round) => Number(round?.phase))
-    .filter((phase) => Number.isInteger(phase) && phase > 0);
+    .filter((phase) => Number.isInteger(phase) && phase >= 0);
 
   if (phases.length === 0) return null;
   return Math.max(...phases);
@@ -57,51 +57,52 @@ export const getLastPhaseIndex = (issueInfo) => {
   const historyPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
   );
-  if (historyPhase) return historyPhase - 1;
+  if (historyPhase !== null) return historyPhase;
 
   const roundsPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
   );
-  if (roundsPhase) return roundsPhase - 1;
+  if (roundsPhase !== null) return roundsPhase;
 
   const consensusPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
   );
-  if (consensusPhase) return consensusPhase - 1;
+  if (consensusPhase !== null) return consensusPhase;
 
   const keys = Object.keys(issueInfo?.expertsRatings || {})
     .map((key) => parseInt(key, 10))
     .filter((key) => !Number.isNaN(key));
 
-  const last = Math.max(...keys, 0) - 1;
-  return Math.max(0, last);
+  return Math.max(...keys, 0);
 };
 
 export const getRoundsCount = (issueInfo) => {
   const historyPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensusHistory) ? issueInfo.consensusHistory : []
   );
-  if (historyPhase) return historyPhase;
+  if (historyPhase !== null) return historyPhase + 1;
 
   const roundsPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensusRounds) ? issueInfo.consensusRounds : []
   );
-  if (roundsPhase) return roundsPhase;
+  if (roundsPhase !== null) return roundsPhase + 1;
 
   const consensusPhase = getLastPhaseFromRounds(
     Array.isArray(issueInfo?.consensus) ? issueInfo.consensus : []
   );
-  if (consensusPhase) return consensusPhase;
+  if (consensusPhase !== null) return consensusPhase + 1;
 
   const fromConsensus = issueInfo?.summary?.consensusInfo?.consensusReachedPhase;
-  if (typeof fromConsensus === "number" && fromConsensus > 0) return fromConsensus;
+  if (Number.isInteger(fromConsensus) && fromConsensus >= 0) {
+    return fromConsensus + 1;
+  }
 
   const keys = Object.keys(issueInfo?.expertsRatings || {})
     .map((key) => parseInt(key, 10))
     .filter((key) => !Number.isNaN(key));
 
   const derived = Math.max(...keys, 0);
-  if (derived > 0) return derived;
+  if (keys.length > 0) return derived + 1;
 
   const rankings = issueInfo?.alternativesRankings;
   if (Array.isArray(rankings) && rankings.length) return rankings.length;

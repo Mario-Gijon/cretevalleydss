@@ -6,6 +6,7 @@ import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import { Pill } from "./FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
+import { formatConsensusRoundLabel } from "../logic/formatConsensusRoundLabel";
 
 /**
  * Cabecera sticky del dialogo de issue finalizado.
@@ -142,7 +143,7 @@ const FinishedIssueDialogHeader = () => {
             }}
           >
             {Array.from({ length: roundsCount }).map((_, index) => (
-              <Tab key={index} label={`Round ${index + 1}`} />
+              <Tab key={index} label={formatConsensusRoundLabel(index)} />
             ))}
           </Tabs>
         </Box>

@@ -80,7 +80,7 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       out.modelParams.base?.paramsResolved,
   };
 
-  out.alternativesRankings = [{ phase: 1, rankedAlternatives: normalizedRanking }];
+  out.alternativesRankings = [{ phase: 0, rankedAlternatives: normalizedRanking }];
   out.consensus = [];
   out.consensusHistory = [];
   out.consensusRounds = [];

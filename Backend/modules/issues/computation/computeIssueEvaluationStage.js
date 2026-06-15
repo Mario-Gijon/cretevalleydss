@@ -17,6 +17,7 @@ import {
 import { ISSUE_STAGES } from "../shared/issueStages.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 import { resolveEvaluationComputeLifecycle } from "./resolveEvaluationComputeLifecycle.js";
+import { formatConsensusRoundLabel } from "../shared/formatConsensusRoundLabel.js";
 import {
   executeAlternativeEvaluationModel,
   executeCriteriaWeightingModel,
@@ -583,7 +584,7 @@ const computeAlternativeEvaluationStage = async ({
     httpClient,
     message:
       issue.isConsensus === true
-        ? `Consensus round ${phase} for '${issue.name}' computed successfully.`
+        ? `${formatConsensusRoundLabel(phase)} for '${issue.name}' computed successfully.`
         : `Issue '${issue.name}' computed successfully.`,
     issueUpdates:
       issue.isConsensus === true
@@ -638,7 +639,7 @@ const ensureSimulatedConsensusIssueConfigOrThrow = ({ issue, stage }) => {
 
   if (
     !Number.isInteger(issue?.consensusPhase) ||
-    issue.consensusPhase < 1
+    issue.consensusPhase < 0
   ) {
     throw createInternalError("Issue consensusPhase is invalid", {
       field: "consensusPhase",

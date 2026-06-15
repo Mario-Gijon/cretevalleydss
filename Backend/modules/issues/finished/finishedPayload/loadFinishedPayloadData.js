@@ -212,7 +212,7 @@ export const groupCompletedEvaluationsByPhase = ({ evaluations }) => {
     (accumulator, evaluation) => {
       const phase = Number(evaluation.consensusPhase);
 
-      if (!Number.isInteger(phase) || phase < 1) {
+      if (!Number.isInteger(phase) || phase < 0) {
         throw createInternalError(
           "Finished evaluation consensusPhase is invalid",
           {

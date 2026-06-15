@@ -59,7 +59,7 @@ export const useFinishedIssueRatingsView = ({
   const unsupportedEvaluationStructure = Boolean(evaluationStructure) && !Matrix;
 
   const phaseRatings = useMemo(
-    () => viewIssue?.expertsRatings?.[currentPhaseIndex + 1],
+    () => viewIssue?.expertsRatings?.[currentPhaseIndex],
     [viewIssue, currentPhaseIndex]
   );
 

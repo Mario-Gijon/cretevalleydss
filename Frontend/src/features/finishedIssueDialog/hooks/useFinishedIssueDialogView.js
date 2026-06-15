@@ -248,7 +248,7 @@ export const useFinishedIssueDialogView = ({
     if (info) setCurrentPhaseIndex(0);
   }, [selectedRunKey, issue, runCache, openFinishedIssueDialog]);
 
-  const selectedPhase = currentPhaseIndex + 1;
+  const selectedPhase = currentPhaseIndex;
 
   const baseModelParamsBlock = issue?.modelParams || null;
   const availableModelsRaw = baseModelParamsBlock?.availableModels;
