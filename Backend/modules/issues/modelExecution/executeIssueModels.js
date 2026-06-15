@@ -1,9 +1,9 @@
 import {
-  buildCriteriaWeightingExecutionResult,
   buildCriteriaWeightingRequestPayload,
-  buildIssueModelExecutionResult,
-  buildIssueModelRequestPayload,
-} from "./buildIssueModelExecutionArtifacts.js";
+} from "./buildCriteriaWeightingRequestPayload.js";
+import { buildCriteriaWeightingExecutionResult } from "./buildCriteriaWeightingExecutionResult.js";
+import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult.js";
+import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { executeApiModelRequest } from "./executeApiModelRequest.js";
 import { executeLocalCriteriaWeightingModelIfSupported } from "./executeLocalCriteriaWeightingModel.js";

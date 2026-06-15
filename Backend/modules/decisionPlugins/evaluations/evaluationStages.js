@@ -1,8 +1,6 @@
-import { ISSUE_STAGES } from "../../issues/shared/issueStages.js";
-
 export const EVALUATION_STAGES = Object.freeze({
-  CRITERIA_WEIGHTING: ISSUE_STAGES.CRITERIA_WEIGHTING,
-  ALTERNATIVE_EVALUATION: ISSUE_STAGES.ALTERNATIVE_EVALUATION,
+  CRITERIA_WEIGHTING: "criteriaWeighting",
+  ALTERNATIVE_EVALUATION: "alternativeEvaluation",
 });
 
 export const EVALUATION_STAGE_VALUES = Object.freeze(
