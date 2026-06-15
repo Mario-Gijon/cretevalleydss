@@ -9,14 +9,14 @@ import {
 } from "./alternativeCriteriaMatrix.payload.js";
 
 export const buildGetPayload = async ({
-  storedEvaluation,
-  structureContext,
+  payload,
+  evaluationContext,
 }) => {
   const {
     alternativeNames,
     criteria: resolvedCriteria,
   } = await resolveAlternativesAndCriteria({
-    structureContext,
+    evaluationContext,
   });
   const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
     buildExpectedCellMetadata({
@@ -24,8 +24,8 @@ export const buildGetPayload = async ({
       criteria: resolvedCriteria,
     });
 
-  const storedCells = isPlainObject(storedEvaluation?.payload?.cells)
-    ? storedEvaluation.payload.cells
+  const storedCells = isPlainObject(payload?.cells)
+    ? payload.cells
     : {};
 
   const cells = expectedCellKeys.reduce((accumulator, cellKey) => {

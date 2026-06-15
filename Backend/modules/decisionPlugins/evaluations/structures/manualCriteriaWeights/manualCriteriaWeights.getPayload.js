@@ -21,39 +21,36 @@ const toWeightsByCriterionFromStoredPayload = (
   }, {});
 };
 
-const resolveCriterionNames = async ({ structureContext }) => {
-  if (Array.isArray(structureContext?.leafCriteria) && structureContext.leafCriteria.length > 0) {
-    return structureContext.leafCriteria
-      .map((criterion) =>
-        typeof criterion === "string"
-          ? criterion.trim()
-          : String(criterion?.name || "").trim()
-      )
-      .filter(Boolean);
+const resolveCriterionNames = async ({ evaluationContext }) => {
+  if (
+    Array.isArray(evaluationContext?.criteria?.leafNames) &&
+    evaluationContext.criteria.leafNames.length > 0
+  ) {
+    return evaluationContext.criteria.leafNames.filter(Boolean);
   }
 
   return [];
 };
 
 export const buildGetPayload = async ({
-  storedEvaluation,
-  structureContext,
+  payload,
+  evaluationContext,
 }) => {
-  const criterionNames = await resolveCriterionNames({ structureContext });
+  const criterionNames = await resolveCriterionNames({ evaluationContext });
 
-  const payload = !storedEvaluation
+  const normalizedPayload = !payload || typeof payload !== "object"
     ? {
         weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames),
       }
     : {
         weightsByCriterion: toWeightsByCriterionFromStoredPayload(
-          storedEvaluation?.payload?.weightsByCriterion,
+          payload?.weightsByCriterion,
           criterionNames
         ),
       };
 
   return {
-    payload,
+    payload: normalizedPayload,
     criterionNames,
   };
 };

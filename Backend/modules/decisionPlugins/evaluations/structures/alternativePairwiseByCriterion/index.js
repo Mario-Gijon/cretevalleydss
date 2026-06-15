@@ -14,20 +14,20 @@ import {
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  async get({ storedEvaluation, structureContext }) {
+  async get({ payload: storedPayload, evaluationContext }) {
     const { payload } = await buildGetPayload({
-      storedEvaluation,
-      structureContext,
+      payload: storedPayload,
+      evaluationContext,
     });
     return payload;
   },
 
-  async save({ mode, payload, structureContext }) {
+  async save({ mode, payload, evaluationContext }) {
     const requireValue = resolveRequireValueFromModeOrThrow(mode);
 
     return normalizePayloadOrThrow({
       payload,
-      structureContext,
+      evaluationContext,
       requireValue,
     });
   },

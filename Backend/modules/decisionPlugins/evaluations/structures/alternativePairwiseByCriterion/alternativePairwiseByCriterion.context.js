@@ -3,33 +3,35 @@ import { createInternalError } from "../../../../../utils/common/errors.js";
 export const buildComparisonKey = (alternativeA, alternativeB) =>
   `${alternativeA}::${alternativeB}`;
 
-const requireStructureContextOrThrow = (structureContext) => {
+const requireEvaluationContextOrThrow = (evaluationContext) => {
   if (
-    !structureContext ||
-    typeof structureContext !== "object" ||
-    Array.isArray(structureContext)
+    !evaluationContext ||
+    typeof evaluationContext !== "object" ||
+    Array.isArray(evaluationContext)
   ) {
     throw createInternalError("Evaluation structure context is invalid", {
-      field: "structureContext",
+      field: "evaluationContext",
     });
   }
 
-  return structureContext;
+  return evaluationContext;
 };
 
-const requireStructureAlternativeNamesOrThrow = (structureContext) => {
-  const { alternatives } = requireStructureContextOrThrow(structureContext);
+const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
+  const alternatives = requireEvaluationContextOrThrow(
+    evaluationContext
+  )?.alternatives;
 
-  if (!Array.isArray(alternatives)) {
+  if (!Array.isArray(alternatives?.items)) {
     throw createInternalError(
       "Evaluation structure context alternatives must be an array",
       {
-        field: "structureContext.alternatives",
+        field: "evaluationContext.alternatives.items",
       }
     );
   }
 
-  return alternatives.map((alternative, index) => {
+  return alternatives.items.map((alternative, index) => {
     if (
       !alternative ||
       typeof alternative !== "object" ||
@@ -38,7 +40,7 @@ const requireStructureAlternativeNamesOrThrow = (structureContext) => {
       alternative.name.trim() === ""
     ) {
       throw createInternalError("Evaluation structure alternative is invalid", {
-        field: `structureContext.alternatives[${index}]`,
+        field: `evaluationContext.alternatives.items[${index}]`,
       });
     }
 
@@ -46,19 +48,19 @@ const requireStructureAlternativeNamesOrThrow = (structureContext) => {
   });
 };
 
-const requireStructureCriteriaOrThrow = (structureContext) => {
-  const { leafCriteria } = requireStructureContextOrThrow(structureContext);
+const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
+  const criteria = requireEvaluationContextOrThrow(evaluationContext)?.criteria;
 
-  if (!Array.isArray(leafCriteria)) {
+  if (!Array.isArray(criteria?.leafItems)) {
     throw createInternalError(
       "Evaluation structure context leafCriteria must be an array",
       {
-        field: "structureContext.leafCriteria",
+        field: "evaluationContext.criteria.leafItems",
       }
     );
   }
 
-  return leafCriteria.map((criterion, index) => {
+  return criteria.leafItems.map((criterion, index) => {
     if (
       !criterion ||
       typeof criterion !== "object" ||
@@ -67,7 +69,7 @@ const requireStructureCriteriaOrThrow = (structureContext) => {
       criterion.name.trim() === ""
     ) {
       throw createInternalError("Evaluation structure criterion is invalid", {
-        field: `structureContext.leafCriteria[${index}]`,
+        field: `evaluationContext.criteria.leafItems[${index}]`,
       });
     }
 
@@ -104,10 +106,10 @@ export const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) =>
   return expectedPairsByCriterion;
 };
 
-export const resolveAlternativesAndCriteria = async ({ structureContext }) => {
+export const resolveAlternativesAndCriteria = async ({ evaluationContext }) => {
   const normalizedAlternatives =
-    requireStructureAlternativeNamesOrThrow(structureContext);
-  const normalizedCriteria = requireStructureCriteriaOrThrow(structureContext);
+    requireEvaluationAlternativeNamesOrThrow(evaluationContext);
+  const normalizedCriteria = requireEvaluationCriteriaOrThrow(evaluationContext);
 
   return {
     alternativeNames: normalizedAlternatives,

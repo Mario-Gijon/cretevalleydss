@@ -281,7 +281,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
 
   if (isRequired && typeof criteriaWeightingStructure.get !== "function") {
     throw createInternalError(
-      "Criteria weighting structure must implement get({ storedEvaluation, structureContext })",
+      "Criteria weighting structure must implement get({ payload, evaluationContext })",
       {
         field: "criteriaWeightingStructureKey",
         details: {
@@ -293,9 +293,11 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
   }
 
   const mapByExpertEmail = {};
-  const structureContext = isRequired
+  const evaluationContext = isRequired
     ? await buildEvaluationStructureContext({
         issue,
+        structure: criteriaWeightingStructure,
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
         leafCriteria: orderedLeafCriteria,
       })
     : null;
@@ -350,8 +352,8 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
 
     const status = evaluation.completed === true ? "submitted" : "draft";
     const displayPayload = await criteriaWeightingStructure.get({
-      storedEvaluation: evaluation,
-      structureContext,
+      payload: evaluation?.payload ?? {},
+      evaluationContext,
     });
     if (!isPlainObject(displayPayload)) {
       throw createInternalError(

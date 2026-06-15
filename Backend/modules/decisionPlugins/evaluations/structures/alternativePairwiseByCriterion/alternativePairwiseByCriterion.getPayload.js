@@ -6,15 +6,15 @@ import {
 import { buildEmptyCell } from "./alternativePairwiseByCriterion.payload.js";
 
 export const buildGetPayload = async ({
-  storedEvaluation,
-  structureContext,
+  payload,
+  evaluationContext,
 }) => {
   const {
     alternativeNames,
     criteria: resolvedCriteria,
     criterionNames,
   } = await resolveAlternativesAndCriteria({
-    structureContext,
+    evaluationContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
     criteria: resolvedCriteria,
@@ -22,9 +22,9 @@ export const buildGetPayload = async ({
   });
 
   const storedComparisonsByCriterion = isPlainObject(
-    storedEvaluation?.payload?.comparisonsByCriterion
+    payload?.comparisonsByCriterion
   )
-    ? storedEvaluation.payload.comparisonsByCriterion
+    ? payload.comparisonsByCriterion
     : {};
 
   const comparisonsByCriterion = {};

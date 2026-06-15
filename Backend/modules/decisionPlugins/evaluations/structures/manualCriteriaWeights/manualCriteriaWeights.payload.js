@@ -50,7 +50,7 @@ const normalizeWeightValueOrThrow = (rawValue, { criterionName, allowEmpty }) =>
 
 export const normalizeManualPayloadOrThrow = async ({
   payload,
-  structureContext,
+  evaluationContext,
   allowEmpty,
 }) => {
   if (!isPlainObject(payload)) {
@@ -67,14 +67,8 @@ export const normalizeManualPayloadOrThrow = async ({
     });
   }
 
-  const criterionNames = Array.isArray(structureContext?.leafCriteria)
-    ? structureContext.leafCriteria
-        .map((criterion) =>
-          typeof criterion === "string"
-            ? criterion.trim()
-            : String(criterion?.name || "").trim()
-        )
-        .filter(Boolean)
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames.filter(Boolean)
     : [];
 
   const weightsByCriterion = criterionNames.reduce((accumulator, criterionName) => {

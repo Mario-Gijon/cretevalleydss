@@ -84,16 +84,19 @@ export const getIssueExpertEvaluationsPayload = async ({
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
     issue.alternativeEvaluationStructureKey
   );
-  const structureContext = await buildEvaluationStructureContext({
+  const evaluationContext = await buildEvaluationStructureContext({
     issue,
+    structure: alternativeEvaluationStructure,
+    stage: alternativeEvaluationStructure.stage,
+    consensusPhase: latestAlternativeStageResult?.consensusPhase ?? issue.consensusPhase,
     alternatives: orderedAlternatives,
     leafCriteria: orderedLeafCriteria,
     collectiveEvaluations: collectiveSource,
   });
 
   const evaluations = await alternativeEvaluationStructure.get({
-    storedEvaluation: evaluationDoc,
-    structureContext,
+    payload: evaluationDoc?.payload ?? {},
+    evaluationContext,
   });
   const progress = await resolveEvaluationProgressStats({
     storedEvaluation: evaluationDoc,

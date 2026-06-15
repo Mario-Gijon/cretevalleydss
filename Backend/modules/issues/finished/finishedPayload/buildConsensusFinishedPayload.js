@@ -124,16 +124,20 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
     const collectiveEvaluations = buildFinishedCollectiveEvaluations({
       stageResult,
     });
-    const structureContext = await buildEvaluationStructureContext({
+    const evaluationContext = await buildEvaluationStructureContext({
       issue,
+      structure: expertRatingsContext.structure,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      consensusPhase: phase,
       alternatives: context.alternatives,
       leafCriteria: context.orderedLeafCriteria,
+      criteria: context.criteria,
       collectiveEvaluations,
     });
 
     expertsRatings[phase] = await buildFinishedExpertRatingsByPhase({
       structure: expertRatingsContext.structure,
-      structureContext,
+      evaluationContext,
       evaluations: phaseEvaluations,
       stageResult,
       collectiveEvaluations,

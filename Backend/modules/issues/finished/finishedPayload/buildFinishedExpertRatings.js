@@ -29,7 +29,7 @@ export const buildFinishedExpertRatingsContext = async ({
 
 export const buildFinishedExpertRatingsByPhase = async ({
   structure,
-  structureContext,
+  evaluationContext,
   evaluations,
   stageResult,
   collectiveEvaluations,
@@ -38,7 +38,7 @@ export const buildFinishedExpertRatingsByPhase = async ({
   const expertEvaluations = await buildFinishedExpertEvaluationsByEmail({
     structure,
     evaluations,
-    structureContext,
+    evaluationContext,
   });
 
   const ratings = {};

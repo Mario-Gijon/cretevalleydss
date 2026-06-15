@@ -744,14 +744,17 @@ const saveSimulatedEvaluationsForNextPhaseOrThrow = async ({
       expertId,
       expertSuggestion,
     });
-    const structureContext = await buildEvaluationStructureContext({
+    const evaluationContext = await buildEvaluationStructureContext({
       issue,
+      structure,
+      stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      consensusPhase: nextPhase,
     });
 
     const normalizedPayload = await structure.save({
       mode: "submit",
       payload: suggestedPayload,
-      structureContext,
+      evaluationContext,
     });
 
     await IssueEvaluation.findOneAndUpdate(

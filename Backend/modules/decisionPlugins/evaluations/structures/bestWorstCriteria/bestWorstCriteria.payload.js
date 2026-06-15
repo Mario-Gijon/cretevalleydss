@@ -62,7 +62,7 @@ const normalizeComparisonsMapOrThrow = (
 
 export const normalizePayloadOrThrow = async ({
   payload,
-  structureContext,
+  evaluationContext,
 }) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("payload must be an object", {
@@ -70,14 +70,8 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  const criterionNames = Array.isArray(structureContext?.leafCriteria)
-    ? structureContext.leafCriteria
-        .map((criterion) =>
-          typeof criterion === "string"
-            ? criterion.trim()
-            : String(criterion?.name || "").trim()
-        )
-        .filter(Boolean)
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames.filter(Boolean)
     : [];
 
   const bestCriterion = normalizeText(payload.bestCriterion);

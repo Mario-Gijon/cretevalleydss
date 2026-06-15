@@ -14,14 +14,17 @@ export const saveIssueEvaluationDraft = async ({
     stage,
   });
 
-  const structureContext = await buildEvaluationStructureContext({
+  const evaluationContext = await buildEvaluationStructureContext({
     issue,
+    structure,
+    stage,
+    consensusPhase: issue.consensusPhase,
   });
 
   const normalizedPayload = await structure.save({
     mode: "draft",
     payload,
-    structureContext,
+    evaluationContext,
   });
 
   await upsertIssueEvaluation({

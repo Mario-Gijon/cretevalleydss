@@ -12,20 +12,20 @@ export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",
   label: "Manual weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  async get({ storedEvaluation, structureContext }) {
+  async get({ payload: storedPayload, evaluationContext }) {
     const { payload } = await buildGetPayload({
-      storedEvaluation,
-      structureContext,
+      payload: storedPayload,
+      evaluationContext,
     });
     return payload;
   },
 
-  async save({ mode, payload, structureContext }) {
+  async save({ mode, payload, evaluationContext }) {
     const allowEmpty = resolveAllowEmptyFromModeOrThrow(mode);
 
     const normalized = await normalizeManualPayloadOrThrow({
       payload,
-      structureContext,
+      evaluationContext,
       allowEmpty,
     });
 

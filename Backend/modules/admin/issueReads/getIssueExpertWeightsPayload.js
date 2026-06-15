@@ -150,16 +150,19 @@ export const getIssueExpertWeightsPayload = async ({
         issueId: toIdString(issue._id),
       })
     : null;
-  const criteriaWeightingStructureContext = criteriaWeightingStructure
+  const criteriaWeightingEvaluationContext = criteriaWeightingStructure
     ? await buildEvaluationStructureContext({
         issue,
+        structure: criteriaWeightingStructure,
+        stage: criteriaWeightingStructure.stage,
+        consensusPhase: weightDoc?.consensusPhase ?? issue.consensusPhase,
         leafCriteria: orderedLeafCriteria,
       })
     : null;
   const criteriaWeightingPayload = criteriaWeightingStructure
     ? await criteriaWeightingStructure.get({
-        storedEvaluation: weightDoc,
-        structureContext: criteriaWeightingStructureContext,
+        payload: weightDoc?.payload ?? {},
+        evaluationContext: criteriaWeightingEvaluationContext,
       })
     : null;
 

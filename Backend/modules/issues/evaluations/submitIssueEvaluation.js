@@ -18,14 +18,17 @@ export const submitIssueEvaluation = async ({
     session,
   });
 
-  const structureContext = await buildEvaluationStructureContext({
+  const evaluationContext = await buildEvaluationStructureContext({
     issue,
+    structure,
+    stage,
+    consensusPhase: issue.consensusPhase,
   });
 
   const normalizedPayload = await structure.save({
     mode: "submit",
     payload,
-    structureContext,
+    evaluationContext,
   });
 
   await upsertIssueEvaluation({

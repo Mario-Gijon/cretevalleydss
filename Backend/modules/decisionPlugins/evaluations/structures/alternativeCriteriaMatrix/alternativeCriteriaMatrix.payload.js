@@ -136,7 +136,7 @@ const normalizeCellOrThrow = ({
 
 export const normalizePayloadOrThrow = async ({
   payload,
-  structureContext,
+  evaluationContext,
   requireValue,
 }) => {
   if (!isPlainObject(payload)) {
@@ -167,7 +167,7 @@ export const normalizePayloadOrThrow = async ({
     alternativeNames,
     criteria: resolvedCriteria,
   } = await resolveAlternativesAndCriteria({
-    structureContext,
+    evaluationContext,
   });
   const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
     buildExpectedCellMetadata({

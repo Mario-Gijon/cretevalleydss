@@ -42,17 +42,92 @@ const executeManualCriteriaWeightingModel = async ({
     accumulator[criterionName] = 0;
     return accumulator;
   }, {});
-  const structureContext = {
-    issue: requestPayload?.context?.issue,
-    alternatives: [],
-    leafCriteria: criteria,
-    collectiveEvaluations: null,
+  const evaluationContext = {
+    issue: {
+      id: requestPayload?.context?.issue?.id ?? null,
+      name: requestPayload?.context?.issue?.name ?? null,
+      currentStage: null,
+      consensusPhase: requestPayload?.context?.consensusPhase ?? null,
+      isConsensus: null,
+      consensusThreshold: requestPayload?.context?.issue?.consensusThreshold ?? null,
+      consensusMaxPhases: requestPayload?.context?.issue?.consensusMaxPhases ?? null,
+    },
+    structure: {
+      key: structureKey ?? null,
+      stage: requestPayload?.context?.structure?.stage ?? null,
+    },
+    model: {
+      id: null,
+      name: null,
+      apiModelKey: null,
+      modelFamilyKey: null,
+      versionLabel: null,
+    },
+    parameters: {
+      modelParameters: {},
+      criteriaWeightingParameters: requestPayload?.modelParameters ?? {},
+    },
+    alternatives: {
+      items: [],
+      names: [],
+      byId: {},
+      byName: {},
+    },
+    criteria: {
+      tree: [],
+      leafItems: criteria.map((criterion) => ({
+        id: criterion?.id ?? null,
+        name: criterion?.name ?? "",
+        type: criterion?.type ?? null,
+        isLeaf: true,
+        parentId: null,
+        expressionDomain: null,
+      })),
+      leafNames: criterionNames,
+      leafById: criteria.reduce((accumulator, criterion) => {
+        if (criterion?.id) {
+          accumulator[criterion.id] = {
+            id: criterion.id,
+            name: criterion.name,
+            type: criterion.type ?? null,
+            isLeaf: true,
+            parentId: null,
+            expressionDomain: null,
+          };
+        }
+        return accumulator;
+      }, {}),
+      leafByName: criteria.reduce((accumulator, criterion) => {
+        if (criterion?.name) {
+          accumulator[criterion.name] = {
+            id: criterion?.id ?? null,
+            name: criterion.name,
+            type: criterion.type ?? null,
+            isLeaf: true,
+            parentId: null,
+            expressionDomain: null,
+          };
+        }
+        return accumulator;
+      }, {}),
+    },
+    domains: {
+      byCriterionId: {},
+      byCriterionName: {},
+    },
+    consensus: {
+      phase: requestPayload?.context?.consensusPhase ?? null,
+      maxPhases: requestPayload?.context?.issue?.consensusMaxPhases ?? null,
+      threshold: requestPayload?.context?.issue?.consensusThreshold ?? null,
+      currentCollectiveEvaluations: {},
+      previousCollectiveEvaluations: {},
+    },
   };
 
   for (const evaluation of evaluations) {
     const displayPayload = await structure.get({
-      storedEvaluation: evaluation,
-      structureContext,
+      payload: evaluation?.payload ?? {},
+      evaluationContext,
     });
     const weightsByCriterion = displayPayload.weightsByCriterion;
 

@@ -17,13 +17,16 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     consensusPhase: issue.consensusPhase,
   });
 
-  const structureContext = await buildEvaluationStructureContext({
+  const evaluationContext = await buildEvaluationStructureContext({
     issue,
+    structure,
+    stage,
+    consensusPhase: issue.consensusPhase,
   });
 
   const payload = await structure.get({
-    storedEvaluation,
-    structureContext,
+    payload: storedEvaluation?.payload ?? {},
+    evaluationContext,
   });
 
   const collectiveReference = await loadPreviousCollectiveReference({
