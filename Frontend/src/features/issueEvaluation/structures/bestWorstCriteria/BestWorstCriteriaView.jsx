@@ -38,8 +38,7 @@ const BestWorstCriteriaView = ({
       ? providedPayload
       : buildEmptyBestWorstCriteriaPayload(names);
   const setPayload = payloadContext?.setValue;
-  const isReadOnly =
-    ui?.readOnly === true || ui?.loading === true || typeof setPayload !== "function";
+  const isReadOnly = ui?.readOnly === true || ui?.loading === true;
 
   const bestComparisonNames = names.filter((name) => name !== currentPayload.bestCriterion);
   const worstComparisonNames = names.filter((name) => name !== currentPayload.worstCriterion);

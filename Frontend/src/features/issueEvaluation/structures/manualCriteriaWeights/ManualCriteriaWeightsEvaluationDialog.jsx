@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Button,
-  Stack,
-} from "@mui/material";
+import { Box, Button, Stack } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
@@ -18,39 +14,13 @@ import {
   submitIssueEvaluationPayload,
 } from "../../services/issueEvaluation.service";
 import { EVALUATION_STAGES } from "../../evaluation.constants";
-import {
-  inputSx,
-  sectionSx,
-} from "../../styles/weightEvaluationDialog.styles";
+import { inputSx, sectionSx } from "../../styles/weightEvaluationDialog.styles";
 import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 import ManualCriteriaWeightsView from "./ManualCriteriaWeightsView";
 import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
 import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
-
-const sumWeights = (criterionNames, valuesByCriterion) =>
-  criterionNames.reduce((sum, name) => sum + Number(valuesByCriterion[name] ?? 0), 0);
-
-const buildEmptyWeightsByCriterion = (criterionNames) =>
-  Object.fromEntries(criterionNames.map((name) => [name, ""]));
-
-const normalizeDraftWeights = (criterionNames, raw = {}) => {
-  const normalized = {};
-
-  for (const name of criterionNames) {
-    const value = raw?.[name];
-    if (value === "" || value === null || value === undefined) {
-      normalized[name] = "";
-      continue;
-    }
-
-    const numeric = Number(value);
-    normalized[name] = Number.isFinite(numeric) ? numeric : "";
-  }
-
-  return normalized;
-};
 
 const ManualCriteriaWeightsEvaluationDialog = ({
   issue,
@@ -62,8 +32,10 @@ const ManualCriteriaWeightsEvaluationDialog = ({
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
-  const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
-  const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(issue?.criteria || []),
+    [issue?.criteria]
+  );
   const structureEntry = useMemo(
     () =>
       getEvaluationStructureEntryForStage({
@@ -72,8 +44,9 @@ const ManualCriteriaWeightsEvaluationDialog = ({
       }),
     []
   );
+  const structureAdapter = structureEntry?.adapter;
 
-  const [weightsByCriterion, setWeightsByCriterion] = useState({});
+  const [viewPayload, setViewPayload] = useState({ weightsByCriterion: {} });
   const [initialData, setInitialData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
@@ -86,46 +59,46 @@ const ManualCriteriaWeightsEvaluationDialog = ({
         structure: structureEntry,
         criteriaTree: issue?.criteria || [],
         leafCriteria,
-        payloadValue: { weightsByCriterion },
-        setPayload: (updater) => {
-          setWeightsByCriterion((previous) => {
-            const previousPayload = { weightsByCriterion: previous };
-            const nextPayload =
-              typeof updater === "function" ? updater(previousPayload) : updater;
-            return nextPayload?.weightsByCriterion || {};
-          });
-        },
+        payloadValue: viewPayload,
+        setPayload: setViewPayload,
         loading,
         readOnly: false,
       }),
-    [issue, structureEntry, leafCriteria, weightsByCriterion, loading]
+    [issue, structureEntry, leafCriteria, viewPayload, loading]
   );
 
   useEffect(() => {
-    if (!isOpen || !issue?.id) return;
+    if (!isOpen || !issue?.id || !structureAdapter) return;
 
     const load = async () => {
       setLoading(true);
       try {
-        const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.CRITERIA_WEIGHTING);
-        const draft = response?.data?.payload?.weightsByCriterion || {};
-        const normalized = normalizeDraftWeights(criterionNames, draft);
-        setWeightsByCriterion(normalized);
-        setInitialData(JSON.stringify(normalized));
+        const response = await fetchIssueEvaluation(
+          issue.id,
+          EVALUATION_STAGES.CRITERIA_WEIGHTING
+        );
+        const nextPayload = structureAdapter.fromBackendPayload({
+          backendPayload: response?.data?.payload,
+          evaluationViewContext,
+        });
+        setViewPayload(nextPayload);
+        setInitialData(JSON.stringify(nextPayload));
       } catch {
-        const empty = buildEmptyWeightsByCriterion(criterionNames);
-        setWeightsByCriterion(empty);
-        setInitialData(JSON.stringify(empty));
+        const emptyPayload = structureAdapter.buildEmptyPayload({
+          evaluationViewContext,
+        });
+        setViewPayload(emptyPayload);
+        setInitialData(JSON.stringify(emptyPayload));
       } finally {
         setLoading(false);
       }
     };
 
     load();
-  }, [isOpen, issue?.id, criterionNames]);
+  }, [isOpen, issue?.id, evaluationViewContext, structureAdapter]);
 
   const handleCloseRequest = () => {
-    if (JSON.stringify(weightsByCriterion) !== initialData) {
+    if (JSON.stringify(viewPayload) !== initialData) {
       setOpenSaveDialog(true);
       return;
     }
@@ -134,14 +107,26 @@ const ManualCriteriaWeightsEvaluationDialog = ({
   };
 
   const handleClear = () => {
-    setWeightsByCriterion(buildEmptyWeightsByCriterion(criterionNames));
+    if (!structureAdapter) {
+      return;
+    }
+
+    setViewPayload(
+      structureAdapter.clearViewPayload({
+        viewPayload,
+        evaluationViewContext,
+      })
+    );
   };
 
   const handleSave = async () => {
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const payload = { weightsByCriterion };
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload,
+      evaluationViewContext,
+    });
     const response = await saveIssueEvaluation(
       issue.id,
       EVALUATION_STAGES.CRITERIA_WEIGHTING,
@@ -151,7 +136,10 @@ const ManualCriteriaWeightsEvaluationDialog = ({
     setLoading(false);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation draft saved successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation draft saved successfully",
+        "success"
+      );
       setIsOpen(false);
       return;
     }
@@ -159,33 +147,28 @@ const ManualCriteriaWeightsEvaluationDialog = ({
     showSnackbarAlert(response?.message || "Error saving evaluation draft", "error");
   };
 
-  const validateSubmit = () => {
-    for (const name of criterionNames) {
-      const value = weightsByCriterion[name];
-      if (value === "" || value === null || value === undefined) {
-        return `Criterion '${name}' is required.`;
-      }
-
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric)) {
-        return `Criterion '${name}' must be numeric.`;
-      }
-
-      if (numeric < 0 || numeric > 1) {
-        return `Criterion '${name}' must be between 0 and 1.`;
-      }
+  const handleOpenSubmit = () => {
+    if (!structureAdapter) {
+      return;
     }
 
-    const total = sumWeights(criterionNames, weightsByCriterion);
-    if (Math.abs(total - 1) > 0.001) {
-      return "Weights must sum to 1.";
+    const validationError = structureAdapter.validateSubmit({
+      viewPayload,
+      evaluationViewContext,
+    });
+    if (validationError) {
+      showSnackbarAlert(validationError, "error");
+      return;
     }
 
-    return null;
+    setOpenSubmitDialog(true);
   };
 
   const handleSubmit = async () => {
-    const validationError = validateSubmit();
+    const validationError = structureAdapter.validateSubmit({
+      viewPayload,
+      evaluationViewContext,
+    });
     if (validationError) {
       showSnackbarAlert(validationError, "error");
       return;
@@ -194,12 +177,10 @@ const ManualCriteriaWeightsEvaluationDialog = ({
     setLoading(true);
     setOpenSubmitDialog(false);
 
-    const payload = {
-      weightsByCriterion: Object.fromEntries(
-        criterionNames.map((name) => [name, Number(weightsByCriterion[name])])
-      ),
-    };
-
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload,
+      evaluationViewContext,
+    });
     const response = await submitIssueEvaluationPayload(
       issue.id,
       EVALUATION_STAGES.CRITERIA_WEIGHTING,
@@ -209,7 +190,10 @@ const ManualCriteriaWeightsEvaluationDialog = ({
     setLoading(false);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation submitted successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation submitted successfully",
+        "success"
+      );
       await fetchActiveIssues();
       setOpenIssueDialog(false);
       setIsOpen(false);
@@ -247,14 +231,7 @@ const ManualCriteriaWeightsEvaluationDialog = ({
               variant="outlined"
               color="success"
               startIcon={<PublishOutlinedIcon />}
-              onClick={() => {
-                const validationError = validateSubmit();
-                if (validationError) {
-                  showSnackbarAlert(validationError, "error");
-                  return;
-                }
-                setOpenSubmitDialog(true);
-              }}
+              onClick={handleOpenSubmit}
             >
               Submit
             </Button>

@@ -19,17 +19,20 @@ import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvalu
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
 import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
 import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
-import {
-  buildEmptyBestWorstCriteriaPayload,
-  validateBestWorstCriteriaPayload,
-} from "./bestWorstCriteria.payload";
 
-const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIssueDialog }) => {
+const BestWorstCriteriaEvaluationDialog = ({
+  issue,
+  isOpen,
+  setIsOpen,
+  setOpenIssueDialog,
+}) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
-  const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
-  const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(issue?.criteria || []),
+    [issue?.criteria]
+  );
   const structureEntry = useMemo(
     () =>
       getEvaluationStructureEntryForStage({
@@ -38,10 +41,9 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
       }),
     []
   );
+  const structureAdapter = structureEntry?.adapter;
 
-  const [bwmPayload, setBwmPayload] = useState(
-    buildEmptyBestWorstCriteriaPayload(criterionNames)
-  );
+  const [viewPayload, setViewPayload] = useState({});
   const [initialData, setInitialData] = useState(null);
   const [openSaveDialog, setOpenSaveDialog] = useState(false);
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
@@ -54,38 +56,46 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
         structure: structureEntry,
         criteriaTree: issue?.criteria || [],
         leafCriteria,
-        payloadValue: bwmPayload,
-        setPayload: setBwmPayload,
+        payloadValue: viewPayload,
+        setPayload: setViewPayload,
         loading,
         readOnly: false,
       }),
-    [issue, structureEntry, leafCriteria, bwmPayload, loading]
+    [issue, structureEntry, leafCriteria, viewPayload, loading]
   );
 
   useEffect(() => {
-    if (!isOpen || !issue?.id) return;
+    if (!isOpen || !issue?.id || !structureAdapter) return;
 
     const load = async () => {
       setLoading(true);
       try {
-        const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.CRITERIA_WEIGHTING);
-        const nextPayload = response?.data?.payload;
-        setBwmPayload(nextPayload);
+        const response = await fetchIssueEvaluation(
+          issue.id,
+          EVALUATION_STAGES.CRITERIA_WEIGHTING
+        );
+        const nextPayload = structureAdapter.fromBackendPayload({
+          backendPayload: response?.data?.payload,
+          evaluationViewContext,
+        });
+        setViewPayload(nextPayload);
         setInitialData(JSON.stringify(nextPayload));
       } catch {
-        const empty = buildEmptyBestWorstCriteriaPayload(criterionNames);
-        setBwmPayload(empty);
-        setInitialData(JSON.stringify(empty));
+        const emptyPayload = structureAdapter.buildEmptyPayload({
+          evaluationViewContext,
+        });
+        setViewPayload(emptyPayload);
+        setInitialData(JSON.stringify(emptyPayload));
       } finally {
         setLoading(false);
       }
     };
 
     load();
-  }, [isOpen, issue?.id, criterionNames]);
+  }, [isOpen, issue?.id, evaluationViewContext, structureAdapter]);
 
   const handleCloseRequest = () => {
-    if (JSON.stringify(bwmPayload) !== initialData) {
+    if (JSON.stringify(viewPayload) !== initialData) {
       setOpenSaveDialog(true);
       return;
     }
@@ -93,23 +103,39 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
   };
 
   const handleClear = () => {
-    setBwmPayload(buildEmptyBestWorstCriteriaPayload(criterionNames));
+    if (!structureAdapter) {
+      return;
+    }
+
+    setViewPayload(
+      structureAdapter.clearViewPayload({
+        viewPayload,
+        evaluationViewContext,
+      })
+    );
   };
 
   const handleSave = async () => {
     setLoading(true);
     setOpenSaveDialog(false);
 
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload,
+      evaluationViewContext,
+    });
     const response = await saveIssueEvaluation(
       issue.id,
       EVALUATION_STAGES.CRITERIA_WEIGHTING,
-      bwmPayload
+      payload
     );
 
     setLoading(false);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation draft saved successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation draft saved successfully",
+        "success"
+      );
       setIsOpen(false);
       return;
     }
@@ -117,10 +143,27 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
     showSnackbarAlert(response?.message || "Error saving evaluation draft", "error");
   };
 
+  const handleOpenSubmit = () => {
+    if (!structureAdapter) {
+      return;
+    }
+
+    const validationError = structureAdapter.validateSubmit({
+      viewPayload,
+      evaluationViewContext,
+    });
+    if (validationError) {
+      showSnackbarAlert(validationError, "error");
+      return;
+    }
+
+    setOpenSubmitDialog(true);
+  };
+
   const handleSubmit = async () => {
-    const validationError = validateBestWorstCriteriaPayload({
-      criterionNames,
-      payload: bwmPayload,
+    const validationError = structureAdapter.validateSubmit({
+      viewPayload,
+      evaluationViewContext,
     });
     if (validationError) {
       showSnackbarAlert(validationError, "error");
@@ -130,16 +173,23 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
     setLoading(true);
     setOpenSubmitDialog(false);
 
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload,
+      evaluationViewContext,
+    });
     const response = await submitIssueEvaluationPayload(
       issue.id,
       EVALUATION_STAGES.CRITERIA_WEIGHTING,
-      bwmPayload
+      payload
     );
 
     setLoading(false);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation submitted successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation submitted successfully",
+        "success"
+      );
       await fetchActiveIssues();
       setOpenIssueDialog(false);
       setIsOpen(false);
@@ -177,26 +227,14 @@ const BestWorstCriteriaEvaluationDialog = ({ issue, isOpen, setIsOpen, setOpenIs
               variant="outlined"
               color="success"
               startIcon={<PublishOutlinedIcon />}
-              onClick={() => {
-                const validationError = validateBestWorstCriteriaPayload({
-                  criterionNames,
-                  payload: bwmPayload,
-                });
-                if (validationError) {
-                  showSnackbarAlert(validationError, "error");
-                  return;
-                }
-                setOpenSubmitDialog(true);
-              }}
+              onClick={handleOpenSubmit}
             >
               Submit
             </Button>
           </>
         }
       >
-        <BestWorstCriteriaView
-          evaluationViewContext={evaluationViewContext}
-        />
+        <BestWorstCriteriaView evaluationViewContext={evaluationViewContext} />
       </AlternativeEvaluationDialogShell>
 
       <AlternativeEvaluationSaveDialog

@@ -13,7 +13,6 @@ import AlternativeEvaluationSaveDialog from "../../components/AlternativeEvaluat
 import AlternativeEvaluationSubmitDialog from "../../components/AlternativeEvaluationSubmitDialog";
 import AlternativeEvaluationDialogShell from "../../components/AlternativeEvaluationDialogShell";
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
-import { validateDirectEvaluations } from "./directEvaluation.validation";
 import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles";
 import { buildEvaluationViewContext } from "../../context/buildEvaluationViewContext";
 import {
@@ -21,88 +20,19 @@ import {
   saveIssueEvaluation,
   submitIssueEvaluationPayload,
 } from "../../services/issueEvaluation.service";
-import {
-  EVALUATION_STAGES,
-} from "../../evaluation.constants";
+import { EVALUATION_STAGES } from "../../evaluation.constants";
 import { getEvaluationStructureEntryForStage } from "../../evaluationStructureRegistry";
 
-const buildKey = (alternativeName, criterionName) => `${alternativeName}::${criterionName}`;
-
-const buildEmptyCell = () => ({ value: "", domain: null });
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const normalizeCellForPayload = (cell) => {
-  if (cell !== null && typeof cell === "object" && !Array.isArray(cell)) {
-    return {
-      value: cell?.value ?? "",
-      expressionDomain: cell?.domain ?? null,
-    };
-  }
-
-  return {
-    value: cell ?? "",
-    expressionDomain: null,
-  };
-};
-
-const fromCanonicalCellsToMatrix = ({ alternatives, criterionNames, cells }) => {
-  const matrix = {};
-
-  for (const alternativeName of alternatives) {
-    matrix[alternativeName] = {};
-    for (const criterionName of criterionNames) {
-      const key = buildKey(alternativeName, criterionName);
-      const cell = cells?.[key];
-      matrix[alternativeName][criterionName] = {
-        value: cell?.value ?? "",
-        domain: cell?.expressionDomain ?? null,
-      };
-    }
-  }
-
-  return matrix;
-};
-
-const toCanonicalCellsPayload = ({ alternatives, criterionNames, evaluations }) => {
-  const cells = {};
-
-  for (const alternativeName of alternatives) {
-    for (const criterionName of criterionNames) {
-      const cell = evaluations?.[alternativeName]?.[criterionName] || buildEmptyCell();
-      cells[buildKey(alternativeName, criterionName)] =
-        normalizeCellForPayload(cell);
-    }
-  }
-
-  return { cells };
-};
-
-const buildClearedMatrix = ({ alternatives, criterionNames, evaluations }) => {
-  const cleared = {};
-
-  for (const alternativeName of alternatives) {
-    cleared[alternativeName] = {};
-    for (const criterionName of criterionNames) {
-      const prev = evaluations?.[alternativeName]?.[criterionName] || buildEmptyCell();
-      cleared[alternativeName][criterionName] = {
-        value: "",
-        domain: prev?.domain ?? null,
-      };
-    }
-  }
-
-  return cleared;
-};
-
-const resolveCollectiveEvaluations = ({
-  collectiveReference,
-}) => {
-  if (!isPlainObject(collectiveReference)) {
+const formatMatrixValidationError = (validationError) => {
+  if (!validationError) {
     return null;
   }
-  const collectiveEvaluations = collectiveReference.collectiveEvaluations;
-  return isPlainObject(collectiveEvaluations) ? collectiveEvaluations : null;
+
+  if (typeof validationError === "string") {
+    return validationError;
+  }
+
+  return `Alternative: ${validationError.alternative}, Criterion: ${validationError.criterion}, ${validationError.message}`;
 };
 
 const AlternativeCriteriaMatrixEvaluationDialog = ({
@@ -131,8 +61,10 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
     evaluationsRef.current = evaluations;
   }, [evaluations]);
 
-  const leafCriteria = useMemo(() => getLeafCriteria(issue?.criteria || []), [issue?.criteria]);
-  const criterionNames = useMemo(() => leafCriteria.map((criterion) => criterion.name), [leafCriteria]);
+  const leafCriteria = useMemo(
+    () => getLeafCriteria(issue?.criteria || []),
+    [issue?.criteria]
+  );
   const alternatives = useMemo(() => issue?.alternatives || [], [issue?.alternatives]);
   const structureEntry = useMemo(
     () =>
@@ -142,6 +74,7 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
       }),
     []
   );
+  const structureAdapter = structureEntry?.adapter;
   const evaluationViewContext = useMemo(
     () =>
       buildEvaluationViewContext({
@@ -175,7 +108,10 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
     if (matrixRef.current?.flushPendingEdits) {
       await matrixRef.current.flushPendingEdits();
     }
-    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    if (
+      typeof document !== "undefined" &&
+      document.activeElement instanceof HTMLElement
+    ) {
       document.activeElement.blur();
     }
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -187,18 +123,25 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
   };
 
   useEffect(() => {
-    if (!isOpen || !issue?.id) return;
+    if (!isOpen || !issue?.id || !structureAdapter) return;
 
     const fetchCurrentEvaluations = async () => {
       setLoading(true);
       try {
-        const response = await fetchIssueEvaluation(issue.id, EVALUATION_STAGES.ALTERNATIVE_EVALUATION);
-        const cells = response?.data?.payload?.cells || {};
-        const merged = fromCanonicalCellsToMatrix({ alternatives, criterionNames, cells });
-        const reference = response?.data?.collectiveReference || null;
-        const resolvedCollectiveEvaluations = resolveCollectiveEvaluations({
-          collectiveReference: reference,
+        const response = await fetchIssueEvaluation(
+          issue.id,
+          EVALUATION_STAGES.ALTERNATIVE_EVALUATION
+        );
+        const merged = structureAdapter.fromBackendPayload({
+          backendPayload: response?.data?.payload,
+          evaluationViewContext,
         });
+        const resolvedCollectiveEvaluations =
+          structureAdapter.resolveCollectivePayload({
+            collectiveReference: response?.data?.collectiveReference || null,
+            evaluationViewContext,
+          });
+
         setEvaluations(merged);
         setCollectiveEvaluations(resolvedCollectiveEvaluations);
         setCollectiveVisible(
@@ -209,21 +152,32 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
         );
         setInitialEvaluations(JSON.stringify(merged));
       } catch {
-        const merged = fromCanonicalCellsToMatrix({ alternatives, criterionNames, cells: {} });
-        setEvaluations(merged);
+        const emptyPayload = structureAdapter.buildEmptyPayload({
+          evaluationViewContext,
+        });
+        setEvaluations(emptyPayload);
         setCollectiveEvaluations(null);
         setCollectiveVisible(false);
-        setInitialEvaluations(JSON.stringify(merged));
+        setInitialEvaluations(JSON.stringify(emptyPayload));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCurrentEvaluations();
-  }, [isOpen, issue?.id, alternatives, criterionNames]);
+  }, [isOpen, issue?.id, evaluationViewContext, structureAdapter]);
 
   const handleClearAll = () => {
-    setEvaluations(buildClearedMatrix({ alternatives, criterionNames, evaluations }));
+    if (!structureAdapter) {
+      return;
+    }
+
+    setEvaluations(
+      structureAdapter.clearViewPayload({
+        viewPayload: evaluations,
+        evaluationViewContext,
+      })
+    );
     showSnackbarAlert("All evaluations cleared", "success");
   };
 
@@ -242,34 +196,52 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
   };
 
   const validate = (candidateEvaluations, allowEmpty) => {
-    const result = validateDirectEvaluations(candidateEvaluations, {
-      leafCriteria: criterionNames,
-      allowEmpty,
-    });
-
-    if (!result.valid) {
-      const { alternative, criterion, message } = result.error;
-      showSnackbarAlert(`Alternative: ${alternative}, Criterion: ${criterion}, ${message}`, "error");
+    if (!structureAdapter) {
       return false;
     }
 
-    return true;
+    const validationError = allowEmpty
+      ? structureAdapter.validateDraft({
+          viewPayload: candidateEvaluations,
+          evaluationViewContext,
+        })
+      : structureAdapter.validateSubmit({
+          viewPayload: candidateEvaluations,
+          evaluationViewContext,
+        });
+
+    if (!validationError) {
+      return true;
+    }
+
+    showSnackbarAlert(formatMatrixValidationError(validationError), "error");
+    return false;
   };
 
   const handleSave = async () => {
     const nextEvaluations = await getAuthoritativeEvaluations();
-    if (!validate(nextEvaluations, true)) return;
+    if (!validate(nextEvaluations, true) || !structureAdapter) return;
 
     setLoading(true);
     setOpenCloseDialog(false);
 
-    const payload = toCanonicalCellsPayload({ alternatives, criterionNames, evaluations: nextEvaluations });
-    const response = await saveIssueEvaluation(issue.id, EVALUATION_STAGES.ALTERNATIVE_EVALUATION, payload);
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload: nextEvaluations,
+      evaluationViewContext,
+    });
+    const response = await saveIssueEvaluation(
+      issue.id,
+      EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      payload
+    );
 
     setLoading(false);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation draft saved successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation draft saved successfully",
+        "success"
+      );
       setIsOpen(false);
       return;
     }
@@ -289,8 +261,12 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
     setOpenSubmitDialog(false);
     setLoading(true);
 
-    const nextEvaluations = pendingSubmitEvaluations ?? (await getAuthoritativeEvaluations());
-    const payload = toCanonicalCellsPayload({ alternatives, criterionNames, evaluations: nextEvaluations });
+    const nextEvaluations =
+      pendingSubmitEvaluations ?? (await getAuthoritativeEvaluations());
+    const payload = structureAdapter.toBackendPayload({
+      viewPayload: nextEvaluations,
+      evaluationViewContext,
+    });
     const response = await submitIssueEvaluationPayload(
       issue.id,
       EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
@@ -301,7 +277,10 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
     setPendingSubmitEvaluations(null);
 
     if (response?.success) {
-      showSnackbarAlert(response?.message || "Evaluation submitted successfully", "success");
+      showSnackbarAlert(
+        response?.message || "Evaluation submitted successfully",
+        "success"
+      );
       await fetchActiveIssues();
       setOpenIssueDialog(false);
       setIsOpen(false);
@@ -325,25 +304,43 @@ const AlternativeCriteriaMatrixEvaluationDialog = ({
         criteria={leafCriteria}
         showExpressionDomains
         showCollectiveControl={
-          isPlainObject(collectiveEvaluations) &&
-          Object.keys(collectiveEvaluations).length > 0
+          Boolean(
+            collectiveEvaluations && Object.keys(collectiveEvaluations).length > 0
+          )
         }
         collectiveVisible={collectiveVisible}
         onToggleCollective={() => setCollectiveVisible((value) => !value)}
         contentSx={{ p: { xs: 1.5, sm: 2.2 } }}
         actions={
           <>
-            <Button variant="outlined" color="error" onClick={handleClearAll} startIcon={<DeleteSweepOutlinedIcon />}>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleClearAll}
+              startIcon={<DeleteSweepOutlinedIcon />}
+            >
               Clear all
             </Button>
             <Box sx={{ flex: 1 }} />
-            <Button variant="outlined" color="success" onClick={handleOpenSubmit} startIcon={<PublishOutlinedIcon />}>
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={handleOpenSubmit}
+              startIcon={<PublishOutlinedIcon />}
+            >
               Submit
             </Button>
           </>
         }
       >
-        <Box sx={{ ...sectionSx(theme), maxWidth: 1400, mx: "auto", p: { xs: 1, sm: 1.5 } }}>
+        <Box
+          sx={{
+            ...sectionSx(theme),
+            maxWidth: 1400,
+            mx: "auto",
+            p: { xs: 1, sm: 1.5 },
+          }}
+        >
           {issue && !loading && (
             <AlternativeCriteriaMatrixView
               ref={matrixRef}

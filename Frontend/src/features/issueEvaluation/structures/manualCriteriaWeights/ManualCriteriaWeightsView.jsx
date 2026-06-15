@@ -25,8 +25,7 @@ const ManualCriteriaWeightsView = ({ evaluationViewContext }) => {
       : [];
   const payloadValue = payload?.value ?? {};
   const setPayloadValue = payload?.setValue;
-  const isReadOnly =
-    ui?.readOnly === true || ui?.loading === true || typeof setPayloadValue !== "function";
+  const isReadOnly = ui?.readOnly === true || ui?.loading === true;
   const weightsByCriterion =
     payloadValue && typeof payloadValue === "object" && !Array.isArray(payloadValue)
       ? payloadValue.weightsByCriterion || {}
