@@ -3,145 +3,114 @@ import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
 
-/**
- * Matriz de evaluación directa alternativa x criterio.
- *
- * @param {Object} props
- * @param {Object} props.evaluationViewContext
- * @returns {JSX.Element}
- */
-const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
-  const {
-    alternatives,
-    criteria,
-    payload,
-    collective,
-    ui,
-  } = evaluationViewContext || {};
+const getNumericRange = (domain) => {
+  const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
+  const max = Number(domain?.numericRange?.max ?? domain?.range?.max);
+  const step = Number(domain?.numericRange?.step ?? domain?.range?.step);
+
+  return {
+    min: Number.isFinite(min) ? min : 0,
+    max: Number.isFinite(max) ? max : 1,
+    step: Number.isFinite(step) && step > 0 ? step : null,
+  };
+};
+
+const getDomainType = (domain) => String(domain?.type || "").trim().toLowerCase();
+
+const alignToStep = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return Math.round(value * 100) / 100;
+  }
+
+  const snapped = min + Math.round((value - min) / step) * step;
+  const bounded = Math.min(max, Math.max(min, snapped));
+
+  return Math.round(bounded * 100) / 100;
+};
+
+const isStepAligned = ({ value, min, max, step }) => {
+  if (!Number.isFinite(step) || step <= 0) {
+    return true;
+  }
+
+  const aligned = alignToStep({ value, min, max, step });
+  return Math.abs(aligned - value) < 1e-9;
+};
+
+const normalizeCell = (cell, fallbackDomain) => {
+  if (cell === null || cell === undefined) {
+    return { value: "", domain: fallbackDomain || null };
+  }
+
+  if (typeof cell === "object" && !Array.isArray(cell)) {
+    return {
+      value: cell?.value ?? "",
+      domain: cell?.domain ?? cell?.expressionDomain ?? fallbackDomain ?? null,
+    };
+  }
+
+  return {
+    value: cell,
+    domain: fallbackDomain || null,
+  };
+};
+
+const getCollectiveDisplayValue = (cell) => {
+  if (cell == null) return null;
+  if (typeof cell !== "object") return cell;
+  if (cell.localizedLabel != null && cell.localizedLabel !== "") {
+    return cell.localizedLabel;
+  }
+  if (cell.localizedValue != null && cell.localizedValue !== "") {
+    return cell.localizedValue;
+  }
+  if (cell.value != null && cell.value !== "") {
+    return cell.value;
+  }
+  return null;
+};
+
+const formatDisplayValue = (value) => {
+  if (Array.isArray(value)) {
+    return `[${value.join(", ")}]`;
+  }
+
+  return value;
+};
+
+const hasCollectiveValue = (value) =>
+  value !== null && value !== undefined && value !== "";
+
+const AlternativeCriteriaMatrixView = (
+  {
+    evaluationContext,
+    evaluationPayload,
+    setEvaluationPayload,
+    collectivePayload,
+    readOnly,
+    loading,
+  },
+  ref
+) => {
   const theme = useTheme();
   const apiRef = useGridApiRef();
-  const alternativeNames = Array.isArray(alternatives?.names)
-    ? alternatives.names
+  const alternativeNames = Array.isArray(evaluationContext?.alternatives?.names)
+    ? evaluationContext.alternatives.names
     : [];
-  const criterionNames = Array.isArray(criteria?.leafNames)
-    ? criteria.leafNames
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames
     : [];
-  const payloadValue = payload?.value ?? {};
-  const setPayloadValue = payload?.setValue;
-  const collectivePayload =
-    collective?.visible === true ? collective?.value ?? {} : {};
-  const permitEdit = ui?.readOnly !== true && ui?.loading !== true;
-
-  const buildCellKey = (alternativeName, criterionName) =>
-    `${alternativeName}::${criterionName}`;
-
-  const getNumericRange = (domain) => {
-    const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
-    const max = Number(domain?.numericRange?.max ?? domain?.range?.max);
-    const step = Number(domain?.numericRange?.step ?? domain?.range?.step);
-
-    return {
-      min: Number.isFinite(min) ? min : 0,
-      max: Number.isFinite(max) ? max : 1,
-      step: Number.isFinite(step) && step > 0 ? step : null,
-    };
-  };
-
-  const getDomainType = (domain) =>
-    String(domain?.type || "").trim().toLowerCase();
-
-  const alignToStep = ({ value, min, max, step }) => {
-    if (!Number.isFinite(step) || step <= 0) {
-      return Math.round(value * 100) / 100;
-    }
-
-    const snapped = min + Math.round((value - min) / step) * step;
-    const bounded = Math.min(max, Math.max(min, snapped));
-
-    return Math.round(bounded * 100) / 100;
-  };
-
-  const isStepAligned = ({ value, min, max, step }) => {
-    if (!Number.isFinite(step) || step <= 0) {
-      return true;
-    }
-
-    const aligned = alignToStep({ value, min, max, step });
-    return Math.abs(aligned - value) < 1e-9;
-  };
-
-  const getDomain = (cell) =>
-    cell && typeof cell === "object" && cell.domain ? cell.domain : null;
-
-  const getValue = (cell) =>
-    cell && typeof cell === "object" ? cell.value : cell;
-
-  const normalizeCell = (cell) => {
-    if (cell === null || cell === undefined) {
-      return { value: "", domain: null };
-    }
-
-    if (typeof cell === "object" && !Array.isArray(cell)) {
-      return {
-        value: cell?.value ?? "",
-        domain: cell?.domain ?? cell?.expressionDomain ?? null,
-      };
-    }
-
-    return {
-      value: cell,
-      domain: null,
-    };
-  };
-
-  const normalizeMatrixPayload = (source) => {
-    if (source?.cells && typeof source.cells === "object") {
-      return alternativeNames.reduce((rowsByAlternative, alternativeName) => {
-        rowsByAlternative[alternativeName] = criterionNames.reduce(
-          (cellsByCriterion, criterionName) => {
-            cellsByCriterion[criterionName] = normalizeCell(
-              source.cells?.[buildCellKey(alternativeName, criterionName)]
-            );
-            return cellsByCriterion;
-          },
-          {}
-        );
-        return rowsByAlternative;
-      }, {});
-    }
-
-    if (source && typeof source === "object" && !Array.isArray(source)) {
-      return source;
-    }
-
-    return {};
-  };
-
-  const getCollectiveDisplayValue = (cell) => {
-    if (cell == null) return null;
-    if (typeof cell !== "object") return cell;
-    if (cell.localizedLabel != null && cell.localizedLabel !== "") {
-      return cell.localizedLabel;
-    }
-    if (cell.localizedValue != null && cell.localizedValue !== "") {
-      return cell.localizedValue;
-    }
-    if (cell.value != null && cell.value !== "") {
-      return cell.value;
-    }
-    return null;
-  };
-
-  const formatDisplayValue = (value) => {
-    if (Array.isArray(value)) {
-      return `[${value.join(", ")}]`;
-    }
-
-    return value;
-  };
-
-  const hasCollectiveValue = (value) =>
-    value !== null && value !== undefined && value !== "";
+  const domainsByCriterionName =
+    evaluationContext?.domains?.byCriterionName || {};
+  const resolvedPayload =
+    evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
+      ? evaluationPayload
+      : {};
+  const resolvedCollectivePayload =
+    collectivePayload && typeof collectivePayload === "object" && !Array.isArray(collectivePayload)
+      ? collectivePayload
+      : {};
+  const permitEdit = readOnly !== true && loading !== true;
 
   const renderCollectiveChip = (collectiveValue) => {
     if (!hasCollectiveValue(collectiveValue)) {
@@ -205,9 +174,6 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
     </Stack>
   );
 
-  const resolvedPayload = normalizeMatrixPayload(payloadValue);
-  const resolvedCollectivePayload = normalizeMatrixPayload(collectivePayload);
-
   const columns = [
     {
       field: "id",
@@ -223,35 +189,30 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
       minWidth: 120,
       valueGetter: (params) => {
         const cell = params.row?.[criterionName];
-        if (!cell) return "";
-        return typeof cell === "object" ? cell.value ?? "" : cell;
+        return typeof cell === "object" ? cell?.value ?? "" : cell ?? "";
       },
       renderCell: (params) => {
         const rowId = params.row.id;
-        const critName = params.field;
-        const cell = resolvedPayload?.[rowId]?.[critName];
-        const collectiveValue = getCollectiveDisplayValue(
-          resolvedCollectivePayload?.[rowId]?.[critName]
+        const cell = normalizeCell(
+          resolvedPayload?.[rowId]?.[criterionName],
+          domainsByCriterionName[criterionName]
         );
-
-        if (cell == null) {
-          return "";
-        }
-
-        const domain = getDomain(cell);
+        const collectiveValue = getCollectiveDisplayValue(
+          resolvedCollectivePayload?.[rowId]?.[criterionName]
+        );
+        const domain = cell.domain;
         const domainType = getDomainType(domain);
-        const value = getValue(cell);
+        const value = cell.value;
 
         if (domainType === "numeric") {
-          const userValue = value;
           return renderCellWithCollective({
-            leftContent: userValue !== null && userValue !== "" ? userValue : "",
+            leftContent: value !== null && value !== "" ? value : "",
             collectiveValue,
           });
         }
 
         if (domainType === "linguistic") {
-          const labels = domain.linguisticLabels || domain.labels || [];
+          const labels = domain?.linguisticLabels || domain?.labels || [];
 
           if (!permitEdit) {
             return renderCellWithCollective({
@@ -271,11 +232,11 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
                   onChange={(event) => {
                     const newValue = event.target.value;
 
-                    setPayloadValue?.((prev) => ({
-                      ...prev,
+                    setEvaluationPayload((previous) => ({
+                      ...(previous && typeof previous === "object" ? previous : {}),
                       [rowId]: {
-                        ...(prev?.[rowId] || {}),
-                        [critName]: { value: newValue, domain },
+                        ...((previous && previous[rowId]) || {}),
+                        [criterionName]: { value: newValue, domain },
                       },
                     }));
                   }}
@@ -326,20 +287,24 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
       return newRow;
     }
 
-    const prevCell = oldRow[changedField];
-    const prevDomain = getDomain(prevCell);
-    const prevDomainType = getDomainType(prevDomain);
+    const previousCell = normalizeCell(
+      oldRow[changedField],
+      domainsByCriterionName[changedField]
+    );
+    const domain = previousCell.domain;
+    const domainType = getDomainType(domain);
     const raw = newRow[changedField];
+    const rawValue =
+      raw && typeof raw === "object" && !Array.isArray(raw) ? raw?.value : raw;
 
     let nextCell;
 
-    if (prevDomainType === "numeric") {
-      const rawValue = getValue(raw);
+    if (domainType === "numeric") {
       if (rawValue === "" || rawValue === null || rawValue === undefined) {
-        nextCell = { value: "", domain: prevDomain };
+        nextCell = { value: "", domain };
       } else {
         const numericValue = parseFloat(rawValue);
-        const { min, max, step } = getNumericRange(prevDomain);
+        const { min, max, step } = getNumericRange(domain);
 
         if (
           Number.isNaN(numericValue) ||
@@ -352,7 +317,7 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
             step,
           })
         ) {
-          nextCell = { value: "", domain: prevDomain };
+          nextCell = { value: "", domain };
         } else {
           nextCell = {
             value: alignToStep({
@@ -361,23 +326,22 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
               max,
               step,
             }),
-            domain: prevDomain,
+            domain,
           };
         }
       }
-    } else if (prevDomainType === "linguistic") {
-      const rawValue = getValue(raw) ?? "";
-      nextCell = { value: rawValue, domain: prevDomain };
+    } else if (domainType === "linguistic") {
+      nextCell = { value: rawValue ?? "", domain };
     } else {
       nextCell = raw;
     }
 
     const resultRow = { ...newRow, [changedField]: nextCell };
 
-    setPayloadValue?.((prev) => ({
-      ...prev,
+    setEvaluationPayload((previous) => ({
+      ...(previous && typeof previous === "object" ? previous : {}),
       [resultRow.id]: {
-        ...(prev?.[resultRow.id] || {}),
+        ...((previous && previous[resultRow.id]) || {}),
         [changedField]: nextCell,
       },
     }));
@@ -389,91 +353,68 @@ const AlternativeCriteriaMatrixView = ({ evaluationViewContext }, ref) => {
     const row = { id: alternativeName };
 
     criterionNames.forEach((criterionName) => {
-      row[criterionName] =
-        resolvedPayload?.[alternativeName]?.[criterionName] ?? {
-          value: "",
-          domain: null,
-        };
+      row[criterionName] = normalizeCell(
+        resolvedPayload?.[alternativeName]?.[criterionName],
+        domainsByCriterionName[criterionName]
+      );
     });
 
     return row;
   });
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      flushPendingEdits: async () => {
-        const cellModesModel = apiRef.current?.state?.cellModesModel || {};
-        const editCells = [];
+  const flushPendingEdits = async () => {
+    const cellModesModel = apiRef.current?.state?.cellModesModel || {};
+    const editCells = [];
 
-        for (const [rowId, fields] of Object.entries(cellModesModel)) {
-          for (const [field, config] of Object.entries(fields || {})) {
-            if (config?.mode === "edit") {
-              editCells.push({ id: rowId, field });
-            }
-          }
+    for (const [rowId, fields] of Object.entries(cellModesModel)) {
+      for (const [field, config] of Object.entries(fields || {})) {
+        if (config?.mode === "edit") {
+          editCells.push({ id: rowId, field });
         }
+      }
+    }
 
         editCells.forEach(({ id, field }) => {
           try {
             apiRef.current.stopCellEditMode({ id, field });
-          } catch (error) {
-            console.log(error);
+          } catch {
+            // DataGrid can throw if a cell already exited edit mode during the flush cycle.
           }
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      },
-    }),
-    [apiRef]
-  );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+
+  useImperativeHandle(ref, () => ({
+    flushPendingEdits,
+    preparePayloadRead: flushPendingEdits,
+  }));
 
   return (
-    <DataGrid
-      apiRef={apiRef}
-      rows={rows}
-      columns={columns}
-      disableColumnMenu
-      hideFooter
-      disableColumnFilter
-      disableColumnSorting
-      disableSelectionOnClick
-      processRowUpdate={handleProcessRowUpdate}
-      experimentalFeatures={{ newEditingApi: true }}
-      disableRowSelectionOnClick
-      disableColumnSelector
-      density="compact"
-      getCellClassName={(params) => {
-        if (params.field === "id") {
-          return "first-column";
-        }
-
-        return "grid-cell";
-      }}
+    <Box
       sx={{
-        "& .MuiDataGrid-row:hover": { backgroundColor: "transparent" },
-        "& .MuiDataGrid-cell:hover": { backgroundColor: "transparent" },
-        "& .first-column": {
-          borderRight: `2px solid ${theme.palette.divider}`,
-          fontWeight: "bold",
+        "& .MuiDataGrid-cell": {
+          alignItems: "center",
         },
-        "& .grid-cell": {
-          borderRight: `1px solid ${theme.palette.divider}`,
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          px: 2,
-          textAlign: "center",
+        "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+          outline: "none",
         },
-        maxWidth: "100%",
-        minWidth: "60%",
-        backgroundColor: "rgba(5, 41, 55, 0.01)",
-        "& .MuiDataGrid-withBorderColor": {
-          backgroundColor: "rgba(1, 12, 29, 0.8)",
-          backdropFilter: "blur(15px)",
-          WebkitBackdropFilter: "blur(15px)",
-          fontWeight: "bold",
+        "& .MuiDataGrid-columnHeaders": {
+          bgcolor: theme.palette.background.paper,
         },
       }}
-    />
+    >
+      <DataGrid
+        apiRef={apiRef}
+        autoHeight
+        disableColumnMenu
+        disableRowSelectionOnClick
+        hideFooter
+        rows={rows}
+        columns={columns}
+        processRowUpdate={handleProcessRowUpdate}
+      />
+    </Box>
   );
 };
 

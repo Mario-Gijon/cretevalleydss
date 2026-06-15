@@ -8,13 +8,11 @@ import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evalu
  *
  * Owns:
  * - selectedExpert state
- * - selectedCriterion state
  * - showCollective state
  * - expertList derivation from finished issue DTO
- * - criterionList derivation from finished issue DTO
- * - evaluations extraction for the Matrix
- * - collectiveEvaluations extraction for the Matrix
- * - Matrix component lookup from registry
+ * - evaluations extraction for the registered View
+ * - collectiveEvaluations extraction for the registered View
+ * - structure lookup from registry
  * - Unsupported structure state if Matrix is missing
  *
  * Does NOT own:
@@ -25,20 +23,15 @@ import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evalu
  * @param {Object} params - Hook parameters.
  * @param {Object|null} params.viewIssue - Active finished issue view.
  * @param {number} params.currentPhaseIndex - Current consensus phase index.
- * @param {string[]} params.leafNames - Leaf criterion names for criterion list derivation.
  * @param {Object[]} params.leafCriteria - Ordered leaf criteria for structure View context.
- * @param {boolean} params.hasSingleCriterion - Whether the issue has only one criterion.
  * @returns {Object} Ratings view model.
  */
 export const useFinishedIssueRatingsView = ({
   viewIssue,
   currentPhaseIndex,
-  leafNames,
   leafCriteria,
-  hasSingleCriterion,
 }) => {
   const [selectedExpert, setSelectedExpert] = useState("");
-  const [selectedCriterion, setSelectedCriterion] = useState("");
   const [showCollective, setShowCollective] = useState(false);
 
   const evaluationStructure = useMemo(
@@ -71,33 +64,12 @@ export const useFinishedIssueRatingsView = ({
     [phaseRatings]
   );
 
-  const criterionList = useMemo(() => {
-    return Array.isArray(leafNames) ? leafNames.filter(Boolean) : [];
-  }, [leafNames]);
-
-  const showCriterionSelector = useMemo(
-    () => criterionList.length > 1 && !hasSingleCriterion,
-    [criterionList, hasSingleCriterion]
-  );
-
   useEffect(() => {
     if (!selectedExpert || !expertList.includes(selectedExpert)) {
       const newExpert = expertList[0] || "";
       setSelectedExpert(newExpert);
-      setSelectedCriterion("");
     }
   }, [expertList, selectedExpert]);
-
-  useEffect(() => {
-    if (showCriterionSelector) {
-      if (!selectedCriterion || !criterionList.includes(selectedCriterion)) {
-        const newCriterion = criterionList[0] || "";
-        setSelectedCriterion(newCriterion);
-      }
-    } else {
-      setSelectedCriterion("");
-    }
-  }, [criterionList, selectedCriterion, showCriterionSelector]);
 
   const evaluations = useMemo(() => {
     if (!selectedExpert || !phaseRatings?.expertEvaluations?.[selectedExpert]) {
@@ -200,15 +172,10 @@ export const useFinishedIssueRatingsView = ({
 
   return {
     evaluationStructure,
-    Matrix,
     leafCriteria,
     selectedExpert,
     setSelectedExpert,
-    selectedCriterion,
-    setSelectedCriterion,
     expertList,
-    criterionList,
-    showCriterionSelector,
     showCollective,
     setShowCollective,
     canShowCollective,

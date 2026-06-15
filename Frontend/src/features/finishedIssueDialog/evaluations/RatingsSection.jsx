@@ -17,8 +17,7 @@ import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.co
 import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";
 import { EVALUATION_STAGES } from "../../issueEvaluation/evaluation.constants";
-import { getEvaluationStructureEntryForStage } from "../../issueEvaluation/evaluationStructureRegistry";
-import { buildEvaluationViewContext } from "../../issueEvaluation/context/buildEvaluationViewContext";
+import EvaluationStructureRenderer from "../../issueEvaluation/components/EvaluationStructureRenderer";
 
 /**
  * Ratings section of the finished issue dialog.
@@ -41,11 +40,7 @@ const RatingsSection = () => {
     viewIssue,
     selectedExpert,
     setSelectedExpert,
-    selectedCriterion,
-    setSelectedCriterion,
     expertList,
-    criterionList,
-    showCriterionSelector,
     showCollective,
     setShowCollective,
     canShowCollective,
@@ -55,7 +50,7 @@ const RatingsSection = () => {
     shouldShowExpertWeights,
     collectiveEvaluations,
     leafCriteria,
-    Matrix,
+    evaluationStructure,
     unsupportedEvaluationStructure,
   } = ratingsSection;
 
@@ -67,31 +62,15 @@ const RatingsSection = () => {
     );
   }
 
-  if (!Matrix) {
+  if (!evaluationStructure) {
     return null;
   }
 
-  const structureEntry = getEvaluationStructureEntryForStage({
-    structureKey: ratingsSection.evaluationStructure || "",
-    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  });
   const expertWeightStatus = criteriaWeightsEvaluation?.status || "notRequired";
-  const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
-    structureKey:
-      criteriaWeightsEvaluation?.structureKey ||
-      viewIssue?.summary?.criteriaWeightingStructureKey,
-    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  });
-  const CriteriaWeightingView = criteriaWeightingStructureEntry?.View || null;
-
   const finalWeightsRows = Array.isArray(finalCriteriaWeights?.weights)
     ? finalCriteriaWeights.weights
     : [];
   const orderedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
-  const orderedAlternatives =
-    Array.isArray(viewIssue?.summary?.alternatives)
-      ? viewIssue.summary.alternatives
-      : [];
 
   const finalWeightsByCriterion = finalWeightsRows.reduce((accumulator, entry) => {
     if (entry?.criterionName) {
@@ -123,36 +102,6 @@ const RatingsSection = () => {
     return formatted ?? "—";
   };
 
-  const evaluationViewContext = buildEvaluationViewContext({
-    issue: viewIssue,
-    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-    structure: structureEntry,
-    alternatives: orderedAlternatives,
-    criteriaTree: Array.isArray(viewIssue?.summary?.criteria)
-      ? viewIssue.summary.criteria
-      : [],
-    leafCriteria: orderedLeafCriteria,
-    payloadValue: evaluations || {},
-    collectiveValue: collectiveEvaluations || {},
-    collectiveVisible: showCollective,
-    setCollectiveVisible: setShowCollective,
-    readOnly: true,
-    selectedCriterion,
-    setSelectedCriterion,
-  });
-
-  const criteriaWeightsViewContext = buildEvaluationViewContext({
-    issue: viewIssue,
-    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-    structure: criteriaWeightingStructureEntry,
-    criteriaTree: Array.isArray(viewIssue?.summary?.criteria)
-      ? viewIssue.summary.criteria
-      : [],
-    leafCriteria: orderedLeafCriteria,
-    payloadValue: criteriaWeightsEvaluation?.payload || {},
-    readOnly: true,
-  });
-
   return (
     <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
       <Stack spacing={2}>
@@ -168,13 +117,7 @@ const RatingsSection = () => {
               value={selectedExpert}
               label="Expert"
               color="info"
-              onChange={(event) => {
-                const value = event.target.value;
-                setSelectedExpert(value);
-
-                const newCriteria = criterionList;
-                setSelectedCriterion(newCriteria[0] || "");
-              }}
+              onChange={(event) => setSelectedExpert(event.target.value)}
             >
               {expertList.map((expert) => (
                 <MenuItem key={expert} value={expert}>
@@ -183,24 +126,6 @@ const RatingsSection = () => {
               ))}
             </Select>
           </FormControl>
-
-          {showCriterionSelector ? (
-            <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
-              <InputLabel color="info">Criterion</InputLabel>
-              <Select
-                value={selectedCriterion}
-                label="Criterion"
-                color="info"
-                onChange={(event) => setSelectedCriterion(event.target.value)}
-              >
-                {criterionList.map((criterion) => (
-                  <MenuItem key={criterion} value={criterion}>
-                    {criterion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ) : null}
 
           <Box sx={{ flex: 1 }} />
 
@@ -241,9 +166,22 @@ const RatingsSection = () => {
                 Weights
               </Typography>
 
-              {CriteriaWeightingView && criteriaWeightsEvaluation?.payload ? (
-                <CriteriaWeightingView
-                  evaluationViewContext={criteriaWeightsViewContext}
+              {criteriaWeightsEvaluation?.payload ? (
+                <EvaluationStructureRenderer
+                  issue={{
+                    ...viewIssue,
+                    criteria: Array.isArray(viewIssue?.summary?.criteria)
+                      ? viewIssue.summary.criteria
+                      : [],
+                  }}
+                  stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
+                  structureKey={
+                    criteriaWeightsEvaluation?.structureKey ||
+                    viewIssue?.summary?.criteriaWeightingStructureKey ||
+                    ""
+                  }
+                  backendPayload={criteriaWeightsEvaluation.payload}
+                  readOnly
                 />
               ) : expertWeightStatus === "notRequired" ? (
                 <Typography variant="body2" color="text.secondary">
@@ -317,7 +255,22 @@ const RatingsSection = () => {
           </>
         ) : null}
 
-        <Matrix evaluationViewContext={evaluationViewContext} />
+        <EvaluationStructureRenderer
+          issue={{
+            ...viewIssue,
+            alternatives: Array.isArray(viewIssue?.summary?.alternatives)
+              ? viewIssue.summary.alternatives
+              : [],
+            criteria: Array.isArray(viewIssue?.summary?.criteria)
+              ? viewIssue.summary.criteria
+              : [],
+          }}
+          stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
+          structureKey={evaluationStructure}
+          backendPayload={evaluations || {}}
+          collectivePayload={showCollective ? collectiveEvaluations || null : null}
+          readOnly
+        />
       </Stack>
     </SectionCard>
   );

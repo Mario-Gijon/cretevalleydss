@@ -314,9 +314,7 @@ export const useFinishedIssueDialogView = ({
   const ratingsView = useFinishedIssueRatingsView({
     viewIssue,
     currentPhaseIndex,
-    leafNames,
     leafCriteria: leafCriteriaForParams,
-    hasSingleCriterion,
   });
 
   const ranking =

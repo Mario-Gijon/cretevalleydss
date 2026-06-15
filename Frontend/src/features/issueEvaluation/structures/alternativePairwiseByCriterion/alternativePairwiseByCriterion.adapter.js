@@ -1,199 +1,257 @@
 const buildPairKey = (leftAlternative, rightAlternative) =>
   `${leftAlternative}::${rightAlternative}`;
 
-const buildEmptyCell = () => ({ value: "", domain: null });
-
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveAlternativeNames = (evaluationViewContext) =>
-  evaluationViewContext?.alternatives?.names || [];
+const resolveAlternativeNames = (evaluationContext) =>
+  evaluationContext?.alternatives?.names || [];
 
-const resolveCriterionNames = (evaluationViewContext) =>
-  evaluationViewContext?.criteria?.leafNames || [];
+const resolveCriterionNames = (evaluationContext) =>
+  evaluationContext?.criteria?.leafNames || [];
+
+const resolveCriterionDomain = (evaluationContext, criterionName) =>
+  evaluationContext?.domains?.byCriterionName?.[criterionName] || null;
+
+const buildCell = ({ value = "", domain = null, isNeutralFallback = false }) => ({
+  value,
+  domain,
+  ...(isNeutralFallback ? { isNeutralFallback: true } : {}),
+});
+
+const buildRowsFromPairMap = ({
+  alternativeNames,
+  criterionPairs = {},
+  domain = null,
+}) =>
+  alternativeNames.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+
+    for (const colAlternative of alternativeNames) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildCell({
+          value: "Neutral",
+          domain,
+          isNeutralFallback: true,
+        });
+        continue;
+      }
+
+      const cell = criterionPairs?.[buildPairKey(rowAlternative, colAlternative)];
+      row[colAlternative] = buildCell({
+        value: cell?.value ?? "",
+        domain: cell?.expressionDomain ?? domain,
+      });
+    }
+
+    return row;
+  });
 
 const buildMatrixPayload = ({
   alternativeNames,
   criterionNames,
+  evaluationContext,
   comparisonsByCriterion = {},
+}) =>
+  Object.fromEntries(
+    criterionNames.map((criterionName) => [
+      criterionName,
+      buildRowsFromPairMap({
+        alternativeNames,
+        criterionPairs: comparisonsByCriterion?.[criterionName] || {},
+        domain: resolveCriterionDomain(evaluationContext, criterionName),
+      }),
+    ])
+  );
+
+const buildCollectiveRowsFromMatrix = ({
+  matrix,
+  alternativeNames,
+  domain = null,
 }) => {
-  const result = {};
+  if (!Array.isArray(matrix)) {
+    return null;
+  }
 
-  for (const criterionName of criterionNames) {
-    const criterionComparisons = comparisonsByCriterion?.[criterionName] || {};
+  return alternativeNames.map((rowAlternative, rowIndex) => {
+    const row = { id: rowAlternative };
+    const sourceRow = Array.isArray(matrix[rowIndex]) ? matrix[rowIndex] : [];
 
-    result[criterionName] = alternativeNames.map((rowAlternative) => {
-      const row = { id: rowAlternative };
-
-      for (const colAlternative of alternativeNames) {
-        if (rowAlternative === colAlternative) {
-          row[colAlternative] = { value: "", domain: null };
-          continue;
-        }
-
-        const pairKey = buildPairKey(rowAlternative, colAlternative);
-        const cell = criterionComparisons?.[pairKey];
-
-        row[colAlternative] = {
-          value: cell?.value ?? "",
-          domain: cell?.expressionDomain ?? null,
-        };
+    for (const [colIndex, colAlternative] of alternativeNames.entries()) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildCell({
+          value: "Neutral",
+          domain,
+          isNeutralFallback: true,
+        });
+        continue;
       }
 
-      return row;
+      row[colAlternative] = buildCell({
+        value: sourceRow[colIndex] ?? "",
+        domain,
+      });
+    }
+
+    return row;
+  });
+};
+
+const buildCollectiveRowsFromRows = ({
+  criterionRows,
+  alternativeNames,
+  domain = null,
+}) => {
+  if (!Array.isArray(criterionRows)) {
+    return null;
+  }
+
+  const rowMap = new Map(
+    criterionRows
+      .filter((row) => isPlainObject(row) && typeof row.id === "string")
+      .map((row) => [row.id, row])
+  );
+
+  return alternativeNames.map((rowAlternative) => {
+    const row = { id: rowAlternative };
+    const sourceRow = rowMap.get(rowAlternative) || {};
+
+    for (const colAlternative of alternativeNames) {
+      if (rowAlternative === colAlternative) {
+        row[colAlternative] = buildCell({
+          value: "Neutral",
+          domain,
+          isNeutralFallback: true,
+        });
+        continue;
+      }
+
+      const cell = sourceRow[colAlternative];
+      row[colAlternative] = buildCell({
+        value:
+          cell && typeof cell === "object" && !Array.isArray(cell)
+            ? cell?.value ?? ""
+            : cell ?? "",
+        domain:
+          cell && typeof cell === "object" && !Array.isArray(cell)
+            ? cell?.expressionDomain ?? cell?.domain ?? domain
+            : domain,
+      });
+    }
+
+    return row;
+  });
+};
+
+const buildCollectiveRows = ({
+  criterionSource,
+  alternativeNames,
+  domain = null,
+}) => {
+  if (Array.isArray(criterionSource)) {
+    return criterionSource.length > 0 &&
+      isPlainObject(criterionSource[0]) &&
+      "id" in criterionSource[0]
+      ? buildCollectiveRowsFromRows({
+          criterionRows: criterionSource,
+          alternativeNames,
+          domain,
+        })
+      : buildCollectiveRowsFromMatrix({
+          matrix: criterionSource,
+          alternativeNames,
+          domain,
+        });
+  }
+
+  if (isPlainObject(criterionSource)) {
+    return buildRowsFromPairMap({
+      alternativeNames,
+      criterionPairs: criterionSource,
+      domain,
     });
   }
 
-  return result;
+  return null;
 };
 
 const validatePairwisePayload = ({
   alternativeNames,
   criterionNames,
-  viewPayload,
+  evaluationPayload,
   allowEmpty,
 }) => {
   for (const criterionName of criterionNames) {
-    const rows = viewPayload?.[criterionName] || [];
+    const rows = evaluationPayload?.[criterionName] || [];
     const rowMap = Object.fromEntries(rows.map((row) => [row.id, row]));
 
     for (const rowAlternative of alternativeNames) {
       for (const colAlternative of alternativeNames) {
         if (rowAlternative === colAlternative) continue;
 
-        const cell =
-          rowMap?.[rowAlternative]?.[colAlternative] || buildEmptyCell();
-        const rawValue = cell?.value;
+        const cell = rowMap?.[rowAlternative]?.[colAlternative];
+        const rawValue =
+          cell && typeof cell === "object" && !Array.isArray(cell)
+            ? cell?.value
+            : cell;
 
         if (rawValue === "" || rawValue === null || rawValue === undefined) {
           if (!allowEmpty) {
-            return `Criterion: ${criterionName}, comparison ${rowAlternative} vs ${colAlternative} is required.`;
+            return {
+              valid: false,
+              message: `Criterion: ${criterionName}, comparison ${rowAlternative} vs ${colAlternative} is required.`,
+            };
           }
           continue;
         }
 
         const numeric = Number(rawValue);
         if (!Number.isFinite(numeric)) {
-          return `Criterion: ${criterionName}, comparison ${rowAlternative} vs ${colAlternative} must be numeric.`;
+          return {
+            valid: false,
+            message: `Criterion: ${criterionName}, comparison ${rowAlternative} vs ${colAlternative} must be numeric.`,
+          };
         }
       }
     }
   }
 
-  return null;
-};
-
-const buildCollectiveRowsFromMatrix = ({ matrix, alternativeNames }) => {
-  if (!Array.isArray(matrix)) {
-    return null;
-  }
-
-  const rows = [];
-
-  for (let rowIndex = 0; rowIndex < alternativeNames.length; rowIndex += 1) {
-    const rowAlternative = alternativeNames[rowIndex];
-    const sourceRow = matrix[rowIndex];
-    if (!Array.isArray(sourceRow)) {
-      continue;
-    }
-
-    const row = { id: rowAlternative };
-
-    for (let colIndex = 0; colIndex < alternativeNames.length; colIndex += 1) {
-      const colAlternative = alternativeNames[colIndex];
-
-      if (rowAlternative === colAlternative) {
-        row[colAlternative] = {
-          value: "Neutral",
-          expressionDomain: null,
-          isNeutralFallback: true,
-        };
-        continue;
-      }
-
-      row[colAlternative] = {
-        value: sourceRow[colIndex] ?? "",
-        expressionDomain: null,
-      };
-    }
-
-    rows.push(row);
-  }
-
-  return rows.length > 0 ? rows : null;
-};
-
-const buildCollectiveRowsFromPairMap = ({ criterionPairs, alternativeNames }) => {
-  if (!isPlainObject(criterionPairs)) {
-    return null;
-  }
-
-  const rows = [];
-
-  for (const rowAlternative of alternativeNames) {
-    const row = { id: rowAlternative };
-
-    for (const colAlternative of alternativeNames) {
-      if (rowAlternative === colAlternative) {
-        row[colAlternative] = {
-          value: "Neutral",
-          expressionDomain: null,
-          isNeutralFallback: true,
-        };
-        continue;
-      }
-
-      const pairKey = buildPairKey(rowAlternative, colAlternative);
-      const cell = criterionPairs[pairKey];
-      const value =
-        cell !== null && typeof cell === "object" && !Array.isArray(cell)
-          ? cell.value
-          : cell;
-
-      row[colAlternative] = {
-        value:
-          value === null || value === undefined || value === ""
-            ? ""
-            : value,
-        expressionDomain: null,
-      };
-    }
-
-    rows.push(row);
-  }
-
-  return rows.length > 0 ? rows : null;
+  return { valid: true };
 };
 
 export const alternativePairwiseByCriterionAdapter = Object.freeze({
-  buildEmptyPayload({ evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-
+  createEmptyPayload({ evaluationContext }) {
     return buildMatrixPayload({
-      alternativeNames,
-      criterionNames,
+      alternativeNames: resolveAlternativeNames(evaluationContext),
+      criterionNames: resolveCriterionNames(evaluationContext),
+      evaluationContext,
     });
   },
 
-  fromBackendPayload({ backendPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
+  fromBackendPayload({ evaluationContext, backendPayload }) {
+    const comparisonsByCriterion = isPlainObject(
+      backendPayload?.comparisonsByCriterion
+    )
+      ? backendPayload.comparisonsByCriterion
+      : isPlainObject(backendPayload)
+        ? backendPayload
+        : {};
 
     return buildMatrixPayload({
-      alternativeNames,
-      criterionNames,
-      comparisonsByCriterion: backendPayload?.comparisonsByCriterion || {},
+      alternativeNames: resolveAlternativeNames(evaluationContext),
+      criterionNames: resolveCriterionNames(evaluationContext),
+      evaluationContext,
+      comparisonsByCriterion,
     });
   },
 
-  toBackendPayload({ viewPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
+  toBackendPayload({ evaluationContext, evaluationPayload }) {
+    const alternativeNames = resolveAlternativeNames(evaluationContext);
+    const criterionNames = resolveCriterionNames(evaluationContext);
     const comparisonsByCriterion = {};
 
     for (const criterionName of criterionNames) {
-      const rows = viewPayload?.[criterionName] || [];
+      const rows = evaluationPayload?.[criterionName] || [];
       const rowMap = Object.fromEntries(rows.map((row) => [row.id, row]));
       const criterionPayload = {};
 
@@ -201,11 +259,16 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
         for (const colAlternative of alternativeNames) {
           if (rowAlternative === colAlternative) continue;
 
-          const cell =
-            rowMap?.[rowAlternative]?.[colAlternative] || buildEmptyCell();
+          const cell = rowMap?.[rowAlternative]?.[colAlternative];
           criterionPayload[buildPairKey(rowAlternative, colAlternative)] = {
-            value: cell?.value ?? "",
-            expressionDomain: cell?.domain ?? null,
+            value:
+              cell && typeof cell === "object" && !Array.isArray(cell)
+                ? cell?.value ?? ""
+                : cell ?? "",
+            expressionDomain:
+              cell && typeof cell === "object" && !Array.isArray(cell)
+                ? cell?.domain ?? null
+                : null,
           };
         }
       }
@@ -216,108 +279,34 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
     return { comparisonsByCriterion };
   },
 
-  clearViewPayload({ viewPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-    const cleared = {};
-
-    for (const criterionName of criterionNames) {
-      const rows = viewPayload?.[criterionName] || [];
-      const rowMap = Object.fromEntries(rows.map((row) => [row.id, row]));
-
-      cleared[criterionName] = alternativeNames.map((rowAlternative) => {
-        const row = { id: rowAlternative };
-
-        for (const colAlternative of alternativeNames) {
-          if (rowAlternative === colAlternative) {
-            row[colAlternative] = { value: "", domain: null };
-            continue;
-          }
-
-          const previousCell =
-            rowMap?.[rowAlternative]?.[colAlternative] || buildEmptyCell();
-          row[colAlternative] = {
-            value: "",
-            domain: previousCell?.domain ?? null,
-          };
-        }
-
-        return row;
-      });
-    }
-
-    return cleared;
-  },
-
-  validateDraft({ viewPayload, evaluationViewContext }) {
+  validate({ evaluationContext, evaluationPayload, mode }) {
     return validatePairwisePayload({
-      alternativeNames: resolveAlternativeNames(evaluationViewContext),
-      criterionNames: resolveCriterionNames(evaluationViewContext),
-      viewPayload,
-      allowEmpty: true,
+      alternativeNames: resolveAlternativeNames(evaluationContext),
+      criterionNames: resolveCriterionNames(evaluationContext),
+      evaluationPayload,
+      allowEmpty: mode === "draft",
     });
   },
 
-  validateSubmit({ viewPayload, evaluationViewContext }) {
-    return validatePairwisePayload({
-      alternativeNames: resolveAlternativeNames(evaluationViewContext),
-      criterionNames: resolveCriterionNames(evaluationViewContext),
-      viewPayload,
-      allowEmpty: false,
-    });
-  },
-
-  resolveCollectivePayload({ collectiveReference, evaluationViewContext }) {
-    if (!isPlainObject(collectiveReference)) {
+  fromCollectivePayload({ evaluationContext, collectivePayload }) {
+    if (!isPlainObject(collectivePayload)) {
       return null;
     }
 
-    const source = isPlainObject(collectiveReference.collectiveEvaluations)
-      ? collectiveReference.collectiveEvaluations
-      : null;
-
-    if (!source) {
-      return null;
-    }
-
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
+    const criterionNames = resolveCriterionNames(evaluationContext);
+    const alternativeNames = resolveAlternativeNames(evaluationContext);
     const output = {};
 
     for (const criterionName of criterionNames) {
-      const criterionCollective = source[criterionName];
+      const criterionCollective = collectivePayload[criterionName];
+      const mappedRows = buildCollectiveRows({
+        criterionSource: criterionCollective,
+        alternativeNames,
+        domain: resolveCriterionDomain(evaluationContext, criterionName),
+      });
 
-      if (
-        Array.isArray(criterionCollective) &&
-        criterionCollective.length > 0 &&
-        isPlainObject(criterionCollective[0]) &&
-        "id" in criterionCollective[0]
-      ) {
-        output[criterionName] = criterionCollective;
-        continue;
-      }
-
-      if (Array.isArray(criterionCollective)) {
-        const mappedRows = buildCollectiveRowsFromMatrix({
-          matrix: criterionCollective,
-          alternativeNames,
-        });
-
-        if (mappedRows) {
-          output[criterionName] = mappedRows;
-        }
-        continue;
-      }
-
-      if (isPlainObject(criterionCollective)) {
-        const mappedRows = buildCollectiveRowsFromPairMap({
-          criterionPairs: criterionCollective,
-          alternativeNames,
-        });
-
-        if (mappedRows) {
-          output[criterionName] = mappedRows;
-        }
+      if (mappedRows) {
+        output[criterionName] = mappedRows;
       }
     }
 

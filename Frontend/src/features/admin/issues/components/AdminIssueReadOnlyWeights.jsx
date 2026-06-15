@@ -2,8 +2,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { getEvaluationStructureEntryForStage } from "../../../issueEvaluation/evaluationStructureRegistry";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
+import EvaluationStructureRenderer from "../../../issueEvaluation/components/EvaluationStructureRenderer";
 
 /**
  * Vista de solo lectura para pesos del experto en admin issues.
@@ -39,11 +39,6 @@ const AdminIssueReadOnlyWeights = ({
         type: criterion?.type || null,
         expressionDomain: criterion?.expressionDomain || null,
       }));
-  const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
-    structureKey: weights?.structureKey,
-    stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
-  });
-  const CriteriaWeightingView = criteriaWeightingStructureEntry?.View || null;
   const hasCanonicalPayload =
     weights?.payload &&
     typeof weights.payload === "object" &&
@@ -63,18 +58,22 @@ const AdminIssueReadOnlyWeights = ({
               ? "Single-criterion weights are resolved automatically."
               : "No criteria-weight payload available."}
         </Typography>
-      ) : !CriteriaWeightingView ? (
+      ) : !weights?.structureKey ? (
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
           Criteria-weighting structure does not expose a reusable renderer.
         </Typography>
       ) : (
-        <CriteriaWeightingView
-          evaluationContext={{
-            criteria: criteriaRows,
-            payload: weights.payload,
-            setPayload: () => {},
-            permitEdit: false,
+        <EvaluationStructureRenderer
+          issue={{
+            criteria: criteriaRows.map((criterion) => ({
+              ...criterion,
+              children: [],
+            })),
           }}
+          stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
+          structureKey={weights?.structureKey || ""}
+          backendPayload={weights.payload}
+          readOnly
         />
       )}
     </Stack>

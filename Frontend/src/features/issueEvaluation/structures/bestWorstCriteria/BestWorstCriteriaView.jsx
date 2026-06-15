@@ -14,40 +14,34 @@ const normalizeScaleInput = (value) => {
 };
 
 const BestWorstCriteriaView = ({
-  evaluationViewContext,
+  evaluationContext,
+  evaluationPayload,
+  setEvaluationPayload,
+  readOnly,
+  loading,
 }) => {
-  const {
-    criteria,
-    payload: payloadContext,
-    ui,
-  } = evaluationViewContext || {};
-  const names = Array.isArray(criteria?.leafItems)
-    ? criteria.leafItems
-        .map((criterion) =>
-          typeof criterion === "string"
-            ? criterion
-            : String(criterion?.name || criterion?.criterionName || "").trim()
-        )
-        .filter(Boolean)
-    : Array.isArray(criteria?.leafNames)
-      ? criteria.leafNames
-      : [];
-  const providedPayload = payloadContext?.value ?? {};
+  const names = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames
+    : [];
   const currentPayload =
-    providedPayload && Object.keys(providedPayload).length > 0
-      ? providedPayload
+    evaluationPayload &&
+    typeof evaluationPayload === "object" &&
+    !Array.isArray(evaluationPayload) &&
+    Object.keys(evaluationPayload).length > 0
+      ? evaluationPayload
       : buildEmptyBestWorstCriteriaPayload(names);
-  const setPayload = payloadContext?.setValue;
-  const isReadOnly = ui?.readOnly === true || ui?.loading === true;
+  const isReadOnly = readOnly === true || loading === true;
 
-  const bestComparisonNames = names.filter((name) => name !== currentPayload.bestCriterion);
-  const worstComparisonNames = names.filter((name) => name !== currentPayload.worstCriterion);
-
+  const bestComparisonNames = names.filter(
+    (name) => name !== currentPayload.bestCriterion
+  );
+  const worstComparisonNames = names.filter(
+    (name) => name !== currentPayload.worstCriterion
+  );
   const longestCriterionLength = names.reduce(
     (max, name) => Math.max(max, String(name).length),
     0
   );
-
   const labelColumnWidth = `${Math.min(
     Math.max(longestCriterionLength + 2, 10),
     28
@@ -59,7 +53,6 @@ const BestWorstCriteriaView = ({
     }
 
     const previousBestCriterion = currentPayload.bestCriterion;
-
     const next = {
       ...currentPayload,
       bestCriterion,
@@ -84,7 +77,7 @@ const BestWorstCriteriaView = ({
       next.othersToWorst[next.worstCriterion] = 1;
     }
 
-    setPayload(next);
+    setEvaluationPayload(next);
   };
 
   const updateWorstCriterion = (worstCriterion) => {
@@ -93,7 +86,6 @@ const BestWorstCriteriaView = ({
     }
 
     const previousWorstCriterion = currentPayload.worstCriterion;
-
     const next = {
       ...currentPayload,
       worstCriterion,
@@ -118,7 +110,7 @@ const BestWorstCriteriaView = ({
       next.bestToOthers[next.bestCriterion] = 1;
     }
 
-    setPayload(next);
+    setEvaluationPayload(next);
   };
 
   const updateBestToOthersValue = (criterionName, value) => {
@@ -129,7 +121,7 @@ const BestWorstCriteriaView = ({
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
-    setPayload({
+    setEvaluationPayload({
       ...currentPayload,
       bestToOthers: {
         ...currentPayload.bestToOthers,
@@ -146,7 +138,7 @@ const BestWorstCriteriaView = ({
     const normalizedValue = normalizeScaleInput(value);
     if (normalizedValue === null) return;
 
-    setPayload({
+    setEvaluationPayload({
       ...currentPayload,
       othersToWorst: {
         ...currentPayload.othersToWorst,
@@ -167,10 +159,7 @@ const BestWorstCriteriaView = ({
         noWrap
         title={name}
         sx={{
-          width: {
-            xs: "auto",
-            sm: labelColumnWidth,
-          },
+          width: { xs: "auto", sm: labelColumnWidth },
           flexShrink: 0,
         }}
       >
@@ -201,15 +190,13 @@ const BestWorstCriteriaView = ({
   }
 
   return (
-    <Stack spacing={1.25} sx={{pt:1.5}}>
-
+    <Stack spacing={1.25} sx={{ pt: 1.5 }}>
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={{ xs: 2, md: 5 }}
         alignItems="flex-start"
       >
         <Stack spacing={0.75}>
-
           <TextField
             select
             variant="outlined"
@@ -243,26 +230,17 @@ const BestWorstCriteriaView = ({
         <Divider
           orientation="vertical"
           flexItem
-          sx={{
-            display: {
-              xs: "none",
-              md: "block",
-            },
-          }}
+          sx={{ display: { xs: "none", md: "block" } }}
         />
 
         <Divider
           sx={{
-            display: {
-              xs: "block",
-              md: "none",
-            },
+            display: { xs: "block", md: "none" },
             width: "100%",
           }}
         />
 
         <Stack spacing={0.75}>
-
           <TextField
             select
             variant="outlined"
@@ -293,6 +271,7 @@ const BestWorstCriteriaView = ({
           )}
         </Stack>
       </Stack>
+
       <Typography variant="caption" color="text.secondary">
         Use integer values from 1 to 9.
       </Typography>

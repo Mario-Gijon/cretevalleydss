@@ -1,243 +1,47 @@
+import { useEffect, useState } from "react";
 import { Stack, Typography } from "@mui/material";
 
 import PairwiseAlternativeMatrix from "./PairwiseAlternativeMatrix";
+import CriterionCompactSelector from "./CriterionCompactSelector";
 
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const resolveCriterionName = (criterionEntry) => {
-  if (typeof criterionEntry === "string") {
-    return criterionEntry;
-  }
-
-  if (criterionEntry && typeof criterionEntry === "object") {
-    return String(criterionEntry.name || "").trim();
-  }
-
-  return "";
-};
-
-const resolveAlternativeName = (alternativeEntry) => {
-  if (typeof alternativeEntry === "string") {
-    return alternativeEntry;
-  }
-
-  if (alternativeEntry && typeof alternativeEntry === "object") {
-    return String(alternativeEntry.name || "").trim();
-  }
-
-  return "";
-};
-
-const buildPairKey = (leftAlternative, rightAlternative) =>
-  `${leftAlternative}::${rightAlternative}`;
-
-const normalizePairwiseCell = (cell) => {
-  if (cell === null || cell === undefined) {
-    return {
-      value: "",
-      domain: null,
-    };
-  }
-
-  if (typeof cell === "object" && !Array.isArray(cell)) {
-    return {
-      value: cell?.value ?? "",
-      domain: cell?.domain ?? cell?.expressionDomain ?? null,
-      ...(cell?.isNeutralFallback ? { isNeutralFallback: true } : {}),
-    };
-  }
-
-  return {
-    value: cell,
-    domain: null,
-  };
-};
-
-const buildRowsFromPairMap = ({ criterionPairs, alternativeNames }) => {
-  if (!isPlainObject(criterionPairs)) {
-    return [];
-  }
-
-  return alternativeNames.map((rowAlternative) => {
-    const row = { id: rowAlternative };
-
-    for (const colAlternative of alternativeNames) {
-      if (rowAlternative === colAlternative) {
-        row[colAlternative] = {
-          value: "Neutral",
-          domain: null,
-          isNeutralFallback: true,
-        };
-        continue;
-      }
-
-      row[colAlternative] = normalizePairwiseCell(
-        criterionPairs?.[buildPairKey(rowAlternative, colAlternative)]
-      );
-    }
-
-    return row;
-  });
-};
-
-const buildRowsFromMatrix = ({ criterionMatrix, alternativeNames }) => {
-  if (!Array.isArray(criterionMatrix)) {
-    return [];
-  }
-
-  return alternativeNames.map((rowAlternative, rowIndex) => {
-    const row = { id: rowAlternative };
-    const sourceRow = Array.isArray(criterionMatrix[rowIndex])
-      ? criterionMatrix[rowIndex]
-      : [];
-
-    for (const [colIndex, colAlternative] of alternativeNames.entries()) {
-      if (rowAlternative === colAlternative) {
-        row[colAlternative] = {
-          value: "Neutral",
-          domain: null,
-          isNeutralFallback: true,
-        };
-        continue;
-      }
-
-      row[colAlternative] = normalizePairwiseCell(sourceRow[colIndex]);
-    }
-
-    return row;
-  });
-};
-
-const buildRowsFromRows = ({ criterionRows, alternativeNames }) => {
-  if (!Array.isArray(criterionRows)) {
-    return [];
-  }
-
-  const rowMap = new Map(
-    criterionRows
-      .filter((row) => isPlainObject(row) && typeof row.id === "string")
-      .map((row) => [row.id, row])
-  );
-
-  return alternativeNames.map((rowAlternative) => {
-    const row = { id: rowAlternative };
-    const sourceRow = rowMap.get(rowAlternative) || {};
-
-    for (const colAlternative of alternativeNames) {
-      if (rowAlternative === colAlternative) {
-        row[colAlternative] = {
-          value: "Neutral",
-          domain: null,
-          isNeutralFallback: true,
-        };
-        continue;
-      }
-
-      row[colAlternative] = normalizePairwiseCell(sourceRow[colAlternative]);
-    }
-
-    return row;
-  });
-};
-
-const normalizeCriterionRows = ({
-  criterionSource,
-  alternativeNames,
+const AlternativePairwiseByCriterionView = ({
+  evaluationContext,
+  evaluationPayload,
+  setEvaluationPayload,
+  collectivePayload,
+  readOnly,
+  loading,
 }) => {
-  if (Array.isArray(criterionSource)) {
-    return criterionSource.length > 0 &&
-      isPlainObject(criterionSource[0]) &&
-      "id" in criterionSource[0]
-      ? buildRowsFromRows({
-          criterionRows: criterionSource,
-          alternativeNames,
-        })
-      : buildRowsFromMatrix({
-          criterionMatrix: criterionSource,
-          alternativeNames,
-        });
-  }
-
-  if (isPlainObject(criterionSource)) {
-    return buildRowsFromPairMap({
-      criterionPairs: criterionSource,
-      alternativeNames,
-    });
-  }
-
-  return [];
-};
-
-const AlternativePairwiseByCriterionView = ({ evaluationViewContext }) => {
-  const {
-    alternatives,
-    criteria,
-    payload,
-    collective,
-    ui,
-  } = evaluationViewContext || {};
-  const alternativeItems = Array.isArray(alternatives?.items)
-    ? alternatives.items
+  const alternativeItems = Array.isArray(evaluationContext?.alternatives?.items)
+    ? evaluationContext.alternatives.items
     : [];
-  const alternativeNames = Array.isArray(alternatives?.names)
-    ? alternatives.names
-    : alternativeItems.map(resolveAlternativeName).filter(Boolean);
-  const criteriaFromContext = Array.isArray(criteria?.leafItems)
-    ? criteria.leafItems.map(resolveCriterionName).filter(Boolean)
-    : Array.isArray(criteria?.leafNames)
-      ? criteria.leafNames
-      : [];
-  const payloadValue = payload?.value ?? {};
-  const setPayloadValue = payload?.setValue;
-  const collectivePayload =
-    collective?.visible === true ? collective?.value ?? {} : {};
-  const permitEdit = ui?.readOnly !== true && ui?.loading !== true;
-  const selectedCriterion = ui?.selectedCriterion ?? null;
-
+  const alternativeNames = Array.isArray(evaluationContext?.alternatives?.names)
+    ? evaluationContext.alternatives.names
+    : alternativeItems
+        .map((alternative) => String(alternative?.name || "").trim())
+        .filter(Boolean);
+  const criteriaItems = Array.isArray(evaluationContext?.criteria?.leafItems)
+    ? evaluationContext.criteria.leafItems
+    : [];
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames
+    : criteriaItems.map((criterion) => String(criterion?.name || "").trim()).filter(Boolean);
   const evaluationsByCriterion =
-    isPlainObject(payloadValue?.comparisonsByCriterion)
-      ? Object.fromEntries(
-          Object.entries(payloadValue.comparisonsByCriterion).map(
-            ([criterionName, criterionPairs]) => [
-              criterionName,
-              buildRowsFromPairMap({
-                criterionPairs,
-                alternativeNames,
-              }),
-            ]
-          )
-        )
-      : isPlainObject(payloadValue)
-        ? payloadValue
-        : {};
-  const collectiveCriterionSource = isPlainObject(
-    collectivePayload?.comparisonsByCriterion
-  )
-    ? collectivePayload.comparisonsByCriterion
-    : collectivePayload;
-  const collectiveEvaluationsByCriterion = isPlainObject(collectivePayload)
-    ? Object.fromEntries(
-        Object.entries(collectiveCriterionSource).map(
-          ([criterionName, criterionSource]) => [
-            criterionName,
-            normalizeCriterionRows({
-              criterionSource,
-              alternativeNames,
-            }),
-          ]
-        )
-      )
-    : {};
+    evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
+      ? evaluationPayload
+      : {};
+  const collectiveEvaluationsByCriterion =
+    collectivePayload && typeof collectivePayload === "object" && !Array.isArray(collectivePayload)
+      ? collectivePayload
+      : {};
+  const permitEdit = readOnly !== true && loading !== true;
+  const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
 
-  const resolvedCriteria = criteriaFromContext;
+  useEffect(() => {
+    setCurrentCriterionIndex(0);
+  }, [criterionNames.length]);
 
-  const visibleCriteria =
-    selectedCriterion && resolvedCriteria.includes(selectedCriterion)
-      ? [selectedCriterion]
-      : resolvedCriteria;
-
-  if (criteriaFromContext.length === 0) {
+  if (criterionNames.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
         No criteria available.
@@ -253,32 +57,56 @@ const AlternativePairwiseByCriterionView = ({ evaluationViewContext }) => {
     );
   }
 
+  const safeCurrentCriterionIndex = Math.max(
+    0,
+    Math.min(currentCriterionIndex, Math.max(criterionNames.length - 1, 0))
+  );
+  const currentCriterionName = criterionNames[safeCurrentCriterionIndex] || null;
+
   return (
     <Stack spacing={1.2}>
-      {visibleCriteria.map((criterionName) => (
-        <Stack key={criterionName} spacing={0.75}>
+      {criteriaItems.length > 1 ? (
+        <CriterionCompactSelector
+          criteria={criteriaItems}
+          currentIndex={safeCurrentCriterionIndex}
+          onSelectCriterion={setCurrentCriterionIndex}
+          onPreviousCriterion={() =>
+            setCurrentCriterionIndex((previous) => Math.max(previous - 1, 0))
+          }
+          onNextCriterion={() =>
+            setCurrentCriterionIndex((previous) =>
+              Math.min(previous + 1, criterionNames.length - 1)
+            )
+          }
+        />
+      ) : null}
+
+      {currentCriterionName ? (
+        <Stack spacing={0.75}>
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-            {criterionName}
+            {currentCriterionName}
           </Typography>
 
           <PairwiseAlternativeMatrix
-            alternatives={alternativeItems}
-            evaluations={evaluationsByCriterion?.[criterionName] || []}
+            alternatives={alternativeNames}
+            evaluations={evaluationsByCriterion?.[currentCriterionName] || []}
             setEvaluations={(nextRows) => {
               if (!permitEdit) {
                 return;
               }
 
-              setPayloadValue?.((previous) => ({
-                ...(isPlainObject(previous) ? previous : {}),
-                [criterionName]: nextRows,
+              setEvaluationPayload((previous) => ({
+                ...(previous && typeof previous === "object" ? previous : {}),
+                [currentCriterionName]: nextRows,
               }));
             }}
-            collectiveEvaluations={collectiveEvaluationsByCriterion?.[criterionName] || []}
+            collectiveEvaluations={
+              collectiveEvaluationsByCriterion?.[currentCriterionName] || []
+            }
             permitEdit={permitEdit}
           />
         </Stack>
-      ))}
+      ) : null}
     </Stack>
   );
 };

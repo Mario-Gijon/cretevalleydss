@@ -1,34 +1,21 @@
 import { Stack, TextField, Typography } from "@mui/material";
 
-const resolveCriterionName = (criterionEntry) => {
-  if (typeof criterionEntry === "string") {
-    return criterionEntry;
-  }
-
-  if (criterionEntry && typeof criterionEntry === "object") {
-    return String(criterionEntry.name || criterionEntry.criterionName || "").trim();
-  }
-
-  return "";
-};
-
-const ManualCriteriaWeightsView = ({ evaluationViewContext }) => {
-  const {
-    criteria,
-    payload,
-    ui,
-  } = evaluationViewContext || {};
-  const criterionNames = Array.isArray(criteria?.leafItems)
-    ? criteria.leafItems.map(resolveCriterionName).filter(Boolean)
-    : Array.isArray(criteria?.leafNames)
-      ? criteria.leafNames
-      : [];
-  const payloadValue = payload?.value ?? {};
-  const setPayloadValue = payload?.setValue;
-  const isReadOnly = ui?.readOnly === true || ui?.loading === true;
+const ManualCriteriaWeightsView = ({
+  evaluationContext,
+  evaluationPayload,
+  setEvaluationPayload,
+  readOnly,
+  loading,
+}) => {
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames
+    : [];
+  const isReadOnly = readOnly === true || loading === true;
   const weightsByCriterion =
-    payloadValue && typeof payloadValue === "object" && !Array.isArray(payloadValue)
-      ? payloadValue.weightsByCriterion || {}
+    evaluationPayload &&
+    typeof evaluationPayload === "object" &&
+    !Array.isArray(evaluationPayload)
+      ? evaluationPayload.weightsByCriterion || {}
       : {};
 
   if (criterionNames.length === 0) {
@@ -56,7 +43,7 @@ const ManualCriteriaWeightsView = ({ evaluationViewContext }) => {
             }
 
             const raw = event.target.value;
-            setPayloadValue((previous) => ({
+            setEvaluationPayload((previous) => ({
               ...(previous && typeof previous === "object" ? previous : {}),
               weightsByCriterion: {
                 ...((previous && previous.weightsByCriterion) || {}),

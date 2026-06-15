@@ -1,5 +1,5 @@
 import { EVALUATION_STAGES } from "../../evaluation.constants";
-import BestWorstCriteriaEvaluationDialog from "./BestWorstCriteriaEvaluationDialog";
+import TuneIcon from "@mui/icons-material/Tune";
 import BestWorstCriteriaView from "./BestWorstCriteriaView";
 import { bestWorstCriteriaAdapter } from "./bestWorstCriteria.adapter";
 
@@ -8,6 +8,10 @@ export const bestWorstCriteriaStructure = Object.freeze({
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   label: "BWM",
   adapter: bestWorstCriteriaAdapter,
-  Dialog: BestWorstCriteriaEvaluationDialog,
   View: BestWorstCriteriaView,
+  dialog: {
+    icon: TuneIcon,
+    title: "BWM",
+    maxWidth: "md",
+  },
 });

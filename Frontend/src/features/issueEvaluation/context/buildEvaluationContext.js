@@ -1,7 +1,5 @@
 import { extractLeafCriteria } from "../logic/extractIssueEvaluationLeafCriteria";
 
-const NOOP = () => {};
-
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -41,9 +39,9 @@ const normalizeNamedItem = (item) => {
   };
 };
 
-const resolveLeafItems = ({ criteriaTree, leafItems }) => {
-  if (Array.isArray(leafItems)) {
-    return leafItems.map(normalizeNamedItem).filter(Boolean);
+const resolveLeafItems = ({ criteriaTree, leafCriteria }) => {
+  if (Array.isArray(leafCriteria)) {
+    return leafCriteria.map(normalizeNamedItem).filter(Boolean);
   }
 
   return extractLeafCriteria(Array.isArray(criteriaTree) ? criteriaTree : [])
@@ -64,42 +62,21 @@ const buildDomainMap = (leafItems = []) =>
     return accumulator;
   }, {});
 
-const hasCollectiveValue = (value) => {
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  if (isPlainObject(value)) {
-    return Object.keys(value).length > 0;
-  }
-
-  return value !== null && value !== undefined;
-};
-
-export const buildEvaluationViewContext = ({
+export const buildEvaluationContext = ({
   issue = null,
   stage = null,
   structure = null,
   alternatives = null,
   criteriaTree = null,
   leafCriteria = null,
-  payloadValue = {},
-  setPayload = null,
-  collectiveValue = {},
-  collectiveVisible = false,
-  setCollectiveVisible = null,
-  loading = false,
-  readOnly = false,
-  selectedCriterion = null,
-  setSelectedCriterion = null,
 }) => {
   const alternativeItems = Array.isArray(alternatives)
     ? alternatives.map(normalizeNamedItem).filter(Boolean)
     : [];
-  const criteriaItems = Array.isArray(criteriaTree) ? criteriaTree : [];
+  const tree = Array.isArray(criteriaTree) ? criteriaTree : [];
   const leafItems = resolveLeafItems({
-    criteriaTree: criteriaItems,
-    leafItems: leafCriteria,
+    criteriaTree: tree,
+    leafCriteria,
   });
 
   return {
@@ -107,7 +84,9 @@ export const buildEvaluationViewContext = ({
       id: toNonEmptyStringOrNull(issue?.id ?? issue?._id),
       name: toNonEmptyStringOrNull(issue?.name),
       currentStage: toNonEmptyStringOrNull(issue?.currentStage),
-      consensusPhase: Number.isInteger(issue?.consensusPhase) ? issue.consensusPhase : null,
+      consensusPhase: Number.isInteger(issue?.consensusPhase)
+        ? issue.consensusPhase
+        : null,
       isConsensus: issue?.isConsensus === true,
     },
     stage: toNonEmptyStringOrNull(stage),
@@ -123,7 +102,7 @@ export const buildEvaluationViewContext = ({
       byName: buildNameMap(alternativeItems),
     },
     criteria: {
-      tree: criteriaItems,
+      tree,
       leafItems,
       leafNames: leafItems
         .map((criterion) => toNonEmptyStringOrNull(criterion?.name))
@@ -132,25 +111,6 @@ export const buildEvaluationViewContext = ({
     },
     domains: {
       byCriterionName: buildDomainMap(leafItems),
-    },
-    payload: {
-      value: isPlainObject(payloadValue) ? payloadValue : {},
-      setValue: typeof setPayload === "function" ? setPayload : NOOP,
-    },
-    collective: {
-      visible: collectiveVisible === true,
-      setVisible:
-        typeof setCollectiveVisible === "function" ? setCollectiveVisible : NOOP,
-      value:
-        collectiveValue === null || collectiveValue === undefined ? {} : collectiveValue,
-      hasValue: hasCollectiveValue(collectiveValue),
-    },
-    ui: {
-      readOnly: readOnly === true,
-      loading: loading === true,
-      selectedCriterion: toNonEmptyStringOrNull(selectedCriterion),
-      setSelectedCriterion:
-        typeof setSelectedCriterion === "function" ? setSelectedCriterion : NOOP,
     },
   };
 };

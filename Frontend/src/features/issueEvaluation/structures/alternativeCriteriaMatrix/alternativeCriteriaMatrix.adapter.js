@@ -3,8 +3,6 @@ import { validateDirectEvaluations } from "./directEvaluation.validation";
 const buildKey = (alternativeName, criterionName) =>
   `${alternativeName}::${criterionName}`;
 
-const buildEmptyCell = () => ({ value: "", domain: null });
-
 const normalizeCellForBackendPayload = (cell) => {
   if (cell !== null && typeof cell === "object" && !Array.isArray(cell)) {
     return {
@@ -19,13 +17,21 @@ const normalizeCellForBackendPayload = (cell) => {
   };
 };
 
-const resolveAlternativeNames = (evaluationViewContext) =>
-  evaluationViewContext?.alternatives?.names || [];
+const resolveAlternativeNames = (evaluationContext) =>
+  evaluationContext?.alternatives?.names || [];
 
-const resolveCriterionNames = (evaluationViewContext) =>
-  evaluationViewContext?.criteria?.leafNames || [];
+const resolveCriterionNames = (evaluationContext) =>
+  evaluationContext?.criteria?.leafNames || [];
 
-const buildMatrixPayload = ({ alternativeNames, criterionNames, cells = {} }) => {
+const resolveCriterionDomain = (evaluationContext, criterionName) =>
+  evaluationContext?.domains?.byCriterionName?.[criterionName] || null;
+
+const buildMatrixPayload = ({
+  alternativeNames,
+  criterionNames,
+  evaluationContext,
+  cells = {},
+}) => {
   const matrix = {};
 
   for (const alternativeName of alternativeNames) {
@@ -35,7 +41,8 @@ const buildMatrixPayload = ({ alternativeNames, criterionNames, cells = {} }) =>
       const cell = cells?.[key];
       matrix[alternativeName][criterionName] = {
         value: cell?.value ?? "",
-        domain: cell?.expressionDomain ?? null,
+        domain:
+          cell?.expressionDomain ?? resolveCriterionDomain(evaluationContext, criterionName),
       };
     }
   }
@@ -44,37 +51,34 @@ const buildMatrixPayload = ({ alternativeNames, criterionNames, cells = {} }) =>
 };
 
 export const alternativeCriteriaMatrixAdapter = Object.freeze({
-  buildEmptyPayload({ evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-
+  createEmptyPayload({ evaluationContext }) {
     return buildMatrixPayload({
-      alternativeNames,
-      criterionNames,
+      alternativeNames: resolveAlternativeNames(evaluationContext),
+      criterionNames: resolveCriterionNames(evaluationContext),
+      evaluationContext,
     });
   },
 
-  fromBackendPayload({ backendPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-    const cells = backendPayload?.cells || {};
-
+  fromBackendPayload({ evaluationContext, backendPayload }) {
     return buildMatrixPayload({
-      alternativeNames,
-      criterionNames,
-      cells,
+      alternativeNames: resolveAlternativeNames(evaluationContext),
+      criterionNames: resolveCriterionNames(evaluationContext),
+      evaluationContext,
+      cells: backendPayload?.cells || {},
     });
   },
 
-  toBackendPayload({ viewPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
+  toBackendPayload({ evaluationContext, evaluationPayload }) {
+    const alternativeNames = resolveAlternativeNames(evaluationContext);
+    const criterionNames = resolveCriterionNames(evaluationContext);
     const cells = {};
 
     for (const alternativeName of alternativeNames) {
       for (const criterionName of criterionNames) {
-        const cell =
-          viewPayload?.[alternativeName]?.[criterionName] || buildEmptyCell();
+        const cell = evaluationPayload?.[alternativeName]?.[criterionName] || {
+          value: "",
+          domain: resolveCriterionDomain(evaluationContext, criterionName),
+        };
 
         cells[buildKey(alternativeName, criterionName)] =
           normalizeCellForBackendPayload(cell);
@@ -84,59 +88,31 @@ export const alternativeCriteriaMatrixAdapter = Object.freeze({
     return { cells };
   },
 
-  clearViewPayload({ viewPayload, evaluationViewContext }) {
-    const alternativeNames = resolveAlternativeNames(evaluationViewContext);
-    const criterionNames = resolveCriterionNames(evaluationViewContext);
-    const cleared = {};
+  validate({ evaluationContext, evaluationPayload, mode }) {
+    const result = validateDirectEvaluations(evaluationPayload, {
+      leafCriteria: resolveCriterionNames(evaluationContext),
+      allowEmpty: mode === "draft",
+    });
 
-    for (const alternativeName of alternativeNames) {
-      cleared[alternativeName] = {};
-      for (const criterionName of criterionNames) {
-        const previousCell =
-          viewPayload?.[alternativeName]?.[criterionName] || buildEmptyCell();
-
-        cleared[alternativeName][criterionName] = {
-          value: "",
-          domain: previousCell?.domain ?? null,
-        };
-      }
+    if (result.valid) {
+      return { valid: true };
     }
 
-    return cleared;
+    return {
+      valid: false,
+      message: `Alternative: ${result.error.alternative}, Criterion: ${result.error.criterion}, ${result.error.message}`,
+    };
   },
 
-  validateDraft({ viewPayload, evaluationViewContext }) {
-    const result = validateDirectEvaluations(viewPayload, {
-      leafCriteria: resolveCriterionNames(evaluationViewContext),
-      allowEmpty: true,
-    });
-
-    return result.valid ? null : result.error;
-  },
-
-  validateSubmit({ viewPayload, evaluationViewContext }) {
-    const result = validateDirectEvaluations(viewPayload, {
-      leafCriteria: resolveCriterionNames(evaluationViewContext),
-      allowEmpty: false,
-    });
-
-    return result.valid ? null : result.error;
-  },
-
-  resolveCollectivePayload({ collectiveReference }) {
+  fromCollectivePayload({ collectivePayload }) {
     if (
-      !collectiveReference ||
-      typeof collectiveReference !== "object" ||
-      Array.isArray(collectiveReference)
+      !collectivePayload ||
+      typeof collectivePayload !== "object" ||
+      Array.isArray(collectivePayload)
     ) {
       return null;
     }
 
-    const collectiveEvaluations = collectiveReference.collectiveEvaluations;
-    return collectiveEvaluations &&
-      typeof collectiveEvaluations === "object" &&
-      !Array.isArray(collectiveEvaluations)
-      ? collectiveEvaluations
-      : null;
+    return Object.keys(collectivePayload).length > 0 ? collectivePayload : null;
   },
 });

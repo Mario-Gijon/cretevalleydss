@@ -9,6 +9,7 @@ import {
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { EVALUATION_STAGES } from "../evaluation.constants";
 import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import EvaluationStructureDialog from "./EvaluationStructureDialog";
 
 const getIssueStructureKeyByStage = (issue, stage) => {
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
@@ -26,10 +27,9 @@ const EvaluationDialogHost = ({ issue, stage, isOpen, setIsOpen, setOpenIssueDia
   if (!issue || !stage) return null;
 
   const structureKey = getIssueStructureKeyByStage(issue, stage);
-  const dialogEntry = getEvaluationStructureEntryForStage({ structureKey, stage });
-  const DialogComponent = dialogEntry?.Dialog || null;
+  const structureEntry = getEvaluationStructureEntryForStage({ structureKey, stage });
 
-  if (!DialogComponent) {
+  if (!structureEntry) {
     return (
       <GlassDialog open={Boolean(isOpen)} onClose={() => setIsOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 900 }}>Unsupported evaluation structure</DialogTitle>
@@ -57,9 +57,10 @@ const EvaluationDialogHost = ({ issue, stage, isOpen, setIsOpen, setOpenIssueDia
   }
 
   return (
-    <DialogComponent
+    <EvaluationStructureDialog
       issue={issue}
       stage={stage}
+      structureKey={structureKey}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       setOpenIssueDialog={setOpenIssueDialog}

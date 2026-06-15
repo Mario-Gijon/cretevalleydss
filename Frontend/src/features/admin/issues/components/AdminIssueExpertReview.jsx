@@ -19,6 +19,7 @@ import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
 import ExpressionDomainSummaryButton from "../../../issueEvaluation/components/ExpressionDomainSummaryButton";
 import { EVALUATION_STAGES } from "../../../issueEvaluation/evaluation.constants";
+import EvaluationStructureRenderer from "../../../issueEvaluation/components/EvaluationStructureRenderer";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 import AdminIssueMetaChip from "./AdminIssueMetaChip";
 import AdminIssueReadOnlyWeights from "./AdminIssueReadOnlyWeights";
@@ -28,7 +29,6 @@ import { getAdminIssueDetailCardSx } from "../styles/adminIssues.styles";
 
 export default function AdminIssueExpertReview({ detail, issueExpertsProgress, detailView }) {
   const theme = useTheme();
-  const AlternativeEvaluationViewComponent = detailView.alternativeEvaluationViewComponent;
 
   return (
     <Stack spacing={1.1}>
@@ -210,31 +210,36 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
               </Stack>
             </Stack>
 
-            {!AlternativeEvaluationViewComponent ? (
+            {!detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey ? (
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
                 Evaluation structure does not expose a reusable renderer.
               </Typography>
             ) : (
               <Box sx={{ maxWidth: "100%", overflowX: "auto" }}>
-                <AlternativeEvaluationViewComponent
-                  evaluationContext={{
-                    issue: detail.issueDetail,
-                    stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-                    structureKey:
-                      detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey || "",
+                <EvaluationStructureRenderer
+                  issue={{
+                    ...detail.issueDetail,
                     alternatives: detailView.orderedAlternativesForReview,
-                    criteria: detailView.orderedLeafCriteriaForReview,
-                    payload: detail.expertEvaluations?.evaluations || {},
-                    setPayload: () => {},
-                    collectivePayload:
-                      detail.showExpertCollective &&
-                      detailView.hasExpertCollectiveEvaluations
-                        ? detail.expertEvaluations?.collectiveEvaluations || {}
-                        : {},
-                    permitEdit: false,
-                    selectedCriterion: "",
-                    setSelectedCriterion: () => {},
+                    criteria: detailView.orderedLeafCriteriaForReview.map(
+                      (criterion) => ({
+                        ...criterion,
+                        children: [],
+                      })
+                    ),
                   }}
+                  stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
+                  structureKey={
+                    detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey ||
+                    ""
+                  }
+                  backendPayload={detail.expertEvaluations?.evaluations || {}}
+                  collectivePayload={
+                    detail.showExpertCollective &&
+                    detailView.hasExpertCollectiveEvaluations
+                      ? detail.expertEvaluations?.collectiveEvaluations || null
+                      : null
+                  }
+                  readOnly
                 />
               </Box>
             )}

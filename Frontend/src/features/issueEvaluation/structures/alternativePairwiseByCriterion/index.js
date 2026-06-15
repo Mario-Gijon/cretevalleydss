@@ -1,5 +1,5 @@
 import { EVALUATION_STAGES } from "../../evaluation.constants";
-import AlternativePairwiseByCriterionEvaluationDialog from "./AlternativePairwiseByCriterionEvaluationDialog";
+import GridOnOutlinedIcon from "@mui/icons-material/GridOnOutlined";
 import AlternativePairwiseByCriterionView from "./AlternativePairwiseByCriterionView";
 import { alternativePairwiseByCriterionAdapter } from "./alternativePairwiseByCriterion.adapter";
 
@@ -8,6 +8,13 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   label: "Pairwise alternatives by criterion",
   adapter: alternativePairwiseByCriterionAdapter,
-  Dialog: AlternativePairwiseByCriterionEvaluationDialog,
   View: AlternativePairwiseByCriterionView,
+  dialog: {
+    icon: GridOnOutlinedIcon,
+    title: "Alternative evaluation",
+    maxWidth: "lg",
+    showExpressionDomains: true,
+    showCollectiveToggle: true,
+    frame: "pairwise",
+  },
 });

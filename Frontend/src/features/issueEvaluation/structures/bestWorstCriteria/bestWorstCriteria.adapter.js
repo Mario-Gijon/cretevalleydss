@@ -6,48 +6,44 @@ import {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveCriterionNames = (evaluationViewContext) =>
-  evaluationViewContext?.criteria?.leafNames || [];
+const resolveCriterionNames = (evaluationContext) =>
+  evaluationContext?.criteria?.leafNames || [];
 
 export const bestWorstCriteriaAdapter = Object.freeze({
-  buildEmptyPayload({ evaluationViewContext }) {
+  createEmptyPayload({ evaluationContext }) {
     return buildEmptyBestWorstCriteriaPayload(
-      resolveCriterionNames(evaluationViewContext)
+      resolveCriterionNames(evaluationContext)
     );
   },
 
-  fromBackendPayload({ backendPayload, evaluationViewContext }) {
+  fromBackendPayload({ evaluationContext, backendPayload }) {
     if (isPlainObject(backendPayload) && Object.keys(backendPayload).length > 0) {
       return backendPayload;
     }
 
     return buildEmptyBestWorstCriteriaPayload(
-      resolveCriterionNames(evaluationViewContext)
+      resolveCriterionNames(evaluationContext)
     );
   },
 
-  toBackendPayload({ viewPayload }) {
-    return isPlainObject(viewPayload) ? viewPayload : {};
+  toBackendPayload({ evaluationPayload }) {
+    return isPlainObject(evaluationPayload) ? evaluationPayload : {};
   },
 
-  clearViewPayload({ evaluationViewContext }) {
-    return buildEmptyBestWorstCriteriaPayload(
-      resolveCriterionNames(evaluationViewContext)
-    );
-  },
+  validate({ evaluationContext, evaluationPayload, mode }) {
+    if (mode === "draft") {
+      return { valid: true };
+    }
 
-  validateDraft() {
-    return null;
-  },
-
-  validateSubmit({ viewPayload, evaluationViewContext }) {
-    return validateBestWorstCriteriaPayload({
-      criterionNames: resolveCriterionNames(evaluationViewContext),
-      payload: viewPayload,
+    const message = validateBestWorstCriteriaPayload({
+      criterionNames: resolveCriterionNames(evaluationContext),
+      payload: evaluationPayload,
     });
+
+    return message ? { valid: false, message } : { valid: true };
   },
 
-  resolveCollectivePayload() {
+  fromCollectivePayload() {
     return null;
   },
 });
