@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Button, Stack } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
@@ -17,11 +17,7 @@ import {
 import AlternativeEvaluationDialogShell from "./AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "./AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "./AlternativeEvaluationSubmitDialog";
-import { sectionSx } from "../styles/alternativeEvaluationDialog.styles";
-import {
-  inputSx,
-  sectionSx as weightSectionSx,
-} from "../styles/weightEvaluationDialog.styles";
+import DefaultEvaluationDialogFrame from "./DefaultEvaluationDialogFrame";
 
 const EvaluationStructureDialog = ({
   issue,
@@ -45,6 +41,8 @@ const EvaluationStructureDialog = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
+  const DialogContentFrame =
+    structureEntry?.DialogContentFrame || DefaultEvaluationDialogFrame;
   const adapter = structureEntry?.adapter || null;
   const dialogConfig = structureEntry?.dialog || {};
   const fallbackEvaluationContext = useMemo(
@@ -283,45 +281,7 @@ const EvaluationStructureDialog = ({
       <View {...viewProps} />
     );
 
-    switch (dialogConfig?.frame) {
-      case "matrix":
-        return (
-          <Box
-            sx={{
-              ...sectionSx(theme),
-              maxWidth: 1400,
-              mx: "auto",
-              p: { xs: 1, sm: 1.5 },
-            }}
-          >
-            {viewNode}
-          </Box>
-        );
-      case "pairwise":
-        return (
-          <Stack spacing={1.2} sx={{ maxWidth: 1400, mx: "auto" }}>
-            <Box
-              sx={{
-                ...sectionSx(theme),
-                p: { xs: 1, sm: 1.4 },
-                overflow: "hidden",
-              }}
-            >
-              {viewNode}
-            </Box>
-          </Stack>
-        );
-      case "manualCriteriaWeights":
-        return (
-          <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
-            <Box sx={weightSectionSx(theme)}>
-              <Box sx={{ ...inputSx(theme), p: 0 }}>{viewNode}</Box>
-            </Box>
-          </Stack>
-        );
-      default:
-        return viewNode;
-    }
+    return <DialogContentFrame>{viewNode}</DialogContentFrame>;
   };
 
   if (!issue || !stage || !structureEntry || !View || !adapter) {

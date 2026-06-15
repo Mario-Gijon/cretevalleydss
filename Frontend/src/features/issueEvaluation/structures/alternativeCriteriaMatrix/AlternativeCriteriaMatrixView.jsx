@@ -408,11 +408,32 @@ const AlternativeCriteriaMatrixView = (
         apiRef={apiRef}
         autoHeight
         disableColumnMenu
+        disableColumnFilter
+        disableColumnSorting
+        disableColumnSelector
         disableRowSelectionOnClick
         hideFooter
+        density="compact"
         rows={rows}
         columns={columns}
         processRowUpdate={handleProcessRowUpdate}
+        sx={{
+          "& .MuiDataGrid-cell": {
+            alignItems: "center",
+          },
+          "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+            outline: "none",
+          },
+          "& .MuiDataGrid-columnHeaders": {
+            bgcolor: theme.palette.background.paper,
+          },
+          "& .MuiDataGrid-iconButtonContainer": {
+            display: "none",
+          },
+          "& .MuiDataGrid-sortIcon": {
+            display: "none",
+          },
+        }}
       />
     </Box>
   );
