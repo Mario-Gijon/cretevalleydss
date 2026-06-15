@@ -1,9 +1,7 @@
+import { advanceToWeightsFinishedAfterSubmit } from "./advanceIssueAfterEvaluationSubmit.js";
 import { buildEvaluationStructureContext } from "./buildEvaluationStructureContext.js";
 import { loadIssueEvaluationContext } from "./loadIssueEvaluationContext.js";
-import {
-  advanceToWeightsFinishedAfterSubmit,
-  markParticipationCompleted,
-} from "./issueEvaluationParticipation.js";
+import { markParticipationCompleted } from "./issueEvaluationParticipation.js";
 import { upsertIssueEvaluation } from "./issueEvaluationPersistence.js";
 
 export const submitIssueEvaluation = async ({

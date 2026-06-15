@@ -1,5 +1,6 @@
 import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { normalizeEvaluationsPayload } from "./normalizeEvaluationsPayload.js";
 
 export const buildCriteriaWeightingRequestPayload = async ({
@@ -36,7 +37,7 @@ export const buildCriteriaWeightingRequestPayload = async ({
       previousStageResult: null,
       structure: {
         key: structureKey,
-        stage: "criteriaWeighting",
+        stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       },
     },
   };
