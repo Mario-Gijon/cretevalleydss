@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useTheme } from "@mui/material/styles";
 import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import { EVALUATION_STAGES } from "../evaluation.constants";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 import {
   fetchIssueEvaluation,
@@ -17,7 +17,6 @@ import {
 import AlternativeEvaluationDialogShell from "./AlternativeEvaluationDialogShell";
 import AlternativeEvaluationSaveDialog from "./AlternativeEvaluationSaveDialog";
 import AlternativeEvaluationSubmitDialog from "./AlternativeEvaluationSubmitDialog";
-import DefaultEvaluationDialogFrame from "./DefaultEvaluationDialogFrame";
 
 const EvaluationStructureDialog = ({
   issue,
@@ -27,8 +26,7 @@ const EvaluationStructureDialog = ({
   setIsOpen,
   setOpenIssueDialog,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery("(max-width:900px)");
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const { fetchActiveIssues } = useIssuesDataContext();
 
@@ -41,10 +39,7 @@ const EvaluationStructureDialog = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
-  const DialogContentFrame =
-    structureEntry?.DialogContentFrame || DefaultEvaluationDialogFrame;
   const adapter = structureEntry?.adapter || null;
-  const dialogConfig = structureEntry?.dialog || {};
   const fallbackEvaluationContext = useMemo(
     () =>
       buildEvaluationContext({
@@ -129,12 +124,10 @@ const EvaluationStructureDialog = ({
   }, [isOpen, issue?.id, stage, adapter, fallbackEvaluationContext]);
 
   const preparePayloadRead = async () => {
-    if (dialogConfig?.supportsPreparePayloadRead) {
-      if (typeof viewRef.current?.preparePayloadRead === "function") {
-        await viewRef.current.preparePayloadRead();
-      } else if (typeof viewRef.current?.flushPendingEdits === "function") {
-        await viewRef.current.flushPendingEdits();
-      }
+    if (typeof viewRef.current?.preparePayloadRead === "function") {
+      await viewRef.current.preparePayloadRead();
+    } else if (typeof viewRef.current?.flushPendingEdits === "function") {
+      await viewRef.current.flushPendingEdits();
     }
 
     if (
@@ -260,6 +253,20 @@ const EvaluationStructureDialog = ({
     showSnackbarAlert(response?.message || "Error submitting evaluation", "error");
   };
 
+  const dialogTitle =
+    stage === EVALUATION_STAGES.CRITERIA_WEIGHTING
+      ? "Criteria weighting"
+      : stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION
+        ? "Alternative evaluation"
+        : "Evaluation";
+  const hasExpressionDomains = Array.isArray(
+    evaluationContext?.criteria?.leafItems
+  )
+    ? evaluationContext.criteria.leafItems.some(
+        (criterion) => criterion?.expressionDomain
+      )
+    : false;
+
   const renderView = () => {
     if (!View || !adapter) {
       return null;
@@ -275,13 +282,7 @@ const EvaluationStructureDialog = ({
       loading,
     };
 
-    const viewNode = dialogConfig?.supportsPreparePayloadRead ? (
-      <View ref={viewRef} {...viewProps} />
-    ) : (
-      <View {...viewProps} />
-    );
-
-    return <DialogContentFrame>{viewNode}</DialogContentFrame>;
+    return <View ref={viewRef} {...viewProps} />;
   };
 
   if (!issue || !stage || !structureEntry || !View || !adapter) {
@@ -294,19 +295,17 @@ const EvaluationStructureDialog = ({
         open={isOpen}
         onClose={handleCloseRequest}
         loading={loading}
-        fullScreen={dialogConfig?.fullScreenOnMobile ? isMobile : false}
-        maxWidth={dialogConfig?.maxWidth || "lg"}
-        icon={dialogConfig?.icon || null}
-        title={dialogConfig?.title || structureEntry.label || "Evaluation"}
+        fullScreen={isMobile}
+        maxWidth="lg"
+        icon={null}
+        title={dialogTitle}
         subtitle={issue?.name || ""}
         criteria={evaluationContext.criteria.leafItems}
-        showExpressionDomains={dialogConfig?.showExpressionDomains === true}
-        showCollectiveControl={
-          dialogConfig?.showCollectiveToggle === true && collectivePayload !== null
-        }
+        showExpressionDomains={hasExpressionDomains}
+        showCollectiveControl={collectivePayload !== null}
         collectiveVisible={showCollective}
         onToggleCollective={() => setShowCollective((value) => !value)}
-        contentSx={dialogConfig?.contentSx || { p: { xs: 1.5, sm: 2.2 } }}
+        contentSx={{ p: { xs: 1.5, sm: 2.2 } }}
         actions={
           <>
             <Button

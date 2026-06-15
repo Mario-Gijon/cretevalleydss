@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
 import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
 import { formatCollectiveDisplayValue } from "../../logic/formatCollectiveDisplayValue";
+import { sectionSx } from "../../styles/alternativeEvaluationDialog.styles";
 
 const getNumericRange = (domain) => {
   const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
@@ -374,13 +375,9 @@ const AlternativeCriteriaMatrixView = (
       }
     }
 
-        editCells.forEach(({ id, field }) => {
-          try {
-            apiRef.current.stopCellEditMode({ id, field });
-          } catch {
-            // DataGrid can throw if a cell already exited edit mode during the flush cycle.
-          }
-        });
+    editCells.forEach(({ id, field }) => {
+      apiRef.current.stopCellEditMode({ id, field });
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 0));
   };
@@ -393,6 +390,10 @@ const AlternativeCriteriaMatrixView = (
   return (
     <Box
       sx={{
+        ...sectionSx(theme),
+        maxWidth: 1400,
+        mx: "auto",
+        p: { xs: 1, sm: 1.5 },
         "& .MuiDataGrid-cell": {
           alignItems: "center",
         },
@@ -401,6 +402,9 @@ const AlternativeCriteriaMatrixView = (
         },
         "& .MuiDataGrid-columnHeaders": {
           bgcolor: theme.palette.background.paper,
+        },
+        "& .MuiDataGrid-main": {
+          overflow: "hidden",
         },
       }}
     >

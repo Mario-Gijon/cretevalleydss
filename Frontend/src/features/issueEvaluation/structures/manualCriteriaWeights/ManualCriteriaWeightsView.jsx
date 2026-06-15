@@ -1,12 +1,23 @@
-import { Stack, TextField, Typography } from "@mui/material";
+import { forwardRef, useImperativeHandle } from "react";
+import { Box, Stack, TextField, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
-const ManualCriteriaWeightsView = ({
-  evaluationContext,
-  evaluationPayload,
-  setEvaluationPayload,
-  readOnly,
-  loading,
-}) => {
+import {
+  inputSx,
+  sectionSx,
+} from "../../styles/weightEvaluationDialog.styles";
+
+const ManualCriteriaWeightsView = (
+  {
+    evaluationContext,
+    evaluationPayload,
+    setEvaluationPayload,
+    readOnly,
+    loading,
+  },
+  ref
+) => {
+  const theme = useTheme();
   const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
     ? evaluationContext.criteria.leafNames
     : [];
@@ -18,6 +29,8 @@ const ManualCriteriaWeightsView = ({
       ? evaluationPayload.weightsByCriterion || {}
       : {};
 
+  useImperativeHandle(ref, () => ({}));
+
   if (criterionNames.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
@@ -27,35 +40,47 @@ const ManualCriteriaWeightsView = ({
   }
 
   return (
-    <Stack spacing={1.1} sx={{ pt: 1 }}>
-      {criterionNames.map((criterionName) => (
-        <TextField
-          key={criterionName}
-          label={criterionName}
-          type="number"
-          size="small"
-          color="info"
-          disabled={isReadOnly}
-          value={weightsByCriterion[criterionName] ?? ""}
-          onChange={(event) => {
-            if (isReadOnly) {
-              return;
-            }
+    <Stack spacing={2.2} sx={{ maxWidth: 900, mx: "auto" }}>
+      <Box sx={sectionSx(theme)}>
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>
+            Rate each criterion between 0 and 1
+          </Typography>
 
-            const raw = event.target.value;
-            setEvaluationPayload((previous) => ({
-              ...(previous && typeof previous === "object" ? previous : {}),
-              weightsByCriterion: {
-                ...((previous && previous.weightsByCriterion) || {}),
-                [criterionName]: raw === "" ? "" : Number(raw),
-              },
-            }));
-          }}
-          inputProps={{ min: 0, max: 1, step: 0.01 }}
-        />
-      ))}
+          <Box sx={inputSx(theme)}>
+            <Stack spacing={1.1} sx={{ pt: 1 }}>
+              {criterionNames.map((criterionName) => (
+                <TextField
+                  key={criterionName}
+                  label={criterionName}
+                  type="number"
+                  size="small"
+                  color="info"
+                  disabled={isReadOnly}
+                  value={weightsByCriterion[criterionName] ?? ""}
+                  onChange={(event) => {
+                    if (isReadOnly) {
+                      return;
+                    }
+
+                    const raw = event.target.value;
+                    setEvaluationPayload((previous) => ({
+                      ...(previous && typeof previous === "object" ? previous : {}),
+                      weightsByCriterion: {
+                        ...((previous && previous.weightsByCriterion) || {}),
+                        [criterionName]: raw === "" ? "" : Number(raw),
+                      },
+                    }));
+                  }}
+                  inputProps={{ min: 0, max: 1, step: 0.01 }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        </Stack>
+      </Box>
     </Stack>
   );
 };
 
-export default ManualCriteriaWeightsView;
+export default forwardRef(ManualCriteriaWeightsView);

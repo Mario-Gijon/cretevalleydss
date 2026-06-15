@@ -1,3 +1,4 @@
+import { forwardRef, useImperativeHandle } from "react";
 import { Divider, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { buildEmptyBestWorstCriteriaPayload } from "./bestWorstCriteria.payload";
 
@@ -13,13 +14,16 @@ const normalizeScaleInput = (value) => {
   return null;
 };
 
-const BestWorstCriteriaView = ({
-  evaluationContext,
-  evaluationPayload,
-  setEvaluationPayload,
-  readOnly,
-  loading,
-}) => {
+const BestWorstCriteriaView = (
+  {
+    evaluationContext,
+    evaluationPayload,
+    setEvaluationPayload,
+    readOnly,
+    loading,
+  },
+  ref
+) => {
   const names = Array.isArray(evaluationContext?.criteria?.leafNames)
     ? evaluationContext.criteria.leafNames
     : [];
@@ -31,6 +35,8 @@ const BestWorstCriteriaView = ({
       ? evaluationPayload
       : buildEmptyBestWorstCriteriaPayload(names);
   const isReadOnly = readOnly === true || loading === true;
+
+  useImperativeHandle(ref, () => ({}));
 
   const bestComparisonNames = names.filter(
     (name) => name !== currentPayload.bestCriterion
@@ -279,4 +285,4 @@ const BestWorstCriteriaView = ({
   );
 };
 
-export default BestWorstCriteriaView;
+export default forwardRef(BestWorstCriteriaView);
