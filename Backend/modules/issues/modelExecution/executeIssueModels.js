@@ -6,7 +6,6 @@ import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { executeApiModelRequest } from "./executeApiModelRequest.js";
-import { executeLocalCriteriaWeightingModelIfSupported } from "./executeLocalCriteriaWeightingModel.js";
 
 const executeCriteriaWeightingApiModel = async ({
   issue,
@@ -104,19 +103,6 @@ export const executeCriteriaWeightingModel = async ({
     evaluations,
     phase,
   });
-
-  const localExecutionResult = await executeLocalCriteriaWeightingModelIfSupported({
-    structure,
-    requestPayload,
-  });
-
-  if (localExecutionResult) {
-    return buildCriteriaWeightingExecutionResult({
-      structureKey,
-      message: localExecutionResult.message,
-      result: localExecutionResult,
-    });
-  }
 
   return executeCriteriaWeightingApiModel({
     issue,

@@ -22,6 +22,7 @@ from services.model_executors.cmcc import execute_cmcc
 from services.model_executors.fuzzy_topsis import execute_fuzzy_topsis
 from services.model_executors.herrera_viedma_crp import execute_herrera_viedma
 from services.model_executors.marcos import execute_marcos
+from services.model_executors.manual_criteria_weights import execute_manual_criteria_weights
 from services.model_executors.topsis import execute_topsis
 from services.model_executors.promethee_vi import execute_promethee_vi
 from services.model_executors.vikor import execute_vikor
@@ -31,6 +32,7 @@ from services.model_executors.edas import execute_edas
 from registry.response_examples import (
     HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES,
     MARCOS_RESPONSE_EXAMPLES,
+    MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
     TOPSIS_RESPONSE_EXAMPLES,
     BORDA_RESPONSE_EXAMPLES,
     ARAS_RESPONSE_EXAMPLES,
@@ -628,6 +630,43 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         uses_fuzzy_criteria_weights=False,
         uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
+    ),
+    ModelDefinition(
+        api_model_key="manual_criteria_weights",
+        api_endpoint_path="/manual_criteria_weights",
+        request_model=GenericModelExecutionRequest,
+        handler=execute_manual_criteria_weights,
+        summary="Execute Manual Criteria Weights",
+        description=(
+            "Executes manual criteria weight aggregation using completed expert "
+            "weightsByCriterion payloads."
+        ),
+        small_description=(
+            "Auxiliary weighting service that aggregates expert manual criterion "
+            "weights into a single normalized group result."
+        ),
+        extend_description=(
+            "Manual criteria weights is an auxiliary weighting service that reads "
+            "completed expert weightsByCriterion payloads, averages them by "
+            "criterion, and normalizes the final group weights so they sum to one."
+        ),
+        operation_id="executeManualCriteriaWeights",
+        response_examples=MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES,
+        display_name="Manual Criteria Weights",
+        model_version="1.0.0",
+        version_label="v1",
+        more_info_url=None,
+        is_issue_model=False,
+        is_criteria_weighting_model=True,
+        alternative_evaluation_structure_key=None,
+        criteria_weighting_structure_key="manualCriteriaWeights",
+        supports_consensus=False,
+        is_multi_criteria=True,
+        uses_criteria_weights=False,
+        uses_fuzzy_criteria_weights=False,
+        uses_criterion_types=False,
+        supported_domains=[],
+        parameters=[],
     ),
     ModelDefinition(
         api_model_key="bwm",
