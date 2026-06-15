@@ -38,11 +38,6 @@ const executeManualCriteriaWeightingModel = async ({
     );
   }
 
-  const criterionNames = criteria.map((criterion) => criterion.name);
-  const criteriaSums = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = 0;
-    return accumulator;
-  }, {});
   const evaluationContext =
     buildEvaluationContextFromCriteriaWeightingRequestPayload({
       requestPayload: {
@@ -56,6 +51,13 @@ const executeManualCriteriaWeightingModel = async ({
         },
       },
     });
+  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
+    ? evaluationContext.criteria.leafNames
+    : [];
+  const criteriaSums = criterionNames.reduce((accumulator, criterionName) => {
+    accumulator[criterionName] = 0;
+    return accumulator;
+  }, {});
 
   for (const evaluation of evaluations) {
     const displayPayload = await structure.get({
