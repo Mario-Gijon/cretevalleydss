@@ -1,4 +1,4 @@
-import { extractLeafCriteria } from "../logic/extractIssueEvaluationLeafCriteria";
+import { extractLeafCriteria } from "./extractIssueEvaluationLeafCriteria";
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -7,6 +7,14 @@ const toNonEmptyStringOrNull = (value) => {
   const normalized = String(value ?? "").trim();
   return normalized ? normalized : null;
 };
+
+const buildIdMap = (items = []) =>
+  items.reduce((accumulator, item) => {
+    if (item?.id) {
+      accumulator[item.id] = item;
+    }
+    return accumulator;
+  }, {});
 
 const buildNameMap = (items = []) =>
   items.reduce((accumulator, item) => {
@@ -49,18 +57,33 @@ const resolveLeafItems = ({ criteriaTree, leafCriteria }) => {
     .filter(Boolean);
 };
 
-const buildDomainMap = (leafItems = []) =>
-  leafItems.reduce((accumulator, criterion) => {
-    const criterionName = toNonEmptyStringOrNull(criterion?.name);
-    if (!criterionName) {
-      return accumulator;
-    }
+const buildDomainMaps = (leafItems = []) =>
+  leafItems.reduce(
+    (accumulator, criterion) => {
+      if (criterion?.id) {
+        accumulator.byCriterionId[criterion.id] = isPlainObject(
+          criterion?.expressionDomain
+        )
+          ? criterion.expressionDomain
+          : null;
+      }
 
-    accumulator[criterionName] = isPlainObject(criterion?.expressionDomain)
-      ? criterion.expressionDomain
-      : null;
-    return accumulator;
-  }, {});
+      const criterionName = toNonEmptyStringOrNull(criterion?.name);
+      if (criterionName) {
+        accumulator.byCriterionName[criterionName] = isPlainObject(
+          criterion?.expressionDomain
+        )
+          ? criterion.expressionDomain
+          : null;
+      }
+
+      return accumulator;
+    },
+    {
+      byCriterionId: {},
+      byCriterionName: {},
+    }
+  );
 
 export const buildEvaluationContext = ({
   issue = null,
@@ -78,27 +101,40 @@ export const buildEvaluationContext = ({
     criteriaTree: tree,
     leafCriteria,
   });
+  const domains = buildDomainMaps(leafItems);
+  const consensusPhase = Number.isInteger(issue?.consensusPhase)
+    ? issue.consensusPhase
+    : null;
 
   return {
     issue: {
       id: toNonEmptyStringOrNull(issue?.id ?? issue?._id),
       name: toNonEmptyStringOrNull(issue?.name),
       currentStage: toNonEmptyStringOrNull(issue?.currentStage),
-      consensusPhase: Number.isInteger(issue?.consensusPhase)
-        ? issue.consensusPhase
-        : null,
+      consensusPhase,
       isConsensus: issue?.isConsensus === true,
     },
-    stage: toNonEmptyStringOrNull(stage),
     structure: {
       key: toNonEmptyStringOrNull(structure?.key),
-      label: toNonEmptyStringOrNull(structure?.label),
+      stage: toNonEmptyStringOrNull(stage ?? structure?.stage),
+    },
+    model: {
+      id: null,
+      name: null,
+      apiModelKey: null,
+      modelFamilyKey: null,
+      versionLabel: null,
+    },
+    parameters: {
+      modelParameters: {},
+      criteriaWeightingParameters: {},
     },
     alternatives: {
       items: alternativeItems,
       names: alternativeItems
         .map((alternative) => toNonEmptyStringOrNull(alternative?.name))
         .filter(Boolean),
+      byId: buildIdMap(alternativeItems),
       byName: buildNameMap(alternativeItems),
     },
     criteria: {
@@ -107,10 +143,16 @@ export const buildEvaluationContext = ({
       leafNames: leafItems
         .map((criterion) => toNonEmptyStringOrNull(criterion?.name))
         .filter(Boolean),
+      leafById: buildIdMap(leafItems),
       leafByName: buildNameMap(leafItems),
     },
-    domains: {
-      byCriterionName: buildDomainMap(leafItems),
+    domains,
+    consensus: {
+      phase: consensusPhase,
+      maxPhases: null,
+      threshold: null,
+      currentCollectiveEvaluations: {},
+      previousCollectiveEvaluations: {},
     },
   };
 };

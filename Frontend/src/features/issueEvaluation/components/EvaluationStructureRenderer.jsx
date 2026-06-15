@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 
-import { buildEvaluationContext } from "../context/buildEvaluationContext";
 import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 
 const NOOP = () => {};
 
 const EvaluationStructureRenderer = ({
+  evaluationContext: providedEvaluationContext = null,
   issue,
   stage,
   structureKey,
@@ -25,18 +26,27 @@ const EvaluationStructureRenderer = ({
   const View = structureEntry?.View || null;
   const adapter = structureEntry?.adapter || null;
   const evaluationContext = useMemo(
-    () =>
-      buildEvaluationContext({
+    () => {
+      if (providedEvaluationContext && typeof providedEvaluationContext === "object") {
+        return providedEvaluationContext;
+      }
+
+      if (!issue) {
+        return null;
+      }
+
+      return buildEvaluationContext({
         issue,
         stage,
         structure: structureEntry,
         alternatives: issue?.alternatives || [],
         criteriaTree: issue?.criteria || [],
-      }),
-    [issue, stage, structureEntry]
+      });
+    },
+    [providedEvaluationContext, issue, stage, structureEntry]
   );
   const evaluationPayload = useMemo(() => {
-    if (!adapter) {
+    if (!adapter || !evaluationContext) {
       return {};
     }
 
@@ -46,7 +56,7 @@ const EvaluationStructureRenderer = ({
     });
   }, [adapter, evaluationContext, backendPayload]);
   const adaptedCollectivePayload = useMemo(() => {
-    if (!adapter) {
+    if (!adapter || !evaluationContext) {
       return null;
     }
 
@@ -56,7 +66,7 @@ const EvaluationStructureRenderer = ({
     });
   }, [adapter, evaluationContext, collectivePayload]);
 
-  if (!View || !adapter) {
+  if (!View || !adapter || !evaluationContext) {
     return null;
   }
 

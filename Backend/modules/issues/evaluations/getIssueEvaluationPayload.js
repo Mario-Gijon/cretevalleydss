@@ -38,6 +38,7 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
     stage,
     structureKey: structure.key,
     consensusPhase: issue.consensusPhase,
+    evaluationContext,
     payload,
     collectiveReference,
     completed: storedEvaluation?.completed ?? false,

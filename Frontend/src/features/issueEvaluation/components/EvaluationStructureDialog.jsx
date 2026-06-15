@@ -7,8 +7,8 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { buildEvaluationContext } from "../context/buildEvaluationContext";
 import { getEvaluationStructureEntryForStage } from "../evaluationStructureRegistry";
+import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 import {
   fetchIssueEvaluation,
   saveIssueEvaluation,
@@ -47,7 +47,7 @@ const EvaluationStructureDialog = ({
   const View = structureEntry?.View || null;
   const adapter = structureEntry?.adapter || null;
   const dialogConfig = structureEntry?.dialog || {};
-  const evaluationContext = useMemo(
+  const fallbackEvaluationContext = useMemo(
     () =>
       buildEvaluationContext({
         issue,
@@ -58,12 +58,15 @@ const EvaluationStructureDialog = ({
       }),
     [issue, stage, structureEntry]
   );
+  const [evaluationContext, setEvaluationContext] = useState(
+    fallbackEvaluationContext
+  );
   const emptyEvaluationPayload = useMemo(
     () =>
       adapter?.createEmptyPayload({
-        evaluationContext,
+        evaluationContext: fallbackEvaluationContext,
       }) || {},
-    [adapter, evaluationContext]
+    [adapter, fallbackEvaluationContext]
   );
 
   const [evaluationPayload, setEvaluationPayload] = useState(emptyEvaluationPayload);
@@ -81,42 +84,51 @@ const EvaluationStructureDialog = ({
   }, [evaluationPayload]);
 
   useEffect(() => {
-    setEvaluationPayload(emptyEvaluationPayload);
-  }, [emptyEvaluationPayload]);
-
-  useEffect(() => {
     if (!isOpen || !issue?.id || !adapter) return;
 
     const loadEvaluation = async () => {
       setLoading(true);
+      setEvaluationContext(fallbackEvaluationContext);
+      setEvaluationPayload(
+        adapter.createEmptyPayload({
+          evaluationContext: fallbackEvaluationContext,
+        })
+      );
       try {
         const response = await fetchIssueEvaluation(issue.id, stage);
+        const responseEvaluationContext =
+          response?.data?.evaluationContext || fallbackEvaluationContext;
         const nextEvaluationPayload = adapter.fromBackendPayload({
-          evaluationContext,
+          evaluationContext: responseEvaluationContext,
           backendPayload: response?.data?.payload || null,
         });
         const nextCollectivePayload = adapter.fromCollectivePayload({
-          evaluationContext,
+          evaluationContext: responseEvaluationContext,
           collectivePayload:
             response?.data?.collectiveReference?.collectiveEvaluations || null,
         });
 
+        setEvaluationContext(responseEvaluationContext);
         setEvaluationPayload(nextEvaluationPayload);
         setCollectivePayload(nextCollectivePayload);
         setShowCollective(nextCollectivePayload !== null);
         setInitialSnapshot(JSON.stringify(nextEvaluationPayload));
       } catch {
-        setEvaluationPayload(emptyEvaluationPayload);
+        const fallbackPayload = adapter.createEmptyPayload({
+          evaluationContext: fallbackEvaluationContext,
+        });
+        setEvaluationContext(fallbackEvaluationContext);
+        setEvaluationPayload(fallbackPayload);
         setCollectivePayload(null);
         setShowCollective(false);
-        setInitialSnapshot(JSON.stringify(emptyEvaluationPayload));
+        setInitialSnapshot(JSON.stringify(fallbackPayload));
       } finally {
         setLoading(false);
       }
     };
 
     loadEvaluation();
-  }, [isOpen, issue?.id, stage, adapter, evaluationContext, emptyEvaluationPayload]);
+  }, [isOpen, issue?.id, stage, adapter, fallbackEvaluationContext]);
 
   const preparePayloadRead = async () => {
     if (dialogConfig?.supportsPreparePayloadRead) {
@@ -167,7 +179,11 @@ const EvaluationStructureDialog = ({
   };
 
   const handleClear = () => {
-    setEvaluationPayload(emptyEvaluationPayload);
+    setEvaluationPayload(
+      adapter.createEmptyPayload({
+        evaluationContext,
+      })
+    );
     showSnackbarAlert("All evaluations cleared", "success");
   };
 
