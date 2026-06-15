@@ -4,7 +4,7 @@ import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
 
 export const resolveLatestAlternativeResultOrThrow = async ({ issue }) => {
   const latestAlternativeResult = await IssueStageResult.findOne({

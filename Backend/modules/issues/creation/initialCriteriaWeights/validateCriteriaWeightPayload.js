@@ -3,7 +3,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateAndNormalizeCrispCriteriaWeightArray,
   validateAndNormalizeFuzzyCriteriaWeightArray,
-} from "../../../decisionEngine/modelParameters/criteriaWeightValues.js";
+} from "../../../decisionPlugins/modelParameters/criteriaWeightValues.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 

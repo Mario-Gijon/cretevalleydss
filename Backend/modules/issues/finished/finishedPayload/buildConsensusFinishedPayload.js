@@ -3,7 +3,7 @@ import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   EVALUATION_STAGES,
-} from "../../../decisionEngine/evaluations/evaluation.constants.js";
+} from "../../../decisionPlugins/evaluations/evaluation.constants.js";
 import {
   normalizeConsensusPhaseOrThrow,
   validateAcceptedEvaluationCoverageOrThrow,
@@ -23,7 +23,7 @@ import {
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
 import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
-import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
+import { buildEvaluationStructureContext } from "../../../decisionPlugins/evaluations/evaluationStructureContext.js";
 import {
   groupCompletedEvaluationsByPhase,
   loadConsensusAlternativeStageResultsOrThrow,

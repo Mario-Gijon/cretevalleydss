@@ -1,6 +1,6 @@
 import { IssueModel } from "../../../models/IssueModels.js";
 import { User } from "../../../models/Users.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../decisionPlugins/modelParameters/index.js";
 import {
   validateIssueModelRuntimeConfigOrThrow,
 } from "./validateIssueModelRuntime.js";

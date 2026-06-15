@@ -1,6 +1,6 @@
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
-import { buildDefaultsResolved } from "../../../decisionEngine/modelParameters/resolveModelParameterValues.js";
+import { buildDefaultsResolved } from "../../../decisionPlugins/modelParameters/resolveModelParameterValues.js";
 import { buildScenarioCompatibilityMetadata } from "../../scenarios/validateScenarioModelCompatibility.js";
 
 export const buildAvailableModelsPayload = ({

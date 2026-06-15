@@ -8,7 +8,7 @@ import { Participation } from "../../../models/Participations.js";
 
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
-import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
 import {
   getCreatorActionFlags,
   getIssueStageMeta,

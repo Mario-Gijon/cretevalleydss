@@ -1,5 +1,5 @@
 import { IssueModel } from "../../../../models/IssueModels.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../../decisionEngine/modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../../decisionPlugins/modelParameters/index.js";
 import {
   createBadRequestError,
   createInternalError,
@@ -8,7 +8,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
-import { executeApiModelRequest } from "../../../decisionEngine/modelExecution/index.js";
+import { executeApiModelRequest } from "../../../decisionPlugins/modelExecution/index.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,

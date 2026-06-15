@@ -10,7 +10,7 @@ import {
 } from "../../shared/ordering.js";
 import {
   EVALUATION_STAGES,
-} from "../../../decisionEngine/evaluations/evaluation.constants.js";
+} from "../../../decisionPlugins/evaluations/evaluation.constants.js";
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 

@@ -1,13 +1,13 @@
 import { IssueStageResult } from "../../../../models/IssueStageResults.js";
 import {
   EVALUATION_STAGES,
-} from "../../../decisionEngine/evaluations/evaluation.constants.js";
+} from "../../../decisionPlugins/evaluations/evaluation.constants.js";
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 import { normalizeConsensusPhaseOrThrow } from "./finishedPayloadValidation.js";
-import { getEvaluationStructureOrThrow } from "../../../decisionEngine/evaluations/evaluation.registry.js";
-import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
+import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluation.registry.js";
+import { buildEvaluationStructureContext } from "../../../decisionPlugins/evaluations/evaluationStructureContext.js";
 
 export const resolveCriteriaWeightingPhase = async ({ issueId }) => {
   const latestCriteriaWeightingResult = await IssueStageResult.findOne({

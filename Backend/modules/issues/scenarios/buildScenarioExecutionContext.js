@@ -18,7 +18,7 @@ import {
   buildTargetModelRuntimeSnapshotOrThrow,
   validateScenarioModelCompatibilityOrThrow,
 } from "./validateScenarioModelCompatibility.js";
-import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
 import { getTargetScenarioModelOrThrow } from "./loadScenarioTargetModel.js";
 import { resolveLatestAlternativeResultOrThrow } from "./loadScenarioEvaluationData.js";
 import { validateEvaluationCoverageOrThrow } from "./validateScenarioEvaluationCoverage.js";

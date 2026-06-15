@@ -1,7 +1,7 @@
 import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
-} from "../../../decisionEngine/evaluations/index.js";
+} from "../../../decisionPlugins/evaluations/index.js";
 import {
   createBadRequestError,
   createInternalError,

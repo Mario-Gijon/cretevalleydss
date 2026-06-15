@@ -1,4 +1,4 @@
-import { getEvaluationStructureOrThrow } from "../../../decisionEngine/evaluations/evaluation.registry.js";
+import { getEvaluationStructureOrThrow } from "../../../decisionPlugins/evaluations/evaluation.registry.js";
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 

@@ -17,7 +17,7 @@ import {
   getIssueEvaluationPayload,
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
-} from "../modules/decisionEngine/evaluations/index.js";
+} from "../modules/decisionPlugins/evaluations/index.js";
 
 import {
   getActiveIssuesPayload,

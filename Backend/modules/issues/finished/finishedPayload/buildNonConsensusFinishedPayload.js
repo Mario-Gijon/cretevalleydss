@@ -6,7 +6,7 @@ import {
 } from "./finishedPayloadValidation.js";
 import {
   EVALUATION_STAGES,
-} from "../../../decisionEngine/evaluations/evaluation.constants.js";
+} from "../../../decisionPlugins/evaluations/evaluation.constants.js";
 import { buildRankedAlternativesPayloadOrThrow } from "./buildFinishedRankings.js";
 import { resolveCriteriaWeightingPhase } from "./buildFinishedCriteriaWeights.js";
 import { enrichPlotsGraphicWithExpertLabels } from "./buildFinishedGraphs.js";
@@ -20,7 +20,7 @@ import {
   buildFinishedExpertRatingsContext,
 } from "./buildFinishedExpertRatings.js";
 import { buildFinishedCollectiveEvaluations } from "./buildFinishedCollectiveEvaluations.js";
-import { buildEvaluationStructureContext } from "../../../decisionEngine/evaluations/evaluationStructureContext.js";
+import { buildEvaluationStructureContext } from "../../../decisionPlugins/evaluations/evaluationStructureContext.js";
 import {
   loadFinishedSinglePhaseData,
   loadLatestAlternativeStageResultOrThrow,

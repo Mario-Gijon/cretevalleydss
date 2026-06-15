@@ -4,7 +4,7 @@ import { Issue } from "../../../models/Issues.js";
 import { IssueStageResult } from "../../../models/IssueStageResults.js";
 import { Participation } from "../../../models/Participations.js";
 import { toIdString } from "../../../utils/common/ids.js";
-import { EVALUATION_STAGES } from "../../decisionEngine/evaluations/evaluation.constants.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluation.constants.js";
 import { getVisibleActiveIssueIdsForUser } from "../shared/queries.js";
 import { buildActiveIssueCollections } from "./groupActiveIssueRecords.js";
 import {

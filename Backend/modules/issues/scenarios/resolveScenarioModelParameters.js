@@ -2,11 +2,11 @@ import {
   createBadRequestError,
 } from "../../../utils/common/errors.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
-import { validateAndNormalizeModelParametersOrThrow } from "../../decisionEngine/modelParameters/index.js";
+import { validateAndNormalizeModelParametersOrThrow } from "../../decisionPlugins/modelParameters/index.js";
 import {
   buildDefaultsResolved,
   mergeParamsResolved,
-} from "../../decisionEngine/modelParameters/resolveModelParameterValues.js";
+} from "../../decisionPlugins/modelParameters/resolveModelParameterValues.js";
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 
