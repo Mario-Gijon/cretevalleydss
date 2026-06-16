@@ -133,10 +133,6 @@ export const getSyncBlockerReason = (manifestModel) => {
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
-  const supportsCreatorCriteriaWeighting =
-    manifestModel?.supportsCreatorCriteriaWeighting;
-  const supportsExpertCriteriaWeighting =
-    manifestModel?.supportsExpertCriteriaWeighting;
 
   if (!isIssueModel && !isCriteriaWeightingModel) {
     return "Model is not marked as issue model or criteria weighting model";
@@ -203,6 +199,10 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
+  const supportsCreatorCriteriaWeighting =
+    manifestModel?.supportsCreatorCriteriaWeighting;
+  const supportsExpertCriteriaWeighting =
+    manifestModel?.supportsExpertCriteriaWeighting;
 
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
