@@ -2,6 +2,7 @@ import { isPlainObject } from "./isPlainObject";
 import {
   buildCriterionParameterRows,
   isCriteriaWeightLikeParameter,
+  isExpertWeightsParameter,
   isCriterionMapParameter,
 } from "./modelParameterCriteria";
 
@@ -19,6 +20,14 @@ const buildCriterionMapDefault = (parameter, leafCriteria) => {
 };
 
 export const getCreateIssueModelParameters = (selectedModel) =>
+  readModelParameters(selectedModel).filter(
+    (parameter) =>
+      parameter.key &&
+      !isCriteriaWeightLikeParameter(parameter) &&
+      !isExpertWeightsParameter(parameter)
+  );
+
+const getPersistedCreateIssueModelParameters = (selectedModel) =>
   readModelParameters(selectedModel).filter(
     (parameter) => parameter.key && !isCriteriaWeightLikeParameter(parameter)
   );
@@ -90,7 +99,7 @@ export const updateCreateIssueParameterValues = ({
 };
 
 export const pruneCreateIssueParameterValues = ({ selectedModel, values }) => {
-  const parameters = getCreateIssueModelParameters(selectedModel);
+  const parameters = getPersistedCreateIssueModelParameters(selectedModel);
   const allowedKeys = new Set(parameters.map((parameter) => parameter.key));
   const source = isPlainObject(values) ? values : {};
 

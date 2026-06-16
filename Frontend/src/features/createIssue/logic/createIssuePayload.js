@@ -13,6 +13,7 @@ import {
   validateCreateIssueFuzzyCriteriaWeighting,
   validateCreateIssueManualCriteriaWeighting,
 } from "./createIssueCriteriaWeighting";
+import { validateCreateIssueExpertWeights } from "./createIssueExpertWeights";
 
 const normalizeConsensusMaxPhases = (value) =>
   value === null || value === undefined || value === "" ? null : Number(value);
@@ -27,6 +28,7 @@ const normalizeCriteriaWeightingParameters = (criteriaWeightingConfig) =>
 export const buildCreateIssueRequestPayload = ({
   allData,
   selectedModel,
+  selectedExperts,
   modelSupportsConsensusSimulation,
   simulateConsensus,
   consensusMaxPhases,
@@ -104,6 +106,19 @@ export const buildCreateIssueRequestPayload = ({
   }
 
   const modelNeedsCriteriaWeights = modelUsesCriteriaWeights(selectedModel);
+  const expertWeightsValidationError = validateCreateIssueExpertWeights({
+    selectedModel,
+    selectedExperts,
+    expertWeights: paramValues?.expertWeights,
+  });
+
+  if (expertWeightsValidationError) {
+    return {
+      ok: false,
+      errorMessage: expertWeightsValidationError,
+    };
+  }
+
   if (modelNeedsCriteriaWeights) {
     if (!criteriaWeightingConfig || typeof criteriaWeightingConfig !== "object") {
       return {

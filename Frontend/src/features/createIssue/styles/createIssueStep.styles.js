@@ -283,6 +283,43 @@ export const getCreateIssueExpertsChipSx = (theme) => ({
 });
 
 /**
+ * Estilo del contenedor scrollable para expertos seleccionados.
+ *
+ * @param {Object} theme Tema de MUI.
+ * @returns {Object}
+ */
+export const getCreateIssueExpertsSelectedListSx = (theme) => ({
+  ...getCreateIssueStepScrollableSx(theme, "220px"),
+  maxHeight: {
+    xs: 200,
+    md: 380,
+    lg: 400,
+  },
+  px: 0,
+  py: 0,
+});
+
+/**
+ * Estilo de fila compacta para expertos seleccionados.
+ *
+ * @param {Object} theme Tema de MUI.
+ * @returns {Object}
+ */
+export const getCreateIssueExpertsSelectedRowSx = (theme) => ({
+  px: 1,
+  py: 0.7,
+  borderRadius: 0,
+  borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.07)}`,
+  bgcolor: "transparent",
+  "&:hover": {
+    bgcolor: alpha(theme.palette.info.main, 0.05),
+  },
+  "&:last-of-type": {
+    borderBottomColor: "transparent",
+  },
+});
+
+/**
  * Estilo de celda de cabecera para tabla de expertos.
  *
  * @param {Object} theme Tema de MUI.

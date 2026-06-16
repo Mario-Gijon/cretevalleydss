@@ -78,6 +78,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "supportsConsensusSimulation": model.supports_consensus_simulation,
         "isMultiCriteria": model.is_multi_criteria,
         "usesCriteriaWeights": model.uses_criteria_weights,
+        "usesExpertWeights": model.uses_expert_weights,
         "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
         "usesCriterionTypes": model.uses_criterion_types,
         "supportedDomains": _build_supported_domains(model.supported_domains),

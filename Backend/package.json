@@ -34,6 +34,7 @@
   "scripts": {
     "dev": "NODE_ENV=development nodemon server.js",
     "start": "NODE_ENV=production node server.js",
+    "seed:mock-experts": "node scripts/seedMockExperts.js",
     "docs:openapi": "node scripts/generate-openapi.mjs",
     "docs:openapi:lint": "redocly lint openapi/openapi.json",
     "docs:openapi:bundle": "redocly bundle openapi/openapi.json -o openapi/bundled-openapi.json",
