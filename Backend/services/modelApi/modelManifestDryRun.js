@@ -217,6 +217,14 @@ const buildModelRow = ({
       manifestProjection?.criteriaWeightingStructureKey ??
       mongoModel?.criteriaWeightingStructureKey ??
       null,
+    supportsCreatorCriteriaWeighting:
+      manifestProjection?.supportsCreatorCriteriaWeighting ??
+      mongoModel?.supportsCreatorCriteriaWeighting ??
+      null,
+    supportsExpertCriteriaWeighting:
+      manifestProjection?.supportsExpertCriteriaWeighting ??
+      mongoModel?.supportsExpertCriteriaWeighting ??
+      null,
     supportsConsensus:
       manifestProjection?.supportsConsensus ?? mongoModel?.supportsConsensus ?? null,
     supportsConsensusSimulation:

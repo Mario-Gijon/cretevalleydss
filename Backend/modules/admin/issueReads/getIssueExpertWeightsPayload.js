@@ -210,6 +210,7 @@ export const getIssueExpertWeightsPayload = async ({
         kind,
         criteriaWeightingStructure,
       }),
+      evaluationContext: criteriaWeightingEvaluationContext,
       payload: criteriaWeightingPayload,
       leafCriteria: leafNames,
       leafCriteriaDetailed: orderedLeafCriteria.map((criterion) => ({

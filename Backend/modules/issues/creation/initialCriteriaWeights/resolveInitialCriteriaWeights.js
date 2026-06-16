@@ -21,6 +21,39 @@ const ensureCriteriaNamesOrThrow = (criterionNames) => {
   }
 };
 
+const validateCriteriaWeightingModeSupportOrThrow = ({
+  resolvedConfig,
+  criteriaWeightingModel,
+}) => {
+  if (resolvedConfig.method !== "apiModel" || !criteriaWeightingModel) {
+    return;
+  }
+
+  if (
+    resolvedConfig.source === "creator" &&
+    criteriaWeightingModel.supportsCreatorCriteriaWeighting !== true
+  ) {
+    throw createBadRequestError(
+      "Selected criteria weighting model does not support creator-side weighting",
+      {
+        field: "criteriaWeightingConfig.mode",
+      }
+    );
+  }
+
+  if (
+    resolvedConfig.source === "experts" &&
+    criteriaWeightingModel.supportsExpertCriteriaWeighting !== true
+  ) {
+    throw createBadRequestError(
+      "Selected criteria weighting model does not support expert-side weighting",
+      {
+        field: "criteriaWeightingConfig.mode",
+      }
+    );
+  }
+};
+
 const buildResolvedCriteriaWeightingConfig = ({
   criteriaWeightingStructureKey,
   criteriaWeightingModel,
@@ -161,6 +194,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   criteriaWeightingConfig,
   criteriaWeightingParameters,
   criterionNames,
+  leafCriteria = [],
   isSingleLeafCriterion,
   model,
   fuzzyValueCount = null,
@@ -208,6 +242,10 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     criteriaWeightingRuntime = apiModelContext.criteriaWeightingRuntime;
     normalizedCriteriaWeightingParameters =
       apiModelContext.normalizedCriteriaWeightingParameters;
+    validateCriteriaWeightingModeSupportOrThrow({
+      resolvedConfig,
+      criteriaWeightingModel,
+    });
   }
 
   const resolvedStructureKey = resolveCriteriaWeightingStructureKey({
@@ -304,6 +342,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     modelWeights = await resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
       payload: resolvedConfig.payload,
       criterionNames,
+      leafCriteria,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
       criteriaWeightingParameters: normalizedCriteriaWeightingParameters,

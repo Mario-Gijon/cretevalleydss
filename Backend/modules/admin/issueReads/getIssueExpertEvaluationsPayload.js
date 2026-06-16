@@ -123,6 +123,7 @@ export const getIssueExpertEvaluationsPayload = async ({
       filledCells: progress.completed ? 1 : 0,
       lastEvaluationAt: progress.lastActivityAt,
     },
+    evaluationContext,
     evaluations,
     collectiveEvaluations: collectiveSource,
   };

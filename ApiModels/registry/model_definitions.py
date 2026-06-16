@@ -65,6 +65,8 @@ class ModelDefinition:
     more_info_url: str | None = None
     is_issue_model: bool = True
     is_criteria_weighting_model: bool = False
+    supports_creator_criteria_weighting: bool = False
+    supports_expert_criteria_weighting: bool = False
 
     alternative_evaluation_structure_key: str | None = None
     criteria_weighting_structure_key: str | None = None
@@ -94,6 +96,24 @@ class ModelDefinition:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
                 "criteria_weighting_structure_key for criteria weighting models."
+            )
+
+        if self.is_criteria_weighting_model and not (
+            isinstance(self.supports_creator_criteria_weighting, bool)
+            and isinstance(self.supports_expert_criteria_weighting, bool)
+        ):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires boolean "
+                "criteria-weighting capability flags."
+            )
+
+        if self.is_criteria_weighting_model and not (
+            self.supports_creator_criteria_weighting
+            or self.supports_expert_criteria_weighting
+        ):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' must support creator-side "
+                "or expert-side criteria weighting."
             )
 
 
@@ -615,6 +635,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         more_info_url=None,
         is_issue_model=False,
         is_criteria_weighting_model=True,
+        supports_creator_criteria_weighting=False,
+        supports_expert_criteria_weighting=True,
         alternative_evaluation_structure_key=None,
         criteria_weighting_structure_key="manualCriteriaWeights",
         supports_consensus=False,
@@ -647,6 +669,8 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         more_info_url=None,
         is_issue_model=False,
         is_criteria_weighting_model=True,
+        supports_creator_criteria_weighting=True,
+        supports_expert_criteria_weighting=True,
         alternative_evaluation_structure_key=None,
         criteria_weighting_structure_key="bestWorstCriteria",
         supports_consensus=False,

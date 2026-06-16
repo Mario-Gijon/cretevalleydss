@@ -79,6 +79,26 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
     message: "is required",
     value: model.criteriaWeightingStructureKey,
   });
+  const supportsCreatorCriteriaWeighting =
+    model.supportsCreatorCriteriaWeighting;
+  const supportsExpertCriteriaWeighting =
+    model.supportsExpertCriteriaWeighting;
+
+  if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
+    runtimeErrors.push({
+      field: "supportsCreatorCriteriaWeighting",
+      message: "must be boolean",
+      value: supportsCreatorCriteriaWeighting,
+    });
+  }
+
+  if (typeof supportsExpertCriteriaWeighting !== "boolean") {
+    runtimeErrors.push({
+      field: "supportsExpertCriteriaWeighting",
+      message: "must be boolean",
+      value: supportsExpertCriteriaWeighting,
+    });
+  }
 
   if (runtimeErrors.length > 0) {
     const firstError = runtimeErrors[0];
@@ -105,5 +125,7 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
       path: endpointPath,
     },
     criteriaWeightingStructureKey,
+    supportsCreatorCriteriaWeighting,
+    supportsExpertCriteriaWeighting,
   };
 };

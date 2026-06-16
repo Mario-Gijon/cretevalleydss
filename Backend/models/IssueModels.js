@@ -136,6 +136,16 @@ const issueModelSchema = new Schema({
     required: true,
     default: false,
   },
+  supportsCreatorCriteriaWeighting: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
+  supportsExpertCriteriaWeighting: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
   visibleInIssueCreation: {
     type: Boolean,
     default: function resolveDefaultVisibility() {

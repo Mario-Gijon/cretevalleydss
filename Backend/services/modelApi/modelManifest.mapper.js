@@ -133,6 +133,10 @@ export const getSyncBlockerReason = (manifestModel) => {
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
+  const supportsCreatorCriteriaWeighting =
+    manifestModel?.supportsCreatorCriteriaWeighting;
+  const supportsExpertCriteriaWeighting =
+    manifestModel?.supportsExpertCriteriaWeighting;
 
   if (!isIssueModel && !isCriteriaWeightingModel) {
     return "Model is not marked as issue model or criteria weighting model";
@@ -215,6 +219,24 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.isCriteriaWeightingModel !== "boolean") {
     missingFields.push("isCriteriaWeightingModel");
   }
+  if (isCriteriaWeightingModel) {
+    if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
+      missingFields.push("supportsCreatorCriteriaWeighting");
+    }
+    if (typeof supportsExpertCriteriaWeighting !== "boolean") {
+      missingFields.push("supportsExpertCriteriaWeighting");
+    }
+    if (
+      typeof supportsCreatorCriteriaWeighting === "boolean" &&
+      typeof supportsExpertCriteriaWeighting === "boolean" &&
+      supportsCreatorCriteriaWeighting !== true &&
+      supportsExpertCriteriaWeighting !== true
+    ) {
+      missingFields.push(
+        "supportsCreatorCriteriaWeighting/supportsExpertCriteriaWeighting (at least one must be true)"
+      );
+    }
+  }
 
   if (typeof manifestModel?.isMultiCriteria !== "boolean") {
     missingFields.push("isMultiCriteria");
@@ -242,6 +264,12 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   displayName: normalizeNonEmptyString(manifestModel?.displayName),
   isIssueModel: manifestModel?.isIssueModel === true,
   isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  supportsCreatorCriteriaWeighting:
+    manifestModel?.isCriteriaWeightingModel === true &&
+    manifestModel?.supportsCreatorCriteriaWeighting === true,
+  supportsExpertCriteriaWeighting:
+    manifestModel?.isCriteriaWeightingModel === true &&
+    manifestModel?.supportsExpertCriteriaWeighting === true,
   visibleInIssueCreation: manifestModel?.isIssueModel === true,
   visibleInCriteriaWeighting:
     manifestModel?.isCriteriaWeightingModel === true,

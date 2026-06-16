@@ -29,6 +29,10 @@ import { getAdminIssueDetailCardSx } from "../styles/adminIssues.styles";
 
 export default function AdminIssueExpertReview({ detail, issueExpertsProgress, detailView }) {
   const theme = useTheme();
+  const alternativeEvaluationStructureKey =
+    detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey ||
+    detail.expertEvaluations?.evaluationContext?.structure?.key ||
+    "";
 
   return (
     <Stack spacing={1.1}>
@@ -210,13 +214,14 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
               </Stack>
             </Stack>
 
-            {!detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey ? (
+            {!alternativeEvaluationStructureKey ? (
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
                 Evaluation structure does not expose a reusable renderer.
               </Typography>
             ) : (
               <Box sx={{ maxWidth: "100%", overflowX: "auto" }}>
                 <EvaluationStructureRenderer
+                  evaluationContext={detail.expertEvaluations?.evaluationContext || null}
                   issue={{
                     ...detail.issueDetail,
                     alternatives: detailView.orderedAlternativesForReview,
@@ -228,10 +233,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
                     ),
                   }}
                   stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
-                  structureKey={
-                    detail.expertEvaluations?.issue?.alternativeEvaluationStructureKey ||
-                    ""
-                  }
+                  structureKey={alternativeEvaluationStructureKey}
                   backendPayload={detail.expertEvaluations?.evaluations || {}}
                   collectivePayload={
                     detail.showExpertCollective &&

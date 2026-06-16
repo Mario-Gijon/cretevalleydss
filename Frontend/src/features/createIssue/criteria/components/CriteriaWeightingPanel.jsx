@@ -26,6 +26,7 @@ import {
 import { CriteriaWeightingMethodCard } from "./CriteriaWeightingMethodCard";
 import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
 import { getEvaluationStructureEntryForStage } from "../../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import { buildEvaluationContext } from "../../../issueEvaluation/logic/buildEvaluationContext";
 
 export const CriteriaWeightingPanel = ({
   selectedModel,
@@ -107,6 +108,20 @@ export const CriteriaWeightingPanel = ({
       ),
     [availableCriteriaWeightingModels]
   );
+  const creatorApiCriteriaWeightingModels = useMemo(
+    () =>
+      visibleApiCriteriaWeightingModels.filter(
+        (modelItem) => modelItem?.supportsCreatorCriteriaWeighting === true
+      ),
+    [visibleApiCriteriaWeightingModels]
+  );
+  const expertApiCriteriaWeightingModels = useMemo(
+    () =>
+      visibleApiCriteriaWeightingModels.filter(
+        (modelItem) => modelItem?.supportsExpertCriteriaWeighting === true
+      ),
+    [visibleApiCriteriaWeightingModels]
+  );
   const selectedApiCriteriaWeightingModel = useMemo(() => {
     const selectedModelId = String(
       criteriaWeightingConfig?.criteriaWeightingModelId || ""
@@ -138,6 +153,10 @@ export const CriteriaWeightingPanel = ({
   );
   const SelectedCriteriaWeightingView =
     selectedCriteriaWeightingStructureEntry?.View || null;
+  const selectedCriteriaWeightingAdapter =
+    selectedCriteriaWeightingStructureEntry?.adapter || null;
+  const manualExpertWeightingAvailable =
+    manualCriteriaWeightingModel?.supportsExpertCriteriaWeighting === true;
 
   const getCriteriaWeightingModelLabel = (criteriaModel) => {
     const baseLabel =
@@ -261,12 +280,50 @@ export const CriteriaWeightingPanel = ({
     modelUsesWeights,
     setCriteriaWeightingConfig,
   ]);
+  const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
 
+  const criteriaWeightingEvaluationContext = useMemo(() => {
+    if (!selectedCriteriaWeightingStructureEntry) {
+      return null;
+    }
+
+    return buildEvaluationContext({
+      issue: null,
+      stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
+      structure: selectedCriteriaWeightingStructureEntry,
+      model: selectedApiCriteriaWeightingModel,
+      parameters: {
+        modelParameters: {},
+        criteriaWeightingParameters: safeConfig?.criteriaWeightingParameters || {},
+      },
+      alternatives: [],
+      criteriaTree: criteria,
+      leafCriteria,
+    });
+  }, [
+    selectedApiCriteriaWeightingModel,
+    selectedCriteriaWeightingStructureEntry,
+    criteria,
+    leafCriteria,
+    safeConfig?.criteriaWeightingParameters,
+  ]);
+  const criteriaWeightingEvaluationPayload = useMemo(() => {
+    if (!selectedCriteriaWeightingAdapter || !criteriaWeightingEvaluationContext) {
+      return null;
+    }
+
+    return selectedCriteriaWeightingAdapter.fromBackendPayload({
+      evaluationContext: criteriaWeightingEvaluationContext,
+      backendPayload: safeConfig?.payload || null,
+    });
+  }, [
+    criteriaWeightingEvaluationContext,
+    safeConfig?.payload,
+    selectedCriteriaWeightingAdapter,
+  ]);
   if (!modelUsesWeights) {
     return null;
   }
-
-  const safeConfig = criteriaWeightingConfig || buildConfigByMode({ mode, leafCriteria });
   const selectedCriteriaWeightingModelKey = String(
     safeConfig?.criteriaWeightingModelKey || ""
   ).trim();
@@ -357,7 +414,7 @@ export const CriteriaWeightingPanel = ({
             title="Manual by experts"
             description="Experts evaluate later"
             selected={manualByExpertsSelected}
-            disabled={isSingleCriterion || !manualCriteriaWeightingModel}
+            disabled={isSingleCriterion || !manualExpertWeightingAvailable}
             onClick={() =>
               updateConfig(
                 buildApiCriteriaWeightingConfig({
@@ -370,7 +427,7 @@ export const CriteriaWeightingPanel = ({
             }
           />
 
-          {visibleApiCriteriaWeightingModels.map((criteriaModel) => {
+          {creatorApiCriteriaWeightingModels.map((criteriaModel) => {
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL &&
@@ -399,7 +456,7 @@ export const CriteriaWeightingPanel = ({
             );
           })}
 
-          {visibleApiCriteriaWeightingModels.map((criteriaModel) => {
+          {expertApiCriteriaWeightingModels.map((criteriaModel) => {
             const modelId = String(criteriaModel?._id || criteriaModel?.id || "").trim();
             const selected =
               mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
@@ -430,10 +487,10 @@ export const CriteriaWeightingPanel = ({
         </Stack>
       )}
 
-      {!isFuzzyModel && !isSingleCriterion && !manualCriteriaWeightingModel ? (
+      {!isFuzzyModel && !isSingleCriterion && !manualExpertWeightingAvailable ? (
         <Alert severity="warning">
           Manual expert weighting is unavailable because the manual criteria weighting
-          ApiModel is missing.
+          ApiModel is missing or does not support expert-side weighting.
         </Alert>
       ) : null}
 
@@ -452,25 +509,28 @@ export const CriteriaWeightingPanel = ({
       ) : null}
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
-        SelectedCriteriaWeightingView ? (
+        SelectedCriteriaWeightingView &&
+        selectedCriteriaWeightingAdapter &&
+        criteriaWeightingEvaluationContext ? (
           <SelectedCriteriaWeightingView
-            creationContext={{
-              criteria,
-              leafCriteria,
-              criterionNames,
-              payload: safeConfig?.payload,
-              setPayload: (payload) =>
-                updateConfig(
-                  {
-                    ...safeConfig,
-                    payload,
-                  },
-                  { markDirty: true }
-                ),
-              criteriaWeightingModel: selectedApiCriteriaWeightingModel,
-              structureKey:
-                selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey || "",
-            }}
+            evaluationContext={criteriaWeightingEvaluationContext}
+            evaluationPayload={criteriaWeightingEvaluationPayload}
+            setEvaluationPayload={(evaluationPayload) =>
+              updateConfig(
+                {
+                  ...safeConfig,
+                  payload: selectedCriteriaWeightingAdapter.toBackendPayload({
+                    evaluationContext: criteriaWeightingEvaluationContext,
+                    evaluationPayload,
+                    mode: "draft",
+                  }),
+                },
+                { markDirty: true }
+              )
+            }
+            collectivePayload={null}
+            readOnly={false}
+            loading={false}
           />
         ) : (
           <Alert severity="warning">

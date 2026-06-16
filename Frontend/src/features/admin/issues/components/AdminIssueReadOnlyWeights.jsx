@@ -64,6 +64,7 @@ const AdminIssueReadOnlyWeights = ({
         </Typography>
       ) : (
         <EvaluationStructureRenderer
+          evaluationContext={weights?.evaluationContext || null}
           issue={{
             criteria: criteriaRows.map((criterion) => ({
               ...criterion,

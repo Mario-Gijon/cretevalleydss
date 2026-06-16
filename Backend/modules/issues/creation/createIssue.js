@@ -149,6 +149,7 @@ export const prepareIssueCreation = async ({
       criteriaWeightingConfig: input.criteriaWeightingConfig,
       criteriaWeightingParameters: input.criteriaWeightingParameters,
       criterionNames,
+      leafCriteria: orderedLeafCriteria,
       isSingleLeafCriterion,
       model,
       fuzzyValueCount: fuzzyCriteriaWeightValueCount,

@@ -1,4 +1,7 @@
 import { IssueModel } from "../../../../models/IssueModels.js";
+import {
+  getEvaluationStructureOrThrow,
+} from "../../../decisionPlugins/evaluations/index.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../../decisionPlugins/modelParameters/index.js";
 import {
   createBadRequestError,
@@ -9,6 +12,7 @@ import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
 import { executeApiModelRequest } from "../../modelExecution/index.js";
+import { buildCreatorCriteriaWeightingEvaluationContext } from "./buildCreatorCriteriaWeightingEvaluationContext.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
   resolvedConfig,
@@ -97,6 +101,7 @@ export const loadCriteriaWeightingApiModelContextOrThrow = async ({
 export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   payload,
   criterionNames,
+  leafCriteria,
   criteriaWeightingModel,
   criteriaWeightingRuntime,
   criteriaWeightingParameters,
@@ -116,6 +121,24 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   }
 
   const normalizedBaseUrl = apiModelsBaseUrl.replace(/\/+$/g, "");
+  const criteriaWeightingStructure = getEvaluationStructureOrThrow(
+    criteriaWeightingRuntime.criteriaWeightingStructureKey
+  );
+  const creatorCriteriaWeightingEvaluationContext =
+    buildCreatorCriteriaWeightingEvaluationContext({
+      criteriaWeightingStructure,
+      criteriaWeightingModel,
+      normalizedCriteriaWeightingParameters: criteriaWeightingParameters,
+      leafCriteria:
+        Array.isArray(leafCriteria) && leafCriteria.length > 0
+          ? leafCriteria
+          : criterionNames,
+    });
+  const normalizedCreatorPayload = await criteriaWeightingStructure.save({
+    mode: "submit",
+    payload,
+    evaluationContext: creatorCriteriaWeightingEvaluationContext,
+  });
 
   const requestPayload = {
     modelParameters: criteriaWeightingParameters,
@@ -126,27 +149,29 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
           name: "Creator",
           email: "creator@local",
         },
-        payload,
+        payload: normalizedCreatorPayload,
       },
     ],
     context: {
       issue: {
-        id: "preview",
-        name: "Issue creation preview",
-        consensusThreshold: null,
-        consensusMaxPhases: null,
+        id: creatorCriteriaWeightingEvaluationContext.issue.id,
+        name: creatorCriteriaWeightingEvaluationContext.issue.name,
+        currentStage: creatorCriteriaWeightingEvaluationContext.issue.currentStage,
+        consensusThreshold:
+          creatorCriteriaWeightingEvaluationContext.issue.consensusThreshold,
+        consensusMaxPhases:
+          creatorCriteriaWeightingEvaluationContext.issue.consensusMaxPhases,
       },
-      criteria: criterionNames.map((criterionName, index) => ({
-        id: `${index + 1}`,
-        name: criterionName,
-        type: null,
-      })),
-      consensusPhase: 0,
+      criteria: creatorCriteriaWeightingEvaluationContext.criteria.leafItems.map(
+        (criterion, index) => ({
+          id: criterion.id || `${index + 1}`,
+          name: criterion.name,
+          type: criterion.type || null,
+        })
+      ),
+      consensusPhase: creatorCriteriaWeightingEvaluationContext.consensus.phase,
       previousStageResult: null,
-      structure: {
-        key: criteriaWeightingRuntime.criteriaWeightingStructureKey,
-        stage: "criteriaWeighting",
-      },
+      structure: creatorCriteriaWeightingEvaluationContext.structure,
     },
   };
 

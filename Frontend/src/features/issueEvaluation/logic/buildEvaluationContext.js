@@ -89,6 +89,8 @@ export const buildEvaluationContext = ({
   issue = null,
   stage = null,
   structure = null,
+  model = null,
+  parameters = null,
   alternatives = null,
   criteriaTree = null,
   leafCriteria = null,
@@ -119,13 +121,18 @@ export const buildEvaluationContext = ({
       stage: toNonEmptyStringOrNull(stage ?? structure?.stage),
     },
     model: {
-      id: null,
-      name: null,
-      apiModelKey: null,
+      id: toNonEmptyStringOrNull(model?.id ?? model?._id),
+      name: toNonEmptyStringOrNull(model?.name ?? model?.displayName),
+      apiModelKey: toNonEmptyStringOrNull(model?.apiModelKey),
     },
     parameters: {
-      modelParameters: {},
-      criteriaWeightingParameters: {},
+      modelParameters:
+        isPlainObject(parameters?.modelParameters) ? parameters.modelParameters : {},
+      criteriaWeightingParameters: isPlainObject(
+        parameters?.criteriaWeightingParameters
+      )
+        ? parameters.criteriaWeightingParameters
+        : {},
     },
     alternatives: {
       items: alternativeItems,

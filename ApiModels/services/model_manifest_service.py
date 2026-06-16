@@ -63,6 +63,8 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "displayName": model.display_name,
         "isIssueModel": model.is_issue_model,
         "isCriteriaWeightingModel": model.is_criteria_weighting_model,
+        "supportsCreatorCriteriaWeighting": model.supports_creator_criteria_weighting,
+        "supportsExpertCriteriaWeighting": model.supports_expert_criteria_weighting,
         "apiEndpoint": {
             "method": "POST",
             "path": model.api_endpoint_path,
