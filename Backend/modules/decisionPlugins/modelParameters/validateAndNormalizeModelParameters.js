@@ -23,7 +23,6 @@ export const validateAndNormalizeModelParametersOrThrow = ({
   paramValues,
   criteriaNodes,
   alternativesCount = null,
-  selectedExperts = null,
 }) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
   const modelParameters = Array.isArray(model?.parameters) ? model.parameters : [];
@@ -156,7 +155,6 @@ export const validateAndNormalizeModelParametersOrThrow = ({
         leafCriteriaCount,
         leafCriteria,
         alternativesCount: resolvedAlternativesCount,
-        selectedExperts: Array.isArray(selectedExperts) ? selectedExperts : [],
       },
     });
 

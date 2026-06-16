@@ -9,7 +9,6 @@ import {
   createBadRequestError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
-import { toIdString } from "../../../utils/common/ids.js";
 
 const stripCriteriaWeightParameterValues = (paramValues) => {
   const normalized = { ...paramValues };
@@ -48,6 +47,15 @@ export const loadCreateIssueActorsAndModel = async ({
 
   const sanitizedParamValues = stripCriteriaWeightParameterValues(paramValues);
 
+  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
+    model: existingModel,
+    paramValues: sanitizedParamValues,
+    criteriaNodes,
+    alternativesCount,
+  });
+  const normalizedModelParametersWithoutCriteriaWeights =
+    stripCriteriaWeightParameterValues(normalizedModelParameters);
+
   const admin = await User.findById(adminUserId).session(session);
   if (!admin) {
     throw createNotFoundError("Admin not found");
@@ -73,23 +81,6 @@ export const loadCreateIssueActorsAndModel = async ({
       }
     );
   }
-
-  const normalizedModelParameters = validateAndNormalizeModelParametersOrThrow({
-    model: existingModel,
-    paramValues: sanitizedParamValues,
-    criteriaNodes,
-    alternativesCount,
-    selectedExperts: uniqueExpertEmails
-      .map((email) => expertByEmail.get(email))
-      .filter(Boolean)
-      .map((expert) => ({
-        id: toIdString(expert?._id),
-        name: expert?.name || null,
-        email: normalizeEmail(expert?.email),
-      })),
-  });
-  const normalizedModelParametersWithoutCriteriaWeights =
-    stripCriteriaWeightParameterValues(normalizedModelParameters);
 
   return {
     model: existingModel,

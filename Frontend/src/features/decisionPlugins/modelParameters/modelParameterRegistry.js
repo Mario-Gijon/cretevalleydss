@@ -8,8 +8,6 @@ import NumberCriterionParameterField from "./fields/numberCriterion/NumberCriter
 import NumberCriterionParameterReadOnly from "./fields/numberCriterion/NumberCriterionParameterReadOnly";
 import SelectCriterionParameterField from "./fields/selectCriterion/SelectCriterionParameterField";
 import SelectCriterionParameterReadOnly from "./fields/selectCriterion/SelectCriterionParameterReadOnly";
-import ExpertWeightsParameterField from "./fields/expertWeights/ExpertWeightsParameterField";
-import ExpertWeightsParameterReadOnly from "./fields/expertWeights/ExpertWeightsParameterReadOnly";
 
 export const PARAMETER_FIELD_REGISTRY = Object.freeze({
   numberGlobal: {
@@ -31,10 +29,6 @@ export const PARAMETER_FIELD_REGISTRY = Object.freeze({
   selectCriterion: {
     FieldComponent: SelectCriterionParameterField,
     ReadOnlyComponent: SelectCriterionParameterReadOnly,
-  },
-  expertWeights: {
-    FieldComponent: ExpertWeightsParameterField,
-    ReadOnlyComponent: ExpertWeightsParameterReadOnly,
   },
 });
 

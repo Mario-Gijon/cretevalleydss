@@ -237,10 +237,6 @@ const buildModelRow = ({
       manifestProjection?.usesCriteriaWeights ??
       mongoModel?.usesCriteriaWeights ??
       null,
-    usesExpertWeights:
-      manifestProjection?.usesExpertWeights ??
-      mongoModel?.usesExpertWeights ??
-      null,
     usesFuzzyCriteriaWeights:
       manifestProjection?.usesFuzzyCriteriaWeights ??
       mongoModel?.usesFuzzyCriteriaWeights ??

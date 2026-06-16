@@ -184,30 +184,6 @@ const validateManifestParameters = (manifestModel) => {
   return errors;
 };
 
-const validateExpertWeightsParameterContract = (manifestModel) => {
-  const parameters = Array.isArray(manifestModel?.parameters)
-    ? manifestModel.parameters
-    : [];
-  const expertWeightsParameters = parameters.filter(
-    (parameter) => normalizeNonEmptyString(parameter?.key) === "expertWeights"
-  );
-
-  if (expertWeightsParameters.length !== 1) {
-    return ["parameters.expertWeights"];
-  }
-
-  const expertWeightsParameter = expertWeightsParameters[0];
-
-  if (
-    normalizeNonEmptyString(expertWeightsParameter?.parameterStructureKey) !==
-    "expertWeights"
-  ) {
-    return ["parameters.expertWeights.parameterStructureKey"];
-  }
-
-  return [];
-};
-
 export const validateSyncableManifestModel = (manifestModel) => {
   const missingFields = [];
 
@@ -223,7 +199,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
-  const usesExpertWeights = manifestModel?.usesExpertWeights;
   const supportsCreatorCriteriaWeighting =
     manifestModel?.supportsCreatorCriteriaWeighting;
   const supportsExpertCriteriaWeighting =
@@ -269,9 +244,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.usesCriteriaWeights !== "boolean") {
     missingFields.push("usesCriteriaWeights");
   }
-  if (typeof usesExpertWeights !== "boolean") {
-    missingFields.push("usesExpertWeights");
-  }
   if (typeof manifestModel?.usesFuzzyCriteriaWeights !== "boolean") {
     missingFields.push("usesFuzzyCriteriaWeights");
   }
@@ -283,9 +255,6 @@ export const validateSyncableManifestModel = (manifestModel) => {
   }
 
   missingFields.push(...validateManifestParameters(manifestModel));
-  if (usesExpertWeights === true) {
-    missingFields.push(...validateExpertWeightsParameterContract(manifestModel));
-  }
 
   return missingFields;
 };
@@ -321,7 +290,6 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
     manifestModel?.supportsConsensusSimulation === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
   usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
-  usesExpertWeights: manifestModel?.usesExpertWeights === true,
   usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
   usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),

@@ -13,10 +13,6 @@ export const isCriteriaWeightLikeParameter = (parameter) =>
   parameter.parameterStructureKey === "fuzzyCriteriaWeights" ||
   parameter.semanticRole === "criteriaWeights";
 
-export const isExpertWeightsParameter = (parameter) =>
-  parameter?.parameterStructureKey === "expertWeights" ||
-  parameter?.key === "expertWeights";
-
 export const resolveCriterionKey = (criterion, index) =>
   normalizeCriterionText(criterion.id) ||
   normalizeCriterionText(criterion._id) ||

@@ -9,7 +9,6 @@ import { validateAndNormalizeFuzzyArrayParameter } from "./handlers/fuzzyArray.p
 import { validateAndNormalizeCriteriaWeightsParameter } from "./handlers/criteriaWeights.parameter.js";
 import { validateAndNormalizeFuzzyCriteriaWeightsParameter } from "./handlers/fuzzyCriteriaWeights.parameter.js";
 import { validateAndNormalizeCriterionMapParameter } from "./handlers/criterionMap.parameter.js";
-import { validateAndNormalizeExpertWeightsParameter } from "./handlers/expertWeights.parameter.js";
 import { normalizeNonEmptyString } from "./parameterValues.js";
 
 export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
@@ -25,7 +24,6 @@ export const MODEL_PARAMETER_STRUCTURE_REGISTRY = new Map([
   ["fuzzyArrayPerCriterion", validateAndNormalizeFuzzyArrayParameter],
   ["criteriaWeights", validateAndNormalizeCriteriaWeightsParameter],
   ["fuzzyCriteriaWeights", validateAndNormalizeFuzzyCriteriaWeightsParameter],
-  ["expertWeights", validateAndNormalizeExpertWeightsParameter],
   ["criterionMap", validateAndNormalizeCriterionMapParameter],
   ["numberCriterion", validateAndNormalizeCriterionMapParameter],
   ["selectCriterion", validateAndNormalizeCriterionMapParameter],

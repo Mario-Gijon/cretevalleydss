@@ -74,7 +74,6 @@ class ModelDefinition:
     supports_consensus_simulation: bool = False
     is_multi_criteria: bool | None = None
     uses_criteria_weights: bool = False
-    uses_expert_weights: bool = False
     uses_fuzzy_criteria_weights: bool = False
     uses_criterion_types: bool = False
 
@@ -116,26 +115,6 @@ class ModelDefinition:
                 f"ModelDefinition '{self.api_model_key}' must support creator-side "
                 "or expert-side criteria weighting."
             )
-
-        if self.uses_expert_weights:
-            expert_weights_parameters = [
-                parameter
-                for parameter in self.parameters
-                if parameter.get("key") == "expertWeights"
-            ]
-
-            if len(expert_weights_parameters) != 1:
-                raise ValueError(
-                    f"ModelDefinition '{self.api_model_key}' must declare exactly "
-                    "one 'expertWeights' parameter when uses_expert_weights=True."
-                )
-
-            expert_weights_parameter = expert_weights_parameters[0]
-            if expert_weights_parameter.get("parameterStructureKey") != "expertWeights":
-                raise ValueError(
-                    f"ModelDefinition '{self.api_model_key}' expertWeights "
-                    "parameter must use parameterStructureKey 'expertWeights'."
-                )
 
 
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (

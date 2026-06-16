@@ -41,10 +41,6 @@ import {
   buildCreateIssueAllData,
   buildCreateIssueHeaderSubtitle,
 } from "../logic/createIssueSummary";
-import {
-  buildEqualExpertWeights,
-  validateCreateIssueExpertWeights,
-} from "../logic/createIssueExpertWeights";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
@@ -59,14 +55,8 @@ dayjs.extend(utc);
  * @returns {Object}
  */
 export const useCreateIssue = () => {
-  const {
-    loading,
-    setLoading,
-    setIssueCreated,
-    globalDomains,
-    expressionDomains,
-    initialExperts,
-  } = useIssuesDataContext();
+  const { loading, setLoading, setIssueCreated, globalDomains, expressionDomains } =
+    useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const navigate = useNavigate();
 
@@ -117,24 +107,6 @@ export const useCreateIssue = () => {
   const effectiveIsConsensus = selectedModel?.supportsConsensus === true;
   const modelSupportsConsensusSimulation =
     selectedModel?.supportsConsensusSimulation === true;
-  const selectedExperts = useMemo(() => {
-    const expertsByEmail = new Map(
-      (Array.isArray(initialExperts) ? initialExperts : []).map((expert) => [
-        String(expert?.email || "").trim().toLowerCase(),
-        expert,
-      ])
-    );
-
-    return (Array.isArray(addedExperts) ? addedExperts : [])
-      .map((email) => expertsByEmail.get(String(email || "").trim().toLowerCase()))
-      .filter(Boolean)
-      .map((expert) => ({
-        id: expert?._id || expert?.id || null,
-        name: expert?.name || "",
-        email: expert?.email || "",
-        university: expert?.university || "",
-      }));
-  }, [addedExperts, initialExperts]);
 
   useEffect(() => {
     const dataToSave = buildStoredCreateIssueData({
@@ -232,49 +204,6 @@ export const useCreateIssue = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [criteria, selectedModel]);
-
-  useEffect(() => {
-    if (selectedModel?.usesExpertWeights !== true) {
-      setParamValues((previous) => {
-        if (!previous || previous.expertWeights === undefined) {
-          return previous;
-        }
-
-        const next = { ...previous };
-        delete next.expertWeights;
-        return next;
-      });
-      return;
-    }
-
-    const selectedExpertIds = selectedExperts
-      .map((expert) => String(expert?.id || "").trim())
-      .filter(Boolean);
-    const nextExpertWeights = buildEqualExpertWeights(selectedExpertIds);
-
-    setParamValues((previous) => {
-      const previousWeights = previous?.expertWeights || {};
-
-      if (isCreateIssueDeepEqual(previousWeights, nextExpertWeights)) {
-        return previous;
-      }
-
-      return {
-        ...(previous || {}),
-        expertWeights: nextExpertWeights,
-      };
-    });
-  }, [selectedExperts, selectedModel?.usesExpertWeights, setParamValues]);
-
-  const expertWeightsValidationMessage = useMemo(
-    () =>
-      validateCreateIssueExpertWeights({
-        selectedModel,
-        selectedExperts,
-        expertWeights: paramValues?.expertWeights,
-      }),
-    [paramValues?.expertWeights, selectedExperts, selectedModel]
-  );
 
   useEffect(() => {
     if (!selectedModel) {
@@ -433,7 +362,6 @@ export const useCreateIssue = () => {
     const requestPayload = buildCreateIssueRequestPayload({
       allData,
       selectedModel,
-      selectedExperts,
       modelSupportsConsensusSimulation,
       simulateConsensus,
       consensusMaxPhases,
@@ -489,14 +417,6 @@ export const useCreateIssue = () => {
    * @returns {void}
    */
   const goNextStep = () => {
-    if (
-      activeStep === 3 &&
-      selectedModel?.usesExpertWeights === true &&
-      expertWeightsValidationMessage
-    ) {
-      return;
-    }
-
     setActiveStep((previous) => previous + 1);
   };
 
@@ -535,8 +455,6 @@ export const useCreateIssue = () => {
     defaultModelParams,
     expressionDomainConfig,
     criteriaWeightingConfig,
-    selectedExperts,
-    expertWeightsValidationMessage,
     allData,
     showConsensusModels,
     headerSubtitle,
