@@ -2,7 +2,12 @@ import { Schema, model } from "mongoose";
 
 const issueSchema = new Schema(
   {
-    admin: {
+    ownerId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,

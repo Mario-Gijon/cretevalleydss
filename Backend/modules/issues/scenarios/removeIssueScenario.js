@@ -23,14 +23,14 @@ export const removeIssueScenario = async ({ scenarioId, userId }) => {
   }
 
   const issue = await getIssueByIdOrThrow(scenario.issue, {
-    select: "admin",
+    select: "ownerId",
     lean: true,
   });
 
   const isCreator = sameId(scenario.createdBy, userId);
-  const isAdmin = sameId(issue.admin, userId);
+  const isIssueOwner = sameId(issue.ownerId, userId);
 
-  if (!isCreator && !isAdmin) {
+  if (!isCreator && !isIssueOwner) {
     throw createForbiddenError("Not authorized to delete this scenario");
   }
 

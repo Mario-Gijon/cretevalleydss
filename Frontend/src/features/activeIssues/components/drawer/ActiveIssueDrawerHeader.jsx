@@ -86,8 +86,8 @@ const ActiveIssueDrawerHeader = ({
               {selectedIssue?.model?.name}
             </Typography>
 
-            <ActiveIssuesPill tone={selectedIssue?.isAdmin ? "warning" : "info"}>
-              {selectedIssue?.isAdmin ? "Admin" : "Expert"}
+            <ActiveIssuesPill tone={selectedIssue?.isIssueOwner ? "warning" : "info"}>
+              {selectedIssue?.isIssueOwner ? "Owner" : "Expert"}
             </ActiveIssuesPill>
 
             <ActiveIssuesPill tone="info">

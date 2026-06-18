@@ -50,7 +50,7 @@ export default function AdminIssuesToolbar({
               size="small"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search by name, description, model or admin..."
+              placeholder="Search by name, description, model or owner..."
               autoComplete="off"
               color="info"
               sx={{

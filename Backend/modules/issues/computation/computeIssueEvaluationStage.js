@@ -45,8 +45,8 @@ const getStructureForIssueStage = ({ issue, stage }) => {
 const loadComputeContext = async ({ issueId, userId, stage }) => {
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
 
-  if (!sameId(issue.admin, userId)) {
-    throw createForbiddenError("Only issue admin can compute evaluation stages", {
+  if (!sameId(issue.ownerId, userId)) {
+    throw createForbiddenError("Only the issue owner can compute evaluation stages", {
       field: "userId",
     });
   }

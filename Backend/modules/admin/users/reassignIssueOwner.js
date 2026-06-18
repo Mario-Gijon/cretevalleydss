@@ -13,9 +13,9 @@ import {
 } from "../../../utils/common/mongoose.js";
 import { buildAdminUserIdentityPayload } from "./adminUserPayloads.js";
 
-export const reassignIssueAdmin = async ({
+export const reassignIssueOwner = async ({
   issueId,
-  newAdminId,
+  newOwnerId,
   session = null,
 }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
@@ -24,77 +24,77 @@ export const reassignIssueAdmin = async ({
     });
   }
 
-  if (!newAdminId || !isValidObjectIdLike(newAdminId)) {
-    throw createBadRequestError("Valid newAdminId is required", {
-      field: "newAdminId",
+  if (!newOwnerId || !isValidObjectIdLike(newOwnerId)) {
+    throw createBadRequestError("Valid newOwnerId is required", {
+      field: "newOwnerId",
     });
   }
 
-  const [issue, newAdmin] = await Promise.all([
+  const [issue, newOwner] = await Promise.all([
     getIssueByIdOrThrow(issueId, {
       populate: {
-        path: "admin",
+        path: "ownerId",
         select: "name email role",
       },
       lean: false,
       session,
     }),
     applyOptionalSession(
-      User.findById(newAdminId).select("name email role accountConfirm"),
+      User.findById(newOwnerId).select("name email role accountConfirm"),
       session
     ),
   ]);
 
-  if (!newAdmin) {
+  if (!newOwner) {
     throw createNotFoundError("Target user not found", {
-      field: "newAdminId",
+      field: "newOwnerId",
     });
   }
 
-  if (!newAdmin.accountConfirm) {
+  if (!newOwner.accountConfirm) {
     throw createBadRequestError("Target user account is not confirmed", {
-      field: "newAdminId",
+      field: "newOwnerId",
     });
   }
 
-  if (!issue.admin || typeof issue.admin !== "object") {
-    throw createInternalError("Issue admin must be populated for reassignment", {
-      field: "issue.admin",
+  if (!issue.ownerId || typeof issue.ownerId !== "object") {
+    throw createInternalError("Issue owner must be populated for reassignment", {
+      field: "issue.ownerId",
       details: {
         issueId: toIdString(issue._id),
       },
     });
   }
 
-  const oldAdmin = buildAdminUserIdentityPayload(issue.admin);
-  const nextAdmin = buildAdminUserIdentityPayload(newAdmin);
+  const oldOwner = buildAdminUserIdentityPayload(issue.ownerId);
+  const nextOwner = buildAdminUserIdentityPayload(newOwner);
 
-  if (sameId(issue.admin._id, newAdmin._id)) {
+  if (sameId(issue.ownerId._id, newOwner._id)) {
     return {
-      message: `Issue ${issue.name} is already assigned to ${newAdmin.email}`,
+      message: `Issue ${issue.name} is already assigned to ${newOwner.email}`,
       issue: {
         id: toIdString(issue._id),
         name: issue.name,
       },
-      admin: {
-        oldAdmin,
-        newAdmin: nextAdmin,
+      owner: {
+        oldOwner,
+        newOwner: nextOwner,
       },
     };
   }
 
-  issue.admin = newAdmin._id;
+  issue.ownerId = newOwner._id;
   await issue.save({ session });
 
   return {
-    message: `Issue ${issue.name} reassigned to ${newAdmin.email} successfully`,
+    message: `Issue ${issue.name} reassigned to ${newOwner.email} successfully`,
     issue: {
       id: toIdString(issue._id),
       name: issue.name,
     },
-    admin: {
-      oldAdmin,
-      newAdmin: nextAdmin,
+    owner: {
+      oldOwner,
+      newOwner: nextOwner,
     },
   };
 };

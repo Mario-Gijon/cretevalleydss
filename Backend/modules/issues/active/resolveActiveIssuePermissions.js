@@ -4,7 +4,7 @@ import { ACTIVE_ACTION_META, ACTIVE_STATUS_META } from "./activeIssueUiCatalog.j
 export const resolveActiveIssuePermissions = ({
   stage,
   stageMeta,
-  isAdminUser,
+  isIssueOwner,
   hasPending,
   totalAccepted,
   completedWeightEvaluations,
@@ -16,22 +16,22 @@ export const resolveActiveIssuePermissions = ({
   const allEvalsDone =
     totalAccepted > 0 && completedAlternativeEvaluations === totalAccepted;
 
-  const waitingAdmin =
-    !isAdminUser &&
+  const waitingOwner =
+    !isIssueOwner &&
     !hasPending &&
     ((stage === ISSUE_STAGES.WEIGHTS_FINISHED && allWeightsDone) ||
       (stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION && allEvalsDone));
 
   const canComputeWeights =
     stage === ISSUE_STAGES.WEIGHTS_FINISHED &&
-    isAdminUser &&
+    isIssueOwner &&
     !hasPending &&
     totalAccepted > 0 &&
     allWeightsDone;
 
   const canResolveIssue =
     stage === ISSUE_STAGES.ALTERNATIVE_EVALUATION &&
-    isAdminUser &&
+    isIssueOwner &&
     !hasPending &&
     totalAccepted > 0 &&
     allEvalsDone;
@@ -48,7 +48,7 @@ export const resolveActiveIssuePermissions = ({
 
   const waitingExperts =
     (hasPending && stage !== ISSUE_STAGES.FINISHED) ||
-    (!waitingAdmin &&
+    (!waitingOwner &&
       !canResolveIssue &&
       !canComputeWeights &&
       !canEvaluateWeights &&
@@ -60,7 +60,7 @@ export const resolveActiveIssuePermissions = ({
     canComputeWeights,
     canEvaluateAlternatives,
     canResolveIssue,
-    waitingAdmin,
+    waitingOwner,
     waitingExperts,
   };
 
@@ -79,9 +79,9 @@ export const resolveActiveIssuePermissions = ({
   let statusKey = stage;
 
   if (stage !== ISSUE_STAGES.FINISHED) {
-    if (waitingAdmin) {
-      statusLabel = ACTIVE_STATUS_META.waitingAdmin.label;
-      statusKey = ACTIVE_STATUS_META.waitingAdmin.key;
+    if (waitingOwner) {
+      statusLabel = ACTIVE_STATUS_META.waitingOwner.label;
+      statusKey = ACTIVE_STATUS_META.waitingOwner.key;
     } else if (nextAction) {
       statusLabel = nextAction.label;
       statusKey = nextAction.key;
@@ -96,7 +96,7 @@ export const resolveActiveIssuePermissions = ({
     canResolveIssue,
     canEvaluateWeights,
     canEvaluateAlternatives,
-    waitingAdmin,
+    waitingOwner,
     waitingExperts,
     statusFlags,
     actions,

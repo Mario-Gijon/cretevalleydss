@@ -20,11 +20,11 @@ import AdminIssueInfoRow from "./AdminIssueInfoRow";
 export default function AdminIssueReassignDialog({
   open,
   issueDetail,
-  adminCandidates,
-  adminsLoading,
-  newAdminId,
+  ownerCandidates,
+  ownerCandidatesLoading,
+  newOwnerId,
   onClose,
-  onNewAdminIdChange,
+  onNewOwnerIdChange,
   onReassign,
 }) {
   const theme = useTheme();
@@ -62,10 +62,10 @@ export default function AdminIssueReassignDialog({
 
             <Stack spacing={0.15}>
               <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
-                Reassign issue admin
+                Reassign issue owner
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                Change the creator/admin responsible for this issue.
+                Change the owner responsible for this issue.
               </Typography>
             </Stack>
           </Stack>
@@ -76,38 +76,38 @@ export default function AdminIssueReassignDialog({
         <Stack spacing={1.35}>
           <AdminIssueInfoRow label="Issue" value={issueDetail?.name || "—"} />
           <AdminIssueInfoRow
-            label="Current admin"
+            label="Current owner"
             value={
-              issueDetail?.admin
-                ? `${issueDetail.admin.name} (${issueDetail.admin.email})`
+              issueDetail?.owner
+                ? `${issueDetail.owner.name} (${issueDetail.owner.email})`
                 : "—"
             }
           />
 
           <FormControl fullWidth size="small">
             <Select
-              value={newAdminId}
+              value={newOwnerId}
               displayEmpty
               color="info"
-              disabled={adminsLoading}
-              onChange={(event) => onNewAdminIdChange(event.target.value)}
+              disabled={ownerCandidatesLoading}
+              onChange={(event) => onNewOwnerIdChange(event.target.value)}
               sx={{
                 borderRadius: 3,
                 bgcolor: alpha(theme.palette.common.white, 0.04),
               }}
             >
-              <MenuItem value="">Select new admin</MenuItem>
-              {adminCandidates.map((admin) => (
-                <MenuItem key={admin?.id} value={admin?.id}>
-                  {admin?.name} — {admin?.email}
+              <MenuItem value="">Select new owner</MenuItem>
+              {ownerCandidates.map((owner) => (
+                <MenuItem key={owner?.id} value={owner?.id}>
+                  {owner?.name} — {owner?.email}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          {adminsLoading ? (
+          {ownerCandidatesLoading ? (
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-              Loading admins...
+              Loading owners...
             </Typography>
           ) : null}
         </Stack>

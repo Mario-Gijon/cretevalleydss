@@ -12,7 +12,8 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     populate: [
       { path: "model" },
-      { path: "admin", select: "email name" },
+      { path: "ownerId", select: "email name" },
+      { path: "createdBy", select: "email name" },
     ],
     lean: true,
   });

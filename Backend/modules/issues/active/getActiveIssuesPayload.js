@@ -18,7 +18,7 @@ import { buildActiveIssueView } from "./buildActiveIssueView.js";
 
 export const getActiveIssuesPayload = async ({ userId }) => {
   const normalizedUserId = toIdString(userId);
-  const { issueIds, adminIssueIds } = await getVisibleActiveIssueIdsForUser(
+  const { issueIds, ownedIssueIds } = await getVisibleActiveIssueIdsForUser(
     normalizedUserId
   );
 
@@ -26,13 +26,14 @@ export const getActiveIssuesPayload = async ({ userId }) => {
     return buildEmptyActiveIssuesPayload();
   }
 
-  const adminIssueIdSet = new Set(adminIssueIds);
+  const ownedIssueIdSet = new Set(ownedIssueIds);
 
   const [issues, allParticipations, alternatives, criteria, alternativeStageResults] =
     await Promise.all([
       Issue.find({ _id: { $in: issueIds } })
         .populate("model")
-        .populate("admin", "email name")
+        .populate("ownerId", "email name")
+        .populate("createdBy", "email name")
         .lean(),
       Participation.find({ issue: { $in: issueIds } })
         .populate("expert", "email")
@@ -69,7 +70,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
     const { issueView, taskItems } = buildActiveIssueView({
       issue,
       userId: normalizedUserId,
-      adminIssueIdSet,
+      ownedIssueIdSet,
       issueParticipations: participationMap[issueId] || [],
       issueAlternativeDocs: alternativesMap[issueId] || [],
       issueCriteriaDocs: criteriaMap[issueId] || [],

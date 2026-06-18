@@ -57,7 +57,7 @@ export const getIssueStageMeta = (stage) => {
   return stageMap[stage] || { key: stage, label: stage || "Unknown" };
 };
 
-export const getCreatorActionFlags = ({
+export const getOwnerActionFlags = ({
   issue,
   acceptedExperts = 0,
   pendingExperts = 0,

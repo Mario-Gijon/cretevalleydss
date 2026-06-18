@@ -39,7 +39,6 @@ import { useCreateIssueContext } from "../context/createIssue.context";
 import {
   createIssueStepContainerSx,
   getCreateIssueExpertsBodyCellSx,
-  getCreateIssueExpertsCountBadgeSx,
   getCreateIssueExpertsHeadCellSx,
   getCreateIssueExpertsHeaderAvatarSx,
   getCreateIssueExpertsHoverRowSx,
@@ -624,14 +623,10 @@ export const ExpertsStep = ({
               Add experts
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
-              {filteredExperts.length} available • {selectedCount} selected
+              {filteredExperts.length} available
             </Typography>
           </Stack>
         </Stack>
-
-        {selectedCount > 0 ? (
-          <Box sx={getCreateIssueExpertsCountBadgeSx(theme)}>{selectedCount}</Box>
-        ) : null}
       </Stack>
 
       <Stack spacing={1.4}>

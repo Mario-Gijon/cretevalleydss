@@ -1,7 +1,7 @@
-export const buildAdminIssueAdminCandidates = (admins = []) => {
-  const list = Array.isArray(admins) ? admins : [];
+export const buildAdminIssueOwnerCandidates = (users = []) => {
+  const list = Array.isArray(users) ? users : [];
 
-  return list.filter((user) => user?.role === "admin" && user?.accountConfirm);
+  return list.filter((user) => user?.accountConfirm);
 };
 
 export const buildAdminIssueCurrentParticipantEmails = (

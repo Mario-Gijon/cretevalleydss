@@ -66,13 +66,13 @@ export const loadParticipantEditionContext = async ({
     session,
   });
 
-  if (!sameId(issue.admin, userId)) {
+  if (!sameId(issue.ownerId, userId)) {
     throw createForbiddenError("Not authorized to edit this issue's experts.");
   }
 
   await ensureIssueOrdersDb({ issueId: issue._id, session });
 
-  const [leafCriteria, admin] = await Promise.all([
+  const [leafCriteria, owner] = await Promise.all([
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
@@ -83,8 +83,8 @@ export const loadParticipantEditionContext = async ({
     User.findById(userId).select("name email").session(session).lean(),
   ]);
 
-  if (!admin) {
-    throw createInternalError("Issue admin not found while editing experts", {
+  if (!owner) {
+    throw createInternalError("Issue owner not found while editing experts", {
       field: "userId",
       details: {
         issueId: issue._id,
@@ -95,7 +95,7 @@ export const loadParticipantEditionContext = async ({
 
   return {
     issue,
-    admin,
+    owner,
     leafCriteria,
     currentPhase: issue.consensusPhase,
     stageForLog: mapIssueStageToExitStage(issue.currentStage, {

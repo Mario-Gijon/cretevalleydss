@@ -20,15 +20,15 @@ const ALTERNATIVE_CONSENSUS_UI_STAGE = "alternativeConsensus";
 export const buildActiveIssueView = ({
   issue,
   userId,
-  adminIssueIdSet,
+  ownedIssueIdSet,
   issueParticipations,
   issueAlternativeDocs,
   issueCriteriaDocs,
   consensusHistoryRounds,
 }) => {
   const issueId = toIdString(issue._id);
-  const adminId = toIdString(issue.admin);
-  const isAdminUser = adminId === userId || adminIssueIdSet.has(issueId);
+  const ownerId = toIdString(issue.ownerId);
+  const isIssueOwner = ownerId === userId || ownedIssueIdSet.has(issueId);
   const stage = issue.currentStage;
   const consensusCurrentPhase = issue.consensusPhase;
   const deadline = buildDeadlineInfo(issue.closureDate);
@@ -44,7 +44,7 @@ export const buildActiveIssueView = ({
   const participationSummary = buildActiveParticipationSummary({
     issueParticipations,
     userId,
-    isAdminUser,
+    isIssueOwner,
     stage,
   });
 
@@ -85,7 +85,7 @@ export const buildActiveIssueView = ({
   const permissions = resolveActiveIssuePermissions({
     stage,
     stageMeta,
-    isAdminUser,
+    isIssueOwner,
     hasPending: participationSummary.hasPending,
     totalAccepted: participationSummary.totalAccepted,
     completedWeightEvaluations: participationSummary.completedWeightEvaluations,
@@ -115,7 +115,8 @@ export const buildActiveIssueView = ({
     issueView: {
       id: issueId,
       name: issue.name,
-      creator: issue.admin.email,
+      createdBy: issue.createdBy.email,
+      owner: issue.ownerId.email,
       description: issue.description,
       model: issue.model,
       criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
@@ -133,7 +134,7 @@ export const buildActiveIssueView = ({
       creationDate: issue.creationDate,
       createdAt: issue.createdAt,
       closureDate: issue.closureDate,
-      isAdmin: isAdminUser,
+      isIssueOwner,
       isExpert: participationSummary.isExpertAccepted,
       role: participationSummary.role,
       alternatives: alternativeNames,
@@ -188,7 +189,7 @@ export const buildActiveIssueView = ({
           evaluateAlternatives: permissions.canEvaluateAlternatives,
           computeWeights: permissions.canComputeWeights,
           resolveIssue: permissions.canResolveIssue,
-          waitingAdmin: permissions.waitingAdmin,
+          waitingOwner: permissions.waitingOwner,
           waitingExperts:
             permissions.statusKey === ACTIVE_STATUS_KEYS.WAITING_EXPERTS,
         },

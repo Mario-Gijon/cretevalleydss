@@ -7,7 +7,7 @@ import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/p
 import {
   computeIssueEvaluationStage,
 } from "../modules/issues/computation/index.js";
-import { deleteActiveIssueAsAdmin } from "../modules/issues/lifecycle/index.js";
+import { deleteActiveIssueAsOwner } from "../modules/issues/lifecycle/index.js";
 
 import {
   getAdminIssuesListPayload,
@@ -21,7 +21,7 @@ import {
   createAdminUser as createAdminUserUseCase,
   deleteAdminUser as deleteAdminUserUseCase,
   getAdminUsersListPayload,
-  reassignIssueAdmin as reassignIssueAdminUseCase,
+  reassignIssueOwner as reassignIssueOwnerUseCase,
   updateAdminUser as updateAdminUserUseCase,
 } from "../modules/admin/users/index.js";
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
@@ -52,7 +52,7 @@ const getAdminIssueExecutionContextOrThrow = async ({
 
   return {
     issue,
-    creatorUserId: toIdString(issue.admin),
+    ownerUserId: toIdString(issue.ownerId),
   };
 };
 
@@ -311,7 +311,7 @@ export const getAllIssuesAdmin = async (req, res) => {
     active: String(req.query.active || "all").trim().toLowerCase(),
     currentStage: String(req.query.currentStage || "all").trim(),
     isConsensus: String(req.query.isConsensus || "all").trim().toLowerCase(),
-    adminId: String(req.query.adminId || "").trim(),
+    ownerId: String(req.query.ownerId || "").trim(),
     modelId: String(req.query.modelId || "").trim(),
   });
 
@@ -360,10 +360,10 @@ export const getIssueExpertWeightsAdmin = async (req, res) => {
   return sendSuccess(res, "Expert weights fetched successfully", data);
 };
 
-export const reassignIssueAdminAdmin = async (req, res) => {
-  const result = await reassignIssueAdminUseCase({
+export const reassignIssueOwnerAdmin = async (req, res) => {
+  const result = await reassignIssueOwnerUseCase({
     issueId: req.params.id,
-    newAdminId: req.body.newAdminId,
+    newOwnerId: req.body.newOwnerId,
   });
 
   return sendSuccess(
@@ -371,7 +371,7 @@ export const reassignIssueAdminAdmin = async (req, res) => {
     result.message,
     {
       issue: result.issue,
-      admin: result.admin,
+      owner: result.owner,
     },
   );
 };
@@ -379,13 +379,13 @@ export const reassignIssueAdminAdmin = async (req, res) => {
 export const editIssueExpertsAdmin = async (req, res) => {
   const issueId = req.params.id;
 
-  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
   });
 
   const result = await editIssueExpertsUseCase({
     issueId,
-    userId: creatorUserId,
+    userId: ownerUserId,
     expertsToAdd: req.body.expertsToAdd,
     expertsToRemove: req.body.expertsToRemove,
   });
@@ -402,13 +402,13 @@ export const editIssueExpertsAdmin = async (req, res) => {
 export const computeIssueWeightsAdmin = async (req, res) => {
   const issueId = req.params.id;
 
-  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
   });
 
   const result = await computeIssueEvaluationStage({
     issueId,
-    userId: creatorUserId,
+    userId: ownerUserId,
     stage: "criteriaWeighting",
     apiModelsBaseUrl:
       process.env.ORIGIN_APIMODELS || "http://localhost:7000",
@@ -434,13 +434,13 @@ export const computeIssueWeightsAdmin = async (req, res) => {
 export const resolveIssueAdmin = async (req, res) => {
   const issueId = req.params.id;
 
-  const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
     issueId,
   });
 
   const result = await computeIssueEvaluationStage({
     issueId,
-    userId: creatorUserId,
+    userId: ownerUserId,
     stage: "alternativeEvaluation",
     apiModelsBaseUrl:
       process.env.ORIGIN_APIMODELS || "http://localhost:7000",
@@ -475,14 +475,14 @@ export const removeIssueAdmin = async (req, res) => {
     let removedIssueName = "";
 
     await session.withTransaction(async () => {
-      const { creatorUserId } = await getAdminIssueExecutionContextOrThrow({
+      const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
         issueId,
         session,
       });
 
-      const result = await deleteActiveIssueAsAdmin({
+      const result = await deleteActiveIssueAsOwner({
         issueId,
-        userId: creatorUserId,
+        userId: ownerUserId,
         session,
       });
 

@@ -10,7 +10,7 @@ import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import {
-  getCreatorActionFlags,
+  getOwnerActionFlags,
   getIssueStageMeta,
 } from "./adminIssueReadPayloads.js";
 import {
@@ -23,14 +23,14 @@ const buildAdminIssuesFilter = ({
   active = "all",
   currentStage = "all",
   isConsensus = "all",
-  adminId = "",
+  ownerId = "",
   modelId = "",
 }) => {
   const normalizedSearch = String(search || "").trim();
   const normalizedActive = String(active || "all").trim().toLowerCase();
   const normalizedStage = String(currentStage || "all").trim();
   const normalizedConsensus = String(isConsensus || "all").trim().toLowerCase();
-  const normalizedAdminId = String(adminId || "").trim();
+  const normalizedOwnerId = String(ownerId || "").trim();
   const normalizedModelId = String(modelId || "").trim();
 
   const filter = {};
@@ -59,10 +59,10 @@ const buildAdminIssuesFilter = ({
   }
 
   if (
-    normalizedAdminId &&
-    isValidObjectIdLike(normalizedAdminId)
+    normalizedOwnerId &&
+    isValidObjectIdLike(normalizedOwnerId)
   ) {
-    filter.admin = normalizedAdminId;
+    filter.ownerId = normalizedOwnerId;
   }
 
   if (
@@ -80,7 +80,7 @@ export const getAdminIssuesListPayload = async ({
   active = "all",
   currentStage = "all",
   isConsensus = "all",
-  adminId = "",
+  ownerId = "",
   modelId = "",
 }) => {
   const filter = buildAdminIssuesFilter({
@@ -88,12 +88,13 @@ export const getAdminIssuesListPayload = async ({
     active,
     currentStage,
     isConsensus,
-    adminId,
+    ownerId,
     modelId,
   });
 
   const issues = await Issue.find(filter)
-    .populate("admin", "name email role accountConfirm")
+    .populate("ownerId", "name email role accountConfirm")
+    .populate("createdBy", "name email role accountConfirm")
     .populate(
       "model",
       "name alternativeEvaluationStructureKey criteriaWeightingStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation"
@@ -307,13 +308,22 @@ export const getAdminIssuesListPayload = async ({
         closureDate: issue.closureDate,
         alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
         criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-        admin: issue.admin
+        owner: issue.ownerId
           ? {
-            id: toIdString(issue.admin._id),
-            name: issue.admin.name,
-            email: issue.admin.email,
-            role: issue.admin.role,
-            accountConfirm: issue.admin.accountConfirm,
+            id: toIdString(issue.ownerId._id),
+            name: issue.ownerId.name,
+            email: issue.ownerId.email,
+            role: issue.ownerId.role,
+            accountConfirm: issue.ownerId.accountConfirm,
+          }
+          : null,
+        createdBy: issue.createdBy
+          ? {
+            id: toIdString(issue.createdBy._id),
+            name: issue.createdBy.name,
+            email: issue.createdBy.email,
+            role: issue.createdBy.role,
+            accountConfirm: issue.createdBy.accountConfirm,
           }
           : null,
         model: issue.model
@@ -352,7 +362,7 @@ export const getAdminIssuesListPayload = async ({
           totalDraftEvaluationDocs: evaluationStats.draftDocs || 0,
           lastEvaluationAt: evaluationStats.lastEvaluationAt || null,
         },
-        creatorActionsState: getCreatorActionFlags({
+        ownerActionsState: getOwnerActionFlags({
           issue,
           acceptedExperts: participationStats.acceptedExperts || 0,
           pendingExperts: participationStats.pendingExperts || 0,

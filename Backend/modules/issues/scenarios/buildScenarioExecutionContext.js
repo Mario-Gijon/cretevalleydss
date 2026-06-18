@@ -103,8 +103,8 @@ export const buildScenarioExecutionContext = async ({
     lean: false,
   });
 
-  if (!sameId(issue.admin, userId)) {
-    throw createForbiddenError("Not authorized: only admin can create scenarios");
+  if (!sameId(issue.ownerId, userId)) {
+    throw createForbiddenError("Not authorized: only owner can create scenarios");
   }
 
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });

@@ -57,10 +57,10 @@ export default function AdminIssueOverview({
             <AdminIssueInfoRow label="Name" value={issueDetail?.name || selectedIssueRow?.name} />
             <AdminIssueInfoRow label="Description" value={issueDetail?.description || "—"} />
             <AdminIssueInfoRow
-              label="Current admin"
+              label="Current owner"
               value={
-                issueDetail?.admin
-                  ? `${issueDetail.admin.name} (${issueDetail.admin.email})`
+                issueDetail?.owner
+                  ? `${issueDetail.owner.name} (${issueDetail.owner.email})`
                   : "—"
               }
             />
@@ -88,7 +88,7 @@ export default function AdminIssueOverview({
               onClick={onOpenReassignDialog}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
-              Reassign admin
+              Reassign owner
             </Button>
           </Stack>
         </Paper>
@@ -97,7 +97,7 @@ export default function AdminIssueOverview({
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <RuleOutlinedIcon fontSize="small" />
             <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
-              Creator actions
+              Owner actions
             </Typography>
           </Stack>
 
@@ -106,7 +106,7 @@ export default function AdminIssueOverview({
               variant="outlined"
               color="secondary"
               startIcon={<EditOutlinedIcon />}
-              disabled={!issueDetail?.creatorActionsState?.canEditExperts}
+              disabled={!issueDetail?.ownerActionsState?.canEditExperts}
               onClick={onGoToExperts}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -118,7 +118,7 @@ export default function AdminIssueOverview({
               color="warning"
               startIcon={<CalculateIcon />}
               loading={actionBusy.compute}
-              disabled={!issueDetail?.creatorActionsState?.canComputeWeights}
+              disabled={!issueDetail?.ownerActionsState?.canComputeWeights}
               onClick={onRequestCompute}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -130,7 +130,7 @@ export default function AdminIssueOverview({
               color="warning"
               startIcon={<GavelIcon />}
               loading={actionBusy.resolve}
-              disabled={!issueDetail?.creatorActionsState?.canResolveIssue}
+              disabled={!issueDetail?.ownerActionsState?.canResolveIssue}
               onClick={onRequestResolve}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -142,7 +142,7 @@ export default function AdminIssueOverview({
               color="error"
               startIcon={<DeleteOutlineIcon />}
               loading={actionBusy.remove}
-              disabled={!issueDetail?.creatorActionsState?.canRemoveIssue}
+              disabled={!issueDetail?.ownerActionsState?.canRemoveIssue}
               onClick={onRequestRemove}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >

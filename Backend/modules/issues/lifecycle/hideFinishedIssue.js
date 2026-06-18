@@ -66,11 +66,11 @@ export const getFinishedIssueVisibleUserIds = async ({
     });
   }
 
-  const adminId = toIdString(issue.admin);
+  const ownerId = toIdString(issue.ownerId);
 
-  if (!adminId) {
-    throw createInternalError("Finished issue admin is invalid", {
-      field: "admin",
+  if (!ownerId) {
+    throw createInternalError("Finished issue owner is invalid", {
+      field: "ownerId",
       details: {
         issueId,
       },
@@ -87,7 +87,7 @@ export const getFinishedIssueVisibleUserIds = async ({
     session
   );
 
-  const visibleUserIds = [adminId];
+  const visibleUserIds = [ownerId];
   const seenIds = new Set(visibleUserIds);
 
   for (const participation of acceptedParticipations) {

@@ -123,7 +123,7 @@ export const deleteUser = async (id) =>
  * @param {string} options.active Estado activo.
  * @param {string} options.currentStage Etapa actual.
  * @param {string} options.isConsensus Filtro de consenso.
- * @param {string} options.adminId Id del administrador.
+ * @param {string} options.ownerId Id del owner del issue.
  * @param {string} options.modelId Id del modelo.
  * @returns {Promise<object|false>}
  */
@@ -132,7 +132,7 @@ export const getAllIssues = async ({
   active = "all",
   currentStage = "all",
   isConsensus = "all",
-  adminId = "",
+  ownerId = "",
   modelId = "",
 } = {}) => {
   const query = buildQuery({
@@ -140,7 +140,7 @@ export const getAllIssues = async ({
     active,
     currentStage,
     isConsensus,
-    adminId,
+    ownerId,
     modelId,
   });
 
@@ -218,18 +218,18 @@ export const getIssueExpertWeights = async (issueId, expertId) => {
 };
 
 /**
- * Reasigna el administrador responsable de un issue.
+ * Reasigna el owner responsable de un issue.
  *
  * @param {object} params Parámetros de entrada.
  * @param {string} params.issueId Id del issue.
- * @param {string} params.newAdminId Id del nuevo administrador.
+ * @param {string} params.newOwnerId Id del nuevo owner.
  * @returns {Promise<object|false>}
  */
-export const reassignIssueAdmin = async ({ issueId, newAdminId }) =>
+export const reassignIssueOwner = async ({ issueId, newOwnerId }) =>
   requestAdmin(
-    `/admin/issues/${issueId}/admin`,
-    jsonRequest("PATCH", { newAdminId }),
-    "Error reassigning issue admin:"
+    `/admin/issues/${issueId}/owner`,
+    jsonRequest("PATCH", { newOwnerId }),
+    "Error reassigning issue owner:"
   );
 
 /**

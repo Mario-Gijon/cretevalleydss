@@ -31,7 +31,7 @@ import {
   removeIssueScenario,
 } from "../modules/issues/scenarios/index.js";
 import {
-  deleteActiveIssueAsAdmin,
+  deleteActiveIssueAsOwner,
   hideFinishedIssueForUser,
   leaveActiveIssue,
 } from "../modules/issues/lifecycle/index.js";
@@ -137,7 +137,7 @@ export const createIssue = async (req, res) => {
   const issueInfo = req.body.issueInfo;
   const preparedIssueCreation = await prepareIssueCreation({
     issueInfo,
-    adminUserId: req.uid,
+    ownerUserId: req.uid,
     apiModelsBaseUrl:
       process.env.ORIGIN_APIMODELS || "http://localhost:7000",
     httpClient: axios,
@@ -198,7 +198,7 @@ export const removeIssue = async (req, res) => {
     let removedIssueName = "";
 
     await session.withTransaction(async () => {
-      const result = await deleteActiveIssueAsAdmin({
+      const result = await deleteActiveIssueAsOwner({
         issueId: id,
         userId,
         session,
@@ -261,7 +261,7 @@ export const getAllFinishedIssues = async (req, res) => {
 
   const issues = await Issue.find({ _id: { $in: issueIds } })
     .populate("model", "name")
-    .populate("admin", "email")
+    .populate("ownerId", "email")
     .sort({ finishedAt: -1, updatedAt: -1 })
     .lean();
 
@@ -274,7 +274,7 @@ export const getAllFinishedIssues = async (req, res) => {
     updatedAt: issue.updatedAt ?? null,
     closureDate: issue.closureDate ?? null,
     finishedAt: issue.finishedAt ?? null,
-    isAdmin: sameId(issue.admin?._id, userId),
+    isIssueOwner: sameId(issue.ownerId?._id, userId),
   }));
 
   return sendSuccess(res, "Finished issues fetched successfully", formattedIssues);

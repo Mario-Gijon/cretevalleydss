@@ -10,7 +10,7 @@ import {
   getIssueExpertsProgressAdmin,
   getIssueExpertEvaluationsAdmin,
   getIssueExpertWeightsAdmin,
-  reassignIssueAdminAdmin,
+  reassignIssueOwnerAdmin,
   getIssueAdminById,
   editIssueExpertsAdmin,
   computeIssueWeightsAdmin,
@@ -94,10 +94,10 @@ router.get(
 );
 
 router.patch(
-  "/issues/:id/admin",
+  "/issues/:id/owner",
   requireToken,
   requireAdmin,
-  asyncHandler(reassignIssueAdminAdmin)
+  asyncHandler(reassignIssueOwnerAdmin)
 );
 
 router.patch(

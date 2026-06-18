@@ -19,7 +19,7 @@ import {
   buildCriteriaTreeAdmin,
   buildParticipantExpertPayload,
   formatIssueSnapshotDomain,
-  getCreatorActionFlags,
+  getOwnerActionFlags,
   getIssueStageMeta,
 } from "./adminIssueReadPayloads.js";
 import {
@@ -355,13 +355,22 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       consensusThreshold: issue.consensusThreshold,
       creationDate: issue.creationDate,
       closureDate: issue.closureDate,
-      admin: issue.admin
+      owner: issue.ownerId
         ? {
-          id: toIdString(issue.admin._id),
-          name: issue.admin.name,
-          email: issue.admin.email,
-          role: issue.admin.role,
-          accountConfirm: issue.admin.accountConfirm,
+          id: toIdString(issue.ownerId._id),
+          name: issue.ownerId.name,
+          email: issue.ownerId.email,
+          role: issue.ownerId.role,
+          accountConfirm: issue.ownerId.accountConfirm,
+        }
+        : null,
+      createdBy: issue.createdBy
+        ? {
+          id: toIdString(issue.createdBy._id),
+          name: issue.createdBy.name,
+          email: issue.createdBy.email,
+          role: issue.createdBy.role,
+          accountConfirm: issue.createdBy.accountConfirm,
         }
         : null,
       model: issue.model
@@ -444,7 +453,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         totalSubmittedEvaluationDocs,
         totalDraftEvaluationDocs,
       },
-      creatorActionsState: getCreatorActionFlags({
+      ownerActionsState: getOwnerActionFlags({
         issue,
         acceptedExperts: acceptedExperts.length,
         pendingExperts: pendingExperts.length,

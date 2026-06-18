@@ -58,7 +58,7 @@ export const getAdminUsersListPayload = async ({
     Participation.find({ expert: { $in: userIds } })
       .populate({
         path: "issue",
-        select: "_id active admin name",
+        select: "_id active ownerId name",
       })
       .lean(),
 
@@ -80,12 +80,12 @@ export const getAdminUsersListPayload = async ({
     Issue.aggregate([
       {
         $match: {
-          admin: { $in: userIds },
+          ownerId: { $in: userIds },
         },
       },
       {
         $group: {
-          _id: "$admin",
+          _id: "$ownerId",
           total: { $sum: 1 },
           active: {
             $sum: {

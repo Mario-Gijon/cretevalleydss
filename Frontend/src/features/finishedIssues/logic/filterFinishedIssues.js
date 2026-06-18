@@ -23,15 +23,15 @@ const criteriaContainsQuery = (nodes, query) => {
   return false;
 };
 
-const adminContainsQuery = (issue, query) => {
+const ownerContainsQuery = (issue, query) => {
   if (!query) return true;
 
   const candidates = [
     issue?.creator,
-    issue?.adminEmail,
-    issue?.adminName,
-    issue?.admin?.email,
-    issue?.admin?.name,
+    issue?.ownerEmail,
+    issue?.ownerName,
+    issue?.owner?.email,
+    issue?.owner?.name,
     issue?.createdBy?.email,
     issue?.createdBy?.name,
     issue?.owner?.email,
@@ -66,17 +66,17 @@ export const finishedIssueMatchesSearch = (issue, query, searchBy) => {
 
   const byIssue = normalizeFinishedIssueValue(issue?.name).includes(normalizedQuery);
   const byModel = normalizeFinishedIssueValue(issue?.model?.name).includes(normalizedQuery);
-  const byAdmin = adminContainsQuery(issue, normalizedQuery);
+  const byOwner = ownerContainsQuery(issue, normalizedQuery);
   const byAlternatives = alternativesContainsQuery(issue, normalizedQuery);
   const byCriteria = criteriaContainsQuery(issue?.criteria, normalizedQuery);
 
   if (searchBy === "issue") return byIssue;
   if (searchBy === "model") return byModel;
-  if (searchBy === "admin") return byAdmin;
+  if (searchBy === "owner") return byOwner;
   if (searchBy === "alternatives") return byAlternatives;
   if (searchBy === "criteria") return byCriteria;
 
-  return byIssue || byModel || byAdmin || byAlternatives || byCriteria;
+  return byIssue || byModel || byOwner || byAlternatives || byCriteria;
 };
 
 export const filterFinishedIssues = ({

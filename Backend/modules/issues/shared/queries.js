@@ -78,8 +78,8 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
     });
   }
 
-  const [adminIssues, acceptedParticipations] = await Promise.all([
-    Issue.find({ admin: normalizedUserId, active: true }).select("_id").lean(),
+  const [ownedIssues, acceptedParticipations] = await Promise.all([
+    Issue.find({ ownerId: normalizedUserId, active: true }).select("_id").lean(),
     Participation.find({
       expert: normalizedUserId,
       invitationStatus: "accepted",
@@ -92,8 +92,8 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
       .lean(),
   ]);
 
-  const adminIssueIds = uniqueIdStrings(
-    adminIssues.map((issue) => toIdString(issue._id))
+  const ownedIssueIds = uniqueIdStrings(
+    ownedIssues.map((issue) => toIdString(issue._id))
   );
 
   const expertIssueIds = uniqueIdStrings(
@@ -103,8 +103,8 @@ export const getVisibleActiveIssueIdsForUser = async (userId) => {
   );
 
   return {
-    issueIds: uniqueIdStrings([...adminIssueIds, ...expertIssueIds]),
-    adminIssueIds,
+    issueIds: uniqueIdStrings([...ownedIssueIds, ...expertIssueIds]),
+    ownedIssueIds,
   };
 };
 
@@ -120,16 +120,16 @@ export const getUserFinishedIssueIds = async (
     });
   }
 
-  const adminIssues = await Issue.find({
-    admin: normalizedUserId,
+  const ownedIssues = await Issue.find({
+    ownerId: normalizedUserId,
     active: false,
   })
     .select("_id")
     .session(session)
     .lean();
 
-  const adminIssueIds = uniqueIdStrings(
-    adminIssues.map((issue) => toIdString(issue._id))
+  const ownedIssueIds = uniqueIdStrings(
+    ownedIssues.map((issue) => toIdString(issue._id))
   );
 
   const participations = await Participation.find({
@@ -150,7 +150,7 @@ export const getUserFinishedIssueIds = async (
       .map((participation) => toIdString(participation.issue._id))
   );
 
-  const allIssueIds = uniqueIdStrings([...adminIssueIds, ...expertIssueIds]);
+  const allIssueIds = uniqueIdStrings([...ownedIssueIds, ...expertIssueIds]);
 
   if (!excludeHidden || allIssueIds.length === 0) {
     return allIssueIds;

@@ -94,7 +94,7 @@ const ActiveIssueOverview = ({
   onMinimize,
 }) => {
   const theme = useTheme();
-  const isAdminUser = Boolean(selectedIssue?.isAdmin);
+  const isIssueOwner = Boolean(selectedIssue?.isIssueOwner);
 
   return (
     <Stack spacing={2}>
@@ -116,7 +116,7 @@ const ActiveIssueOverview = ({
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }} />
       </Box>
 
-      {isAdminUser ? (
+      {isIssueOwner ? (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <Stack width="100%">
             <Box sx={{ ...getIssueDetailsDrawerPanelSx(theme, { bg: 0.10 }), p: 1.75, height: "100%" }}>
@@ -163,7 +163,7 @@ const ActiveIssueOverview = ({
               }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 980, mb: 1 }}>
-                Admin actions
+                Owner actions
               </Typography>
 
               <Stack spacing={1}>

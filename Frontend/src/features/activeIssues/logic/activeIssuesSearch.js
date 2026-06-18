@@ -42,10 +42,10 @@ export const criteriaContainsQuery = (nodes, query) => {
  * @param {string} query Texto buscado ya normalizado.
  * @returns {boolean}
  */
-export const adminContainsQuery = (issue, query) => {
+export const ownerContainsQuery = (issue, query) => {
   if (!query) return true;
 
-  return normalizeActiveIssueValue(issue.creator).includes(query);
+  return normalizeActiveIssueValue(issue.owner).includes(query);
 };
 
 /**
@@ -78,15 +78,15 @@ export const issueMatchesSearch = (issue, query, searchBy) => {
 
   const byIssue = normalizeActiveIssueValue(issue.name).includes(normalizedQuery);
   const byModel = normalizeActiveIssueValue(issue.model.name).includes(normalizedQuery);
-  const byAdmin = adminContainsQuery(issue, normalizedQuery);
+  const byOwner = ownerContainsQuery(issue, normalizedQuery);
   const byAlternatives = alternativesContainsQuery(issue, normalizedQuery);
   const byCriteria = criteriaContainsQuery(issue.criteria, normalizedQuery);
 
   if (searchBy === "issue") return byIssue;
   if (searchBy === "model") return byModel;
-  if (searchBy === "admin") return byAdmin;
+  if (searchBy === "owner") return byOwner;
   if (searchBy === "alternatives") return byAlternatives;
   if (searchBy === "criteria") return byCriteria;
 
-  return byIssue || byModel || byAdmin || byAlternatives || byCriteria;
+  return byIssue || byModel || byOwner || byAlternatives || byCriteria;
 };

@@ -11,7 +11,7 @@ import { sameId } from "../../../utils/common/ids.js";
 
 export const addExpertsToActiveIssue = async ({
   issue,
-  admin,
+  owner,
   userId,
   expertEmails,
   userByEmail,
@@ -33,14 +33,14 @@ export const addExpertsToActiveIssue = async ({
 
     if (existingParticipation) continue;
 
-    const isAdminExpert = sameId(expertUser._id, userId);
+    const isOwnerExpert = sameId(expertUser._id, userId);
     const weightsCompleted = isSingleLeafCriterionCount(leafCriteria.length);
 
     await Participation.create(
       [{
         issue: issue._id,
         expert: expertUser._id,
-        invitationStatus: isAdminExpert ? "accepted" : "pending",
+        invitationStatus: isOwnerExpert ? "accepted" : "pending",
         evaluationCompleted: false,
         weightsCompleted,
         entryPhase: currentPhase,
@@ -50,13 +50,13 @@ export const addExpertsToActiveIssue = async ({
       { session }
     );
 
-    if (!isAdminExpert) {
+    if (!isOwnerExpert) {
       await Notification.create(
         [{
           expert: expertUser._id,
           issue: issue._id,
           type: "invitation",
-          message: `You have been invited by ${admin.name} to participate in ${issue.name}.`,
+          message: `You have been invited by ${owner.name} to participate in ${issue.name}.`,
           read: false,
           requiresAction: true,
         }],
@@ -82,7 +82,7 @@ export const removeExpertsFromActiveIssue = async ({
     const expertUser = userByEmail.get(email);
     if (!expertUser) continue;
 
-    if (sameId(expertUser._id, issue.admin)) continue;
+    if (sameId(expertUser._id, issue.ownerId)) continue;
 
     const participation = await Participation.findOne({
       issue: issue._id,
@@ -104,7 +104,7 @@ export const removeExpertsFromActiveIssue = async ({
       userId: expertUser._id,
       phase: currentPhase,
       stage: stageForLog,
-      reason: "Expelled by admin",
+      reason: "Expelled by owner",
       session,
     });
   }

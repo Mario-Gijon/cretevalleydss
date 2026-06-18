@@ -95,7 +95,7 @@ const ActiveIssueDrawer = ({
       return [];
     }
 
-    return selectedIssue.isAdmin
+    return selectedIssue.isIssueOwner
       ? [...BASE_DRAWER_TABS, ADMIN_DRAWER_TAB]
       : BASE_DRAWER_TABS;
   }, [selectedIssue]);
@@ -241,7 +241,7 @@ const ActiveIssueDrawer = ({
               />
             ) : null}
 
-            {selectedIssue.isAdmin && drawerTab === 4 ? (
+            {selectedIssue.isIssueOwner && drawerTab === 4 ? (
               <Box sx={{ minHeight: 0 }}>
                 <IssueExpertsSection />
               </Box>

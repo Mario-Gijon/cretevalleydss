@@ -61,7 +61,7 @@ const mapIssueServerStatusToStepKey = (issue) => {
 
   if (key === "evaluateAlternatives") return "alternativeEvaluation";
   if (key === "alternativeConsensus") return "alternativeConsensus";
-  if (key === "resolveIssue" || key === "waitingAdmin") return "readyResolve";
+  if (key === "resolveIssue" || key === "waitingOwner") return "readyResolve";
 
   if (key === "waitingExperts" || key === "pendingInvitations") {
     if (issue?.currentStage === "alternativeEvaluation") {
@@ -112,12 +112,12 @@ export const resolveIssueCurrentStepKey = (issue, steps) => {
     return "alternativeConsensus";
   }
 
-  const waitingAdminResolve =
-    Boolean(flags.waitingAdmin) &&
+  const waitingOwnerResolve =
+    Boolean(flags.waitingOwner) &&
     stage !== "weightsFinished" &&
     stage !== "criteriaWeighting";
 
-  if (flags.canResolveIssue || waitingAdminResolve) {
+  if (flags.canResolveIssue || waitingOwnerResolve) {
     return "readyResolve";
   }
 

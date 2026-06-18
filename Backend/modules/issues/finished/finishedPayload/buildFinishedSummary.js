@@ -89,7 +89,7 @@ export const buildSummarySection = ({
   consensusInfo,
 }) => {
   const issueName = typeof issue.name === "string" ? issue.name.trim() : "";
-  const admin = issue.admin;
+  const owner = issue.ownerId;
   const modelName = typeof model.name === "string" ? model.name.trim() : "";
 
   if (!issueName) {
@@ -101,20 +101,20 @@ export const buildSummarySection = ({
     });
   }
 
-  if (!admin || typeof admin !== "object") {
-    throw createInternalError("Finished issue admin is invalid", {
-      field: "issue.admin",
+  if (!owner || typeof owner !== "object") {
+    throw createInternalError("Finished issue owner is invalid", {
+      field: "issue.ownerId",
       details: {
         issueId: toIdString(issue._id),
       },
     });
   }
 
-  const adminEmail = typeof admin.email === "string" ? admin.email.trim() : "";
+  const ownerEmail = typeof owner.email === "string" ? owner.email.trim() : "";
 
-  if (!adminEmail) {
-    throw createInternalError("Finished issue admin email is invalid", {
-      field: "issue.admin.email",
+  if (!ownerEmail) {
+    throw createInternalError("Finished issue owner email is invalid", {
+      field: "issue.ownerId.email",
       details: {
         issueId: toIdString(issue._id),
       },
@@ -151,7 +151,7 @@ export const buildSummarySection = ({
 
   return {
     name: issueName,
-    admin: adminEmail,
+    owner: ownerEmail,
     description: issue.description,
     model: modelName,
     criteria: criteriaTree

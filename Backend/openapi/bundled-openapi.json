@@ -712,9 +712,9 @@
           },
           {
             "in": "query",
-            "name": "adminId",
+            "name": "ownerId",
             "required": false,
-            "description": "Filtra por administrador responsable.",
+            "description": "Filtra por owner responsable.",
             "schema": {
               "type": "string"
             }
@@ -1164,10 +1164,10 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "newAdminId"
+                  "newOwnerId"
                 ],
                 "properties": {
-                  "newAdminId": {
+                  "newOwnerId": {
                     "type": "string",
                     "example": "661b3d9f7c7f0f8a4a123456"
                   }
@@ -1178,7 +1178,7 @@
         },
         "responses": {
           "200": {
-            "description": "Administrador reasignado correctamente",
+            "description": "Owner reasignado correctamente",
             "content": {
               "application/json": {
                 "schema": {
@@ -3025,7 +3025,7 @@
                             "type": "string",
                             "nullable": true
                           },
-                          "isAdmin": {
+                          "isIssueOwner": {
                             "type": "boolean"
                           }
                         }

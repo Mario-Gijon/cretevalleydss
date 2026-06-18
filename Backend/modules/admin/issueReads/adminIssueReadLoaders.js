@@ -35,7 +35,8 @@ const attachIssueOrders = async ({ issueId, issue }) => {
 export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     populate: [
-      { path: "admin", select: "name email role accountConfirm" },
+      { path: "ownerId", select: "name email role accountConfirm" },
+      { path: "createdBy", select: "name email role accountConfirm" },
       {
         path: "model",
         select:

@@ -27,7 +27,7 @@ const validateParticipationExpertOrThrow = (participation) => {
 export const buildActiveParticipationSummary = ({
   issueParticipations,
   userId,
-  isAdminUser,
+  isIssueOwner,
   stage,
 }) => {
   const validatedParticipations = issueParticipations.map((participation) => ({
@@ -75,10 +75,10 @@ export const buildActiveParticipationSummary = ({
   const isExpertAccepted = acceptedUserParticipation !== undefined;
 
   let role = "viewer";
-  if (isAdminUser && isExpertAccepted) {
+  if (isIssueOwner && isExpertAccepted) {
     role = "both";
-  } else if (isAdminUser) {
-    role = "admin";
+  } else if (isIssueOwner) {
+    role = "owner";
   } else if (isExpertAccepted) {
     role = "expert";
   }

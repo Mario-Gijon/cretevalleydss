@@ -192,8 +192,8 @@ const ActiveIssuesToolbar = ({
           <Grid item xs={6} md={3}>
             <ActiveIssuesTinyStat
               icon={<CalculateIcon fontSize="small" />}
-              label="Admin"
-              value={overview.admin}
+              label="Owner"
+              value={overview.owner}
               tone="success"
             />
           </Grid>
@@ -244,7 +244,7 @@ const ActiveIssuesToolbar = ({
                           <MenuItem value="alternatives">Alternatives</MenuItem>
                           <MenuItem value="criteria">Criteria</MenuItem>
                           <MenuItem value="model">Model</MenuItem>
-                          <MenuItem value="admin">Admin</MenuItem>
+                          <MenuItem value="owner">Owner</MenuItem>
                         </Select>
                       </FormControl>
                     </InputAdornment>

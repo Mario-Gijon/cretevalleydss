@@ -4,7 +4,7 @@ export const buildFinishedIssuesOverview = ({
 }) => {
   return {
     total: finishedIssues.length,
-    admin: finishedIssues.filter((issue) => issue.isAdmin).length,
+    owner: finishedIssues.filter((issue) => issue.isIssueOwner).length,
     withClosure: finishedIssues.filter((issue) => Boolean(issue.closureDate)).length,
     filtered: filteredCount,
   };

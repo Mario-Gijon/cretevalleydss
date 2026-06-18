@@ -165,12 +165,12 @@ export default function AdminIssuesSection() {
       <AdminIssueReassignDialog
         open={actions.reassignOpen}
         issueDetail={detail.issueDetail}
-        adminCandidates={actions.adminCandidates}
-        adminsLoading={actions.adminsLoading}
-        newAdminId={actions.newAdminId}
+        ownerCandidates={actions.ownerCandidates}
+        ownerCandidatesLoading={actions.ownerCandidatesLoading}
+        newOwnerId={actions.newOwnerId}
         onClose={() => actions.setReassignOpen(false)}
-        onNewAdminIdChange={actions.setNewAdminId}
-        onReassign={actions.handleReassignAdmin}
+        onNewOwnerIdChange={actions.setNewOwnerId}
+        onReassign={actions.handleReassignOwner}
       />
 
       <AdminIssueActionConfirmDialog

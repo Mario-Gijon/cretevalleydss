@@ -19,7 +19,7 @@ const stripCriteriaWeightParameterValues = (paramValues) => {
 };
 
 export const loadCreateIssueActorsAndModel = async ({
-  adminUserId,
+  ownerUserId,
   selectedModelId,
   paramValues,
   criteriaNodes,
@@ -57,9 +57,9 @@ export const loadCreateIssueActorsAndModel = async ({
   const normalizedModelParametersWithoutCriteriaWeights =
     stripCriteriaWeightParameterValues(normalizedModelParameters);
 
-  const admin = await User.findById(adminUserId).session(session);
-  if (!admin) {
-    throw createNotFoundError("Admin not found");
+  const owner = await User.findById(ownerUserId).session(session);
+  if (!owner) {
+    throw createNotFoundError("Owner not found");
   }
 
   const expertUsers = await User.find({
@@ -85,8 +85,8 @@ export const loadCreateIssueActorsAndModel = async ({
 
   return {
     model: existingModel,
-    admin,
-    adminEmail: normalizeEmail(admin.email),
+    owner,
+    ownerEmail: normalizeEmail(owner.email),
     expertByEmail,
     apiModelKey,
     apiEndpoint,

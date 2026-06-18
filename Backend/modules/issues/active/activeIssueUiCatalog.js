@@ -35,14 +35,14 @@ export const ACTIVE_ACTION_META = {
   resolveIssue: {
     key: "resolveIssue",
     label: "Resolve issue",
-    role: "admin",
+    role: "owner",
     severity: "warning",
     sortPriority: 0,
   },
   computeWeights: {
     key: "computeWeights",
     label: "Compute weights",
-    role: "admin",
+    role: "owner",
     severity: "warning",
     sortPriority: 10,
   },
@@ -69,14 +69,14 @@ export const ACTIVE_TASK_ACTION_KEYS = Object.freeze(
 );
 
 export const ACTIVE_STATUS_KEYS = Object.freeze({
-  WAITING_ADMIN: "waitingAdmin",
+  WAITING_OWNER: "waitingOwner",
   WAITING_EXPERTS: "waitingExperts",
 });
 
 export const ACTIVE_STATUS_META = {
-  [ACTIVE_STATUS_KEYS.WAITING_ADMIN]: {
-    key: ACTIVE_STATUS_KEYS.WAITING_ADMIN,
-    label: "Waiting for admin",
+  [ACTIVE_STATUS_KEYS.WAITING_OWNER]: {
+    key: ACTIVE_STATUS_KEYS.WAITING_OWNER,
+    label: "Waiting for owner",
     severity: "success",
   },
   [ACTIVE_STATUS_KEYS.WAITING_EXPERTS]: {

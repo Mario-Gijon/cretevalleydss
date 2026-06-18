@@ -39,7 +39,7 @@ const SummarySection = () => {
     <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>
       <Stack spacing={1.1}>
         <Row label="Name" value={viewIssue?.summary?.name} />
-        <Row label="Admin" value={viewIssue?.summary?.admin} />
+        <Row label="Owner" value={viewIssue?.summary?.owner} />
 
         <SummaryAccordionRow
           label="Description"

@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import {
   editIssueExpertsAdminAction,
   getAllUsers,
-  reassignIssueAdmin,
+  reassignIssueOwner,
 } from "../../../../services/admin.service";
 import {
-  buildAdminIssueAdminCandidates,
+  buildAdminIssueOwnerCandidates,
   buildAdminIssueAvailableExperts,
   buildAdminIssueCurrentParticipantEmails,
   buildAdminIssuePendingExpertsToAdd,
@@ -28,9 +28,9 @@ export const useAdminIssueActions = ({
 }) => {
   const [reassignOpen, setReassignOpen] = useState(false);
   const [reassignLoading, setReassignLoading] = useState(false);
-  const [adminsLoading, setAdminsLoading] = useState(false);
-  const [admins, setAdmins] = useState([]);
-  const [newAdminId, setNewAdminId] = useState("");
+  const [ownerCandidatesLoading, setOwnerCandidatesLoading] = useState(false);
+  const [ownerCandidateUsers, setOwnerCandidateUsers] = useState([]);
+  const [newOwnerId, setNewOwnerId] = useState("");
 
   const [actionBusy, setActionBusy] = useState({
     compute: false,
@@ -55,9 +55,9 @@ export const useAdminIssueActions = ({
     });
   }, [issueDetail, expertEvaluations, expertWeights]);
 
-  const adminCandidates = useMemo(() => {
-    return buildAdminIssueAdminCandidates(admins);
-  }, [admins]);
+  const ownerCandidates = useMemo(() => {
+    return buildAdminIssueOwnerCandidates(ownerCandidateUsers);
+  }, [ownerCandidateUsers]);
 
   const currentParticipantEmails = useMemo(() => {
     return buildAdminIssueCurrentParticipantEmails(issueExpertsProgress);
@@ -97,7 +97,7 @@ export const useAdminIssueActions = ({
   const resetIssueActionState = () => {
     setConfirmAction(null);
     setReassignOpen(false);
-    setNewAdminId("");
+    setNewOwnerId("");
     resetExpertEditionState();
   };
 
@@ -105,54 +105,54 @@ export const useAdminIssueActions = ({
     if (!issueDetail?.id) return;
 
     setReassignOpen(true);
-    setNewAdminId("");
-    setAdminsLoading(true);
+    setNewOwnerId("");
+    setOwnerCandidatesLoading(true);
 
     try {
       const res = await getAllUsers({ includeAdmins: true });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.message || "Error fetching admins", "error");
-        setAdmins([]);
+        showSnackbarAlert(res?.message || "Error fetching users", "error");
+        setOwnerCandidateUsers([]);
         return;
       }
 
-      setAdmins(Array.isArray(res?.data?.users) ? res.data.users : []);
+      setOwnerCandidateUsers(Array.isArray(res?.data?.users) ? res.data.users : []);
     } catch (err) {
       console.error(err);
-      showSnackbarAlert("Unexpected error fetching admins", "error");
-      setAdmins([]);
+      showSnackbarAlert("Unexpected error fetching users", "error");
+      setOwnerCandidateUsers([]);
     } finally {
-      setAdminsLoading(false);
+      setOwnerCandidatesLoading(false);
     }
   };
 
-  const handleReassignAdmin = async () => {
-    if (!issueDetail?.id || !newAdminId) {
-      showSnackbarAlert("Select a new admin", "error");
+  const handleReassignOwner = async () => {
+    if (!issueDetail?.id || !newOwnerId) {
+      showSnackbarAlert("Select a new owner", "error");
       return;
     }
 
     setReassignLoading(true);
 
     try {
-      const res = await reassignIssueAdmin({
+      const res = await reassignIssueOwner({
         issueId: issueDetail.id,
-        newAdminId,
+        newOwnerId,
       });
 
       if (!res?.success) {
-        showSnackbarAlert(res?.message || "Error reassigning issue admin", "error");
+        showSnackbarAlert(res?.message || "Error reassigning issue owner", "error");
         return;
       }
 
-      showSnackbarAlert(res?.message || "Issue admin reassigned successfully", "success");
+      showSnackbarAlert(res?.message || "Issue owner reassigned successfully", "success");
       setReassignOpen(false);
       await fetchIssuesData({ keepLoading: true });
       await loadIssueDetail(issueDetail.id, selectedIssueRow);
     } catch (err) {
       console.error(err);
-      showSnackbarAlert("Unexpected error reassigning issue admin", "error");
+      showSnackbarAlert("Unexpected error reassigning issue owner", "error");
     } finally {
       setReassignLoading(false);
     }
@@ -205,7 +205,7 @@ export const useAdminIssueActions = ({
   };
 
   const handleOpenAddExperts = async () => {
-    if (!issueDetail?.creatorActionsState?.canEditExperts) {
+    if (!issueDetail?.ownerActionsState?.canEditExperts) {
       showSnackbarAlert("You cannot edit experts in this issue right now.", "error");
       return;
     }
@@ -281,7 +281,7 @@ export const useAdminIssueActions = ({
   };
 
   const handleSaveExpertsChanges = async () => {
-    if (!issueDetail?.creatorActionsState?.canEditExperts) {
+    if (!issueDetail?.ownerActionsState?.canEditExperts) {
       showSnackbarAlert("You cannot edit experts in this issue right now.", "error");
       return;
     }
@@ -324,8 +324,8 @@ export const useAdminIssueActions = ({
   return {
     reassignOpen,
     reassignLoading,
-    adminsLoading,
-    newAdminId,
+    ownerCandidatesLoading,
+    newOwnerId,
     actionBusy,
     confirmAction,
     addExpertsOpen,
@@ -333,13 +333,13 @@ export const useAdminIssueActions = ({
     expertsToAdd,
     expertsToRemove,
     assignDomainsOpen,
-    adminCandidates,
+    ownerCandidates,
     availableExperts,
     pendingAddExpertsInfo,
     resultingExpertsCount,
     issueForDomains,
     openReassignDialog,
-    handleReassignAdmin,
+    handleReassignOwner,
     openConfirmAction,
     closeConfirmAction,
     handleRunConfirmedAction,
@@ -355,6 +355,6 @@ export const useAdminIssueActions = ({
     setExpertsToRemove,
     setAssignDomainsOpen,
     setReassignOpen,
-    setNewAdminId,
+    setNewOwnerId,
   };
 };

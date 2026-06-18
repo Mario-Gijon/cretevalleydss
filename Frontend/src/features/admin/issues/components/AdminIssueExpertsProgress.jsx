@@ -68,7 +68,7 @@ export default function AdminIssueExpertsProgress({
               variant="outlined"
               color="info"
               startIcon={<PersonAddAlt1Icon />}
-              disabled={!issueDetail?.creatorActionsState?.canEditExperts}
+              disabled={!issueDetail?.ownerActionsState?.canEditExperts}
               onClick={actions.handleOpenAddExperts}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -79,7 +79,7 @@ export default function AdminIssueExpertsProgress({
               variant="outlined"
               color="warning"
               startIcon={<UndoIcon />}
-              disabled={!issueDetail?.creatorActionsState?.canEditExperts || !hasPendingChanges}
+              disabled={!issueDetail?.ownerActionsState?.canEditExperts || !hasPendingChanges}
               onClick={actions.handleResetExpertChanges}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -91,7 +91,7 @@ export default function AdminIssueExpertsProgress({
               color="secondary"
               startIcon={<DoneAllIcon />}
               loading={actions.actionBusy.editExperts}
-              disabled={!issueDetail?.creatorActionsState?.canEditExperts || !hasPendingChanges}
+              disabled={!issueDetail?.ownerActionsState?.canEditExperts || !hasPendingChanges}
               onClick={actions.handleSaveExpertsChanges}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -199,7 +199,7 @@ export default function AdminIssueExpertsProgress({
                   const email = row?.expert?.email || "";
                   const isMarkedForRemove = actions.expertsToRemove.includes(email);
                   const canMarkRemove =
-                    issueDetail?.creatorActionsState?.canEditExperts &&
+                    issueDetail?.ownerActionsState?.canEditExperts &&
                     row?.currentParticipant &&
                     Boolean(email);
 

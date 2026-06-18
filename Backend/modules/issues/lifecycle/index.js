@@ -8,7 +8,7 @@ export {
   deleteIssueCascade,
 } from "./deleteIssueCascade.js";
 export {
-  deleteActiveIssueAsAdmin,
+  deleteActiveIssueAsOwner,
 } from "./deleteActiveIssue.js";
 export {
   getFinishedIssueVisibleUserIds,

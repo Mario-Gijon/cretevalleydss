@@ -16,8 +16,8 @@ export const filterAdminIssues = ({
       normalizeAdminIssueText(issue?.name).includes(query) ||
       normalizeAdminIssueText(issue?.description).includes(query) ||
       normalizeAdminIssueText(issue?.model?.name).includes(query) ||
-      normalizeAdminIssueText(issue?.admin?.email).includes(query) ||
-      normalizeAdminIssueText(issue?.admin?.name).includes(query);
+      normalizeAdminIssueText(issue?.owner?.email).includes(query) ||
+      normalizeAdminIssueText(issue?.owner?.name).includes(query);
 
     const matchesActive =
       activeFilter === "all"

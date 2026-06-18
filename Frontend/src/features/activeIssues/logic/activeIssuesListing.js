@@ -99,7 +99,7 @@ export const buildFilteredActiveIssues = ({
  * @returns {Object}
  */
 export const buildActiveIssuesOverview = ({ activeIssues, tasksCount }) => {
-  const adminCount = activeIssues.filter((issue) => issue.isAdmin).length;
+  const ownerCount = activeIssues.filter((issue) => issue.isIssueOwner).length;
   const readyResolve = activeIssues.filter(
     (issue) => issue.statusFlags.canResolveIssue
   ).length;
@@ -107,7 +107,7 @@ export const buildActiveIssuesOverview = ({ activeIssues, tasksCount }) => {
   return {
     total: activeIssues.length,
     tasks: tasksCount,
-    admin: adminCount,
+    owner: ownerCount,
     readyResolve,
   };
 };

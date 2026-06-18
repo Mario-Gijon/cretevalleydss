@@ -43,13 +43,13 @@ export const deleteAdminUser = async ({
   }
 
   const ownedIssuesCount = await applyOptionalSession(
-    Issue.countDocuments({ admin: user._id }),
+    Issue.countDocuments({ ownerId: user._id }),
     session
   );
 
   if (ownedIssuesCount > 0) {
     throw createBadRequestError(
-      "This user is creator/admin of one or more issues. Resolve those issues first before deleting the user.",
+      "This user is owner of one or more issues. Resolve those issues first before deleting the user.",
       { field: "targetUserId" }
     );
   }

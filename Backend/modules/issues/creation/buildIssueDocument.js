@@ -3,7 +3,7 @@ import { Issue } from "../../../models/Issues.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/index.js";
 
 export const buildIssueCreationDocument = ({
-  adminUserId,
+  ownerUserId,
   model,
   apiModelKey,
   apiEndpoint,
@@ -20,7 +20,8 @@ export const buildIssueCreationDocument = ({
   normalizedModelParameters,
 }) => {
   return new Issue({
-    admin: adminUserId,
+    ownerId: ownerUserId,
+    createdBy: ownerUserId,
     model: model._id,
     apiModelKey,
     apiEndpoint,

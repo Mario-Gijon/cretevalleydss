@@ -52,7 +52,7 @@ export default function AdminIssuesTable({ issues, isMdDown, onOpenDetail }) {
                 {[
                   "Issue",
                   "Model",
-                  "Admin",
+                  "Owner",
                   "Stage",
                   "Status",
                   "Experts",
@@ -172,10 +172,10 @@ export default function AdminIssuesTable({ issues, isMdDown, onOpenDetail }) {
                       >
                         <Stack spacing={0.15}>
                           <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                            {issue?.admin?.name || "—"}
+                            {issue?.owner?.name || "—"}
                           </Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                            {issue?.admin?.email || "—"}
+                            {issue?.owner?.email || "—"}
                           </Typography>
                         </Stack>
                       </TableCell>

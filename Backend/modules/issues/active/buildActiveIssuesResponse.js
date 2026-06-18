@@ -7,9 +7,9 @@ import {
 
 const ACTIVE_ROLE_OPTIONS = [
   { value: "all", label: "All roles" },
-  { value: "admin", label: "Admin" },
+  { value: "owner", label: "Owner" },
   { value: "expert", label: "Expert" },
-  { value: "both", label: "Admin & Expert" },
+  { value: "both", label: "Owner & Expert" },
   { value: "viewer", label: "Viewer" },
 ];
 

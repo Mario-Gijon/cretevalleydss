@@ -55,7 +55,7 @@ const assertIssueNameAvailableOrThrow = async ({
 
 export const prepareIssueCreation = async ({
   issueInfo,
-  adminUserId,
+  ownerUserId,
   apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
   httpClient = axios,
 }) => {
@@ -67,8 +67,8 @@ export const prepareIssueCreation = async ({
 
   const {
     model,
-    admin,
-    adminEmail,
+    owner,
+    ownerEmail,
     expertByEmail,
     apiModelKey,
     apiEndpoint,
@@ -80,7 +80,7 @@ export const prepareIssueCreation = async ({
     isMultiCriteria,
     normalizedModelParameters,
   } = await loadCreateIssueActorsAndModel({
-    adminUserId,
+    ownerUserId,
     selectedModelId: input.selectedModelId,
     paramValues: input.paramValues,
     criteriaNodes: input.criteria,
@@ -139,7 +139,7 @@ export const prepareIssueCreation = async ({
 
   const domainDocs = await loadAccessibleExpressionDomains({
     domainIdList: usedDomainIds,
-    userId: adminUserId,
+    userId: ownerUserId,
     modelSupportedDomains: model.supportedDomains,
   });
 
@@ -169,10 +169,10 @@ export const prepareIssueCreation = async ({
 
   return {
     input,
-    adminUserId,
+    ownerUserId,
     model,
-    admin,
-    adminEmail,
+    owner,
+    ownerEmail,
     expertByEmail,
     apiModelKey,
     apiEndpoint,
@@ -198,10 +198,10 @@ export const persistPreparedIssueCreation = async ({
 }) => {
   const {
     input,
-    adminUserId,
+    ownerUserId,
     model,
-    admin,
-    adminEmail,
+    owner,
+    ownerEmail,
     expertByEmail,
     apiModelKey,
     apiEndpoint,
@@ -226,7 +226,7 @@ export const persistPreparedIssueCreation = async ({
   });
 
   const issue = buildIssueCreationDocument({
-    adminUserId,
+    ownerUserId,
     model,
     apiModelKey,
     apiEndpoint,
@@ -276,8 +276,8 @@ export const persistPreparedIssueCreation = async ({
     issue,
     input,
     expertByEmail,
-    admin,
-    adminEmail,
+    owner,
+    ownerEmail,
     isCriteriaWeightingRequired,
     normalizedExpertWeightsByEmail:
       usesExpertWeights ? normalizedExpertWeightsByEmail : null,

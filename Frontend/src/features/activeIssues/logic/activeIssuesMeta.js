@@ -50,7 +50,7 @@ const mapServerStatusKey = (key) => {
   if (normalizedKey === "computeWeights") return "computeW";
   if (normalizedKey === "evaluateWeights") return "evalW";
   if (normalizedKey === "evaluateAlternatives") return "evalA";
-  if (normalizedKey === "waitingAdmin") return "waitingAdmin";
+  if (normalizedKey === "waitingOwner") return "waitingOwner";
   if (normalizedKey === "waitingExperts") return "waitingExperts";
   if (normalizedKey === "pendingInvitations") return "waitingExperts";
   if (normalizedKey === "finished") return "finished";
@@ -62,7 +62,7 @@ const toneFromServerRawKey = (rawKey, issue) => {
   const key = rawKey;
 
   if (key === "evaluateWeights" || key === "evaluateAlternatives") return "info";
-  if (key === "waitingAdmin" || key === "waitingExperts") return "success";
+  if (key === "waitingOwner" || key === "waitingExperts") return "success";
   if (key === "computeWeights" || key === "resolveIssue") return "warning";
   if (key === "finished" || issue?.currentStage === "finished") return "success";
 
@@ -82,13 +82,13 @@ export const getNextActionMeta = (issue) => {
   const tone = toneFromServerRawKey(serverKeyRaw, issue);
 
   const serverMap = {
-    waitingAdmin: {
-      key: "waitingAdmin",
+    waitingOwner: {
+      key: "waitingOwner",
       title:
         serverTitle ||
         (issue.currentStage === "weightsFinished"
-          ? "Waiting for admin to compute weights"
-          : "Waiting for admin to resolve"),
+          ? "Waiting for owner to compute weights"
+          : "Waiting for owner to resolve"),
       tone,
       icon: HourglassBottomIcon,
     },
@@ -136,7 +136,7 @@ export const getNextActionMeta = (issue) => {
 
   const flags = issue.statusFlags;
 
-  if (flags.waitingAdmin) return serverMap.waitingAdmin;
+  if (flags.waitingOwner) return serverMap.waitingOwner;
   if (flags.canEvaluateWeights) return serverMap.evalW;
   if (flags.canComputeWeights) return serverMap.computeW;
   if (flags.canEvaluateAlternatives) return serverMap.evalA;

@@ -45,7 +45,7 @@ export const editIssueExperts = async ({
 
   const invitationEmailsToSend = await addExpertsToActiveIssue({
     issue: context.issue,
-    admin: context.admin,
+    owner: context.owner,
     userId,
     expertEmails: finalExpertsToAdd,
     userByEmail,
@@ -70,7 +70,7 @@ export const editIssueExperts = async ({
       expertEmail,
       issueName: context.issue.name,
       issueDescription: context.issue.description,
-      adminEmail: context.admin.email,
+      ownerEmail: context.owner.email,
     })),
   };
 };

@@ -196,7 +196,7 @@ const FinishedIssuesHeader = ({
                           <MenuItem value="alternatives">Alternatives</MenuItem>
                           <MenuItem value="criteria">Criteria</MenuItem>
                           <MenuItem value="model">Model</MenuItem>
-                          <MenuItem value="admin">Admin</MenuItem>
+                          <MenuItem value="owner">Owner</MenuItem>
                         </Select>
                       </FormControl>
                     </InputAdornment>

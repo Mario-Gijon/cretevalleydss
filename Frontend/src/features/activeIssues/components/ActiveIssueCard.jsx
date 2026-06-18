@@ -338,8 +338,8 @@ const ActiveIssueCard = ({ issue, onOpenIssue }) => {
                 {issue?.name || "—"}
               </Typography>
 
-              {issue?.isAdmin ? (
-                <Tooltip title="You are the admin" placement="top" arrow>
+              {issue?.isIssueOwner ? (
+                <Tooltip title="You are the owner" placement="top" arrow>
                   <Box
                     sx={{
                       mt: 0.25,

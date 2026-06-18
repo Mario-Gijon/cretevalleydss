@@ -5,8 +5,8 @@ export const createIssueParticipationsAndNotifications = async ({
   issue,
   input,
   expertByEmail,
-  admin,
-  adminEmail,
+  owner,
+  ownerEmail,
   isCriteriaWeightingRequired,
   normalizedExpertWeightsByEmail,
   session,
@@ -17,12 +17,12 @@ export const createIssueParticipationsAndNotifications = async ({
 
   for (const email of input.uniqueExpertEmails) {
     const expertUser = expertByEmail.get(email);
-    const isAdminExpert = email === adminEmail;
+    const isOwnerExpert = email === ownerEmail;
 
     participationDocs.push({
       issue: issue._id,
       expert: expertUser._id,
-      invitationStatus: isAdminExpert ? "accepted" : "pending",
+      invitationStatus: isOwnerExpert ? "accepted" : "pending",
       evaluationCompleted: false,
       weightsCompleted: !isCriteriaWeightingRequired,
       weight: normalizedExpertWeightsByEmail
@@ -33,12 +33,12 @@ export const createIssueParticipationsAndNotifications = async ({
       joinedAt: new Date(),
     });
 
-    if (!isAdminExpert) {
+    if (!isOwnerExpert) {
       notificationDocs.push({
         expert: expertUser._id,
         issue: issue._id,
         type: "invitation",
-        message: `You have been invited by ${admin.name} to participate in ${input.issueName}.`,
+        message: `You have been invited by ${owner.name} to participate in ${input.issueName}.`,
         read: false,
         requiresAction: true,
       });
@@ -47,7 +47,7 @@ export const createIssueParticipationsAndNotifications = async ({
         expertEmail: email,
         issueName: input.issueName,
         issueDescription: input.issueDescription,
-        adminEmail,
+        ownerEmail,
       });
     }
   }

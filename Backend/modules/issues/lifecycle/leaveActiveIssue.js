@@ -121,8 +121,8 @@ export const leaveActiveIssue = async ({
     throw createBadRequestError("Issue is not active");
   }
 
-  if (sameId(issue.admin, userId)) {
-    throw createForbiddenError("An admin can not leave an issue");
+  if (sameId(issue.ownerId, userId)) {
+    throw createForbiddenError("An owner can not leave an issue");
   }
 
   const participation = await applyOptionalSession(
