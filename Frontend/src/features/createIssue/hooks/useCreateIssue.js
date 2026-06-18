@@ -36,6 +36,11 @@ import {
   buildDefaultCriteriaWeightingConfig,
   resolveAssignedFuzzyValueCount,
 } from "../logic/createIssueCriteriaWeighting";
+import {
+  modelUsesExpertWeights,
+  syncExpertWeightsForSelection,
+  validateExpertWeights,
+} from "../logic/createIssueExpertWeights";
 import { buildCreateIssueRequestPayload } from "../logic/createIssuePayload";
 import {
   buildCreateIssueAllData,
@@ -74,6 +79,14 @@ export const useCreateIssue = () => {
   const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
   const [criteria, setCriteria] = useState(storedData.criteria || []);
   const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
+  const [expertWeights, setExpertWeights] = useState(
+    modelUsesExpertWeights(storedData.selectedModel) && storedData.expertWeights
+      ? storedData.expertWeights
+      : null
+  );
+  const [expertWeightsCustomized, setExpertWeightsCustomized] = useState(
+    storedData.expertWeightsCustomized === true
+  );
   const [issueName, setIssueName] = useState(storedData.issueName || "");
   const [issueDescription, setIssueDescription] = useState(
     storedData.issueDescription || ""
@@ -118,6 +131,8 @@ export const useCreateIssue = () => {
       alternatives,
       criteria,
       addedExperts,
+      expertWeights,
+      expertWeightsCustomized,
       issueName,
       issueDescription,
       expressionDomainConfig,
@@ -139,6 +154,8 @@ export const useCreateIssue = () => {
     alternatives,
     criteria,
     addedExperts,
+    expertWeights,
+    expertWeightsCustomized,
     issueName,
     issueDescription,
     closureDate,
@@ -174,12 +191,39 @@ export const useCreateIssue = () => {
       setCriteriaWeightingConfig(
         buildDefaultCriteriaWeightingConfig(selectedModel, leafCriteria)
       );
+      if (modelUsesExpertWeights(selectedModel)) {
+        setExpertWeights(syncExpertWeightsForSelection({
+          expertEmails: addedExperts,
+          previousExpertWeights: null,
+          preserveCustomWeights: false,
+        }));
+        setExpertWeightsCustomized(false);
+      } else {
+        setExpertWeights(null);
+        setExpertWeightsCustomized(false);
+      }
       return;
     }
     setCriteriaWeightingConfig(buildDefaultCriteriaWeightingConfig(selectedModel, []));
+    setExpertWeights(null);
+    setExpertWeightsCustomized(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModel]);
+
+  useEffect(() => {
+    if (!modelUsesExpertWeights(selectedModel)) {
+      return;
+    }
+
+    setExpertWeights((previous) =>
+      syncExpertWeightsForSelection({
+        expertEmails: addedExperts,
+        previousExpertWeights: previous,
+        preserveCustomWeights: expertWeightsCustomized,
+      })
+    );
+  }, [addedExperts, expertWeightsCustomized, selectedModel]);
 
   useEffect(() => {
     const leafCriteria = getLeafCriteria(criteria);
@@ -316,6 +360,7 @@ export const useCreateIssue = () => {
       alternatives,
       criteria,
       addedExperts,
+      expertWeights,
       closureDate,
       expressionDomainConfig,
       criteriaWeightingConfig,
@@ -332,6 +377,7 @@ export const useCreateIssue = () => {
     alternatives,
     criteria,
     addedExperts,
+    expertWeights,
     closureDate,
     expressionDomainConfig,
     criteriaWeightingConfig,
@@ -371,6 +417,7 @@ export const useCreateIssue = () => {
       expressionDomains,
       expressionDomainConfig,
       criteriaWeightingConfig,
+      expertWeights,
       paramValues,
     });
 
@@ -429,6 +476,18 @@ export const useCreateIssue = () => {
     setActiveStep((previous) => previous - 1);
   };
 
+  const expertWeightValidation = modelUsesExpertWeights(selectedModel)
+    ? validateExpertWeights({
+        expertEmails: addedExperts,
+        expertWeights,
+      })
+    : null;
+  const nextStepDisabled =
+    activeStep === 3 &&
+    modelUsesExpertWeights(selectedModel) &&
+    addedExperts.length > 0 &&
+    expertWeightValidation?.valid !== true;
+
   const headerSubtitle = useMemo(() => {
     return buildCreateIssueHeaderSubtitle(activeStep);
   }, [activeStep]);
@@ -442,6 +501,7 @@ export const useCreateIssue = () => {
     alternatives,
     criteria,
     addedExperts,
+    expertWeights,
     issueName,
     issueDescription,
     issueNameError,
@@ -455,6 +515,9 @@ export const useCreateIssue = () => {
     defaultModelParams,
     expressionDomainConfig,
     criteriaWeightingConfig,
+    expertWeightsCustomized,
+    expertWeightValidation,
+    nextStepDisabled,
     allData,
     showConsensusModels,
     headerSubtitle,
@@ -463,6 +526,8 @@ export const useCreateIssue = () => {
     setAlternatives,
     setCriteria,
     setAddedExperts,
+    setExpertWeights,
+    setExpertWeightsCustomized,
     setClosureDate,
     setConsensusMaxPhases,
     setConsensusThreshold,

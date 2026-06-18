@@ -53,6 +53,7 @@ const CreateIssueViewContent = () => {
     activeStep,
     completed,
     headerSubtitle,
+    nextStepDisabled,
     handleComplete,
     goToStep,
     goNextStep,
@@ -148,6 +149,7 @@ const CreateIssueViewContent = () => {
                     color="success"
                     variant="outlined"
                     onClick={goNextStep}
+                    disabled={nextStepDisabled}
                     endIcon={<ArrowForwardIosIcon />}
                   >
                     Next
@@ -188,6 +190,7 @@ const CreateIssueViewContent = () => {
                 color="success"
                 variant="outlined"
                 onClick={goNextStep}
+                disabled={nextStepDisabled}
                 endIcon={<ArrowForwardIosIcon />}
               >
                 Next

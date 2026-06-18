@@ -13,6 +13,10 @@ import {
   validateCreateIssueFuzzyCriteriaWeighting,
   validateCreateIssueManualCriteriaWeighting,
 } from "./createIssueCriteriaWeighting";
+import {
+  modelUsesExpertWeights,
+  validateExpertWeights,
+} from "./createIssueExpertWeights";
 
 const normalizeConsensusMaxPhases = (value) =>
   value === null || value === undefined || value === "" ? null : Number(value);
@@ -36,6 +40,7 @@ export const buildCreateIssueRequestPayload = ({
   expressionDomains,
   expressionDomainConfig,
   criteriaWeightingConfig,
+  expertWeights,
   paramValues,
 }) => {
   const modelRequiresConsensus = selectedModel?.supportsConsensus === true;
@@ -104,6 +109,7 @@ export const buildCreateIssueRequestPayload = ({
   }
 
   const modelNeedsCriteriaWeights = modelUsesCriteriaWeights(selectedModel);
+  const modelNeedsExpertWeights = modelUsesExpertWeights(selectedModel);
   if (modelNeedsCriteriaWeights) {
     if (!criteriaWeightingConfig || typeof criteriaWeightingConfig !== "object") {
       return {
@@ -155,7 +161,22 @@ export const buildCreateIssueRequestPayload = ({
     }
   }
 
+  if (modelNeedsExpertWeights) {
+    const expertWeightValidation = validateExpertWeights({
+      expertEmails: allData.addedExperts,
+      expertWeights,
+    });
+
+    if (!expertWeightValidation.valid) {
+      return {
+        ok: false,
+        errorMessage: expertWeightValidation.message,
+      };
+    }
+  }
+
   const issueInfoPayload = { ...allData };
+  delete issueInfoPayload.expertWeights;
   issueInfoPayload.isConsensus = modelRequiresConsensus;
   issueInfoPayload.simulateConsensus =
     modelRequiresConsensus &&
@@ -172,6 +193,12 @@ export const buildCreateIssueRequestPayload = ({
   issueInfoPayload.criteriaWeightingParameters = normalizeCriteriaWeightingParameters(
     criteriaWeightingConfig
   );
+  issueInfoPayload.addedExperts = modelNeedsExpertWeights
+    ? allData.addedExperts.map((email) => ({
+        email,
+        weight: expertWeights[email],
+      }))
+    : allData.addedExperts;
 
   return {
     ok: true,

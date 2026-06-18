@@ -32,6 +32,10 @@ const participationSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    weight: {
+      type: Number,
+      default: null,
+    },
 
     entryPhase: {
       type: Number,

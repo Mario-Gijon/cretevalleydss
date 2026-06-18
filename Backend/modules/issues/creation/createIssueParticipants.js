@@ -8,6 +8,7 @@ export const createIssueParticipationsAndNotifications = async ({
   admin,
   adminEmail,
   isCriteriaWeightingRequired,
+  normalizedExpertWeightsByEmail,
   session,
 }) => {
   const participationDocs = [];
@@ -24,6 +25,9 @@ export const createIssueParticipationsAndNotifications = async ({
       invitationStatus: isAdminExpert ? "accepted" : "pending",
       evaluationCompleted: false,
       weightsCompleted: !isCriteriaWeightingRequired,
+      weight: normalizedExpertWeightsByEmail
+        ? normalizedExpertWeightsByEmail[email]
+        : null,
       entryPhase: null,
       entryStage: null,
       joinedAt: new Date(),

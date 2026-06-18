@@ -237,6 +237,10 @@ const issueModelSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  usesExpertWeights: {
+    type: Boolean,
+    default: false,
+  },
   usesFuzzyCriteriaWeights: {
     type: Boolean,
     default: false,

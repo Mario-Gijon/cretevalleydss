@@ -244,6 +244,9 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof manifestModel?.usesCriteriaWeights !== "boolean") {
     missingFields.push("usesCriteriaWeights");
   }
+  if (typeof manifestModel?.usesExpertWeights !== "boolean") {
+    missingFields.push("usesExpertWeights");
+  }
   if (typeof manifestModel?.usesFuzzyCriteriaWeights !== "boolean") {
     missingFields.push("usesFuzzyCriteriaWeights");
   }
@@ -290,6 +293,7 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
     manifestModel?.supportsConsensusSimulation === true,
   isMultiCriteria: manifestModel?.isMultiCriteria === true,
   usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
+  usesExpertWeights: manifestModel?.usesExpertWeights === true,
   usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
   usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
   supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),

@@ -88,6 +88,7 @@ const mapIssueModelCatalogItem = (model) => {
     criteriaWeightingStructureKey:
       model.criteriaWeightingStructureKey,
     usesCriteriaWeights: model.usesCriteriaWeights === true,
+    usesExpertWeights: model.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model.usesCriterionTypes === true,
     supportsConsensus: model.supportsConsensus === true,

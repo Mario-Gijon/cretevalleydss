@@ -42,6 +42,7 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,
+    usesExpertWeights,
     isMultiCriteria,
   } = validateIssueModelRuntimeConfigOrThrow(existingModel);
 
@@ -93,6 +94,7 @@ export const loadCreateIssueActorsAndModel = async ({
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,
+    usesExpertWeights,
     isMultiCriteria,
     normalizedModelParameters:
       normalizedModelParametersWithoutCriteriaWeights,

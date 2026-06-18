@@ -108,6 +108,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     alternativeEvaluationStructureKey:
       model?.alternativeEvaluationStructureKey || null,
     usesCriteriaWeights: model?.usesCriteriaWeights === true,
+    usesExpertWeights: model?.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: model?.usesCriterionTypes === true,
     isConsensus: model?.supportsConsensus === true,

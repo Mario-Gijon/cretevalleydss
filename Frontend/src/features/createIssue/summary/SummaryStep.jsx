@@ -42,6 +42,7 @@ import { useCreateIssueContext } from "../context/createIssue.context";
 import { getRemainingTime } from "../logic/createIssueDates";
 import { setDefaults } from "../logic/createIssueModelParameters";
 import { buildDefaultCriteriaWeightingConfig } from "../logic/createIssueCriteriaWeighting";
+import { modelUsesExpertWeights } from "../logic/createIssueExpertWeights";
 import {
   getExpressionDomainAssignmentsByCriterion,
 } from "../../../utils/domainAssignments.utils";
@@ -99,6 +100,7 @@ export const SummaryStep = () => {
     defaultModelParams,
     setDefaultModelParams,
     setCriteriaWeightingConfig,
+    expertWeights,
   } = useCreateIssueContext();
 
   const [unlimited, setUnlimited] = useState(consensusMaxPhases === null);
@@ -117,6 +119,7 @@ export const SummaryStep = () => {
     isConsensus &&
     selectedModel?.supportsConsensus === true &&
     selectedModel?.supportsConsensusSimulation === true;
+  const showExpertWeights = modelUsesExpertWeights(selectedModel);
 
   const domainNameMap = useMemo(
     () =>
@@ -305,7 +308,11 @@ export const SummaryStep = () => {
                 <Chip
                   key={index}
                   variant="outlined"
-                  label={expert}
+                  label={
+                    showExpertWeights && expertWeights
+                      ? `${expert} · ${Number(expertWeights[expert] || 0).toFixed(3)}`
+                      : expert
+                  }
                   size="small"
                   sx={getCreateIssueSummaryExpertChipSx(theme)}
                 />

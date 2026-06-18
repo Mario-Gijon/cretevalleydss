@@ -93,6 +93,13 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       value: model.usesCriteriaWeights,
     });
   }
+  if (typeof model.usesExpertWeights !== "boolean") {
+    runtimeErrors.push({
+      field: "usesExpertWeights",
+      message: "must be boolean",
+      value: model.usesExpertWeights,
+    });
+  }
   if (typeof model.usesFuzzyCriteriaWeights !== "boolean") {
     runtimeErrors.push({
       field: "usesFuzzyCriteriaWeights",
@@ -143,6 +150,7 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     supportsConsensus: model.supportsConsensus,
     supportsConsensusSimulation: model.supportsConsensusSimulation,
     usesCriteriaWeights: model.usesCriteriaWeights,
+    usesExpertWeights: model.usesExpertWeights,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights,
     usesCriterionTypes: model.usesCriterionTypes,
     isMultiCriteria: model.isMultiCriteria,

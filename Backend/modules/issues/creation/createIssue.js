@@ -36,6 +36,9 @@ import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";
 import { getOrderedLeafCriterionNamesFromInputOrThrow } from "./getOrderedLeafCriterionNamesFromInput.js";
+import {
+  validateAndNormalizeExpertWeightsOrThrow,
+} from "../shared/expertWeights.js";
 
 const assertIssueNameAvailableOrThrow = async ({
   issueName,
@@ -73,6 +76,7 @@ export const prepareIssueCreation = async ({
     supportsConsensus: modelSupportsConsensus,
     supportsConsensusSimulation: modelSupportsConsensusSimulation,
     usesCriteriaWeights,
+    usesExpertWeights,
     isMultiCriteria,
     normalizedModelParameters,
   } = await loadCreateIssueActorsAndModel({
@@ -156,6 +160,12 @@ export const prepareIssueCreation = async ({
       apiModelsBaseUrl,
       httpClient,
     });
+  const normalizedExpertWeightsByEmail =
+    validateAndNormalizeExpertWeightsOrThrow({
+      model,
+      expertEmails: input.uniqueExpertEmails,
+      expertWeightsByEmail: input.expertWeightsByEmail,
+    });
 
   return {
     input,
@@ -173,10 +183,12 @@ export const prepareIssueCreation = async ({
     consensusThreshold,
     consensusMaxPhases,
     usesCriteriaWeights,
+    usesExpertWeights,
     normalizedModelParameters,
     domainDocs,
     domainIdByCriterionName,
     resolvedCriteriaWeighting,
+    normalizedExpertWeightsByEmail,
   };
 };
 
@@ -200,10 +212,12 @@ export const persistPreparedIssueCreation = async ({
     consensusThreshold,
     consensusMaxPhases,
     usesCriteriaWeights,
+    usesExpertWeights,
     normalizedModelParameters,
     domainDocs,
     domainIdByCriterionName,
     resolvedCriteriaWeighting,
+    normalizedExpertWeightsByEmail,
   } = preparedIssueCreation;
 
   await assertIssueNameAvailableOrThrow({
@@ -265,6 +279,8 @@ export const persistPreparedIssueCreation = async ({
     admin,
     adminEmail,
     isCriteriaWeightingRequired,
+    normalizedExpertWeightsByEmail:
+      usesExpertWeights ? normalizedExpertWeightsByEmail : null,
     session,
   });
 

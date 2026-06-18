@@ -68,6 +68,63 @@ const normalizeUniqueStringArrayOrThrow = ({
   return uniqueValues;
 };
 
+const normalizeExpertSelectionsOrThrow = (values) => {
+  const uniqueExpertEmails = [];
+  const seenEmails = new Set();
+  let expertWeightsByEmail = null;
+
+  for (const value of values) {
+    if (typeof value === "string") {
+      const normalizedEmail = normalizeWhitespace(value).toLowerCase();
+
+      if (!normalizedEmail || seenEmails.has(normalizedEmail)) {
+        continue;
+      }
+
+      seenEmails.add(normalizedEmail);
+      uniqueExpertEmails.push(normalizedEmail);
+      continue;
+    }
+
+    if (!isPlainObject(value)) {
+      throw createBadRequestError("Each expert must be a string or an object", {
+        field: "addedExperts",
+      });
+    }
+
+    const normalizedEmail = requireNonEmptyStringOrThrow({
+      value: value.email,
+      field: "addedExperts",
+      message: "Each expert email is required",
+    }).toLowerCase();
+    const weight = Number(value.weight);
+
+    if (!Number.isFinite(weight)) {
+      throw createBadRequestError("Expert weights are required for this model.", {
+        field: "addedExperts",
+      });
+    }
+
+    if (expertWeightsByEmail === null) {
+      expertWeightsByEmail = {};
+    }
+
+    expertWeightsByEmail[normalizedEmail] = weight;
+
+    if (seenEmails.has(normalizedEmail)) {
+      continue;
+    }
+
+    seenEmails.add(normalizedEmail);
+    uniqueExpertEmails.push(normalizedEmail);
+  }
+
+  return {
+    uniqueExpertEmails,
+    expertWeightsByEmail,
+  };
+};
+
 const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
   return criteriaNodes.map((node) => {
     if (!isPlainObject(node)) {
@@ -201,12 +258,8 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  const uniqueExpertEmails = normalizeUniqueStringArrayOrThrow({
-    values: addedExperts,
-    field: "addedExperts",
-    itemMessage: "Each expert email must be a string",
-    lower: true,
-  });
+  const { uniqueExpertEmails, expertWeightsByEmail } =
+    normalizeExpertSelectionsOrThrow(addedExperts);
 
   if (uniqueExpertEmails.length === 0) {
     throw createBadRequestError("Must be at least one expert", {
@@ -313,5 +366,6 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
       criteriaWeightingParameters === undefined
         ? {}
         : criteriaWeightingParameters,
+    expertWeightsByEmail,
   };
 };
