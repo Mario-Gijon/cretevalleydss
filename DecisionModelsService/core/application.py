@@ -4,6 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
+from api.routers.health import router as health_router
 from api.routers.model_manifest import router as model_manifest_router
 from api.routers.models import router as models_router
 
@@ -43,10 +44,11 @@ def create_application() -> FastAPI:
     """Crea la aplicación FastAPI con rutas y configuración comunes."""
 
     app = FastAPI(
-        title="CreteValley Decision Models API",
+        title="CreteValley Decision Models Service",
         description=(
-            "API para ejecutar modelos de decisión usados por el backend de CreteValley. "
-            "Usa el contrato estándar `success`, `message`, `data` y `error`."
+            "Internal FastAPI microservice for executing CreteValley decision models "
+            "and exposing the published model manifest. Uses the standard "
+            "`success`, `message`, `data` and `error` response contract."
         ),
         version="1.0.0",
     )
@@ -67,8 +69,9 @@ def create_application() -> FastAPI:
             },
         )
 
-    app.include_router(models_router)
+    app.include_router(health_router)
     app.include_router(model_manifest_router)
+    app.include_router(models_router)
 
     def custom_openapi():
         if app.openapi_schema:

@@ -8,7 +8,7 @@ The existing deployment Docker files remain separate and untouched:
 - `cretevalley-docker-compose.yml`
 - `Dockerfile.frontend`
 - `Dockerfile.backend`
-- `Dockerfile.apimodels`
+- `Dockerfile.decision-models-service`
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ Open:
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:5000/api
-- ApiModels: http://localhost:7000
+- DecisionModelsService: http://localhost:7000
 
 ## Normal restart
 
@@ -63,7 +63,7 @@ docker compose -f docker-compose.dev.yml build --no-cache
 ```bash
 docker compose -f docker-compose.dev.yml logs -f backend
 docker compose -f docker-compose.dev.yml logs -f frontend
-docker compose -f docker-compose.dev.yml logs -f apimodels
+docker compose -f docker-compose.dev.yml logs -f decision-models-service
 ```
 
 ## Hot reload

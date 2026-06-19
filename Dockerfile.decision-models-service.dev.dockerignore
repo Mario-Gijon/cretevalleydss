@@ -1,0 +1,15 @@
+.git
+.agents
+.codex
+.vscode
+Backend
+Frontend
+docs
+tmp
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/node_modules/
+DecisionModelsService/.venv
