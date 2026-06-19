@@ -56,7 +56,8 @@ const assertIssueNameAvailableOrThrow = async ({
 export const prepareIssueCreation = async ({
   issueInfo,
   ownerUserId,
-  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+  apiModelsBaseUrl =
+    process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
 }) => {
   const input = normalizeCreateIssueInput(issueInfo);

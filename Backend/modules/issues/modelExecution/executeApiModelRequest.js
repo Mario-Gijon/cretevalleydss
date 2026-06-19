@@ -5,7 +5,7 @@ import {
 } from "../../../services/modelApi/modelResponse.js";
 
 const DEFAULT_APIMODELS_BASE_URL =
-  process.env.ORIGIN_APIMODELS || "http://localhost:7000";
+  process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000";
 
 export const executeApiModelRequest = async ({
   apiEndpointPath,

@@ -55,7 +55,8 @@ export const createIssueScenario = async ({
   targetModelId,
   scenarioName,
   paramOverrides,
-  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+  apiModelsBaseUrl =
+    process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
 }) => {
   const normalizedInput = normalizeScenarioCreationInputOrThrow({

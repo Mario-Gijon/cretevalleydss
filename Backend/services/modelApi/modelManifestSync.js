@@ -165,7 +165,7 @@ const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) =>
 
     if (!canMarkStale(entry.model)) {
       warnings.push(
-        `IssueModel ${entry.model.name} has apiModelKey ${apiModelKey} but is not managed by ApiModels; stale status was not changed.`
+        `IssueModel ${entry.model.name} has apiModelKey ${apiModelKey} but is not managed by DecisionModelsService; stale status was not changed.`
       );
       continue;
     }

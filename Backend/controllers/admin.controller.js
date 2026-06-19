@@ -411,7 +411,7 @@ export const computeIssueWeightsAdmin = async (req, res) => {
     userId: ownerUserId,
     stage: "criteriaWeighting",
     apiModelsBaseUrl:
-      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
     httpClient: axios,
   });
 
@@ -443,7 +443,7 @@ export const resolveIssueAdmin = async (req, res) => {
     userId: ownerUserId,
     stage: "alternativeEvaluation",
     apiModelsBaseUrl:
-      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
     httpClient: axios,
   });
 

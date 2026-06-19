@@ -20,7 +20,7 @@ const executeCriteriaWeightingApiModel = async ({
 
   if (typeof apiEndpointPath !== "string" || apiEndpointPath.trim() === "") {
     throw createBadRequestError(
-      "Issue does not define a criteria weighting ApiModels endpoint path",
+      "Issue does not define a criteria weighting DecisionModelsService endpoint path",
       {
         field: "issue.criteriaWeightingApiEndpoint.path",
       }
@@ -29,7 +29,7 @@ const executeCriteriaWeightingApiModel = async ({
 
   if (typeof apiModelKey !== "string" || apiModelKey.trim() === "") {
     throw createBadRequestError(
-      "Issue does not define a criteria weighting ApiModels model key",
+      "Issue does not define a criteria weighting DecisionModelsService model key",
       {
         field: "issue.criteriaWeightingApiModelKey",
       }

@@ -139,7 +139,7 @@ export const createIssue = async (req, res) => {
     issueInfo,
     ownerUserId: req.uid,
     apiModelsBaseUrl:
-      process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
     httpClient: axios,
   });
 
@@ -556,7 +556,8 @@ export const computeEvaluationStage = async (req, res) => {
     issueId,
     userId: req.uid,
     stage,
-    apiModelsBaseUrl: process.env.ORIGIN_APIMODELS || "http://localhost:7000",
+    apiModelsBaseUrl:
+      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
     httpClient: axios,
   });
 

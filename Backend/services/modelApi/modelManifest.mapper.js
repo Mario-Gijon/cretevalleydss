@@ -1,7 +1,7 @@
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../utils/common/strings.js";
 
-export const MANIFEST_SYNC_SOURCE = "ApiModels";
+export const MANIFEST_SYNC_SOURCE = "DecisionModelsService";
 
 export const toIdString = (value) => {
   if (value === null || value === undefined) {

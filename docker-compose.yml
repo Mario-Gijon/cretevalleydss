@@ -21,11 +21,12 @@ services:
       - "80:5000"
     depends_on:
       - frontend
+      - decision-models-service
 
-  apimodels:
+  decision-models-service:
     build:
       context: .
-      dockerfile: Dockerfile.apimodels
+      dockerfile: Dockerfile.decision-models-service
     ports:
       - "7000:7000"
 

@@ -222,7 +222,7 @@
           "Admin"
         ],
         "summary": "Obtiene el catálogo persistido de modelos desde MongoDB",
-        "description": "Devuelve los documentos IssueModel persistidos en MongoDB para el\npanel de administración. No consulta ApiModels ni escribe cambios.\nRequiere access token válido y rol admin.\n",
+        "description": "Devuelve los documentos IssueModel persistidos en MongoDB para el\npanel de administración. No consulta DecisionModelsService ni escribe cambios.\nRequiere access token válido y rol admin.\n",
         "security": [
           {
             "bearerAuth": []
@@ -346,8 +346,8 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Compara el manifest de ApiModels con IssueModel sin escribir",
-        "description": "Ejecuta una comprobación read-only entre GET /models/manifest de\nApiModels y los documentos IssueModel actuales en MongoDB.\nRequiere access token válido y rol admin.\n",
+        "summary": "Compara el manifest de DecisionModelsService con IssueModel sin escribir",
+        "description": "Ejecuta una comprobación read-only entre GET /models/manifest de\nDecisionModelsService y los documentos IssueModel actuales en MongoDB.\nRequiere access token válido y rol admin.\n",
         "security": [
           {
             "bearerAuth": []
@@ -400,8 +400,8 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Sincroniza el manifest de ApiModels con IssueModel",
-        "description": "Sincroniza modelos públicos y seguros del manifest de ApiModels con\nMongoDB. Requiere confirmación explícita y rol admin.\n",
+        "summary": "Sincroniza el manifest de DecisionModelsService con IssueModel",
+        "description": "Sincroniza modelos públicos y seguros del manifest de DecisionModelsService con\nMongoDB. Requiere confirmación explícita y rol admin.\n",
         "security": [
           {
             "bearerAuth": []

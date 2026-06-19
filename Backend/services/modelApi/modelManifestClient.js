@@ -53,7 +53,7 @@ const createUpstreamContractError = (response, fallbackMessage) => {
 
 const createManifestRequestError = (
   error,
-  fallbackMessage = "Unable to fetch model manifest from ApiModels"
+  fallbackMessage = "Unable to fetch model manifest from DecisionModelsService"
 ) => {
   if (isAppError(error)) {
     return error;
@@ -90,15 +90,15 @@ const createManifestRequestError = (
 
 export const fetchModelManifest = async ({
   httpClient = axios,
-  apiModelsBaseUrl = process.env.ORIGIN_APIMODELS,
+  apiModelsBaseUrl = process.env.DECISION_MODELS_SERVICE_BASE_URL,
 } = {}) => {
   const baseUrl = String(apiModelsBaseUrl || "").trim();
 
   if (!baseUrl) {
-    throw new AppError("ORIGIN_APIMODELS is not configured", {
+    throw new AppError("DECISION_MODELS_SERVICE_BASE_URL is not configured", {
       statusCode: 500,
       code: "MODEL_MANIFEST_CONFIG_ERROR",
-      field: "ORIGIN_APIMODELS",
+      field: "DECISION_MODELS_SERVICE_BASE_URL",
     });
   }
 
@@ -124,7 +124,7 @@ export const fetchModelManifest = async ({
   if (payload.success === false) {
     throw createUpstreamContractError(
       response,
-      "ApiModels returned an unsuccessful model manifest response"
+      "DecisionModelsService returned an unsuccessful model manifest response"
     );
   }
 
