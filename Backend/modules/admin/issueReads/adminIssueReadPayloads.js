@@ -1,23 +1,28 @@
 import { toIdString } from "../../../utils/common/ids.js";
 import { hasOwnKey } from "../../../utils/common/objects.js";
 import { buildCriteriaTreeFromDocs } from "../../issues/shared/criteriaTree.js";
-
-export const sortByNameStable = (a, b) => {
-  const byName = a.name.localeCompare(
-    b.name,
-    undefined,
-    {
-      sensitivity: "base",
-      numeric: true,
-    }
-  );
-
-  if (byName !== 0) return byName;
-
-  return toIdString(a).localeCompare(toIdString(b));
-};
+import { comparePositionId } from "../../issues/shared/ordering.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
 export const buildCriteriaTreeAdmin = (criteriaDocs) => {
+  const positionById = new Map(
+    criteriaDocs.map((criterion) => [toIdString(criterion._id), criterion.position])
+  );
+  const getPositionOrThrow = (nodeId) => {
+    const position = positionById.get(nodeId);
+
+    if (Number.isInteger(position) && position >= 0) {
+      return position;
+    }
+
+    throw createInternalError("Criterion is missing a valid position in admin tree", {
+      field: "criterion.position",
+      details: {
+        criterionId: nodeId,
+      },
+    });
+  };
+
   return buildCriteriaTreeFromDocs({
     criteriaDocs,
     mapNode: (criterion) => ({
@@ -30,7 +35,13 @@ export const buildCriteriaTreeAdmin = (criteriaDocs) => {
         : null,
       children: [],
     }),
-    sortChildren: sortByNameStable,
+    sortChildren: (left, right) =>
+      comparePositionId(
+        getPositionOrThrow(left.id),
+        left.id,
+        getPositionOrThrow(right.id),
+        right.id
+      ),
   });
 };
 

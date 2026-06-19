@@ -7,9 +7,10 @@ export const createIssueAlternatives = async ({
   session,
 }) => {
   return Alternative.insertMany(
-    uniqueAlternativeNames.map((name) => ({
+    uniqueAlternativeNames.map((name, index) => ({
       issue: issueId,
       name,
+      position: index,
     })),
     { session, ordered: true }
   );
@@ -22,7 +23,7 @@ export const createCriteriaRecursively = async ({
   session,
   parentCriterionId = null,
 }) => {
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
     const children = node.children;
     const isLeaf = children.length === 0;
 
@@ -32,6 +33,7 @@ export const createCriteriaRecursively = async ({
       name: node.name,
       type: node.type,
       isLeaf,
+      position: index,
     });
 
     await criterion.save({ session });

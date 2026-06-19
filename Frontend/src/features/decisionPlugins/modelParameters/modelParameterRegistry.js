@@ -5,12 +5,20 @@ const PARAMETER_FIELD_MODULES = import.meta.glob("./fields/*/index.js", {
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
+const isReactComponentCandidate = (component) =>
+  typeof component === "function" ||
+  (
+    component !== null &&
+    typeof component === "object" &&
+    Object.hasOwn(component, "$$typeof")
+  );
+
 const isValidParameterFieldEntry = (value) =>
   value !== null &&
   typeof value === "object" &&
   isNonEmptyString(value.key) &&
-  typeof value.FieldComponent === "function" &&
-  typeof value.ReadOnlyComponent === "function";
+  isReactComponentCandidate(value.FieldComponent) &&
+  isReactComponentCandidate(value.ReadOnlyComponent);
 
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/fields\/([^/]+)\/index\.js$/);
@@ -29,7 +37,7 @@ const extractParameterFieldEntryFromModule = ({ moduleExports, modulePath }) => 
 
   if (entries.length === 0) {
     throw new Error(
-      `[modelParameters] ${modulePath} must export exactly one valid parameter field entry.`
+      `[modelParameters] ${modulePath} must export exactly one valid parameter field entry with key, FieldComponent and ReadOnlyComponent.`
     );
   }
 

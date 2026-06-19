@@ -26,29 +26,28 @@ export const getOrderedLeafCriterionNamesFromInputOrThrow = (criteriaNodes) => {
     });
   }
 
-  const orderedLeafCriteria = leafCriteria
-    .slice()
-    .sort((left, right) =>
-      compareNameId(left.name, left.inputOrder, right.name, right.inputOrder)
-    );
+  for (let index = 0; index < leafCriteria.length; index += 1) {
+    const currentCriterion = leafCriteria[index];
 
-  for (let index = 1; index < orderedLeafCriteria.length; index += 1) {
-    const previousCriterion = orderedLeafCriteria[index - 1];
-    const currentCriterion = orderedLeafCriteria[index];
+    for (let compareIndex = 0; compareIndex < index; compareIndex += 1) {
+      const previousCriterion = leafCriteria[compareIndex];
 
-    if (compareNameId(previousCriterion.name, 0, currentCriterion.name, 0) === 0) {
+      if (compareNameId(previousCriterion.name, 0, currentCriterion.name, 0) !== 0) {
+        continue;
+      }
+
       throw createBadRequestError("Leaf criterion names must be unique", {
         field: "criteria",
       });
     }
   }
 
-  const criterionNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const criterionNames = leafCriteria.map((criterion) => criterion.name);
 
   return {
     criterionNames,
     isSingleLeafCriterion: criterionNames.length === 1,
-    orderedLeafCriteria: orderedLeafCriteria.map((criterion) => ({
+    orderedLeafCriteria: leafCriteria.map((criterion) => ({
       name: criterion.name,
     })),
   };

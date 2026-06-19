@@ -1,4 +1,4 @@
-import { orderDocsByIdList } from "../shared/ordering.js";
+import { sortDocsByPositionId } from "../shared/ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 import { decorateCriteriaTree } from "../shared/criteriaTree.js";
@@ -32,10 +32,23 @@ export const buildActiveIssueView = ({
   const stage = issue.currentStage;
   const consensusCurrentPhase = issue.consensusPhase;
   const deadline = buildDeadlineInfo(issue.closureDate);
+  const getAlternativePositionOrThrow = (alternative) => {
+    if (Number.isInteger(alternative?.position) && alternative.position >= 0) {
+      return alternative.position;
+    }
 
-  const orderedAlternativeDocs = orderDocsByIdList(
+    throw createInternalError("Alternative is missing a valid position", {
+      field: "alternative.position",
+      details: {
+        issueId,
+        alternativeId: toIdString(alternative?._id),
+      },
+    });
+  };
+
+  const orderedAlternativeDocs = sortDocsByPositionId(
     issueAlternativeDocs,
-    issue.alternativeOrder
+    getAlternativePositionOrThrow
   );
   const alternativeNames = orderedAlternativeDocs.map(
     (alternative) => alternative.name

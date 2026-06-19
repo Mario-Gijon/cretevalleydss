@@ -1,5 +1,6 @@
-import { orderDocsByIdList } from "./ordering.js";
+import { comparePositionId, orderCriteriaDocsByTreePosition } from "./ordering.js";
 import { toIdString } from "../../../utils/common/ids.js";
+import { createInternalError } from "../../../utils/common/errors.js";
 
 export const buildCriteriaTreeFromDocs = ({
   criteriaDocs,
@@ -35,7 +36,24 @@ export const buildCriteriaTreeFromDocs = ({
   return roots;
 };
 
-export const buildIssueCriteriaTree = (criteria, issue) => {
+export const buildIssueCriteriaTree = (criteria) => {
+  const positionById = new Map(
+    criteria.map((criterion) => [toIdString(criterion._id), criterion.position])
+  );
+  const getPositionOrThrow = (nodeId) => {
+    const position = positionById.get(nodeId);
+
+    if (Number.isInteger(position) && position >= 0) {
+      return position;
+    }
+
+    throw createInternalError("Criterion is missing a valid position in criteria tree", {
+      field: "criterion.position",
+      details: {
+        criterionId: nodeId,
+      },
+    });
+  };
   const normalizedCriteria = criteria.map((criterion) => ({
     id: toIdString(criterion._id),
     name: criterion.name,
@@ -57,12 +75,34 @@ export const buildIssueCriteriaTree = (criteria, issue) => {
     }
   }
 
-  const leafCriteria = normalizedCriteria.filter((node) => node.isLeaf);
+  const sortNodesRecursively = (nodes) => {
+    nodes.sort((left, right) =>
+      comparePositionId(
+        getPositionOrThrow(left.id),
+        left.id,
+        getPositionOrThrow(right.id),
+        right.id
+      )
+    );
 
-  const orderedLeafCriteria = orderDocsByIdList(leafCriteria, issue.leafCriteriaOrder, {
-    getId: (node) => node.id,
-    getName: (node) => node.name,
-  });
+    nodes.forEach((node) => {
+      if (node.children.length > 0) {
+        sortNodesRecursively(node.children);
+      }
+    });
+  };
+
+  sortNodesRecursively(criteriaTree);
+
+  const orderedLeafCriteria = orderCriteriaDocsByTreePosition(criteria).map((criterion) => ({
+    id: toIdString(criterion._id),
+    name: criterion.name,
+    type: criterion.type,
+    isLeaf: criterion.isLeaf,
+    expressionDomain: criterion.expressionDomain || null,
+    parentId: toIdString(criterion.parentCriterion),
+    children: [],
+  }));
 
   return {
     criteriaTree,

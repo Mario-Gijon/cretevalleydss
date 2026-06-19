@@ -142,7 +142,7 @@ export const buildSummarySection = ({
     );
   }
 
-  const { criteriaTree } = buildIssueCriteriaTree(criteria, issue);
+  const { criteriaTree } = buildIssueCriteriaTree(criteria);
   const weightMap = orderedLeafCriteria.reduce((accumulator, criterion) => {
     accumulator[criterion.name] =
       finalCriteriaWeights.weightsByCriterion[criterion.name];

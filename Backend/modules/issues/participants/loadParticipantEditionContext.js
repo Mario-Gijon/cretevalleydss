@@ -11,7 +11,6 @@ import {
 import { sameId } from "../../../utils/common/ids.js";
 import { normalizeEmail } from "../../../utils/common/strings.js";
 import {
-  ensureIssueOrdersDb,
   getOrderedLeafCriteriaDb,
 } from "../shared/ordering.js";
 
@@ -69,9 +68,6 @@ export const loadParticipantEditionContext = async ({
   if (!sameId(issue.ownerId, userId)) {
     throw createForbiddenError("Not authorized to edit this issue's experts.");
   }
-
-  await ensureIssueOrdersDb({ issueId: issue._id, session });
-
   const [leafCriteria, owner] = await Promise.all([
     getOrderedLeafCriteriaDb({
       issueId: issue._id,

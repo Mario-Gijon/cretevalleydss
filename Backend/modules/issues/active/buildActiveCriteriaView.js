@@ -1,4 +1,4 @@
-import { orderDocsByIdList } from "../shared/ordering.js";
+import { orderCriteriaDocsByTreePosition } from "../shared/ordering.js";
 import {
   buildIssueCriteriaTree,
 } from "../shared/criteriaTree.js";
@@ -8,12 +8,11 @@ import {
 
 export const buildActiveCriteriaView = ({ issue, issueCriteriaDocs }) => {
   const { criteriaTree, orderedLeafCriteria } = buildIssueCriteriaTree(
-    issueCriteriaDocs,
-    issue
+    issueCriteriaDocs
   );
-  const orderedLeafCriteriaWithDomain = orderDocsByIdList(
-    issueCriteriaDocs.filter((criterion) => criterion.isLeaf === true),
-    issue.leafCriteriaOrder
+  const orderedLeafCriteriaWithDomain = orderCriteriaDocsByTreePosition(
+    issueCriteriaDocs,
+    { issueId: issue._id }
   );
   const expressionDomainConfig =
     buildExpressionDomainConfigFromLeafCriteriaOrThrow({

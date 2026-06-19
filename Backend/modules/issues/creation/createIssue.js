@@ -31,7 +31,6 @@ import {
   buildIssueCreationDocument,
 } from "./buildIssueDocument.js";
 import { applyInitialCriteriaWeightsToIssue } from "./initialCriteriaWeights/applyInitialCriteriaWeights.js";
-import { applyIssueCreationOrdering } from "./applyIssueOrdering.js";
 import {
   assignIssueExpressionDomainSnapshotsOrThrow,
 } from "../../expressionDomains/assignIssueDomainSnapshots.js";
@@ -246,7 +245,7 @@ export const persistPreparedIssueCreation = async ({
 
   await issue.save({ session });
 
-  const createdAlternatives = await createIssueAlternatives({
+  await createIssueAlternatives({
     issueId: issue._id,
     uniqueAlternativeNames: input.uniqueAlternativeNames,
     session,
@@ -258,11 +257,6 @@ export const persistPreparedIssueCreation = async ({
     nodes: input.criteria,
     leafCriteria,
     session,
-  });
-  applyIssueCreationOrdering({
-    issue,
-    createdAlternatives,
-    leafCriteria,
   });
 
   applyInitialCriteriaWeightsToIssue({

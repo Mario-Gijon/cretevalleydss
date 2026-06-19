@@ -1,4 +1,3 @@
-import { ensureIssueOrdersDb } from "../../issues/shared/ordering.js";
 import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
 
 import {
@@ -22,16 +21,6 @@ export const validateExpertIdOrThrow = (expertId) => {
   }
 };
 
-const attachIssueOrders = async ({ issueId, issue }) => {
-  const orderedIssue = await ensureIssueOrdersDb({ issueId });
-
-  return {
-    ...issue,
-    alternativeOrder: orderedIssue.alternativeOrder,
-    leafCriteriaOrder: orderedIssue.leafCriteriaOrder,
-  };
-};
-
 export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     populate: [
@@ -46,7 +35,7 @@ export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
     lean: true,
   });
 
-  return attachIssueOrders({ issueId, issue });
+  return issue;
 };
 
 export const loadIssueForExpertsProgressOrThrow = async ({ issueId }) => {
@@ -59,7 +48,7 @@ export const loadIssueForExpertsProgressOrThrow = async ({ issueId }) => {
     lean: true,
   });
 
-  return attachIssueOrders({ issueId, issue });
+  return issue;
 };
 
 export const loadIssueForExpertEvaluationsOrThrow = async ({ issueId }) => {
@@ -72,7 +61,7 @@ export const loadIssueForExpertEvaluationsOrThrow = async ({ issueId }) => {
     lean: true,
   });
 
-  return attachIssueOrders({ issueId, issue });
+  return issue;
 };
 
 export const loadIssueForExpertWeightsOrThrow = async ({ issueId }) => {
@@ -85,5 +74,5 @@ export const loadIssueForExpertWeightsOrThrow = async ({ issueId }) => {
     lean: true,
   });
 
-  return attachIssueOrders({ issueId, issue });
+  return issue;
 };

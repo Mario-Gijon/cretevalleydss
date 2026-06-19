@@ -34,7 +34,13 @@ const criterionSchema = new Schema({
     ref: "IssueExpressionDomain",
     default: null,
   },
+  position: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
 });
 
+criterionSchema.index({ issue: 1, parentCriterion: 1, position: 1, _id: 1 });
 
 export const Criterion = model("Criterion", criterionSchema);

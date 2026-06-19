@@ -1,3 +1,4 @@
+import { Criterion } from "../../../models/Criteria.js";
 import { Participation } from "../../../models/Participations.js";
 import { ISSUE_STAGES } from "../shared/issueStages.js";
 import {
@@ -29,7 +30,7 @@ export const respondToIssueInvitation = async ({
 
   const issue = await getIssueByIdOrThrow(issueId, {
     select:
-      "_id name currentStage consensusPhase criteriaWeightingStructureKey leafCriteriaOrder",
+      "_id name currentStage consensusPhase criteriaWeightingStructureKey",
     lean: false,
     session,
   });
@@ -48,7 +49,10 @@ export const respondToIssueInvitation = async ({
   participation.invitationStatus = action;
 
   if (action === "accepted") {
-    const leafCriteriaCount = issue.leafCriteriaOrder.length;
+    const leafCriteriaCount = await Criterion.countDocuments({
+      issue: issue._id,
+      isLeaf: true,
+    }).session(session);
     const isSingleCriterion = isSingleLeafCriterionCount(leafCriteriaCount);
     const criteriaWeightingIsOpen =
       issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||

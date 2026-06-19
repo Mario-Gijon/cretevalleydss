@@ -3,6 +3,14 @@ const STRUCTURE_MODULES = import.meta.glob("./structures/*/index.js", { eager: t
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
+const isReactComponentCandidate = (component) =>
+  typeof component === "function" ||
+  (
+    component !== null &&
+    typeof component === "object" &&
+    Object.hasOwn(component, "$$typeof")
+  );
+
 const isValidEvaluationStructure = (value) =>
   value !== null &&
   typeof value === "object" &&
@@ -11,7 +19,7 @@ const isValidEvaluationStructure = (value) =>
   isNonEmptyString(value.label) &&
   value.adapter !== null &&
   typeof value.adapter === "object" &&
-  typeof value.View === "function";
+  isReactComponentCandidate(value.View);
 
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/structures\/([^/]+)\/index\.js$/);
@@ -27,7 +35,9 @@ const extractEvaluationStructureFromModule = ({ moduleExports, modulePath }) => 
     .filter(([, value]) => isValidEvaluationStructure(value));
 
   if (structures.length === 0) {
-    throw new Error(`${modulePath} must export exactly one valid evaluation structure object`);
+    throw new Error(
+      `${modulePath} must export exactly one valid evaluation structure object with key, stage, label, adapter and React View`
+    );
   }
 
   if (structures.length > 1) {

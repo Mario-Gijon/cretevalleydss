@@ -128,18 +128,6 @@ const issueSchema = new Schema(
       ],
       default: "criteriaWeighting",
     },
-    alternativeOrder: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Alternative",
-      },
-    ],
-    leafCriteriaOrder: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Criterion",
-      },
-    ],
     consensusPhase: {
       type: Number,
       min: 0,

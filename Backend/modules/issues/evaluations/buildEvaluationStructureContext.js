@@ -11,7 +11,7 @@ import {
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 import { buildCriteriaTreeFromDocs } from "../shared/criteriaTree.js";
 import {
-  compareNameId,
+  comparePositionId,
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
 } from "../shared/ordering.js";
@@ -326,6 +326,26 @@ const serializeCriteriaTree = ({ criteriaDocs, leafItems }) => {
     return [];
   }
 
+  const positionById = new Map(
+    criteriaDocs.map((criterion) => [
+      toIdString(criterion?._id || criterion?.id) || null,
+      criterion?.position,
+    ])
+  );
+  const getPositionOrThrow = (criterionId) => {
+    const position = positionById.get(criterionId);
+
+    if (Number.isInteger(position) && position >= 0) {
+      return position;
+    }
+
+    throw createBadRequestError("Criterion is missing a valid position", {
+      field: "criteria.position",
+      details: {
+        criterionId,
+      },
+    });
+  };
   const leafItemById = new Map(
     leafItems
       .filter((criterion) => Boolean(criterion?.id))
@@ -351,7 +371,12 @@ const serializeCriteriaTree = ({ criteriaDocs, leafItems }) => {
       };
     },
     sortChildren: (left, right) =>
-      compareNameId(left.name, left.id || "", right.name, right.id || ""),
+      comparePositionId(
+        getPositionOrThrow(left.id || null),
+        left.id || "",
+        getPositionOrThrow(right.id || null),
+        right.id || ""
+      ),
   });
 };
 
@@ -363,7 +388,7 @@ const loadCriteriaTreeDocs = async ({ issue, criteria }) => {
   return Criterion.find({
     issue: issue?._id || issue?.id,
   })
-    .select("_id name type isLeaf parentCriterion expressionDomain")
+    .select("_id name type isLeaf parentCriterion expressionDomain position")
     .lean();
 };
 
