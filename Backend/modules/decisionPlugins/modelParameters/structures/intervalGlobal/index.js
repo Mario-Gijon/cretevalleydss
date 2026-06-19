@@ -1,4 +1,4 @@
-import { validateAndNormalizeIntervalParameter } from "../../handlers/interval.parameter.js";
+import { validateAndNormalizeIntervalParameter } from "../../handlers/intervalParameter.js";
 
 export const intervalGlobalParameterStructure = Object.freeze({
   key: "intervalGlobal",

@@ -1,4 +1,4 @@
-import { validateAndNormalizeFuzzyArrayParameter } from "../../handlers/fuzzyArray.parameter.js";
+import { validateAndNormalizeFuzzyArrayParameter } from "../../handlers/fuzzyArrayParameter.js";
 
 export const fuzzyArrayGlobalParameterStructure = Object.freeze({
   key: "fuzzyArrayGlobal",

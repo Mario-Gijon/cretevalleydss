@@ -1,4 +1,4 @@
-import { validateAndNormalizeCriterionMapParameter } from "../../handlers/criterionMap.parameter.js";
+import { validateAndNormalizeCriterionMapParameter } from "../../handlers/criterionMapParameter.js";
 
 export const selectCriterionParameterStructure = Object.freeze({
   key: "selectCriterion",

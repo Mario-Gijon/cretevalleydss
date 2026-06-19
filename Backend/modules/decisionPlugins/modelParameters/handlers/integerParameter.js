@@ -1,4 +1,4 @@
-import { validateAndNormalizeNumberParameter } from "./number.parameter.js";
+import { validateAndNormalizeNumberParameter } from "./numberParameter.js";
 import { toInvalid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeIntegerParameter = ({ value, parameter }) => {

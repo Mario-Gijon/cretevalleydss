@@ -1,4 +1,4 @@
-import { validateAndNormalizeIntegerParameter } from "../../handlers/integer.parameter.js";
+import { validateAndNormalizeIntegerParameter } from "../../handlers/integerParameter.js";
 
 export const integerGlobalParameterStructure = Object.freeze({
   key: "integerGlobal",

@@ -1,4 +1,4 @@
-import { validateAndNormalizeArrayParameter } from "../../handlers/array.parameter.js";
+import { validateAndNormalizeArrayParameter } from "../../handlers/arrayParameter.js";
 
 export const arrayPerCriterionParameterStructure = Object.freeze({
   key: "arrayPerCriterion",
