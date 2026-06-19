@@ -10,10 +10,9 @@ const formatValue = (value) =>
 export const SelectCriterionParameterReadOnly = ({
   parameter,
   value,
-  leafCriteria,
-  leafNames,
+  context,
 }) => {
-  const rows = buildCriterionParameterRows({ leafCriteria, leafNames });
+  const rows = buildCriterionParameterRows({ context });
 
   if (rows.length === 0) {
     return (

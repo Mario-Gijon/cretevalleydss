@@ -3,6 +3,7 @@ import { Stack, Typography, ToggleButton } from "@mui/material";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { getCreateIssueModelParameters, ParameterFieldHost } from "../../../modelParameters";
+import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 export const getRenderableNormalModelParameters = (selectedModel) =>
   getCreateIssueModelParameters(selectedModel);
@@ -26,6 +27,15 @@ export const ModelParameters = ({
   const renderableNormalParameters = useMemo(
     () => getRenderableNormalModelParameters(selectedModel),
     [selectedModel]
+  );
+  const parameterContext = useMemo(
+    () =>
+      buildModelParameterContext({
+        leafCriteria,
+        leafNames: leafCriteria.map((criterion) => criterion?.name).filter(Boolean),
+        alternatives: Array.isArray(allData?.alternatives) ? allData.alternatives : [],
+      }),
+    [allData?.alternatives, leafCriteria]
   );
 
   return (
@@ -66,7 +76,7 @@ export const ModelParameters = ({
                   }
                 }}
                 disabled={false}
-                context={{ leafCriteria }}
+                context={parameterContext}
               />
             </Stack>
           );

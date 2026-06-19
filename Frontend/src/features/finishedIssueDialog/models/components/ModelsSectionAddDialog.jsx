@@ -24,6 +24,7 @@ import {
   isModelCompatible,
 } from "../../logic/buildFinishedScenarioRuns";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
+import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 /**
  * Dialogo auxiliar para agregar nuevos model runs.
@@ -35,6 +36,11 @@ const ModelsSectionAddDialog = () => {
 
   const { modelsSection } = useFinishedIssueDialogContext();
   const { addDialog } = modelsSection;
+  const parameterContext = buildModelParameterContext({
+    leafCriteria: Array.isArray(addDialog.leafCriteria) ? addDialog.leafCriteria : [],
+    leafNames: Array.isArray(addDialog.leafNames) ? addDialog.leafNames : [],
+    alternatives: [],
+  });
 
   return (
     <Dialog
@@ -161,8 +167,7 @@ const ModelsSectionAddDialog = () => {
                 model={addDialog.selectedModelFromSchema}
                 values={addDialog.scenarioParamValues}
                 setValues={addDialog.setScenarioParamValues}
-                leafNames={addDialog.leafNames}
-                leafCriteria={addDialog.leafCriteria}
+                context={parameterContext}
                 scenarioWeightsError={addDialog.scenarioWeightsError}
                 clearScenarioWeightsError={addDialog.clearScenarioWeightsError}
               />

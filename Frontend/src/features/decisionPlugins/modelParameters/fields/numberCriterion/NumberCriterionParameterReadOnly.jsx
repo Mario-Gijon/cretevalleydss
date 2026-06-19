@@ -17,10 +17,9 @@ const formatNumber = (value) => {
 export const NumberCriterionParameterReadOnly = ({
   parameter,
   value,
-  leafCriteria,
-  leafNames,
+  context,
 }) => {
-  const rows = buildCriterionParameterRows({ leafCriteria, leafNames });
+  const rows = buildCriterionParameterRows({ context });
 
   if (rows.length === 0) {
     return (

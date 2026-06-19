@@ -4,6 +4,7 @@ import {
   getCreateIssueModelParameters,
   ParameterFieldHost,
 } from "../../../modelParameters";
+import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 import ModelsSectionScenarioWeightsField from "./ModelsSectionScenarioWeightsField";
 import { modelUsesScenarioCriteriaWeights } from "../../logic/buildFinishedScenarioParameters";
 
@@ -11,8 +12,7 @@ const ModelsSectionParametersForm = ({
   model,
   values,
   setValues,
-  leafNames,
-  leafCriteria,
+  context,
   scenarioWeightsError = "",
   clearScenarioWeightsError,
 }) => {
@@ -34,8 +34,11 @@ const ModelsSectionParametersForm = ({
     );
   }
 
-  const resolvedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
-  const resolvedLeafNames = Array.isArray(leafNames) ? leafNames : [];
+  const parameterContext = buildModelParameterContext({
+    leafCriteria: Array.isArray(context?.leafCriteria) ? context.leafCriteria : [],
+    leafNames: Array.isArray(context?.leafNames) ? context.leafNames : [],
+    alternatives: Array.isArray(context?.alternatives) ? context.alternatives : [],
+  });
 
   return (
     <Stack spacing={2}>
@@ -55,9 +58,7 @@ const ModelsSectionParametersForm = ({
               }));
             }}
             disabled={false}
-            context={{
-              leafCriteria: resolvedLeafCriteria,
-            }}
+            context={parameterContext}
           />
         );
       })}
@@ -66,8 +67,8 @@ const ModelsSectionParametersForm = ({
         model={model}
         values={values}
         setValues={setValues}
-        leafCriteria={resolvedLeafCriteria}
-        leafNames={resolvedLeafNames}
+        leafCriteria={parameterContext.leafCriteria}
+        leafNames={parameterContext.leafNames}
         error={scenarioWeightsError}
         onClearError={clearScenarioWeightsError}
       />

@@ -27,6 +27,7 @@ import ActiveIssuesPill from "../ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
 import { IssueModelParametersView } from "../../../modelParameters";
+import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
   manualCriteriaWeights: "Manual criteria weights",
@@ -95,6 +96,11 @@ const ActiveIssueOverview = ({
 }) => {
   const theme = useTheme();
   const isIssueOwner = Boolean(selectedIssue?.isIssueOwner);
+  const parameterContext = buildModelParameterContext({
+    leafCriteria: [],
+    leafNames: Array.isArray(leafNames) ? leafNames : [],
+    alternatives: [],
+  });
 
   return (
     <Stack spacing={2}>
@@ -382,7 +388,7 @@ const ActiveIssueOverview = ({
           <IssueModelParametersView
             parameters={selectedIssue?.model?.parameters || []}
             values={selectedIssue?.modelParameters || selectedIssue?.ui?.modelParameters || {}}
-            leafNames={leafNames}
+            context={parameterContext}
           />
         </AccordionDetails>
       </Accordion>

@@ -13,6 +13,7 @@ import {
 } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import ModelsSectionAddDialog from "./components/ModelsSectionAddDialog";
+import { buildModelParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
 
 /**
  * Seccion Models del dialogo de issue finalizado.
@@ -46,6 +47,11 @@ const ModelsSection = () => {
     selectedResolved,
     addDialog,
   } = modelsSection;
+  const parameterContext = buildModelParameterContext({
+    leafCriteria: [],
+    leafNames: Array.isArray(leafNames) ? leafNames : [],
+    alternatives: [],
+  });
 
   return (
     <>
@@ -171,7 +177,7 @@ const ModelsSection = () => {
                     modelName={baseModelName}
                     parameters={baseParamsForViewer}
                     values={baseResolved}
-                    leafNames={leafNames}
+                    context={parameterContext}
                   />
                 ) : (
                   <Box
@@ -193,7 +199,7 @@ const ModelsSection = () => {
                   modelName={selectedRunModelName}
                   parameters={selectedParamsForViewer}
                   values={selectedResolved}
-                  leafNames={leafNames}
+                  context={parameterContext}
                 />
               )}
             </Stack>

@@ -3,6 +3,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import ParameterReadOnlyHost from "./ParameterReadOnlyHost";
 import { isPlainObject } from "../logic/isPlainObject";
+import { buildModelParameterContext } from "../logic/buildModelParameterContext";
 
 const getParameterKey = (parameter) => parameter.key;
 const getParameterLabel = (parameter) => parameter.label || parameter.key;
@@ -57,7 +58,7 @@ const ParamRow = ({ name, children }) => {
   );
 };
 
-const RawWeightsView = ({ value, leafNames }) => {
+const RawWeightsView = ({ value, context }) => {
   if (!Array.isArray(value)) {
     return (
       <Typography variant="body2" sx={{ fontWeight: 800 }}>
@@ -67,7 +68,9 @@ const RawWeightsView = ({ value, leafNames }) => {
   }
 
   const labels = value.map((_, index) => {
-    const criterionName = Array.isArray(leafNames) ? leafNames[index] : null;
+    const criterionName = Array.isArray(context?.leafNames)
+      ? context.leafNames[index]
+      : null;
     return criterionName || `Criterion ${index + 1}`;
   });
 
@@ -115,9 +118,9 @@ const RawWeightsView = ({ value, leafNames }) => {
   );
 };
 
-const RawValueView = ({ paramKey, value, leafNames }) => {
+const RawValueView = ({ paramKey, value, context }) => {
   if (paramKey === "weights") {
-    return <RawWeightsView value={value} leafNames={leafNames} />;
+    return <RawWeightsView value={value} context={context} />;
   }
 
   if (Array.isArray(value)) {
@@ -152,9 +155,18 @@ const RawValueView = ({ paramKey, value, leafNames }) => {
   );
 };
 
-export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
+export const IssueModelParametersView = ({ parameters, values, context }) => {
   const params = useMemo(() => (Array.isArray(parameters) ? parameters : []), [parameters]);
   const valuesObject = useMemo(() => (isPlainObject(values) ? values : {}), [values]);
+  const parameterContext = useMemo(
+    () =>
+      buildModelParameterContext({
+        leafCriteria: Array.isArray(context?.leafCriteria) ? context.leafCriteria : [],
+        leafNames: Array.isArray(context?.leafNames) ? context.leafNames : [],
+        alternatives: Array.isArray(context?.alternatives) ? context.alternatives : [],
+      }),
+    [context]
+  );
 
   const declaredKeys = useMemo(
     () => new Set(params.map((parameter) => getParameterKey(parameter))),
@@ -202,7 +214,7 @@ export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
               <ParameterReadOnlyHost
                 parameter={parameter}
                 value={value}
-                leafNames={leafNames}
+                context={parameterContext}
               />
             </ParamRow>
           );
@@ -210,7 +222,7 @@ export const IssueModelParametersView = ({ parameters, values, leafNames }) => {
 
         {extraEntries.map(([key, value]) => (
           <ParamRow key={`extra-${key}`} name={key}>
-            <RawValueView paramKey={key} value={value} leafNames={leafNames} />
+            <RawValueView paramKey={key} value={value} context={parameterContext} />
           </ParamRow>
         ))}
       </Box>

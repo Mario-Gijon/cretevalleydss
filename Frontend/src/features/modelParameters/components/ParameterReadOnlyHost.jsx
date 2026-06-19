@@ -3,8 +3,6 @@ import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameter
 export const ParameterReadOnlyHost = ({
   parameter,
   value,
-  leafNames,
-  leafCriteria,
   context,
 }) => {
   const entry = resolveParameterFieldEntry(parameter);
@@ -14,8 +12,6 @@ export const ParameterReadOnlyHost = ({
     <ReadOnlyComponent
       parameter={parameter}
       value={value}
-      leafNames={leafNames}
-      leafCriteria={leafCriteria}
       context={context}
     />
   );

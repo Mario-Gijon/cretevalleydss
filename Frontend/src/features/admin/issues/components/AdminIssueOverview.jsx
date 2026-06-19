@@ -22,6 +22,7 @@ import {
 } from "../logic/formatAdminIssueDisplay";
 import { getAdminIssueStageLabel } from "../logic/getAdminIssueStatusDisplay";
 import { getAdminIssueDetailCardSx } from "../styles/adminIssues.styles";
+import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 export default function AdminIssueOverview({
   issueDetail,
@@ -35,6 +36,11 @@ export default function AdminIssueOverview({
   onRequestRemove,
 }) {
   const theme = useTheme();
+  const parameterContext = buildModelParameterContext({
+    leafCriteria: Array.isArray(detailView?.leafCriteria) ? detailView.leafCriteria : [],
+    leafNames: Array.isArray(detailView?.leafNames) ? detailView.leafNames : [],
+    alternatives: Array.isArray(detailView?.alternatives) ? detailView.alternatives : [],
+  });
 
   return (
     <Stack spacing={1.25}>
@@ -163,7 +169,7 @@ export default function AdminIssueOverview({
         <IssueModelParametersView
           parameters={issueDetail?.model?.parameters || []}
           values={issueDetail?.modelParameters || {}}
-          leafNames={detailView.leafNames}
+          context={parameterContext}
         />
       </Paper>
 
