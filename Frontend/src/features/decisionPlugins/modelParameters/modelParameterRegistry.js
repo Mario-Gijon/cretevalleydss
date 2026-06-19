@@ -1,36 +1,79 @@
-import NumberGlobalParameterField from "./fields/numberGlobal/NumberGlobalParameterField";
-import NumberGlobalParameterReadOnly from "./fields/numberGlobal/NumberGlobalParameterReadOnly";
-import SelectGlobalParameterField from "./fields/selectGlobal/SelectGlobalParameterField";
-import SelectGlobalParameterReadOnly from "./fields/selectGlobal/SelectGlobalParameterReadOnly";
-import IntervalGlobalParameterField from "./fields/intervalGlobal/IntervalGlobalParameterField";
-import IntervalGlobalParameterReadOnly from "./fields/intervalGlobal/IntervalGlobalParameterReadOnly";
-import NumberCriterionParameterField from "./fields/numberCriterion/NumberCriterionParameterField";
-import NumberCriterionParameterReadOnly from "./fields/numberCriterion/NumberCriterionParameterReadOnly";
-import SelectCriterionParameterField from "./fields/selectCriterion/SelectCriterionParameterField";
-import SelectCriterionParameterReadOnly from "./fields/selectCriterion/SelectCriterionParameterReadOnly";
-
-export const PARAMETER_FIELD_REGISTRY = Object.freeze({
-  numberGlobal: {
-    FieldComponent: NumberGlobalParameterField,
-    ReadOnlyComponent: NumberGlobalParameterReadOnly,
-  },
-  selectGlobal: {
-    FieldComponent: SelectGlobalParameterField,
-    ReadOnlyComponent: SelectGlobalParameterReadOnly,
-  },
-  intervalGlobal: {
-    FieldComponent: IntervalGlobalParameterField,
-    ReadOnlyComponent: IntervalGlobalParameterReadOnly,
-  },
-  numberCriterion: {
-    FieldComponent: NumberCriterionParameterField,
-    ReadOnlyComponent: NumberCriterionParameterReadOnly,
-  },
-  selectCriterion: {
-    FieldComponent: SelectCriterionParameterField,
-    ReadOnlyComponent: SelectCriterionParameterReadOnly,
-  },
+const PARAMETER_FIELD_MODULES = import.meta.glob("./fields/*/index.js", {
+  eager: true,
 });
+
+const isNonEmptyString = (value) =>
+  typeof value === "string" && value.trim() !== "";
+
+const isValidParameterFieldEntry = (value) =>
+  value !== null &&
+  typeof value === "object" &&
+  isNonEmptyString(value.key) &&
+  typeof value.FieldComponent === "function" &&
+  typeof value.ReadOnlyComponent === "function";
+
+const extractFolderName = (modulePath) => {
+  const match = modulePath.match(/\.\/fields\/([^/]+)\/index\.js$/);
+
+  if (!match) {
+    throw new Error(`[modelParameters] Invalid parameter field module path: ${modulePath}.`);
+  }
+
+  return match[1];
+};
+
+const extractParameterFieldEntryFromModule = ({ moduleExports, modulePath }) => {
+  const entries = Object.entries(moduleExports).filter(([, value]) =>
+    isValidParameterFieldEntry(value)
+  );
+
+  if (entries.length === 0) {
+    throw new Error(
+      `[modelParameters] ${modulePath} must export exactly one valid parameter field entry.`
+    );
+  }
+
+  if (entries.length > 1) {
+    throw new Error(
+      `[modelParameters] ${modulePath} exports multiple valid parameter field entries.`
+    );
+  }
+
+  return entries[0][1];
+};
+
+const buildParameterFieldRegistry = () => {
+  const registry = {};
+  const modulePaths = Object.keys(PARAMETER_FIELD_MODULES).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  for (const modulePath of modulePaths) {
+    const entry = extractParameterFieldEntryFromModule({
+      moduleExports: PARAMETER_FIELD_MODULES[modulePath],
+      modulePath,
+    });
+    const folderName = extractFolderName(modulePath);
+
+    if (entry.key !== folderName) {
+      throw new Error(
+        `[modelParameters] ${modulePath} entry key "${entry.key}" must match folder name "${folderName}".`
+      );
+    }
+
+    if (Object.hasOwn(registry, entry.key)) {
+      throw new Error(
+        `[modelParameters] Duplicate parameter field key detected: "${entry.key}".`
+      );
+    }
+
+    registry[entry.key] = entry;
+  }
+
+  return Object.freeze(registry);
+};
+
+export const PARAMETER_FIELD_REGISTRY = buildParameterFieldRegistry();
 
 export const resolveParameterFieldEntry = (parameter) => {
   const parameterKey =
