@@ -5,13 +5,13 @@ import { buildCriteriaWeightingExecutionResult } from "./buildCriteriaWeightingE
 import { buildIssueModelExecutionResult } from "./buildIssueModelExecutionResult.js";
 import { buildIssueModelRequestPayload } from "./buildIssueModelRequestPayload.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { executeApiModelRequest } from "./executeApiModelRequest.js";
+import { executeDecisionModelRequest } from "./executeApiModelRequest.js";
 
 const executeCriteriaWeightingApiModel = async ({
   issue,
   structureKey,
   requestPayload,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
   const apiEndpoint = issue.criteriaWeightingApiEndpoint;
@@ -36,11 +36,11 @@ const executeCriteriaWeightingApiModel = async ({
     );
   }
 
-  const result = await executeApiModelRequest({
+  const result = await executeDecisionModelRequest({
     apiEndpointPath,
     requestPayload,
     errorMessage: "Criteria weighting model execution failed",
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 
@@ -56,7 +56,7 @@ export const executeAlternativeEvaluationModel = async ({
   structureKey,
   evaluations,
   phase,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
   message,
   executionErrorMessage = "Alternative evaluation model execution failed",
@@ -70,11 +70,11 @@ export const executeAlternativeEvaluationModel = async ({
     phase,
   });
 
-  const result = await executeApiModelRequest({
+  const result = await executeDecisionModelRequest({
     apiEndpointPath: issue.apiEndpoint.path,
     requestPayload,
     errorMessage: executionErrorMessage,
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 
@@ -94,7 +94,7 @@ export const executeCriteriaWeightingModel = async ({
   structureKey,
   evaluations,
   phase,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
   const requestPayload = await buildCriteriaWeightingRequestPayload({
@@ -108,7 +108,7 @@ export const executeCriteriaWeightingModel = async ({
     issue,
     structureKey,
     requestPayload,
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 };

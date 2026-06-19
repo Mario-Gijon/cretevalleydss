@@ -55,7 +55,7 @@ export const createIssueScenario = async ({
   targetModelId,
   scenarioName,
   paramOverrides,
-  apiModelsBaseUrl =
+  decisionModelsServiceBaseUrl =
     process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
 }) => {
@@ -79,7 +79,7 @@ export const createIssueScenario = async ({
   } = await executeScenarioModel({
     requestPayload: context.requestPayload,
     targetRuntimeSnapshot: context.targetRuntimeSnapshot,
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 

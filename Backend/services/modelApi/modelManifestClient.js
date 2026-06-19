@@ -90,9 +90,9 @@ const createManifestRequestError = (
 
 export const fetchModelManifest = async ({
   httpClient = axios,
-  apiModelsBaseUrl = process.env.DECISION_MODELS_SERVICE_BASE_URL,
+  decisionModelsServiceBaseUrl = process.env.DECISION_MODELS_SERVICE_BASE_URL,
 } = {}) => {
-  const baseUrl = String(apiModelsBaseUrl || "").trim();
+  const baseUrl = String(decisionModelsServiceBaseUrl || "").trim();
 
   if (!baseUrl) {
     throw new AppError("DECISION_MODELS_SERVICE_BASE_URL is not configured", {

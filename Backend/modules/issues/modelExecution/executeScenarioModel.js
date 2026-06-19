@@ -1,4 +1,4 @@
-import { executeApiModelRequest } from "./executeApiModelRequest.js";
+import { executeDecisionModelRequest } from "./executeApiModelRequest.js";
 import { normalizeModelExecutionResult } from "./normalizeModelExecutionResult.js";
 
 const SCENARIO_NORMALIZATION_MESSAGES = {
@@ -22,14 +22,14 @@ const SCENARIO_NORMALIZATION_MESSAGES = {
 export const executeScenarioModel = async ({
   requestPayload,
   targetRuntimeSnapshot,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
-  const modelOutput = await executeApiModelRequest({
+  const modelOutput = await executeDecisionModelRequest({
     apiEndpointPath: targetRuntimeSnapshot.targetApiEndpoint.path,
     requestPayload,
     errorMessage: "Scenario model execution failed",
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 

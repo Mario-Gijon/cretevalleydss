@@ -198,7 +198,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   isSingleLeafCriterion,
   model,
   fuzzyValueCount = null,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
   session = null,
 }) => {
@@ -346,7 +346,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       criteriaWeightingModel,
       criteriaWeightingRuntime,
       criteriaWeightingParameters: normalizedCriteriaWeightingParameters,
-      apiModelsBaseUrl,
+      decisionModelsServiceBaseUrl,
       httpClient,
     });
   } else {

@@ -102,8 +102,11 @@ export const getModelEndpointPath = (modelOrName = {}) => {
   return endpointPath;
 };
 
-export const buildModelEndpointUrl = (apiModelsBaseUrl, modelOrName = {}) => {
+export const buildModelEndpointUrl = (
+  decisionModelsServiceBaseUrl,
+  modelOrName = {},
+) => {
   const endpointPath = getModelEndpointPath(modelOrName);
 
-  return `${normalizeBaseUrl(apiModelsBaseUrl)}${endpointPath}`;
+  return `${normalizeBaseUrl(decisionModelsServiceBaseUrl)}${endpointPath}`;
 };

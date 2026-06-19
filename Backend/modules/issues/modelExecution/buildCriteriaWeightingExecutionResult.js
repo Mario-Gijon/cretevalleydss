@@ -86,7 +86,7 @@ export const buildCriteriaWeightingExecutionResult = ({
 
     if (!apiModelKey) {
       throw createInternalError(
-        "Criteria weighting apiModels execution requires modelExecution.apiModelKey",
+        "Criteria weighting Decision Models Service execution requires modelExecution.apiModelKey",
         {
           field: "result.modelExecution.apiModelKey",
         }
@@ -95,7 +95,7 @@ export const buildCriteriaWeightingExecutionResult = ({
 
     if (!apiEndpointPath) {
       throw createInternalError(
-        "Criteria weighting apiModels execution requires modelExecution.apiEndpointPath",
+        "Criteria weighting Decision Models Service execution requires modelExecution.apiEndpointPath",
         {
           field: "result.modelExecution.apiEndpointPath",
         }

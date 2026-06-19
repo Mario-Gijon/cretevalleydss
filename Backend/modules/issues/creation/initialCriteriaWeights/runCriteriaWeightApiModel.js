@@ -11,7 +11,7 @@ import { isPlainObject } from "../../../../utils/common/objects.js";
 import {
   validateCriteriaWeightingModelRuntimeConfigOrThrow,
 } from "./validateCriteriaWeightModelRuntime.js";
-import { executeApiModelRequest } from "../../modelExecution/index.js";
+import { executeDecisionModelRequest } from "../../modelExecution/index.js";
 import { buildCreatorCriteriaWeightingEvaluationContext } from "./buildCreatorCriteriaWeightingEvaluationContext.js";
 
 const loadCriteriaWeightingModelOrThrow = async ({
@@ -105,13 +105,16 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   criteriaWeightingModel,
   criteriaWeightingRuntime,
   criteriaWeightingParameters,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
-  if (!apiModelsBaseUrl || typeof apiModelsBaseUrl !== "string") {
-    throw createInternalError("apiModelsBaseUrl is required for creator API model mode", {
-      field: "apiModelsBaseUrl",
-    });
+  if (!decisionModelsServiceBaseUrl || typeof decisionModelsServiceBaseUrl !== "string") {
+    throw createInternalError(
+      "decisionModelsServiceBaseUrl is required for creator API model mode",
+      {
+        field: "decisionModelsServiceBaseUrl",
+      }
+    );
   }
 
   if (!httpClient || typeof httpClient.post !== "function") {
@@ -120,7 +123,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     });
   }
 
-  const normalizedBaseUrl = apiModelsBaseUrl.replace(/\/+$/g, "");
+  const normalizedBaseUrl = decisionModelsServiceBaseUrl.replace(/\/+$/g, "");
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
     criteriaWeightingRuntime.criteriaWeightingStructureKey
   );
@@ -175,11 +178,11 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     },
   };
 
-  const result = await executeApiModelRequest({
+  const result = await executeDecisionModelRequest({
     apiEndpointPath: criteriaWeightingRuntime.apiEndpoint.path,
     requestPayload,
     errorMessage: `Failed to compute ${criteriaWeightingModel.name} weights`,
-    apiModelsBaseUrl: normalizedBaseUrl,
+    decisionModelsServiceBaseUrl: normalizedBaseUrl,
     httpClient,
   });
 

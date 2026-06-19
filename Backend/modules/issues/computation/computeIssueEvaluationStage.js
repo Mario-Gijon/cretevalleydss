@@ -531,7 +531,7 @@ const computeCriteriaWeightingStage = async ({
   structure,
   issue,
   evaluations,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
   if (typeof structure?.validateBeforeCompute === "function") {
@@ -548,7 +548,7 @@ const computeCriteriaWeightingStage = async ({
     structureKey: structure.key,
     evaluations,
     phase: issue.consensusPhase,
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
   });
 };
@@ -558,7 +558,7 @@ const computeAlternativeEvaluationStage = async ({
   issue,
   evaluations,
   phase = issue.consensusPhase,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
   const evaluationStructureData =
@@ -580,7 +580,7 @@ const computeAlternativeEvaluationStage = async ({
     structureKey: structure.key,
     evaluations,
     phase,
-    apiModelsBaseUrl,
+    decisionModelsServiceBaseUrl,
     httpClient,
     message:
       issue.isConsensus === true
@@ -795,7 +795,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
   issue,
   acceptedParticipations,
   evaluations,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
   session = null,
 }) => {
@@ -816,7 +816,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       issue,
       evaluations: currentEvaluations,
       phase: currentPhase,
-      apiModelsBaseUrl,
+      decisionModelsServiceBaseUrl,
       httpClient,
     });
 
@@ -913,7 +913,7 @@ export const computeIssueEvaluationStage = async ({
   issueId,
   userId,
   stage,
-  apiModelsBaseUrl,
+  decisionModelsServiceBaseUrl,
   httpClient,
   session = null,
 }) => {
@@ -946,7 +946,7 @@ export const computeIssueEvaluationStage = async ({
       issue,
       acceptedParticipations: participations,
       evaluations,
-      apiModelsBaseUrl,
+      decisionModelsServiceBaseUrl,
       httpClient,
       session,
     });
@@ -958,14 +958,14 @@ export const computeIssueEvaluationStage = async ({
         structure,
         issue,
         evaluations,
-        apiModelsBaseUrl,
+        decisionModelsServiceBaseUrl,
         httpClient,
       })
       : await computeAlternativeEvaluationStage({
         structure,
         issue,
         evaluations,
-        apiModelsBaseUrl,
+        decisionModelsServiceBaseUrl,
         httpClient,
       });
 

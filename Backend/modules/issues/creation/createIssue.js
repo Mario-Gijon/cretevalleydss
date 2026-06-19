@@ -56,7 +56,7 @@ const assertIssueNameAvailableOrThrow = async ({
 export const prepareIssueCreation = async ({
   issueInfo,
   ownerUserId,
-  apiModelsBaseUrl =
+  decisionModelsServiceBaseUrl =
     process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
 }) => {
@@ -158,7 +158,7 @@ export const prepareIssueCreation = async ({
       isSingleLeafCriterion,
       model,
       fuzzyValueCount: fuzzyCriteriaWeightValueCount,
-      apiModelsBaseUrl,
+      decisionModelsServiceBaseUrl,
       httpClient,
     });
   const normalizedExpertWeightsByEmail =

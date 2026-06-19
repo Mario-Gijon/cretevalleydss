@@ -18,7 +18,6 @@ const getAllowedOrigins = () => {
   return [
     process.env.ORIGIN_FRONT,
     process.env.ORIGIN_BACK,
-    process.env.DECISION_MODELS_SERVICE_BASE_URL,
     process.env.ORIGIN_CRETEVALLEY,
     process.env.ORIGIN_SULEIMAN,
   ].filter(Boolean);
