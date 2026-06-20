@@ -4,13 +4,13 @@ from typing import Any
 
 def run_manual_criteria_weights(
     *,
-    criterion_names: list[str],
+    criteria: list[dict[str, str]],
     evaluations: list[Any],
 ) -> dict[str, Any]:
-    if len(criterion_names) == 0:
+    if len(criteria) == 0:
         return {
             "success": False,
-            "message": "Manual criteria weights require context.criteria with criterion names",
+            "message": "Manual criteria weights require context.criteria with criterion ids and names",
         }
 
     if len(evaluations) == 0:
@@ -19,7 +19,7 @@ def run_manual_criteria_weights(
             "message": "Manual criteria weights require completed evaluations",
         }
 
-    criteria_sums = {criterion_name: 0.0 for criterion_name in criterion_names}
+    criteria_sums = {criterion["id"]: 0.0 for criterion in criteria}
 
     for evaluation in evaluations:
         eval_payload = evaluation.get("payload", {}) if isinstance(evaluation, dict) else {}
@@ -36,15 +36,17 @@ def run_manual_criteria_weights(
                 ),
             }
 
-        for criterion_name in criterion_names:
+        for criterion in criteria:
+            criterion_id = criterion["id"]
+            criterion_name = criterion["name"]
             try:
-                numeric_weight = float(weights_by_criterion[criterion_name])
+                numeric_weight = float(weights_by_criterion[criterion_id])
             except KeyError:
                 return {
                     "success": False,
                     "message": (
                         "Manual criteria weights payload is missing "
-                        f"weightsByCriterion['{criterion_name}']"
+                        f"weightsByCriterion['{criterion_id}'] for '{criterion_name}'"
                     ),
                 }
             except (TypeError, ValueError):
@@ -52,7 +54,7 @@ def run_manual_criteria_weights(
                     "success": False,
                     "message": (
                         "Manual criteria weights payload has invalid "
-                        f"weightsByCriterion['{criterion_name}']"
+                        f"weightsByCriterion['{criterion_id}'] for '{criterion_name}'"
                     ),
                 }
 
@@ -61,15 +63,15 @@ def run_manual_criteria_weights(
                     "success": False,
                     "message": (
                         "Manual criteria weights payload has non-finite "
-                        f"weightsByCriterion['{criterion_name}']"
+                        f"weightsByCriterion['{criterion_id}'] for '{criterion_name}'"
                     ),
                 }
 
-            criteria_sums[criterion_name] += numeric_weight
+            criteria_sums[criterion_id] += numeric_weight
 
     averaged_weights_by_criterion = {
-        criterion_name: criteria_sums[criterion_name] / len(evaluations)
-        for criterion_name in criterion_names
+        criterion["id"]: criteria_sums[criterion["id"]] / len(evaluations)
+        for criterion in criteria
     }
 
     total_average = sum(averaged_weights_by_criterion.values())
@@ -83,8 +85,8 @@ def run_manual_criteria_weights(
         }
 
     weights_by_criterion = {
-        criterion_name: averaged_weights_by_criterion[criterion_name] / total_average
-        for criterion_name in criterion_names
+        criterion["id"]: averaged_weights_by_criterion[criterion["id"]] / total_average
+        for criterion in criteria
     }
 
     return {

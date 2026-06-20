@@ -133,12 +133,39 @@ export const getIssueExpertWeightsPayload = async ({
   }
 
   const leafNames = orderedLeafCriteria.map((criterion) => criterion.name);
+  const leafCriteriaByName = new Map(
+    orderedLeafCriteria.map((criterion) => [criterion.name, criterion])
+  );
 
   const resolvedWeights =
-    Array.isArray(issue?.modelParameters?.weights) &&
-    issue.modelParameters.weights.length
-      ? leafNames.reduce((accumulator, name, index) => {
-          accumulator[name] = issue.modelParameters.weights[index];
+    issue?.modelParameters?.weights &&
+    typeof issue.modelParameters.weights === "object" &&
+    !Array.isArray(issue.modelParameters.weights)
+      ? leafNames.reduce((accumulator, name) => {
+          const criterion = leafCriteriaByName.get(name);
+          const criterionId = toIdString(criterion?._id);
+
+          if (!criterionId) {
+            throw createInternalError("Leaf criterion id is invalid", {
+              field: "criteria._id",
+              details: {
+                issueId: toIdString(issue._id),
+                criterionName: name,
+              },
+            });
+          }
+
+          if (!Object.prototype.hasOwnProperty.call(issue.modelParameters.weights, criterionId)) {
+            throw createInternalError("Issue modelParameters.weights is incomplete", {
+              field: "modelParameters.weights",
+              details: {
+                issueId: toIdString(issue._id),
+                criterionId,
+              },
+            });
+          }
+
+          accumulator[name] = issue.modelParameters.weights[criterionId];
           return accumulator;
         }, {})
       : null;

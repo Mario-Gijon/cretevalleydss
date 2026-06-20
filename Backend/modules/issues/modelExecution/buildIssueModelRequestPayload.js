@@ -38,7 +38,6 @@ export const buildIssueModelRequestPayload = async ({
         name: criterion.name,
         type: criterion.type,
       })),
-      weights: issue.modelParameters.weights ?? [],
       consensusPhase: phase,
       previousStageResult: null,
       structure: {

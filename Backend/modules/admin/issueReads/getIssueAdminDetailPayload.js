@@ -78,22 +78,11 @@ const buildAdminFinalWeightsMaps = ({ issue, orderedLeafCriteria }) => {
     };
   }
 
-  if (!Array.isArray(rawWeights)) {
-    throw createInternalError("Issue modelParameters.weights must be an array when present", {
+  if (!rawWeights || typeof rawWeights !== "object" || Array.isArray(rawWeights)) {
+    throw createInternalError("Issue modelParameters.weights must be an id-keyed object when present", {
       field: "modelParameters.weights",
       details: {
         issueId: toIdString(issue?._id),
-      },
-    });
-  }
-
-  if (rawWeights.length !== orderedLeafCriteria.length) {
-    throw createInternalError("Issue modelParameters.weights length does not match ordered leaf criteria", {
-      field: "modelParameters.weights",
-      details: {
-        issueId: toIdString(issue?._id),
-        expectedCount: orderedLeafCriteria.length,
-        receivedCount: rawWeights.length,
       },
     });
   }
@@ -101,9 +90,20 @@ const buildAdminFinalWeightsMaps = ({ issue, orderedLeafCriteria }) => {
   const finalWeightsById = {};
   const finalWeightsByName = {};
 
-  orderedLeafCriteria.forEach((criterion, index) => {
-    const value = rawWeights[index];
-    finalWeightsById[toIdString(criterion._id)] = value;
+  orderedLeafCriteria.forEach((criterion) => {
+    const criterionId = toIdString(criterion._id);
+    if (!Object.prototype.hasOwnProperty.call(rawWeights, criterionId)) {
+      throw createInternalError("Issue modelParameters.weights is incomplete", {
+        field: "modelParameters.weights",
+        details: {
+          issueId: toIdString(issue?._id),
+          criterionId,
+        },
+      });
+    }
+
+    const value = rawWeights[criterionId];
+    finalWeightsById[criterionId] = value;
     finalWeightsByName[criterion.name] = value;
   });
 

@@ -24,7 +24,7 @@ import {
 } from "../modelExecution/index.js";
 import { buildEvaluationStructureContext } from "../evaluations/buildEvaluationStructureContext.js";
 import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
-import { getOrderedCriterionNames } from "../evaluations/criteriaWeightingStructureData.js";
+import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 
@@ -314,30 +314,29 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
     );
   }
 
-  const { criterionNames } = await getOrderedCriterionNames({ issue });
+  const { criteria } = await getOrderedCriteriaForWeightingOrThrow({ issue });
   const normalizedWeightsByCriterion = {};
-  const orderedWeights = criterionNames.map((criterionName) => {
-    if (!hasOwnKey(computeResult.weightsByCriterion, criterionName)) {
+  criteria.forEach((criterion) => {
+    if (!hasOwnKey(computeResult.weightsByCriterion, criterion.id)) {
       throw createBadRequestError(
-        `Criteria weighting compute result is missing weight for criterion '${criterionName}'`,
+        `Criteria weighting compute result is missing weight for criterion '${criterion.name}'`,
         {
-          field: `computeResult.weightsByCriterion.${criterionName}`,
+          field: `computeResult.weightsByCriterion.${criterion.id}`,
         }
       );
     }
 
-    const weight = Number(computeResult.weightsByCriterion[criterionName]);
+    const weight = Number(computeResult.weightsByCriterion[criterion.id]);
     if (!Number.isFinite(weight)) {
       throw createBadRequestError(
-        `Criteria weighting compute result weight for criterion '${criterionName}' must be finite`,
+        `Criteria weighting compute result weight for criterion '${criterion.name}' must be finite`,
         {
-          field: `computeResult.weightsByCriterion.${criterionName}`,
+          field: `computeResult.weightsByCriterion.${criterion.id}`,
         }
       );
     }
 
-    normalizedWeightsByCriterion[criterionName] = weight;
-    return weight;
+    normalizedWeightsByCriterion[criterion.id] = weight;
   });
 
   return {
@@ -347,7 +346,6 @@ const normalizeCriteriaWeightingComputeResultOrThrow = async ({
     collectiveEvaluations: computeResult.collectiveEvaluations,
     modelExecution: computeResult.modelExecution,
     rawOutput: computeResult.rawOutput,
-    orderedWeights,
   };
 };
 
@@ -360,7 +358,7 @@ const mapCriteriaWeightingResultToStageResult = (computeResult) => ({
 
 const applyCriteriaWeightingIssueUpdates = async ({
   issue,
-  orderedWeights,
+  weightsByCriterion,
   session = null,
 }) => {
   if (!isPlainObject(issue.modelParameters)) {
@@ -376,7 +374,7 @@ const applyCriteriaWeightingIssueUpdates = async ({
 
   issue.modelParameters = {
     ...modelParameters,
-    weights: orderedWeights,
+    weights: weightsByCriterion,
   };
   issue.currentStage = ISSUE_STAGES.ALTERNATIVE_EVALUATION;
   await issue.save({ session });
@@ -991,7 +989,7 @@ export const computeIssueEvaluationStage = async ({
 
         await applyCriteriaWeightingIssueUpdates({
           issue,
-          orderedWeights: normalizedCriteriaWeightingResult.orderedWeights,
+          weightsByCriterion: normalizedCriteriaWeightingResult.weightsByCriterion,
           session: persistSession,
         });
       },

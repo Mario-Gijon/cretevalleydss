@@ -1,56 +1,55 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 
-const buildEmptyWeightsByCriterion = (criterionNames) =>
-  criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = "";
+const buildEmptyWeightsByCriterion = (criteria) =>
+  criteria.reduce((accumulator, criterion) => {
+    accumulator[criterion.id] = "";
     return accumulator;
   }, {});
 
 const toWeightsByCriterionFromStoredPayload = (
   storedPayloadWeights,
-  criterionNames
+  criteria
 ) => {
   const normalizedStoredWeights = isPlainObject(storedPayloadWeights)
     ? storedPayloadWeights
     : {};
 
-  return criterionNames.reduce((accumulator, criterionName) => {
-    const value = normalizedStoredWeights[criterionName];
-    accumulator[criterionName] = value === undefined ? "" : value;
+  return criteria.reduce((accumulator, criterion) => {
+    const value = normalizedStoredWeights[criterion.id];
+    accumulator[criterion.id] = value === undefined ? "" : value;
     return accumulator;
   }, {});
 };
 
-const resolveCriterionNames = async ({ evaluationContext }) => {
-  if (
-    Array.isArray(evaluationContext?.criteria?.leafNames) &&
-    evaluationContext.criteria.leafNames.length > 0
-  ) {
-    return evaluationContext.criteria.leafNames.filter(Boolean);
-  }
-
-  return [];
-};
+const resolveCriteria = async ({ evaluationContext }) =>
+  Array.isArray(evaluationContext?.criteria?.leafItems)
+    ? evaluationContext.criteria.leafItems
+        .map((criterion) => ({
+          id: criterion?.id,
+          name: criterion?.name,
+        }))
+        .filter((criterion) => criterion.id && criterion.name)
+    : [];
 
 export const buildGetPayload = async ({
   payload,
   evaluationContext,
 }) => {
-  const criterionNames = await resolveCriterionNames({ evaluationContext });
+  const criteria = await resolveCriteria({ evaluationContext });
 
   const normalizedPayload = !payload || typeof payload !== "object"
     ? {
-        weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames),
+        weightsByCriterion: buildEmptyWeightsByCriterion(criteria),
       }
     : {
         weightsByCriterion: toWeightsByCriterionFromStoredPayload(
           payload?.weightsByCriterion,
-          criterionNames
+          criteria
         ),
       };
 
   return {
     payload: normalizedPayload,
-    criterionNames,
+    criteria,
   };
 };

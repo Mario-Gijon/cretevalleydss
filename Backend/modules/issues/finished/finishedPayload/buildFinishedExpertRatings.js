@@ -9,7 +9,6 @@ export const buildFinishedExpertRatingsContext = async ({
   structure,
   participations,
   criteriaWeightingEvaluationsByExpertId,
-  criterionNames,
   orderedLeafCriteria,
 }) => {
   const resolvedStructure =
@@ -21,7 +20,6 @@ export const buildFinishedExpertRatingsContext = async ({
       issue,
       participations,
       criteriaWeightingEvaluationsByExpertId,
-      criterionNames,
       orderedLeafCriteria,
     }),
   };

@@ -34,25 +34,25 @@ export const buildDefaultFuzzyWeightVector = (valueCount) => {
 };
 
 export const buildEqualWeightsByCriterion = (leafCriteria) => {
-  const criterionNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion) => criterion?.name)
+  const criterionIds = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.id)
     .filter(Boolean);
 
-  if (criterionNames.length === 0) {
+  if (criterionIds.length === 0) {
     return {};
   }
 
-  const baseWeight = Number((1 / criterionNames.length).toFixed(6));
+  const baseWeight = Number((1 / criterionIds.length).toFixed(6));
   const weightsByCriterion = {};
 
   let consumed = 0;
-  criterionNames.forEach((criterionName, index) => {
-    if (index === criterionNames.length - 1) {
-      weightsByCriterion[criterionName] = Number((1 - consumed).toFixed(6));
+  criterionIds.forEach((criterionId, index) => {
+    if (index === criterionIds.length - 1) {
+      weightsByCriterion[criterionId] = Number((1 - consumed).toFixed(6));
       return;
     }
 
-    weightsByCriterion[criterionName] = baseWeight;
+    weightsByCriterion[criterionId] = baseWeight;
     consumed += baseWeight;
   });
 
@@ -84,27 +84,32 @@ export const normalizeManualWeightsByRoot = ({
 
   const rootEntries = Object.entries(leafByRoot || {});
   for (const [rootName, leaves] of rootEntries) {
-    const leafNames = leaves.map((criterion) => criterion?.name).filter(Boolean);
-    if (leafNames.length === 0) continue;
+    const leafItems = leaves
+      .map((criterion) => ({
+        id: criterion?.id,
+        name: criterion?.name,
+      }))
+      .filter((criterion) => criterion.id);
+    if (leafItems.length === 0) continue;
 
     if (totalLeafCount === 1) {
-      normalized[leafNames[0]] = 1;
+      normalized[leafItems[0].id] = 1;
       continue;
     }
 
-    const hasAllCurrentLeafKeys = leafNames.every((leafName) =>
-      Object.prototype.hasOwnProperty.call(source, leafName)
+    const hasAllCurrentLeafKeys = leafItems.every((criterion) =>
+      Object.prototype.hasOwnProperty.call(source, criterion.id)
     );
 
     if (hasAllCurrentLeafKeys) {
-      leafNames.forEach((leafName) => {
-        normalized[leafName] = source[leafName];
+      leafItems.forEach((criterion) => {
+        normalized[criterion.id] = source[criterion.id];
       });
       continue;
     }
 
-    const branchBudgetFromCurrentLeaves = leafNames.reduce((sum, leafName) => {
-      const value = Number(source[leafName]);
+    const branchBudgetFromCurrentLeaves = leafItems.reduce((sum, criterion) => {
+      const value = Number(source[criterion.id]);
       return Number.isFinite(value) ? sum + value : sum;
     }, 0);
 
@@ -117,12 +122,12 @@ export const normalizeManualWeightsByRoot = ({
           : (1 / Math.max(totalLeafCount, 1)) * leafNames.length;
 
     const branchDefaults = buildEqualValues({
-      count: leafNames.length,
+      count: leafItems.length,
       total: fallbackBudget,
     });
 
-    leafNames.forEach((leafName, index) => {
-      normalized[leafName] = branchDefaults[index];
+    leafItems.forEach((criterion, index) => {
+      normalized[criterion.id] = branchDefaults[index];
     });
   }
 
@@ -144,16 +149,21 @@ export const normalizeFuzzyWeightsByRoot = ({
   const rootEntries = Object.entries(leafByRoot || {});
 
   for (const [rootName, leaves] of rootEntries) {
-    const leafNames = leaves.map((criterion) => criterion?.name).filter(Boolean);
-    if (leafNames.length === 0) continue;
+    const leafItems = leaves
+      .map((criterion) => ({
+        id: criterion?.id,
+        name: criterion?.name,
+      }))
+      .filter((criterion) => criterion.id);
+    if (leafItems.length === 0) continue;
 
     const defaultVector =
       totalLeafCount === 1
         ? Array.from({ length: fuzzyValueCount }, () => 1)
         : buildDefaultFuzzyWeightVector(fuzzyValueCount);
 
-    const hasAllValid = leafNames.every((leafName) => {
-      const vector = source[leafName];
+    const hasAllValid = leafItems.every((criterion) => {
+      const vector = source[criterion.id];
       return (
         Array.isArray(vector) &&
         vector.length === fuzzyValueCount &&
@@ -161,9 +171,9 @@ export const normalizeFuzzyWeightsByRoot = ({
       );
     });
 
-    leafNames.forEach((leafName) => {
-      const vector = source[leafName];
-      normalized[leafName] = hasAllValid
+    leafItems.forEach((criterion) => {
+      const vector = source[criterion.id];
+      normalized[criterion.id] = hasAllValid
         ? vector.map(Number)
         : [...defaultVector];
     });
@@ -174,8 +184,8 @@ export const normalizeFuzzyWeightsByRoot = ({
       staleRootVector.length === fuzzyValueCount &&
       staleRootVector.every((item) => Number.isFinite(Number(item)));
     if (!hasAllValid && hasFiniteStaleRootVector) {
-      leafNames.forEach((leafName) => {
-        normalized[leafName] = staleRootVector.map(Number);
+      leafItems.forEach((criterion) => {
+        normalized[criterion.id] = staleRootVector.map(Number);
       });
     }
   }

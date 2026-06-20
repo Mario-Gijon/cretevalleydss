@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import numpy as np
 
 from schemas.model_requests import GenericModelExecutionRequest
+from services.criteria_weights import ordered_numeric_weights
 from services.model_executors.responses import error_response, success_response
 from .run import run_herrera_viedma
 
@@ -86,23 +87,21 @@ def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list
     if criteria_count == 1:
         return [1.0]
 
-    context = payload.context or {}
-    model_parameters = payload.modelParameters or {}
+    weights = ordered_numeric_weights(
+        payload,
+        allow_empty=False,
+        error_label="weights",
+    )
 
-    raw_weights = context.get("weights") or model_parameters.get("weights") or []
-
-    if len(raw_weights) == 0:
+    if len(weights) == 0:
         raise ValueError(
             "weights are required for Herrera-Viedma CRP when multiple criteria are used"
         )
 
-    if len(raw_weights) != criteria_count:
+    if len(weights) != criteria_count:
         raise ValueError("weights length must match the number of criteria")
 
-    return [
-        _finite_number(weight, f"weights[{index}]")
-        for index, weight in enumerate(raw_weights)
-    ]
+    return weights
 
 
 def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:

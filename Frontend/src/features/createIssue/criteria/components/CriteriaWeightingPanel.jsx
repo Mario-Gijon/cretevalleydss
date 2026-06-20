@@ -47,9 +47,12 @@ export const CriteriaWeightingPanel = ({
     [criteria]
   );
 
-  const criterionNames = leafCriteria
-    .map((criterion) => criterion?.name)
-    .filter(Boolean);
+  const leafCriterionItems = leafCriteria
+    .map((criterion) => ({
+      id: criterion?.id,
+      name: criterion?.name,
+    }))
+    .filter((criterion) => criterion.id && criterion.name);
 
   const leafByRoot = useMemo(
     () => collectLeafCriteriaByRoot(Array.isArray(criteria) ? criteria : []),
@@ -231,7 +234,7 @@ export const CriteriaWeightingPanel = ({
       const normalizedWeights = normalizeManualWeightsByRoot({
         sourceWeights,
         leafByRoot,
-        totalLeafCount: criterionNames.length,
+        totalLeafCount: leafCriterionItems.length,
       });
 
       if (isDeepEqual(sourceWeights || {}, normalizedWeights)) {
@@ -254,7 +257,7 @@ export const CriteriaWeightingPanel = ({
         sourceWeights,
         leafByRoot,
         fuzzyValueCount,
-        totalLeafCount: criterionNames.length,
+        totalLeafCount: leafCriterionItems.length,
       });
 
       if (isDeepEqual(sourceWeights || {}, normalizedWeights)) {
@@ -273,7 +276,7 @@ export const CriteriaWeightingPanel = ({
 
   }, [
     criteriaWeightingConfig,
-    criterionNames.length,
+    leafCriterionItems.length,
     fuzzyValueCount,
     leafByRoot,
     mode,

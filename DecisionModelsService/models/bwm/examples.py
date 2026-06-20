@@ -9,9 +9,17 @@ BWM_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "BWM executed successfully",
             "data": {
                 "message": "Criteria weights for 'Example issue' successfully computed.",
-                "weightsByCriterion": {"Cost": 0.53, "Quality": 0.29, "Risk": 0.18},
+                "weightsByCriterion": {
+                    "criterion-1": 0.53,
+                    "criterion-2": 0.29,
+                    "criterion-3": 0.18,
+                },
                 "collectiveEvaluations": {
-                    "weightsByCriterion": {"Cost": 0.53, "Quality": 0.29, "Risk": 0.18},
+                    "weightsByCriterion": {
+                        "criterion-1": 0.53,
+                        "criterion-2": 0.29,
+                        "criterion-3": 0.18,
+                    },
                 },
                 "consensusMeasure": None,
                 "modelExecution": {

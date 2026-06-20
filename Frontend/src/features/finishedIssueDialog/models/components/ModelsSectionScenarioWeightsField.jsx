@@ -41,12 +41,15 @@ const normalizeWeightInput = (rawValue) => {
   return `${integerPart}.${decimalPart.slice(0, 3)}`;
 };
 
-const ensureWeightsLength = (weights, count) => {
-  const normalized = Array.isArray(weights) ? [...weights] : [];
-  if (normalized.length < count) {
-    normalized.push(...Array(count - normalized.length).fill(""));
-  }
-  return normalized.slice(0, count);
+const ensureWeightsObject = (weights, rows) => {
+  const normalized = weights && typeof weights === "object" && !Array.isArray(weights)
+    ? { ...weights }
+    : {};
+
+  return rows.reduce((accumulator, row) => {
+    accumulator[row.key] = normalized[row.key] ?? "";
+    return accumulator;
+  }, {});
 };
 
 const resolveLeafRows = ({ leafCriteria, leafNames }) => {
@@ -94,7 +97,7 @@ const ModelsSectionScenarioWeightsField = ({
     return null;
   }
 
-  const weights = ensureWeightsLength(values?.weights, rows.length);
+  const weights = ensureWeightsObject(values?.weights, rows);
 
   return (
     <Stack spacing={0.75}>
@@ -112,7 +115,7 @@ const ModelsSectionScenarioWeightsField = ({
           width: "fit-content",
         }}
       >
-        {rows.map((row, index) => (
+        {rows.map((row) => (
           <Fragment key={row.key}>
             <Typography variant="body2" sx={labelSx}>
               {row.name}:
@@ -124,15 +127,17 @@ const ModelsSectionScenarioWeightsField = ({
               color="secondary"
               size="small"
               value={
-                typeof weights[index] === "string"
-                  ? normalizeWeightInput(weights[index])
-                  : weights[index] === "" || weights[index] == null
+                typeof weights[row.key] === "string"
+                  ? normalizeWeightInput(weights[row.key])
+                  : weights[row.key] === "" || weights[row.key] == null
                     ? ""
-                    : formatScenarioWeightValue(weights[index])
+                    : formatScenarioWeightValue(weights[row.key])
               }
               onChange={(event) => {
-                const next = [...weights];
-                next[index] = normalizeWeightInput(event.target.value);
+                const next = {
+                  ...weights,
+                  [row.key]: normalizeWeightInput(event.target.value),
+                };
                 setValues((previous) => ({
                   ...(previous || {}),
                   weights: next,

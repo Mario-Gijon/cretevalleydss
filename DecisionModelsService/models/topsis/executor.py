@@ -3,6 +3,7 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 from schemas.model_requests import GenericModelExecutionRequest
+from services.criteria_weights import ordered_numeric_weights
 from services.model_executors.responses import error_response, success_response
 from .run import run_topsis
 
@@ -110,20 +111,16 @@ def _cell_value(cell: dict[str, Any], field: str) -> float:
 
 
 def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list[float]:
-    context = payload.context or {}
-    model_parameters = payload.modelParameters or {}
-    raw_weights = context.get("weights") or model_parameters.get("weights") or []
+    weights = ordered_numeric_weights(
+        payload,
+        allow_empty=False,
+        error_label="weights",
+    )
 
-    if len(raw_weights) == 0:
-        raise ValueError("weights are required for TOPSIS")
-
-    if len(raw_weights) != criteria_count:
+    if len(weights) != criteria_count:
         raise ValueError("weights length must match the number of criteria")
 
-    return [
-        _finite_number(weight, f"weights[{index}]")
-        for index, weight in enumerate(raw_weights)
-    ]
+    return weights
 
 
 def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:

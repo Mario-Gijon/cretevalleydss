@@ -72,8 +72,9 @@ export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
   }
 
   const weights = orderedLeafCriteria.map((criterion) => {
+    const criterionId = toIdString(criterion._id);
     const criterionName = criterion.name;
-    const rawWeight = sourceWeightsByCriterion[criterionName];
+    const rawWeight = sourceWeightsByCriterion[criterionId];
     const weight = Number(rawWeight);
 
     if (!Number.isFinite(weight)) {
@@ -90,14 +91,14 @@ export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
     }
 
     return {
-      criterionId: toIdString(criterion._id),
+      criterionId,
       criterionName,
       weight,
     };
   });
 
   const weightsByCriterion = weights.reduce((accumulator, entry) => {
-    accumulator[entry.criterionName] = entry.weight;
+    accumulator[entry.criterionId] = entry.weight;
     return accumulator;
   }, {});
 
@@ -131,7 +132,7 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
       return {
         source: "modelParameters",
         weightsByCriterion: {
-          [criterion.name]: 1,
+          [toIdString(criterion._id)]: 1,
         },
         weights,
       };
@@ -154,7 +155,7 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
     };
   }
 
-  if (!Array.isArray(sourceWeights)) {
+  if (!isPlainObject(sourceWeights)) {
     throw createInternalError("Finished issue modelParameters.weights is invalid", {
       field: "modelParameters.weights",
       details: {
@@ -164,22 +165,22 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
     });
   }
 
-  if (sourceWeights.length < leafCount) {
-    throw createInternalError("Finished issue modelParameters.weights is incomplete", {
-      field: "modelParameters.weights",
-      details: {
-        issueId: toIdString(issue._id),
-        expectedCount: leafCount,
-        receivedCount: sourceWeights.length,
-      },
-    });
-  }
+  const weights = orderedLeafCriteria.map((criterion) => {
+    const criterionId = toIdString(criterion._id);
+    if (!Object.prototype.hasOwnProperty.call(sourceWeights, criterionId)) {
+      throw createInternalError("Finished issue modelParameters.weights is incomplete", {
+        field: "modelParameters.weights",
+        details: {
+          issueId: toIdString(issue._id),
+          criterionId,
+        },
+      });
+    }
 
-  const weights = orderedLeafCriteria.map((criterion, index) => {
-    const weight = Number(sourceWeights[index]);
+    const weight = Number(sourceWeights[criterionId]);
     if (!Number.isFinite(weight)) {
       throw createInternalError("Finished issue modelParameters.weights is invalid", {
-        field: `modelParameters.weights[${index}]`,
+        field: `modelParameters.weights.${criterionId}`,
         details: {
           issueId: toIdString(issue._id),
           criterionName: criterion.name,
@@ -188,14 +189,14 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
     }
 
     return {
-      criterionId: toIdString(criterion._id),
+      criterionId,
       criterionName: criterion.name,
       weight,
     };
   });
 
   const weightsByCriterion = weights.reduce((accumulator, entry) => {
-    accumulator[entry.criterionName] = entry.weight;
+    accumulator[entry.criterionId] = entry.weight;
     return accumulator;
   }, {});
 
@@ -245,19 +246,20 @@ export const resolveExpertWeightingRequired = ({
   );
 };
 
-const extractWeightsByCriterionFromDisplayPayload = ({ payload, criterionNames }) => {
+const extractWeightsByCriterionFromDisplayPayload = ({ payload, orderedLeafCriteria }) => {
   const sourceWeightsByCriterion = payload.weightsByCriterion;
   if (!isPlainObject(sourceWeightsByCriterion)) {
     return null;
   }
 
   const normalizedWeightsByCriterion = {};
-  for (const criterionName of criterionNames) {
-    const numericValue = Number(sourceWeightsByCriterion[criterionName]);
+  for (const criterion of orderedLeafCriteria) {
+    const criterionId = toIdString(criterion._id);
+    const numericValue = Number(sourceWeightsByCriterion[criterionId]);
     if (!Number.isFinite(numericValue)) {
       return null;
     }
-    normalizedWeightsByCriterion[criterionName] = numericValue;
+    normalizedWeightsByCriterion[criterionId] = numericValue;
   }
 
   return normalizedWeightsByCriterion;
@@ -267,7 +269,6 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
   issue,
   participations,
   criteriaWeightingEvaluationsByExpertId,
-  criterionNames,
   orderedLeafCriteria,
 }) => {
   const isRequired = resolveExpertWeightingRequired({
@@ -372,7 +373,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     const payload = displayPayload;
     const weightsByCriterion = extractWeightsByCriterionFromDisplayPayload({
       payload,
-      criterionNames,
+      orderedLeafCriteria,
     });
 
     mapByExpertEmail[expertEmail] = {

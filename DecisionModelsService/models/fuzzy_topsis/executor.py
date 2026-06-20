@@ -3,6 +3,7 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 from schemas.model_requests import GenericModelExecutionRequest
+from services.criteria_weights import ordered_fuzzy_weights
 from services.model_executors.responses import error_response, success_response
 from .run import run_fuzzy_topsis
 
@@ -124,21 +125,15 @@ def _cell_value(cell: dict[str, Any], field: str) -> list[float]:
 
 
 def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list[list[float]]:
-    context = payload.context or {}
-    model_parameters = payload.modelParameters or {}
+    weights = ordered_fuzzy_weights(payload)
 
-    raw_weights = context.get("weights") or model_parameters.get("weights") or []
-
-    if len(raw_weights) == 0:
+    if len(weights) == 0:
         raise ValueError("fuzzy weights are required for Fuzzy TOPSIS")
 
-    if len(raw_weights) != criteria_count:
+    if len(weights) != criteria_count:
         raise ValueError("weights length must match the number of criteria")
 
-    return [
-        _fuzzy_triplet(weight, f"weights[{index}]")
-        for index, weight in enumerate(raw_weights)
-    ]
+    return weights
 
 
 def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:

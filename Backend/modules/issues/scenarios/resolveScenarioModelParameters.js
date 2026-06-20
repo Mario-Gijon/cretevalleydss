@@ -1,6 +1,7 @@
 import {
   createBadRequestError,
 } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 import { isPlainObject } from "../../../utils/common/objects.js";
 import { validateAndNormalizeModelParametersOrThrow } from "../../decisionPlugins/modelParameters/index.js";
 import {
@@ -20,52 +21,97 @@ export const normalizeScenarioParamOverridesOrThrow = (paramOverrides) => {
   return paramOverrides;
 };
 
-export const normalizeCrispWeightsOrThrow = ({ rawWeights, criteriaCount }) => {
-  if (!Array.isArray(rawWeights) || rawWeights.length === 0) {
+const getCriterionRowsOrThrow = ({ criteria }) => {
+  const rows = Array.isArray(criteria)
+    ? criteria.map((criterion, index) => {
+        const criterionId = toIdString(criterion?._id ?? criterion?.id);
+        const criterionName =
+          typeof criterion?.name === "string" && criterion.name.trim()
+            ? criterion.name.trim()
+            : `Criterion ${index + 1}`;
+
+        if (!criterionId) {
+          throw createBadRequestError("Scenario criteria must include ids", {
+            field: "criteria",
+          });
+        }
+
+        return {
+          id: criterionId,
+          name: criterionName,
+        };
+      })
+    : [];
+
+  if (rows.length === 0) {
+    throw createBadRequestError("Scenario criteria are required", {
+      field: "criteria",
+    });
+  }
+
+  return rows;
+};
+
+export const normalizeCrispWeightsOrThrow = ({ rawWeights, criteria }) => {
+  if (!isPlainObject(rawWeights)) {
     throw createBadRequestError(
-      "Scenario model parameters must include criteria weights as an array",
+      "Scenario model parameters must include criteria weights as an id-keyed object",
       {
         field: "paramOverrides.weights",
       }
     );
   }
 
-  if (rawWeights.length !== criteriaCount) {
+  const criterionRows = getCriterionRowsOrThrow({ criteria });
+  const receivedKeys = Object.keys(rawWeights);
+
+  if (receivedKeys.length !== criterionRows.length) {
     throw createBadRequestError(
-      "Scenario model weights length must match the number of leaf criteria",
+      "Scenario model weights must match the number of leaf criteria",
       {
         field: "paramOverrides.weights",
         details: {
-          expected: criteriaCount,
-          received: rawWeights.length,
+          expected: criterionRows.length,
+          received: receivedKeys.length,
         },
       }
     );
   }
 
-  const normalizedWeights = rawWeights.map((value, index) => {
+  const normalizedWeights = criterionRows.reduce((accumulator, criterion) => {
+    if (!Object.prototype.hasOwnProperty.call(rawWeights, criterion.id)) {
+      throw createBadRequestError(
+        `Scenario model weights are missing '${criterion.name}'`,
+        {
+          field: `paramOverrides.weights.${criterion.id}`,
+        }
+      );
+    }
+
+    const value = rawWeights[criterion.id];
     if (typeof value !== "number" || !Number.isFinite(value)) {
       throw createBadRequestError(
-        `Scenario weight [${index}] must be a finite number`,
+        `Scenario weight for '${criterion.name}' must be a finite number`,
         {
-          field: "paramOverrides.weights",
+          field: `paramOverrides.weights.${criterion.id}`,
         }
       );
     }
 
     if (value < 0 || value > 1) {
       throw createBadRequestError(
-        `Scenario weight [${index}] must be between 0 and 1`,
+        `Scenario weight for '${criterion.name}' must be between 0 and 1`,
         {
-          field: "paramOverrides.weights",
+          field: `paramOverrides.weights.${criterion.id}`,
         }
       );
     }
 
-    return value;
-  });
+    accumulator[criterion.id] = value;
+    return accumulator;
+  }, {});
 
-  const total = normalizedWeights.reduce((sum, value) => sum + value, 0);
+  const total = Object.values(normalizedWeights).reduce((sum, value) => sum + value, 0);
   if (
     Math.abs(total - 1) >
     CRITERIA_WEIGHT_SUM_TOLERANCE + Number.EPSILON
@@ -90,12 +136,11 @@ export const resolveScenarioWeightsOrThrow = ({
     return null;
   }
 
-  const criteriaCount = criteria.length;
   const rawWeights = paramOverrides.weights;
 
   return normalizeCrispWeightsOrThrow({
     rawWeights,
-    criteriaCount,
+    criteria,
   });
 };
 
@@ -123,13 +168,13 @@ export const buildScenarioParametersOrThrow = ({
     criteria,
   });
 
-  if (Array.isArray(resolvedWeights)) {
+  if (isPlainObject(resolvedWeights)) {
     normalizedScenarioParameters.weights = resolvedWeights;
   }
 
   return {
     paramsUsed: normalizedScenarioParameters,
     normalizedParams: normalizedScenarioParameters,
-    weightsUsed: resolvedWeights === null ? [] : resolvedWeights,
+    weightsUsed: resolvedWeights,
   };
 };

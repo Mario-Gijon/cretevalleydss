@@ -11,30 +11,34 @@ def _is_plain_object(value: Any) -> bool:
     return isinstance(value, dict)
 
 
-def _normalize_criterion_names(payload: GenericModelExecutionRequest) -> list[str]:
+def _normalize_criteria(payload: GenericModelExecutionRequest) -> list[dict[str, str]]:
     criteria = payload.context.get("criteria") if _is_plain_object(payload.context) else []
     if not isinstance(criteria, list):
         return []
 
-    criterion_names: list[str] = []
+    criterion_items: list[dict[str, str]] = []
     for criterion in criteria:
         if not isinstance(criterion, dict):
             continue
 
+        criterion_id = str(criterion.get("id") or "").strip()
         name = str(criterion.get("name") or "").strip()
-        if name:
-            criterion_names.append(name)
+        if criterion_id and name:
+            criterion_items.append({
+                "id": criterion_id,
+                "name": name,
+            })
 
-    return criterion_names
+    return criterion_items
 
 
 def execute_manual_criteria_weights(
     payload: GenericModelExecutionRequest,
 ) -> dict[str, Any] | JSONResponse:
     try:
-        criterion_names = _normalize_criterion_names(payload)
+        criteria = _normalize_criteria(payload)
         results = run_manual_criteria_weights(
-            criterion_names=criterion_names,
+            criteria=criteria,
             evaluations=payload.evaluations if isinstance(payload.evaluations, list) else [],
         )
 

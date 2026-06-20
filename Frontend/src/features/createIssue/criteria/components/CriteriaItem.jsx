@@ -61,17 +61,17 @@ export const CriteriaItem = ({
       mode={weightFieldMode}
       isSingleLeaf={isSingleCriterion}
       fuzzyValueCount={fuzzyValueCount}
-      manualValue={weightsByCriterion?.[item.name] ?? ""}
-      fuzzyVector={weightsByCriterion?.[item.name]}
-      onManualChange={(value) => onManualWeightChange?.(item.name, value)}
-      onFuzzyChange={(nextVector) => onFuzzyVectorChange?.(item.name, nextVector)}
+      manualValue={weightsByCriterion?.[item.id] ?? ""}
+      fuzzyVector={weightsByCriterion?.[item.id]}
+      onManualChange={(value) => onManualWeightChange?.(item.id, value)}
+      onFuzzyChange={(nextVector) => onFuzzyVectorChange?.(item.id, nextVector)}
     />
   ) : null;
 
   return (
     <>
       <ListItem
-        key={item.name}
+        key={item.id || item.name}
         sx={{
           px: { xs: 1, sm: 1.2 },
           py: 1,
@@ -214,7 +214,7 @@ export const CriteriaItem = ({
         <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
           <List disablePadding>
             {item.children.map((child, index) => (
-              <Fragment key={index}>
+              <Fragment key={child.id || index}>
                 <CriteriaItem
                   item={child}
                   level={level + 1}

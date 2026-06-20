@@ -24,20 +24,22 @@ const getEffectiveCriteriaWeightsForActiveView = ({
     return [];
   }
 
-  if (Array.isArray(weights)) {
-    if (weights.length !== criteriaCount) {
-      throw createInternalError("Issue is missing effective criteria weights", {
-        field: "modelParameters.weights",
-        details: {
-          issueId,
-          currentStage: stage,
-          criteriaCount,
-          weightsLength: weights.length,
-        },
-      });
-    }
+  if (weights && typeof weights === "object" && !Array.isArray(weights)) {
+    return orderedLeafCriteria.map((criterion) => {
+      if (!Object.prototype.hasOwnProperty.call(weights, criterion.id)) {
+        throw createInternalError("Issue is missing effective criteria weights", {
+          field: "modelParameters.weights",
+          details: {
+            issueId,
+            currentStage: stage,
+            criteriaCount,
+            criterionId: criterion.id,
+          },
+        });
+      }
 
-    return weights;
+      return weights[criterion.id];
+    });
   }
 
   if (!issue.model.usesCriteriaWeights) {
@@ -45,6 +47,15 @@ const getEffectiveCriteriaWeightsForActiveView = ({
   }
 
   if (criteriaCount === 1) {
+    if (
+      weights &&
+      typeof weights === "object" &&
+      !Array.isArray(weights) &&
+      Object.prototype.hasOwnProperty.call(weights, orderedLeafCriteria[0].id)
+    ) {
+      return [weights[orderedLeafCriteria[0].id]];
+    }
+
     return [1];
   }
 

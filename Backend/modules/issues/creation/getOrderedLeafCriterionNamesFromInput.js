@@ -5,6 +5,7 @@ const collectLeafCriteriaFromInput = (nodes, leafCriteria = []) => {
   for (const node of nodes) {
     if (node.children.length === 0) {
       leafCriteria.push({
+        id: node.id || null,
         name: node.name,
         inputOrder: leafCriteria.length,
       });
@@ -48,6 +49,7 @@ export const getOrderedLeafCriterionNamesFromInputOrThrow = (criteriaNodes) => {
     criterionNames,
     isSingleLeafCriterion: criterionNames.length === 1,
     orderedLeafCriteria: leafCriteria.map((criterion) => ({
+      id: criterion.id,
       name: criterion.name,
     })),
   };

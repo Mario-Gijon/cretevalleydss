@@ -200,7 +200,7 @@ const ModelsSectionAddDialog = () => {
                 fullWidth
                 multiline
                 minRows={6}
-                placeholder={`{\n  "alpha": 0.5,\n  "maxIter": 200,\n  "weights": [0.5, 0.5]\n}`}
+                placeholder={`{\n  "alpha": 0.5,\n  "maxIter": 200,\n  "weights": {\n    "<criterionId1>": 0.5,\n    "<criterionId2>": 0.5\n  }\n}`}
               />
 
               {addDialog.modelsLoading ? (

@@ -1,5 +1,6 @@
 import { createBadRequestError } from "../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 import {
   validateAndNormalizeCrispCriteriaWeightArray,
   validateAndNormalizeFuzzyCriteriaWeightArray,
@@ -7,14 +8,40 @@ import {
 
 const CRITERIA_WEIGHT_SUM_TOLERANCE = 0.001;
 
-export const normalizeCreatorFuzzyWeightsOrThrow = ({
-  payload,
-  criterionNames,
-  valueCount,
-}) => {
+const getCriteriaForWeightPayloadOrThrow = (leafCriteria) => {
+  if (!Array.isArray(leafCriteria) || leafCriteria.length === 0) {
+    throw createBadRequestError("Leaf criteria are required for criteria weights", {
+      field: "criteria",
+    });
+  }
+
+  return leafCriteria.map((criterion) => {
+    const criterionId = toIdString(criterion?.id ?? criterion?._id);
+    const criterionName = criterion?.name;
+
+    if (!criterionId) {
+      throw createBadRequestError("Each weighted criterion must have an id", {
+        field: "criteriaWeightingConfig.payload.weightsByCriterion",
+      });
+    }
+
+    if (typeof criterionName !== "string" || criterionName.trim() === "") {
+      throw createBadRequestError("Each weighted criterion must have a name", {
+        field: "criteriaWeightingConfig.payload.weightsByCriterion",
+      });
+    }
+
+    return {
+      id: criterionId,
+      name: criterionName,
+    };
+  });
+};
+
+const getWeightsByCriterionOrThrow = (payload) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError(
-      "criteriaWeightingConfig.payload must be an object for creatorFuzzy mode",
+      "criteriaWeightingConfig.payload must be an object",
       {
         field: "criteriaWeightingConfig.payload",
       }
@@ -31,27 +58,50 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
     );
   }
 
-  const expectedCriterionSet = new Set(criterionNames);
+  return weightsByCriterion;
+};
+
+const validateExpectedCriterionKeysOrThrow = ({
+  weightsByCriterion,
+  criteria,
+  modeLabel,
+}) => {
+  const expectedCriterionIdSet = new Set(criteria.map((criterion) => criterion.id));
   const unknownKeys = Object.keys(weightsByCriterion).filter(
-    (criterionName) => !expectedCriterionSet.has(criterionName)
+    (criterionId) => !expectedCriterionIdSet.has(criterionId)
   );
 
   if (unknownKeys.length > 0) {
     throw createBadRequestError(
-      `Unknown criteria in creator fuzzy weights: ${unknownKeys.join(", ")}`,
+      `Unknown criteria in ${modeLabel} weights: ${unknownKeys.join(", ")}`,
       {
         field: "criteriaWeightingConfig.payload.weightsByCriterion",
       }
     );
   }
+};
 
-  const orderedFuzzyValues = criterionNames.map(
-    (criterionName) => weightsByCriterion[criterionName]
+export const normalizeCreatorFuzzyWeightsOrThrow = ({
+  payload,
+  leafCriteria,
+  valueCount,
+}) => {
+  const criteria = getCriteriaForWeightPayloadOrThrow(leafCriteria);
+  const weightsByCriterion = getWeightsByCriterionOrThrow(payload);
+
+  validateExpectedCriterionKeysOrThrow({
+    weightsByCriterion,
+    criteria,
+    modeLabel: "creator fuzzy",
+  });
+
+  const orderedFuzzyValues = criteria.map(
+    (criterion) => weightsByCriterion[criterion.id]
   );
 
   const normalizedResult = validateAndNormalizeFuzzyCriteriaWeightArray({
     value: orderedFuzzyValues,
-    expectedLength: criterionNames.length,
+    expectedLength: criteria.length,
     valueCount,
     min: 0,
     max: 1,
@@ -61,7 +111,7 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
 
   if (!normalizedResult.ok) {
     const { code, index } = normalizedResult.error;
-    const criterionName = criterionNames[index] || "<unknown>";
+    const criterionName = criteria[index]?.name || "<unknown>";
 
     if (code === "tupleLengthMismatch") {
       throw createBadRequestError(
@@ -107,53 +157,32 @@ export const normalizeCreatorFuzzyWeightsOrThrow = ({
     );
   }
 
-  return normalizedResult.value;
+  return criteria.reduce((accumulator, criterion, index) => {
+    accumulator[criterion.id] = normalizedResult.value[index];
+    return accumulator;
+  }, {});
 };
 
 export const normalizeCreatorManualWeightsOrThrow = ({
   payload,
-  criterionNames,
+  leafCriteria,
 }) => {
-  if (!isPlainObject(payload)) {
-    throw createBadRequestError(
-      "criteriaWeightingConfig.payload must be an object for creatorManual mode",
-      {
-        field: "criteriaWeightingConfig.payload",
-      }
-    );
-  }
+  const criteria = getCriteriaForWeightPayloadOrThrow(leafCriteria);
+  const weightsByCriterion = getWeightsByCriterionOrThrow(payload);
 
-  const weightsByCriterion = payload.weightsByCriterion;
-  if (!isPlainObject(weightsByCriterion)) {
-    throw createBadRequestError(
-      "criteriaWeightingConfig.payload.weightsByCriterion must be an object",
-      {
-        field: "criteriaWeightingConfig.payload.weightsByCriterion",
-      }
-    );
-  }
+  validateExpectedCriterionKeysOrThrow({
+    weightsByCriterion,
+    criteria,
+    modeLabel: "creator manual",
+  });
 
-  const expectedCriterionSet = new Set(criterionNames);
-  const unknownKeys = Object.keys(weightsByCriterion).filter(
-    (criterionName) => !expectedCriterionSet.has(criterionName)
-  );
-
-  if (unknownKeys.length > 0) {
-    throw createBadRequestError(
-      `Unknown criteria in creator manual weights: ${unknownKeys.join(", ")}`,
-      {
-        field: "criteriaWeightingConfig.payload.weightsByCriterion",
-      }
-    );
-  }
-
-  const orderedWeights = criterionNames.map(
-    (criterionName) => weightsByCriterion[criterionName]
+  const orderedWeights = criteria.map(
+    (criterion) => weightsByCriterion[criterion.id]
   );
 
   const normalizedResult = validateAndNormalizeCrispCriteriaWeightArray({
     value: orderedWeights,
-    expectedLength: criterionNames.length,
+    expectedLength: criteria.length,
     min: 0,
     max: 1,
     enforceNonNegative: false,
@@ -164,7 +193,7 @@ export const normalizeCreatorManualWeightsOrThrow = ({
 
   if (!normalizedResult.ok) {
     const { code, index } = normalizedResult.error;
-    const criterionName = criterionNames[index] || "<unknown>";
+    const criterionName = criteria[index]?.name || "<unknown>";
 
     if (code === "nonFinite") {
       throw createBadRequestError(
@@ -201,5 +230,8 @@ export const normalizeCreatorManualWeightsOrThrow = ({
     );
   }
 
-  return normalizedResult.value;
+  return criteria.reduce((accumulator, criterion, index) => {
+    accumulator[criterion.id] = normalizedResult.value[index];
+    return accumulator;
+  }, {});
 };

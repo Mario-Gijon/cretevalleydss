@@ -32,7 +32,7 @@ export const manualCriteriaWeightsStructure = Object.freeze({
     if (mode === "submit") {
       validateSubmittedManualWeightsOrThrow({
         weightsByCriterion: normalized.payload.weightsByCriterion,
-        criterionNames: normalized.criterionNames,
+        criteria: normalized.criteria,
       });
     }
 

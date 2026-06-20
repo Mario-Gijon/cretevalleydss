@@ -48,6 +48,23 @@ const normalizeWeightValueOrThrow = (rawValue, { criterionName, allowEmpty }) =>
   return numericValue;
 };
 
+const getCriteriaFromEvaluationContextOrThrow = (evaluationContext) => {
+  const leafItems = evaluationContext?.criteria?.leafItems;
+
+  if (!Array.isArray(leafItems)) {
+    throw createBadRequestError("evaluationContext.criteria.leafItems must be an array", {
+      field: "evaluationContext.criteria.leafItems",
+    });
+  }
+
+  return leafItems
+    .map((criterion) => ({
+      id: criterion?.id,
+      name: criterion?.name,
+    }))
+    .filter((criterion) => criterion.id && criterion.name);
+};
+
 export const normalizeManualPayloadOrThrow = async ({
   payload,
   evaluationContext,
@@ -67,15 +84,13 @@ export const normalizeManualPayloadOrThrow = async ({
     });
   }
 
-  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames.filter(Boolean)
-    : [];
+  const criteria = getCriteriaFromEvaluationContextOrThrow(evaluationContext);
 
-  const weightsByCriterion = criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = normalizeWeightValueOrThrow(
-      rawWeightsByCriterion[criterionName],
+  const weightsByCriterion = criteria.reduce((accumulator, criterion) => {
+    accumulator[criterion.id] = normalizeWeightValueOrThrow(
+      rawWeightsByCriterion[criterion.id],
       {
-        criterionName,
+        criterionName: criterion.name,
         allowEmpty,
       }
     );
@@ -83,7 +98,7 @@ export const normalizeManualPayloadOrThrow = async ({
   }, {});
 
   return {
-    criterionNames,
+    criteria,
     payload: {
       weightsByCriterion,
     },
@@ -92,14 +107,14 @@ export const normalizeManualPayloadOrThrow = async ({
 
 export const validateSubmittedManualWeightsOrThrow = ({
   weightsByCriterion,
-  criterionNames,
+  criteria,
 }) => {
-  const numericWeights = criterionNames.map((criterionName) => {
-    const value = weightsByCriterion[criterionName];
+  const numericWeights = criteria.map((criterion) => {
+    const value = weightsByCriterion[criterion.id];
 
     if (!Number.isFinite(value)) {
       throw createBadRequestError(
-        `Weight for criterion '${criterionName}' must be a finite number`,
+        `Weight for criterion '${criterion.name}' must be a finite number`,
         {
           field: "payload.weightsByCriterion",
         }
@@ -108,7 +123,7 @@ export const validateSubmittedManualWeightsOrThrow = ({
 
     if (value < 0 || value > 1) {
       throw createBadRequestError(
-        `Weight for criterion '${criterionName}' must be between 0 and 1`,
+        `Weight for criterion '${criterion.name}' must be between 0 and 1`,
         {
           field: "payload.weightsByCriterion",
         }

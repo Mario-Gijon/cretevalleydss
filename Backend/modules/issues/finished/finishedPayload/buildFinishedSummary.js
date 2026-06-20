@@ -32,7 +32,7 @@ export const attachWeightsToTree = (node, weightMap) => {
   if (node.isLeaf) {
     return {
       ...node,
-      weight: weightMap[node.name],
+      weight: weightMap[node._id],
     };
   }
 
@@ -144,8 +144,9 @@ export const buildSummarySection = ({
 
   const { criteriaTree } = buildIssueCriteriaTree(criteria);
   const weightMap = orderedLeafCriteria.reduce((accumulator, criterion) => {
-    accumulator[criterion.name] =
-      finalCriteriaWeights.weightsByCriterion[criterion.name];
+    const criterionId = toIdString(criterion._id);
+    accumulator[criterionId] =
+      finalCriteriaWeights.weightsByCriterion[criterionId];
     return accumulator;
   }, {});
 

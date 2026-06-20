@@ -11,8 +11,13 @@ const ManualCriteriaWeightsView = (
   },
   ref
 ) => {
-  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames
+  const criteria = Array.isArray(evaluationContext?.criteria?.leafItems)
+    ? evaluationContext.criteria.leafItems
+        .map((criterion) => ({
+          id: criterion?.id,
+          name: criterion?.name,
+        }))
+        .filter((criterion) => criterion.id && criterion.name)
     : [];
   const isReadOnly = readOnly === true || loading === true;
   const weightsByCriterion =
@@ -24,7 +29,7 @@ const ManualCriteriaWeightsView = (
 
   useImperativeHandle(ref, () => ({}));
 
-  if (criterionNames.length === 0) {
+  if (criteria.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
         No criteria available.
@@ -42,16 +47,16 @@ const ManualCriteriaWeightsView = (
 
           <Box sx={{ width: "100%", minWidth: 0 }}>
             <Stack spacing={1.1} sx={{ pt: 1 }}>
-              {criterionNames.map((criterionName) => (
+              {criteria.map((criterion) => (
                 <TextField
-                  key={criterionName}
-                  label={criterionName}
+                  key={criterion.id}
+                  label={criterion.name}
                   type="number"
                   size="small"
                   color="info"
                   variant="outlined"
                   disabled={isReadOnly}
-                  value={weightsByCriterion[criterionName] ?? ""}
+                  value={weightsByCriterion[criterion.id] ?? ""}
                   onChange={(event) => {
                     if (isReadOnly) {
                       return;
@@ -62,7 +67,7 @@ const ManualCriteriaWeightsView = (
                       ...(previous && typeof previous === "object" ? previous : {}),
                       weightsByCriterion: {
                         ...((previous && previous.weightsByCriterion) || {}),
-                        [criterionName]: raw === "" ? "" : Number(raw),
+                        [criterion.id]: raw === "" ? "" : Number(raw),
                       },
                     }));
                   }}

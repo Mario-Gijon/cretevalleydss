@@ -47,52 +47,105 @@ export const formatScenarioWeightValue = (value) => {
   return String(Number(parsed.toFixed(3)));
 };
 
-const isFiniteNumberArray = (value) =>
-  Array.isArray(value) &&
-  value.length > 0 &&
-  value.every((item) => Number.isFinite(Number(item)));
+const resolveScenarioWeightRows = (leafCriteria = [], leafCount = 0) => {
+  const rowsFromCriteria = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion, index) => {
+      const id = normalizeNonEmptyString(criterion?.id || criterion?._id);
+      const name =
+        normalizeNonEmptyString(criterion?.name) || `Criterion ${index + 1}`;
 
-const buildEqualScenarioWeights = (count) => {
-  if (!Number.isInteger(count) || count <= 0) return [];
-  if (count === 1) return [1];
+      if (!id) {
+        return null;
+      }
 
-  const baseWeight = Number((1 / count).toFixed(6));
-  const weights = Array.from({ length: count }, () => baseWeight);
-  const consumed = baseWeight * (count - 1);
-  weights[count - 1] = Number((1 - consumed).toFixed(6));
+      return { id, name };
+    })
+    .filter(Boolean);
+
+  if (rowsFromCriteria.length > 0) {
+    return rowsFromCriteria;
+  }
+
+  const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
+  return Array.from({ length: safeLeafCount }, (_, index) => ({
+    id: `criterion-${index + 1}`,
+    name: `Criterion ${index + 1}`,
+  }));
+};
+
+const isFiniteWeightsByCriterion = ({ weights, rows }) =>
+  isPlainObject(weights) &&
+  rows.length > 0 &&
+  rows.every((row) => Number.isFinite(Number(weights[row.id])));
+
+const buildEqualScenarioWeights = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return {};
+  if (rows.length === 1) {
+    return {
+      [rows[0].id]: 1,
+    };
+  }
+
+  const baseWeight = Number((1 / rows.length).toFixed(6));
+  const weights = {};
+  const consumed = baseWeight * (rows.length - 1);
+
+  rows.forEach((row, index) => {
+    weights[row.id] =
+      index === rows.length - 1
+        ? Number((1 - consumed).toFixed(6))
+        : baseWeight;
+  });
+
   return weights;
 };
 
-const resolveScenarioWeightDefaults = ({ leafCount, baseIssueWeights }) => {
-  if (leafCount <= 0) return [];
-  if (
-    isFiniteNumberArray(baseIssueWeights) &&
-    baseIssueWeights.length === leafCount
-  ) {
-    return baseIssueWeights.map((item) => Number(item));
+const resolveScenarioWeightDefaults = ({ leafCriteria, leafCount, baseIssueWeights }) => {
+  const rows = resolveScenarioWeightRows(leafCriteria, leafCount);
+
+  if (rows.length === 0) {
+    return {};
   }
-  return buildEqualScenarioWeights(leafCount);
+
+  if (isFiniteWeightsByCriterion({ weights: baseIssueWeights, rows })) {
+    return rows.reduce((accumulator, row) => {
+      accumulator[row.id] = Number(baseIssueWeights[row.id]);
+      return accumulator;
+    }, {});
+  }
+
+  return buildEqualScenarioWeights(rows);
 };
 
-export const validateScenarioCriteriaWeights = ({ weights, leafCount }) => {
-  if (!Number.isInteger(leafCount) || leafCount <= 0) {
+export const validateScenarioCriteriaWeights = ({ weights, leafCriteria = [], leafCount = 0 }) => {
+  const rows = resolveScenarioWeightRows(leafCriteria, leafCount);
+
+  if (rows.length === 0) {
     return {
       ok: false,
       msg: "Leaf criteria are required to set scenario weights.",
     };
   }
 
-  if (!Array.isArray(weights) || weights.length !== leafCount) {
+  if (!isPlainObject(weights)) {
     return {
       ok: false,
       msg: "Provide one weight for each criterion.",
     };
   }
 
-  const normalized = [];
+  const weightKeys = Object.keys(weights);
+  if (weightKeys.length !== rows.length) {
+    return {
+      ok: false,
+      msg: "Provide one weight for each criterion.",
+    };
+  }
 
-  for (let index = 0; index < weights.length; index += 1) {
-    const parsed = Number(weights[index]);
+  const normalized = {};
+
+  for (const row of rows) {
+    const parsed = Number(weights[row.id]);
 
     if (!Number.isFinite(parsed)) {
       return {
@@ -108,10 +161,13 @@ export const validateScenarioCriteriaWeights = ({ weights, leafCount }) => {
       };
     }
 
-    normalized.push(parsed);
+    normalized[row.id] = parsed;
   }
 
-  const sum = normalized.reduce((accumulator, value) => accumulator + value, 0);
+  const sum = Object.values(normalized).reduce(
+    (accumulator, value) => accumulator + value,
+    0
+  );
   if (
     Math.abs(sum - 1) >
     SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON
@@ -394,6 +450,7 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
     : {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   const defaultWeights = resolveScenarioWeightDefaults({
+    leafCriteria,
     leafCount: safeLeafCount,
     baseIssueWeights: model?.baseIssueWeights,
   });
@@ -422,12 +479,12 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
       const isWeightsByCriteria = isCriteriaWeightsParameter(param);
 
       if (isWeightsByCriteria && safeLeafCount === 1) {
-        out[key] = [1];
+        out[key] = defaultWeights;
         continue;
       }
 
       if (isWeightsByCriteria && param?.default === "equal" && count > 0) {
-        out[key] = ensureArrayLen(defaultWeights, count, "");
+        out[key] = defaultWeights;
         continue;
       }
 
@@ -513,14 +570,24 @@ export const cleanParamsForSend = ({
       const count = Number(len) || 2;
 
       if (isWeightsByCriteria && Number(leafCount) === 1) {
-        out[name] = [1];
+        out[name] = resolveScenarioWeightDefaults({
+          leafCriteria,
+          leafCount,
+          baseIssueWeights: values?.[name] ?? model?.baseIssueWeights,
+        });
         continue;
       }
 
-      const fallbackDefault =
-        isWeightsByCriteria && def === "equal" && count > 0
-          ? Array.from({ length: count }, () => 1 / count)
-          : def;
+      if (isWeightsByCriteria) {
+        out[name] = resolveScenarioWeightDefaults({
+          leafCriteria,
+          leafCount,
+          baseIssueWeights: values?.[name] ?? model?.baseIssueWeights,
+        });
+        continue;
+      }
+
+      const fallbackDefault = def;
 
       const arr = ensureArrayLen(
         values?.[name] ?? fallbackDefault ?? [],
@@ -751,16 +818,23 @@ export const validateParams = ({
         continue;
       }
 
-      const fallbackDefault =
-        isWeightsByCriteria && param.default === "equal" && count > 0
-          ? Array.from({ length: count }, () => 1 / count)
-          : param.default;
+      if (isWeightsByCriteria) {
+        const validation = validateScenarioCriteriaWeights({
+          weights: value,
+          leafCriteria,
+          leafCount,
+        });
+        if (!validation.ok) {
+          return validation;
+        }
+        continue;
+      }
 
       const arr = ensureArrayLen(
         Array.isArray(value)
           ? value
-          : Array.isArray(fallbackDefault)
-            ? fallbackDefault
+          : Array.isArray(param.default)
+            ? param.default
             : [],
         count,
         ""
@@ -775,27 +849,6 @@ export const validateParams = ({
 
       const numbers = arr.map((item) => Number(item));
       const sum = numbers.reduce((acc, item) => acc + item, 0);
-
-      if (isWeightsByCriteria) {
-        if (numbers.some((item) => item < 0 || item > 1)) {
-          return {
-            ok: false,
-            msg: "Each weight must be between 0 and 1.",
-          };
-        }
-
-        if (
-          Math.abs(sum - 1) >
-          SCENARIO_WEIGHTS_SUM_TOLERANCE + Number.EPSILON
-        ) {
-          return {
-            ok: false,
-            msg: "Weights must sum to 1.",
-          };
-        }
-
-        continue;
-      }
 
       if (restrictions.normalize === true) {
         if (sum <= 0) {

@@ -11,13 +11,13 @@ MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                 "message": "Criteria weights computed successfully",
                 "consensusMeasure": None,
                 "weightsByCriterion": {
-                    "Cost": 0.4,
-                    "Benefit": 0.6,
+                    "criterion-1": 0.4,
+                    "criterion-2": 0.6,
                 },
                 "collectiveEvaluations": {
                     "weightsByCriterion": {
-                        "Cost": 0.4,
-                        "Benefit": 0.6,
+                        "criterion-1": 0.4,
+                        "criterion-2": 0.6,
                     }
                 },
                 "modelExecution": {
@@ -27,8 +27,8 @@ MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                 },
                 "rawOutput": {
                     "averagedWeightsByCriterion": {
-                        "Cost": 0.4,
-                        "Benefit": 0.6,
+                        "criterion-1": 0.4,
+                        "criterion-2": 0.6,
                     }
                 },
             },

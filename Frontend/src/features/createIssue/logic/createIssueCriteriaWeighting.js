@@ -59,20 +59,24 @@ const buildDefaultFuzzyWeightsByCriterion = ({
   leafCriteria,
   fuzzyValueCount,
 }) => {
-  const names = (Array.isArray(leafCriteria) ? leafCriteria : [])
-    .map((criterion) => criterion?.name)
+  const criterionIds = (Array.isArray(leafCriteria) ? leafCriteria : [])
+    .map((criterion) => criterion?.id)
     .filter(Boolean);
-  if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2 || names.length === 0) {
+  if (
+    !Number.isInteger(fuzzyValueCount) ||
+    fuzzyValueCount < 2 ||
+    criterionIds.length === 0
+  ) {
     return {};
   }
 
-  const isSingleCriterion = names.length === 1;
+  const isSingleCriterion = criterionIds.length === 1;
   const baseVector = isSingleCriterion
     ? Array.from({ length: fuzzyValueCount }, () => 1)
     : buildDefaultFuzzyWeightVector(fuzzyValueCount);
 
-  return names.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = [...baseVector];
+  return criterionIds.reduce((accumulator, criterionId) => {
+    accumulator[criterionId] = [...baseVector];
     return accumulator;
   }, {});
 };
@@ -95,12 +99,12 @@ export const isCreateIssueCriteriaWeightingConfigOnDefault = ({
   }
 
   if (!isFuzzyCriteriaWeightModel(selectedModel)) {
-    const leafNames = (Array.isArray(leafCriteria) ? leafCriteria : [])
-      .map((criterion) => criterion?.name)
+    const criterionIds = (Array.isArray(leafCriteria) ? leafCriteria : [])
+      .map((criterion) => criterion?.id)
       .filter(Boolean);
 
-    if (leafNames.length === 1) {
-      const onlyLeaf = leafNames[0];
+    if (criterionIds.length === 1) {
+      const onlyLeafId = criterionIds[0];
       const isCreatorManualForSingleLeaf =
         criteriaWeightingConfig.mode ===
           CREATE_ISSUE_CRITERIA_WEIGHTING_MODES.CREATOR_MANUAL &&
@@ -114,7 +118,7 @@ export const isCreateIssueCriteriaWeightingConfigOnDefault = ({
           ) ||
           isDeepEqual(
             criteriaWeightingConfig?.payload?.weightsByCriterion || {},
-            { [onlyLeaf]: 1 }
+            { [onlyLeafId]: 1 }
           )
         );
 
@@ -196,18 +200,23 @@ export const validateCreateIssueManualCriteriaWeighting = ({
     return "Manual mode requires weights by criterion.";
   }
 
-  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
-  const expectedKeySet = new Set(criterionNames);
+  const criterionItems = leafCriteria
+    .map((criterion) => ({
+      id: criterion?.id,
+      name: criterion?.name,
+    }))
+    .filter((criterion) => criterion.id && criterion.name);
+  const expectedKeySet = new Set(criterionItems.map((criterion) => criterion.id));
 
   const unknownKeys = Object.keys(weightsByCriterion).filter(
-    (criterionName) => !expectedKeySet.has(criterionName)
+    (criterionId) => !expectedKeySet.has(criterionId)
   );
   if (unknownKeys.length > 0) {
     return `Unknown criteria in manual weights: ${unknownKeys.join(", ")}`;
   }
 
-  const weights = criterionNames.map((criterionName) =>
-    Number(weightsByCriterion[criterionName])
+  const weights = criterionItems.map((criterion) =>
+    Number(weightsByCriterion[criterion.id])
   );
 
   if (weights.some((value) => !Number.isFinite(value))) {
@@ -238,29 +247,42 @@ export const validateCreateIssueFuzzyCriteriaWeighting = ({
     return "Fuzzy criteria weights are required.";
   }
 
-  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
+  const criterionItems = leafCriteria
+    .map((criterion) => ({
+      id: criterion?.id,
+      name: criterion?.name,
+    }))
+    .filter((criterion) => criterion.id && criterion.name);
+  const expectedKeySet = new Set(criterionItems.map((criterion) => criterion.id));
+
+  const unknownKeys = Object.keys(weightsByCriterion).filter(
+    (criterionId) => !expectedKeySet.has(criterionId)
+  );
+  if (unknownKeys.length > 0) {
+    return `Unknown criteria in fuzzy weights: ${unknownKeys.join(", ")}`;
+  }
   if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
     return "Fuzzy criteria weights require a consistent linguistic value count.";
   }
 
-  for (const criterionName of criterionNames) {
-    const vector = weightsByCriterion[criterionName];
+  for (const criterion of criterionItems) {
+    const vector = weightsByCriterion[criterion.id];
     if (!Array.isArray(vector) || vector.length !== fuzzyValueCount) {
-      return `Fuzzy weight for '${criterionName}' must contain ${fuzzyValueCount} values.`;
+      return `Fuzzy weight for '${criterion.name}' must contain ${fuzzyValueCount} values.`;
     }
 
     const numericVector = vector.map(Number);
     if (numericVector.some((item) => !Number.isFinite(item))) {
-      return `Fuzzy weight for '${criterionName}' must contain valid numbers.`;
+      return `Fuzzy weight for '${criterion.name}' must contain valid numbers.`;
     }
 
     if (numericVector.some((item) => item < 0 || item > 1)) {
-      return `Fuzzy weight for '${criterionName}' must stay within [0, 1].`;
+      return `Fuzzy weight for '${criterion.name}' must stay within [0, 1].`;
     }
 
     for (let index = 1; index < numericVector.length; index += 1) {
       if (numericVector[index] < numericVector[index - 1]) {
-        return `Fuzzy weight for '${criterionName}' must be non-decreasing.`;
+        return `Fuzzy weight for '${criterion.name}' must be non-decreasing.`;
       }
     }
   }

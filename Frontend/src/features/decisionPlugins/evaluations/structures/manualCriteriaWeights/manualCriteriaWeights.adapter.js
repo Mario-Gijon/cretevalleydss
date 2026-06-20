@@ -1,40 +1,50 @@
-const buildEmptyWeightsByCriterion = (criterionNames) =>
-  Object.fromEntries(criterionNames.map((name) => [name, ""]));
+const buildEmptyWeightsByCriterion = (criteria) =>
+  Object.fromEntries(criteria.map((criterion) => [criterion.id, ""]));
 
-const normalizeDraftWeights = (criterionNames, raw = {}) => {
+const normalizeDraftWeights = (criteria, raw = {}) => {
   const normalized = {};
 
-  for (const name of criterionNames) {
-    const value = raw?.[name];
+  for (const criterion of criteria) {
+    const value = raw?.[criterion.id];
     if (value === "" || value === null || value === undefined) {
-      normalized[name] = "";
+      normalized[criterion.id] = "";
       continue;
     }
 
     const numeric = Number(value);
-    normalized[name] = Number.isFinite(numeric) ? numeric : "";
+    normalized[criterion.id] = Number.isFinite(numeric) ? numeric : "";
   }
 
   return normalized;
 };
 
-const sumWeights = (criterionNames, valuesByCriterion) =>
-  criterionNames.reduce(
-    (sum, name) => sum + Number(valuesByCriterion[name] ?? 0),
+const sumWeights = (criteria, valuesByCriterion) =>
+  criteria.reduce(
+    (sum, criterion) => sum + Number(valuesByCriterion[criterion.id] ?? 0),
     0
   );
 
+const getCriteria = (evaluationContext) =>
+  Array.isArray(evaluationContext?.criteria?.leafItems)
+    ? evaluationContext.criteria.leafItems
+        .map((criterion) => ({
+          id: criterion?.id,
+          name: criterion?.name,
+        }))
+        .filter((criterion) => criterion.id && criterion.name)
+    : [];
+
 export const manualCriteriaWeightsAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
-    const criterionNames = evaluationContext.criteria.leafNames;
-    return { weightsByCriterion: buildEmptyWeightsByCriterion(criterionNames) };
+    const criteria = getCriteria(evaluationContext);
+    return { weightsByCriterion: buildEmptyWeightsByCriterion(criteria) };
   },
 
   fromBackendPayload({ evaluationContext, backendPayload }) {
-    const criterionNames = evaluationContext.criteria.leafNames;
+    const criteria = getCriteria(evaluationContext);
     return {
       weightsByCriterion: normalizeDraftWeights(
-        criterionNames,
+        criteria,
         backendPayload?.weightsByCriterion || {}
       ),
     };
@@ -51,29 +61,32 @@ export const manualCriteriaWeightsAdapter = Object.freeze({
       return { valid: true };
     }
 
-    const criterionNames = evaluationContext.criteria.leafNames;
+    const criteria = getCriteria(evaluationContext);
     const weightsByCriterion = evaluationPayload.weightsByCriterion;
 
-    for (const name of criterionNames) {
-      const value = weightsByCriterion[name];
+    for (const criterion of criteria) {
+      const value = weightsByCriterion[criterion.id];
       if (value === "" || value === null || value === undefined) {
-        return { valid: false, message: `Criterion '${name}' is required.` };
+        return { valid: false, message: `Criterion '${criterion.name}' is required.` };
       }
 
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
-        return { valid: false, message: `Criterion '${name}' must be numeric.` };
+        return {
+          valid: false,
+          message: `Criterion '${criterion.name}' must be numeric.`,
+        };
       }
 
       if (numeric < 0 || numeric > 1) {
         return {
           valid: false,
-          message: `Criterion '${name}' must be between 0 and 1.`,
+          message: `Criterion '${criterion.name}' must be between 0 and 1.`,
         };
       }
     }
 
-    const total = sumWeights(criterionNames, weightsByCriterion);
+    const total = sumWeights(criteria, weightsByCriterion);
     if (Math.abs(total - 1) > 0.001) {
       return { valid: false, message: "Weights must sum to 1." };
     }

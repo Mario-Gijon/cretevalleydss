@@ -36,6 +36,21 @@ const normalizeOptionalStringOrThrow = ({ value, field, message }) => {
   return normalizedValue === "" ? null : normalizedValue;
 };
 
+const normalizeOptionalCriterionIdOrThrow = ({ value, field }) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw createBadRequestError("Criterion id must be a string when provided", {
+      field,
+    });
+  }
+
+  const normalizedValue = normalizeWhitespace(value);
+  return normalizedValue === "" ? null : normalizedValue;
+};
+
 const normalizeUniqueStringArrayOrThrow = ({
   values,
   field,
@@ -156,6 +171,10 @@ const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
     );
 
     return {
+      id: normalizeOptionalCriterionIdOrThrow({
+        value: node.id,
+        field: "criteria",
+      }),
       name,
       type,
       children,

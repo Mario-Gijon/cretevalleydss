@@ -39,6 +39,9 @@ const unwrap = (response) =>
     ? response.data
     : response;
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 const safeJsonStringify = (value) => {
   try {
     if (value === null || value === undefined) return "";
@@ -254,12 +257,12 @@ export const useFinishedIssueDialogView = ({
   const availableModelsRaw = baseModelParamsBlock?.availableModels;
   const baseIssueWeights = useMemo(() => {
     const weightsFromSaved = issue?.modelParams?.base?.paramsSaved?.weights;
-    if (Array.isArray(weightsFromSaved)) return weightsFromSaved;
+    if (isPlainObject(weightsFromSaved)) return weightsFromSaved;
     const weightsFromResolved = issue?.modelParams?.base?.paramsResolved?.weights;
-    if (Array.isArray(weightsFromResolved)) return weightsFromResolved;
-    const weightsFromResult = issue?.finalCriteriaWeights?.weights;
-    if (Array.isArray(weightsFromResult)) return weightsFromResult;
-    return [];
+    if (isPlainObject(weightsFromResolved)) return weightsFromResolved;
+    const weightsFromResult = issue?.finalCriteriaWeights?.weightsByCriterion;
+    if (isPlainObject(weightsFromResult)) return weightsFromResult;
+    return {};
   }, [issue]);
 
   const availableModels = useMemo(
@@ -439,6 +442,7 @@ export const useFinishedIssueDialogView = ({
       if (modelNeedsCriteriaWeights) {
         const weightsValidation = validateScenarioCriteriaWeights({
           weights: scenarioParamValues?.weights,
+          leafCriteria: leafCriteriaForParams,
           leafCount,
         });
 
@@ -472,9 +476,9 @@ export const useFinishedIssueDialogView = ({
       });
 
       if (modelNeedsCriteriaWeights) {
-        modelParameters.weights = Array.isArray(normalizedScenarioWeights)
+        modelParameters.weights = isPlainObject(normalizedScenarioWeights)
           ? normalizedScenarioWeights
-          : [];
+          : {};
       }
     } else {
       let parsedParams = {};

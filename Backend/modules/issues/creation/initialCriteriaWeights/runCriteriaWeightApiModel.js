@@ -100,7 +100,6 @@ export const loadCriteriaWeightingApiModelContextOrThrow = async ({
 
 export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   payload,
-  criterionNames,
   leafCriteria,
   criteriaWeightingModel,
   criteriaWeightingRuntime,
@@ -127,15 +126,19 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
     criteriaWeightingRuntime.criteriaWeightingStructureKey
   );
+  const criteria = Array.isArray(leafCriteria) ? leafCriteria : [];
+  if (criteria.length === 0) {
+    throw createInternalError("leafCriteria are required for creator API model mode", {
+      field: "leafCriteria",
+    });
+  }
+
   const creatorCriteriaWeightingEvaluationContext =
     buildCreatorCriteriaWeightingEvaluationContext({
       criteriaWeightingStructure,
       criteriaWeightingModel,
       normalizedCriteriaWeightingParameters: criteriaWeightingParameters,
-      leafCriteria:
-        Array.isArray(leafCriteria) && leafCriteria.length > 0
-          ? leafCriteria
-          : criterionNames,
+      leafCriteria: criteria,
     });
   const normalizedCreatorPayload = await criteriaWeightingStructure.save({
     mode: "submit",
@@ -166,8 +169,8 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
           creatorCriteriaWeightingEvaluationContext.issue.consensusMaxPhases,
       },
       criteria: creatorCriteriaWeightingEvaluationContext.criteria.leafItems.map(
-        (criterion, index) => ({
-          id: criterion.id || `${index + 1}`,
+        (criterion) => ({
+          id: criterion.id,
           name: criterion.name,
           type: criterion.type || null,
         })
@@ -196,8 +199,10 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     );
   }
 
-  const weights = criterionNames.map((criterionName) => {
-    const numeric = Number(weightsByCriterion[criterionName]);
+  const normalizedWeightsByCriterion = criteria.reduce((accumulator, criterion) => {
+    const criterionId = criterion.id;
+    const criterionName = criterion.name;
+    const numeric = Number(weightsByCriterion[criterionId]);
     if (!Number.isFinite(numeric)) {
       throw createBadRequestError(
         `${criteriaWeightingModel.name} output contains invalid weight for '${criterionName}'`,
@@ -206,10 +211,14 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
         }
       );
     }
-    return numeric;
-  });
+    accumulator[criterionId] = numeric;
+    return accumulator;
+  }, {});
 
-  const total = weights.reduce((sum, value) => sum + value, 0);
+  const total = Object.values(normalizedWeightsByCriterion).reduce(
+    (sum, value) => sum + value,
+    0
+  );
   if (!(total > 0)) {
     throw createBadRequestError(
       `${criteriaWeightingModel.name} output weights cannot be normalized`,
@@ -219,5 +228,10 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
     );
   }
 
-  return weights.map((value) => value / total);
+  return Object.fromEntries(
+    Object.entries(normalizedWeightsByCriterion).map(([criterionId, value]) => [
+      criterionId,
+      value / total,
+    ])
+  );
 };

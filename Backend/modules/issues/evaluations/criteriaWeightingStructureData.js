@@ -1,7 +1,8 @@
 import { getOrderedLeafCriteriaDb } from "../shared/ordering.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
+import { toIdString } from "../../../utils/common/ids.js";
 
-export const getOrderedCriterionNames = async ({ issue }) => {
+export const getOrderedCriteriaForWeightingOrThrow = async ({ issue }) => {
   const leafCriteria = await getOrderedLeafCriteriaDb({
     issueId: issue?._id,
     issueDoc: issue,
@@ -15,10 +16,13 @@ export const getOrderedCriterionNames = async ({ issue }) => {
     });
   }
 
-  const criterionNames = leafCriteria.map((criterion) => String(criterion?.name || ""));
+  const criteria = leafCriteria.map((criterion) => ({
+    id: toIdString(criterion?._id),
+    name: String(criterion?.name || ""),
+  }));
 
   return {
     leafCriteria,
-    criterionNames,
+    criteria,
   };
 };

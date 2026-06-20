@@ -11,20 +11,24 @@ def _is_plain_object(value: Any) -> bool:
     return isinstance(value, dict)
 
 
-def _normalize_criterion_names(payload: GenericModelExecutionRequest) -> list[str]:
+def _normalize_criteria(payload: GenericModelExecutionRequest) -> list[dict[str, str]]:
     criteria = payload.context.get("criteria") if _is_plain_object(payload.context) else []
     if not isinstance(criteria, list):
         return []
 
-    criterion_names: list[str] = []
+    criterion_items: list[dict[str, str]] = []
     for criterion in criteria:
         if not isinstance(criterion, dict):
             continue
+        criterion_id = str(criterion.get("id") or "").strip()
         name = str(criterion.get("name") or "").strip()
-        if name:
-            criterion_names.append(name)
+        if criterion_id and name:
+            criterion_items.append({
+                "id": criterion_id,
+                "name": name,
+            })
 
-    return criterion_names
+    return criterion_items
 
 
 def _normalize_bwm_scale_value(value: Any, field: str) -> float:
@@ -41,9 +45,9 @@ def _normalize_bwm_scale_value(value: Any, field: str) -> float:
 
 def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONResponse:
     try:
-        criterion_names = _normalize_criterion_names(payload)
-        if len(criterion_names) == 0:
-            return error_response("BWM requires context.criteria with criterion names")
+        criteria = _normalize_criteria(payload)
+        if len(criteria) == 0:
+            return error_response("BWM requires context.criteria with criterion ids and names")
 
         experts_data: dict[str, dict[str, list[float]]] = {}
         for evaluation in payload.evaluations:
@@ -71,27 +75,29 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
 
             mic: list[float] = []
             lic: list[float] = []
-            for criterion_name in criterion_names:
-                if criterion_name not in best_to_others:
+            for criterion in criteria:
+                criterion_id = criterion["id"]
+                criterion_name = criterion["name"]
+                if criterion_id not in best_to_others:
                     return error_response(
-                        f"Invalid BWM payload for expert '{expert_key}': missing bestToOthers['{criterion_name}']"
+                        f"Invalid BWM payload for expert '{expert_key}': missing bestToOthers['{criterion_id}'] for '{criterion_name}'"
                     )
-                if criterion_name not in others_to_worst:
+                if criterion_id not in others_to_worst:
                     return error_response(
-                        f"Invalid BWM payload for expert '{expert_key}': missing othersToWorst['{criterion_name}']"
+                        f"Invalid BWM payload for expert '{expert_key}': missing othersToWorst['{criterion_id}'] for '{criterion_name}'"
                     )
 
                 try:
                     mic.append(
                         _normalize_bwm_scale_value(
-                            best_to_others[criterion_name],
-                            f"bestToOthers['{criterion_name}']",
+                            best_to_others[criterion_id],
+                            f"bestToOthers['{criterion_id}']",
                         )
                     )
                     lic.append(
                         _normalize_bwm_scale_value(
-                            others_to_worst[criterion_name],
-                            f"othersToWorst['{criterion_name}']",
+                            others_to_worst[criterion_id],
+                            f"othersToWorst['{criterion_id}']",
                         )
                     )
                 except ValueError as error:
@@ -117,12 +123,12 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             return error_response(results.get("message") or "Error executing BWM")
 
         weights = results.get("weights", [])
-        if not isinstance(weights, list) or len(weights) < len(criterion_names):
+        if not isinstance(weights, list) or len(weights) < len(criteria):
             return error_response("BWM output does not contain enough weights")
 
         weights_by_criterion = {
-            criterion_name: float(weights[index])
-            for index, criterion_name in enumerate(criterion_names)
+            criterion["id"]: float(weights[index])
+            for index, criterion in enumerate(criteria)
         }
 
         response_data = {

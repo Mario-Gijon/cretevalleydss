@@ -19,6 +19,7 @@ import {
   resolveIssueSimulationConfigOrThrow,
 } from "./resolveIssueCreationOptions.js";
 import {
+  remapCriteriaWeightIdsToMongoCriteriaOrThrow,
   resolveCriteriaWeightingConfigOrThrow,
   resolveFuzzyCriteriaWeightValueCountOrThrow,
 } from "./initialCriteriaWeights/index.js";
@@ -187,6 +188,7 @@ export const prepareIssueCreation = async ({
     normalizedModelParameters,
     domainDocs,
     domainIdByCriterionName,
+    orderedLeafCriteria,
     resolvedCriteriaWeighting,
     normalizedExpertWeightsByEmail,
   };
@@ -216,6 +218,7 @@ export const persistPreparedIssueCreation = async ({
     normalizedModelParameters,
     domainDocs,
     domainIdByCriterionName,
+    orderedLeafCriteria,
     resolvedCriteriaWeighting,
     normalizedExpertWeightsByEmail,
   } = preparedIssueCreation;
@@ -259,13 +262,19 @@ export const persistPreparedIssueCreation = async ({
     session,
   });
 
+  const persistedCriteriaWeighting = remapCriteriaWeightIdsToMongoCriteriaOrThrow({
+    resolvedCriteriaWeighting,
+    sourceLeafCriteria: orderedLeafCriteria,
+    persistedLeafCriteria: leafCriteria,
+  });
+
   applyInitialCriteriaWeightsToIssue({
     issue,
-    resolvedCriteriaWeighting,
+    resolvedCriteriaWeighting: persistedCriteriaWeighting,
   });
 
   const isCriteriaWeightingRequired =
-    resolvedCriteriaWeighting.isCriteriaWeightingRequired;
+    persistedCriteriaWeighting.isCriteriaWeightingRequired;
 
   const { emailsToSend } = await createIssueParticipationsAndNotifications({
     issue,

@@ -46,6 +46,7 @@ import {
   buildCreateIssueAllData,
   buildCreateIssueHeaderSubtitle,
 } from "../logic/createIssueSummary";
+import { ensureCriteriaTreeIds } from "../logic/createIssueCriterionIds";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
@@ -77,7 +78,9 @@ export const useCreateIssue = () => {
     storedData.showConsensusModels === true
   );
   const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
-  const [criteria, setCriteria] = useState(storedData.criteria || []);
+  const [criteria, setCriteria] = useState(
+    ensureCriteriaTreeIds(storedData.criteria || [])
+  );
   const [addedExperts, setAddedExperts] = useState(storedData.addedExperts || []);
   const [expertWeights, setExpertWeights] = useState(
     modelUsesExpertWeights(storedData.selectedModel) && storedData.expertWeights
@@ -172,6 +175,10 @@ export const useCreateIssue = () => {
       setSimulateConsensus(false);
     }
   }, [effectiveIsConsensus, modelSupportsConsensusSimulation]);
+
+  useEffect(() => {
+    setCriteria((previous) => ensureCriteriaTreeIds(previous));
+  }, []);
 
   useEffect(() => {
     if (selectedModel) {

@@ -6,6 +6,7 @@ import {
   createBadRequestError,
   createInternalError,
 } from "../../../../utils/common/errors.js";
+import { toIdString } from "../../../../utils/common/ids.js";
 import { normalizeCreatorFuzzyWeightsOrThrow, normalizeCreatorManualWeightsOrThrow } from "./validateCriteriaWeightPayload.js";
 import { resolveCriteriaWeightingModeConfigOrThrow } from "./resolveCriteriaWeightMode.js";
 import {
@@ -19,6 +20,20 @@ const ensureCriteriaNamesOrThrow = (criterionNames) => {
       field: "criteria",
     });
   }
+};
+
+const getCriterionIdsOrThrow = (leafCriteria) => {
+  return leafCriteria.map((criterion) => {
+    const criterionId = toIdString(criterion?.id ?? criterion?._id);
+
+    if (!criterionId) {
+      throw createInternalError("Leaf criterion id is required for criteria weights", {
+        field: "criteria.id",
+      });
+    }
+
+    return criterionId;
+  });
 };
 
 const validateCriteriaWeightingModeSupportOrThrow = ({
@@ -261,6 +276,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     criteriaWeightingRuntime,
     normalizedCriteriaWeightingParameters,
   });
+  const criterionIds = getCriterionIdsOrThrow(leafCriteria);
 
   if (resolvedConfig.mode === "creatorFuzzy") {
     if (!Number.isInteger(fuzzyValueCount) || fuzzyValueCount < 2) {
@@ -279,7 +295,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
         criteriaWeightingApiModelKey: null,
         criteriaWeightingApiEndpoint: null,
         criteriaWeightingParameters: {},
-        modelWeights: [Array.from({ length: fuzzyValueCount }, () => 1)],
+        modelWeights: {
+          [criterionIds[0]]: Array.from({ length: fuzzyValueCount }, () => 1),
+        },
         currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
         isCriteriaWeightingRequired: false,
       });
@@ -287,7 +305,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
     const modelWeights = normalizeCreatorFuzzyWeightsOrThrow({
       payload: resolvedConfig.payload,
-      criterionNames,
+      leafCriteria,
       valueCount: fuzzyValueCount,
     });
 
@@ -304,7 +322,9 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   if (isSingleLeafCriterion) {
-    const fixedWeights = [1];
+    const fixedWeights = {
+      [criterionIds[0]]: 1,
+    };
 
     return buildResolvedCriteriaWeightingConfig({
       criteriaWeightingStructureKey: resolvedStructureKey,
@@ -336,12 +356,11 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   if (resolvedConfig.method === "manual") {
     modelWeights = normalizeCreatorManualWeightsOrThrow({
       payload: resolvedConfig.payload,
-      criterionNames,
+      leafCriteria,
     });
   } else if (resolvedConfig.method === "apiModel") {
     modelWeights = await resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
       payload: resolvedConfig.payload,
-      criterionNames,
       leafCriteria,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
@@ -368,4 +387,51 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     isCriteriaWeightingRequired: false,
   });
+};
+
+export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
+  resolvedCriteriaWeighting,
+  sourceLeafCriteria,
+  persistedLeafCriteria,
+}) => {
+  if (resolvedCriteriaWeighting.modelWeights === null) {
+    return resolvedCriteriaWeighting;
+  }
+
+  const sourceCriterionIds = getCriterionIdsOrThrow(sourceLeafCriteria);
+  const persistedCriterionIds = getCriterionIdsOrThrow(persistedLeafCriteria);
+
+  if (sourceCriterionIds.length !== persistedCriterionIds.length) {
+    throw createInternalError("Leaf criteria count changed while remapping weights", {
+      field: "criteria",
+      details: {
+        sourceCount: sourceCriterionIds.length,
+        persistedCount: persistedCriterionIds.length,
+      },
+    });
+  }
+
+  const remappedWeights = {};
+
+  sourceCriterionIds.forEach((sourceCriterionId, index) => {
+    const persistedCriterionId = persistedCriterionIds[index];
+    const value = resolvedCriteriaWeighting.modelWeights[sourceCriterionId];
+
+    if (value === undefined) {
+      throw createInternalError("Criteria weight is missing during persistence remap", {
+        field: "modelParameters.weights",
+        details: {
+          sourceCriterionId,
+          persistedCriterionId,
+        },
+      });
+    }
+
+    remappedWeights[persistedCriterionId] = value;
+  });
+
+  return {
+    ...resolvedCriteriaWeighting,
+    modelWeights: remappedWeights,
+  };
 };

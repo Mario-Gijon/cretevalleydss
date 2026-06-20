@@ -45,6 +45,7 @@ import {
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
 } from "../logic/createIssueCriteriaWeighting";
+import { buildCreateIssueCriterionId } from "../logic/createIssueCriterionIds";
 import {
   CRITERIA_WEIGHTING_MODES,
   normalizeMode,
@@ -63,14 +64,16 @@ const roundCriterionWeight = (value) => {
     : "";
 };
 
-const buildRoundedEqualWeights = (criterionNames) => {
-  const names = Array.isArray(criterionNames) ? criterionNames.filter(Boolean) : [];
-  if (names.length === 0) return {};
+const buildRoundedEqualWeights = (criteria) => {
+  const criterionIds = (Array.isArray(criteria) ? criteria : [])
+    .map((criterion) => criterion?.id)
+    .filter(Boolean);
+  if (criterionIds.length === 0) return {};
 
-  const equalWeight = roundCriterionWeight(1 / names.length);
+  const equalWeight = roundCriterionWeight(1 / criterionIds.length);
 
-  return names.reduce((acc, criterionName) => {
-    acc[criterionName] = equalWeight;
+  return criterionIds.reduce((acc, criterionId) => {
+    acc[criterionId] = equalWeight;
     return acc;
   }, {});
 };
@@ -164,8 +167,14 @@ export const CriteriaStep = () => {
   const reversed = useMemo(() => criteria.slice().reverse(), [criteria]);
   const leafCount = useMemo(() => countLeafCriteria(criteria), [criteria]);
   const leafCriteria = useMemo(() => getLeafCriteria(criteria), [criteria]);
-  const criterionNames = leafCriteria.map((criterion) => criterion?.name).filter(Boolean);
-  const isSingleCriterion = criterionNames.length === 1;
+  const leafCriterionItems = leafCriteria
+    .map((criterion) => ({
+      id: typeof criterion?.id === "string" ? criterion.id.trim() : "",
+      name: criterion?.name,
+    }))
+    .filter((criterion) => criterion.id && criterion.name);
+  const criterionNames = leafCriterionItems.map((criterion) => criterion.name);
+  const isSingleCriterion = leafCriterionItems.length === 1;
 
   const assignedDomainIds = useMemo(
     () =>
@@ -204,8 +213,8 @@ export const CriteriaStep = () => {
   const manualWeightStatus = useMemo(() => {
     if (creatorWeightMode !== "manual") return null;
 
-    const values = criterionNames.map((criterionName) =>
-      Number(weightsByCriterion?.[criterionName])
+    const values = leafCriterionItems.map((criterion) =>
+      Number(weightsByCriterion?.[criterion.id])
     );
 
     const allNumeric = values.every((value) => Number.isFinite(value));
@@ -233,11 +242,11 @@ export const CriteriaStep = () => {
     if (creatorWeightMode !== "manual") return false;
     if (criterionNames.length === 0) return false;
 
-    const equalWeights = buildRoundedEqualWeights(criterionNames);
+    const equalWeights = buildRoundedEqualWeights(leafCriterionItems);
 
-    return criterionNames.every((criterionName) => {
-      const current = Number(weightsByCriterion?.[criterionName]);
-      const expected = Number(equalWeights?.[criterionName]);
+    return leafCriterionItems.every((criterion) => {
+      const current = Number(weightsByCriterion?.[criterion.id]);
+      const expected = Number(equalWeights?.[criterion.id]);
 
       return (
         Number.isFinite(current) &&
@@ -245,7 +254,7 @@ export const CriteriaStep = () => {
         Math.abs(current - expected) <= 0.0005
       );
     });
-  }, [creatorWeightMode, criterionNames, weightsByCriterion]);
+  }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
   const updateWeightsConfigFromUser = (nextConfig) => {
     if (typeof setDefaultModelParams === "function") {
@@ -254,14 +263,14 @@ export const CriteriaStep = () => {
     setCriteriaWeightingConfig?.(nextConfig);
   };
 
-  const handleManualWeightChange = (criterionName, value) => {
+  const handleManualWeightChange = (criterionId, value) => {
     updateWeightsConfigFromUser({
       ...(criteriaWeightingConfig || {}),
       payload: {
         ...(criteriaWeightingConfig?.payload || {}),
         weightsByCriterion: {
           ...(criteriaWeightingConfig?.payload?.weightsByCriterion || {}),
-          [criterionName]: value === "" ? "" : roundCriterionWeight(value),
+          [criterionId]: value === "" ? "" : roundCriterionWeight(value),
         },
       },
     });
@@ -272,19 +281,19 @@ export const CriteriaStep = () => {
       ...(criteriaWeightingConfig || {}),
       payload: {
         ...(criteriaWeightingConfig?.payload || {}),
-        weightsByCriterion: buildRoundedEqualWeights(criterionNames),
+        weightsByCriterion: buildRoundedEqualWeights(leafCriterionItems),
       },
     });
   };
 
-  const handleFuzzyWeightChange = (criterionName, nextVector) => {
+  const handleFuzzyWeightChange = (criterionId, nextVector) => {
     updateWeightsConfigFromUser({
       ...(criteriaWeightingConfig || {}),
       payload: {
         ...(criteriaWeightingConfig?.payload || {}),
         weightsByCriterion: {
           ...(criteriaWeightingConfig?.payload?.weightsByCriterion || {}),
-          [criterionName]: nextVector,
+          [criterionId]: nextVector,
         },
       },
     });
@@ -343,7 +352,12 @@ export const CriteriaStep = () => {
 
     setCriteria((previous) => [
       ...previous,
-      { name: inputValue.trim(), type: showCriterionTypes ? selectedType : "benefit", children: [] },
+      {
+        id: buildCreateIssueCriterionId(),
+        name: inputValue.trim(),
+        type: showCriterionTypes ? selectedType : "benefit",
+        children: [],
+      },
     ]);
     setInputValue("");
     setInputError(false);
@@ -384,6 +398,7 @@ export const CriteriaStep = () => {
               children: [
                 ...item.children,
                 {
+                  id: buildCreateIssueCriterionId(),
                   name: childInputValue.trim(),
                   type: selectedParent?.type || "benefit",
                   children: [],
@@ -421,6 +436,7 @@ export const CriteriaStep = () => {
             children: [
               ...item.children,
               {
+                id: buildCreateIssueCriterionId(),
                 name: childInputValue.trim(),
                 type: selectedParent?.type || "benefit",
                 children: [],
