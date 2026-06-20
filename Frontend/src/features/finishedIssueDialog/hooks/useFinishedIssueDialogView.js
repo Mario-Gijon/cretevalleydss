@@ -717,6 +717,7 @@ export const useFinishedIssueDialogView = ({
       baseParamsForViewer,
       baseResolved,
       leafNames,
+      leafCriteria: leafCriteriaForParams,
       selectedRunLabel,
       selectedParamsForViewer,
       selectedResolved,

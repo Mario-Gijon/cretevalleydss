@@ -7,6 +7,7 @@ import { buildModelParameterContext } from "../logic/buildModelParameterContext"
 
 const getParameterKey = (parameter) => parameter.key;
 const getParameterLabel = (parameter) => parameter.label || parameter.key;
+const isRawOnlyParameter = (parameter) => parameter?.rawOnly === true;
 
 const hasRealValue = (value) => {
   if (value === null || value === undefined || value === "") return false;
@@ -59,7 +60,59 @@ const ParamRow = ({ name, children }) => {
 };
 
 const RawWeightsView = ({ value, context }) => {
-  if (!Array.isArray(value)) {
+  if (Array.isArray(value)) {
+    const labels = value.map((_, index) => {
+      const criterionName = Array.isArray(context?.leafNames)
+        ? context.leafNames[index]
+        : null;
+      return criterionName || `Criterion ${index + 1}`;
+    });
+
+    return (
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "max-content max-content",
+          columnGap: 1.25,
+          rowGap: 0.45,
+          alignItems: "center",
+          width: "fit-content",
+        }}
+      >
+        {value.map((weight, index) => (
+          <Box
+            key={`${labels[index]}-${index}`}
+            sx={{
+              display: "contents",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {labels[index]}:
+            </Typography>
+
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 850,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {formatWeight(weight)}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  }
+
+  if (!isPlainObject(value)) {
     return (
       <Typography variant="body2" sx={{ fontWeight: 800 }}>
         {formatPrimitive(value)}
@@ -67,12 +120,34 @@ const RawWeightsView = ({ value, context }) => {
     );
   }
 
-  const labels = value.map((_, index) => {
-    const criterionName = Array.isArray(context?.leafNames)
-      ? context.leafNames[index]
-      : null;
-    return criterionName || `Criterion ${index + 1}`;
-  });
+  const leafCriteria = Array.isArray(context?.leafCriteria) ? context.leafCriteria : [];
+  const labelByCriterionId = new Map(
+    leafCriteria.map((criterion, index) => {
+      const criterionId = String(criterion?.id || criterion?._id || "").trim();
+      const criterionName =
+        typeof criterion?.name === "string" && criterion.name.trim()
+          ? criterion.name.trim()
+          : `Criterion ${index + 1}`;
+
+      return [criterionId, criterionName];
+    })
+  );
+
+  const orderedEntries = [
+    ...leafCriteria
+      .map((criterion) => {
+        const criterionId = String(criterion?.id || criterion?._id || "").trim();
+        if (!criterionId || !Object.prototype.hasOwnProperty.call(value, criterionId)) {
+          return null;
+        }
+
+        return [criterionId, value[criterionId]];
+      })
+      .filter(Boolean),
+    ...Object.entries(value).filter(
+      ([criterionId]) => !labelByCriterionId.has(String(criterionId).trim())
+    ),
+  ];
 
   return (
     <Box
@@ -85,9 +160,9 @@ const RawWeightsView = ({ value, context }) => {
         width: "fit-content",
       }}
     >
-      {value.map((weight, index) => (
+      {orderedEntries.map(([criterionId, weight]) => (
         <Box
-          key={`${labels[index]}-${index}`}
+          key={criterionId}
           sx={{
             display: "contents",
           }}
@@ -100,7 +175,7 @@ const RawWeightsView = ({ value, context }) => {
               whiteSpace: "nowrap",
             }}
           >
-            {labels[index]}:
+            {labelByCriterionId.get(String(criterionId).trim()) || criterionId}:
           </Typography>
 
           <Typography
@@ -211,11 +286,15 @@ export const IssueModelParametersView = ({ parameters, values, context }) => {
 
           return (
             <ParamRow key={parameter._id || key} name={label}>
-              <ParameterReadOnlyHost
-                parameter={parameter}
-                value={value}
-                context={parameterContext}
-              />
+              {isRawOnlyParameter(parameter) ? (
+                <RawValueView paramKey={key} value={value} context={parameterContext} />
+              ) : (
+                <ParameterReadOnlyHost
+                  parameter={parameter}
+                  value={value}
+                  context={parameterContext}
+                />
+              )}
             </ParamRow>
           );
         })}

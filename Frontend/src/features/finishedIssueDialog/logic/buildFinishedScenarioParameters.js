@@ -223,8 +223,8 @@ export const buildPseudoParametersFromValues = (values) => {
 
   return Object.keys(source)
     .sort()
-    .map((name) => {
-      const value = source[name];
+    .map((key) => {
+      const value = source[key];
 
       const isFuzzyArray =
         Array.isArray(value) &&
@@ -247,7 +247,13 @@ export const buildPseudoParametersFromValues = (values) => {
             ? "array"
             : "json";
 
-      return { name, type, default: value };
+      return {
+        key,
+        label: key,
+        type,
+        default: value,
+        rawOnly: true,
+      };
     });
 };
 

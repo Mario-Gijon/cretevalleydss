@@ -42,13 +42,14 @@ const ModelsSection = () => {
     baseParamsForViewer,
     baseResolved,
     leafNames,
+    leafCriteria,
     selectedRunLabel,
     selectedParamsForViewer,
     selectedResolved,
     addDialog,
   } = modelsSection;
   const parameterContext = buildModelParameterContext({
-    leafCriteria: [],
+    leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
     leafNames: Array.isArray(leafNames) ? leafNames : [],
     alternatives: [],
   });
