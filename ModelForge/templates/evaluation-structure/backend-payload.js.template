@@ -1,6 +1,6 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { resolveEvaluationEntitiesOrThrow } from "./evaluationContext.js";
+import { resolveEvaluationEntitiesOrThrow } from "./{{ evaluation_structure_key }}.context.js";
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
