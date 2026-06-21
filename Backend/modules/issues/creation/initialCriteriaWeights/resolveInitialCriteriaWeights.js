@@ -11,8 +11,10 @@ import { normalizeCreatorFuzzyWeightsOrThrow, normalizeCreatorManualWeightsOrThr
 import { resolveCriteriaWeightingModeConfigOrThrow } from "./resolveCriteriaWeightMode.js";
 import {
   loadCriteriaWeightingApiModelContextOrThrow,
+  normalizeCreatorApiCriteriaWeightingPayloadOrThrow,
   resolveCreatorApiCriteriaWeightingModelWeightsOrThrow,
 } from "./runCriteriaWeightApiModel.js";
+import { isPlainObject } from "../../../../utils/common/objects.js";
 
 const ensureCriteriaNamesOrThrow = (criterionNames) => {
   if (criterionNames.length === 0) {
@@ -72,20 +74,26 @@ const validateCriteriaWeightingModeSupportOrThrow = ({
 const buildResolvedCriteriaWeightingConfig = ({
   criteriaWeightingStructureKey,
   criteriaWeightingModel,
+  criteriaWeightingRuntime,
   criteriaWeightingApiModelKey,
   criteriaWeightingApiEndpoint,
   criteriaWeightingParameters,
   modelWeights,
+  deferredPayload = null,
+  isDeferredApiCriteriaWeighting = false,
   currentStage,
   isCriteriaWeightingRequired,
 }) => {
   return {
     criteriaWeightingStructureKey,
     criteriaWeightingModel,
+    criteriaWeightingRuntime,
     criteriaWeightingApiModelKey,
     criteriaWeightingApiEndpoint,
     criteriaWeightingParameters,
     modelWeights,
+    deferredPayload,
+    isDeferredApiCriteriaWeighting,
     currentStage,
     isCriteriaWeightingRequired,
   };
@@ -95,13 +103,137 @@ const buildNoCriteriaWeightingResolution = () =>
   buildResolvedCriteriaWeightingConfig({
     criteriaWeightingStructureKey: null,
     criteriaWeightingModel: null,
+    criteriaWeightingRuntime: null,
     criteriaWeightingApiModelKey: null,
     criteriaWeightingApiEndpoint: null,
     criteriaWeightingParameters: {},
     modelWeights: null,
+    deferredPayload: null,
+    isDeferredApiCriteriaWeighting: false,
     currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     isCriteriaWeightingRequired: false,
   });
+
+const remapCriterionIdOrThrow = ({
+  criterionId,
+  idMap,
+  field,
+}) => {
+  const normalizedCriterionId = String(criterionId || "").trim();
+  if (!normalizedCriterionId) {
+    throw createBadRequestError("Criterion id is required for criteria weighting payload", {
+      field,
+    });
+  }
+
+  const persistedCriterionId = idMap.get(normalizedCriterionId);
+  if (!persistedCriterionId) {
+    throw createBadRequestError("Unable to remap criteria weighting payload to persisted criteria", {
+      field,
+      details: {
+        criterionId: normalizedCriterionId,
+      },
+    });
+  }
+
+  return persistedCriterionId;
+};
+
+const remapBestWorstCriteriaPayloadOrThrow = ({
+  payload,
+  idMap,
+}) => {
+  if (!isPlainObject(payload)) {
+    throw createBadRequestError("criteriaWeightingConfig.payload must be an object", {
+      field: "criteriaWeightingConfig.payload",
+    });
+  }
+
+  const bestToOthers = payload.bestToOthers;
+  const othersToWorst = payload.othersToWorst;
+
+  if (!isPlainObject(bestToOthers)) {
+    throw createBadRequestError("criteriaWeightingConfig.payload.bestToOthers must be an object", {
+      field: "criteriaWeightingConfig.payload.bestToOthers",
+    });
+  }
+
+  if (!isPlainObject(othersToWorst)) {
+    throw createBadRequestError("criteriaWeightingConfig.payload.othersToWorst must be an object", {
+      field: "criteriaWeightingConfig.payload.othersToWorst",
+    });
+  }
+
+  const remappedBestCriterion = remapCriterionIdOrThrow({
+    criterionId: payload.bestCriterion,
+    idMap,
+    field: "criteriaWeightingConfig.payload.bestCriterion",
+  });
+  const remappedWorstCriterion = remapCriterionIdOrThrow({
+    criterionId: payload.worstCriterion,
+    idMap,
+    field: "criteriaWeightingConfig.payload.worstCriterion",
+  });
+
+  const remappedBestToOthers = Object.entries(bestToOthers).reduce(
+    (accumulator, [criterionId, value]) => {
+      accumulator[
+        remapCriterionIdOrThrow({
+          criterionId,
+          idMap,
+          field: "criteriaWeightingConfig.payload.bestToOthers",
+        })
+      ] = value;
+      return accumulator;
+    },
+    {}
+  );
+
+  const remappedOthersToWorst = Object.entries(othersToWorst).reduce(
+    (accumulator, [criterionId, value]) => {
+      accumulator[
+        remapCriterionIdOrThrow({
+          criterionId,
+          idMap,
+          field: "criteriaWeightingConfig.payload.othersToWorst",
+        })
+      ] = value;
+      return accumulator;
+    },
+    {}
+  );
+
+  return {
+    ...payload,
+    bestCriterion: remappedBestCriterion,
+    worstCriterion: remappedWorstCriterion,
+    bestToOthers: remappedBestToOthers,
+    othersToWorst: remappedOthersToWorst,
+  };
+};
+
+const remapDeferredCriteriaWeightingPayloadOrThrow = ({
+  resolvedCriteriaWeighting,
+  idMap,
+}) => {
+  if (!resolvedCriteriaWeighting.isDeferredApiCriteriaWeighting) {
+    return null;
+  }
+
+  if (resolvedCriteriaWeighting.criteriaWeightingStructureKey === "bestWorstCriteria") {
+    return remapBestWorstCriteriaPayloadOrThrow({
+      payload: resolvedCriteriaWeighting.deferredPayload,
+      idMap,
+    });
+  }
+
+  throw createInternalError(
+    `Unsupported deferred criteria weighting structure '${resolvedCriteriaWeighting.criteriaWeightingStructureKey}'`,
+    {
+      field: "criteriaWeightingConfig.structureKey",
+    }
+  );
+};
 
 const resolveApiModelMetadata = ({
   resolvedConfig,
@@ -290,17 +422,20 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
     if (isSingleLeafCriterion) {
       return buildResolvedCriteriaWeightingConfig({
-        criteriaWeightingStructureKey: resolvedStructureKey,
-        criteriaWeightingModel: null,
-        criteriaWeightingApiModelKey: null,
-        criteriaWeightingApiEndpoint: null,
-        criteriaWeightingParameters: {},
-        modelWeights: {
-          [criterionIds[0]]: Array.from({ length: fuzzyValueCount }, () => 1),
-        },
-        currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-        isCriteriaWeightingRequired: false,
-      });
+      criteriaWeightingStructureKey: resolvedStructureKey,
+      criteriaWeightingModel: null,
+      criteriaWeightingRuntime: null,
+      criteriaWeightingApiModelKey: null,
+      criteriaWeightingApiEndpoint: null,
+      criteriaWeightingParameters: {},
+      modelWeights: {
+        [criterionIds[0]]: Array.from({ length: fuzzyValueCount }, () => 1),
+      },
+      deferredPayload: null,
+      isDeferredApiCriteriaWeighting: false,
+      currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+      isCriteriaWeightingRequired: false,
+    });
     }
 
     const modelWeights = normalizeCreatorFuzzyWeightsOrThrow({
@@ -312,10 +447,13 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     return buildResolvedCriteriaWeightingConfig({
       criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingModel: null,
+      criteriaWeightingRuntime: null,
       criteriaWeightingApiModelKey: null,
       criteriaWeightingApiEndpoint: null,
       criteriaWeightingParameters: {},
       modelWeights,
+      deferredPayload: null,
+      isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
     });
@@ -329,10 +467,13 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     return buildResolvedCriteriaWeightingConfig({
       criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingModel,
+      criteriaWeightingRuntime,
       criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,
       criteriaWeightingApiEndpoint: apiModelMetadata.criteriaWeightingApiEndpoint,
       criteriaWeightingParameters: apiModelMetadata.criteriaWeightingParameters,
       modelWeights: fixedWeights,
+      deferredPayload: null,
+      isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       isCriteriaWeightingRequired: false,
     });
@@ -342,16 +483,21 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     return buildResolvedCriteriaWeightingConfig({
       criteriaWeightingStructureKey: resolvedStructureKey,
       criteriaWeightingModel,
+      criteriaWeightingRuntime,
       criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,
       criteriaWeightingApiEndpoint: apiModelMetadata.criteriaWeightingApiEndpoint,
       criteriaWeightingParameters: apiModelMetadata.criteriaWeightingParameters,
       modelWeights: null,
+      deferredPayload: null,
+      isDeferredApiCriteriaWeighting: false,
       currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       isCriteriaWeightingRequired: true,
     });
   }
 
   let modelWeights = null;
+  let deferredPayload = null;
+  let isDeferredApiCriteriaWeighting = false;
 
   if (resolvedConfig.method === "manual") {
     modelWeights = normalizeCreatorManualWeightsOrThrow({
@@ -359,15 +505,14 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       leafCriteria,
     });
   } else if (resolvedConfig.method === "apiModel") {
-    modelWeights = await resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
+    deferredPayload = await normalizeCreatorApiCriteriaWeightingPayloadOrThrow({
       payload: resolvedConfig.payload,
       leafCriteria,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
       criteriaWeightingParameters: normalizedCriteriaWeightingParameters,
-      decisionModelsServiceBaseUrl,
-      httpClient,
     });
+    isDeferredApiCriteriaWeighting = true;
   } else {
     throw createBadRequestError(
       `Unsupported criteria weighting method: ${resolvedConfig.method}`,
@@ -380,10 +525,13 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   return buildResolvedCriteriaWeightingConfig({
     criteriaWeightingStructureKey: resolvedStructureKey,
     criteriaWeightingModel,
+    criteriaWeightingRuntime,
     criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,
     criteriaWeightingApiEndpoint: apiModelMetadata.criteriaWeightingApiEndpoint,
     criteriaWeightingParameters: apiModelMetadata.criteriaWeightingParameters,
     modelWeights,
+    deferredPayload,
+    isDeferredApiCriteriaWeighting,
     currentStage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     isCriteriaWeightingRequired: false,
   });
@@ -412,12 +560,14 @@ export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
   }
 
   const remappedWeights = {};
+  const criterionIdMap = new Map();
 
   sourceCriterionIds.forEach((sourceCriterionId, index) => {
     const persistedCriterionId = persistedCriterionIds[index];
+    criterionIdMap.set(sourceCriterionId, persistedCriterionId);
     const value = resolvedCriteriaWeighting.modelWeights[sourceCriterionId];
 
-    if (value === undefined) {
+    if (resolvedCriteriaWeighting.modelWeights !== null && value === undefined) {
       throw createInternalError("Criteria weight is missing during persistence remap", {
         field: "modelParameters.weights",
         details: {
@@ -427,11 +577,48 @@ export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
       });
     }
 
-    remappedWeights[persistedCriterionId] = value;
+    if (resolvedCriteriaWeighting.modelWeights !== null) {
+      remappedWeights[persistedCriterionId] = value;
+    }
   });
 
   return {
     ...resolvedCriteriaWeighting,
-    modelWeights: remappedWeights,
+    modelWeights:
+      resolvedCriteriaWeighting.modelWeights === null ? null : remappedWeights,
+    deferredPayload: remapDeferredCriteriaWeightingPayloadOrThrow({
+      resolvedCriteriaWeighting,
+      idMap: criterionIdMap,
+    }),
+  };
+};
+
+export const resolveDeferredCriteriaWeightingAfterPersistenceOrThrow = async ({
+  resolvedCriteriaWeighting,
+  persistedLeafCriteria,
+  decisionModelsServiceBaseUrl,
+  httpClient,
+}) => {
+  if (!resolvedCriteriaWeighting.isDeferredApiCriteriaWeighting) {
+    return resolvedCriteriaWeighting;
+  }
+
+  const modelWeights =
+    await resolveCreatorApiCriteriaWeightingModelWeightsOrThrow({
+      payload: resolvedCriteriaWeighting.deferredPayload,
+      leafCriteria: persistedLeafCriteria,
+      criteriaWeightingModel: resolvedCriteriaWeighting.criteriaWeightingModel,
+      criteriaWeightingRuntime: resolvedCriteriaWeighting.criteriaWeightingRuntime,
+      criteriaWeightingParameters:
+        resolvedCriteriaWeighting.criteriaWeightingParameters,
+      decisionModelsServiceBaseUrl,
+      httpClient,
+    });
+
+  return {
+    ...resolvedCriteriaWeighting,
+    modelWeights,
+    deferredPayload: null,
+    isDeferredApiCriteriaWeighting: false,
   };
 };

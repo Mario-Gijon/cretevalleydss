@@ -20,6 +20,7 @@ import {
 } from "./resolveIssueCreationOptions.js";
 import {
   remapCriteriaWeightIdsToMongoCriteriaOrThrow,
+  resolveDeferredCriteriaWeightingAfterPersistenceOrThrow,
   resolveCriteriaWeightingConfigOrThrow,
   resolveFuzzyCriteriaWeightValueCountOrThrow,
 } from "./initialCriteriaWeights/index.js";
@@ -191,6 +192,8 @@ export const prepareIssueCreation = async ({
     orderedLeafCriteria,
     resolvedCriteriaWeighting,
     normalizedExpertWeightsByEmail,
+    decisionModelsServiceBaseUrl,
+    httpClient,
   };
 };
 
@@ -221,6 +224,8 @@ export const persistPreparedIssueCreation = async ({
     orderedLeafCriteria,
     resolvedCriteriaWeighting,
     normalizedExpertWeightsByEmail,
+    decisionModelsServiceBaseUrl,
+    httpClient,
   } = preparedIssueCreation;
 
   await assertIssueNameAvailableOrThrow({
@@ -262,11 +267,26 @@ export const persistPreparedIssueCreation = async ({
     session,
   });
 
-  const persistedCriteriaWeighting = remapCriteriaWeightIdsToMongoCriteriaOrThrow({
+  await assignIssueExpressionDomainSnapshotsOrThrow({
+    issueId: issue._id,
+    domainDocs,
+    leafCriteria,
+    domainIdByCriterionName,
+    session,
+  });
+
+  const remappedCriteriaWeighting = remapCriteriaWeightIdsToMongoCriteriaOrThrow({
     resolvedCriteriaWeighting,
     sourceLeafCriteria: orderedLeafCriteria,
     persistedLeafCriteria: leafCriteria,
   });
+  const persistedCriteriaWeighting =
+    await resolveDeferredCriteriaWeightingAfterPersistenceOrThrow({
+      resolvedCriteriaWeighting: remappedCriteriaWeighting,
+      persistedLeafCriteria: leafCriteria,
+      decisionModelsServiceBaseUrl,
+      httpClient,
+    });
 
   applyInitialCriteriaWeightsToIssue({
     issue,
@@ -285,14 +305,6 @@ export const persistPreparedIssueCreation = async ({
     isCriteriaWeightingRequired,
     normalizedExpertWeightsByEmail:
       usesExpertWeights ? normalizedExpertWeightsByEmail : null,
-    session,
-  });
-
-  await assignIssueExpressionDomainSnapshotsOrThrow({
-    issueId: issue._id,
-    domainDocs,
-    leafCriteria,
-    domainIdByCriterionName,
     session,
   });
 

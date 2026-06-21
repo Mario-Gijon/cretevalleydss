@@ -95,6 +95,41 @@ export const loadCriteriaWeightingApiModelContextOrThrow = async ({
   };
 };
 
+export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
+  payload,
+  leafCriteria,
+  criteriaWeightingModel,
+  criteriaWeightingRuntime,
+  criteriaWeightingParameters,
+}) => {
+  const criteriaWeightingStructure = getEvaluationStructureOrThrow(
+    criteriaWeightingRuntime.criteriaWeightingStructureKey
+  );
+  const criteria = Array.isArray(leafCriteria) ? leafCriteria : [];
+  if (criteria.length === 0) {
+    throw createInternalError("leafCriteria are required for creator API model mode", {
+      field: "leafCriteria",
+    });
+  }
+
+  const creatorCriteriaWeightingEvaluationContext =
+    buildCreatorCriteriaWeightingEvaluationContext({
+      criteriaWeightingStructure,
+      criteriaWeightingModel,
+      normalizedCriteriaWeightingParameters: criteriaWeightingParameters,
+      leafCriteria: criteria,
+    });
+
+  const normalizedCreatorPayload =
+    await criteriaWeightingStructure.save({
+      mode: "submit",
+      payload,
+      evaluationContext: creatorCriteriaWeightingEvaluationContext,
+    });
+
+  return normalizedCreatorPayload;
+};
+
 export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
   payload,
   leafCriteria,
@@ -137,10 +172,12 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
       normalizedCriteriaWeightingParameters: criteriaWeightingParameters,
       leafCriteria: criteria,
     });
-  const normalizedCreatorPayload = await criteriaWeightingStructure.save({
-    mode: "submit",
+  const normalizedCreatorPayload = await normalizeCreatorApiCriteriaWeightingPayloadOrThrow({
     payload,
-    evaluationContext: creatorCriteriaWeightingEvaluationContext,
+    leafCriteria: criteria,
+    criteriaWeightingModel,
+    criteriaWeightingRuntime,
+    criteriaWeightingParameters,
   });
 
   const requestPayload = {
