@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/herrera_viedma_crp",
         request_model=GenericModelExecutionRequest,
         handler=execute_herrera_viedma,
-        summary="Execute Herrera-Viedma CRP",
-        description=(
-            "Executes the Herrera-Viedma CRP consensus reaching process using pairwise "
-            "preference matrices provided by experts and criteria."
-        ),
         small_description=(
             "Consensus reaching model for group decisions based on pairwise preference "
             "matrices and iterative agreement improvement."
         ),
-        extend_description=(
+        extended_description=(
             "Herrera-Viedma CRP is a consensus reaching process for group decision-making. "
             "It works with pairwise preference matrices provided by experts, measures the "
             "current consensus level, and supports iterative consensus phases until the "

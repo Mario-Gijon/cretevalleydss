@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/promethee_vi",
         request_model=GenericModelExecutionRequest,
         handler=execute_promethee_vi,
-        summary="Execute PROMETHEE VI",
-        description=(
-            "Executes PROMETHEE VI using aggregated expert evaluations, "
-            "criterion-level preference thresholds and interval weight bounds."
-        ),
         small_description=(
             "Outranking MCDM method based on preference functions, thresholds "
             "and lower/upper criterion weight bounds."
         ),
-        extend_description=(
+        extended_description=(
             "PROMETHEE VI ranks alternatives using criterion-level preference "
             "functions, indifference/preference thresholds and interval weights. "
             "It is useful when exact criteria weights are not fixed but lower and "

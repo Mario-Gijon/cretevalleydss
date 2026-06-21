@@ -9,13 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/cmcc",
         request_model=CmccRequest,
         handler=execute_cmcc,
-        summary="Execute CMCC",
-        description=("Executes the CMCC model using linearized consensus constraints."),
         small_description=(
             "Auxiliary consensus utility model that adjusts expert opinions according to "
             "linearized consensus constraints."
         ),
-        extend_description=(
+        extended_description=(
             "CMCC is an auxiliary consensus utility model that computes adjusted opinions "
             "using linearized consensus constraints. In this system it is used to support "
             "consensus-related workflows and analysis, rather than being exposed as a "

@@ -9,15 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/borda",
         request_model=GenericModelExecutionRequest,
         handler=execute_borda,
-        summary="Execute Borda",
-        description=(
-            "Executes the Borda method using the collective group decision matrix."
-        ),
         small_description=(
             "Voting-based ranking method that converts collective preferences into point "
             "scores to produce a simple and interpretable group order."
         ),
-        extend_description=(
+        extended_description=(
             "Borda is a simple ranking method that assigns points to alternatives according "
             "to their relative positions in the collective evaluation. It is useful when a "
             "clear and interpretable group ranking is needed without requiring criterion "

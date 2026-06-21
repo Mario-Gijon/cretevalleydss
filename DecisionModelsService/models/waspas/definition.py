@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/waspas",
         request_model=GenericModelExecutionRequest,
         handler=execute_waspas,
-        summary="Execute WASPAS",
-        description=(
-            "Executes the WASPAS method using aggregated expert decision matrices, "
-            "criterion weights and criterion types."
-        ),
         small_description=(
             "Hybrid MCDM method that combines weighted sum and weighted product "
             "aggregation into a single ranking score."
         ),
-        extend_description=(
+        extended_description=(
             "WASPAS combines the Weighted Sum Model and the Weighted Product Model. "
             "It evaluates alternatives by blending additive and multiplicative utility "
             "scores through a configurable lambda coefficient, supporting weighted "

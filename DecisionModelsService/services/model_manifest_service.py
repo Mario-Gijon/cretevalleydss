@@ -40,12 +40,12 @@ def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
 
 
 def _get_request_example(model: ModelDefinition) -> dict[str, Any] | None:
-    """Extrae el ejemplo principal del JSON Schema de Pydantic."""
+    """Extrae el ejemplo principal de request declarado por el modelo."""
 
-    schema = model.request_model.model_json_schema()
-    example = schema.get("example")
+    first_example = next(iter(model.request_examples.values()), None)
+    value = first_example.get("value") if isinstance(first_example, dict) else None
 
-    return example if isinstance(example, dict) else None
+    return value if isinstance(value, dict) else None
 
 
 def _get_response_example(model: ModelDefinition) -> dict[str, Any] | None:
@@ -71,7 +71,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
             "path": model.api_endpoint_path,
         },
         "smallDescription": model.small_description,
-        "extendDescription": model.extend_description,
+        "extendedDescription": model.extended_description,
         "moreInfoUrl": model.more_info_url,
         "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
         "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,

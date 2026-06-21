@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
 from registry.model_definition import ModelDefinition
 from registry.model_registry import MODEL_DEFINITIONS
@@ -11,12 +11,15 @@ def _build_model_endpoint(model: ModelDefinition):
     """Genera un endpoint FastAPI a partir de la definición de un modelo."""
 
     request_model = model.request_model
+    request_body = Body(openapi_examples=model.request_examples or None)
+    summary = f"Execute {model.display_name}"
+    description = model.extended_description
 
-    async def endpoint(payload: request_model):  # type: ignore[valid-type]
+    async def endpoint(payload: request_model = request_body):  # type: ignore[valid-type]
         return model.handler(payload)
 
     endpoint.__name__ = f"{model.api_model_key}_endpoint"
-    endpoint.__doc__ = model.description
+    endpoint.__doc__ = description
 
     return endpoint
 
@@ -63,8 +66,8 @@ for model_definition in MODEL_DEFINITIONS:
         methods=["POST"],
         response_model=ModelExecutionResponse,
         response_model_exclude_none=True,
-        summary=model_definition.summary,
-        description=model_definition.description,
+        summary=f"Execute {model_definition.display_name}",
+        description=model_definition.extended_description,
         name=model_definition.api_model_key,
         responses=_build_responses(model_definition),
     )

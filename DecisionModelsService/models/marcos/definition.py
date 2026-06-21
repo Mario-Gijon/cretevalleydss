@@ -9,15 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/marcos",
         request_model=GenericModelExecutionRequest,
         handler=execute_marcos,
-        summary="Execute MARCOS",
-        description=(
-            "Executes the MARCOS method using the provided criterion weights and criterion types."
-        ),
         small_description=(
             "Compromise-based MCDM method that evaluates alternatives through their utility "
             "relative to ideal and anti-ideal reference solutions."
         ),
-        extend_description=(
+        extended_description=(
             "MARCOS is a multi-criteria decision-making method that evaluates each "
             "alternative according to its utility relative to ideal and anti-ideal "
             "solutions. It supports direct crisp decision matrices with criterion "

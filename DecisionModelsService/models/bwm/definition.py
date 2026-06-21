@@ -9,13 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/bwm",
         request_model=GenericModelExecutionRequest,
         handler=execute_bwm,
-        summary="Execute BWM",
-        description=("Executes the Best-Worst Method using expert comparison data."),
         small_description=(
             "Auxiliary weighting service that derives criterion weights from best-worst "
             "comparisons provided by experts."
         ),
-        extend_description=(
+        extended_description=(
             "Best-Worst Method is an auxiliary weighting service that derives criterion "
             "weights from expert comparisons between the best criterion, the worst "
             "criterion, and the remaining criteria. In this system it supports the "

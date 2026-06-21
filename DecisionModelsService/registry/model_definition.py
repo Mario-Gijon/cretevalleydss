@@ -12,12 +12,10 @@ class ModelDefinition:
     api_endpoint_path: str
     request_model: type[BaseModel]
     handler: Callable[[Any], Any]
-    summary: str
-    description: str
     display_name: str
-
     small_description: str
-    extend_description: str
+    extended_description: str
+    request_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
     response_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     more_info_url: str | None = None

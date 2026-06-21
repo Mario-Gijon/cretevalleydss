@@ -1,7 +1,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_topsis
-from .examples import TOPSIS_RESPONSE_EXAMPLES
+from .examples import TOPSIS_REQUEST_EXAMPLES, TOPSIS_RESPONSE_EXAMPLES
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -9,20 +9,17 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/topsis",
         request_model=GenericModelExecutionRequest,
         handler=execute_topsis,
-        summary="Execute TOPSIS",
-        description=(
-            "Executes the classic TOPSIS method using aggregated expert decision matrices."
-        ),
         small_description=(
             "Distance-based MCDM method that selects the best compromise alternative by "
             "measuring closeness to ideal and anti-ideal solutions."
         ),
-        extend_description=(
+        extended_description=(
             "TOPSIS ranks alternatives by comparing each one with an ideal solution "
             "and an anti-ideal solution. It uses criterion weights and max/min criterion "
             "types to identify the alternative with the best compromise between closeness "
             "to the ideal and distance from the worst reference solution."
         ),
+        request_examples=TOPSIS_REQUEST_EXAMPLES,
         response_examples=TOPSIS_RESPONSE_EXAMPLES,
         display_name="TOPSIS",
         more_info_url=None,

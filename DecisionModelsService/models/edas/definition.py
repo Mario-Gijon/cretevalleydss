@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/edas",
         request_model=GenericModelExecutionRequest,
         handler=execute_edas,
-        summary="Execute EDAS",
-        description=(
-            "Executes the EDAS method using aggregated expert decision matrices, "
-            "criterion weights and criterion types."
-        ),
         small_description=(
             "Distance-based MCDM method that ranks alternatives according to their "
             "positive and negative distances from the average solution."
         ),
-        extend_description=(
+        extended_description=(
             "EDAS evaluates alternatives by comparing each criterion value against "
             "the average solution. Alternatives are rewarded for positive distance "
             "from the average and penalized for negative distance, producing a final "

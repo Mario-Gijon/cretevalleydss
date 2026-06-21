@@ -1,6 +1,84 @@
 from typing import Any
 
 
+TOPSIS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
+    "basic_numeric_matrix": {
+        "summary": "Basic numeric matrix request",
+        "value": {
+            "context": {
+                "issue": {
+                    "id": "665f0b8f6f1e9c12a34b5600",
+                    "name": "Example issue",
+                    "consensusThreshold": None,
+                    "consensusMaxPhases": None,
+                },
+                "alternatives": [
+                    {
+                        "id": "665f0b8f6f1e9c12a34b5672",
+                        "name": "Alt 1",
+                    },
+                    {
+                        "id": "665f0b8f6f1e9c12a34b5673",
+                        "name": "Alt 2",
+                    },
+                ],
+                "criteria": [
+                    {
+                        "id": "665f0b8f6f1e9c12a34b5674",
+                        "name": "C1",
+                        "type": "benefit",
+                    },
+                    {
+                        "id": "665f0b8f6f1e9c12a34b5675",
+                        "name": "C2",
+                        "type": "cost",
+                    },
+                ],
+                "consensusPhase": 0,
+                "previousStageResult": None,
+                "structure": {
+                    "key": "alternativeCriteriaMatrix",
+                    "stage": "alternativeEvaluation",
+                },
+            },
+            "modelParameters": {
+                "weights": {
+                    "665f0b8f6f1e9c12a34b5674": 0.4,
+                    "665f0b8f6f1e9c12a34b5675": 0.6,
+                }
+            },
+            "evaluations": [
+                {
+                    "expert": {
+                        "id": "665f0b8f6f1e9c12a34b5681",
+                        "name": "Expert 1",
+                        "email": "expert1@example.com",
+                    },
+                    "payload": {
+                        "665f0b8f6f1e9c12a34b5672": {
+                            "665f0b8f6f1e9c12a34b5674": {
+                                "value": 0.7,
+                            },
+                            "665f0b8f6f1e9c12a34b5675": {
+                                "value": 0.3,
+                            },
+                        },
+                        "665f0b8f6f1e9c12a34b5673": {
+                            "665f0b8f6f1e9c12a34b5674": {
+                                "value": 0.9,
+                            },
+                            "665f0b8f6f1e9c12a34b5675": {
+                                "value": 0.2,
+                            },
+                        },
+                    },
+                }
+            ],
+        },
+    }
+}
+
+
 TOPSIS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     "success": {
         "summary": "Successful execution",
@@ -37,4 +115,4 @@ TOPSIS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     },
 }
 
-__all__ = ["TOPSIS_RESPONSE_EXAMPLES"]
+__all__ = ["TOPSIS_REQUEST_EXAMPLES", "TOPSIS_RESPONSE_EXAMPLES"]

@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/vikor",
         request_model=GenericModelExecutionRequest,
         handler=execute_vikor,
-        summary="Execute VIKOR",
-        description=(
-            "Executes the VIKOR method using aggregated expert decision matrices, "
-            "criterion weights and criterion types."
-        ),
         small_description=(
             "Compromise-ranking MCDM method that identifies alternatives closest "
             "to an acceptable group solution."
         ),
-        extend_description=(
+        extended_description=(
             "VIKOR is a multi-criteria decision-making method focused on compromise "
             "ranking. It evaluates alternatives according to group utility and individual "
             "regret, producing a ranking that highlights the best compromise solution "

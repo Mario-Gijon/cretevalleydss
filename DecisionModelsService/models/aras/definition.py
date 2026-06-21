@@ -9,15 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/aras",
         request_model=GenericModelExecutionRequest,
         handler=execute_aras,
-        summary="Execute ARAS",
-        description=(
-            "Executes the ARAS method using the provided criterion weights and criterion types."
-        ),
         small_description=(
             "Utility-ratio method that compares each alternative against an optimal "
             "reference using normalized weighted criteria."
         ),
-        extend_description=(
+        extended_description=(
             "ARAS evaluates alternatives through an additive utility ratio approach. "
             "It normalizes the decision matrix, applies criterion weights, and compares "
             "each alternative with an optimal reference alternative to produce a final "

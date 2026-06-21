@@ -9,13 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/fuzzy_topsis",
         request_model=GenericModelExecutionRequest,
         handler=execute_fuzzy_topsis,
-        summary="Execute Fuzzy TOPSIS",
-        description=("Executes Fuzzy TOPSIS using fuzzy expert evaluation matrices."),
         small_description=(
             "Fuzzy method based on TOPSIS for handling linguistic, uncertain, or "
             "imprecise expert evaluations."
         ),
-        extend_description=(
+        extended_description=(
             "Fuzzy TOPSIS extends the TOPSIS approach to handle fuzzy or linguistic "
             "evaluations. It is useful when expert assessments are uncertain, qualitative, "
             "or expressed through linguistic labels instead of precise numeric values."

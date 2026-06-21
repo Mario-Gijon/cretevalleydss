@@ -9,16 +9,11 @@ MODEL_DEFINITION = ModelDefinition(
         api_endpoint_path="/manual_criteria_weights",
         request_model=GenericModelExecutionRequest,
         handler=execute_manual_criteria_weights,
-        summary="Execute Manual Criteria Weights",
-        description=(
-            "Executes manual criteria weight aggregation using completed expert "
-            "weightsByCriterion payloads."
-        ),
         small_description=(
             "Auxiliary weighting service that aggregates expert manual criterion "
             "weights into a single normalized group result."
         ),
-        extend_description=(
+        extended_description=(
             "Manual criteria weights is an auxiliary weighting service that reads "
             "completed expert weightsByCriterion payloads, averages them by "
             "criterion, and normalizes the final group weights so they sum to one."
