@@ -542,7 +542,12 @@ export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
   sourceLeafCriteria,
   persistedLeafCriteria,
 }) => {
-  if (resolvedCriteriaWeighting.modelWeights === null) {
+  const hasModelWeights = resolvedCriteriaWeighting.modelWeights !== null;
+  const hasDeferredPayload =
+    resolvedCriteriaWeighting.isDeferredApiCriteriaWeighting === true &&
+    resolvedCriteriaWeighting.deferredPayload !== null;
+
+  if (!hasModelWeights && !hasDeferredPayload) {
     return resolvedCriteriaWeighting;
   }
 
@@ -565,9 +570,11 @@ export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
   sourceCriterionIds.forEach((sourceCriterionId, index) => {
     const persistedCriterionId = persistedCriterionIds[index];
     criterionIdMap.set(sourceCriterionId, persistedCriterionId);
-    const value = resolvedCriteriaWeighting.modelWeights[sourceCriterionId];
+    const value = hasModelWeights
+      ? resolvedCriteriaWeighting.modelWeights[sourceCriterionId]
+      : undefined;
 
-    if (resolvedCriteriaWeighting.modelWeights !== null && value === undefined) {
+    if (hasModelWeights && value === undefined) {
       throw createInternalError("Criteria weight is missing during persistence remap", {
         field: "modelParameters.weights",
         details: {
@@ -577,19 +584,20 @@ export const remapCriteriaWeightIdsToMongoCriteriaOrThrow = ({
       });
     }
 
-    if (resolvedCriteriaWeighting.modelWeights !== null) {
+    if (hasModelWeights) {
       remappedWeights[persistedCriterionId] = value;
     }
   });
 
   return {
     ...resolvedCriteriaWeighting,
-    modelWeights:
-      resolvedCriteriaWeighting.modelWeights === null ? null : remappedWeights,
-    deferredPayload: remapDeferredCriteriaWeightingPayloadOrThrow({
-      resolvedCriteriaWeighting,
-      idMap: criterionIdMap,
-    }),
+    modelWeights: hasModelWeights ? remappedWeights : null,
+    deferredPayload: hasDeferredPayload
+      ? remapDeferredCriteriaWeightingPayloadOrThrow({
+          resolvedCriteriaWeighting,
+          idMap: criterionIdMap,
+        })
+      : null,
   };
 };
 
