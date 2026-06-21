@@ -1,0 +1,43 @@
+from registry.model_definition import ModelDefinition
+from schemas.model_requests import GenericModelExecutionRequest
+from .executor import {{ execute_function_name }}
+from .examples import (
+    {{ request_examples_constant }},
+    {{ response_examples_constant }},
+)
+
+
+MODEL_DEFINITION = ModelDefinition(
+    # Stable API key and POST endpoint path for this model.
+    api_model_key="{{ api_model_key }}",
+    api_endpoint_path="{{ api_endpoint_path }}",
+    # Request schema and executor entrypoint.
+    request_model=GenericModelExecutionRequest,
+    handler={{ execute_function_name }},
+    # Public catalog metadata.
+    display_name="{{ display_name }}",
+    small_description="{{ small_description }}",
+    extended_description=(
+        "{{ extended_description }}"
+    ),
+    # FastAPI /docs examples.
+    request_examples={{ request_examples_constant }},
+    response_examples={{ response_examples_constant }},
+    # No-examples variant:
+    # request_examples={}
+    # response_examples={}
+    more_info_url=None,
+    # Runtime capability flags.
+    alternative_evaluation_structure_key="alternativeCriteriaMatrix",
+    supports_consensus=False,
+    supports_consensus_simulation=False,
+    is_multi_criteria=True,
+    uses_criteria_weights=False,
+    uses_expert_weights=False,
+    uses_fuzzy_criteria_weights=False,
+    uses_criterion_types=False,
+    # Supported domain families for the evaluation payload.
+    supported_domains=["numericContinuous"],
+    # Optional model parameter definitions.
+    parameters=[],
+)

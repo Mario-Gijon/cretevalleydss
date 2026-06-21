@@ -1,0 +1,24 @@
+def {{ run_function_name }}(*, context: dict, evaluations: list, model_parameters: dict) -> dict:
+    """
+    Implement the model algorithm here.
+
+    This layer should not know about:
+    - FastAPI
+    - HTTP responses
+    - MongoDB
+    - frontend components
+
+    Internal working shapes are up to the developer:
+    - matrices
+    - vectors
+    - pairwise relations
+    - fuzzy values
+    - rankings
+    - profiles
+    - thresholds
+    - any model-specific structure
+    """
+
+    raise NotImplementedError(
+        "Implement the algorithm in run.py and return model-specific raw results."
+    )
