@@ -27,7 +27,7 @@ import ActiveIssuesPill from "../ActiveIssuesPill";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
 import ActiveIssueParticipationChart from "./ActiveIssueParticipationChart";
 import { IssueModelParametersView } from "../../../modelParameters";
-import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
+import { buildParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 const CRITERIA_WEIGHTING_STRUCTURE_LABELS = {
   manualCriteriaWeights: "Manual criteria weights",
@@ -73,7 +73,6 @@ const ActiveIssueOverview = ({
   drawerAction,
   DrawerActionIcon,
   deadlineLabel,
-  leafNames,
   totalExperts,
   pendingExperts,
   participatedExperts,
@@ -96,10 +95,21 @@ const ActiveIssueOverview = ({
 }) => {
   const theme = useTheme();
   const isIssueOwner = Boolean(selectedIssue?.isIssueOwner);
-  const parameterContext = buildModelParameterContext({
-    leafCriteria: [],
-    leafNames: Array.isArray(leafNames) ? leafNames : [],
-    alternatives: [],
+  const parameterContext = buildParameterContext({
+    model: selectedIssue?.model
+      ? {
+          id: selectedIssue.model.id || selectedIssue.model._id || null,
+          name: selectedIssue.model.name || null,
+          apiModelKey: selectedIssue.model.apiModelKey || null,
+        }
+      : null,
+    alternatives: Array.isArray(selectedIssue?.alternatives)
+      ? selectedIssue.alternatives
+      : [],
+    criteriaTree: Array.isArray(selectedIssue?.criteria) ? selectedIssue.criteria : [],
+    leafCriteria: Array.isArray(selectedIssue?.criteria)
+      ? selectedIssue.criteria.filter((criterion) => criterion?.isLeaf)
+      : [],
   });
 
   return (
@@ -388,7 +398,7 @@ const ActiveIssueOverview = ({
           <IssueModelParametersView
             parameters={selectedIssue?.model?.parameters || []}
             values={selectedIssue?.modelParameters || selectedIssue?.ui?.modelParameters || {}}
-            context={parameterContext}
+            parameterContext={parameterContext}
           />
         </AccordionDetails>
       </Accordion>

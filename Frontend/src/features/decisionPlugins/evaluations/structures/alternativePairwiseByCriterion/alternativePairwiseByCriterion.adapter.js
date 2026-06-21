@@ -40,17 +40,16 @@ const buildRowsFromPairMap = ({
 
 const buildMatrixPayload = ({
   alternativeNames,
-  criterionNames,
-  domainsByCriterionName,
+  criteria,
   comparisonsByCriterion = {},
 }) =>
   Object.fromEntries(
-    criterionNames.map((criterionName) => [
-      criterionName,
+    criteria.map((criterion) => [
+      criterion.name,
       buildRowsFromPairMap({
         alternativeNames,
-        criterionPairs: comparisonsByCriterion?.[criterionName] || {},
-        domain: domainsByCriterionName[criterionName],
+        criterionPairs: comparisonsByCriterion?.[criterion.name] || {},
+        domain: criterion.expressionDomain,
       }),
     ])
   );
@@ -213,27 +212,26 @@ const validatePairwisePayload = ({
 export const alternativePairwiseByCriterionAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
     return buildMatrixPayload({
-      alternativeNames: evaluationContext.alternatives.names,
-      criterionNames: evaluationContext.criteria.leafNames,
-      domainsByCriterionName: evaluationContext.domains.byCriterionName,
+      alternativeNames: evaluationContext.alternatives.map((alternative) => alternative.name),
+      criteria: evaluationContext.leafCriteria,
     });
   },
 
   fromBackendPayload({ evaluationContext, backendPayload }) {
     return buildMatrixPayload({
-      alternativeNames: evaluationContext.alternatives.names,
-      criterionNames: evaluationContext.criteria.leafNames,
-      domainsByCriterionName: evaluationContext.domains.byCriterionName,
+      alternativeNames: evaluationContext.alternatives.map((alternative) => alternative.name),
+      criteria: evaluationContext.leafCriteria,
       comparisonsByCriterion: backendPayload?.comparisonsByCriterion || {},
     });
   },
 
   toBackendPayload({ evaluationContext, evaluationPayload }) {
-    const alternativeNames = evaluationContext.alternatives.names;
-    const criterionNames = evaluationContext.criteria.leafNames;
+    const alternativeNames = evaluationContext.alternatives.map((alternative) => alternative.name);
+    const criteria = evaluationContext.leafCriteria;
     const comparisonsByCriterion = {};
 
-    for (const criterionName of criterionNames) {
+    for (const criterion of criteria) {
+      const criterionName = criterion.name;
       const rows = evaluationPayload?.[criterionName] || [];
       const rowMap = Object.fromEntries(rows.map((row) => [row.id, row]));
       const criterionPayload = {};
@@ -264,8 +262,8 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
 
   validate({ evaluationContext, evaluationPayload, mode }) {
     return validatePairwisePayload({
-      alternativeNames: evaluationContext.alternatives.names,
-      criterionNames: evaluationContext.criteria.leafNames,
+      alternativeNames: evaluationContext.alternatives.map((alternative) => alternative.name),
+      criterionNames: evaluationContext.leafCriteria.map((criterion) => criterion.name),
       evaluationPayload,
       allowEmpty: mode === "draft",
     });
@@ -276,16 +274,17 @@ export const alternativePairwiseByCriterionAdapter = Object.freeze({
       return null;
     }
 
-    const criterionNames = evaluationContext.criteria.leafNames;
-    const alternativeNames = evaluationContext.alternatives.names;
+    const criteria = evaluationContext.leafCriteria;
+    const alternativeNames = evaluationContext.alternatives.map((alternative) => alternative.name);
     const output = {};
 
-    for (const criterionName of criterionNames) {
+    for (const criterion of criteria) {
+      const criterionName = criterion.name;
       const criterionCollective = collectivePayload[criterionName];
       const mappedRows = buildCollectiveRows({
         criterionSource: criterionCollective,
         alternativeNames,
-        domain: evaluationContext.domains.byCriterionName[criterionName],
+        domain: criterion.expressionDomain,
       });
 
       if (mappedRows) {

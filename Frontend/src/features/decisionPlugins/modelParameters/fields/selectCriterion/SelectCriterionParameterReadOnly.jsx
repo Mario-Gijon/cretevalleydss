@@ -10,9 +10,9 @@ const formatValue = (value) =>
 export const SelectCriterionParameterReadOnly = ({
   parameter,
   value,
-  context,
+  parameterContext,
 }) => {
-  const rows = buildCriterionParameterRows({ context });
+  const rows = buildCriterionParameterRows({ parameterContext });
 
   if (rows.length === 0) {
     return (

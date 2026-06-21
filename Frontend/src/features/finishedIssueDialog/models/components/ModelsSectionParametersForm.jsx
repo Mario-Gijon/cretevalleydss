@@ -4,7 +4,6 @@ import {
   getCreateIssueModelParameters,
   ParameterFieldHost,
 } from "../../../modelParameters";
-import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 import ModelsSectionScenarioWeightsField from "./ModelsSectionScenarioWeightsField";
 import { modelUsesScenarioCriteriaWeights } from "../../logic/buildFinishedScenarioParameters";
 
@@ -12,7 +11,7 @@ const ModelsSectionParametersForm = ({
   model,
   values,
   setValues,
-  context,
+  parameterContext,
   scenarioWeightsError = "",
   clearScenarioWeightsError,
 }) => {
@@ -34,12 +33,6 @@ const ModelsSectionParametersForm = ({
     );
   }
 
-  const parameterContext = buildModelParameterContext({
-    leafCriteria: Array.isArray(context?.leafCriteria) ? context.leafCriteria : [],
-    leafNames: Array.isArray(context?.leafNames) ? context.leafNames : [],
-    alternatives: Array.isArray(context?.alternatives) ? context.alternatives : [],
-  });
-
   return (
     <Stack spacing={2}>
       {params.map((parameter, index) => {
@@ -58,7 +51,7 @@ const ModelsSectionParametersForm = ({
               }));
             }}
             disabled={false}
-            context={parameterContext}
+            parameterContext={parameterContext}
           />
         );
       })}
@@ -68,7 +61,6 @@ const ModelsSectionParametersForm = ({
         values={values}
         setValues={setValues}
         leafCriteria={parameterContext.leafCriteria}
-        leafNames={parameterContext.leafNames}
         error={scenarioWeightsError}
         onClearError={clearScenarioWeightsError}
       />

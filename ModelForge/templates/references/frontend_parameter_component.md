@@ -13,7 +13,7 @@ Editable parameter components receive:
 - `onChange`
 - `disabled`
 - `error`
-- `context`
+- `parameterContext`
 
 Representative example:
 
@@ -34,7 +34,12 @@ const editablePropsExample = {
   value: 0.8,
   disabled: false,
   error: "",
-  context: {
+  parameterContext: {
+    model: {
+      id: "MODEL_1",
+      name: "TOPSIS",
+      apiModelKey: "topsis"
+    },
     leafCriteria: [
       {
         id: "C1",
@@ -45,8 +50,6 @@ const editablePropsExample = {
         name: "Environmental impact"
       }
     ],
-    leafCriteriaCount: 2,
-    leafNames: ["Cost", "Environmental impact"],
     alternatives: [
       {
         id: "A1",
@@ -57,7 +60,7 @@ const editablePropsExample = {
         name: "Wind farm"
       }
     ],
-    alternativesCount: 2
+    criteriaTree: []
   }
 };
 ```
@@ -70,7 +73,7 @@ Read-only parameter components receive:
 
 - `parameter`
 - `value`
-- `context`
+- `parameterContext`
 
 Representative example:
 
@@ -89,7 +92,12 @@ const readOnlyPropsExample = {
     }
   },
   value: 0.8,
-  context: {
+  parameterContext: {
+    model: {
+      id: "MODEL_1",
+      name: "TOPSIS",
+      apiModelKey: "topsis"
+    },
     leafCriteria: [
       {
         id: "C1",
@@ -100,8 +108,6 @@ const readOnlyPropsExample = {
         name: "Environmental impact"
       }
     ],
-    leafCriteriaCount: 2,
-    leafNames: ["Cost", "Environmental impact"],
     alternatives: [
       {
         id: "A1",
@@ -112,7 +118,7 @@ const readOnlyPropsExample = {
         name: "Wind farm"
       }
     ],
-    alternativesCount: 2
+    criteriaTree: []
   }
 };
 ```
@@ -133,6 +139,6 @@ Useful access examples:
 parameter.key
 parameter.restrictions?.min
 value
-context.leafNames
-context.alternativesCount
+parameterContext.leafCriteria.map((criterion) => criterion.name)
+parameterContext.alternatives.map((alternative) => alternative.name)
 ```

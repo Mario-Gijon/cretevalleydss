@@ -95,14 +95,16 @@ const AlternativeCriteriaMatrixView = (
 ) => {
   const theme = useTheme();
   const apiRef = useGridApiRef();
-  const alternativeNames = Array.isArray(evaluationContext?.alternatives?.names)
-    ? evaluationContext.alternatives.names
+  const alternativeNames = Array.isArray(evaluationContext?.alternatives)
+    ? evaluationContext.alternatives.map((alternative) => alternative?.name).filter(Boolean)
     : [];
-  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames
+  const criteria = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria.filter(
+        (criterion) => criterion?.name
+      )
     : [];
-  const domainsByCriterionName =
-    evaluationContext?.domains?.byCriterionName || {};
+  const criterionNames = criteria.map((criterion) => criterion.name);
+  const criterionByName = new Map(criteria.map((criterion) => [criterion.name, criterion]));
   const resolvedPayload =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload
@@ -194,9 +196,10 @@ const AlternativeCriteriaMatrixView = (
       },
       renderCell: (params) => {
         const rowId = params.row.id;
+        const criterion = criterionByName.get(criterionName) || null;
         const cell = normalizeCell(
           resolvedPayload?.[rowId]?.[criterionName],
-          domainsByCriterionName[criterionName]
+          criterion?.expressionDomain || null
         );
         const collectiveValue = getCollectiveDisplayValue(
           resolvedCollectivePayload?.[rowId]?.[criterionName]

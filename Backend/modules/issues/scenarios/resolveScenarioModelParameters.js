@@ -159,7 +159,7 @@ export const buildScenarioParametersOrThrow = ({
       model: targetModel,
       paramValues: rawScenarioParams,
       criteriaNodes: criteria,
-      alternativesCount: alternatives.length,
+      alternatives,
     });
 
   const resolvedWeights = resolveScenarioWeightsOrThrow({

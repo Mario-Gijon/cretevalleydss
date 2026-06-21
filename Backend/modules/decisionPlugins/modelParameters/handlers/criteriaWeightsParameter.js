@@ -4,15 +4,16 @@ import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};
+  const criterionCount = context.leafCriteria.length;
 
   let candidate = value;
   if (typeof candidate === "string" && candidate.trim().toLowerCase() === "equal") {
-    candidate = buildEqualCrispWeights(context.leafCriteriaCount);
+    candidate = buildEqualCrispWeights(criterionCount);
   }
 
   const normalizedResult = validateAndNormalizeCrispCriteriaWeightArray({
     value: candidate,
-    expectedLength: context.leafCriteriaCount,
+    expectedLength: criterionCount,
     min: typeof restrictions.min === "number" ? restrictions.min : null,
     max: typeof restrictions.max === "number" ? restrictions.max : null,
     enforceNonNegative: true,
@@ -28,10 +29,7 @@ export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter,
     }
 
     if (code === "lengthMismatch") {
-      return toInvalid(
-        `must contain exactly ${context.leafCriteriaCount} values`,
-        candidate
-      );
+      return toInvalid(`must contain exactly ${criterionCount} values`, candidate);
     }
 
     if (code === "nonFinite") {

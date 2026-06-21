@@ -267,12 +267,8 @@ const EvaluationStructureDialog = ({
       : stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION
         ? "Alternative evaluation"
         : "Evaluation";
-  const hasExpressionDomains = Array.isArray(
-    evaluationContext?.criteria?.leafItems
-  )
-    ? evaluationContext.criteria.leafItems.some(
-        (criterion) => criterion?.expressionDomain
-      )
+  const hasExpressionDomains = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria.some((criterion) => criterion?.expressionDomain)
     : false;
 
   const renderView = () => {
@@ -308,7 +304,7 @@ const EvaluationStructureDialog = ({
         icon={null}
         title={dialogTitle}
         subtitle={issue?.name || ""}
-        criteria={evaluationContext.criteria.leafItems}
+        criteria={evaluationContext.leafCriteria}
         showExpressionDomains={hasExpressionDomains}
         showCollectiveControl={collectivePayload !== null}
         collectiveVisible={showCollective}

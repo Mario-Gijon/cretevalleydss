@@ -85,7 +85,7 @@ export const prepareIssueCreation = async ({
     selectedModelId: input.selectedModelId,
     paramValues: input.paramValues,
     criteriaNodes: input.criteria,
-    alternativesCount: input.uniqueAlternativeNames.length,
+    alternatives: input.uniqueAlternativeNames.map((name) => ({ id: null, name })),
     uniqueExpertEmails: input.uniqueExpertEmails,
   });
 

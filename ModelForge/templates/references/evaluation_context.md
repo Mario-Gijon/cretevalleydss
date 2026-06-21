@@ -1,49 +1,94 @@
 # Frontend Evaluation Context
 
-This reference describes the frontend `evaluationContext` object used by evaluation adapters and views.
+This reference describes the frontend `evaluationContext` contract used by evaluation adapters and views.
 
-The real runtime object currently contains more data than the example below. The example focuses on the fields commonly needed by generated templates. Shape may evolve, so if exact data beyond these fields is needed, capture a runtime snapshot before finalizing the generated template.
-
-Treat the context as read-only. Use the structure-specific adapter and view contract instead of assuming hidden parent state.
+Treat `evaluationContext` as read-only. IDs are canonical. Names are display labels only.
 
 Representative example:
 
 ```js
 const evaluationContextExample = {
-  alternatives: {
-    names: ["Solar farm", "Wind farm"]
+  issue: {
+    id: "ISSUE_1",
+    name: "Energy Planning",
+    currentStage: "alternativeEvaluation",
+    consensusPhase: 1,
+    isConsensus: true,
+    consensusThreshold: 0.8,
+    consensusMaxPhases: 3
   },
-  criteria: {
-    leafNames: ["Cost", "Environmental impact"]
+  structure: {
+    key: "alternativeCriteriaMatrix",
+    stage: "alternativeEvaluation"
   },
-  domains: {
-    byCriterionName: {
-      Cost: {
-        type: "numeric",
+  model: {
+    id: "MODEL_1",
+    name: "TOPSIS",
+    apiModelKey: "topsis"
+  },
+  modelParameters: {
+    beta: 0.8
+  },
+  criteriaWeightingParameters: {},
+  alternatives: [
+    {
+      id: "ALT_1",
+      name: "Solar farm"
+    },
+    {
+      id: "ALT_2",
+      name: "Wind farm"
+    }
+  ],
+  criteriaTree: [
+    {
+      id: "CRIT_GROUP_1",
+      name: "Sustainability",
+      type: "benefit",
+      expressionDomain: null,
+      children: [
+        {
+          id: "CRIT_1",
+          name: "Cost",
+          type: "cost",
+          expressionDomain: {
+            id: "DOMAIN_1",
+            name: "Cost scale",
+            type: "numericContinuous",
+            numericRange: {
+              min: 0,
+              max: 1,
+              step: 0.1
+            }
+          },
+          children: []
+        }
+      ]
+    }
+  ],
+  leafCriteria: [
+    {
+      id: "CRIT_1",
+      name: "Cost",
+      type: "cost",
+      expressionDomain: {
+        id: "DOMAIN_1",
+        name: "Cost scale",
+        type: "numericContinuous",
         numericRange: {
           min: 0,
           max: 1,
           step: 0.1
         }
-      },
-      "Environmental impact": {
-        type: "linguistic",
-        linguisticLabels: [
-          {
-            label: "Low",
-            value: 0.2
-          },
-          {
-            label: "Medium",
-            value: 0.5
-          },
-          {
-            label: "High",
-            value: 0.8
-          }
-        ]
       }
     }
+  ],
+  consensus: {
+    phase: 1,
+    maxPhases: 3,
+    threshold: 0.8,
+    currentCollectiveEvaluations: {},
+    previousCollectiveEvaluations: {}
   }
 };
 ```
@@ -51,18 +96,19 @@ const evaluationContextExample = {
 Useful access examples:
 
 ```js
-evaluationContext.alternatives.names
-evaluationContext.alternatives.names[0]
-evaluationContext.criteria.leafNames
-evaluationContext.criteria.leafNames[0]
-evaluationContext.domains.byCriterionName
-evaluationContext.domains.byCriterionName["Cost"]
-evaluationContext.domains.byCriterionName[criterionName]
+evaluationContext.alternatives.map((alternative) => alternative.name)
+evaluationContext.leafCriteria.map((criterion) => criterion.name)
+evaluationContext.leafCriteria[0].id
+evaluationContext.leafCriteria[0].expressionDomain
+evaluationContext.criteriaTree[0].children
+evaluationContext.modelParameters
 ```
 
 Practical guidance:
 
-- `alternatives.names` is typically enough when a structure only needs ordered labels.
-- `criteria.leafNames` is the most common criterion axis used by adapters and views.
-- `domains.byCriterionName` lets a structure resolve numeric or linguistic domain metadata by criterion name.
-- If a generated template needs `alternatives.items`, `criteria.leafItems`, `domains.byCriterionId`, `issue`, `model`, or `parameters`, that shape should be confirmed with a runtime snapshot before final template generation.
+- Use `evaluationContext.alternatives` for ordered alternatives.
+- Use `evaluationContext.criteriaTree` for the full ordered tree.
+- Use `evaluationContext.leafCriteria` for ordered leaf criteria.
+- Read domain metadata from `criterion.expressionDomain`.
+- Derive name arrays locally when a structure or view needs them.
+- Do not expect `alternatives.names`, `criteria.leafNames`, `byId`, `byName`, or separate domain maps.

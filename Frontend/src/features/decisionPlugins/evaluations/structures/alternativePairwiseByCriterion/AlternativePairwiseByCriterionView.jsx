@@ -15,20 +15,18 @@ const AlternativePairwiseByCriterionView = (
   },
   ref
 ) => {
-  const alternativeItems = Array.isArray(evaluationContext?.alternatives?.items)
-    ? evaluationContext.alternatives.items
+  const alternativeItems = Array.isArray(evaluationContext?.alternatives)
+    ? evaluationContext.alternatives
     : [];
-  const alternativeNames = Array.isArray(evaluationContext?.alternatives?.names)
-    ? evaluationContext.alternatives.names
-    : alternativeItems
-        .map((alternative) => String(alternative?.name || "").trim())
-        .filter(Boolean);
-  const criteriaItems = Array.isArray(evaluationContext?.criteria?.leafItems)
-    ? evaluationContext.criteria.leafItems
+  const alternativeNames = alternativeItems
+    .map((alternative) => String(alternative?.name || "").trim())
+    .filter(Boolean);
+  const criteriaItems = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria
     : [];
-  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames
-    : criteriaItems.map((criterion) => String(criterion?.name || "").trim()).filter(Boolean);
+  const criterionNames = criteriaItems
+    .map((criterion) => String(criterion?.name || "").trim())
+    .filter(Boolean);
   const evaluationsByCriterion =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload

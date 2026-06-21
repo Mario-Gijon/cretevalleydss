@@ -37,11 +37,10 @@ const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
 };
 
 const resolveCriterionNames = async ({ evaluationContext }) => {
-  if (
-    Array.isArray(evaluationContext?.criteria?.leafNames) &&
-    evaluationContext.criteria.leafNames.length > 0
-  ) {
-    return evaluationContext.criteria.leafNames.filter(Boolean);
+  if (Array.isArray(evaluationContext?.leafCriteria) && evaluationContext.leafCriteria.length > 0) {
+    return evaluationContext.leafCriteria
+      .map((criterion) => criterion?.name)
+      .filter(Boolean);
   }
 
   return [];

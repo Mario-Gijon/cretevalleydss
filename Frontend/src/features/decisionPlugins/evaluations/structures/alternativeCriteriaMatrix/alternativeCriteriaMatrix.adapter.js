@@ -3,6 +3,11 @@ import { validateDirectEvaluations } from "./directEvaluation.validation";
 const buildKey = (alternativeName, criterionName) =>
   `${alternativeName}::${criterionName}`;
 
+const getAlternativeNames = (evaluationContext) =>
+  evaluationContext.alternatives.map((alternative) => alternative.name);
+
+const getLeafCriteria = (evaluationContext) => evaluationContext.leafCriteria;
+
 const normalizeCellForBackendPayload = (cell) => {
   if (cell !== null && typeof cell === "object" && !Array.isArray(cell)) {
     return {
@@ -19,20 +24,20 @@ const normalizeCellForBackendPayload = (cell) => {
 
 const buildMatrixPayload = ({
   alternativeNames,
-  criterionNames,
-  domainsByCriterionName,
+  criteria,
   cells = {},
 }) => {
   const matrix = {};
 
   for (const alternativeName of alternativeNames) {
     matrix[alternativeName] = {};
-    for (const criterionName of criterionNames) {
+    for (const criterion of criteria) {
+      const criterionName = criterion.name;
       const key = buildKey(alternativeName, criterionName);
       const cell = cells?.[key];
       matrix[alternativeName][criterionName] = {
         value: cell?.value ?? "",
-        domain: cell?.expressionDomain ?? domainsByCriterionName[criterionName],
+        domain: cell?.expressionDomain ?? criterion.expressionDomain,
       };
     }
   }
@@ -43,32 +48,30 @@ const buildMatrixPayload = ({
 export const alternativeCriteriaMatrixAdapter = Object.freeze({
   createEmptyPayload({ evaluationContext }) {
     return buildMatrixPayload({
-      alternativeNames: evaluationContext.alternatives.names,
-      criterionNames: evaluationContext.criteria.leafNames,
-      domainsByCriterionName: evaluationContext.domains.byCriterionName,
+      alternativeNames: getAlternativeNames(evaluationContext),
+      criteria: getLeafCriteria(evaluationContext),
     });
   },
 
   fromBackendPayload({ evaluationContext, backendPayload }) {
     return buildMatrixPayload({
-      alternativeNames: evaluationContext.alternatives.names,
-      criterionNames: evaluationContext.criteria.leafNames,
-      domainsByCriterionName: evaluationContext.domains.byCriterionName,
+      alternativeNames: getAlternativeNames(evaluationContext),
+      criteria: getLeafCriteria(evaluationContext),
       cells: backendPayload?.cells || {},
     });
   },
 
   toBackendPayload({ evaluationContext, evaluationPayload }) {
-    const alternativeNames = evaluationContext.alternatives.names;
-    const criterionNames = evaluationContext.criteria.leafNames;
-    const domainsByCriterionName = evaluationContext.domains.byCriterionName;
+    const alternativeNames = getAlternativeNames(evaluationContext);
+    const criteria = getLeafCriteria(evaluationContext);
     const cells = {};
 
     for (const alternativeName of alternativeNames) {
-      for (const criterionName of criterionNames) {
+      for (const criterion of criteria) {
+        const criterionName = criterion.name;
         const cell = evaluationPayload?.[alternativeName]?.[criterionName] || {
           value: "",
-          domain: domainsByCriterionName[criterionName],
+          domain: criterion.expressionDomain,
         };
 
         cells[buildKey(alternativeName, criterionName)] =
@@ -81,7 +84,7 @@ export const alternativeCriteriaMatrixAdapter = Object.freeze({
 
   validate({ evaluationContext, evaluationPayload, mode }) {
     const result = validateDirectEvaluations(evaluationPayload, {
-      leafCriteria: evaluationContext.criteria.leafNames,
+      leafCriteria: getLeafCriteria(evaluationContext).map((criterion) => criterion.name),
       allowEmpty: mode === "draft",
     });
 

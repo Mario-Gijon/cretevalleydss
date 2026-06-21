@@ -22,7 +22,7 @@ import {
 } from "../logic/formatAdminIssueDisplay";
 import { getAdminIssueStageLabel } from "../logic/getAdminIssueStatusDisplay";
 import { getAdminIssueDetailCardSx } from "../styles/adminIssues.styles";
-import { buildModelParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
+import { buildParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 export default function AdminIssueOverview({
   issueDetail,
@@ -36,10 +36,17 @@ export default function AdminIssueOverview({
   onRequestRemove,
 }) {
   const theme = useTheme();
-  const parameterContext = buildModelParameterContext({
-    leafCriteria: Array.isArray(detailView?.leafCriteria) ? detailView.leafCriteria : [],
-    leafNames: Array.isArray(detailView?.leafNames) ? detailView.leafNames : [],
+  const parameterContext = buildParameterContext({
+    model: issueDetail?.model
+      ? {
+          id: issueDetail.model.id || issueDetail.model._id || null,
+          name: issueDetail.model.name || null,
+          apiModelKey: issueDetail.model.apiModelKey || null,
+        }
+      : null,
     alternatives: Array.isArray(detailView?.alternatives) ? detailView.alternatives : [],
+    criteriaTree: Array.isArray(issueDetail?.criteriaTree) ? issueDetail.criteriaTree : [],
+    leafCriteria: Array.isArray(detailView?.leafCriteria) ? detailView.leafCriteria : [],
   });
 
   return (
@@ -169,7 +176,7 @@ export default function AdminIssueOverview({
         <IssueModelParametersView
           parameters={issueDetail?.model?.parameters || []}
           values={issueDetail?.modelParameters || {}}
-          context={parameterContext}
+          parameterContext={parameterContext}
         />
       </Paper>
 

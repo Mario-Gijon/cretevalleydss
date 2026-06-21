@@ -134,10 +134,9 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
     : {};
   const valueType = normalizeNonEmptyString(restrictions.valueType) || "number";
   const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
-  const leafCriteria = Array.isArray(context?.leafCriteria) ? context.leafCriteria : [];
 
   const { allowedCriterionKeys, criterionNameByCanonical, canonicalByInputKey, canonicalByCriterion } = buildLeafCriterionIndex(
-    leafCriteria
+    context.leafCriteria
   );
 
   if (canonicalByCriterion.length === 0) {

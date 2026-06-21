@@ -307,11 +307,6 @@ const serializeLeafCriterionItemsOrThrow = async ({ issue, leafCriteria }) => {
         : typeof criterion?.type === "string"
           ? criterion.type
           : null,
-    isLeaf: true,
-    parentId:
-      typeof criterion === "string"
-        ? null
-        : toIdString(criterion?.parentCriterion) || null,
     expressionDomain:
       typeof criterion === "string"
         ? null
@@ -362,8 +357,6 @@ const serializeCriteriaTree = ({ criteriaDocs, leafItems }) => {
         id: criterionId,
         name: typeof criterion?.name === "string" ? criterion.name.trim() : "",
         type: typeof criterion?.type === "string" ? criterion.type : null,
-        isLeaf: criterion?.isLeaf === true,
-        parentId: toIdString(criterion?.parentCriterion) || null,
         expressionDomain: leafItem
           ? cloneSerializable(leafItem.expressionDomain, null)
           : null,
@@ -391,22 +384,6 @@ const loadCriteriaTreeDocs = async ({ issue, criteria }) => {
     .select("_id name type isLeaf parentCriterion expressionDomain position")
     .lean();
 };
-
-const serializeByIdMap = (items) =>
-  items.reduce((accumulator, item) => {
-    if (item?.id) {
-      accumulator[item.id] = item;
-    }
-    return accumulator;
-  }, {});
-
-const serializeByNameMap = (items) =>
-  items.reduce((accumulator, item) => {
-    if (item?.name) {
-      accumulator[item.name] = item;
-    }
-    return accumulator;
-  }, {});
 
 const loadModelSummary = async ({ issue }) => {
   const issueModel = issue?.model;
@@ -496,7 +473,6 @@ export const buildEvaluationStructureContext = async ({
     criteriaDocs,
     leafItems,
   });
-  const leafNames = leafItems.map((criterion) => criterion.name);
   const currentCollectiveEvaluations = isPlainObject(collectiveEvaluations)
     ? cloneSerializable(collectiveEvaluations, {})
     : {};
@@ -523,46 +499,14 @@ export const buildEvaluationStructureContext = async ({
       stage: typeof resolvedStage === "string" ? resolvedStage : null,
     },
     model,
-    parameters: {
-      modelParameters: cloneSerializable(issue?.modelParameters, {}),
-      criteriaWeightingParameters: cloneSerializable(
-        issue?.criteriaWeightingParameters,
-        {}
-      ),
-    },
-    alternatives: {
-      items: alternativeItems,
-      names: alternativeItems.map((alternative) => alternative.name),
-      byId: serializeByIdMap(alternativeItems),
-      byName: serializeByNameMap(alternativeItems),
-    },
-    criteria: {
-      tree: criteriaTree,
-      leafItems,
-      leafNames,
-      leafById: serializeByIdMap(leafItems),
-      leafByName: serializeByNameMap(leafItems),
-    },
-    domains: {
-      byCriterionId: leafItems.reduce((accumulator, criterion) => {
-        if (criterion.id) {
-          accumulator[criterion.id] = cloneSerializable(
-            criterion.expressionDomain,
-            null
-          );
-        }
-        return accumulator;
-      }, {}),
-      byCriterionName: leafItems.reduce((accumulator, criterion) => {
-        if (criterion.name) {
-          accumulator[criterion.name] = cloneSerializable(
-            criterion.expressionDomain,
-            null
-          );
-        }
-        return accumulator;
-      }, {}),
-    },
+    modelParameters: cloneSerializable(issue?.modelParameters, {}),
+    criteriaWeightingParameters: cloneSerializable(
+      issue?.criteriaWeightingParameters,
+      {}
+    ),
+    alternatives: alternativeItems,
+    criteriaTree,
+    leafCriteria: leafItems,
     consensus: {
       phase: resolvedConsensusPhase,
       maxPhases: normalizePositiveIntegerOrNull(issue?.consensusMaxPhases),

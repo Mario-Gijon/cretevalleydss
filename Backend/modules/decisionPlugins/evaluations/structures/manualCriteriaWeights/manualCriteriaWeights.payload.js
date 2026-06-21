@@ -49,11 +49,11 @@ const normalizeWeightValueOrThrow = (rawValue, { criterionName, allowEmpty }) =>
 };
 
 const getCriteriaFromEvaluationContextOrThrow = (evaluationContext) => {
-  const leafItems = evaluationContext?.criteria?.leafItems;
+  const leafItems = evaluationContext?.leafCriteria;
 
   if (!Array.isArray(leafItems)) {
-    throw createBadRequestError("evaluationContext.criteria.leafItems must be an array", {
-      field: "evaluationContext.criteria.leafItems",
+    throw createBadRequestError("evaluationContext.leafCriteria must be an array", {
+      field: "evaluationContext.leafCriteria",
     });
   }
 

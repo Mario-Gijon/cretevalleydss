@@ -3,7 +3,7 @@ import { resolveParameterFieldEntry } from "../../decisionPlugins/modelParameter
 export const ParameterReadOnlyHost = ({
   parameter,
   value,
-  context,
+  parameterContext,
 }) => {
   const entry = resolveParameterFieldEntry(parameter);
   const ReadOnlyComponent = entry.ReadOnlyComponent;
@@ -12,7 +12,7 @@ export const ParameterReadOnlyHost = ({
     <ReadOnlyComponent
       parameter={parameter}
       value={value}
-      context={context}
+      parameterContext={parameterContext}
     />
   );
 };

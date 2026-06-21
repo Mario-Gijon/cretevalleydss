@@ -60,9 +60,9 @@ export const NumberCriterionParameterField = ({
   onChange,
   disabled = false,
   error = "",
-  context,
+  parameterContext,
 }) => {
-  const rows = buildCriterionParameterRows({ context });
+  const rows = buildCriterionParameterRows({ parameterContext });
   const { label, default: defaultValue = "", restrictions = {} } = parameter;
 
   if (rows.length === 0) {

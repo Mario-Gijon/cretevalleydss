@@ -1,20 +1,20 @@
 export const WEIGHT_SUM_TOLERANCE = 1e-6;
 
-export const buildEqualCrispWeights = (leafCriteriaCount) => {
-  if (!Number.isInteger(leafCriteriaCount) || leafCriteriaCount <= 0) {
+export const buildEqualCrispWeights = (criterionCount) => {
+  if (!Number.isInteger(criterionCount) || criterionCount <= 0) {
     return [];
   }
 
-  if (leafCriteriaCount === 1) {
+  if (criterionCount === 1) {
     return [1];
   }
 
-  const weight = 1 / leafCriteriaCount;
-  return Array.from({ length: leafCriteriaCount }, () => weight);
+  const weight = 1 / criterionCount;
+  return Array.from({ length: criterionCount }, () => weight);
 };
 
-export const buildEqualFuzzyWeights = (leafCriteriaCount) => {
-  const middleValues = buildEqualCrispWeights(leafCriteriaCount);
+export const buildEqualFuzzyWeights = (criterionCount) => {
+  const middleValues = buildEqualCrispWeights(criterionCount);
   return middleValues.map((middle) => {
     const spread = Math.min(0.05, middle * 0.5);
     const lower = Math.max(0, middle - spread);

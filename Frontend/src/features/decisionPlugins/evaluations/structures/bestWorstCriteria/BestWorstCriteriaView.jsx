@@ -24,8 +24,8 @@ const BestWorstCriteriaView = (
   },
   ref
 ) => {
-  const names = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames
+  const names = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria.map((criterion) => criterion?.name).filter(Boolean)
     : [];
   const currentPayload =
     evaluationPayload &&

@@ -250,7 +250,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     const apiModelContext = await loadCriteriaWeightingApiModelContextOrThrow({
       resolvedConfig,
       criteriaWeightingParameters,
-      criterionNames,
+      leafCriteria,
       session,
     });
     criteriaWeightingModel = apiModelContext.criteriaWeightingModel;

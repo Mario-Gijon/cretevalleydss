@@ -41,8 +41,16 @@ const handlerInputExample = {
         name: "Environmental impact"
       }
     ],
-    leafCriteriaCount: 2,
-    alternativesCount: 2
+    alternatives: [
+      {
+        id: "A1",
+        name: "Solar farm"
+      },
+      {
+        id: "A2",
+        name: "Wind farm"
+      }
+    ]
   }
 };
 ```
@@ -83,8 +91,16 @@ const complexValueExample = {
         name: "Environmental impact"
       }
     ],
-    leafCriteriaCount: 2,
-    alternativesCount: 2
+    alternatives: [
+      {
+        id: "A1",
+        name: "Solar farm"
+      },
+      {
+        id: "A2",
+        name: "Wind farm"
+      }
+    ]
   }
 };
 ```
@@ -133,5 +149,6 @@ value
 parameter.key
 parameter.restrictions?.ordered
 context.modelName
-context.leafCriteriaCount
+context.leafCriteria.map((criterion) => criterion.id)
+context.alternatives.map((alternative) => alternative.name)
 ```

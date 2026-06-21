@@ -301,6 +301,15 @@ export const useFinishedIssueDialogView = ({
         : [],
     [baseModelParamsBlock?.leafCriteria]
   );
+  const criteriaTreeForParams = useMemo(
+    () =>
+      Array.isArray(viewIssue?.summary?.criteria)
+        ? viewIssue.summary.criteria
+        : Array.isArray(issue?.summary?.criteria)
+          ? issue.summary.criteria
+          : [],
+    [issue?.summary?.criteria, viewIssue?.summary?.criteria]
+  );
 
   const viewIssue =
     selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
@@ -716,7 +725,7 @@ export const useFinishedIssueDialogView = ({
       domainType,
       baseParamsForViewer,
       baseResolved,
-      leafNames,
+      criteriaTree: criteriaTreeForParams,
       leafCriteria: leafCriteriaForParams,
       selectedRunLabel,
       selectedParamsForViewer,
@@ -741,7 +750,7 @@ export const useFinishedIssueDialogView = ({
         setScenarioParamValues,
         scenarioWeightsError,
         clearScenarioWeightsError: () => setScenarioWeightsError(""),
-        leafNames,
+        criteriaTree: criteriaTreeForParams,
         leafCriteria: leafCriteriaForParams,
         paramsJson,
         setParamsJson,

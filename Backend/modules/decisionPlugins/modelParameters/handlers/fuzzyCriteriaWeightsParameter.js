@@ -3,14 +3,15 @@ import { validateAndNormalizeFuzzyCriteriaWeightArray } from "../criteriaWeightV
 import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, context }) => {
+  const criterionCount = context.leafCriteria.length;
   let candidate = value;
   if (typeof candidate === "string" && candidate.trim().toLowerCase() === "equal") {
-    candidate = buildEqualFuzzyWeights(context.leafCriteriaCount);
+    candidate = buildEqualFuzzyWeights(criterionCount);
   }
 
   const normalizedResult = validateAndNormalizeFuzzyCriteriaWeightArray({
     value: candidate,
-    expectedLength: context.leafCriteriaCount,
+    expectedLength: criterionCount,
     valueCount: 3,
     min: 0,
     max: 1,
@@ -28,10 +29,7 @@ export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, conte
     }
 
     if (code === "lengthMismatch") {
-      return toInvalid(
-        `must contain exactly ${context.leafCriteriaCount} fuzzy values`,
-        candidate
-      );
+      return toInvalid(`must contain exactly ${criterionCount} fuzzy values`, candidate);
     }
 
     if (code === "tupleLengthMismatch") {

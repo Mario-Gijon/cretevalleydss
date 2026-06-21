@@ -40,13 +40,13 @@ export const validateOrderedRule = (values, orderedRule) => {
 
 export const resolveExpectedArrayLength = ({
   parameter,
-  leafCriteriaCount,
+  leafCriteria,
 }) => {
   const scope = normalizeNonEmptyString(parameter?.scope);
   const configuredLength = parameter?.restrictions?.length;
 
   if (scope === "perCriterion") {
-    return leafCriteriaCount;
+    return leafCriteria.length;
   }
 
   if (typeof configuredLength === "number" && Number.isInteger(configuredLength)) {

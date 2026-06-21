@@ -52,9 +52,9 @@ export const SelectCriterionParameterField = ({
   onChange,
   disabled = false,
   error = "",
-  context,
+  parameterContext,
 }) => {
-  const rows = buildCriterionParameterRows({ context });
+  const rows = buildCriterionParameterRows({ parameterContext });
   const allowed = requireAllowedValues(parameter);
   const { label, default: defaultValue = "" } = parameter;
 

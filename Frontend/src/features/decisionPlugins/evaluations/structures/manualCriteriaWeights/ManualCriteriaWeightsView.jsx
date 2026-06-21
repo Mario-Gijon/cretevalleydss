@@ -11,8 +11,8 @@ const ManualCriteriaWeightsView = (
   },
   ref
 ) => {
-  const criteria = Array.isArray(evaluationContext?.criteria?.leafItems)
-    ? evaluationContext.criteria.leafItems
+  const criteria = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria
         .map((criterion) => ({
           id: criterion?.id,
           name: criterion?.name,

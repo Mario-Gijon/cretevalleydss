@@ -23,7 +23,7 @@ export const loadCreateIssueActorsAndModel = async ({
   selectedModelId,
   paramValues,
   criteriaNodes,
-  alternativesCount,
+  alternatives,
   uniqueExpertEmails,
   session = null,
 }) => {
@@ -52,7 +52,7 @@ export const loadCreateIssueActorsAndModel = async ({
     model: existingModel,
     paramValues: sanitizedParamValues,
     criteriaNodes,
-    alternativesCount,
+    alternatives,
   });
   const normalizedModelParametersWithoutCriteriaWeights =
     stripCriteriaWeightParameterValues(normalizedModelParameters);

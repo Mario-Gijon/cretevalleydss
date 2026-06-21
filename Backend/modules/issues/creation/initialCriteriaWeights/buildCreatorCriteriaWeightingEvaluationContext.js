@@ -30,43 +30,6 @@ const normalizeLeafCriterion = (criterion) => {
   };
 };
 
-const buildIdMap = (items = []) =>
-  items.reduce((accumulator, item) => {
-    if (item?.id) {
-      accumulator[item.id] = item;
-    }
-
-    return accumulator;
-  }, {});
-
-const buildNameMap = (items = []) =>
-  items.reduce((accumulator, item) => {
-    if (item?.name) {
-      accumulator[item.name] = item;
-    }
-
-    return accumulator;
-  }, {});
-
-const buildDomainMaps = (leafItems = []) =>
-  leafItems.reduce(
-    (accumulator, criterion) => {
-      if (criterion?.id) {
-        accumulator.byCriterionId[criterion.id] = criterion.expressionDomain || null;
-      }
-
-      if (criterion?.name) {
-        accumulator.byCriterionName[criterion.name] = criterion.expressionDomain || null;
-      }
-
-      return accumulator;
-    },
-    {
-      byCriterionId: {},
-      byCriterionName: {},
-    }
-  );
-
 export const buildCreatorCriteriaWeightingEvaluationContext = ({
   criteriaWeightingStructure,
   criteriaWeightingModel,
@@ -96,29 +59,16 @@ export const buildCreatorCriteriaWeightingEvaluationContext = ({
       name: normalizeNonEmptyString(criteriaWeightingModel?.name),
       apiModelKey: normalizeNonEmptyString(criteriaWeightingModel?.apiModelKey),
     },
-    parameters: {
-      modelParameters: {},
-      criteriaWeightingParameters:
-        normalizedCriteriaWeightingParameters &&
-        typeof normalizedCriteriaWeightingParameters === "object" &&
-        !Array.isArray(normalizedCriteriaWeightingParameters)
-          ? normalizedCriteriaWeightingParameters
-          : {},
-    },
-    alternatives: {
-      items: [],
-      names: [],
-      byId: {},
-      byName: {},
-    },
-    criteria: {
-      tree: [],
-      leafItems,
-      leafNames: leafItems.map((criterion) => criterion.name),
-      leafById: buildIdMap(leafItems),
-      leafByName: buildNameMap(leafItems),
-    },
-    domains: buildDomainMaps(leafItems),
+    modelParameters: {},
+    criteriaWeightingParameters:
+      normalizedCriteriaWeightingParameters &&
+      typeof normalizedCriteriaWeightingParameters === "object" &&
+      !Array.isArray(normalizedCriteriaWeightingParameters)
+        ? normalizedCriteriaWeightingParameters
+        : {},
+    alternatives: [],
+    criteriaTree: [],
+    leafCriteria: leafItems,
     consensus: {
       phase: 0,
       maxPhases: null,

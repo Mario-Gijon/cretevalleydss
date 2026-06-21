@@ -1,6 +1,6 @@
 # Backend Evaluation Structure Contract
 
-This reference describes the current backend evaluation structure expectations.
+This reference describes the backend evaluation structure contract.
 
 Backend evaluation structures are auto-discovered from:
 
@@ -12,6 +12,7 @@ Each registered structure exposes:
 - `stage`
 - `get`
 - `save`
+- `get` and `save` receive an `evaluationContext` that uses the canonical runtime shape
 
 Representative example:
 
@@ -32,6 +33,11 @@ Practical guidance:
 - `stage` identifies the evaluation stage handled by the structure.
 - `get` reads the saved evaluation payload for this structure.
 - `save` validates and persists the submitted evaluation payload for this structure.
+- Read ordered alternatives from `evaluationContext.alternatives`.
+- Read ordered leaf criteria from `evaluationContext.leafCriteria`.
+- Read full hierarchy from `evaluationContext.criteriaTree`.
+- Read domain metadata from `criterion.expressionDomain`.
+- Derive label arrays locally when the payload contract still needs names.
 - The structure should not know about frontend internals.
 - Structure-specific persistence and read logic stays isolated here.
 
@@ -44,4 +50,20 @@ structure.get
 structure.save
 ```
 
-This reference should be expanded with exact `get` and `save` argument snapshots after capturing or inspecting the backend runtime call shape.
+The backend `evaluationContext` shape is:
+
+```js
+{
+  issue,
+  structure,
+  model,
+  modelParameters,
+  criteriaWeightingParameters,
+  alternatives,
+  criteriaTree,
+  leafCriteria,
+  consensus
+}
+```
+
+Do not expect `alternatives.names`, `criteria.leafNames`, `leafItems`, `byId`, `byName`, or separate domain maps.

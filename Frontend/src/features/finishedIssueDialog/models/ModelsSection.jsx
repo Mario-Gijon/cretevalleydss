@@ -13,7 +13,7 @@ import {
 } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import ModelsSectionAddDialog from "./components/ModelsSectionAddDialog";
-import { buildModelParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
+import { buildParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
 
 /**
  * Seccion Models del dialogo de issue finalizado.
@@ -41,16 +41,27 @@ const ModelsSection = () => {
     domainType,
     baseParamsForViewer,
     baseResolved,
-    leafNames,
+    criteriaTree,
     leafCriteria,
     selectedRunLabel,
     selectedParamsForViewer,
     selectedResolved,
     addDialog,
   } = modelsSection;
-  const parameterContext = buildModelParameterContext({
+  const parameterContext = buildParameterContext({
+    model: selectedRunKey === "base"
+      ? {
+          id: viewIssue?.modelParams?.base?.modelId || null,
+          name: baseModelName,
+          apiModelKey: null,
+        }
+      : {
+          id: null,
+          name: selectedRunModelName,
+          apiModelKey: null,
+        },
+    criteriaTree: Array.isArray(criteriaTree) ? criteriaTree : [],
     leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
-    leafNames: Array.isArray(leafNames) ? leafNames : [],
     alternatives: [],
   });
 
@@ -178,7 +189,7 @@ const ModelsSection = () => {
                     modelName={baseModelName}
                     parameters={baseParamsForViewer}
                     values={baseResolved}
-                    context={parameterContext}
+                    parameterContext={parameterContext}
                   />
                 ) : (
                   <Box
@@ -200,7 +211,7 @@ const ModelsSection = () => {
                   modelName={selectedRunModelName}
                   parameters={selectedParamsForViewer}
                   values={selectedResolved}
-                  context={parameterContext}
+                  parameterContext={parameterContext}
                 />
               )}
             </Stack>

@@ -52,7 +52,7 @@ const ensureWeightsObject = (weights, rows) => {
   }, {});
 };
 
-const resolveLeafRows = ({ leafCriteria, leafNames }) => {
+const resolveLeafRows = ({ leafCriteria }) => {
   const rowsFromCriteria = (Array.isArray(leafCriteria) ? leafCriteria : [])
     .map((criterion, index) => ({
       key: String(criterion?.id || criterion?._id || `criterion-${index}`),
@@ -66,17 +66,7 @@ const resolveLeafRows = ({ leafCriteria, leafNames }) => {
   if (rowsFromCriteria.length > 0) {
     return rowsFromCriteria;
   }
-
-  return (Array.isArray(leafNames) ? leafNames : [])
-    .map((leafName, index) => {
-      const normalizedName = String(leafName || "").trim();
-      if (!normalizedName) return null;
-      return {
-        key: `leaf-name-${index}`,
-        name: normalizedName,
-      };
-    })
-    .filter(Boolean);
+  return [];
 };
 
 const ModelsSectionScenarioWeightsField = ({
@@ -84,7 +74,6 @@ const ModelsSectionScenarioWeightsField = ({
   values,
   setValues,
   leafCriteria,
-  leafNames,
   error = "",
   onClearError,
 }) => {
@@ -92,7 +81,7 @@ const ModelsSectionScenarioWeightsField = ({
     return null;
   }
 
-  const rows = resolveLeafRows({ leafCriteria, leafNames });
+  const rows = resolveLeafRows({ leafCriteria });
   if (rows.length === 0) {
     return null;
   }

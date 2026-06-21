@@ -70,8 +70,10 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  const criterionNames = Array.isArray(evaluationContext?.criteria?.leafNames)
-    ? evaluationContext.criteria.leafNames.filter(Boolean)
+  const criterionNames = Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria
+        .map((criterion) => criterion?.name)
+        .filter(Boolean)
     : [];
 
   const bestCriterion = normalizeText(payload.bestCriterion);

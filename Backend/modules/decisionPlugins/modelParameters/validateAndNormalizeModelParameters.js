@@ -22,16 +22,11 @@ export const validateAndNormalizeModelParametersOrThrow = ({
   model,
   paramValues,
   criteriaNodes,
-  alternativesCount = null,
+  alternatives = [],
 }) => {
   const modelName = normalizeNonEmptyString(model?.name) || "unknown";
   const modelParameters = Array.isArray(model?.parameters) ? model.parameters : [];
   const leafCriteria = extractLeafCriteriaMetadata(criteriaNodes);
-  const leafCriteriaCount = leafCriteria.length;
-  const resolvedAlternativesCount =
-    Number.isInteger(alternativesCount) && alternativesCount >= 0
-      ? alternativesCount
-      : null;
 
   const rawParamValues =
     paramValues && typeof paramValues === "object" && !Array.isArray(paramValues)
@@ -152,9 +147,8 @@ export const validateAndNormalizeModelParametersOrThrow = ({
       parameter,
       context: {
         modelName,
-        leafCriteriaCount,
         leafCriteria,
-        alternativesCount: resolvedAlternativesCount,
+        alternatives,
       },
     });
 

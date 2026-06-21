@@ -22,8 +22,7 @@ export const validateAndNormalizeArrayParameter = ({ value, parameter, context }
 
   const expectedLength = resolveExpectedArrayLength({
     parameter,
-    leafCriteriaCount: context.leafCriteriaCount,
-    alternativesCount: context.alternativesCount,
+    leafCriteria: context.leafCriteria,
   });
 
   if (expectedLength !== null && value.length !== expectedLength) {

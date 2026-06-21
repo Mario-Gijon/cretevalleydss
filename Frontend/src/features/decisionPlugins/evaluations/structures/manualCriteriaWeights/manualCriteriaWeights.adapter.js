@@ -25,8 +25,8 @@ const sumWeights = (criteria, valuesByCriterion) =>
   );
 
 const getCriteria = (evaluationContext) =>
-  Array.isArray(evaluationContext?.criteria?.leafItems)
-    ? evaluationContext.criteria.leafItems
+  Array.isArray(evaluationContext?.leafCriteria)
+    ? evaluationContext.leafCriteria
         .map((criterion) => ({
           id: criterion?.id,
           name: criterion?.name,

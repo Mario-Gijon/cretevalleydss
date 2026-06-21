@@ -18,23 +18,62 @@ Representative example:
 ```js
 const evaluationViewPropsExample = {
   evaluationContext: {
-    alternatives: {
-      names: ["Solar farm", "Wind farm"]
+    issue: {
+      id: "ISSUE_1",
+      name: "Energy Planning",
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 1,
+      isConsensus: false,
+      consensusThreshold: null,
+      consensusMaxPhases: null
     },
-    criteria: {
-      leafNames: ["Cost", "Environmental impact"]
+    structure: {
+      key: "alternativeCriteriaMatrix",
+      stage: "alternativeEvaluation"
     },
-    domains: {
-      byCriterionName: {
-        Cost: {
-          type: "numeric",
+    model: {
+      id: "MODEL_1",
+      name: "TOPSIS",
+      apiModelKey: "topsis"
+    },
+    modelParameters: {
+      beta: 0.8
+    },
+    criteriaWeightingParameters: {},
+    alternatives: [
+      {
+        id: "ALT_1",
+        name: "Solar farm"
+      },
+      {
+        id: "ALT_2",
+        name: "Wind farm"
+      }
+    ],
+    criteriaTree: [],
+    leafCriteria: [
+      {
+        id: "CRIT_1",
+        name: "Cost",
+        type: "cost",
+        expressionDomain: {
+          id: "DOMAIN_1",
+          name: "Cost scale",
+          type: "numericContinuous",
           numericRange: {
             min: 0,
             max: 1,
             step: 0.1
           }
-        },
-        "Environmental impact": {
+        }
+      },
+      {
+        id: "CRIT_2",
+        name: "Environmental impact",
+        type: "benefit",
+        expressionDomain: {
+          id: "DOMAIN_2",
+          name: "Impact labels",
           type: "linguistic",
           linguisticLabels: [
             {
@@ -52,6 +91,13 @@ const evaluationViewPropsExample = {
           ]
         }
       }
+    ],
+    consensus: {
+      phase: 1,
+      maxPhases: null,
+      threshold: null,
+      currentCollectiveEvaluations: {},
+      previousCollectiveEvaluations: {}
     }
   },
   evaluationPayload: {
@@ -158,10 +204,18 @@ Important notes:
 Useful access examples:
 
 ```js
-evaluationContext.alternatives.names
-evaluationContext.criteria.leafNames
+evaluationContext.alternatives.map((alternative) => alternative.name)
+evaluationContext.leafCriteria.map((criterion) => criterion.name)
+evaluationContext.leafCriteria[0].expressionDomain
 evaluationPayload["Solar farm"]["Cost"].value
 collectivePayload["Wind farm"]["Environmental impact"].localizedLabel
 readOnly
 loading
 ```
+
+Practical guidance:
+
+- Derive ordered label arrays locally from `evaluationContext.alternatives` and `evaluationContext.leafCriteria`.
+- Read domain metadata from `criterion.expressionDomain`.
+- Keep payload conversion and validation inside the structure adapter.
+- Do not expect `evaluationContext.alternatives.names`, `evaluationContext.criteria.leafNames`, or separate domain maps.

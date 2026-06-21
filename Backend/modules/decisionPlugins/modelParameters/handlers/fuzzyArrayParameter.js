@@ -17,8 +17,7 @@ export const validateAndNormalizeFuzzyArrayParameter = ({ value, parameter, cont
 
   const expectedLength = resolveExpectedArrayLength({
     parameter,
-    leafCriteriaCount: context.leafCriteriaCount,
-    alternativesCount: context.alternativesCount,
+    leafCriteria: context.leafCriteria,
   });
 
   if (expectedLength !== null && value.length !== expectedLength) {

@@ -59,23 +59,20 @@ const loadCriteriaWeightingModelOrThrow = async ({
 const validateCriteriaWeightingParametersOrThrow = ({
   criteriaWeightingModel,
   criteriaWeightingParameters,
-  criterionNames,
+  leafCriteria,
 }) => {
   return validateAndNormalizeModelParametersOrThrow({
     model: criteriaWeightingModel,
     paramValues: criteriaWeightingParameters,
-    criteriaNodes: criterionNames.map((criterionName) => ({
-      name: criterionName,
-      children: [],
-    })),
-    alternativesCount: null,
+    criteriaNodes: leafCriteria,
+    alternatives: [],
   });
 };
 
 export const loadCriteriaWeightingApiModelContextOrThrow = async ({
   resolvedConfig,
   criteriaWeightingParameters,
-  criterionNames,
+  leafCriteria,
   session = null,
 }) => {
   const criteriaWeightingModel = await loadCriteriaWeightingModelOrThrow({
@@ -88,7 +85,7 @@ export const loadCriteriaWeightingApiModelContextOrThrow = async ({
     validateCriteriaWeightingParametersOrThrow({
       criteriaWeightingModel,
       criteriaWeightingParameters,
-      criterionNames,
+      leafCriteria,
     });
 
   return {
@@ -168,7 +165,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
         consensusMaxPhases:
           creatorCriteriaWeightingEvaluationContext.issue.consensusMaxPhases,
       },
-      criteria: creatorCriteriaWeightingEvaluationContext.criteria.leafItems.map(
+      criteria: creatorCriteriaWeightingEvaluationContext.leafCriteria.map(
         (criterion) => ({
           id: criterion.id,
           name: criterion.name,

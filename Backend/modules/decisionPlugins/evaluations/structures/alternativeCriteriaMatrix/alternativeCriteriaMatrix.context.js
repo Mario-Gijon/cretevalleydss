@@ -22,16 +22,16 @@ const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
     evaluationContext
   )?.alternatives;
 
-  if (!Array.isArray(alternatives?.items)) {
+  if (!Array.isArray(alternatives)) {
     throw createInternalError(
       "Evaluation structure context alternatives must be an array",
       {
-        field: "evaluationContext.alternatives.items",
+        field: "evaluationContext.alternatives",
       }
     );
   }
 
-  return alternatives.items.map((alternative, index) => {
+  return alternatives.map((alternative, index) => {
     if (
       !alternative ||
       typeof alternative !== "object" ||
@@ -40,7 +40,7 @@ const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
       alternative.name.trim() === ""
     ) {
       throw createInternalError("Evaluation structure alternative is invalid", {
-        field: `evaluationContext.alternatives.items[${index}]`,
+        field: `evaluationContext.alternatives[${index}]`,
       });
     }
 
@@ -49,18 +49,18 @@ const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
 };
 
 const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
-  const criteria = requireEvaluationContextOrThrow(evaluationContext)?.criteria;
+  const criteria = requireEvaluationContextOrThrow(evaluationContext)?.leafCriteria;
 
-  if (!Array.isArray(criteria?.leafItems)) {
+  if (!Array.isArray(criteria)) {
     throw createInternalError(
       "Evaluation structure context leafCriteria must be an array",
       {
-        field: "evaluationContext.criteria.leafItems",
+        field: "evaluationContext.leafCriteria",
       }
     );
   }
 
-  return criteria.leafItems.map((criterion, index) => {
+  return criteria.map((criterion, index) => {
     if (
       !criterion ||
       typeof criterion !== "object" ||
@@ -69,7 +69,7 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
       criterion.name.trim() === ""
     ) {
       throw createInternalError("Evaluation structure criterion is invalid", {
-        field: `evaluationContext.criteria.leafItems[${index}]`,
+        field: `evaluationContext.leafCriteria[${index}]`,
       });
     }
 

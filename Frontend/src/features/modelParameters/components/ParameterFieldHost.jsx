@@ -6,7 +6,7 @@ export const ParameterFieldHost = ({
   onChange,
   error,
   disabled,
-  context,
+  parameterContext,
 }) => {
   const entry = resolveParameterFieldEntry(parameter);
   const FieldComponent = entry.FieldComponent;
@@ -18,7 +18,7 @@ export const ParameterFieldHost = ({
       onChange={onChange}
       error={error}
       disabled={disabled}
-      context={context}
+      parameterContext={parameterContext}
     />
   );
 };
