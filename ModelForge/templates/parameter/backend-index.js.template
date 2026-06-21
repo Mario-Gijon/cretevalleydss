@@ -1,0 +1,33 @@
+import { {{ validate_function_name }} } from "./validate.js";
+
+export const {{ backend_structure_export_name }} = Object.freeze({
+  // key must match the folder name and parameterStructureKey.
+  key: "{{ parameter_structure_key }}",
+  // validate is called by the backend parameter registry.
+  // This structure owns validation for parameters using this parameterStructureKey.
+  validate: {{ validate_function_name }},
+});
+
+/*
+Example model definition parameter:
+
+{
+  key: "thresholds",
+  label: "Thresholds",
+  type: "array",
+  parameterStructureKey: "{{ parameter_structure_key }}",
+  required: true,
+  default: [0.2, 0.5, 0.8],
+  restrictions: {
+    min: 0,
+    max: 1,
+    ordered: "strictIncreasing",
+    length: 3,
+  },
+}
+
+Notes:
+- restrictions is optional.
+- value shape is structure-owned.
+- the backend validator returns the normalized value.
+*/

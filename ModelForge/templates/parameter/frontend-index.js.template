@@ -1,0 +1,11 @@
+import {{ field_component_name }} from "./{{ field_component_name }}";
+import {{ read_only_component_name }} from "./{{ read_only_component_name }}";
+
+export const {{ parameter_structure_key }}ParameterField = Object.freeze({
+  // key must match the folder name and parameterStructureKey.
+  key: "{{ parameter_structure_key }}",
+  // FieldComponent is used while editing.
+  FieldComponent: {{ field_component_name }},
+  // ReadOnlyComponent is used in summaries and finished views.
+  ReadOnlyComponent: {{ read_only_component_name }},
+});

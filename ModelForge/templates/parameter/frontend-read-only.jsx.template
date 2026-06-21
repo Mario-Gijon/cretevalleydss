@@ -1,0 +1,54 @@
+import { Stack, Typography } from "@mui/material";
+
+const formatValue = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+export const {{ read_only_component_name }} = ({
+  parameter,
+  value,
+  parameterContext,
+}) => {
+  return (
+    <Stack spacing={0.35}>
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+        {parameter.label}
+      </Typography>
+
+      <Typography
+        variant="caption"
+        color="text.secondary"
+      >
+        Read-only preview for {{ parameter_structure_key }}.
+        {` Model: ${parameterContext?.model?.name || "—"}`}
+      </Typography>
+
+      <Typography
+        variant="body2"
+        component="pre"
+        sx={{
+          m: 0,
+          fontFamily: "monospace",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        {formatValue(value)}
+      </Typography>
+    </Stack>
+  );
+};
+
+export default {{ read_only_component_name }};

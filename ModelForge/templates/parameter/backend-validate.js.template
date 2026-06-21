@@ -1,0 +1,36 @@
+import { createBadRequestError } from "../../../../utils/common/errors.js";
+
+export const {{ validate_function_name }} = ({ parameter, value }) => {
+  /*
+  Received input:
+  - parameter: model definition parameter object with key, label, type,
+    parameterStructureKey, required, default, and optional restrictions
+  - value: incoming value for this parameter
+
+  Rules:
+  - no database access
+  - no frontend access
+  - no HTTP calls
+  - return normalized value
+  - throw createBadRequestError for invalid user input
+  - do not silently coerce complex invalid values
+  - restrictions may be absent
+  */
+
+  if (value === null || value === undefined || value === "") {
+    if (parameter.required === true) {
+      throw createBadRequestError(`${parameter.label} is required`, {
+        field: parameter.key,
+      });
+    }
+
+    return parameter.default;
+  }
+
+  // TODO:
+  // Validate the structure-owned value shape here.
+  // Read optional restrictions from parameter.restrictions when present.
+  // Return the normalized value.
+
+  return value;
+};

@@ -1,0 +1,90 @@
+import { Stack, TextField, Typography } from "@mui/material";
+
+const helperTextSx = {
+  color: "text.secondary",
+};
+
+export const {{ field_component_name }} = ({
+  parameter,
+  value,
+  onChange,
+  disabled = false,
+  error = "",
+  parameterContext,
+}) => {
+  /*
+  parameterContext shape:
+  {
+    model: {
+      id,
+      name,
+      apiModelKey,
+    },
+    alternatives: [
+      {
+        id,
+        name,
+      },
+    ],
+    criteriaTree: [
+      {
+        id,
+        name,
+        type,
+        expressionDomain,
+        children,
+      },
+    ],
+    leafCriteria: [
+      {
+        id,
+        name,
+        type,
+        expressionDomain,
+      },
+    ],
+  }
+
+  Rules:
+  - use ids for logic
+  - use names only for labels
+  - do not fetch from backend
+  - do not mutate parameterContext
+  - call onChange(nextValue) with the new structure-owned value
+  - do not use legacy name-based or count-based helper fields
+  */
+
+  const previewValue =
+    value === null || value === undefined ? "" : JSON.stringify(value);
+
+  return (
+    <Stack spacing={0.5}>
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+        {parameter.label}
+      </Typography>
+
+      <Typography variant="caption" sx={helperTextSx}>
+        Replace this placeholder editor with the real UI for
+        {" {{ parameter_structure_key }} "}.
+      </Typography>
+
+      <TextField
+        size="small"
+        value={previewValue}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        error={Boolean(error)}
+        helperText={
+          error ||
+          `Model: ${parameterContext?.model?.name || "—"} | Leaf criteria: ${
+            Array.isArray(parameterContext?.leafCriteria)
+              ? parameterContext.leafCriteria.length
+              : 0
+          }`
+        }
+      />
+    </Stack>
+  );
+};
+
+export default {{ field_component_name }};
