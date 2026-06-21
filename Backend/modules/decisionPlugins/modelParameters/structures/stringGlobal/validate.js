@@ -1,7 +1,7 @@
-import { isAllowedValue } from "../parameterValues.js";
-import { toInvalid, toValid } from "../parameterValidationResult.js";
+import { isAllowedValue } from "../../parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeStringParameter = ({ value, parameter }) => {
+export const validateStringGlobalParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};
 
   if (typeof value !== "string") {

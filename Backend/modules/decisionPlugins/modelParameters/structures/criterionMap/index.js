@@ -1,6 +1,6 @@
-import { validateAndNormalizeCriterionMapParameter } from "../../handlers/criterionMapParameter.js";
+import { validateCriterionMapParameter } from "./validate.js";
 
 export const criterionMapParameterStructure = Object.freeze({
   key: "criterionMap",
-  validateAndNormalize: validateAndNormalizeCriterionMapParameter,
+  validateAndNormalize: validateCriterionMapParameter,
 });

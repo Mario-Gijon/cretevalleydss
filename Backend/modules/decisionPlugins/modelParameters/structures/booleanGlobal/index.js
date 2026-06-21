@@ -1,6 +1,6 @@
-import { validateAndNormalizeBooleanParameter } from "../../handlers/booleanParameter.js";
+import { validateBooleanGlobalParameter } from "./validate.js";
 
 export const booleanGlobalParameterStructure = Object.freeze({
   key: "booleanGlobal",
-  validateAndNormalize: validateAndNormalizeBooleanParameter,
+  validateAndNormalize: validateBooleanGlobalParameter,
 });

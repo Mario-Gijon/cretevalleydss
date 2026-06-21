@@ -1,6 +1,6 @@
-import { validateAndNormalizeEnumParameter } from "../../handlers/enumParameter.js";
+import { validateSelectGlobalParameter } from "./validate.js";
 
 export const selectGlobalParameterStructure = Object.freeze({
   key: "selectGlobal",
-  validateAndNormalize: validateAndNormalizeEnumParameter,
+  validateAndNormalize: validateSelectGlobalParameter,
 });

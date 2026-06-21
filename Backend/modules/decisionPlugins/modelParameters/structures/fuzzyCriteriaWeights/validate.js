@@ -1,8 +1,8 @@
-import { buildEqualFuzzyWeights } from "../criteriaWeightDefaults.js";
-import { validateAndNormalizeFuzzyCriteriaWeightArray } from "../criteriaWeightValues.js";
-import { toInvalid, toValid } from "../parameterValidationResult.js";
+import { buildEqualFuzzyWeights } from "../../criteriaWeightDefaults.js";
+import { validateAndNormalizeFuzzyCriteriaWeightArray } from "../../criteriaWeightValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, context }) => {
+export const validateFuzzyCriteriaWeightsParameter = ({ value, context }) => {
   const criterionCount = context.leafCriteria.length;
   let candidate = value;
   if (typeof candidate === "string" && candidate.trim().toLowerCase() === "equal") {
@@ -27,29 +27,24 @@ export const validateAndNormalizeFuzzyCriteriaWeightsParameter = ({ value, conte
     if (code === "notArray") {
       return toInvalid("must be an array of fuzzy triples", candidate);
     }
-
     if (code === "lengthMismatch") {
       return toInvalid(`must contain exactly ${criterionCount} fuzzy values`, candidate);
     }
-
     if (code === "tupleLengthMismatch") {
       return toInvalid(`[${index}] must be an array [l,m,u]`, candidate[index]);
     }
-
     if (code === "tupleNonFinite") {
       return toInvalid(
         `[${index}] must contain finite numeric values`,
         candidate[index]
       );
     }
-
     if (code === "tupleOutOfRange" || code === "tupleNotNonDecreasing") {
       return toInvalid(
         `[${index}] must satisfy 0 <= l <= m <= u <= 1`,
         candidate[index]
       );
     }
-
     if (code === "middleSumMismatch") {
       return toInvalid("middle values must sum to 1", candidate);
     }

@@ -1,6 +1,6 @@
-import { validateAndNormalizeStringParameter } from "../../handlers/stringParameter.js";
+import { validateStringGlobalParameter } from "./validate.js";
 
 export const stringGlobalParameterStructure = Object.freeze({
   key: "stringGlobal",
-  validateAndNormalize: validateAndNormalizeStringParameter,
+  validateAndNormalize: validateStringGlobalParameter,
 });

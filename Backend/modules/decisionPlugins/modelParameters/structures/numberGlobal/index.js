@@ -1,6 +1,6 @@
-import { validateAndNormalizeNumberParameter } from "../../handlers/numberParameter.js";
+import { validateNumberGlobalParameter } from "./validate.js";
 
 export const numberGlobalParameterStructure = Object.freeze({
   key: "numberGlobal",
-  validateAndNormalize: validateAndNormalizeNumberParameter,
+  validateAndNormalize: validateNumberGlobalParameter,
 });

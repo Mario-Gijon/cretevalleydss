@@ -8,10 +8,7 @@ import {
   resolveExpectedArrayLength,
   validateOrderedRule,
 } from "../parameterRestrictions.js";
-import {
-  toInvalid,
-  toValid,
-} from "../parameterValidationResult.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeArrayParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};

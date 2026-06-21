@@ -4,10 +4,7 @@ import {
   normalizeNumberValue,
 } from "../parameterValues.js";
 import { isWithinRange } from "../parameterRestrictions.js";
-import {
-  toInvalid,
-  toValid,
-} from "../parameterValidationResult.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 import { hasOwnKey, isPlainObject } from "../../../../utils/common/objects.js";
 
 const buildLeafCriterionIndex = (leafCriteria) => {
@@ -121,12 +118,11 @@ const normalizeCriterionMapValue = ({ rawValue, valueType, restrictions }) => {
 const expandScalarCriterionMap = ({
   scalarValue,
   canonicalByCriterion,
-}) => {
-  return canonicalByCriterion.reduce((accumulator, criterionKey) => {
+}) =>
+  canonicalByCriterion.reduce((accumulator, criterionKey) => {
     accumulator[criterionKey] = scalarValue;
     return accumulator;
   }, {});
-};
 
 export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, context }) => {
   const restrictions = isPlainObject(parameter?.restrictions)
@@ -135,9 +131,12 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
   const valueType = normalizeNonEmptyString(restrictions.valueType) || "number";
   const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
 
-  const { allowedCriterionKeys, criterionNameByCanonical, canonicalByInputKey, canonicalByCriterion } = buildLeafCriterionIndex(
-    context.leafCriteria
-  );
+  const {
+    allowedCriterionKeys,
+    criterionNameByCanonical,
+    canonicalByInputKey,
+    canonicalByCriterion,
+  } = buildLeafCriterionIndex(context.leafCriteria);
 
   if (canonicalByCriterion.length === 0) {
     return toInvalid("cannot validate criterionMap without leaf criteria", value);
@@ -168,7 +167,6 @@ export const validateAndNormalizeCriterionMapParameter = ({ value, parameter, co
     }
 
     const canonicalKey = canonicalByInputKey.get(normalizedInputKey) || normalizedInputKey;
-
     const normalizedResult = normalizeCriterionMapValue({
       rawValue: rawCriterionValue,
       valueType,

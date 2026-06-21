@@ -1,7 +1,7 @@
-import { isAllowedValue } from "../parameterValues.js";
-import { toInvalid, toValid } from "../parameterValidationResult.js";
+import { isAllowedValue } from "../../parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeBooleanParameter = ({ value, parameter }) => {
+export const validateBooleanGlobalParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};
 
   let normalizedBoolean = null;

@@ -1,16 +1,8 @@
-import {
-  normalizeNumberValue,
-} from "../parameterValues.js";
-import {
-  isWithinRange,
-  validateOrderedRule,
-} from "../parameterRestrictions.js";
-import {
-  toInvalid,
-  toValid,
-} from "../parameterValidationResult.js";
+import { normalizeNumberValue } from "../../parameterValues.js";
+import { isWithinRange, validateOrderedRule } from "../../parameterRestrictions.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeIntervalParameter = ({ value, parameter }) => {
+export const validateIntervalGlobalParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};
 
   if (!Array.isArray(value) || value.length !== 2) {

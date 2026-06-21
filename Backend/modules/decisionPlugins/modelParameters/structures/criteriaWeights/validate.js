@@ -1,8 +1,8 @@
-import { buildEqualCrispWeights } from "../criteriaWeightDefaults.js";
-import { validateAndNormalizeCrispCriteriaWeightArray } from "../criteriaWeightValues.js";
-import { toInvalid, toValid } from "../parameterValidationResult.js";
+import { buildEqualCrispWeights } from "../../criteriaWeightDefaults.js";
+import { validateAndNormalizeCrispCriteriaWeightArray } from "../../criteriaWeightValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter, context }) => {
+export const validateCriteriaWeightsParameter = ({ value, parameter, context }) => {
   const restrictions = parameter?.restrictions || {};
   const criterionCount = context.leafCriteria.length;
 
@@ -27,36 +27,30 @@ export const validateAndNormalizeCriteriaWeightsParameter = ({ value, parameter,
     if (code === "notArray") {
       return toInvalid("must be an array of numbers", candidate);
     }
-
     if (code === "lengthMismatch") {
       return toInvalid(`must contain exactly ${criterionCount} values`, candidate);
     }
-
     if (code === "nonFinite") {
       return toInvalid(`[${index}] must be a finite number`, candidate[index]);
     }
-
     if (code === "outOfRange") {
       return toInvalid(
         `[${index}] must be between ${restrictions.min ?? "-∞"} and ${restrictions.max ?? "+∞"}`,
         candidate[index]
       );
     }
-
     if (code === "nonNegativeViolation") {
       return toInvalid(
         "must contain only values greater than or equal to 0",
         candidate
       );
     }
-
     if (code === "nonPositiveTotal") {
       return toInvalid(
         "must contain at least one value greater than 0",
         candidate
       );
     }
-
     if (code === "sumMismatch") {
       return toInvalid(`must sum to ${restrictions.sum}`, candidate);
     }

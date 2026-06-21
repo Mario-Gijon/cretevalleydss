@@ -1,7 +1,7 @@
-import { isAllowedValue } from "../parameterValues.js";
-import { toInvalid, toValid } from "../parameterValidationResult.js";
+import { isAllowedValue } from "../../parameterValues.js";
+import { toInvalid, toValid } from "../../parameterValidationResult.js";
 
-export const validateAndNormalizeEnumParameter = ({ value, parameter }) => {
+export const validateSelectGlobalParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};
   const valueType = String(parameter?.valueType || "").trim().toLowerCase();
   let normalized = value;

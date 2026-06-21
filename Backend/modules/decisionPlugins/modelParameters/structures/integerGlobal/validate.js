@@ -1,7 +1,7 @@
-import { validateAndNormalizeNumberParameter } from "./numberParameter.js";
-import { toInvalid } from "../parameterValidationResult.js";
+import { toInvalid } from "../../parameterValidationResult.js";
+import { validateAndNormalizeNumberParameter } from "../../shared/validateNumberParameter.js";
 
-export const validateAndNormalizeIntegerParameter = ({ value, parameter }) => {
+export const validateIntegerGlobalParameter = ({ value, parameter }) => {
   const numberResult = validateAndNormalizeNumberParameter({ value, parameter });
   if (!numberResult.ok) {
     return numberResult;

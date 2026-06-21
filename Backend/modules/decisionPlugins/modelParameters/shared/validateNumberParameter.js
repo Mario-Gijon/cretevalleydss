@@ -3,10 +3,7 @@ import {
   normalizeNumberValue,
 } from "../parameterValues.js";
 import { isWithinRange } from "../parameterRestrictions.js";
-import {
-  toInvalid,
-  toValid,
-} from "../parameterValidationResult.js";
+import { toInvalid, toValid } from "../parameterValidationResult.js";
 
 export const validateAndNormalizeNumberParameter = ({ value, parameter }) => {
   const restrictions = parameter?.restrictions || {};

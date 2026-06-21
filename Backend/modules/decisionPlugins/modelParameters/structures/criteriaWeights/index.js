@@ -1,6 +1,6 @@
-import { validateAndNormalizeCriteriaWeightsParameter } from "../../handlers/criteriaWeightsParameter.js";
+import { validateCriteriaWeightsParameter } from "./validate.js";
 
 export const criteriaWeightsParameterStructure = Object.freeze({
   key: "criteriaWeights",
-  validateAndNormalize: validateAndNormalizeCriteriaWeightsParameter,
+  validateAndNormalize: validateCriteriaWeightsParameter,
 });
