@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from api.routers.health import router as health_router
 from api.routers.project_paths import router as project_paths_router
 from api.routers.scaffold_model import router as scaffold_model_router
+from api.routers.scaffold_parameter import router as scaffold_parameter_router
 
 
 def create_application() -> FastAPI:
@@ -18,5 +19,6 @@ def create_application() -> FastAPI:
     app.include_router(health_router)
     app.include_router(project_paths_router)
     app.include_router(scaffold_model_router)
+    app.include_router(scaffold_parameter_router)
 
     return app

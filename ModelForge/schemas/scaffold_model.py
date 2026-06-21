@@ -1,6 +1,7 @@
 import re
 
 from pydantic import BaseModel, Field, field_validator
+from schemas.scaffold_common import ScaffoldedFile
 
 
 def _is_non_empty_string(value: str) -> bool:
@@ -71,11 +72,6 @@ class ModelScaffoldPreviewRequest(BaseModel):
             if not isinstance(item, dict):
                 raise ValueError("parameters must be a list of objects")
         return value
-
-
-class ScaffoldedFile(BaseModel):
-    path: str
-    content: str
 
 
 class ModelScaffoldPreviewResponse(BaseModel):
