@@ -291,9 +291,10 @@ const AlternativeCriteriaMatrixView = (
       return newRow;
     }
 
+    const criterion = criterionByName.get(changedField) || null;
     const previousCell = normalizeCell(
       oldRow[changedField],
-      domainsByCriterionName[changedField]
+      criterion?.expressionDomain || null
     );
     const domain = previousCell.domain;
     const domainType = getDomainType(domain);
@@ -357,9 +358,10 @@ const AlternativeCriteriaMatrixView = (
     const row = { id: alternativeName };
 
     criterionNames.forEach((criterionName) => {
+      const criterion = criterionByName.get(criterionName) || null;
       row[criterionName] = normalizeCell(
         resolvedPayload?.[alternativeName]?.[criterionName],
-        domainsByCriterionName[criterionName]
+        criterion?.expressionDomain || null
       );
     });
 
