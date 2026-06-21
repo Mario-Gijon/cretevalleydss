@@ -9,13 +9,13 @@ PROMETHEE_VI_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "PROMETHEE VI executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A5", "score": 0.412, "rank": 1},
-                    {"alternativeId": None, "name": "A1", "score": 0.331, "rank": 2},
-                    {"alternativeId": None, "name": "A4", "score": 0.287, "rank": 3},
+                    {"alternativeId": "alt-5", "name": "A5", "score": 0.412, "rank": 1},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.331, "rank": 2},
+                    {"alternativeId": "alt-4", "name": "A4", "score": 0.287, "rank": 3},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"C1": 8.84, "C2": 8.79},
-                    "A2": {"C1": 8.57, "C2": 8.51},
+                    "alt-1": {"crit-1": 8.84, "crit-2": 8.79},
+                    "alt-2": {"crit-1": 8.57, "crit-2": 8.51},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.1187, 0.0492], [0.1187, -0.0492]],

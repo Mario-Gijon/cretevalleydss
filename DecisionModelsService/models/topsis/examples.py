@@ -9,13 +9,13 @@ TOPSIS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "Topsis executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A2", "score": 0.6552, "rank": 1},
-                    {"alternativeId": None, "name": "A3", "score": 0.5987, "rank": 2},
-                    {"alternativeId": None, "name": "A1", "score": 0.4211, "rank": 3},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 0.6552, "rank": 1},
+                    {"alternativeId": "alt-3", "name": "A3", "score": 0.5987, "rank": 2},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.4211, "rank": 3},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"Cost": 6.5, "Benefit": 5.5},
-                    "A2": {"Cost": 7.5, "Benefit": 7.5},
+                    "alt-1": {"crit-cost": 6.5, "crit-benefit": 5.5},
+                    "alt-2": {"crit-cost": 7.5, "crit-benefit": 7.5},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.1187, 0.0492], [0.1187, -0.0492]],

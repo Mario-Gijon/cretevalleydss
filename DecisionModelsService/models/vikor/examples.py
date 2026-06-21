@@ -9,14 +9,14 @@ VIKOR_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "VIKOR executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A2", "score": 0.8875, "rank": 1},
-                    {"alternativeId": None, "name": "A3", "score": 0.7214, "rank": 2},
-                    {"alternativeId": None, "name": "A1", "score": 0.4126, "rank": 3},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 0.8875, "rank": 1},
+                    {"alternativeId": "alt-3", "name": "A3", "score": 0.7214, "rank": 2},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.4126, "rank": 3},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"Cost": 0.45, "Benefit": 0.62},
-                    "A2": {"Cost": 0.31, "Benefit": 0.84},
-                    "A3": {"Cost": 0.38, "Benefit": 0.78},
+                    "alt-1": {"crit-cost": 0.45, "crit-benefit": 0.62},
+                    "alt-2": {"crit-cost": 0.31, "crit-benefit": 0.84},
+                    "alt-3": {"crit-cost": 0.38, "crit-benefit": 0.78},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.1187, 0.0492], [0.1187, -0.0492]],

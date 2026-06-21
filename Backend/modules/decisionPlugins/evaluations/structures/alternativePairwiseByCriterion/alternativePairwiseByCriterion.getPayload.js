@@ -1,8 +1,5 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import {
-  buildExpectedPairsByCriterion,
-  resolveAlternativesAndCriteria,
-} from "./alternativePairwiseByCriterion.context.js";
+import { buildExpectedPairsByCriterion, resolveAlternativesAndCriteria } from "./alternativePairwiseByCriterion.context.js";
 import { buildEmptyCell } from "./alternativePairwiseByCriterion.payload.js";
 
 export const buildGetPayload = async ({
@@ -10,71 +7,65 @@ export const buildGetPayload = async ({
   evaluationContext,
 }) => {
   const {
-    alternativeNames,
-    criteria: resolvedCriteria,
-    criterionNames,
+    alternatives,
+    criteria,
+    criterionIds,
   } = await resolveAlternativesAndCriteria({
     evaluationContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-    criteria: resolvedCriteria,
-    alternativeNames,
+    criteria,
+    alternatives,
   });
-
-  const storedComparisonsByCriterion = isPlainObject(
-    payload?.comparisonsByCriterion
-  )
-    ? payload.comparisonsByCriterion
-    : {};
-
+  const storedPayload = isPlainObject(payload) ? payload : {};
   const comparisonsByCriterion = {};
 
-  for (const criterionName of criterionNames) {
-    const expectedPairsMeta = expectedPairsByCriterion[criterionName];
+  for (const criterionId of criterionIds) {
+    const expectedPairsMeta = expectedPairsByCriterion[criterionId];
     const expectedPairs = expectedPairsMeta.pairs;
     const expectedExpressionDomain = expectedPairsMeta.expressionDomain;
-    const storedCriterionComparisons = isPlainObject(
-      storedComparisonsByCriterion[criterionName]
-    )
-      ? storedComparisonsByCriterion[criterionName]
+    const storedCriterionComparisons = isPlainObject(storedPayload[criterionId])
+      ? storedPayload[criterionId]
       : {};
 
-    comparisonsByCriterion[criterionName] = expectedPairs.reduce(
-      (criterionComparisons, pairKey) => {
-        const storedCell = storedCriterionComparisons[pairKey];
+    const criterionPayload = {};
 
-        if (!isPlainObject(storedCell)) {
-          criterionComparisons[pairKey] = {
-            ...buildEmptyCell(),
-            expressionDomain: expectedExpressionDomain,
-          };
-          return criterionComparisons;
-        }
+    for (const alternative of alternatives) {
+      const storedAlternativeRow = isPlainObject(storedCriterionComparisons[alternative.id])
+        ? storedCriterionComparisons[alternative.id]
+        : {};
 
-        criterionComparisons[pairKey] = {
-          value:
-            storedCell.value === "" ||
-            storedCell.value === null ||
-            storedCell.value === undefined
-              ? ""
-              : storedCell.value,
-          expressionDomain: expectedExpressionDomain,
-        };
+      criterionPayload[alternative.id] = {};
+      for (const pairKey of expectedPairs.filter((pair) => pair.startsWith(`${alternative.id}::`))) {
+        const [, colAlternativeId] = pairKey.split("::");
+        const storedCell = storedAlternativeRow[colAlternativeId];
 
-        return criterionComparisons;
-      },
-      {}
-    );
+        criterionPayload[alternative.id][colAlternativeId] = isPlainObject(storedCell)
+          ? {
+              value:
+                storedCell.value === "" ||
+                storedCell.value === null ||
+                storedCell.value === undefined
+                  ? ""
+                  : storedCell.value,
+              expressionDomain: expectedExpressionDomain,
+            }
+          : {
+              ...buildEmptyCell(),
+              expressionDomain: expectedExpressionDomain,
+            };
+      }
+    }
+
+    comparisonsByCriterion[criterionId] = criterionPayload;
   }
 
   return {
-    payload: {
-      comparisonsByCriterion,
-    },
+    payload: comparisonsByCriterion,
     context: {
-      alternativeNames,
-      criteria: resolvedCriteria,
-      criterionNames,
+      alternatives,
+      criteria,
+      criterionIds,
     },
   };
 };

@@ -5,6 +5,10 @@ from fastapi.responses import JSONResponse
 from schemas.model_requests import GenericModelExecutionRequest
 from services.criteria_weights import ordered_fuzzy_weights
 from services.model_executors.responses import error_response, success_response
+from models.shared_alternative_matrix import (
+    extract_id_keyed_alternative_criteria_input,
+    normalize_collective_evaluations_by_ids,
+)
 from .run import run_fuzzy_topsis
 
 
@@ -137,106 +141,40 @@ def _weights(payload: GenericModelExecutionRequest, criteria_count: int) -> list
 
 
 def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
-    context = payload.context or {}
-    alternatives = context.get("alternatives") or []
-    criteria = context.get("criteria") or []
-    evaluations = payload.evaluations or []
-
-    if len(alternatives) == 0:
-        raise ValueError("context.alternatives is required")
-    if len(criteria) == 0:
-        raise ValueError("context.criteria is required")
-    if len(evaluations) == 0:
-        raise ValueError("evaluations must include at least one expert payload")
-
-    alternative_names = [str(item.get("name") or "").strip() for item in alternatives]
-    criterion_names = [str(item.get("name") or "").strip() for item in criteria]
-
-    if any(name == "" for name in alternative_names):
-        raise ValueError("Every context.alternatives item requires a non-empty name")
-    if any(name == "" for name in criterion_names):
-        raise ValueError("Every context.criteria item requires a non-empty name")
-
-    matrices: dict[str, list[list[list[float]]]] = {}
-    seen_expert_keys: set[str] = set()
-
-    for expert_index, evaluation in enumerate(evaluations):
-        expert = evaluation.get("expert") or {}
-        evaluation_payload = evaluation.get("payload") or {}
-        cells = evaluation_payload.get("cells")
-
-        if not isinstance(cells, dict):
-            raise ValueError(f"evaluations[{expert_index}].payload.cells is required")
-
-        expert_key = _expert_key(expert, expert_index)
-        if expert_key in seen_expert_keys:
-            expert_key = f"{expert_key}_{expert_index + 1}"
-        seen_expert_keys.add(expert_key)
-
-        matrix: list[list[list[float]]] = []
-
-        for alternative_name in alternative_names:
-            row: list[list[float]] = []
-
-            for criterion_name in criterion_names:
-                cell_key = f"{alternative_name}::{criterion_name}"
-                cell = cells.get(cell_key)
-
-                if not isinstance(cell, dict):
-                    raise ValueError(
-                        f"evaluations[{expert_index}].payload.cells['{cell_key}'] is required"
-                    )
-
-                row.append(
-                    _cell_value(
-                        cell,
-                        f"evaluations[{expert_index}].payload.cells['{cell_key}']",
-                    )
-                )
-
-            matrix.append(row)
-
-        matrices[expert_key] = matrix
+    extracted = extract_id_keyed_alternative_criteria_input(
+        payload=payload,
+        expert_key_fn=_expert_key,
+        cell_value_fn=_cell_value,
+    )
 
     return {
-        "matrices": matrices,
-        "weights": _weights(payload, len(criteria)),
-        "criterion_directions": [_criterion_type(item.get("type")) for item in criteria],
-        "alternative_names": alternative_names,
-        "criterion_names": criterion_names,
+        **extracted,
+        "weights": _weights(payload, len(extracted["criterion_items"])),
+        "criterion_directions": [
+            _criterion_type(item.get("type")) for item in extracted["criterion_items"]
+        ],
     }
 
 
 def _normalize_collective_evaluations(
     *,
     collective_matrix: Any,
-    alternative_names: list[str],
-    criterion_names: list[str],
+    alternative_ids: list[str],
+    criterion_ids: list[str],
 ) -> dict[str, dict[str, Any]]:
-    if not isinstance(collective_matrix, list):
-        return {}
-
-    collective_evaluations: dict[str, dict[str, Any]] = {}
-
-    for row_index, alternative_name in enumerate(alternative_names):
-        row = collective_matrix[row_index] if row_index < len(collective_matrix) else None
-        if not isinstance(row, list):
-            continue
-
-        collective_evaluations[alternative_name] = {}
-        for criterion_index, criterion_name in enumerate(criterion_names):
-            collective_evaluations[alternative_name][criterion_name] = (
-                row[criterion_index] if criterion_index < len(row) else ""
-            )
-
-    return collective_evaluations
+    return normalize_collective_evaluations_by_ids(
+        collective_matrix=collective_matrix,
+        alternative_ids=alternative_ids,
+        criterion_ids=criterion_ids,
+    )
 
 
 def _output(
     *,
     run_result: dict[str, Any],
+    alternative_ids: list[str],
     alternative_names: list[str],
-    criterion_names: list[str],
+    criterion_ids: list[str],
 ) -> dict[str, Any]:
     ranking_indexes = run_result.get("collective_ranking")
     collective_scores = run_result.get("collective_scores")
@@ -246,14 +184,14 @@ def _output(
     if not isinstance(collective_scores, list):
         raise ValueError("Fuzzy TOPSIS output is missing collective_scores")
 
-    ranking: list[str] = []
+    ranking_indexes_normalized: list[int] = []
     for index in ranking_indexes:
         alternative_index = int(index)
         if alternative_index < 0 or alternative_index >= len(alternative_names):
             raise ValueError("Fuzzy TOPSIS collective_ranking contains out-of-range index")
-        ranking.append(alternative_names[alternative_index])
+        ranking_indexes_normalized.append(alternative_index)
 
-    if len(ranking) == 0:
+    if len(ranking_indexes_normalized) == 0:
         raise ValueError("Fuzzy TOPSIS output collective_ranking is empty")
 
     scores_by_alternative = {
@@ -263,10 +201,11 @@ def _output(
     }
 
     ranked_alternatives = []
-    for rank_position, alternative_name in enumerate(ranking, start=1):
+    for rank_position, alternative_index in enumerate(ranking_indexes_normalized, start=1):
+        alternative_name = alternative_names[alternative_index]
         ranked_alternatives.append(
             {
-                "alternativeId": None,
+                "alternativeId": alternative_ids[alternative_index],
                 "name": alternative_name,
                 "score": float(scores_by_alternative[alternative_name]),
                 "rank": rank_position,
@@ -277,8 +216,8 @@ def _output(
         "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_collective_evaluations(
             collective_matrix=run_result.get("collective_matrix"),
-            alternative_names=alternative_names,
-            criterion_names=criterion_names,
+            alternative_ids=alternative_ids,
+            criterion_ids=criterion_ids,
         ),
         "plotsGraphic": run_result.get("plots_graphic") or {},
         "consensusMeasure": None,
@@ -302,8 +241,9 @@ def execute_fuzzy_topsis(
             "Fuzzy TOPSIS executed successfully",
             _output(
                 run_result=results,
+                alternative_ids=execution_input["alternative_ids"],
                 alternative_names=execution_input["alternative_names"],
-                criterion_names=execution_input["criterion_names"],
+                criterion_ids=execution_input["criterion_ids"],
             ),
         )
     except Exception as error:

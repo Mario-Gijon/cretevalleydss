@@ -17,16 +17,21 @@ const AlternativePairwiseByCriterionView = (
 ) => {
   const alternativeItems = Array.isArray(evaluationContext?.alternatives)
     ? evaluationContext.alternatives
+        .map((alternative) => ({
+          id: String(alternative?.id ?? alternative?._id ?? "").trim(),
+          name: String(alternative?.name ?? "").trim(),
+        }))
+        .filter((alternative) => alternative.id && alternative.name)
     : [];
-  const alternativeNames = alternativeItems
-    .map((alternative) => String(alternative?.name || "").trim())
-    .filter(Boolean);
   const criteriaItems = Array.isArray(evaluationContext?.leafCriteria)
     ? evaluationContext.leafCriteria
+        .map((criterion) => ({
+          ...criterion,
+          id: String(criterion?.id ?? criterion?._id ?? "").trim(),
+          name: String(criterion?.name ?? "").trim(),
+        }))
+        .filter((criterion) => criterion.id && criterion.name)
     : [];
-  const criterionNames = criteriaItems
-    .map((criterion) => String(criterion?.name || "").trim())
-    .filter(Boolean);
   const evaluationsByCriterion =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload
@@ -40,11 +45,11 @@ const AlternativePairwiseByCriterionView = (
 
   useEffect(() => {
     setCurrentCriterionIndex(0);
-  }, [criterionNames.length]);
+  }, [criteriaItems.length]);
 
   useImperativeHandle(ref, () => ({}));
 
-  if (criterionNames.length === 0) {
+  if (criteriaItems.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
         No criteria available.
@@ -52,7 +57,7 @@ const AlternativePairwiseByCriterionView = (
     );
   }
 
-  if (alternativeNames.length === 0) {
+  if (alternativeItems.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
         No alternatives available.
@@ -62,9 +67,9 @@ const AlternativePairwiseByCriterionView = (
 
   const safeCurrentCriterionIndex = Math.max(
     0,
-    Math.min(currentCriterionIndex, Math.max(criterionNames.length - 1, 0))
+    Math.min(currentCriterionIndex, Math.max(criteriaItems.length - 1, 0))
   );
-  const currentCriterionName = criterionNames[safeCurrentCriterionIndex] || null;
+  const currentCriterion = criteriaItems[safeCurrentCriterionIndex] || null;
 
   return (
     <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
@@ -88,21 +93,21 @@ const AlternativePairwiseByCriterionView = (
               }
               onNextCriterion={() =>
                 setCurrentCriterionIndex((previous) =>
-                  Math.min(previous + 1, criterionNames.length - 1)
+                  Math.min(previous + 1, criteriaItems.length - 1)
                 )
               }
             />
           ) : null}
 
-          {currentCriterionName ? (
+          {currentCriterion ? (
             <Stack spacing={0.75}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                {currentCriterionName}
+                {currentCriterion.name}
               </Typography>
 
               <PairwiseAlternativesGrid
-                alternatives={alternativeNames}
-                evaluations={evaluationsByCriterion?.[currentCriterionName] || []}
+                alternatives={alternativeItems}
+                evaluations={evaluationsByCriterion?.[currentCriterion.id] || []}
                 setEvaluations={(nextRows) => {
                   if (!permitEdit) {
                     return;
@@ -110,11 +115,11 @@ const AlternativePairwiseByCriterionView = (
 
                   setEvaluationPayload((previous) => ({
                     ...(previous && typeof previous === "object" ? previous : {}),
-                    [currentCriterionName]: nextRows,
+                    [currentCriterion.id]: nextRows,
                   }));
                 }}
                 collectiveEvaluations={
-                  collectiveEvaluationsByCriterion?.[currentCriterionName] || []
+                  collectiveEvaluationsByCriterion?.[currentCriterion.id] || []
                 }
                 permitEdit={permitEdit}
               />

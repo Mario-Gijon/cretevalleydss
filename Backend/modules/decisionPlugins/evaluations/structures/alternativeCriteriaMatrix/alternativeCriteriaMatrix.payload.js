@@ -1,9 +1,6 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
-import {
-  buildExpectedCellMetadata,
-  resolveAlternativesAndCriteria,
-} from "./alternativeCriteriaMatrix.context.js";
+import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.context.js";
 
 export const buildEmptyCell = (expressionDomain = null) => ({
   value: "",
@@ -146,6 +143,7 @@ export const normalizePayloadOrThrow = async ({
   }
 
   if (
+    Object.prototype.hasOwnProperty.call(payload, "cells") ||
     Object.prototype.hasOwnProperty.call(payload, "evaluations") ||
     Object.prototype.hasOwnProperty.call(payload, "rows") ||
     Object.prototype.hasOwnProperty.call(payload, "matrix") ||
@@ -157,54 +155,69 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  if (!isPlainObject(payload.cells)) {
-    throw createBadRequestError("payload.cells must be an object", {
-      field: "payload.cells",
-    });
-  }
-
   const {
-    alternativeNames,
-    criteria: resolvedCriteria,
+    alternatives,
+    criteria,
   } = await resolveAlternativesAndCriteria({
     evaluationContext,
   });
-  const { expectedKeys: expectedCellKeys, expressionDomainByCellKey } =
-    buildExpectedCellMetadata({
-      alternativeNames,
-      criteria: resolvedCriteria,
-    });
-  const expectedCellKeySet = new Set(expectedCellKeys);
 
-  const incomingCellKeys = Object.keys(payload.cells);
-  const unknownCellKeys = incomingCellKeys.filter(
-    (cellKey) => !expectedCellKeySet.has(cellKey)
+  const expectedAlternativeIdSet = new Set(alternatives.map((alternative) => alternative.id));
+  const expectedCriterionIdSet = new Set(criteria.map((criterion) => criterion.id));
+  const unknownAlternativeKeys = Object.keys(payload).filter(
+    (alternativeId) => !expectedAlternativeIdSet.has(alternativeId)
   );
 
-  if (unknownCellKeys.length > 0) {
-    throw createBadRequestError("payload.cells contains unknown cell keys", {
-      field: "payload.cells",
+  if (unknownAlternativeKeys.length > 0) {
+    throw createBadRequestError("payload contains unknown alternative keys", {
+      field: "payload",
     });
   }
 
-  const cells = expectedCellKeys.reduce((accumulator, cellKey) => {
-    const cell = payload.cells[cellKey];
-    const expectedExpressionDomain = expressionDomainByCellKey.get(cellKey);
+  const normalizedPayload = {};
 
-    accumulator[cellKey] =
-      cell === undefined
-        ? buildEmptyCell(expectedExpressionDomain)
-        : normalizeCellOrThrow({
-            cell,
-            requireValue,
-            field: "payload.cells",
-            expectedExpressionDomain,
-          });
+  for (const alternative of alternatives) {
+    const alternativeRow = payload[alternative.id];
 
-    return accumulator;
-  }, {});
+    if (alternativeRow !== undefined && !isPlainObject(alternativeRow)) {
+      throw createBadRequestError(
+        `payload['${alternative.id}'] must be an object`,
+        {
+          field: "payload",
+        }
+      );
+    }
 
-  return {
-    cells,
-  };
+    const safeAlternativeRow = isPlainObject(alternativeRow) ? alternativeRow : {};
+    const unknownCriterionKeys = Object.keys(safeAlternativeRow).filter(
+      (criterionId) => !expectedCriterionIdSet.has(criterionId)
+    );
+
+    if (unknownCriterionKeys.length > 0) {
+      throw createBadRequestError(
+        `payload['${alternative.id}'] contains unknown criterion keys`,
+        {
+          field: "payload",
+        }
+      );
+    }
+
+    normalizedPayload[alternative.id] = {};
+
+    for (const criterion of criteria) {
+      const cell = safeAlternativeRow[criterion.id];
+
+      normalizedPayload[alternative.id][criterion.id] =
+        cell === undefined
+          ? buildEmptyCell(criterion.expressionDomain)
+          : normalizeCellOrThrow({
+              cell,
+              requireValue,
+              field: "payload",
+              expectedExpressionDomain: criterion.expressionDomain,
+            });
+    }
+  }
+
+  return normalizedPayload;
 };

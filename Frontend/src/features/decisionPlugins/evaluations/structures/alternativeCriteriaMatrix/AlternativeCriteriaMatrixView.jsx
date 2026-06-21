@@ -95,16 +95,24 @@ const AlternativeCriteriaMatrixView = (
 ) => {
   const theme = useTheme();
   const apiRef = useGridApiRef();
-  const alternativeNames = Array.isArray(evaluationContext?.alternatives)
-    ? evaluationContext.alternatives.map((alternative) => alternative?.name).filter(Boolean)
+  const alternativeItems = Array.isArray(evaluationContext?.alternatives)
+    ? evaluationContext.alternatives
+        .map((alternative) => ({
+          id: String(alternative?.id ?? alternative?._id ?? "").trim(),
+          name: String(alternative?.name ?? "").trim(),
+        }))
+        .filter((alternative) => alternative.id && alternative.name)
     : [];
   const criteria = Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria.filter(
-        (criterion) => criterion?.name
-      )
+    ? evaluationContext.leafCriteria
+        .map((criterion) => ({
+          ...criterion,
+          id: String(criterion?.id ?? criterion?._id ?? "").trim(),
+          name: String(criterion?.name ?? "").trim(),
+        }))
+        .filter((criterion) => criterion.id && criterion.name)
     : [];
-  const criterionNames = criteria.map((criterion) => criterion.name);
-  const criterionByName = new Map(criteria.map((criterion) => [criterion.name, criterion]));
+  const criterionById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
   const resolvedPayload =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload
@@ -183,26 +191,26 @@ const AlternativeCriteriaMatrixView = (
       headerName: "Alternative/Criterion",
       minWidth: 120,
       flex: 1,
+      valueGetter: (params) => params.row?.alternativeLabel ?? "",
     },
-    ...criterionNames.map((criterionName) => ({
-      field: criterionName,
-      headerName: criterionName,
+    ...criteria.map((criterion) => ({
+      field: criterion.id,
+      headerName: criterion.name,
       editable: permitEdit,
       flex: 1,
       minWidth: 120,
       valueGetter: (params) => {
-        const cell = params.row?.[criterionName];
+        const cell = params.row?.[criterion.id];
         return typeof cell === "object" ? cell?.value ?? "" : cell ?? "";
       },
       renderCell: (params) => {
         const rowId = params.row.id;
-        const criterion = criterionByName.get(criterionName) || null;
         const cell = normalizeCell(
-          resolvedPayload?.[rowId]?.[criterionName],
+          resolvedPayload?.[rowId]?.[criterion.id],
           criterion?.expressionDomain || null
         );
         const collectiveValue = getCollectiveDisplayValue(
-          resolvedCollectivePayload?.[rowId]?.[criterionName]
+          resolvedCollectivePayload?.[rowId]?.[criterion.id]
         );
         const domain = cell.domain;
         const domainType = getDomainType(domain);
@@ -240,7 +248,7 @@ const AlternativeCriteriaMatrixView = (
                       ...(previous && typeof previous === "object" ? previous : {}),
                       [rowId]: {
                         ...((previous && previous[rowId]) || {}),
-                        [criterionName]: { value: newValue, domain },
+                        [criterion.id]: { value: newValue, domain },
                       },
                     }));
                   }}
@@ -284,6 +292,7 @@ const AlternativeCriteriaMatrixView = (
     const changedField = Object.keys(newRow).find(
       (key) =>
         key !== "id" &&
+        key !== "alternativeLabel" &&
         JSON.stringify(newRow[key]) !== JSON.stringify(oldRow[key])
     );
 
@@ -291,7 +300,7 @@ const AlternativeCriteriaMatrixView = (
       return newRow;
     }
 
-    const criterion = criterionByName.get(changedField) || null;
+    const criterion = criterionById.get(changedField) || null;
     const previousCell = normalizeCell(
       oldRow[changedField],
       criterion?.expressionDomain || null
@@ -354,13 +363,12 @@ const AlternativeCriteriaMatrixView = (
     return resultRow;
   };
 
-  const rows = alternativeNames.map((alternativeName) => {
-    const row = { id: alternativeName };
+  const rows = alternativeItems.map((alternative) => {
+    const row = { id: alternative.id, alternativeLabel: alternative.name };
 
-    criterionNames.forEach((criterionName) => {
-      const criterion = criterionByName.get(criterionName) || null;
-      row[criterionName] = normalizeCell(
-        resolvedPayload?.[alternativeName]?.[criterionName],
+    criteria.forEach((criterion) => {
+      row[criterion.id] = normalizeCell(
+        resolvedPayload?.[alternative.id]?.[criterion.id],
         criterion?.expressionDomain || null
       );
     });

@@ -50,33 +50,37 @@ def _finite_float_list(values: np.ndarray, *, precision: int = 6) -> list[float]
 def _build_suggested_pairwise_payload(
     *,
     matrix: np.ndarray,
-    criterion_name: str,
+    criterion_id: str,
+    alternative_ids: list[str],
     alternative_names: list[str],
 ) -> dict[str, Any]:
     if len(alternative_names) != len(matrix):
         raise ValueError(
             "alternative_names length must match the suggested preference matrix size"
         )
+    if len(alternative_ids) != len(matrix):
+        raise ValueError(
+            "alternative_ids length must match the suggested preference matrix size"
+        )
 
     rounded_matrix = _rounded_finite_matrix(matrix)
-    comparisons_by_criterion: dict[str, dict[str, Any]] = {
-        criterion_name: {}
+    payload: dict[str, dict[str, dict[str, Any]]] = {
+        criterion_id: {}
     }
 
-    for row_index, row_alternative in enumerate(alternative_names):
+    for row_index, row_alternative_id in enumerate(alternative_ids):
         row = rounded_matrix[row_index]
-        for col_index, col_alternative in enumerate(alternative_names):
+        payload[criterion_id][row_alternative_id] = {}
+
+        for col_index, col_alternative_id in enumerate(alternative_ids):
             if row_index == col_index:
                 continue
 
-            pair_key = f"{row_alternative}::{col_alternative}"
-            comparisons_by_criterion[criterion_name][pair_key] = {
+            payload[criterion_id][row_alternative_id][col_alternative_id] = {
                 "value": row[col_index]
             }
 
-    return {
-        "comparisonsByCriterion": comparisons_by_criterion
-    }
+    return payload
 
 
 def run_herrera_viedma(
@@ -87,6 +91,8 @@ def run_herrera_viedma(
     b: float,
     beta: float,
     w_crit: list[float],
+    criterion_id: str,
+    alternative_ids: list[str],
     alternative_names: list[str],
 ) -> dict[str, Any]:
     """Ejecuta una iteración del modelo Herrera-Viedma sobre matrices por experto."""
@@ -142,7 +148,8 @@ def run_herrera_viedma(
             expert_keys[expert_index]: {
                 "payload": _build_suggested_pairwise_payload(
                     matrix=pref[expert_index],
-                    criterion_name=criterion_name,
+                    criterion_id=criterion_id,
+                    alternative_ids=alternative_ids,
                     alternative_names=alternative_names,
                 ),
             }
@@ -186,7 +193,7 @@ def run_herrera_viedma(
         "cm": round(cm, 2),
         "collective_scores": [round(float(value), 6) for value in collective_scores],
         "collective_evaluations": {
-            criterion_name: _rounded_finite_matrix(pref[-1]),
+            criterion_id: _rounded_finite_matrix(pref[-1]),
         },
         "plots_graphic": plots,
         "suggested_next_evaluations": suggested_next_evaluations,

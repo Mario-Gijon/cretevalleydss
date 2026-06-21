@@ -9,13 +9,13 @@ BORDA_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "Borda executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A2", "score": 5.0, "rank": 1},
-                    {"alternativeId": None, "name": "A3", "score": 4.0, "rank": 2},
-                    {"alternativeId": None, "name": "A1", "score": 3.0, "rank": 3},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 5.0, "rank": 1},
+                    {"alternativeId": "alt-3", "name": "A3", "score": 4.0, "rank": 2},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 3.0, "rank": 3},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"Cost": 6.5, "Benefit": 5.5},
-                    "A2": {"Cost": 7.5, "Benefit": 7.5},
+                    "alt-1": {"crit-cost": 6.5, "crit-benefit": 5.5},
+                    "alt-2": {"crit-cost": 7.5, "crit-benefit": 7.5},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.0932, 0.0721], [0.0932, -0.0721]],

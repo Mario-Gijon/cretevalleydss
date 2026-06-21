@@ -9,15 +9,15 @@ MARCOS_RESPONSE_EXAMPLES = {
             "message": "MARCOS executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A3", "score": 0.7814, "rank": 1},
-                    {"alternativeId": None, "name": "A4", "score": 0.6942, "rank": 2},
-                    {"alternativeId": None, "name": "A1", "score": 0.6421, "rank": 3},
-                    {"alternativeId": None, "name": "A5", "score": 0.5875, "rank": 4},
-                    {"alternativeId": None, "name": "A2", "score": 0.5317, "rank": 5},
+                    {"alternativeId": "alt-3", "name": "A3", "score": 0.7814, "rank": 1},
+                    {"alternativeId": "alt-4", "name": "A4", "score": 0.6942, "rank": 2},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.6421, "rank": 3},
+                    {"alternativeId": "alt-5", "name": "A5", "score": 0.5875, "rank": 4},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 0.5317, "rank": 5},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"Cost": 255.0, "Benefit": 16.0},
-                    "A2": {"Cost": 205.0, "Benefit": 16.0},
+                    "alt-1": {"crit-cost": 255.0, "crit-benefit": 16.0},
+                    "alt-2": {"crit-cost": 205.0, "crit-benefit": 16.0},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.1187, 0.0492], [0.1187, -0.0492]],

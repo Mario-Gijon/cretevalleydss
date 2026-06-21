@@ -9,14 +9,16 @@ HERRERA_VIEDMA_CRP_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "Herrera Viedma CRP executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A2", "score": 0.701234, "rank": 1},
-                    {"alternativeId": None, "name": "A1", "score": 0.612345, "rank": 2},
-                    {"alternativeId": None, "name": "A3", "score": 0.533211, "rank": 3},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 0.701234, "rank": 1},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.612345, "rank": 2},
+                    {"alternativeId": "alt-3", "name": "A3", "score": 0.533211, "rank": 3},
                 ],
                 "collectiveEvaluations": {
-                    "Cost": {
-                        "A1::A2": 0.68,
-                        "A1::A3": 0.43,
+                    "crit-cost": {
+                        "alt-1": {
+                            "alt-2": 0.68,
+                            "alt-3": 0.43,
+                        }
                     }
                 },
                 "plotsGraphic": {

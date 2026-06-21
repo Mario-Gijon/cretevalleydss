@@ -7,30 +7,35 @@ const isNonEmptyValue = (value) =>
 
 export const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
   evaluations,
-  criterionNames,
+  criteria,
   expectedPairsByCriterion,
 }) => {
+  const criterionIds = criteria.map((criterion) => criterion.id);
+  const criterionNameById = new Map(
+    criteria.map((criterion) => [criterion.id, criterion.name])
+  );
+
   for (const evaluation of evaluations) {
-    const comparisonsByCriterion = evaluation?.payload?.comparisonsByCriterion;
+    const comparisonsByCriterion = evaluation?.payload;
 
     if (!isPlainObject(comparisonsByCriterion)) {
       throw createBadRequestError(
-        "Completed pairwise evaluation payload.comparisonsByCriterion is required",
+        "Completed pairwise evaluation payload is required",
         {
-          field: "payload.comparisonsByCriterion",
+          field: "payload",
         }
       );
     }
 
     const unknownCriteriaKeys = Object.keys(comparisonsByCriterion).filter(
-      (criterionName) => !criterionNames.includes(criterionName)
+      (criterionId) => !criterionIds.includes(criterionId)
     );
 
     if (unknownCriteriaKeys.length > 0) {
       throw createBadRequestError(
         "Completed pairwise evaluation contains unknown criterion keys",
         {
-          field: "payload.comparisonsByCriterion",
+          field: "payload",
           details: {
             unknownCriteriaKeys,
           },
@@ -38,46 +43,54 @@ export const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
       );
     }
 
-    for (const criterionName of criterionNames) {
-      const criterionComparisons = comparisonsByCriterion[criterionName];
+    for (const criterionId of criterionIds) {
+      const criterionComparisons = comparisonsByCriterion[criterionId];
       if (!isPlainObject(criterionComparisons)) {
         throw createBadRequestError(
-          `Completed pairwise evaluation is missing criterion '${criterionName}' comparisons`,
+          `Completed pairwise evaluation is missing criterion '${criterionNameById.get(criterionId) || criterionId}' comparisons`,
           {
-            field: "payload.comparisonsByCriterion",
+            field: "payload",
           }
         );
       }
 
-      const expectedPairs = expectedPairsByCriterion[criterionName]?.pairs || [];
+      const expectedPairs = expectedPairsByCriterion[criterionId]?.pairs || [];
       const expectedPairSet = new Set(expectedPairs);
+      const expectedAlternativeIds = new Set();
 
-      const unknownPairKeys = Object.keys(criterionComparisons).filter(
-        (pairKey) => !expectedPairSet.has(pairKey)
+      expectedPairs.forEach((pairKey) => {
+        const [rowAlternativeId] = String(pairKey).split("::");
+        expectedAlternativeIds.add(rowAlternativeId);
+      });
+
+      const unknownRowKeys = Object.keys(criterionComparisons).filter(
+        (alternativeId) => !expectedAlternativeIds.has(alternativeId)
       );
 
-      if (unknownPairKeys.length > 0) {
+      if (unknownRowKeys.length > 0) {
         throw createBadRequestError(
-          `Completed pairwise evaluation contains unknown pairs for criterion '${criterionName}'`,
+          `Completed pairwise evaluation contains unknown rows for criterion '${criterionNameById.get(criterionId) || criterionId}'`,
           {
-            field: "payload.comparisonsByCriterion",
+            field: "payload",
             details: {
-              criterionName,
-              unknownPairKeys,
+              criterionId,
+              unknownRowKeys,
             },
           }
         );
       }
 
       for (const pairKey of expectedPairs) {
-        const cell = criterionComparisons[pairKey];
+        const [rowAlternativeId, colAlternativeId] = String(pairKey).split("::");
+        const row = criterionComparisons[rowAlternativeId];
+        const cell = isPlainObject(row) ? row[colAlternativeId] : undefined;
         if (!isPlainObject(cell) || !isNonEmptyValue(cell.value)) {
           throw createBadRequestError(
             "Completed pairwise evaluation is missing required comparison values",
             {
-              field: "payload.comparisonsByCriterion",
+              field: "payload",
               details: {
-                criterionName,
+                criterionId,
                 pairKey,
               },
             }
@@ -87,8 +100,8 @@ export const validateCompletedPairwiseEvaluationPayloadsOrThrow = ({
         validateCellValueByDomainOrThrow({
           value: cell.value,
           expressionDomain:
-            expectedPairsByCriterion[criterionName]?.expressionDomain || null,
-          field: "payload.comparisonsByCriterion",
+            expectedPairsByCriterion[criterionId]?.expressionDomain || null,
+          field: "payload",
         });
       }
     }

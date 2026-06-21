@@ -1,7 +1,8 @@
 import { createInternalError } from "../../../../../utils/common/errors.js";
+import { toIdString } from "../../../../../utils/common/ids.js";
 
-export const buildComparisonKey = (alternativeA, alternativeB) =>
-  `${alternativeA}::${alternativeB}`;
+export const buildComparisonKey = (alternativeAId, alternativeBId) =>
+  `${alternativeAId}::${alternativeBId}`;
 
 const requireEvaluationContextOrThrow = (evaluationContext) => {
   if (
@@ -17,7 +18,7 @@ const requireEvaluationContextOrThrow = (evaluationContext) => {
   return evaluationContext;
 };
 
-const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
+const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
   const alternatives = requireEvaluationContextOrThrow(
     evaluationContext
   )?.alternatives;
@@ -32,19 +33,16 @@ const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
   }
 
   return alternatives.map((alternative, index) => {
-    if (
-      !alternative ||
-      typeof alternative !== "object" ||
-      Array.isArray(alternative) ||
-      typeof alternative.name !== "string" ||
-      alternative.name.trim() === ""
-    ) {
+    const id = toIdString(alternative?.id ?? alternative?._id);
+    const name = typeof alternative?.name === "string" ? alternative.name.trim() : "";
+
+    if (!id || !name) {
       throw createInternalError("Evaluation structure alternative is invalid", {
         field: `evaluationContext.alternatives[${index}]`,
       });
     }
 
-    return alternative.name.trim();
+    return { id, name };
   });
 };
 
@@ -61,43 +59,42 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
   }
 
   return criteria.map((criterion, index) => {
-    if (
-      !criterion ||
-      typeof criterion !== "object" ||
-      Array.isArray(criterion) ||
-      typeof criterion.name !== "string" ||
-      criterion.name.trim() === ""
-    ) {
+    const id = toIdString(criterion?.id ?? criterion?._id);
+    const name = typeof criterion?.name === "string" ? criterion.name.trim() : "";
+
+    if (!id || !name) {
       throw createInternalError("Evaluation structure criterion is invalid", {
         field: `evaluationContext.leafCriteria[${index}]`,
       });
     }
 
     return {
-      name: criterion.name.trim(),
+      id,
+      name,
       expressionDomain: criterion.expressionDomain,
     };
   });
 };
 
-export const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) => {
+export const buildExpectedPairsByCriterion = ({ criteria, alternatives }) => {
   const expectedPairsByCriterion = {};
 
   for (const criterion of criteria) {
-    const criterionName = criterion.name;
-    expectedPairsByCriterion[criterionName] = {
+    expectedPairsByCriterion[criterion.id] = {
+      criterionId: criterion.id,
+      criterionName: criterion.name,
       pairs: [],
       expressionDomain: criterion.expressionDomain,
     };
 
-    for (const alternativeA of alternativeNames) {
-      for (const alternativeB of alternativeNames) {
-        if (alternativeA === alternativeB) {
+    for (const alternativeA of alternatives) {
+      for (const alternativeB of alternatives) {
+        if (alternativeA.id === alternativeB.id) {
           continue;
         }
 
-        expectedPairsByCriterion[criterionName].pairs.push(
-          buildComparisonKey(alternativeA, alternativeB)
+        expectedPairsByCriterion[criterion.id].pairs.push(
+          buildComparisonKey(alternativeA.id, alternativeB.id)
         );
       }
     }
@@ -107,13 +104,12 @@ export const buildExpectedPairsByCriterion = ({ criteria, alternativeNames }) =>
 };
 
 export const resolveAlternativesAndCriteria = async ({ evaluationContext }) => {
-  const normalizedAlternatives =
-    requireEvaluationAlternativeNamesOrThrow(evaluationContext);
-  const normalizedCriteria = requireEvaluationCriteriaOrThrow(evaluationContext);
+  const alternatives = requireEvaluationAlternativesOrThrow(evaluationContext);
+  const criteria = requireEvaluationCriteriaOrThrow(evaluationContext);
 
   return {
-    alternativeNames: normalizedAlternatives,
-    criteria: normalizedCriteria,
-    criterionNames: normalizedCriteria.map((criterion) => criterion.name),
+    alternatives,
+    criteria,
+    criterionIds: criteria.map((criterion) => criterion.id),
   };
 };

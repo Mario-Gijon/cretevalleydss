@@ -146,6 +146,7 @@ export const normalizePayloadOrThrow = async ({
   }
 
   if (
+    Object.prototype.hasOwnProperty.call(payload, "comparisonsByCriterion") ||
     Object.prototype.hasOwnProperty.call(payload, "evaluations") ||
     Object.prototype.hasOwnProperty.call(payload, "rows") ||
     Object.prototype.hasOwnProperty.call(payload, "matrix") ||
@@ -160,100 +161,114 @@ export const normalizePayloadOrThrow = async ({
     );
   }
 
-  if (!isPlainObject(payload.comparisonsByCriterion)) {
-    throw createBadRequestError(
-      "payload.comparisonsByCriterion must be an object",
-      {
-        field: "payload.comparisonsByCriterion",
-      }
-    );
-  }
-
   const {
-    alternativeNames,
-    criteria: resolvedCriteria,
-    criterionNames,
+    alternatives,
+    criteria,
+    criterionIds,
   } = await resolveAlternativesAndCriteria({
     evaluationContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-    criteria: resolvedCriteria,
-    alternativeNames,
+    criteria,
+    alternatives,
   });
 
-  const incomingCriteriaKeys = Object.keys(payload.comparisonsByCriterion);
-  const unknownCriteriaKeys = incomingCriteriaKeys.filter(
-    (criterionName) => !criterionNames.includes(criterionName)
+  const unknownCriteriaKeys = Object.keys(payload).filter(
+    (criterionId) => !criterionIds.includes(criterionId)
   );
 
   if (unknownCriteriaKeys.length > 0) {
     throw createBadRequestError(
-      "payload.comparisonsByCriterion contains unknown criterion keys",
+      "payload contains unknown criterion keys",
       {
-        field: "payload.comparisonsByCriterion",
+        field: "payload",
       }
     );
   }
 
+  const alternativeIdSet = new Set(alternatives.map((alternative) => alternative.id));
   const comparisonsByCriterion = {};
 
-  for (const criterionName of criterionNames) {
-    const expectedPairsMeta = expectedPairsByCriterion[criterionName];
-    const expectedPairs = expectedPairsMeta.pairs;
+  for (const criterionId of criterionIds) {
+    const expectedPairsMeta = expectedPairsByCriterion[criterionId];
     const expectedExpressionDomain = expectedPairsMeta.expressionDomain;
-    const expectedPairSet = new Set(expectedPairs);
-    const incomingComparisons = payload.comparisonsByCriterion[criterionName];
+    const incomingCriterionPayload = payload[criterionId];
 
-    if (
-      incomingComparisons !== undefined &&
-      !isPlainObject(incomingComparisons)
-    ) {
+    if (incomingCriterionPayload !== undefined && !isPlainObject(incomingCriterionPayload)) {
       throw createBadRequestError(
-        `payload.comparisonsByCriterion['${criterionName}'] must be an object`,
+        `payload['${criterionId}'] must be an object`,
         {
-          field: "payload.comparisonsByCriterion",
+          field: "payload",
         }
       );
     }
 
-    const safeIncomingComparisons = isPlainObject(incomingComparisons)
-      ? incomingComparisons
+    const safeCriterionPayload = isPlainObject(incomingCriterionPayload)
+      ? incomingCriterionPayload
       : {};
-
-    const unknownPairKeys = Object.keys(safeIncomingComparisons).filter(
-      (pairKey) => !expectedPairSet.has(pairKey)
+    const unknownRowKeys = Object.keys(safeCriterionPayload).filter(
+      (alternativeId) => !alternativeIdSet.has(alternativeId)
     );
 
-    if (unknownPairKeys.length > 0) {
+    if (unknownRowKeys.length > 0) {
       throw createBadRequestError(
-        `payload.comparisonsByCriterion['${criterionName}'] contains unknown pair keys`,
+        `payload['${criterionId}'] contains unknown alternative row keys`,
         {
-          field: "payload.comparisonsByCriterion",
+          field: "payload",
         }
       );
     }
 
-    comparisonsByCriterion[criterionName] = expectedPairs.reduce(
-      (criterionComparisons, pairKey) => {
-        const cell = safeIncomingComparisons[pairKey];
+    comparisonsByCriterion[criterionId] = {};
 
-        criterionComparisons[pairKey] =
+    for (const rowAlternative of alternatives) {
+      const rowPayload = safeCriterionPayload[rowAlternative.id];
+
+      if (rowPayload !== undefined && !isPlainObject(rowPayload)) {
+        throw createBadRequestError(
+          `payload['${criterionId}']['${rowAlternative.id}'] must be an object`,
+          {
+            field: "payload",
+          }
+        );
+      }
+
+      const safeRowPayload = isPlainObject(rowPayload) ? rowPayload : {};
+      const unknownColKeys = Object.keys(safeRowPayload).filter(
+        (alternativeId) =>
+          !alternativeIdSet.has(alternativeId) || alternativeId === rowAlternative.id
+      );
+
+      if (unknownColKeys.length > 0) {
+        throw createBadRequestError(
+          `payload['${criterionId}']['${rowAlternative.id}'] contains unknown alternative column keys`,
+          {
+            field: "payload",
+          }
+        );
+      }
+
+      comparisonsByCriterion[criterionId][rowAlternative.id] = {};
+
+      for (const colAlternative of alternatives) {
+        if (rowAlternative.id === colAlternative.id) {
+          continue;
+        }
+
+        const cell = safeRowPayload[colAlternative.id];
+
+        comparisonsByCriterion[criterionId][rowAlternative.id][colAlternative.id] =
           cell === undefined
             ? buildEmptyCell(expectedExpressionDomain)
             : normalizeCellOrThrow({
                 cell,
                 requireValue,
-                field: "payload.comparisonsByCriterion",
+                field: "payload",
                 expectedExpressionDomain,
               });
-
-        return criterionComparisons;
-      },
-      {}
-    );
+      }
+    }
   }
 
-  return {
-    comparisonsByCriterion,
-  };
+  return comparisonsByCriterion;
 };

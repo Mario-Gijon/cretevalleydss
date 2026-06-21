@@ -150,7 +150,7 @@ const preserveCellShape = (previousCell, nextValue) => {
  * - mantener la diagonal bloqueada.
  *
  * @param {Object} props
- * @param {string[]} props.alternatives
+ * @param {{id: string, name: string}[]} props.alternatives
  * @param {Object[]} props.evaluations
  * @param {Function} props.setEvaluations
  * @param {Object[]} [props.collectiveEvaluations=[]]
@@ -173,7 +173,10 @@ const PairwiseAlternativesGrid = ({
     ? collectiveEvaluations
     : [];
 
-  const orderedAlternatives = Array.isArray(alternatives) ? alternatives : [];
+  const orderedAlternatives = Array.isArray(alternatives)
+    ? alternatives.filter((alternative) => alternative?.id && alternative?.name)
+    : [];
+  const orderedAlternativeIds = orderedAlternatives.map((alternative) => alternative.id);
   const orderedEvaluations = evaluationRows;
 
   const columns = [
@@ -182,10 +185,11 @@ const PairwiseAlternativesGrid = ({
       headerName: "Alternatives",
       minWidth: 90,
       flex: 1,
+      valueGetter: (params) => params.row?.alternativeLabel ?? "",
     },
     ...orderedAlternatives.map((alternative) => ({
-      field: alternative,
-      headerName: alternative,
+      field: alternative.id,
+      headerName: alternative.name,
       editable: permitEdit,
       flex: 1,
       minWidth: 90,
@@ -194,7 +198,7 @@ const PairwiseAlternativesGrid = ({
         const maybeRow = args[1];
 
         if (maybeRow && typeof maybeRow === "object") {
-          return getCellNumericValue(maybeRow?.[alternative]);
+          return getCellNumericValue(maybeRow?.[alternative.id]);
         }
 
         if (
@@ -202,7 +206,7 @@ const PairwiseAlternativesGrid = ({
           typeof maybeParams === "object" &&
           "row" in maybeParams
         ) {
-          return getCellNumericValue(maybeParams?.row?.[alternative]);
+          return getCellNumericValue(maybeParams?.row?.[alternative.id]);
         }
 
         return getCellNumericValue(maybeParams);
@@ -277,7 +281,7 @@ const PairwiseAlternativesGrid = ({
       return oldRow;
     }
 
-    const changedField = orderedAlternatives.find((field) => {
+    const changedField = orderedAlternativeIds.find((field) => {
       const newValue = getCellNumericValue(newRow[field]);
       const oldValue = getCellNumericValue(oldRow[field]);
       return newValue !== oldValue;

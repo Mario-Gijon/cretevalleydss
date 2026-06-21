@@ -1,7 +1,5 @@
 import { createInternalError } from "../../../../../utils/common/errors.js";
-
-export const buildCellKey = (alternativeName, criterionName) =>
-  `${alternativeName}::${criterionName}`;
+import { toIdString } from "../../../../../utils/common/ids.js";
 
 const requireEvaluationContextOrThrow = (evaluationContext) => {
   if (
@@ -17,7 +15,7 @@ const requireEvaluationContextOrThrow = (evaluationContext) => {
   return evaluationContext;
 };
 
-const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
+const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
   const alternatives = requireEvaluationContextOrThrow(
     evaluationContext
   )?.alternatives;
@@ -32,19 +30,16 @@ const requireEvaluationAlternativeNamesOrThrow = (evaluationContext) => {
   }
 
   return alternatives.map((alternative, index) => {
-    if (
-      !alternative ||
-      typeof alternative !== "object" ||
-      Array.isArray(alternative) ||
-      typeof alternative.name !== "string" ||
-      alternative.name.trim() === ""
-    ) {
+    const id = toIdString(alternative?.id ?? alternative?._id);
+    const name = typeof alternative?.name === "string" ? alternative.name.trim() : "";
+
+    if (!id || !name) {
       throw createInternalError("Evaluation structure alternative is invalid", {
         field: `evaluationContext.alternatives[${index}]`,
       });
     }
 
-    return alternative.name.trim();
+    return { id, name };
   });
 };
 
@@ -61,52 +56,24 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
   }
 
   return criteria.map((criterion, index) => {
-    if (
-      !criterion ||
-      typeof criterion !== "object" ||
-      Array.isArray(criterion) ||
-      typeof criterion.name !== "string" ||
-      criterion.name.trim() === ""
-    ) {
+    const id = toIdString(criterion?.id ?? criterion?._id);
+    const name = typeof criterion?.name === "string" ? criterion.name.trim() : "";
+
+    if (!id || !name) {
       throw createInternalError("Evaluation structure criterion is invalid", {
         field: `evaluationContext.leafCriteria[${index}]`,
       });
     }
 
     return {
-      name: criterion.name.trim(),
+      id,
+      name,
       expressionDomain: criterion.expressionDomain,
     };
   });
 };
 
-export const buildExpectedCellMetadata = ({ alternativeNames, criteria }) => {
-  const expectedKeys = [];
-  const expressionDomainByCellKey = new Map();
-
-  for (const alternativeName of alternativeNames) {
-    for (const criterion of criteria) {
-      const criterionName = criterion.name;
-      const expressionDomain = criterion.expressionDomain;
-      const cellKey = buildCellKey(alternativeName, criterionName);
-      expectedKeys.push(cellKey);
-      expressionDomainByCellKey.set(cellKey, expressionDomain);
-    }
-  }
-
-  return {
-    expectedKeys,
-    expressionDomainByCellKey,
-  };
-};
-
-export const resolveAlternativesAndCriteria = async ({ evaluationContext }) => {
-  const normalizedAlternatives =
-    requireEvaluationAlternativeNamesOrThrow(evaluationContext);
-  const normalizedCriteria = requireEvaluationCriteriaOrThrow(evaluationContext);
-
-  return {
-    alternativeNames: normalizedAlternatives,
-    criteria: normalizedCriteria,
-  };
-};
+export const resolveAlternativesAndCriteria = async ({ evaluationContext }) => ({
+  alternatives: requireEvaluationAlternativesOrThrow(evaluationContext),
+  criteria: requireEvaluationCriteriaOrThrow(evaluationContext),
+});

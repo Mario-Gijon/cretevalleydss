@@ -34,18 +34,17 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
 
   async validateBeforeCompute({
     evaluations,
-    alternativeNames,
+    alternatives,
     criteria,
-    criterionNames,
   }) {
     const expectedPairsByCriterion = buildExpectedPairsByCriterion({
       criteria,
-      alternativeNames,
+      alternatives,
     });
 
     validateCompletedPairwiseEvaluationPayloadsOrThrow({
       evaluations,
-      criterionNames,
+      criteria,
       expectedPairsByCriterion,
     });
   },

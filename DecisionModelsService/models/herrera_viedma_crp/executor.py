@@ -117,94 +117,121 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
     if len(evaluations) == 0:
         raise ValueError("evaluations must include at least one expert payload")
 
-    alternative_names = [str(item.get("name") or "").strip() for item in alternatives]
-    criterion_names = [str(item.get("name") or "").strip() for item in criteria]
+    alternative_items: list[dict[str, str]] = []
+    for index, item in enumerate(alternatives):
+        alternative_id = str(item.get("id") or "").strip()
+        alternative_name = str(item.get("name") or "").strip()
+        if not alternative_id:
+            raise ValueError(f"context.alternatives[{index}] requires a non-empty id")
+        if not alternative_name:
+            raise ValueError(f"context.alternatives[{index}] requires a non-empty name")
+        alternative_items.append({"id": alternative_id, "name": alternative_name})
 
-    if any(name == "" for name in alternative_names):
-        raise ValueError("Every context.alternatives item requires a non-empty name")
-    if any(name == "" for name in criterion_names):
-        raise ValueError("Every context.criteria item requires a non-empty name")
+    criterion_items: list[dict[str, str]] = []
+    for index, item in enumerate(criteria):
+        criterion_id = str(item.get("id") or "").strip()
+        criterion_name = str(item.get("name") or "").strip()
+        if not criterion_id:
+            raise ValueError(f"context.criteria[{index}] requires a non-empty id")
+        if not criterion_name:
+            raise ValueError(f"context.criteria[{index}] requires a non-empty name")
+        criterion_items.append({"id": criterion_id, "name": criterion_name})
+
+    alternative_ids = [item["id"] for item in alternative_items]
+    alternative_names = [item["name"] for item in alternative_items]
+    criterion_ids = [item["id"] for item in criterion_items]
+    criterion_names = [item["name"] for item in criterion_items]
 
     weights = _weights(payload, len(criteria))
     matrices: dict[str, dict[str, list[list[float]]]] = {}
     seen_expert_keys: set[str] = set()
 
-    criteria_count = len(criterion_names)
-    alternatives_count = len(alternative_names)
+    criteria_count = len(criterion_ids)
+    alternatives_count = len(alternative_ids)
 
     for expert_index, evaluation in enumerate(evaluations):
         expert = evaluation.get("expert") or {}
         evaluation_payload = evaluation.get("payload") or {}
-        comparisons_by_criterion = evaluation_payload.get("comparisonsByCriterion")
-
-        if not isinstance(comparisons_by_criterion, dict):
-            raise ValueError(
-                f"evaluations[{expert_index}].payload.comparisonsByCriterion is required"
-            )
+        if not isinstance(evaluation_payload, dict):
+            raise ValueError(f"evaluations[{expert_index}].payload is required")
 
         unknown_criteria = [
             criterion_key
-            for criterion_key in comparisons_by_criterion.keys()
-            if criterion_key not in criterion_names
+            for criterion_key in evaluation_payload.keys()
+            if criterion_key not in criterion_ids
         ]
         if unknown_criteria:
             raise ValueError(
-                f"evaluations[{expert_index}].payload.comparisonsByCriterion contains unknown criteria"
+                f"evaluations[{expert_index}].payload contains unknown criteria"
             )
 
         criterion_matrices: list[list[list[float]]] = []
 
-        for criterion_name in criterion_names:
-            criterion_payload = comparisons_by_criterion.get(criterion_name)
+        for criterion_index, criterion_id in enumerate(criterion_ids):
+            criterion_name = criterion_names[criterion_index]
+            criterion_payload = evaluation_payload.get(criterion_id)
             if not isinstance(criterion_payload, dict):
                 raise ValueError(
-                    f"evaluations[{expert_index}].payload.comparisonsByCriterion['{criterion_name}'] is required"
+                    f"evaluations[{expert_index}].payload['{criterion_id}'] is required"
                 )
 
-            expected_pair_keys: set[str] = set()
             matrix: list[list[float]] = []
 
-            for row_alternative in alternative_names:
-                row: list[float] = []
+            unknown_row_keys = [
+                alternative_key
+                for alternative_key in criterion_payload.keys()
+                if alternative_key not in alternative_ids
+            ]
+            if unknown_row_keys:
+                raise ValueError(
+                    f"evaluations[{expert_index}].payload['{criterion_id}'] contains unknown row keys"
+                )
 
-                for col_alternative in alternative_names:
-                    if row_alternative == col_alternative:
+            for row_index, row_alternative_id in enumerate(alternative_ids):
+                row_alternative_name = alternative_names[row_index]
+                row_payload = criterion_payload.get(row_alternative_id)
+                if not isinstance(row_payload, dict):
+                    raise ValueError(
+                        f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}'] is required"
+                    )
+
+                row: list[float] = []
+                unknown_col_keys = [
+                    alternative_key
+                    for alternative_key in row_payload.keys()
+                    if alternative_key not in alternative_ids or alternative_key == row_alternative_id
+                ]
+                if unknown_col_keys:
+                    raise ValueError(
+                        f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}'] contains unknown column keys"
+                    )
+
+                for col_index, col_alternative_id in enumerate(alternative_ids):
+                    col_alternative_name = alternative_names[col_index]
+                    if row_alternative_id == col_alternative_id:
                         row.append(0.5)
                         continue
 
-                    pair_key = f"{row_alternative}::{col_alternative}"
-                    expected_pair_keys.add(pair_key)
-
-                    cell = criterion_payload.get(pair_key)
+                    cell = row_payload.get(col_alternative_id)
                     if not isinstance(cell, dict):
                         raise ValueError(
-                            f"evaluations[{expert_index}].payload.comparisonsByCriterion['{criterion_name}']['{pair_key}'] is required"
+                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'] is required"
                         )
 
                     value = cell.get("value")
                     if value is None or value == "":
                         raise ValueError(
-                            f"evaluations[{expert_index}].payload.comparisonsByCriterion['{criterion_name}']['{pair_key}'].value is required"
+                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'].value is required"
                         )
 
                     row.append(
                         _finite_number(
                             value,
-                            f"evaluations[{expert_index}].payload.comparisonsByCriterion['{criterion_name}']['{pair_key}'].value",
+                            f"evaluations[{expert_index}].payload['{criterion_id}']['{row_alternative_id}']['{col_alternative_id}'].value",
                         )
                     )
 
                 matrix.append(row)
-
-            unknown_pairs = [
-                pair_key
-                for pair_key in criterion_payload.keys()
-                if pair_key not in expected_pair_keys
-            ]
-            if unknown_pairs:
-                raise ValueError(
-                    f"evaluations[{expert_index}].payload.comparisonsByCriterion['{criterion_name}'] contains unknown pair keys"
-                )
 
             criterion_matrices.append(matrix)
 
@@ -237,12 +264,15 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
             expert_key = f"{expert_key}_{expert_index + 1}"
         seen_expert_keys.add(expert_key)
 
-        matrices[expert_key] = {criterion_names[0]: expert_matrix}
+        matrices[expert_key] = {criterion_ids[0]: expert_matrix}
 
     return {
         "matrices": matrices,
+        "alternative_ids": alternative_ids,
         "alternative_names": alternative_names,
+        "criterion_ids": criterion_ids,
         "criterion_names": criterion_names,
+        "aggregated_criterion_id": criterion_ids[0],
         "weights": weights,
     }
 
@@ -250,36 +280,33 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
 def _normalize_pairwise_collective_evaluations(
     *,
     source: Any,
-    alternative_names: list[str],
-    criterion_names: list[str],
-) -> dict[str, dict[str, Any]]:
+    alternative_ids: list[str],
+    aggregated_criterion_id: str,
+) -> dict[str, dict[str, dict[str, Any]]]:
     if not isinstance(source, dict):
         return {}
 
-    matrix_by_criterion_name: dict[str, Any] = {}
-    for criterion_name in criterion_names:
-        candidate = source.get(criterion_name)
-        if isinstance(candidate, list):
-            matrix_by_criterion_name[criterion_name] = candidate
+    matrix = source.get(aggregated_criterion_id)
+    if not isinstance(matrix, list):
+        return {}
 
-    collective_evaluations: dict[str, dict[str, Any]] = {}
+    collective_evaluations: dict[str, dict[str, dict[str, Any]]] = {
+        aggregated_criterion_id: {}
+    }
 
-    for criterion_name, matrix in matrix_by_criterion_name.items():
-        criterion_pairs: dict[str, Any] = {}
+    for row_index, row_alternative_id in enumerate(alternative_ids):
+        row = matrix[row_index] if row_index < len(matrix) else None
+        if not isinstance(row, list):
+            continue
 
-        for row_index, row_alternative in enumerate(alternative_names):
-            row = matrix[row_index] if row_index < len(matrix) else None
-            if not isinstance(row, list):
+        collective_evaluations[aggregated_criterion_id][row_alternative_id] = {}
+        for col_index, col_alternative_id in enumerate(alternative_ids):
+            if row_alternative_id == col_alternative_id:
                 continue
 
-            for col_index, col_alternative in enumerate(alternative_names):
-                if row_alternative == col_alternative:
-                    continue
-
-                pair_key = f"{row_alternative}::{col_alternative}"
-                criterion_pairs[pair_key] = row[col_index] if col_index < len(row) else ""
-
-        collective_evaluations[criterion_name] = criterion_pairs
+            collective_evaluations[aggregated_criterion_id][row_alternative_id][
+                col_alternative_id
+            ] = row[col_index] if col_index < len(row) else ""
 
     return collective_evaluations
 
@@ -318,8 +345,9 @@ def _normalize_suggested_next_evaluations(
 def _output(
     *,
     run_result: dict[str, Any],
+    alternative_ids: list[str],
     alternative_names: list[str],
-    criterion_names: list[str],
+    aggregated_criterion_id: str,
 ) -> dict[str, Any]:
     safe_run_result = _to_json_compatible(run_result)
 
@@ -329,14 +357,14 @@ def _output(
 
     collective_ranking_indexes = _as_list(rankings_history[-1])
 
-    ranking: list[str] = []
+    ranking_indexes_normalized: list[int] = []
     for index in collective_ranking_indexes:
         alternative_index = int(index)
         if alternative_index < 0 or alternative_index >= len(alternative_names):
             raise ValueError("Herrera-Viedma collective ranking contains out-of-range index")
-        ranking.append(alternative_names[alternative_index])
+        ranking_indexes_normalized.append(alternative_index)
 
-    if len(ranking) == 0:
+    if len(ranking_indexes_normalized) == 0:
         raise ValueError("Herrera-Viedma collective ranking is empty")
 
     collective_scores = _as_list(safe_run_result.get("collective_scores"))
@@ -346,14 +374,15 @@ def _output(
         if index < len(alternative_names)
     }
     ranked_alternatives = []
-    for rank_position, alternative_name in enumerate(ranking, start=1):
+    for rank_position, alternative_index in enumerate(ranking_indexes_normalized, start=1):
+        alternative_name = alternative_names[alternative_index]
         if alternative_name not in scores_by_alternative:
             raise ValueError(
                 f"Herrera-Viedma collective_scores is missing value for '{alternative_name}'"
             )
         ranked_alternatives.append(
             {
-                "alternativeId": None,
+                "alternativeId": alternative_ids[alternative_index],
                 "name": alternative_name,
                 "score": float(scores_by_alternative[alternative_name]),
                 "rank": rank_position,
@@ -378,8 +407,8 @@ def _output(
         "rankedAlternatives": ranked_alternatives,
         "collectiveEvaluations": _normalize_pairwise_collective_evaluations(
             source=collective_evaluations,
-            alternative_names=alternative_names,
-            criterion_names=criterion_names,
+            alternative_ids=alternative_ids,
+            aggregated_criterion_id=aggregated_criterion_id,
         ),
         "plotsGraphic": plots_graphic,
         "consensusMeasure": consensus_measure,
@@ -413,6 +442,8 @@ def execute_herrera_viedma(
             b=float(model_parameters.get("b", 1)),
             beta=float(model_parameters.get("beta", 0.8)),
             w_crit=[1.0],
+            criterion_id=execution_input["aggregated_criterion_id"],
+            alternative_ids=execution_input["alternative_ids"],
             alternative_names=execution_input["alternative_names"],
         )
 
@@ -420,8 +451,9 @@ def execute_herrera_viedma(
             "Herrera Viedma CRP executed successfully",
             _output(
                 run_result=results,
+                alternative_ids=execution_input["alternative_ids"],
                 alternative_names=execution_input["alternative_names"],
-                criterion_names=execution_input["criterion_names"],
+                aggregated_criterion_id=execution_input["aggregated_criterion_id"],
             ),
         )
     except Exception as error:

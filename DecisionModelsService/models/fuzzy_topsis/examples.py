@@ -9,12 +9,12 @@ FUZZY_TOPSIS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
             "message": "Fuzzy TOPSIS executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": None, "name": "A2", "score": 0.7124, "rank": 1},
-                    {"alternativeId": None, "name": "A1", "score": 0.4871, "rank": 2},
+                    {"alternativeId": "alt-2", "name": "A2", "score": 0.7124, "rank": 1},
+                    {"alternativeId": "alt-1", "name": "A1", "score": 0.4871, "rank": 2},
                 ],
                 "collectiveEvaluations": {
-                    "A1": {"Cost": [1.0, 2.0, 3.0]},
-                    "A2": {"Cost": [2.5, 3.5, 4.5]},
+                    "alt-1": {"crit-cost": [1.0, 2.0, 3.0]},
+                    "alt-2": {"crit-cost": [2.5, 3.5, 4.5]},
                 },
                 "plotsGraphic": {
                     "expert_points": [[-0.0711, 0.0579], [0.0711, -0.0579]],
