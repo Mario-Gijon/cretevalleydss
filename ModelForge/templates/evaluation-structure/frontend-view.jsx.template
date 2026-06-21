@@ -1,0 +1,154 @@
+import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { Box, Stack, Typography } from "@mui/material";
+
+const {{ view_component_name }} = (
+  {
+    evaluationContext,
+    evaluationPayload,
+    setEvaluationPayload,
+    collectivePayload,
+    readOnly,
+    loading,
+  },
+  ref
+) => {
+  /*
+  evaluationContext shape:
+  {
+    issue,
+    structure,
+    model,
+    modelParameters,
+    criteriaWeightingParameters,
+    alternatives,
+    criteriaTree,
+    leafCriteria,
+    consensus,
+  }
+
+  Canonical payload example:
+  {
+    [alternativeId]: {
+      [criterionId]: {
+        value: 0.7,
+      },
+    },
+  }
+  */
+
+  const alternatives = useMemo(
+    () =>
+      Array.isArray(evaluationContext?.alternatives)
+        ? evaluationContext.alternatives
+            .map((alternative) => ({
+              id: String(alternative?.id ?? alternative?._id ?? "").trim(),
+              name: String(alternative?.name ?? "").trim(),
+            }))
+            .filter((alternative) => alternative.id && alternative.name)
+        : [],
+    [evaluationContext]
+  );
+  const criteria = useMemo(
+    () =>
+      Array.isArray(evaluationContext?.leafCriteria)
+        ? evaluationContext.leafCriteria
+            .map((criterion) => ({
+              id: String(criterion?.id ?? criterion?._id ?? "").trim(),
+              name: String(criterion?.name ?? "").trim(),
+              type: criterion?.type ?? null,
+              expressionDomain: criterion?.expressionDomain ?? null,
+            }))
+            .filter((criterion) => criterion.id && criterion.name)
+        : [],
+    [evaluationContext]
+  );
+  const isReadOnly = readOnly === true || loading === true;
+
+  const preparePayloadRead = async () => evaluationPayload;
+  const flushPendingEdits = async () => evaluationPayload;
+
+  useImperativeHandle(ref, () => ({
+    flushPendingEdits,
+    preparePayloadRead,
+  }));
+
+  if (alternatives.length === 0) {
+    return (
+      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+        No alternatives available.
+      </Typography>
+    );
+  }
+
+  if (criteria.length === 0) {
+    return (
+      <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
+        No criteria available.
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
+      <Box sx={{ width: "100%", maxWidth: "none", minWidth: 0, p: { xs: 1, sm: 1.5 } }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
+            {{ evaluation_structure_key }}
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            Replace this placeholder view with the real editor for this evaluation
+            structure. Use alternative ids and criterion ids for logic, and names
+            only for display.
+          </Typography>
+
+          <Typography variant="body2">
+            Alternatives: {alternatives.map((alternative) => alternative.name).join(", ")}
+          </Typography>
+
+          <Typography variant="body2">
+            Criteria: {criteria.map((criterion) => criterion.name).join(", ")}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Mode: {isReadOnly ? "read-only" : "editable"}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Collective payload available: {collectivePayload ? "yes" : "no"}
+          </Typography>
+
+          <Typography
+            variant="body2"
+            component="pre"
+            sx={{
+              m: 0,
+              p: 1,
+              borderRadius: 1,
+              bgcolor: "action.hover",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontFamily: "monospace",
+            }}
+          >
+            {JSON.stringify(
+              evaluationPayload && typeof evaluationPayload === "object"
+                ? evaluationPayload
+                : {},
+              null,
+              2
+            )}
+          </Typography>
+
+          {!isReadOnly ? (
+            <Typography variant="caption" color="text.secondary">
+              Call setEvaluationPayload(nextValue) with the structure-owned UI state.
+            </Typography>
+          ) : null}
+        </Stack>
+      </Box>
+    </Stack>
+  );
+};
+
+export default forwardRef({{ view_component_name }});

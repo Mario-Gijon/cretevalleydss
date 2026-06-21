@@ -1,0 +1,118 @@
+import { createInternalError } from "../../../../../utils/common/errors.js";
+import { toIdString } from "../../../../../utils/common/ids.js";
+
+const requireEvaluationContextOrThrow = (evaluationContext) => {
+  if (
+    !evaluationContext ||
+    typeof evaluationContext !== "object" ||
+    Array.isArray(evaluationContext)
+  ) {
+    throw createInternalError("Evaluation structure context is invalid", {
+      field: "evaluationContext",
+    });
+  }
+
+  return evaluationContext;
+};
+
+const normalizeOrderedEntityListOrThrow = ({
+  items,
+  field,
+}) => {
+  if (!Array.isArray(items)) {
+    throw createInternalError(`${field} must be an array`, {
+      field,
+    });
+  }
+
+  return items.map((item, index) => {
+    const id = toIdString(item?.id ?? item?._id);
+    const name = typeof item?.name === "string" ? item.name.trim() : "";
+
+    if (!id || !name) {
+      throw createInternalError("Evaluation structure entity is invalid", {
+        field: `${field}[${index}]`,
+      });
+    }
+
+    return {
+      ...item,
+      id,
+      name,
+    };
+  });
+};
+
+export const resolveEvaluationEntitiesOrThrow = ({ evaluationContext }) => {
+  /*
+  evaluationContext shape:
+  {
+    issue: {
+      id,
+      name,
+      consensusThreshold,
+      consensusMaxPhases,
+    },
+    structure: {
+      key,
+      stage,
+    },
+    model: {
+      id,
+      name,
+      apiModelKey,
+    },
+    modelParameters: {},
+    criteriaWeightingParameters: {},
+    alternatives: [
+      {
+        id,
+        name,
+      },
+    ],
+    criteriaTree: [
+      {
+        id,
+        name,
+        type,
+        expressionDomain,
+        children,
+      },
+    ],
+    leafCriteria: [
+      {
+        id,
+        name,
+        type,
+        expressionDomain,
+      },
+    ],
+    consensus: {
+      enabled,
+      phase,
+    },
+  }
+  */
+
+  const safeEvaluationContext = requireEvaluationContextOrThrow(evaluationContext);
+  const alternatives = normalizeOrderedEntityListOrThrow({
+    items: safeEvaluationContext.alternatives,
+    field: "evaluationContext.alternatives",
+  });
+  const criteria = normalizeOrderedEntityListOrThrow({
+    items: safeEvaluationContext.leafCriteria,
+    field: "evaluationContext.leafCriteria",
+  }).map((criterion) => ({
+    id: criterion.id,
+    name: criterion.name,
+    type: criterion.type,
+    expressionDomain: criterion.expressionDomain ?? null,
+  }));
+
+  return {
+    alternatives,
+    criteria,
+    alternativeIds: alternatives.map((alternative) => alternative.id),
+    criterionIds: criteria.map((criterion) => criterion.id),
+  };
+};

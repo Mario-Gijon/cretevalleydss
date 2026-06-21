@@ -1,0 +1,14 @@
+import { EVALUATION_STAGES } from "../../evaluationStages";
+import {{ view_component_name }} from "./{{ view_component_name }}";
+import { {{ adapter_export_name }} } from "./{{ evaluation_structure_key }}.adapter";
+
+export const {{ component_name }} = Object.freeze({
+  // key must match the folder name.
+  key: "{{ evaluation_structure_key }}",
+  stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  label: "{{ evaluation_structure_key }}",
+  // adapter converts between canonical backend payloads and UI state.
+  adapter: {{ adapter_export_name }},
+  // View renders the structure.
+  View: {{ view_component_name }},
+});

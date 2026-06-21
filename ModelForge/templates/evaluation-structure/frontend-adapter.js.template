@@ -1,0 +1,45 @@
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+export const {{ adapter_export_name }} = Object.freeze({
+  createEmptyPayload({ evaluationContext }) {
+    // TODO:
+    // Build the initial UI state from evaluationContext.
+    // Keep ids in payload keys.
+    return {};
+  },
+
+  fromBackendPayload({ backendPayload, evaluationContext }) {
+    // backend payload is already canonical and id-keyed
+    // frontend state may use a different UI shape if needed
+    // DataGrid rows are UI-only and must not leak into canonical payloads
+    void evaluationContext;
+    return isPlainObject(backendPayload) ? backendPayload : {};
+  },
+
+  toBackendPayload({ evaluationPayload, evaluationContext }) {
+    // TODO:
+    // Convert UI state back to the canonical backend payload.
+    // Keep ids in payload keys.
+    // Use names only for display.
+    // Do not support old name-keyed payloads.
+    // Do not use array indexes as ids.
+    void evaluationContext;
+    return isPlainObject(evaluationPayload) ? evaluationPayload : {};
+  },
+
+  validate({ evaluationContext, evaluationPayload, mode }) {
+    // TODO:
+    // Add UI-side validation when helpful.
+    void evaluationContext;
+    void evaluationPayload;
+    void mode;
+    return { valid: true };
+  },
+
+  fromCollectivePayload({ collectivePayload, evaluationContext }) {
+    // collective payload is also structure-owned
+    void evaluationContext;
+    return isPlainObject(collectivePayload) ? collectivePayload : null;
+  },
+});

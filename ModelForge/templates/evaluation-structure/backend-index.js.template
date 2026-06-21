@@ -1,0 +1,53 @@
+import {
+  EVALUATION_STAGES,
+} from "../../evaluationStages.js";
+import { {{ validate_before_compute_function_name }} } from "./{{ evaluation_structure_key }}.computeValidation.js";
+import {
+  {{ normalize_payload_function_name }},
+  resolveRequireValueFromModeOrThrow,
+} from "./{{ evaluation_structure_key }}.payload.js";
+
+export const {{ backend_structure_export_name }} = Object.freeze({
+  // key must match the folder name.
+  key: "{{ evaluation_structure_key }}",
+  stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+
+  // get builds or normalizes an empty/default payload for the UI.
+  async get({ evaluationContext }) {
+    return {{ normalize_payload_function_name }}({
+      payload: {},
+      evaluationContext,
+      requireValue: false,
+    });
+  },
+
+  // save validates and normalizes draft or submit payloads.
+  async save({ payload, evaluationContext, mode }) {
+    const requireValue = resolveRequireValueFromModeOrThrow(mode);
+
+    return {{ normalize_payload_function_name }}({
+      payload,
+      evaluationContext,
+      requireValue,
+    });
+  },
+
+  // validateBeforeCompute checks completed evaluations before model execution.
+  async validateBeforeCompute({
+    evaluations,
+    alternatives,
+    criteria,
+  }) {
+    {{ validate_before_compute_function_name }}({
+      evaluations,
+      alternatives,
+      criteria,
+    });
+  },
+});
+
+/*
+Notes:
+- payload shape is owned by this structure.
+- entity references must be id-based.
+*/
