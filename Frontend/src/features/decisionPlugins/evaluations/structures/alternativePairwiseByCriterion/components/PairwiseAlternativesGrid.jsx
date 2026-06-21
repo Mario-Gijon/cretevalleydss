@@ -181,11 +181,10 @@ const PairwiseAlternativesGrid = ({
 
   const columns = [
     {
-      field: "id",
+      field: "alternativeLabel",
       headerName: "Alternatives",
       minWidth: 90,
       flex: 1,
-      valueGetter: (params) => params.row?.alternativeLabel ?? "",
     },
     ...orderedAlternatives.map((alternative) => ({
       field: alternative.id,
@@ -396,7 +395,7 @@ const PairwiseAlternativesGrid = ({
       return;
     }
 
-    if (params.field === "id") {
+    if (params.field === "alternativeLabel") {
       return;
     }
 
@@ -432,7 +431,7 @@ const PairwiseAlternativesGrid = ({
       isCellEditable={(params) => permitEdit && params.row.id !== params.field}
       getRowId={(row) => row.id}
       getCellClassName={(params) => {
-        if (params.field === "id") {
+        if (params.field === "alternativeLabel") {
           return "first-column";
         }
 

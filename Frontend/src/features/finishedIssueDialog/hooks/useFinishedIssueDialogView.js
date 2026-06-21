@@ -275,6 +275,9 @@ export const useFinishedIssueDialogView = ({
   );
 
   const domainType = baseModelParamsBlock?.domainType || null;
+  const viewIssue =
+    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
+  const isScenarioSelected = selectedRunKey !== "base";
 
   const leafNames = useMemo(() => {
     const fromBackend = baseModelParamsBlock?.leafCriteria
@@ -310,10 +313,6 @@ export const useFinishedIssueDialogView = ({
           : [],
     [issue?.summary?.criteria, viewIssue?.summary?.criteria]
   );
-
-  const viewIssue =
-    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
-  const isScenarioSelected = selectedRunKey !== "base";
 
   const hasSingleCriterion = useMemo(
     () => hasSingleLeafCriterion(viewIssue || issue),

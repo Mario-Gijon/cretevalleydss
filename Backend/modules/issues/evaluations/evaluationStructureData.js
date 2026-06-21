@@ -34,6 +34,12 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     });
   }
 
+  const normalizedAlternatives = alternatives.map((alternative) => ({
+    ...alternative,
+    id: toIdString(alternative?._id || alternative?.id) || null,
+    name: typeof alternative?.name === "string" ? alternative.name : "",
+  }));
+
   const criteriaWithMissingSnapshot = criteria.filter(
     (criterion) => !toIdString(criterion?.expressionDomain)
   );
@@ -76,6 +82,8 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
 
     return {
       ...criterion,
+      id: toIdString(criterion?._id || criterion?.id) || null,
+      name: typeof criterion?.name === "string" ? criterion.name : "",
       expressionDomain: serialized,
     };
   });
@@ -88,10 +96,12 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
   );
 
   return {
-    alternatives,
+    alternatives: normalizedAlternatives,
     criteria: criteriaWithExpressionDomain,
     criterionDomainByName,
-    alternativeNames: alternatives.map((alternative) => String(alternative?.name || "")),
+    alternativeNames: normalizedAlternatives.map((alternative) =>
+      String(alternative?.name || "")
+    ),
     criterionNames: criteriaWithExpressionDomain.map((criterion) =>
       String(criterion?.name || "")
     ),

@@ -187,11 +187,10 @@ const AlternativeCriteriaMatrixView = (
 
   const columns = [
     {
-      field: "id",
+      field: "alternativeLabel",
       headerName: "Alternative/Criterion",
       minWidth: 120,
       flex: 1,
-      valueGetter: (params) => params.row?.alternativeLabel ?? "",
     },
     ...criteria.map((criterion) => ({
       field: criterion.id,
@@ -405,7 +404,7 @@ const AlternativeCriteriaMatrixView = (
       return;
     }
 
-    if (params.field === "id") {
+    if (params.field === "alternativeLabel") {
       return;
     }
 

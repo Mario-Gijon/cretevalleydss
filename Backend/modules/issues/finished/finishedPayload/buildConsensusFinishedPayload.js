@@ -87,6 +87,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
   const consensusRounds = [];
   const alternativesRankings = [];
   const expertsRatings = {};
+  let latestEvaluationContext = null;
 
   for (const [index, stageResult] of alternativeStageResults.entries()) {
     const phase = phaseList[index];
@@ -135,6 +136,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
       criteria: context.criteria,
       collectiveEvaluations,
     });
+    latestEvaluationContext = evaluationContext;
 
     expertsRatings[phase] = await buildFinishedExpertRatingsByPhase({
       structure: expertRatingsContext.structure,
@@ -261,6 +263,7 @@ export const buildConsensusFinishedPayload = async ({ issue, structure }) => {
 
   return {
     summary,
+    evaluationContext: latestEvaluationContext,
     alternativesRankings,
     expertsRatings,
     finalCriteriaWeights: context.finalCriteriaWeights,

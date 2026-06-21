@@ -71,6 +71,14 @@ const RatingsSection = () => {
     ? finalCriteriaWeights.weights
     : [];
   const orderedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
+  const runtimeEvaluationContext =
+    viewIssue?.evaluationContext &&
+    typeof viewIssue.evaluationContext === "object" &&
+    Array.isArray(viewIssue.evaluationContext?.alternatives) &&
+    Array.isArray(viewIssue.evaluationContext?.criteriaTree) &&
+    Array.isArray(viewIssue.evaluationContext?.leafCriteria)
+      ? viewIssue.evaluationContext
+      : null;
 
   const finalWeightsByCriterion = finalWeightsRows.reduce((accumulator, entry) => {
     if (entry?.criterionName) {
@@ -259,14 +267,11 @@ const RatingsSection = () => {
 
         <Box sx={{ width: "100%", minWidth: 0 }}>
           <EvaluationStructureRenderer
+            evaluationContext={runtimeEvaluationContext}
             issue={{
               ...viewIssue,
-              alternatives: Array.isArray(viewIssue?.summary?.alternatives)
-                ? viewIssue.summary.alternatives
-                : [],
-              criteria: Array.isArray(viewIssue?.summary?.criteria)
-                ? viewIssue.summary.criteria
-                : [],
+              alternatives: runtimeEvaluationContext?.alternatives || [],
+              criteria: runtimeEvaluationContext?.criteriaTree || [],
             }}
             stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
             structureKey={evaluationStructure}

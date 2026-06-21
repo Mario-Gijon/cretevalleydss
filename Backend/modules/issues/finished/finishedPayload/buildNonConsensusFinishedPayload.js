@@ -138,6 +138,7 @@ export const buildNonConsensusFinishedPayload = async ({ issue, structure }) => 
       context,
       consensusInfo: null,
     }),
+    evaluationContext,
     alternativesRankings: [
       {
         phase,
