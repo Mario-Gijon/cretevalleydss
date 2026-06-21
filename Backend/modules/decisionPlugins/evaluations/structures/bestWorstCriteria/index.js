@@ -30,7 +30,7 @@ export const bestWorstCriteriaStructure = Object.freeze({
 
     if (mode === "submit") {
       validateSubmittedBwmPayloadOrThrow({
-        criterionNames: normalized.criterionNames,
+        criterionItems: normalized.criterionItems,
         payload: normalized.payload,
       });
     }

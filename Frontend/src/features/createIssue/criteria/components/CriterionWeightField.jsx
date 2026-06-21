@@ -52,7 +52,7 @@ export const CriterionWeightField = ({
                 : Number(Math.max(0, Math.min(1, parsed)).toFixed(3))
             );
           }}
-          inputProps={{ min: 0, max: 1, step: 0.001 }}
+          inputProps={{ min: 0, max: 1, step: 0.1 }}
           sx={weightInputSx}
         />
       </Stack>
@@ -116,7 +116,7 @@ export const CriterionWeightField = ({
 
               onFuzzyChange?.(nextVector);
             }}
-            inputProps={{ min: 0, max: 1, step: 0.01 }}
+            inputProps={{ min: 0, max: 1, step: 0.1 }}
             sx={weightInputSx}
           />
         ))}

@@ -119,7 +119,7 @@ export const normalizeManualWeightsByRoot = ({
         ? branchBudgetFromCurrentLeaves
         : Number.isFinite(previousRootValue) && previousRootValue > 0
           ? previousRootValue
-          : (1 / Math.max(totalLeafCount, 1)) * leafNames.length;
+          : leafItems.length / Math.max(totalLeafCount, 1);
 
     const branchDefaults = buildEqualValues({
       count: leafItems.length,

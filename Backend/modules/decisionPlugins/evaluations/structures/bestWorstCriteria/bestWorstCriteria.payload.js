@@ -40,9 +40,36 @@ const normalizeComparisonValueOrThrow = (rawValue, { field }) => {
   return numericValue;
 };
 
+const buildCriterionItemsOrThrow = (evaluationContext) => {
+  if (!Array.isArray(evaluationContext?.leafCriteria)) {
+    throw createBadRequestError("evaluationContext.leafCriteria must be an array", {
+      field: "evaluationContext.leafCriteria",
+    });
+  }
+
+  return evaluationContext.leafCriteria.map((criterion, index) => {
+    const id = normalizeText(criterion?.id ?? criterion?._id);
+    const name = normalizeText(criterion?.name);
+
+    if (!id) {
+      throw createBadRequestError("Each criterion must have a non-empty id", {
+        field: `evaluationContext.leafCriteria[${index}].id`,
+      });
+    }
+
+    if (!name) {
+      throw createBadRequestError("Each criterion must have a non-empty name", {
+        field: `evaluationContext.leafCriteria[${index}].name`,
+      });
+    }
+
+    return { id, name };
+  });
+};
+
 const normalizeComparisonsMapOrThrow = (
   rawComparisons,
-  criterionNames,
+  criterionItems,
   { field }
 ) => {
   if (!isPlainObject(rawComparisons)) {
@@ -51,9 +78,9 @@ const normalizeComparisonsMapOrThrow = (
     });
   }
 
-  return criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = normalizeComparisonValueOrThrow(
-      rawComparisons[criterionName],
+  return criterionItems.reduce((accumulator, criterion) => {
+    accumulator[criterion.id] = normalizeComparisonValueOrThrow(
+      rawComparisons[criterion.id],
       { field }
     );
     return accumulator;
@@ -70,18 +97,14 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  const criterionNames = Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
-        .map((criterion) => criterion?.name)
-        .filter(Boolean)
-    : [];
+  const criterionItems = buildCriterionItemsOrThrow(evaluationContext);
 
   const bestCriterion = normalizeText(payload.bestCriterion);
   const worstCriterion = normalizeText(payload.worstCriterion);
 
   const bestToOthers = normalizeComparisonsMapOrThrow(
     payload.bestToOthers,
-    criterionNames,
+    criterionItems,
     {
       field: "payload.bestToOthers",
     }
@@ -89,7 +112,7 @@ export const normalizePayloadOrThrow = async ({
 
   const othersToWorst = normalizeComparisonsMapOrThrow(
     payload.othersToWorst,
-    criterionNames,
+    criterionItems,
     {
       field: "payload.othersToWorst",
     }
@@ -104,7 +127,7 @@ export const normalizePayloadOrThrow = async ({
   }
 
   return {
-    criterionNames,
+    criterionItems,
     payload: {
       bestCriterion,
       worstCriterion,
@@ -115,10 +138,11 @@ export const normalizePayloadOrThrow = async ({
 };
 
 export const validateSubmittedBwmPayloadOrThrow = ({
-  criterionNames,
+  criterionItems,
   payload,
 }) => {
   const { bestCriterion, worstCriterion, bestToOthers, othersToWorst } = payload;
+  const criterionIds = criterionItems.map((criterion) => criterion.id);
 
   if (!bestCriterion) {
     throw createBadRequestError("bestCriterion is required", {
@@ -132,19 +156,19 @@ export const validateSubmittedBwmPayloadOrThrow = ({
     });
   }
 
-  if (!criterionNames.includes(bestCriterion)) {
-    throw createBadRequestError("bestCriterion must be a valid criterion name", {
+  if (!criterionIds.includes(bestCriterion)) {
+    throw createBadRequestError("bestCriterion must be a valid criterion id", {
       field: "payload.bestCriterion",
     });
   }
 
-  if (!criterionNames.includes(worstCriterion)) {
-    throw createBadRequestError("worstCriterion must be a valid criterion name", {
+  if (!criterionIds.includes(worstCriterion)) {
+    throw createBadRequestError("worstCriterion must be a valid criterion id", {
       field: "payload.worstCriterion",
     });
   }
 
-  if (criterionNames.length > 1 && bestCriterion === worstCriterion) {
+  if (criterionIds.length > 1 && bestCriterion === worstCriterion) {
     throw createBadRequestError(
       "bestCriterion and worstCriterion must be different",
       {
@@ -153,18 +177,18 @@ export const validateSubmittedBwmPayloadOrThrow = ({
     );
   }
 
-  for (const criterionName of criterionNames) {
-    const bestToOthersValue = Number(bestToOthers[criterionName]);
-    const othersToWorstValue = Number(othersToWorst[criterionName]);
+  for (const criterion of criterionItems) {
+    const bestToOthersValue = Number(bestToOthers[criterion.id]);
+    const othersToWorstValue = Number(othersToWorst[criterion.id]);
 
-    if (criterionName !== bestCriterion) {
+    if (criterion.id !== bestCriterion) {
       if (
         !Number.isInteger(bestToOthersValue) ||
         bestToOthersValue < 1 ||
         bestToOthersValue > 9
       ) {
         throw createBadRequestError(
-          `bestToOthers['${criterionName}'] must be an integer between 1 and 9`,
+          `bestToOthers['${criterion.id}'] for '${criterion.name}' must be an integer between 1 and 9`,
           {
             field: "payload.bestToOthers",
           }
@@ -172,14 +196,14 @@ export const validateSubmittedBwmPayloadOrThrow = ({
       }
     }
 
-    if (criterionName !== worstCriterion) {
+    if (criterion.id !== worstCriterion) {
       if (
         !Number.isInteger(othersToWorstValue) ||
         othersToWorstValue < 1 ||
         othersToWorstValue > 9
       ) {
         throw createBadRequestError(
-          `othersToWorst['${criterionName}'] must be an integer between 1 and 9`,
+          `othersToWorst['${criterion.id}'] for '${criterion.name}' must be an integer between 1 and 9`,
           {
             field: "payload.othersToWorst",
           }

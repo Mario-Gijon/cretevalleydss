@@ -1,13 +1,13 @@
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { normalizeText } from "./bestWorstCriteria.payload.js";
 
-const buildEmptyComparisons = (criterionNames) =>
-  criterionNames.reduce((accumulator, criterionName) => {
-    accumulator[criterionName] = "";
+const buildEmptyComparisons = (criterionItems) =>
+  criterionItems.reduce((accumulator, criterion) => {
+    accumulator[criterion.id] = "";
     return accumulator;
   }, {});
 
-const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
+const mergeStoredPayload = ({ storedPayload, criterionItems }) => {
   const payload = isPlainObject(storedPayload) ? storedPayload : {};
   const bestToOthersSource = isPlainObject(payload.bestToOthers)
     ? payload.bestToOthers
@@ -19,28 +19,31 @@ const mergeStoredPayload = ({ storedPayload, criterionNames }) => {
   return {
     bestCriterion: normalizeText(payload.bestCriterion),
     worstCriterion: normalizeText(payload.worstCriterion),
-    bestToOthers: criterionNames.reduce((accumulator, criterionName) => {
-      accumulator[criterionName] =
-        bestToOthersSource[criterionName] === undefined
+    bestToOthers: criterionItems.reduce((accumulator, criterion) => {
+      accumulator[criterion.id] =
+        bestToOthersSource[criterion.id] === undefined
           ? ""
-          : bestToOthersSource[criterionName];
+          : bestToOthersSource[criterion.id];
       return accumulator;
     }, {}),
-    othersToWorst: criterionNames.reduce((accumulator, criterionName) => {
-      accumulator[criterionName] =
-        othersToWorstSource[criterionName] === undefined
+    othersToWorst: criterionItems.reduce((accumulator, criterion) => {
+      accumulator[criterion.id] =
+        othersToWorstSource[criterion.id] === undefined
           ? ""
-          : othersToWorstSource[criterionName];
+          : othersToWorstSource[criterion.id];
       return accumulator;
     }, {}),
   };
 };
 
-const resolveCriterionNames = async ({ evaluationContext }) => {
+const resolveCriterionItems = async ({ evaluationContext }) => {
   if (Array.isArray(evaluationContext?.leafCriteria) && evaluationContext.leafCriteria.length > 0) {
     return evaluationContext.leafCriteria
-      .map((criterion) => criterion?.name)
-      .filter(Boolean);
+      .map((criterion) => ({
+        id: normalizeText(criterion?.id ?? criterion?._id),
+        name: normalizeText(criterion?.name),
+      }))
+      .filter((criterion) => criterion.id && criterion.name);
   }
 
   return [];
@@ -50,22 +53,22 @@ export const buildGetPayload = async ({
   payload,
   evaluationContext,
 }) => {
-  const criterionNames = await resolveCriterionNames({ evaluationContext });
+  const criterionItems = await resolveCriterionItems({ evaluationContext });
 
   const normalizedPayload = !payload || typeof payload !== "object"
     ? {
         bestCriterion: "",
         worstCriterion: "",
-        bestToOthers: buildEmptyComparisons(criterionNames),
-        othersToWorst: buildEmptyComparisons(criterionNames),
+        bestToOthers: buildEmptyComparisons(criterionItems),
+        othersToWorst: buildEmptyComparisons(criterionItems),
       }
     : mergeStoredPayload({
         storedPayload: payload,
-        criterionNames,
+        criterionItems,
       });
 
   return {
     payload: normalizedPayload,
-    criterionNames,
+    criterionItems,
   };
 };

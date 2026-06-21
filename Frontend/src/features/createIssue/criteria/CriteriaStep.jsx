@@ -200,7 +200,7 @@ export const CriteriaStep = () => {
     : null;
 
   const mode = normalizeMode(criteriaWeightingConfig?.mode);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const weightsByCriterion = criteriaWeightingConfig?.payload?.weightsByCriterion || {};
 
   const creatorWeightMode =
@@ -236,6 +236,7 @@ export const CriteriaStep = () => {
         ? `Weights sum: ${total.toFixed(4)}`
         : `Weights sum: ${total.toFixed(4)} · must be 1`,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creatorWeightMode, criterionNames, weightsByCriterion]);
 
   const equalWeightsActive = useMemo(() => {
@@ -254,6 +255,7 @@ export const CriteriaStep = () => {
         Math.abs(current - expected) <= 0.0005
       );
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creatorWeightMode, leafCriterionItems, weightsByCriterion]);
 
   const updateWeightsConfigFromUser = (nextConfig) => {

@@ -1,4 +1,5 @@
 import { isPlainObject } from "./isPlainObject";
+import { buildParameterContext } from "./buildModelParameterContext";
 import {
   buildCriterionParameterRows,
   isCriteriaWeightLikeParameter,
@@ -8,8 +9,16 @@ import {
 const readModelParameters = (selectedModel) =>
   Array.isArray(selectedModel?.parameters) ? selectedModel.parameters : [];
 
-const buildCriterionMapDefault = (parameter, leafCriteria) => {
-  const rows = buildCriterionParameterRows({ leafCriteria });
+const buildCreateIssueParameterContext = ({ selectedModel, leafCriteria }) =>
+  buildParameterContext({
+    model: selectedModel,
+    alternatives: [],
+    criteriaTree: [],
+    leafCriteria,
+  });
+
+const buildCriterionMapDefault = (parameter, parameterContext) => {
+  const rows = buildCriterionParameterRows({ parameterContext });
   const defaultValue = parameter.default ?? "";
 
   return rows.reduce((accumulator, row) => {
@@ -25,12 +34,16 @@ export const getCreateIssueModelParameters = (selectedModel) =>
 
 export const buildCreateIssueParameterDefaults = ({ selectedModel, leafCriteria }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
+  const parameterContext = buildCreateIssueParameterContext({
+    selectedModel,
+    leafCriteria,
+  });
 
   return parameters.reduce((accumulator, parameter) => {
     const key = parameter.key;
 
     if (isCriterionMapParameter(parameter)) {
-      accumulator[key] = buildCriterionMapDefault(parameter, leafCriteria);
+      accumulator[key] = buildCriterionMapDefault(parameter, parameterContext);
       return accumulator;
     }
 
@@ -46,7 +59,11 @@ export const updateCreateIssueParameterValues = ({
 }) => {
   const parameters = getCreateIssueModelParameters(selectedModel);
   const next = isPlainObject(previous) ? { ...previous } : {};
-  const criterionRows = buildCriterionParameterRows({ leafCriteria });
+  const parameterContext = buildCreateIssueParameterContext({
+    selectedModel,
+    leafCriteria,
+  });
+  const criterionRows = buildCriterionParameterRows({ parameterContext });
 
   parameters.forEach((parameter) => {
     const key = parameter.key;

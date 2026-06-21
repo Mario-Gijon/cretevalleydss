@@ -108,6 +108,7 @@ export const CriteriaItem = ({
                   color="info"
                   error={Boolean(editCriterionError)}
                   helperText={editCriterionError}
+                  inputProps={{ min: 0, max: 1, step: 0.1 }}
                   sx={{
                     maxWidth: { md: 420 },
                     "& .MuiInputBase-input": {
