@@ -39,7 +39,6 @@ const EvaluationStructureDialog = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
-  const adapter = structureEntry?.adapter || null;
   const fallbackEvaluationContext = useMemo(
     () =>
       buildEvaluationContext({
@@ -54,15 +53,7 @@ const EvaluationStructureDialog = ({
   const [evaluationContext, setEvaluationContext] = useState(
     fallbackEvaluationContext
   );
-  const emptyEvaluationPayload = useMemo(
-    () =>
-      adapter?.createEmptyPayload({
-        evaluationContext: fallbackEvaluationContext,
-      }) || {},
-    [adapter, fallbackEvaluationContext]
-  );
-
-  const [evaluationPayload, setEvaluationPayload] = useState(emptyEvaluationPayload);
+  const [evaluationPayload, setEvaluationPayload] = useState({});
   const [initialSnapshot, setInitialSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showCollective, setShowCollective] = useState(false);
@@ -77,16 +68,12 @@ const EvaluationStructureDialog = ({
   }, [evaluationPayload]);
 
   useEffect(() => {
-    if (!isOpen || !issue?.id || !adapter) return;
+    if (!isOpen || !issue?.id) return;
 
     const loadEvaluation = async () => {
       setLoading(true);
       setEvaluationContext(fallbackEvaluationContext);
-      setEvaluationPayload(
-        adapter.createEmptyPayload({
-          evaluationContext: fallbackEvaluationContext,
-        })
-      );
+      setEvaluationPayload({});
       try {
         const response = await fetchIssueEvaluation(issue.id, stage);
         const responseEvaluationContext = response?.data?.evaluationContext;
@@ -95,15 +82,9 @@ const EvaluationStructureDialog = ({
           throw new Error("Missing evaluationContext in evaluation response.");
         }
 
-        const nextEvaluationPayload = adapter.fromBackendPayload({
-          evaluationContext: responseEvaluationContext,
-          backendPayload: response?.data?.payload || null,
-        });
-        const nextCollectivePayload = adapter.fromCollectivePayload({
-          evaluationContext: responseEvaluationContext,
-          collectivePayload:
-            response?.data?.collectiveReference?.collectiveEvaluations || null,
-        });
+        const nextEvaluationPayload = response?.data?.payload ?? {};
+        const nextCollectivePayload =
+          response?.data?.collectiveReference?.collectiveEvaluations ?? null;
 
         setEvaluationContext(responseEvaluationContext);
         setEvaluationPayload(nextEvaluationPayload);
@@ -115,21 +96,18 @@ const EvaluationStructureDialog = ({
           "Could not load evaluation context for this evaluation.",
           "error"
         );
-        const fallbackPayload = adapter.createEmptyPayload({
-          evaluationContext: fallbackEvaluationContext,
-        });
         setEvaluationContext(fallbackEvaluationContext);
-        setEvaluationPayload(fallbackPayload);
+        setEvaluationPayload({});
         setCollectivePayload(null);
         setShowCollective(false);
-        setInitialSnapshot(JSON.stringify(fallbackPayload));
+        setInitialSnapshot(JSON.stringify({}));
       } finally {
         setLoading(false);
       }
     };
 
     loadEvaluation();
-  }, [isOpen, issue?.id, stage, adapter, fallbackEvaluationContext, showSnackbarAlert]);
+  }, [isOpen, issue?.id, stage, fallbackEvaluationContext, showSnackbarAlert]);
 
   const preparePayloadRead = async () => {
     if (typeof viewRef.current?.preparePayloadRead === "function") {
@@ -149,25 +127,6 @@ const EvaluationStructureDialog = ({
     return evaluationPayloadRef.current;
   };
 
-  const validatePayload = ({ mode, nextEvaluationPayload }) => {
-    if (!adapter) {
-      return false;
-    }
-
-    const result = adapter.validate({
-      evaluationContext,
-      evaluationPayload: nextEvaluationPayload,
-      mode,
-    });
-
-    if (result?.valid === true) {
-      return true;
-    }
-
-    showSnackbarAlert(result?.message || "Invalid evaluation payload.", "error");
-    return false;
-  };
-
   const handleCloseRequest = () => {
     if (JSON.stringify(evaluationPayload) !== initialSnapshot) {
       setOpenSaveDialog(true);
@@ -178,29 +137,16 @@ const EvaluationStructureDialog = ({
   };
 
   const handleClear = () => {
-    setEvaluationPayload(
-      adapter.createEmptyPayload({
-        evaluationContext,
-      })
-    );
+    setEvaluationPayload({});
     showSnackbarAlert("All evaluations cleared", "success");
   };
 
   const handleSave = async () => {
     const nextEvaluationPayload = await preparePayloadRead();
-    if (!validatePayload({ mode: "draft", nextEvaluationPayload })) {
-      return;
-    }
-
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const backendPayload = adapter.toBackendPayload({
-      evaluationContext,
-      evaluationPayload: nextEvaluationPayload,
-      mode: "draft",
-    });
-    const response = await saveIssueEvaluation(issue.id, stage, backendPayload);
+    const response = await saveIssueEvaluation(issue.id, stage, nextEvaluationPayload);
 
     setLoading(false);
 
@@ -217,32 +163,19 @@ const EvaluationStructureDialog = ({
   };
 
   const handleOpenSubmit = async () => {
-    const nextEvaluationPayload = await preparePayloadRead();
-    if (!validatePayload({ mode: "submit", nextEvaluationPayload })) {
-      return;
-    }
-
+    await preparePayloadRead();
     setOpenSubmitDialog(true);
   };
 
   const handleSubmit = async () => {
     const nextEvaluationPayload = await preparePayloadRead();
-    if (!validatePayload({ mode: "submit", nextEvaluationPayload })) {
-      return;
-    }
-
     setOpenSubmitDialog(false);
     setLoading(true);
 
-    const backendPayload = adapter.toBackendPayload({
-      evaluationContext,
-      evaluationPayload: nextEvaluationPayload,
-      mode: "submit",
-    });
     const response = await submitIssueEvaluationPayload(
       issue.id,
       stage,
-      backendPayload
+      nextEvaluationPayload
     );
 
     setLoading(false);
@@ -272,7 +205,7 @@ const EvaluationStructureDialog = ({
     : false;
 
   const renderView = () => {
-    if (!View || !adapter) {
+    if (!View) {
       return null;
     }
 
@@ -289,7 +222,7 @@ const EvaluationStructureDialog = ({
     return <View ref={viewRef} {...viewProps} />;
   };
 
-  if (!issue || !stage || !structureEntry || !View || !adapter) {
+  if (!issue || !stage || !structureEntry || !View) {
     return null;
   }
 

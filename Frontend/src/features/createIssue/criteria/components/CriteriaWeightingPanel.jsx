@@ -156,8 +156,6 @@ export const CriteriaWeightingPanel = ({
   );
   const SelectedCriteriaWeightingView =
     selectedCriteriaWeightingStructureEntry?.View || null;
-  const selectedCriteriaWeightingAdapter =
-    selectedCriteriaWeightingStructureEntry?.adapter || null;
   const manualExpertWeightingAvailable =
     manualCriteriaWeightingModel?.supportsExpertCriteriaWeighting === true;
 
@@ -311,19 +309,12 @@ export const CriteriaWeightingPanel = ({
     safeConfig?.criteriaWeightingParameters,
   ]);
   const criteriaWeightingEvaluationPayload = useMemo(() => {
-    if (!selectedCriteriaWeightingAdapter || !criteriaWeightingEvaluationContext) {
+    if (!criteriaWeightingEvaluationContext) {
       return null;
     }
 
-    return selectedCriteriaWeightingAdapter.fromBackendPayload({
-      evaluationContext: criteriaWeightingEvaluationContext,
-      backendPayload: safeConfig?.payload || null,
-    });
-  }, [
-    criteriaWeightingEvaluationContext,
-    safeConfig?.payload,
-    selectedCriteriaWeightingAdapter,
-  ]);
+    return safeConfig?.payload ?? {};
+  }, [criteriaWeightingEvaluationContext, safeConfig?.payload]);
   if (!modelUsesWeights) {
     return null;
   }
@@ -513,20 +504,20 @@ export const CriteriaWeightingPanel = ({
 
       {mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL ? (
         SelectedCriteriaWeightingView &&
-        selectedCriteriaWeightingAdapter &&
         criteriaWeightingEvaluationContext ? (
           <SelectedCriteriaWeightingView
             evaluationContext={criteriaWeightingEvaluationContext}
             evaluationPayload={criteriaWeightingEvaluationPayload}
-            setEvaluationPayload={(evaluationPayload) =>
+            setEvaluationPayload={(nextEvaluationPayload) =>
               updateConfig(
                 {
                   ...safeConfig,
-                  payload: selectedCriteriaWeightingAdapter.toBackendPayload({
-                    evaluationContext: criteriaWeightingEvaluationContext,
-                    evaluationPayload,
-                    mode: "draft",
-                  }),
+                  payload:
+                    typeof nextEvaluationPayload === "function"
+                      ? nextEvaluationPayload(
+                          criteriaWeightingEvaluationPayload ?? {}
+                        )
+                      : nextEvaluationPayload,
                 },
                 { markDirty: true }
               )

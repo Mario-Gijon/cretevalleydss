@@ -11,9 +11,6 @@ class EvaluationStructureScaffoldNames:
     component_name: str
     view_component_name: str
     backend_structure_export_name: str
-    adapter_export_name: str
-    normalize_payload_function_name: str
-    validate_before_compute_function_name: str
 
 
 def _to_pascal_case(evaluation_structure_key: str) -> str:
@@ -43,16 +40,5 @@ def build_evaluation_structure_scaffold_names(
         view_component_name=f"{component_name}View",
         backend_structure_export_name=(
             request.backendStructureExportName or evaluation_structure_key
-        ),
-        adapter_export_name=(
-            request.adapterExportName or f"{evaluation_structure_key}Adapter"
-        ),
-        normalize_payload_function_name=(
-            request.normalizePayloadFunctionName
-            or f"normalize{component_name}PayloadOrThrow"
-        ),
-        validate_before_compute_function_name=(
-            request.validateBeforeComputeFunctionName
-            or f"validateCompleted{component_name}PayloadsOrThrow"
         ),
     )

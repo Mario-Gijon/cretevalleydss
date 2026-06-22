@@ -25,7 +25,6 @@ const EvaluationStructureRenderer = ({
     [stage, structureKey]
   );
   const View = structureEntry?.View || null;
-  const adapter = structureEntry?.adapter || null;
   const evaluationContext = useMemo(
     () => {
       if (providedEvaluationContext && typeof providedEvaluationContext === "object") {
@@ -47,27 +46,14 @@ const EvaluationStructureRenderer = ({
     [providedEvaluationContext, issue, stage, structureEntry]
   );
   const evaluationPayload = useMemo(() => {
-    if (!adapter || !evaluationContext) {
+    if (!evaluationContext) {
       return {};
     }
 
-    return adapter.fromBackendPayload({
-      evaluationContext,
-      backendPayload,
-    });
-  }, [adapter, evaluationContext, backendPayload]);
-  const adaptedCollectivePayload = useMemo(() => {
-    if (!adapter || !evaluationContext) {
-      return null;
-    }
+    return backendPayload ?? {};
+  }, [evaluationContext, backendPayload]);
 
-    return adapter.fromCollectivePayload({
-      evaluationContext,
-      collectivePayload,
-    });
-  }, [adapter, evaluationContext, collectivePayload]);
-
-  if (!View || !adapter || !evaluationContext) {
+  if (!View || !evaluationContext) {
     return null;
   }
 
@@ -77,7 +63,7 @@ const EvaluationStructureRenderer = ({
         evaluationContext={evaluationContext}
         evaluationPayload={evaluationPayload}
         setEvaluationPayload={NOOP}
-        collectivePayload={adaptedCollectivePayload}
+        collectivePayload={collectivePayload}
         readOnly={readOnly === true}
         loading={loading === true}
       />

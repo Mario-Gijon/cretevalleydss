@@ -72,7 +72,9 @@ const normalizeComparisonsMapOrThrow = (
   criterionItems,
   { field }
 ) => {
-  if (!isPlainObject(rawComparisons)) {
+  const safeComparisons = rawComparisons === undefined ? {} : rawComparisons;
+
+  if (!isPlainObject(safeComparisons)) {
     throw createBadRequestError(`${field} must be an object`, {
       field,
     });
@@ -80,7 +82,7 @@ const normalizeComparisonsMapOrThrow = (
 
   return criterionItems.reduce((accumulator, criterion) => {
     accumulator[criterion.id] = normalizeComparisonValueOrThrow(
-      rawComparisons[criterion.id],
+      safeComparisons[criterion.id],
       { field }
     );
     return accumulator;

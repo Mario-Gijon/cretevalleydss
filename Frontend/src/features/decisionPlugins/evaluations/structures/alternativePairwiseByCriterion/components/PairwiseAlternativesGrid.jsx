@@ -52,8 +52,8 @@ const getCollectiveDisplayValue = (cell) => {
 };
 
 const getCellDomain = (cell) => {
-  if (cell && typeof cell === "object" && "domain" in cell) {
-    return cell.domain || null;
+  if (cell && typeof cell === "object") {
+    return cell.domain || cell.expressionDomain || null;
   }
 
   return null;
@@ -140,6 +140,71 @@ const preserveCellShape = (previousCell, nextValue) => {
   return nextValue;
 };
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const buildCell = ({ value = "", expressionDomain = null }) => ({
+  value,
+  expressionDomain,
+});
+
+const buildRowsFromComparisons = ({
+  alternatives,
+  comparisons,
+}) =>
+  alternatives.map((rowAlternative) => {
+    const row = {
+      id: rowAlternative.id,
+      alternativeLabel: rowAlternative.name,
+    };
+    const rowComparisons = isPlainObject(comparisons?.[rowAlternative.id])
+      ? comparisons[rowAlternative.id]
+      : {};
+
+    for (const colAlternative of alternatives) {
+      if (rowAlternative.id === colAlternative.id) {
+        row[colAlternative.id] = buildCell({
+          value: "Neutral",
+          expressionDomain: null,
+        });
+        continue;
+      }
+
+      const cell = rowComparisons[colAlternative.id];
+      row[colAlternative.id] = isPlainObject(cell)
+        ? cell
+        : buildCell();
+    }
+
+    return row;
+  });
+
+const buildComparisonsFromRows = (rows, alternatives) => {
+  const rowMap = new Map(
+    (Array.isArray(rows) ? rows : [])
+      .filter((row) => row && typeof row === "object" && row.id)
+      .map((row) => [row.id, row])
+  );
+
+  return Object.fromEntries(
+    alternatives.map((rowAlternative) => [
+      rowAlternative.id,
+      Object.fromEntries(
+        alternatives
+          .filter((colAlternative) => colAlternative.id !== rowAlternative.id)
+          .map((colAlternative) => {
+            const sourceCell = rowMap.get(rowAlternative.id)?.[colAlternative.id];
+
+            return [
+              colAlternative.id,
+              isPlainObject(sourceCell) ? sourceCell : buildCell(),
+            ];
+          })
+      ),
+    ])
+  );
+};
+
 /**
  * Matriz de comparación por pares entre alternativas.
  *
@@ -161,23 +226,25 @@ const PairwiseAlternativesGrid = ({
   alternatives,
   evaluations,
   setEvaluations,
-  collectiveEvaluations = [],
+  collectiveEvaluations = null,
   permitEdit = true,
 }) => {
   const theme = useTheme();
 
   const apiRef = useGridApiRef();
 
-  const evaluationRows = Array.isArray(evaluations) ? evaluations : [];
-  const collectiveRows = Array.isArray(collectiveEvaluations)
-    ? collectiveEvaluations
-    : [];
-
   const orderedAlternatives = Array.isArray(alternatives)
     ? alternatives.filter((alternative) => alternative?.id && alternative?.name)
     : [];
   const orderedAlternativeIds = orderedAlternatives.map((alternative) => alternative.id);
-  const orderedEvaluations = evaluationRows;
+  const orderedEvaluations = buildRowsFromComparisons({
+    alternatives: orderedAlternatives,
+    comparisons: evaluations,
+  });
+  const collectiveRows = buildRowsFromComparisons({
+    alternatives: orderedAlternatives,
+    comparisons: collectiveEvaluations,
+  });
 
   const columns = [
     {
@@ -295,7 +362,7 @@ const PairwiseAlternativesGrid = ({
     }
 
     const previousCell = oldRow[changedField];
-    const inverseRow = evaluations.find((row) => row.id === changedField);
+    const inverseRow = orderedEvaluations.find((row) => row.id === changedField);
     const inversePreviousCell = inverseRow?.[newRow.id];
 
     const sourceRange = getCellRange(previousCell);
@@ -315,7 +382,7 @@ const PairwiseAlternativesGrid = ({
         step: sourceRange.step,
       })
     ) {
-      updatedRows = evaluations.map((row) => {
+      updatedRows = orderedEvaluations.map((row) => {
         if (!row || typeof row !== "object" || !row.id) {
           return row;
         }
@@ -337,7 +404,7 @@ const PairwiseAlternativesGrid = ({
         return row;
       });
 
-      setEvaluations(updatedRows);
+      setEvaluations(buildComparisonsFromRows(updatedRows, orderedAlternatives));
 
       return {
         ...oldRow,
@@ -357,7 +424,7 @@ const PairwiseAlternativesGrid = ({
       targetRange,
     });
 
-    updatedRows = evaluations.map((row) => {
+    updatedRows = orderedEvaluations.map((row) => {
       if (!row || typeof row !== "object" || !row.id) {
         return row;
       }
@@ -382,7 +449,7 @@ const PairwiseAlternativesGrid = ({
       return row;
     });
 
-    setEvaluations(updatedRows);
+    setEvaluations(buildComparisonsFromRows(updatedRows, orderedAlternatives));
 
     return {
       ...newRow,

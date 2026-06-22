@@ -1,44 +1,9 @@
 import { EVALUATION_STAGES } from "../../evaluationStages";
 import {{ view_component_name }} from "./{{ view_component_name }}";
 
-const adapter = Object.freeze({
-  createEmptyPayload() {
-    return {};
-  },
-
-  fromBackendPayload({ backendPayload }) {
-    return backendPayload && typeof backendPayload === "object" && !Array.isArray(backendPayload)
-      ? backendPayload
-      : {};
-  },
-
-  toBackendPayload({ evaluationPayload }) {
-    return evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
-      ? evaluationPayload
-      : {};
-  },
-
-  validate() {
-    return { valid: true };
-  },
-
-  fromCollectivePayload({ collectivePayload }) {
-    if (
-      !collectivePayload ||
-      typeof collectivePayload !== "object" ||
-      Array.isArray(collectivePayload)
-    ) {
-      return null;
-    }
-
-    return Object.keys(collectivePayload).length > 0 ? collectivePayload : null;
-  },
-});
-
 export const {{ evaluation_structure_key }}Structure = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
   implementationStatus: "scaffold",
-  adapter,
   View: {{ view_component_name }},
 });

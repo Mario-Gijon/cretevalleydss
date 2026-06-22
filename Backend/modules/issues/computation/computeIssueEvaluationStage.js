@@ -23,7 +23,6 @@ import {
   executeCriteriaWeightingModel,
 } from "../modelExecution/index.js";
 import { buildEvaluationStructureContext } from "../evaluations/buildEvaluationStructureContext.js";
-import { getOrderedAlternativeAndCriterionNames } from "../evaluations/evaluationStructureData.js";
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
@@ -532,14 +531,6 @@ const computeCriteriaWeightingStage = async ({
   decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
-  if (typeof structure?.validateBeforeCompute === "function") {
-    await structure.validateBeforeCompute({
-      issue,
-      evaluations,
-      phase: issue.consensusPhase,
-    });
-  }
-
   return executeCriteriaWeightingModel({
     issue,
     structure,
@@ -559,20 +550,6 @@ const computeAlternativeEvaluationStage = async ({
   decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
-  const evaluationStructureData =
-    typeof structure?.validateBeforeCompute === "function"
-      ? await getOrderedAlternativeAndCriterionNames({ issue })
-      : null;
-
-  if (typeof structure?.validateBeforeCompute === "function") {
-    await structure.validateBeforeCompute({
-      issue,
-      evaluations,
-      phase,
-      ...evaluationStructureData,
-    });
-  }
-
   return executeAlternativeEvaluationModel({
     issue,
     structureKey: structure.key,

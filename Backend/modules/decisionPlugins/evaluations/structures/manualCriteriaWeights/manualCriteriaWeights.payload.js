@@ -77,8 +77,10 @@ export const normalizeManualPayloadOrThrow = async ({
   }
 
   const rawWeightsByCriterion = payload.weightsByCriterion;
+  const safeWeightsByCriterion =
+    rawWeightsByCriterion === undefined ? {} : rawWeightsByCriterion;
 
-  if (!isPlainObject(rawWeightsByCriterion)) {
+  if (!isPlainObject(safeWeightsByCriterion)) {
     throw createBadRequestError("payload.weightsByCriterion must be an object", {
       field: "payload.weightsByCriterion",
     });
@@ -88,7 +90,7 @@ export const normalizeManualPayloadOrThrow = async ({
 
   const weightsByCriterion = criteria.reduce((accumulator, criterion) => {
     accumulator[criterion.id] = normalizeWeightValueOrThrow(
-      rawWeightsByCriterion[criterion.id],
+      safeWeightsByCriterion[criterion.id],
       {
         criterionName: criterion.name,
         allowEmpty,

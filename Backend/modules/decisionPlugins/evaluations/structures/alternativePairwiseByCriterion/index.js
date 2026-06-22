@@ -1,10 +1,6 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluationStages.js";
-import {
-  buildExpectedPairsByCriterion,
-} from "./alternativePairwiseByCriterion.context.js";
-import { validateCompletedPairwiseEvaluationPayloadsOrThrow } from "./alternativePairwiseByCriterion.computeValidation.js";
 import { buildGetPayload } from "./alternativePairwiseByCriterion.getPayload.js";
 import {
   normalizePayloadOrThrow,
@@ -29,23 +25,6 @@ export const alternativePairwiseByCriterionStructure = Object.freeze({
       payload,
       evaluationContext,
       requireValue,
-    });
-  },
-
-  async validateBeforeCompute({
-    evaluations,
-    alternatives,
-    criteria,
-  }) {
-    const expectedPairsByCriterion = buildExpectedPairsByCriterion({
-      criteria,
-      alternatives,
-    });
-
-    validateCompletedPairwiseEvaluationPayloadsOrThrow({
-      evaluations,
-      criteria,
-      expectedPairsByCriterion,
     });
   },
 });

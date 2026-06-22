@@ -4,13 +4,9 @@ These files are reusable scaffolds for creating a new evaluation structure.
 
 Generated backend files:
 - `index.js`
-- `evaluationContext.js`
-- `payload.js`
-- `computeValidation.js`
 
 Generated frontend files:
 - `index.js`
-- `adapter.js`
 - `View.jsx`
 
 Required placeholders:
@@ -18,23 +14,18 @@ Required placeholders:
 - `{{ backend_structure_export_name }}`
 - `{{ component_name }}`
 - `{{ view_component_name }}`
-- `{{ adapter_export_name }}`
-- `{{ normalize_payload_function_name }}`
-- `{{ validate_before_compute_function_name }}`
 
 Backend contract:
 - `key` must match the folder name.
-- `get` may return a placeholder payload so the scaffold UI can render safely.
+- `get({ payload, evaluationContext })` returns the canonical payload that the frontend renders directly.
 - `save` must fail with a controlled under-development error until implemented.
-- `validateBeforeCompute` must fail with a controlled under-development error until implemented.
 - Payload shape is structure-owned.
 - Core entity references must stay id-based.
 
 Frontend contract:
-- `index.js` exports the registry entry with `key`, `stage`, `label`, `adapter`, and `View`.
-- `adapter` converts between canonical backend payloads and UI state.
+- `index.js` exports the registry entry with `key`, `stage`, optional `implementationStatus`, and `View`.
 - `View` renders the structure editor or a safe under-development placeholder.
-- DataGrid or row state is UI-only and must not leak into canonical payloads.
+- UI-only row/grid state belongs in the View and must not change the backend payload contract.
 
 `evaluationContext` includes:
 - `issue`

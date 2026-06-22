@@ -15,9 +15,6 @@ class EvaluationStructureScaffoldPreviewRequest(BaseModel):
     stageConstant: str = "ALTERNATIVE_EVALUATION"
     componentName: str | None = None
     backendStructureExportName: str | None = None
-    adapterExportName: str | None = None
-    normalizePayloadFunctionName: str | None = None
-    validateBeforeComputeFunctionName: str | None = None
 
     @field_validator("evaluationStructureKey")
     @classmethod
@@ -51,12 +48,7 @@ class EvaluationStructureScaffoldPreviewRequest(BaseModel):
             raise ValueError("componentName must be PascalCase")
         return stripped
 
-    @field_validator(
-        "backendStructureExportName",
-        "adapterExportName",
-        "normalizePayloadFunctionName",
-        "validateBeforeComputeFunctionName",
-    )
+    @field_validator("backendStructureExportName")
     @classmethod
     def validate_js_identifier(cls, value: str | None) -> str | None:
         if value is None:

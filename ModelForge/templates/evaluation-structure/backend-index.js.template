@@ -8,8 +8,8 @@ export const {{ backend_structure_export_name }} = Object.freeze({
   stage: EVALUATION_STAGES.{{ stage_constant }},
   implementationStatus: "scaffold",
 
-  async get() {
-    return {};
+  async get({ payload }) {
+    return payload ?? {};
   },
 
   async save({ payload, evaluationContext, mode }) {
@@ -21,16 +21,6 @@ export const {{ backend_structure_export_name }} = Object.freeze({
       {
         code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
         field: "payload",
-      }
-    );
-  },
-
-  async validateBeforeCompute() {
-    throw createBadRequestError(
-      "Evaluation structure is under development",
-      {
-        code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
-        field: "evaluations",
       }
     );
   },

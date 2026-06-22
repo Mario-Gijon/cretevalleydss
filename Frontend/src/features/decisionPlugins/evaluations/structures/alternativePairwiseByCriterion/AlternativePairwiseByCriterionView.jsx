@@ -4,6 +4,9 @@ import { Box, Stack, Typography } from "@mui/material";
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
 import CriterionCompactSelector from "./components/CriterionCompactSelector";
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 const AlternativePairwiseByCriterionView = (
   {
     evaluationContext,
@@ -107,19 +110,19 @@ const AlternativePairwiseByCriterionView = (
 
               <PairwiseAlternativesGrid
                 alternatives={alternativeItems}
-                evaluations={evaluationsByCriterion?.[currentCriterion.id] || []}
-                setEvaluations={(nextRows) => {
+                evaluations={evaluationsByCriterion?.[currentCriterion.id] || {}}
+                setEvaluations={(nextComparisons) => {
                   if (!permitEdit) {
                     return;
                   }
 
                   setEvaluationPayload((previous) => ({
-                    ...(previous && typeof previous === "object" ? previous : {}),
-                    [currentCriterion.id]: nextRows,
+                    ...(isPlainObject(previous) ? previous : {}),
+                    [currentCriterion.id]: nextComparisons,
                   }));
                 }}
                 collectiveEvaluations={
-                  collectiveEvaluationsByCriterion?.[currentCriterion.id] || []
+                  collectiveEvaluationsByCriterion?.[currentCriterion.id] || null
                 }
                 permitEdit={permitEdit}
               />
