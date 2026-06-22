@@ -35,7 +35,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "eps",
                 "label": "Epsilon",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": False,
@@ -45,7 +44,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "mu0",
                 "label": "Mu 0",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": False,
@@ -55,7 +53,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "lower_bound",
                 "label": "Lower bound",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": False,
@@ -65,7 +62,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "upper_bound",
                 "label": "Upper bound",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": False,

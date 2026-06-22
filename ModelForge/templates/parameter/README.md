@@ -24,6 +24,7 @@ Backend contract:
 - The folder name and `parameterStructureKey` must match.
 - `index.js` exports the structure entry loaded by the backend registry.
 - `validate.js` owns normalization and validation for this structure.
+- `parameterStructureKey` is the value-shape source of truth.
 - `restrictions` is optional.
 - The validator returns the normalized structure-owned value.
 

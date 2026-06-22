@@ -35,7 +35,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "q",
                 "label": "Q thresholds",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "numberCriterion",
                 "required": True,
@@ -51,7 +50,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "s",
                 "label": "S thresholds",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "numberCriterion",
                 "required": True,
@@ -67,7 +65,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "p",
                 "label": "P thresholds",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "numberCriterion",
                 "required": True,
@@ -83,7 +80,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "f",
                 "label": "Preference functions",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "selectCriterion",
                 "required": True,
@@ -97,7 +93,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "w_lower",
                 "label": "Lower weight bounds",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "numberCriterion",
                 "required": True,
@@ -113,7 +108,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "w_upper",
                 "label": "Upper weight bounds",
-                "type": "criterionMap",
                 "scope": "perCriterion",
                 "parameterStructureKey": "numberCriterion",
                 "required": True,
@@ -129,7 +123,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "iterations",
                 "label": "Iterations",
-                "type": "integer",
                 "valueType": "integer",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",

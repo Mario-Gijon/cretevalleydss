@@ -36,7 +36,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "ag_lq",
                 "label": "Agreement interval",
-                "type": "interval",
                 "scope": "global",
                 "parameterStructureKey": "intervalGlobal",
                 "required": True,
@@ -52,7 +51,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "ex_lq",
                 "label": "Expert interval",
-                "type": "interval",
                 "scope": "global",
                 "parameterStructureKey": "intervalGlobal",
                 "required": True,
@@ -68,7 +66,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "b",
                 "label": "B selector",
-                "type": "enum",
                 "valueType": "number",
                 "scope": "global",
                 "parameterStructureKey": "selectGlobal",
@@ -83,7 +80,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "beta",
                 "label": "Beta",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": True,

@@ -53,7 +53,6 @@ export const validateAndNormalizeModelParametersOrThrow = ({
 
   for (const parameter of modelParameters) {
     const parameterKey = resolveParameterKey(parameter);
-    const parameterType = normalizeNonEmptyString(parameter?.type);
     const parameterStructureKey = normalizeNonEmptyString(
       parameter?.parameterStructureKey
     );
@@ -68,15 +67,6 @@ export const validateAndNormalizeModelParametersOrThrow = ({
     }
 
     parameterByKey.set(parameterKey, parameter);
-
-    if (!parameterType) {
-      addError({
-        parameter: parameterKey,
-        message: "manifest parameter is missing required 'type'",
-        value: parameter,
-      });
-      continue;
-    }
 
     if (!parameterStructureKey) {
       addError({

@@ -91,6 +91,8 @@ class ModelScaffoldPreviewRequest(BaseModel):
         for item in value:
             if not isinstance(item, dict):
                 raise ValueError("parameters must be a list of objects")
+            if "type" in item:
+                raise ValueError("parameter.type is not supported")
         return value
 
 

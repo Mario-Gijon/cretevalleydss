@@ -31,13 +31,7 @@ def _build_placeholder_values(
         "evaluation_structure_key": names.evaluation_structure_key,
         "stage_constant": request.stageConstant,
         "backend_structure_export_name": names.backend_structure_export_name,
-        "component_name": names.component_name,
         "view_component_name": names.view_component_name,
-        "adapter_export_name": names.adapter_export_name,
-        "normalize_payload_function_name": names.normalize_payload_function_name,
-        "validate_before_compute_function_name": (
-            names.validate_before_compute_function_name
-        ),
     }
 
 
@@ -57,23 +51,7 @@ def build_evaluation_structure_scaffold_preview(
 
     template_map = [
         ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
-        (
-            "backend-context.js.template",
-            f"{backend_target_base_path}/{names.evaluation_structure_key}.context.js",
-        ),
-        (
-            "backend-payload.js.template",
-            f"{backend_target_base_path}/{names.evaluation_structure_key}.payload.js",
-        ),
-        (
-            "backend-compute-validation.js.template",
-            f"{backend_target_base_path}/{names.evaluation_structure_key}.computeValidation.js",
-        ),
         ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
-        (
-            "frontend-adapter.js.template",
-            f"{frontend_target_base_path}/{names.evaluation_structure_key}.adapter.js",
-        ),
         (
             "frontend-view.jsx.template",
             f"{frontend_target_base_path}/{names.view_component_name}.jsx",

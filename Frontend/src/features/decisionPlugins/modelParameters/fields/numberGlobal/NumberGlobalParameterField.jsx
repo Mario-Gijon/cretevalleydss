@@ -29,8 +29,8 @@ export const NumberGlobalParameterField = ({
   disabled = false,
   error = "",
 }) => {
-  const { restrictions = {}, label, type, valueType } = parameter;
-  const isInteger = type === "integer" || valueType === "integer";
+  const { restrictions = {}, label, valueType } = parameter;
+  const isInteger = valueType === "integer";
 
   return (
     <Stack spacing={0.35}>

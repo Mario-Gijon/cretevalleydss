@@ -35,7 +35,6 @@ MODEL_DEFINITION = ModelDefinition(
             {
                 "key": "v",
                 "label": "Strategy coefficient",
-                "type": "number",
                 "scope": "global",
                 "parameterStructureKey": "numberGlobal",
                 "required": True,

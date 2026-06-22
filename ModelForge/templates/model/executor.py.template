@@ -1,102 +1,15 @@
 from fastapi.responses import JSONResponse
 
 from schemas.model_requests import GenericModelExecutionRequest
-from services.model_executors.responses import error_response, success_response
-from .run import {{ run_function_name }}
+from services.model_executors.responses import error_response
 
 
 def {{ execute_function_name }}(
     request: GenericModelExecutionRequest,
 ) -> dict | JSONResponse:
-    # Generated scaffolds return a controlled under-development response by default.
-    # Replace this guard after implementing and testing run.py.
+    del request
+    # Replace this guard after implementing the model.
     return error_response(
         "{{ display_name }} is a generated scaffold and is still under development.",
         code="MODEL_UNDER_DEVELOPMENT",
     )
-
-    """
-    Reference implementation notes:
-
-    try:
-        context = request.context or {}
-        evaluations = request.evaluations or []
-        # Request field name is modelParameters; Python variable is model_parameters.
-        model_parameters = request.modelParameters or {}
-
-        model_result = {{ run_function_name }}(
-            context=context,
-            evaluations=evaluations,
-            model_parameters=model_parameters,
-        )
-
-        # Build the standard DecisionModelsService response fields before returning success.
-        #
-        # rankedAlternatives:
-        # - required
-        # - non-empty list ordered from best to worst by rank
-        # - each item:
-        #   {
-        #       "alternativeId": "...",
-        #       "name": "Alt 1",
-        #       "score": 0.85,
-        #       "rank": 1,
-        #   }
-        #
-        # collectiveEvaluations:
-        # - required object
-        # - structure-specific shape
-        # - entity references must be id-based
-        # - example for alternativeCriteriaMatrix:
-        #   {
-        #       "alternativeId": {
-        #           "criterionId": {
-        #               "value": 0.7,
-        #           }
-        #       }
-        #   }
-        #
-        # plotsGraphic:
-        # - required object
-        # - use {} when the model does not provide graphs
-        # - supported 2D graph shape:
-        #   {
-        #       "expert_points": [[0.15, 0.72]],
-        #       "collective_point": [0.24, 0.67],
-        #       "reason": None,
-        #   }
-        #
-        # consensusMeasure:
-        # - required
-        # - finite numeric value or None
-        # - never an object
-        #
-        # rawOutput:
-        # - required object
-        # - model-specific details
-        ranked_alternatives = None
-        collective_evaluations = None
-        plots_graphic = None
-        consensus_measure = None
-        raw_output = None
-
-        raise NotImplementedError(
-            "Build the standard response fields before returning success."
-        )
-
-        return success_response(
-            "{{ display_name }} executed successfully",
-            {
-                "rankedAlternatives": ranked_alternatives,
-                "collectiveEvaluations": collective_evaluations,
-                "plotsGraphic": plots_graphic,
-                "consensusMeasure": consensus_measure,
-                "rawOutput": raw_output,
-            },
-        )
-    except Exception as error:
-        return error_response(
-            f"Error executing {{ display_name }}: {error}",
-            code="INTERNAL_ERROR",
-        )
-    """

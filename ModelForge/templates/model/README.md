@@ -45,5 +45,7 @@ Response contract:
 Rules:
 - Do not assume matrices, weights, rankings, or plots internally.
 - Do not assume one universal payload shape.
+- Model parameter definitions use `parameterStructureKey` as the value-shape source of truth.
+- Do not add a separate parameter `type` field.
 - `run.py` should stay algorithm-focused and transport-agnostic.
 - Change `implementation_status` from `"scaffold"` to `"ready"` only after the model is implemented and tested.

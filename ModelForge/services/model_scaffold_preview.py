@@ -12,6 +12,10 @@ from services.template_renderer import render_template_strict
 
 
 MODEL_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "model"
+MODEL_KIND_STAGE_VALUE = {
+    "issue": "alternativeEvaluation",
+    "criteriaWeighting": "criteriaWeighting",
+}
 
 
 def _format_python_value(value) -> str:
@@ -74,6 +78,7 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "model_kind": request.modelKind,
         "model_kind_literal": _format_python_string_literal(request.modelKind),
         "evaluation_structure_key": request.evaluationStructureKey,
+        "evaluation_structure_stage": MODEL_KIND_STAGE_VALUE[request.modelKind],
         "evaluation_structure_key_literal": _format_python_string_literal(
             request.evaluationStructureKey
         ),

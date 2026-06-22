@@ -1,38 +1,9 @@
 import { Stack, Typography } from "@mui/material";
-
-const formatValue = (value) => {
-  if (value === null || value === undefined || value === "") {
-    return "—";
-  }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-};
-
-export const {{ read_only_component_name }} = ({
-  parameter,
-  value,
-  parameterContext,
-}) => {
+export const {{ read_only_component_name }} = ({ parameter, value }) => {
   return (
     <Stack spacing={0.35}>
       <Typography variant="body2" sx={{ fontWeight: 700 }}>
         {parameter.label}
-      </Typography>
-
-      <Typography
-        variant="caption"
-        color="text.secondary"
-      >
-        Read-only preview for {{ parameter_structure_key }}.
-        {` Model: ${parameterContext?.model?.name || "—"}`}
       </Typography>
 
       <Typography
@@ -45,7 +16,7 @@ export const {{ read_only_component_name }} = ({
           wordBreak: "break-word",
         }}
       >
-        {formatValue(value)}
+        {JSON.stringify(value ?? null, null, 2)}
       </Typography>
     </Stack>
   );

@@ -33,7 +33,6 @@ import {
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
 import EmptyState from "../models/components/EmptyState";
-import MetricCard from "../models/components/MetricCard";
 import SectionCard from "../models/components/SectionCard";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
@@ -48,26 +47,249 @@ const DOMAIN_OPTIONS = [
   "linguistic",
 ];
 
-const PARAMETER_TYPE_OPTIONS = [
-  "number",
-  "integer",
-  "enum",
-  "array",
-  "interval",
-  "criterionMap",
-  "string",
-  "boolean",
+const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+const PROTECTED_ADVANCED_FIELDS = new Set([
+  "key",
+  "label",
+  "parameterStructureKey",
+  "required",
+  "default",
+  "restrictions",
+  "type",
+]);
+const DEFAULT_MODE_OPTIONS = [
+  { value: "null", label: "Null" },
+  { value: "emptyObject", label: "Empty object {}" },
+  { value: "emptyArray", label: "Empty array []" },
+  { value: "literal", label: "Literal value" },
+  { value: "customJson", label: "Custom JSON" },
 ];
+const RESTRICTIONS_MODE_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "minMax", label: "Min / Max" },
+  { value: "options", label: "Options" },
+  { value: "customJson", label: "Custom JSON" },
+];
+
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const parseLiteralValue = (rawValue) => {
+  const text = String(rawValue ?? "");
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const lowered = trimmed.toLowerCase();
+  if (lowered === "true") return true;
+  if (lowered === "false") return false;
+
+  const parsedNumber = Number(trimmed);
+  if (Number.isFinite(parsedNumber)) {
+    return parsedNumber;
+  }
+
+  return text;
+};
+
+const parseJsonOrThrow = (rawValue, label) => {
+  try {
+    return JSON.parse(String(rawValue ?? "").trim());
+  } catch {
+    throw new Error(`${label} must be valid JSON`);
+  }
+};
+
+const parseOptionalFiniteNumberOrThrow = (rawValue, label) => {
+  const text = String(rawValue ?? "").trim();
+  if (!text) {
+    return undefined;
+  }
+
+  const parsed = Number(text);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+
+  return parsed;
+};
+
+const parseOptionsList = (rawValue) =>
+  String(rawValue ?? "")
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => parseLiteralValue(item));
+
+const buildParameterIdentifier = (parameter, index) =>
+  String(parameter?.key || "").trim() || `Parameter ${index + 1}`;
+
+const buildParameterRowPayloadOrThrow = (parameter, index) => {
+  const identifier = buildParameterIdentifier(parameter, index);
+  const key = String(parameter?.key || "").trim();
+  const label = String(parameter?.label || "").trim();
+  const parameterStructureKey = String(
+    parameter?.parameterStructureKey || ""
+  ).trim();
+
+  if (!key) {
+    throw new Error(`Parameter ${index + 1} is missing key`);
+  }
+  if (!label) {
+    throw new Error(`Parameter ${index + 1} is missing label`);
+  }
+  if (!parameterStructureKey) {
+    throw new Error(`Parameter ${index + 1} is missing parameterStructureKey`);
+  }
+  if (!PARAMETER_STRUCTURE_KEY_PATTERN.test(parameterStructureKey)) {
+    throw new Error(
+      `${identifier} parameterStructureKey must use lower camelCase`
+    );
+  }
+
+  let defaultValue = null;
+  const defaultMode = parameter?.defaultMode || "null";
+  if (defaultMode === "emptyObject") {
+    defaultValue = {};
+  } else if (defaultMode === "emptyArray") {
+    defaultValue = [];
+  } else if (defaultMode === "literal") {
+    defaultValue = parseLiteralValue(parameter?.defaultLiteralText);
+  } else if (defaultMode === "customJson") {
+    defaultValue = parseJsonOrThrow(
+      parameter?.defaultJsonText,
+      `${identifier} default`
+    );
+  }
+
+  let restrictions;
+  const restrictionsMode = parameter?.restrictionsMode || "none";
+  if (restrictionsMode === "minMax") {
+    const min = parseOptionalFiniteNumberOrThrow(
+      parameter?.restrictionsMinText,
+      `${identifier} minimum`
+    );
+    const max = parseOptionalFiniteNumberOrThrow(
+      parameter?.restrictionsMaxText,
+      `${identifier} maximum`
+    );
+
+    if (min !== undefined || max !== undefined) {
+      restrictions = {};
+      if (min !== undefined) restrictions.min = min;
+      if (max !== undefined) restrictions.max = max;
+    }
+  } else if (restrictionsMode === "options") {
+    const allowed = parseOptionsList(parameter?.restrictionsOptionsText);
+    if (allowed.length > 0) {
+      restrictions = { allowed };
+    }
+  } else if (restrictionsMode === "customJson") {
+    const parsed = parseJsonOrThrow(
+      parameter?.restrictionsJsonText,
+      `${identifier} restrictions`
+    );
+
+    if (parsed !== null && !isPlainObject(parsed)) {
+      throw new Error(
+        `${identifier} restrictions must be a JSON object or null`
+      );
+    }
+
+    if (isPlainObject(parsed) && Object.keys(parsed).length > 0) {
+      restrictions = parsed;
+    }
+  }
+
+  let advanced = {};
+  const advancedText = String(parameter?.advancedJsonText || "").trim();
+  if (advancedText) {
+    const parsedAdvanced = parseJsonOrThrow(
+      advancedText,
+      `${identifier} advanced JSON`
+    );
+
+    if (!isPlainObject(parsedAdvanced)) {
+      throw new Error(`${identifier} advanced JSON must be a JSON object`);
+    }
+
+    for (const protectedField of PROTECTED_ADVANCED_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(parsedAdvanced, protectedField)) {
+        throw new Error(
+          `${identifier} advanced JSON cannot override '${protectedField}'`
+        );
+      }
+    }
+
+    advanced = parsedAdvanced;
+  }
+
+  const payload = {
+    key,
+    label,
+    parameterStructureKey,
+    required: parameter?.required === true,
+    default: defaultValue,
+  };
+
+  if (restrictions !== undefined) {
+    payload.restrictions = restrictions;
+  }
+
+  return {
+    ...payload,
+    ...advanced,
+  };
+};
+
+const getParameterRowValidation = (parameter, index) => {
+  const errors = {};
+  const parameterStructureKey = String(
+    parameter?.parameterStructureKey || ""
+  ).trim();
+
+  if (
+    parameterStructureKey &&
+    !PARAMETER_STRUCTURE_KEY_PATTERN.test(parameterStructureKey)
+  ) {
+    errors.parameterStructureKey = "Use lower camelCase.";
+  }
+
+  try {
+    buildParameterRowPayloadOrThrow(parameter, index);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid parameter";
+    if (message.includes("default")) errors.default = message;
+    if (message.includes("restrictions")) errors.restrictions = message;
+    if (message.includes("advanced JSON")) errors.advanced = message;
+    if (message.includes("parameterStructureKey")) {
+      errors.parameterStructureKey = message;
+    }
+    if (message.includes("missing key")) errors.key = message;
+    if (message.includes("missing label")) errors.label = message;
+  }
+
+  return errors;
+};
 
 const buildEmptyParameterRow = () => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   key: "",
   label: "",
-  type: "number",
   parameterStructureKey: "",
   required: false,
-  defaultText: "",
-  restrictionsText: "",
+  defaultMode: "null",
+  defaultLiteralText: "",
+  defaultJsonText: "",
+  restrictionsMode: "none",
+  restrictionsMinText: "",
+  restrictionsMaxText: "",
+  restrictionsOptionsText: "",
+  restrictionsJsonText: "",
+  advancedJsonText: "",
+  advancedExpanded: false,
 });
 
 const buildInitialFormState = () => ({
@@ -117,19 +339,18 @@ const buildExampleFormState = () => ({
       id: "sample-param",
       key: "sample_param",
       label: "Sample parameter",
-      type: "number",
       parameterStructureKey: "sampleParameterGlobal",
-      required: false,
-      defaultText: "0.5",
-      restrictionsText: JSON.stringify(
-        {
-          min: 0,
-          max: 1,
-          allowed: null,
-        },
-        null,
-        2
-      ),
+      required: true,
+      defaultMode: "literal",
+      defaultLiteralText: "0.5",
+      defaultJsonText: "",
+      restrictionsMode: "minMax",
+      restrictionsMinText: "0",
+      restrictionsMaxText: "1",
+      restrictionsOptionsText: "",
+      restrictionsJsonText: "",
+      advancedJsonText: "",
+      advancedExpanded: false,
     },
   ],
 });
@@ -138,24 +359,6 @@ const formatStatusSeverity = (status) => {
   if (status === "toGenerate" || status === "written") return "success";
   if (status === "partial") return "warning";
   return "info";
-};
-
-const tryParseJsonLikeValue = (rawValue, { allowFallbackString = false } = {}) => {
-  const text = String(rawValue ?? "").trim();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    if (allowFallbackString) {
-      return text;
-    }
-
-    throw new Error("Invalid JSON value");
-  }
 };
 
 const formatJsonPreview = (value) => {
@@ -169,17 +372,6 @@ const formatJsonPreview = (value) => {
     return String(value);
   }
 };
-
-const buildPreviewSummary = (items = []) => ({
-  toGenerate: items.filter((item) => item.status === "toGenerate").length,
-  exists: items.filter((item) => item.status === "exists").length,
-  partial: items.filter((item) => item.status === "partial").length,
-});
-
-const buildApplySummary = (items = []) => ({
-  written: items.filter((item) => item.status === "written").length,
-  skipped: items.filter((item) => item.status === "skipped").length,
-});
 
 export default function AdminModelForgeSection() {
   const theme = useTheme();
@@ -302,16 +494,6 @@ export default function AdminModelForgeSection() {
     return keys;
   }, [formState.parameters, parameterStructureMap]);
 
-  const previewSummary = useMemo(
-    () => buildPreviewSummary(previewResult?.items || []),
-    [previewResult]
-  );
-
-  const applySummary = useMemo(
-    () => buildApplySummary(applyResult?.items || []),
-    [applyResult]
-  );
-
   const setField = useCallback((field, value) => {
     setFormState((current) => ({
       ...current,
@@ -327,6 +509,20 @@ export default function AdminModelForgeSection() {
       ...current,
       parameters: current.parameters.map((parameter) =>
         parameter.id === id ? { ...parameter, [field]: value } : parameter
+      ),
+    }));
+    setPreviewResult(null);
+    setApplyResult(null);
+    setActionError("");
+  }, []);
+
+  const setParameterExpanded = useCallback((id, expanded) => {
+    setFormState((current) => ({
+      ...current,
+      parameters: current.parameters.map((parameter) =>
+        parameter.id === id
+          ? { ...parameter, advancedExpanded: expanded }
+          : parameter
       ),
     }));
     setPreviewResult(null);
@@ -386,63 +582,9 @@ export default function AdminModelForgeSection() {
       throw new Error("evaluationStructureKey is required");
     }
 
-    const parsedParameters = formState.parameters.map((parameter, index) => {
-      const key = String(parameter?.key || "").trim();
-      const label = String(parameter?.label || "").trim();
-      const type = String(parameter?.type || "").trim();
-      const parameterStructureKey = String(
-        parameter?.parameterStructureKey || ""
-      ).trim();
-
-      if (!key) {
-        throw new Error(`Parameter ${index + 1} is missing key`);
-      }
-      if (!label) {
-        throw new Error(`Parameter ${index + 1} is missing label`);
-      }
-      if (!type) {
-        throw new Error(`Parameter ${index + 1} is missing type`);
-      }
-      if (!parameterStructureKey) {
-        throw new Error(`Parameter ${index + 1} is missing parameterStructureKey`);
-      }
-
-      let parsedRestrictions = null;
-      const restrictionsText = String(parameter?.restrictionsText || "").trim();
-      if (restrictionsText) {
-        try {
-          parsedRestrictions = JSON.parse(restrictionsText);
-        } catch {
-          throw new Error(`Parameter ${key} restrictions must be a valid JSON object`);
-        }
-
-        if (
-          parsedRestrictions !== null &&
-          (Array.isArray(parsedRestrictions) || typeof parsedRestrictions !== "object")
-        ) {
-          throw new Error(`Parameter ${key} restrictions must be a JSON object or null`);
-        }
-      }
-
-      let parsedDefault = null;
-      try {
-        parsedDefault = tryParseJsonLikeValue(parameter?.defaultText, {
-          allowFallbackString: true,
-        });
-      } catch {
-        throw new Error(`Parameter ${key} default value is invalid`);
-      }
-
-      return {
-        key,
-        label,
-        type,
-        parameterStructureKey,
-        required: parameter?.required === true,
-        default: parsedDefault,
-        restrictions: parsedRestrictions,
-      };
-    });
+    const parsedParameters = formState.parameters.map((parameter, index) =>
+      buildParameterRowPayloadOrThrow(parameter, index)
+    );
 
     const evaluationStructureCatalogItem =
       evaluationStructureMap.get(evaluationStructureKey) || null;
@@ -485,8 +627,8 @@ export default function AdminModelForgeSection() {
         evaluationStructureCatalogItem?.status === "ready"
           ? null
           : {
-              evaluationStructureKey,
-            },
+            evaluationStructureKey,
+          },
       parameterStructures: requiredParameterStructures.map((key) => ({
         parameterStructureKey: key,
       })),
@@ -582,45 +724,6 @@ export default function AdminModelForgeSection() {
   return (
     <>
       <Stack spacing={1.25}>
-        <Box
-          sx={{
-            display: "grid",
-            gap: 1,
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, minmax(0, 1fr))",
-              lg: "repeat(4, minmax(0, 1fr))",
-            },
-          }}
-        >
-          <MetricCard
-            label="Ready evaluation structures"
-            value={evaluationStructures.filter((item) => item.status === "ready").length}
-            helper="Catalog-backed options"
-            severity="success"
-          />
-          <MetricCard
-            label="Ready parameter structures"
-            value={parameterStructures.filter((item) => item.status === "ready").length}
-            helper="Reusable parameter inputs"
-            severity="success"
-          />
-          <MetricCard
-            label="Preview items"
-            value={(previewResult?.items || []).length}
-            helper={previewResult ? `${previewSummary.toGenerate} to generate` : "Run preview"}
-          />
-          <MetricCard
-            label="Apply result"
-            value={(applyResult?.items || []).length}
-            helper={
-              applyResult
-                ? `${applySummary.written} written / ${applySummary.skipped} skipped`
-                : "No apply yet"
-            }
-            severity={applyResult ? "success" : "info"}
-          />
-        </Box>
 
         <SectionCard
           title="Model Forge"
@@ -650,14 +753,14 @@ export default function AdminModelForgeSection() {
           )}
         >
           <Stack spacing={1}>
-            <Alert severity="info" variant="outlined">
+            {/* <Alert severity="info" variant="outlined">
               Generated models start with <strong>implementationStatus scaffold</strong>
               {" "}and are not public usable until marked ready in code.
             </Alert>
             <Alert severity="info" variant="outlined">
               Existing model, evaluation structure, and parameter structure scaffolds are
               skipped. Partial states are reported during preview and abort apply.
-            </Alert>
+            </Alert> */}
             {catalogError && (
               <Alert severity="warning" variant="outlined">
                 ModelForge is not configured or not available. Start ModelForge and configure
@@ -689,18 +792,21 @@ export default function AdminModelForgeSection() {
               value={formState.apiModelKey}
               onChange={(event) => setField("apiModelKey", event.target.value)}
               helperText="snake_case. Used as folder name and endpoint path."
+              color="info"
               fullWidth
             />
             <TextField
               label="Display name"
               value={formState.displayName}
               onChange={(event) => setField("displayName", event.target.value)}
+              color="info"
               fullWidth
             />
             <TextField
               label="Short description"
               value={formState.smallDescription}
               onChange={(event) => setField("smallDescription", event.target.value)}
+              color="info"
               fullWidth
             />
             <TextField
@@ -708,6 +814,7 @@ export default function AdminModelForgeSection() {
               value={formState.moreInfoUrl}
               onChange={(event) => setField("moreInfoUrl", event.target.value)}
               placeholder="https://example.com/docs"
+              color="info"
               fullWidth
             />
             <TextField
@@ -717,6 +824,7 @@ export default function AdminModelForgeSection() {
               minRows={4}
               multiline
               fullWidth
+              color="info"
               sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}
             />
             <FormControlLabel
@@ -724,6 +832,7 @@ export default function AdminModelForgeSection() {
                 <Switch
                   checked={formState.includeExamples}
                   onChange={(event) => setField("includeExamples", event.target.checked)}
+                  color="info"
                 />
               )}
               label="Include request/response example scaffolds"
@@ -775,9 +884,10 @@ export default function AdminModelForgeSection() {
                 setApplyResult(null);
                 setActionError("");
               }}
+              color="info"
               getOptionLabel={(option) => option?.label || ""}
               isOptionEqualToValue={(option, value) => option.value === value.value}
-              renderInput={(params) => <TextField {...params} label="Model kind" />}
+              renderInput={(params) => <TextField color="info" {...params} label="Model kind" />}
             />
           </Box>
         </SectionCard>
@@ -787,11 +897,12 @@ export default function AdminModelForgeSection() {
             <Autocomplete
               freeSolo
               options={evaluationOptions}
+              color="info"
               value={
                 formState.evaluationStructureKey
                   ? evaluationOptions.find(
-                      (item) => item.key === formState.evaluationStructureKey
-                    ) || formState.evaluationStructureKey
+                    (item) => item.key === formState.evaluationStructureKey
+                  ) || formState.evaluationStructureKey
                   : null
               }
               onChange={(_event, value) => {
@@ -817,21 +928,22 @@ export default function AdminModelForgeSection() {
               renderTags={(value, getTagProps) =>
                 value
                   ? [
-                      <Chip
-                        {...getTagProps({ index: 0 })}
-                        key={typeof value === "string" ? value : value?.key}
-                        label={
-                          typeof value === "string"
-                            ? value
-                            : `${value?.label || value?.key} (${value?.status})`
-                        }
-                      />,
-                    ]
+                    <Chip
+                      {...getTagProps({ index: 0 })}
+                      key={typeof value === "string" ? value : value?.key}
+                      label={
+                        typeof value === "string"
+                          ? value
+                          : `${value?.label || value?.key} (${value?.status})`
+                      }
+                    />,
+                  ]
                   : []
               }
               renderInput={(params) => (
                 <TextField
                   {...params}
+                  color="info"
                   label="evaluationStructureKey"
                   helperText={
                     formState.modelKind === "criteriaWeighting"
@@ -849,13 +961,13 @@ export default function AdminModelForgeSection() {
               </Alert>
             )}
 
-            {formState.evaluationStructureKey.trim() &&
+            {/* {formState.evaluationStructureKey.trim() &&
               !selectedEvaluationStructure && (
                 <Alert severity="info" variant="outlined">
                   This evaluation structure key does not exist in the ready catalog.
                   Preview will include a new evaluation structure scaffold.
                 </Alert>
-              )}
+              )} */}
           </Stack>
         </SectionCard>
 
@@ -879,6 +991,7 @@ export default function AdminModelForgeSection() {
                       onChange={(event) =>
                         setField("supportsConsensus", event.target.checked)
                       }
+                      color="info"
                     />
                   )}
                   label="Supports consensus"
@@ -887,6 +1000,7 @@ export default function AdminModelForgeSection() {
                   control={(
                     <Switch
                       checked={formState.isMultiCriteria}
+                      color="info"
                       onChange={(event) =>
                         setField("isMultiCriteria", event.target.checked)
                       }
@@ -898,6 +1012,7 @@ export default function AdminModelForgeSection() {
                   control={(
                     <Switch
                       checked={formState.usesCriteriaWeights}
+                      color="info"
                       onChange={(event) =>
                         setField("usesCriteriaWeights", event.target.checked)
                       }
@@ -909,6 +1024,7 @@ export default function AdminModelForgeSection() {
                   control={(
                     <Switch
                       checked={formState.usesFuzzyCriteriaWeights}
+                      color="info"
                       onChange={(event) =>
                         setField("usesFuzzyCriteriaWeights", event.target.checked)
                       }
@@ -924,6 +1040,7 @@ export default function AdminModelForgeSection() {
                 <FormControlLabel
                   control={(
                     <Switch
+                      color="info"
                       checked={formState.supportsCreatorCriteriaWeighting}
                       onChange={(event) =>
                         setField(
@@ -938,6 +1055,7 @@ export default function AdminModelForgeSection() {
                 <FormControlLabel
                   control={(
                     <Switch
+                      color="info"
                       checked={formState.supportsExpertCriteriaWeighting}
                       onChange={(event) =>
                         setField(
@@ -955,6 +1073,7 @@ export default function AdminModelForgeSection() {
             <FormControlLabel
               control={(
                 <Switch
+                  color="info"
                   checked={formState.supportsConsensusSimulation}
                   onChange={(event) =>
                     setField("supportsConsensusSimulation", event.target.checked)
@@ -966,6 +1085,7 @@ export default function AdminModelForgeSection() {
             <FormControlLabel
               control={(
                 <Switch
+                  color="info"
                   checked={formState.usesExpertWeights}
                   onChange={(event) => setField("usesExpertWeights", event.target.checked)}
                 />
@@ -975,6 +1095,7 @@ export default function AdminModelForgeSection() {
             <FormControlLabel
               control={(
                 <Switch
+                  color="info"
                   checked={formState.usesCriterionTypes}
                   onChange={(event) => setField("usesCriterionTypes", event.target.checked)}
                 />
@@ -994,6 +1115,7 @@ export default function AdminModelForgeSection() {
                   key={domain}
                   control={(
                     <Checkbox
+                      color="info"
                       checked={checked}
                       onChange={(event) => {
                         const nextDomains = event.target.checked
@@ -1037,6 +1159,7 @@ export default function AdminModelForgeSection() {
                   parameterStructureMap.get(
                     String(parameter.parameterStructureKey || "").trim()
                   ) || null;
+                const parameterErrors = getParameterRowValidation(parameter, index);
 
                 return (
                   <Paper
@@ -1083,7 +1206,10 @@ export default function AdminModelForgeSection() {
                           onChange={(event) =>
                             setParameterField(parameter.id, "key", event.target.value)
                           }
+                          error={Boolean(parameterErrors.key)}
+                          helperText={parameterErrors.key || "Stored as parameter.key"}
                           fullWidth
+                          color="info"
                         />
                         <TextField
                           label="label"
@@ -1091,27 +1217,10 @@ export default function AdminModelForgeSection() {
                           onChange={(event) =>
                             setParameterField(parameter.id, "label", event.target.value)
                           }
+                          error={Boolean(parameterErrors.label)}
+                          helperText={parameterErrors.label || "Display label"}
                           fullWidth
-                        />
-                        <Autocomplete
-                          freeSolo
-                          options={PARAMETER_TYPE_OPTIONS}
-                          value={parameter.type || ""}
-                          onChange={(_event, value) =>
-                            setParameterField(
-                              parameter.id,
-                              "type",
-                              typeof value === "string" ? value : value || ""
-                            )
-                          }
-                          onInputChange={(_event, value, reason) => {
-                            if (reason === "input") {
-                              setParameterField(parameter.id, "type", value);
-                            }
-                          }}
-                          renderInput={(params) => (
-                            <TextField {...params} label="type" fullWidth />
-                          )}
+                          color="info"
                         />
                         <Autocomplete
                           freeSolo
@@ -1119,10 +1228,11 @@ export default function AdminModelForgeSection() {
                           value={
                             parameter.parameterStructureKey
                               ? parameterStructureOptions.find(
-                                  (item) => item.key === parameter.parameterStructureKey
-                                ) || parameter.parameterStructureKey
+                                (item) => item.key === parameter.parameterStructureKey
+                              ) || parameter.parameterStructureKey
                               : null
                           }
+                          color="info"
                           onChange={(_event, value) =>
                             setParameterField(
                               parameter.id,
@@ -1146,26 +1256,20 @@ export default function AdminModelForgeSection() {
                             <TextField
                               {...params}
                               label="parameterStructureKey"
+                              error={Boolean(parameterErrors.parameterStructureKey)}
+                              helperText={
+                                parameterErrors.parameterStructureKey ||
+                                "Catalog-backed. New lower camelCase keys are allowed."
+                              }
+                              color="info"
                               fullWidth
                             />
                           )}
                         />
-                        <TextField
-                          label="default"
-                          value={parameter.defaultText}
-                          onChange={(event) =>
-                            setParameterField(
-                              parameter.id,
-                              "defaultText",
-                              event.target.value
-                            )
-                          }
-                          helperText="Parsed as JSON when possible; otherwise kept as string."
-                          fullWidth
-                        />
                         <FormControlLabel
                           control={(
                             <Switch
+                              color="info"
                               checked={parameter.required === true}
                               onChange={(event) =>
                                 setParameterField(
@@ -1178,23 +1282,209 @@ export default function AdminModelForgeSection() {
                           )}
                           label="Required"
                         />
-                        <TextField
-                          label="restrictions"
-                          value={parameter.restrictionsText}
-                          onChange={(event) =>
+                        <Autocomplete
+                          options={DEFAULT_MODE_OPTIONS}
+                          color="info"
+                          value={
+                            DEFAULT_MODE_OPTIONS.find(
+                              (item) => item.value === (parameter.defaultMode || "null")
+                            ) || DEFAULT_MODE_OPTIONS[0]
+                          }
+                          onChange={(_event, value) =>
                             setParameterField(
                               parameter.id,
-                              "restrictionsText",
-                              event.target.value
+                              "defaultMode",
+                              value?.value || "null"
                             )
                           }
-                          minRows={4}
-                          multiline
-                          helperText="JSON object or null."
-                          fullWidth
-                          sx={{ gridColumn: { xs: "auto", lg: "1 / -1" } }}
+                          getOptionLabel={(option) => option?.label || ""}
+                          isOptionEqualToValue={(option, value) => option.value === value.value}
+                          renderInput={(params) => (
+                            <TextField color="info" {...params} label="Default mode" fullWidth />
+                          )}
                         />
+                        {(parameter.defaultMode || "null") === "literal" && (
+                          <TextField
+                          color="info"
+                            label="Default literal value"
+                            value={parameter.defaultLiteralText || ""}
+                            onChange={(event) =>
+                              setParameterField(
+                                parameter.id,
+                                "defaultLiteralText",
+                                event.target.value
+                              )
+                            }
+                            helperText={parameterErrors.default || 'Numbers and "true"/"false" are parsed.'}
+                            error={Boolean(parameterErrors.default)}
+                            fullWidth
+                          />
+                        )}
+                        {(parameter.defaultMode || "null") === "customJson" && (
+                          <TextField
+                          color="info"
+                            label="Default custom JSON"
+                            value={parameter.defaultJsonText || ""}
+                            onChange={(event) =>
+                              setParameterField(
+                                parameter.id,
+                                "defaultJsonText",
+                                event.target.value
+                              )
+                            }
+                            minRows={4}
+                            multiline
+                            helperText={parameterErrors.default || "Any valid JSON value."}
+                            error={Boolean(parameterErrors.default)}
+                            fullWidth
+                            sx={{ gridColumn: { xs: "auto", lg: "1 / -1" } }}
+                          />
+                        )}
+                        <Autocomplete
+                          options={RESTRICTIONS_MODE_OPTIONS}
+                          value={
+                            RESTRICTIONS_MODE_OPTIONS.find(
+                              (item) =>
+                                item.value === (parameter.restrictionsMode || "none")
+                            ) || RESTRICTIONS_MODE_OPTIONS[0]
+                          }
+                          onChange={(_event, value) =>
+                            setParameterField(
+                              parameter.id,
+                              "restrictionsMode",
+                              value?.value || "none"
+                            )
+                          }
+                          color="info"
+                          getOptionLabel={(option) => option?.label || ""}
+                          isOptionEqualToValue={(option, value) => option.value === value.value}
+                          renderInput={(params) => (
+                            <TextField {...params} label="Restrictions mode" fullWidth />
+                          )}
+                        />
+                        {(parameter.restrictionsMode || "none") === "minMax" && (
+                          <>
+                            <TextField
+                              label="Min"
+                              value={parameter.restrictionsMinText || ""}
+                              color="info"
+                              onChange={(event) =>
+                                setParameterField(
+                                  parameter.id,
+                                  "restrictionsMinText",
+                                  event.target.value
+                                )
+                              }
+                              error={Boolean(parameterErrors.restrictions)}
+                              helperText={parameterErrors.restrictions || "Optional"}
+                              fullWidth
+                            />
+                            <TextField
+                              label="Max"
+                              color="info"
+                              value={parameter.restrictionsMaxText || ""}
+                              onChange={(event) =>
+                                setParameterField(
+                                  parameter.id,
+                                  "restrictionsMaxText",
+                                  event.target.value
+                                )
+                              }
+                              error={Boolean(parameterErrors.restrictions)}
+                              helperText={parameterErrors.restrictions || "Optional"}
+                              fullWidth
+                            />
+                          </>
+                        )}
+                        {(parameter.restrictionsMode || "none") === "options" && (
+                          <TextField
+                            label="Options"
+                            color="info"
+                            value={parameter.restrictionsOptionsText || ""}
+                            onChange={(event) =>
+                              setParameterField(
+                                parameter.id,
+                                "restrictionsOptionsText",
+                                event.target.value
+                              )
+                            }
+                            minRows={4}
+                            multiline
+                            helperText={
+                              parameterErrors.restrictions ||
+                              "Comma or newline separated. Strings, numbers, and booleans are supported."
+                            }
+                            error={Boolean(parameterErrors.restrictions)}
+                            fullWidth
+                            sx={{ gridColumn: { xs: "auto", lg: "1 / -1" } }}
+                          />
+                        )}
+                        {(parameter.restrictionsMode || "none") === "customJson" && (
+                          <TextField
+                          color="info"
+                            label="Restrictions custom JSON"
+                            value={parameter.restrictionsJsonText || ""}
+                            onChange={(event) =>
+                              setParameterField(
+                                parameter.id,
+                                "restrictionsJsonText",
+                                event.target.value
+                              )
+                            }
+                            minRows={4}
+                            multiline
+                            helperText={
+                              parameterErrors.restrictions ||
+                              "Must be a JSON object or null."
+                            }
+                            error={Boolean(parameterErrors.restrictions)}
+                            fullWidth
+                            sx={{ gridColumn: { xs: "auto", lg: "1 / -1" } }}
+                          />
+                        )}
                       </Box>
+
+                      <Accordion
+                        disableGutters
+                        expanded={parameter.advancedExpanded === true}
+                        onChange={(_event, expanded) =>
+                          setParameterExpanded(parameter.id, expanded)
+                        }
+                        sx={{
+                          bgcolor: alpha(theme.palette.common.white, 0.02),
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+                          "&:before": { display: "none" },
+                        }}
+                      >
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                            Advanced JSON
+                          </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <TextField
+                          color="info"
+                            label="Advanced JSON"
+                            value={parameter.advancedJsonText || ""}
+                            onChange={(event) =>
+                              setParameterField(
+                                parameter.id,
+                                "advancedJsonText",
+                                event.target.value
+                              )
+                            }
+                            minRows={4}
+                            multiline
+                            helperText={
+                              parameterErrors.advanced ||
+                              "Optional JSON object merged into the parameter. Protected fields cannot be overridden."
+                            }
+                            error={Boolean(parameterErrors.advanced)}
+                            fullWidth
+                          />
+                        </AccordionDetails>
+                      </Accordion>
 
                       {selectedParameterStructure?.status === "partial" && (
                         <Alert severity="warning" variant="outlined">
@@ -1202,6 +1492,15 @@ export default function AdminModelForgeSection() {
                           {" "}exists only partially. Preview will report the partial state.
                         </Alert>
                       )}
+
+                      {String(parameter.parameterStructureKey || "").trim() &&
+                        !selectedParameterStructure &&
+                        !parameterErrors.parameterStructureKey && (
+                          <Alert severity="info" variant="outlined">
+                            parameterStructureKey <strong>{parameter.parameterStructureKey}</strong>
+                            {" "}is not in the ready catalog. Preview will include a new parameter structure scaffold.
+                          </Alert>
+                        )}
                     </Stack>
                   </Paper>
                 );
@@ -1243,7 +1542,7 @@ export default function AdminModelForgeSection() {
             alignItems={{ xs: "stretch", sm: "center" }}
           >
             <Button
-              variant="contained"
+              variant="outlined"
               color="info"
               startIcon={<PlayArrowIcon />}
               onClick={runPreview}
@@ -1252,7 +1551,7 @@ export default function AdminModelForgeSection() {
               Preview scaffold
             </Button>
             <Button
-              variant="contained"
+              variant="outlined"
               color="secondary"
               startIcon={<RocketLaunchIcon />}
               onClick={() => setApplyDialogOpen(true)}

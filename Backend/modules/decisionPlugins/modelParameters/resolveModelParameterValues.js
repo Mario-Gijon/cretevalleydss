@@ -20,21 +20,28 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
   const modelParameters = modelDoc.parameters;
 
   for (const parameter of modelParameters) {
-    const { type, default: defaultValue } = parameter;
+    const { default: defaultValue } = parameter;
+    const parameterStructureKey = normalizeNonEmptyString(
+      parameter?.parameterStructureKey
+    );
     const name = normalizeNonEmptyString(parameter.key);
     if (!name) continue;
 
-    if (type === "number") {
+    if (
+      parameterStructureKey === "numberGlobal" ||
+      parameterStructureKey === "selectGlobal" ||
+      parameterStructureKey === "numberCriterion" ||
+      parameterStructureKey === "selectCriterion"
+    ) {
       resolved[name] = defaultValue;
       continue;
     }
 
-    if (type === "array") {
-      const scope = normalizeNonEmptyString(parameter.scope);
+    if (parameterStructureKey === "intervalGlobal") {
       const fixedLength = parameter.restrictions?.length ?? null;
       const length =
-        (scope === "perCriterion" ? leafCount : fixedLength) ??
-        (defaultValue.length || 2);
+        fixedLength ??
+        (Array.isArray(defaultValue) ? defaultValue.length || 2 : 2);
 
       const isCriteriaWeights =
         normalizeNonEmptyString(parameter.semanticRole) === "criteriaWeights";
@@ -52,20 +59,6 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
 
       const base = defaultValue;
       resolved[name] = ensureLen(base, length, null);
-      continue;
-    }
-
-    if (type === "fuzzyArray") {
-      const scope = normalizeNonEmptyString(parameter.scope);
-      const fixedLength = parameter.restrictions?.length ?? null;
-      const length =
-        (scope === "perCriterion" ? leafCount : fixedLength) ??
-        (defaultValue.length || 1);
-
-      const base = defaultValue;
-      resolved[name] = ensureLen(base, length, [null, null, null]).map((triangle) =>
-        triangle
-      );
       continue;
     }
 

@@ -4,23 +4,20 @@ import {
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
 
 export const {{ backend_structure_export_name }} = Object.freeze({
-  // key must match the folder name.
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
+  implementationStatus: "scaffold",
 
-  // get returns a placeholder payload so the scaffold view can render safely.
-  async get({ evaluationContext }) {
-    void evaluationContext;
+  async get() {
     return {};
   },
 
-  // save must stay blocked until the real structure is implemented.
   async save({ payload, evaluationContext, mode }) {
     void payload;
     void evaluationContext;
     void mode;
     throw createBadRequestError(
-      "Evaluation structure scaffold is still under development",
+      "Evaluation structure is under development",
       {
         code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
         field: "payload",
@@ -28,21 +25,13 @@ export const {{ backend_structure_export_name }} = Object.freeze({
     );
   },
 
-  // validateBeforeCompute must fail clearly until the structure is implemented.
   async validateBeforeCompute() {
     throw createBadRequestError(
-      "Evaluation structure scaffold is still under development",
+      "Evaluation structure is under development",
       {
         code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
         field: "evaluations",
       }
-    });
+    );
   },
 });
-
-/*
-Notes:
-- payload shape is owned by this structure.
-- entity references must be id-based.
-- replace get/save/validateBeforeCompute after implementing the scaffold.
-*/
