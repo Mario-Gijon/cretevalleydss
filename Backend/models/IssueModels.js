@@ -9,40 +9,8 @@ function isAllowedValue(value, allowed) {
   return allowed.includes(value);
 }
 
-function isValidLengthTwoArrayDefault(value, restrictions = {}) {
-  if (!Array.isArray(value) || value.length !== 2) {
-    return false;
-  }
-
-  if (value[0] >= value[1]) {
-    return false;
-  }
-
-  if (
-    restrictions.min !== null &&
-    (value[0] < restrictions.min || value[1] < restrictions.min)
-  ) {
-    return false;
-  }
-
-  if (
-    restrictions.max !== null &&
-    (value[0] > restrictions.max || value[1] > restrictions.max)
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 function validateParameterDefault(value) {
   const restrictions = this.restrictions || {};
-
-  if (this.type === "array" && restrictions.length === 2) {
-    if (!isValidLengthTwoArrayDefault(value, restrictions)) {
-      return false;
-    }
-  }
 
   if (!isAllowedValue(value, restrictions.allowed)) {
     return false;
@@ -73,10 +41,6 @@ const parameterSchema = new Schema(
       trim: true,
       default: null,
     },
-    type: {
-      type: String,
-      required: true,
-    },
     valueType: {
       type: String,
       trim: true,
@@ -90,7 +54,7 @@ const parameterSchema = new Schema(
     parameterStructureKey: {
       type: String,
       trim: true,
-      default: null,
+      required: true,
     },
     required: {
       type: Boolean,

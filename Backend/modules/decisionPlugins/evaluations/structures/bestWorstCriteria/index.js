@@ -10,7 +10,6 @@ import {
 
 export const bestWorstCriteriaStructure = Object.freeze({
   key: "bestWorstCriteria",
-  label: "Best-worst weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   async get({ payload: storedPayload, evaluationContext }) {
     const { payload } = await buildGetPayload({

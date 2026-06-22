@@ -10,7 +10,6 @@ import {
 
 export const manualCriteriaWeightsStructure = Object.freeze({
   key: "manualCriteriaWeights",
-  label: "Manual weights",
   stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   async get({ payload: storedPayload, evaluationContext }) {
     const { payload } = await buildGetPayload({

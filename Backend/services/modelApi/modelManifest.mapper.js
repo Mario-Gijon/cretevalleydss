@@ -87,7 +87,6 @@ export const normalizeParameter = (parameter = {}) => {
     name: key,
     label: normalizeNonEmptyString(parameter?.label),
     description: normalizeNonEmptyString(parameter?.description),
-    type: normalizeNonEmptyString(parameter?.type),
     valueType: normalizeNonEmptyString(parameter?.valueType),
     scope: normalizeNonEmptyString(parameter?.scope),
     parameterStructureKey: normalizeNonEmptyString(parameter?.parameterStructureKey),
@@ -164,7 +163,6 @@ const validateManifestParameters = (manifestModel) => {
   parameters.forEach((parameter, index) => {
     const parameterPath = `parameters[${index}]`;
     const key = normalizeNonEmptyString(parameter?.key);
-    const type = normalizeNonEmptyString(parameter?.type);
     const parameterStructureKey = normalizeNonEmptyString(parameter?.parameterStructureKey);
 
     if (!key) {
@@ -176,10 +174,6 @@ const validateManifestParameters = (manifestModel) => {
       errors.push(`${parameterPath}.key (duplicate: ${key})`);
     }
     seenKeys.add(key);
-
-    if (!type) {
-      errors.push(`${parameterPath}.type`);
-    }
 
     if (!parameterStructureKey) {
       errors.push(`${parameterPath}.parameterStructureKey`);

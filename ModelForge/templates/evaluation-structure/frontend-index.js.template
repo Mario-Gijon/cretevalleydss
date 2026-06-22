@@ -38,7 +38,6 @@ const adapter = Object.freeze({
 export const {{ evaluation_structure_key }}Structure = Object.freeze({
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.{{ stage_constant }},
-  label: "{{ evaluation_structure_key }}",
   implementationStatus: "scaffold",
   adapter,
   View: {{ view_component_name }},

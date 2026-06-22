@@ -5,7 +5,6 @@ import { alternativePairwiseByCriterionAdapter } from "./alternativePairwiseByCr
 export const alternativePairwiseByCriterionStructure = Object.freeze({
   key: "alternativePairwiseByCriterion",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  label: "Pairwise alternatives by criterion",
   adapter: alternativePairwiseByCriterionAdapter,
   View: AlternativePairwiseByCriterionView,
 });

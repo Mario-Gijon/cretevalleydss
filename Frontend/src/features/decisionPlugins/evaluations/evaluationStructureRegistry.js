@@ -16,7 +16,6 @@ const isValidEvaluationStructure = (value) =>
   typeof value === "object" &&
   isNonEmptyString(value.key) &&
   isNonEmptyString(value.stage) &&
-  isNonEmptyString(value.label) &&
   value.adapter !== null &&
   typeof value.adapter === "object" &&
   isReactComponentCandidate(value.View);
@@ -36,7 +35,7 @@ const extractEvaluationStructureFromModule = ({ moduleExports, modulePath }) => 
 
   if (structures.length === 0) {
     throw new Error(
-      `${modulePath} must export exactly one valid evaluation structure object with key, stage, label, adapter and React View`
+      `${modulePath} must export exactly one valid evaluation structure object with key, stage, adapter and React View`
     );
   }
 

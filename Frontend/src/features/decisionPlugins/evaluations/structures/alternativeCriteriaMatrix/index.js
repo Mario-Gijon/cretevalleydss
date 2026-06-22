@@ -5,7 +5,6 @@ import { alternativeCriteriaMatrixAdapter } from "./alternativeCriteriaMatrix.ad
 export const alternativeCriteriaMatrixStructure = Object.freeze({
   key: "alternativeCriteriaMatrix",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  label: "Alternative-criteria matrix",
   adapter: alternativeCriteriaMatrixAdapter,
   View: AlternativeCriteriaMatrixView,
 });

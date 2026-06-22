@@ -13,12 +13,12 @@ class CatalogParameterStructureItem(BaseModel):
 
 class CatalogEvaluationStructureItem(BaseModel):
     key: str
-    label: str
     stage: Literal["alternativeEvaluation", "criteriaWeighting"] | None
     stageConstant: str | None
     status: Literal["ready", "partial"]
     backendExists: bool
     frontendExists: bool
+    implementationStatus: Literal["ready", "scaffold"] = "ready"
     availableForAlternativeEvaluation: bool
     availableForCriteriaWeighting: bool
 

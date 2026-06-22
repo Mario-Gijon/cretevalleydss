@@ -1,7 +1,6 @@
 import { isPlainObject } from "./isPlainObject";
 
 export const isCriterionMapParameter = (parameter) =>
-  parameter.type === "criterionMap" ||
   parameter.parameterStructureKey === "numberCriterion" ||
   parameter.parameterStructureKey === "selectCriterion";
 

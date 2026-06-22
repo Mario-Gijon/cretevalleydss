@@ -17,7 +17,13 @@ const stripWeights = (obj) => {
 const stripWeightsDeep = (value) => stripWeights(value);
 
 const getParameterExpectedLength = (parameter, leafCount) => {
-  if (parameter?.scope === "perCriterion") return leafCount;
+  if (
+    parameter?.semanticRole === "criteriaWeights" ||
+    parameter?.parameterStructureKey === "numberCriterion" ||
+    parameter?.parameterStructureKey === "selectCriterion"
+  ) {
+    return leafCount;
+  }
   const length = parameter?.restrictions?.length;
   return typeof length === "number" ? length : null;
 };
@@ -29,8 +35,7 @@ const filterOutWeightsParam = (param) =>
 export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
 
 const isCriteriaWeightsParameter = (parameter) =>
-  parameter?.semanticRole === "criteriaWeights" &&
-  parameter?.type === "array";
+  parameter?.semanticRole === "criteriaWeights";
 
 export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
@@ -197,8 +202,7 @@ const buildSyntheticWeightsParameter = (model) => {
   return {
     key: "weights",
     label: "Criteria weights",
-    type: "array",
-    scope: "perCriterion",
+    parameterStructureKey: "numberCriterion",
     semanticRole: "criteriaWeights",
     required: true,
     default: "equal",
@@ -216,6 +220,28 @@ const getScenarioParameterDefinitions = (model) => {
   const params = resolveScenarioModelParameters(model);
   const syntheticWeights = buildSyntheticWeightsParameter(model);
   return syntheticWeights ? [...params, syntheticWeights] : params;
+};
+
+const resolveParameterKind = (parameter) => {
+  if (parameter?.semanticRole === "criteriaWeights") {
+    return "criteriaWeights";
+  }
+
+  const parameterStructureKey = normalizeNonEmptyString(
+    parameter?.parameterStructureKey
+  );
+
+  if (parameterStructureKey === "numberGlobal") return "number";
+  if (parameterStructureKey === "selectGlobal") return "enum";
+  if (parameterStructureKey === "intervalGlobal") return "interval";
+  if (
+    parameterStructureKey === "numberCriterion" ||
+    parameterStructureKey === "selectCriterion"
+  ) {
+    return "criterionMap";
+  }
+
+  return null;
 };
 
 export const buildPseudoParametersFromValues = (values) => {
@@ -464,24 +490,19 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
   for (const param of getScenarioParameterDefinitions(model)) {
     const key = param?.key;
     if (!key) continue;
+    const kind = resolveParameterKind(param);
 
-    if (param.type === "number") out[key] = param.default ?? "";
+    if (kind === "number") out[key] = param.default ?? "";
 
-    if (param.type === "enum") out[key] = param.default ?? "";
+    if (kind === "enum") out[key] = param.default ?? "";
 
-    if (param.type === "interval") {
+    if (kind === "interval") {
       const min = param?.restrictions?.min ?? "";
       const max = param?.restrictions?.max ?? "";
       out[key] = ensureArrayLen(Array.isArray(param.default) ? param.default : [min, max], 2, "");
     }
 
-    if (param.type === "array") {
-      const len =
-        getParameterExpectedLength(param, leafCount) ??
-        param?.restrictions?.length ??
-        2;
-      const base = Array.isArray(param.default) ? param.default : [];
-      const count = Number(len) || 2;
+    if (kind === "criteriaWeights") {
       const isWeightsByCriteria = isCriteriaWeightsParameter(param);
 
       if (isWeightsByCriteria && safeLeafCount === 1) {
@@ -493,44 +514,10 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
         out[key] = defaultWeights;
         continue;
       }
-
-      out[key] = ensureArrayLen(base, count, "");
+      out[key] = defaultWeights;
     }
 
-    if (param.type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria =
-        param?.semanticRole === "criteriaWeights" &&
-        param?.type === "fuzzyArray";
-      const fuzzyValueCount =
-        Number(param?.restrictions?.length) || resolveFuzzyWeightsValueCount(model);
-      if (
-        isFuzzyWeightsByCriteria &&
-        safeLeafCount === 1 &&
-        Number.isInteger(fuzzyValueCount) &&
-        fuzzyValueCount >= 2
-      ) {
-        out[key] = [Array.from({ length: fuzzyValueCount }, () => 1)];
-        continue;
-      }
-
-      const len = getParameterExpectedLength(param, leafCount) ?? param?.restrictions?.length ?? 1;
-      const count = Number(len) || 1;
-      const vectorLength =
-        Number.isInteger(Number(param?.restrictions?.length)) &&
-        Number(param.restrictions.length) >= 2
-          ? Number(param.restrictions.length)
-          : 3;
-      const base = Array.isArray(param.default) ? param.default : [];
-      const fillerVector = Array.from({ length: vectorLength }, () => "");
-      const filled = ensureArrayLen(base, count, fillerVector).map((vector) =>
-        Array.isArray(vector) && vector.length === vectorLength
-          ? vector
-          : [...fillerVector]
-      );
-      out[key] = filled;
-    }
-
-    if (param.type === "criterionMap") {
+    if (kind === "criterionMap") {
       out[key] = buildCriterionMapFromDefaults({ param, leafCriteria });
     }
   }
@@ -549,11 +536,11 @@ export const cleanParamsForSend = ({
   for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
-    const type = param.type;
+    const kind = resolveParameterKind(param);
     const restrictions = param.restrictions || {};
     const def = param.default;
 
-    if (type === "number") {
+    if (kind === "number") {
       const raw = values?.[name];
       const value = raw === "" || raw == null ? def : raw;
       const parsed = Number(value);
@@ -569,13 +556,8 @@ export const cleanParamsForSend = ({
       continue;
     }
 
-    if (type === "array") {
+    if (kind === "criteriaWeights") {
       const isWeightsByCriteria = isCriteriaWeightsParameter(param);
-      const len =
-        getParameterExpectedLength(param, leafCount) ??
-        (typeof restrictions.length === "number" ? restrictions.length : null) ??
-        (Array.isArray(def) ? def.length : 2);
-      const count = Number(len) || 2;
 
       if (isWeightsByCriteria && Number(leafCount) === 1) {
         out[name] = resolveScenarioWeightDefaults({
@@ -594,24 +576,10 @@ export const cleanParamsForSend = ({
         });
         continue;
       }
-
-      const fallbackDefault = def;
-
-      const arr = ensureArrayLen(
-        values?.[name] ?? fallbackDefault ?? [],
-        count,
-        ""
-      );
-      const parsed = arr.map((item) => (item === "" || item == null ? null : Number(item)));
-      if (parsed.some((item) => item == null || !Number.isFinite(item))) continue;
-
-      out[name] = parsed.map((item) =>
-        clamp(item, restrictions.min ?? null, restrictions.max ?? null)
-      );
       continue;
     }
 
-    if (type === "enum") {
+    if (kind === "enum") {
       const valueType = normalizeValueType(param);
       const raw = values?.[name];
       const value = raw === "" || raw == null ? def : raw;
@@ -626,7 +594,7 @@ export const cleanParamsForSend = ({
       continue;
     }
 
-    if (type === "interval") {
+    if (kind === "interval") {
       const fallback = Array.isArray(def)
         ? def
         : [restrictions.min ?? "", restrictions.max ?? ""];
@@ -638,60 +606,7 @@ export const cleanParamsForSend = ({
       continue;
     }
 
-    if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria =
-        param?.semanticRole === "criteriaWeights" &&
-        param?.type === "fuzzyArray";
-      const fuzzyValueCount =
-        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
-      if (
-        isFuzzyWeightsByCriteria &&
-        Number(leafCount) === 1 &&
-        Number.isInteger(fuzzyValueCount) &&
-        fuzzyValueCount >= 2
-      ) {
-        out[name] = [Array.from({ length: fuzzyValueCount }, () => 1)];
-        continue;
-      }
-
-      const len =
-        getParameterExpectedLength(param, leafCount) ??
-        (typeof restrictions.length === "number" ? restrictions.length : null) ??
-        (Array.isArray(def) ? def.length : 1);
-      const vectorLength =
-        Number.isInteger(Number(restrictions.length)) &&
-        Number(restrictions.length) >= 2
-          ? Number(restrictions.length)
-          : 3;
-      const fillerVector = Array.from({ length: vectorLength }, () => "");
-
-      const triples = ensureArrayLen(
-        values?.[name] ?? def ?? [],
-        Number(len) || 1,
-        fillerVector
-      );
-
-      const parsed = triples.map((vector) => {
-        const safeVector =
-          Array.isArray(vector) && vector.length === vectorLength
-            ? vector
-            : fillerVector;
-        return safeVector.map((item) => (item === "" || item == null ? null : Number(item)));
-      });
-
-      if (parsed.some((vector) => vector.some((item) => item == null || !Number.isFinite(item)))) {
-        continue;
-      }
-
-      out[name] = parsed.map((vector) =>
-        vector.map((item) =>
-          clamp(item, restrictions.min ?? null, restrictions.max ?? null)
-        )
-      );
-      continue;
-    }
-
-    if (type === "criterionMap") {
+    if (kind === "criterionMap") {
       const rows = resolveCriterionMapLeafRows(leafCriteria);
       const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;
       const source = isPlainObject(values?.[name]) ? values[name] : {};
@@ -736,11 +651,11 @@ export const validateParams = ({
   for (const param of getScenarioParameterDefinitions(model)) {
     const name = param?.key;
     if (!name) continue;
-    const type = param.type;
+    const kind = resolveParameterKind(param);
     const restrictions = param.restrictions || {};
     const value = values?.[name];
 
-    if (type === "number") {
+    if (kind === "number") {
       if (value === "" || value == null) continue;
       const parsed = Number(value);
       if (!Number.isFinite(parsed)) {
@@ -765,7 +680,7 @@ export const validateParams = ({
       continue;
     }
 
-    if (type === "enum") {
+    if (kind === "enum") {
       const valueType = normalizeValueType(param);
       const raw = value === "" || value == null ? param.default : value;
       const parsed = parseByValueType(raw, valueType);
@@ -785,7 +700,7 @@ export const validateParams = ({
       continue;
     }
 
-    if (type === "interval") {
+    if (kind === "interval") {
       const fallback = Array.isArray(param.default)
         ? param.default
         : [restrictions.min ?? "", restrictions.max ?? ""];
@@ -816,19 +731,8 @@ export const validateParams = ({
       continue;
     }
 
-    if (type === "array") {
-      const isWeightsByCriteria = isCriteriaWeightsParameter(param);
-      const len =
-        getParameterExpectedLength(param, leafCount) ??
-        (typeof restrictions.length === "number" ? restrictions.length : null) ??
-        (Array.isArray(param.default) ? param.default.length : 2);
-      const count = Number(len) || 2;
-
-      if (isWeightsByCriteria && Number(leafCount) === 1) {
-        continue;
-      }
-
-      if (isWeightsByCriteria) {
+    if (kind === "criteriaWeights") {
+      if (Number(leafCount) !== 1) {
         const validation = validateScenarioCriteriaWeights({
           weights: value,
           leafCriteria,
@@ -837,139 +741,11 @@ export const validateParams = ({
         if (!validation.ok) {
           return validation;
         }
-        continue;
       }
-
-      const arr = ensureArrayLen(
-        Array.isArray(value)
-          ? value
-          : Array.isArray(param.default)
-            ? param.default
-            : [],
-        count,
-        ""
-      );
-
-      if (arr.some((item) => item === "" || item == null || !Number.isFinite(Number(item)))) {
-        return {
-          ok: false,
-          msg: `Parameter '${name}' must be a complete array of ${len} numbers.`,
-        };
-      }
-
-      const numbers = arr.map((item) => Number(item));
-      const sum = numbers.reduce((acc, item) => acc + item, 0);
-
-      if (restrictions.normalize === true) {
-        if (sum <= 0) {
-          return { ok: false, msg: `Parameter '${name}' must contain at least one value greater than 0.` };
-        }
-      } else if (restrictions.sum != null) {
-        const epsilon = 1e-6;
-        if (Math.abs(sum - restrictions.sum) > epsilon) {
-          return { ok: false, msg: `Parameter '${name}' sum must be ${restrictions.sum}.` };
-        }
-      }
-
-      if (
-        Number(len) === 2 &&
-        !restrictions.sum &&
-        getParameterExpectedLength(param, leafCount) == null
-      ) {
-        if (numbers[0] >= numbers[1]) {
-          return { ok: false, msg: `Parameter '${name}' must satisfy left < right.` };
-        }
-      }
-
       continue;
     }
 
-    if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria =
-        param?.semanticRole === "criteriaWeights" &&
-        param?.type === "fuzzyArray";
-      const fuzzyValueCount =
-        Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
-      if (
-        isFuzzyWeightsByCriteria &&
-        Number(leafCount) === 1 &&
-        Number.isInteger(fuzzyValueCount) &&
-        fuzzyValueCount >= 2
-      ) {
-        continue;
-      }
-
-      const len =
-        getParameterExpectedLength(param, leafCount) ??
-        (typeof restrictions.length === "number" ? restrictions.length : null) ??
-        (Array.isArray(param.default) ? param.default.length : 1);
-      const vectorLength =
-        Number.isInteger(Number(restrictions.length)) &&
-        Number(restrictions.length) >= 2
-          ? Number(restrictions.length)
-          : 3;
-      const fillerVector = Array.from({ length: vectorLength }, () => "");
-
-      const triples = ensureArrayLen(
-        Array.isArray(value)
-          ? value
-          : Array.isArray(param.default)
-            ? param.default
-            : [],
-        Number(len) || 1,
-        fillerVector
-      );
-
-      for (let index = 0; index < triples.length; index += 1) {
-        const triple = triples[index];
-
-        if (!Array.isArray(triple) || triple.length !== vectorLength) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' must be an array of vectors with length ${vectorLength}.`,
-          };
-        }
-
-        const numbers = triple.map((item) => Number(item));
-        if (numbers.some((item) => !Number.isFinite(item))) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' has invalid fuzzy values.`,
-          };
-        }
-
-        for (let vectorIndex = 1; vectorIndex < numbers.length; vectorIndex += 1) {
-          if (numbers[vectorIndex] < numbers[vectorIndex - 1]) {
-            return {
-              ok: false,
-              msg: `Parameter '${name}' requires non-decreasing fuzzy vectors.`,
-            };
-          }
-        }
-
-        if (
-          restrictions.min != null &&
-          numbers.some((item) => item < Number(restrictions.min))
-        ) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' must be ≥ ${restrictions.min}.`,
-          };
-        }
-
-        if (
-          restrictions.max != null &&
-          numbers.some((item) => item > Number(restrictions.max))
-        ) {
-          return {
-            ok: false,
-            msg: `Parameter '${name}' must be ≤ ${restrictions.max}.`,
-          };
-        }
-      }
-    }
-
-    if (type === "criterionMap") {
+    if (kind === "criterionMap") {
       const rows = resolveCriterionMapLeafRows(leafCriteria);
       const source = values?.[name];
       const requiredForEachCriterion = restrictions.requiredForEachCriterion === true;

@@ -419,11 +419,6 @@ const getParameterStructureStatus = ({ value, selectedStructure, hasError }) => 
   return { label: "Ready", color: "info" };
 };
 
-const getCatalogKeyLabel = (option) => {
-  if (typeof option === "string") return option;
-  return option?.key || "";
-};
-
 const ResultItemSummary = ({ item }) => (
   <Stack spacing={0.35} sx={{ minWidth: 0 }}>
     <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
@@ -1350,7 +1345,13 @@ export default function AdminModelForgeSection() {
                 onInputChange={(_event, value, reason) => {
                   if (reason === "input") setField("evaluationStructureKey", value);
                 }}
-                getOptionLabel={getCatalogKeyLabel}
+                getOptionLabel={(option) =>
+                  typeof option === "string"
+                    ? option
+                    : option?.label
+                      ? `${option.label} (${option.key})`
+                      : option?.key || ""
+                }
                 renderInput={(params) => (
                   <TextField
                     {...params}

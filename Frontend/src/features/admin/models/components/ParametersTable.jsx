@@ -27,7 +27,7 @@ export default function ParametersTable({ parameters }) {
         <TableHead>
           <TableRow>
             <TableCell>Name</TableCell>
-            <TableCell>Type</TableCell>
+            <TableCell>Structure</TableCell>
             <TableCell>Restrictions</TableCell>
           </TableRow>
         </TableHead>
@@ -35,7 +35,7 @@ export default function ParametersTable({ parameters }) {
           {items.map((parameter) => (
             <TableRow key={parameter?.name || JSON.stringify(parameter)}>
               <TableCell sx={{ fontWeight: 900 }}>{parameter?.name || "Unknown"}</TableCell>
-              <TableCell>{parameter?.type || "Unknown"}</TableCell>
+              <TableCell>{parameter?.parameterStructureKey || "Unknown"}</TableCell>
               <TableCell sx={{ overflowWrap: "anywhere" }}>
                 {modelManifestValueToText(parameter?.restrictions || {})}
               </TableCell>

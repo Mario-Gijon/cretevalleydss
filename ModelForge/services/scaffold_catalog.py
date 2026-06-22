@@ -26,7 +26,9 @@ EVALUATION_FRONTEND_ROOT = Path(
 )
 
 STAGE_PATTERN = re.compile(r"stage:\s*EVALUATION_STAGES\.([A-Z_]+)")
-LABEL_PATTERN = re.compile(r"label:\s*['\"]([^'\"]+)['\"]")
+IMPLEMENTATION_STATUS_PATTERN = re.compile(
+    r"implementationStatus:\s*['\"](ready|scaffold)['\"]"
+)
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -86,12 +88,12 @@ def _build_evaluation_structure_items(
         items.append(
             CatalogEvaluationStructureItem(
                 key=key,
-                label=metadata["label"] or key,
                 stage=stage,
                 stageConstant=metadata["stageConstant"],
                 status=status,
                 backendExists=existence.backend_exists,
                 frontendExists=existence.frontend_exists,
+                implementationStatus=metadata["implementationStatus"] or "ready",
                 availableForAlternativeEvaluation=
                 status == "ready" and stage == "alternativeEvaluation",
                 availableForCriteriaWeighting=
@@ -119,18 +121,22 @@ def _collect_union_folder_keys(*roots: Path) -> list[str]:
 def _read_evaluation_structure_metadata(index_path: Path) -> dict[str, str | None]:
     if not index_path.exists():
         return {
-            "label": None,
             "stage": None,
             "stageConstant": None,
+            "implementationStatus": None,
         }
 
     source = index_path.read_text(encoding="utf-8")
     stage_match = STAGE_PATTERN.search(source)
-    label_match = LABEL_PATTERN.search(source)
+    implementation_status_match = IMPLEMENTATION_STATUS_PATTERN.search(source)
     stage_constant = stage_match.group(1) if stage_match else None
 
     return {
-        "label": label_match.group(1).strip() if label_match else None,
         "stage": STAGE_MAP.get(stage_constant),
         "stageConstant": stage_constant,
+        "implementationStatus": (
+            implementation_status_match.group(1).strip()
+            if implementation_status_match
+            else None
+        ),
     }

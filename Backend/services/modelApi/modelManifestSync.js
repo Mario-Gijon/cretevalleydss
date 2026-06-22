@@ -177,14 +177,18 @@ const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) =>
       continue;
     }
 
-    entry.model.manifestSync = {
+    const nextManifestSync = {
       ...previousManifestSync,
       source: MANIFEST_SYNC_SOURCE,
       isStale: true,
       lastSyncedAt: now,
     };
 
-    await entry.model.save();
+    await IssueModel.updateOne(
+      { _id: entry.model._id },
+      { $set: { manifestSync: nextManifestSync } },
+      { runValidators: false }
+    );
 
     stale.push({
       apiModelKey,
