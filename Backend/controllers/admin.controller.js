@@ -26,6 +26,7 @@ import {
 } from "../modules/admin/users/index.js";
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
+import { fetchModelForgeCatalog } from "../services/modelForge/modelForgeClient.js";
 
 import {
   createBadRequestError,
@@ -209,6 +210,16 @@ export const getModelManifestDryRunAdmin = async (_req, res) => {
     res,
     "Model manifest dry-run completed successfully",
     report
+  );
+};
+
+export const getModelForgeCatalogAdmin = async (_req, res) => {
+  const catalog = await fetchModelForgeCatalog();
+
+  return sendSuccess(
+    res,
+    "Model Forge scaffold catalog fetched successfully",
+    catalog
   );
 };
 

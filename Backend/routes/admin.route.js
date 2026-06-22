@@ -17,6 +17,7 @@ import {
   resolveIssueAdmin,
   removeIssueAdmin,
   getModelCatalogAdmin,
+  getModelForgeCatalogAdmin,
   updateModelCatalogVisibilityAdmin,
   getModelManifestDryRunAdmin,
   syncModelManifestAdmin,
@@ -37,6 +38,13 @@ router.get(
   requireToken,
   requireAdmin,
   asyncHandler(getModelCatalogAdmin)
+);
+
+router.get(
+  "/model-forge/catalog",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getModelForgeCatalogAdmin)
 );
 
 router.patch(

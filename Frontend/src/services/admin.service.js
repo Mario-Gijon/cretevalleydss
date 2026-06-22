@@ -328,6 +328,16 @@ export const getAdminModelCatalog = async () =>
     }
   );
 
+export const getModelForgeCatalog = async () =>
+  requestJson(
+    `${API}/admin/model-forge/catalog`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error fetching Model Forge catalog.",
+    }
+  );
+
 /**
  * Actualiza si un modelo aparece en el flujo Create Issue.
  *
