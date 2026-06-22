@@ -20,11 +20,6 @@ MANUAL_CRITERIA_WEIGHTS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                         "criterion-2": 0.6,
                     }
                 },
-                "modelExecution": {
-                    "kind": "apiModels",
-                    "apiModelKey": "manual_criteria_weights",
-                    "apiEndpointPath": "/manual_criteria_weights",
-                },
                 "rawOutput": {
                     "averagedWeightsByCriterion": {
                         "criterion-1": 0.4,

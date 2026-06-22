@@ -17,7 +17,7 @@ export const buildIssueModelExecutionResult = ({
     collectiveEvaluations: normalizedResult.collectiveEvaluations,
     plotsGraphic: normalizedResult.plotsGraphic,
     modelExecution: {
-      kind: "apiModels",
+      kind: "decisionModelsService",
       structureKey,
       apiModelKey: issue.apiModelKey,
       apiEndpointPath: issue.apiEndpoint.path,

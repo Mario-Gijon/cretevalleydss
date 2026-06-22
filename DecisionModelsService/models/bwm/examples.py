@@ -22,11 +22,6 @@ BWM_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
                     },
                 },
                 "consensusMeasure": None,
-                "modelExecution": {
-                    "kind": "apiModels",
-                    "apiModelKey": "bwm",
-                    "apiEndpointPath": "/bwm",
-                },
                 "rawOutput": {
                     "success": True,
                     "weights": [0.53, 0.29, 0.18],

@@ -9,6 +9,8 @@ export const buildCriteriaWeightingExecutionResult = ({
   result,
   structureKey,
   message,
+  apiModelKey,
+  apiEndpointPath,
 }) => {
   if (!isPlainObject(result)) {
     throw createInternalError("Criteria weighting execution result must be an object", {
@@ -59,48 +61,34 @@ export const buildCriteriaWeightingExecutionResult = ({
     );
   }
 
-  if (!isPlainObject(result.modelExecution)) {
+  const normalizedStructureKey = normalizeNonEmptyString(structureKey);
+  if (!normalizedStructureKey) {
     throw createInternalError(
-      "Criteria weighting result.modelExecution must be an object",
+      "Criteria weighting structureKey is required",
       {
-        field: "result.modelExecution",
+        field: "structureKey",
       }
     );
   }
 
-  const normalizedExecutionKind = normalizeNonEmptyString(result.modelExecution.kind);
-  if (!normalizedExecutionKind) {
+  const normalizedApiModelKey = normalizeNonEmptyString(apiModelKey);
+  if (!normalizedApiModelKey) {
     throw createInternalError(
-      "Criteria weighting result.modelExecution.kind is required",
+      "Criteria weighting apiModelKey is required",
       {
-        field: "result.modelExecution.kind",
+        field: "apiModelKey",
       }
     );
   }
 
-  if (normalizedExecutionKind === "apiModels") {
-    const apiModelKey = normalizeNonEmptyString(result.modelExecution.apiModelKey);
-    const apiEndpointPath = normalizeNonEmptyString(
-      result.modelExecution.apiEndpointPath
+  const normalizedApiEndpointPath = normalizeNonEmptyString(apiEndpointPath);
+  if (!normalizedApiEndpointPath) {
+    throw createInternalError(
+      "Criteria weighting apiEndpointPath is required",
+      {
+        field: "apiEndpointPath",
+      }
     );
-
-    if (!apiModelKey) {
-      throw createInternalError(
-        "Criteria weighting Decision Models Service execution requires modelExecution.apiModelKey",
-        {
-          field: "result.modelExecution.apiModelKey",
-        }
-      );
-    }
-
-    if (!apiEndpointPath) {
-      throw createInternalError(
-        "Criteria weighting Decision Models Service execution requires modelExecution.apiEndpointPath",
-        {
-          field: "result.modelExecution.apiEndpointPath",
-        }
-      );
-    }
   }
 
   return {
@@ -109,10 +97,11 @@ export const buildCriteriaWeightingExecutionResult = ({
     weightsByCriterion: result.weightsByCriterion,
     collectiveEvaluations: result.collectiveEvaluations,
     modelExecution: {
-      ...result.modelExecution,
-      kind: normalizedExecutionKind,
-      structureKey,
-      executedAt: result.modelExecution.executedAt || new Date(),
+      kind: "decisionModelsService",
+      structureKey: normalizedStructureKey,
+      apiModelKey: normalizedApiModelKey,
+      apiEndpointPath: normalizedApiEndpointPath,
+      executedAt: new Date(),
     },
     rawOutput: result.rawOutput,
   };

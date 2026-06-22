@@ -109,11 +109,6 @@ def execute_manual_criteria_weights(
             "collectiveEvaluations": {
                 "weightsByCriterion": weights_by_criterion,
             },
-            "modelExecution": {
-                "kind": "apiModels",
-                "apiModelKey": "manual_criteria_weights",
-                "apiEndpointPath": "/manual_criteria_weights",
-            },
             "rawOutput": raw_output,
         }
 

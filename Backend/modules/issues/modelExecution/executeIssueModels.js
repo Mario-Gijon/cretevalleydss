@@ -48,6 +48,8 @@ const executeCriteriaWeightingApiModel = async ({
     structureKey,
     message: result.message,
     result,
+    apiModelKey,
+    apiEndpointPath,
   });
 };
 

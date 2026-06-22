@@ -208,11 +208,6 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
                 "weightsByCriterion": weights_by_criterion,
             },
             "consensusMeasure": None,
-            "modelExecution": {
-                "kind": "apiModels",
-                "apiModelKey": "bwm",
-                "apiEndpointPath": "/bwm",
-            },
             "rawOutput": raw_output,
         }
 

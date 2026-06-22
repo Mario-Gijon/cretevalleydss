@@ -44,7 +44,7 @@ export const executeScenarioModel = async ({
   });
 
   const modelExecution = {
-    kind: "apiModels",
+    kind: "decisionModelsService",
     structureKey:
       targetRuntimeSnapshot.targetEvaluationStructureKey,
     apiModelKey: targetRuntimeSnapshot.targetApiModelKey,
