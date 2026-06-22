@@ -22,15 +22,46 @@ export const getIssueDrawerPermissions = (issue) => {
  * @returns {string|null}
  */
 export const formatIssueDrawerWeight = (value) => {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
-  if (value >= 0 && value <= 1) {
-    return `${(value * 100).toFixed(2)}%`;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value >= 0 && value <= 1) {
+      return `${(value * 100).toFixed(2)}%`;
+    }
+
+    return value.toFixed(4).replace(/\.?0+$/, "");
   }
 
-  return value.toFixed(4).replace(/\.?0+$/, "");
+  if (Array.isArray(value) && value.every((item) => Number.isFinite(item))) {
+    return `[${value.map((item) => Number(item).toFixed(2)).join(", ")}]`;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.label === "string" && value.label.trim()) {
+      return value.label;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "value")) {
+      const nested = formatIssueDrawerWeight(value.value);
+      if (nested !== null) {
+        return nested;
+      }
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
 };
 
 /**

@@ -195,7 +195,8 @@ const AlternativeCriteriaMatrixView = (
     ...criteria.map((criterion) => ({
       field: criterion.id,
       headerName: criterion.name,
-      editable: permitEdit,
+      editable:
+        permitEdit && getDomainType(criterion.expressionDomain) === "numeric",
       flex: 1,
       minWidth: 120,
       valueGetter: (params) => {
@@ -240,6 +241,12 @@ const AlternativeCriteriaMatrixView = (
                   fullWidth
                   color="secondary"
                   value={value || ""}
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
                   onChange={(event) => {
                     const newValue = event.target.value;
 
@@ -247,7 +254,10 @@ const AlternativeCriteriaMatrixView = (
                       ...(previous && typeof previous === "object" ? previous : {}),
                       [rowId]: {
                         ...((previous && previous[rowId]) || {}),
-                        [criterion.id]: { value: newValue, domain },
+                        [criterion.id]: {
+                          value: newValue,
+                          expressionDomain: domain,
+                        },
                       },
                     }));
                   }}
@@ -314,7 +324,7 @@ const AlternativeCriteriaMatrixView = (
 
     if (domainType === "numeric") {
       if (rawValue === "" || rawValue === null || rawValue === undefined) {
-        nextCell = { value: "", domain };
+        nextCell = { value: "", expressionDomain: domain };
       } else {
         const numericValue = parseFloat(rawValue);
         const { min, max, step } = getNumericRange(domain);
@@ -330,7 +340,7 @@ const AlternativeCriteriaMatrixView = (
             step,
           })
         ) {
-          nextCell = { value: "", domain };
+          nextCell = { value: "", expressionDomain: domain };
         } else {
           nextCell = {
             value: alignToStep({
@@ -339,12 +349,12 @@ const AlternativeCriteriaMatrixView = (
               max,
               step,
             }),
-            domain,
+            expressionDomain: domain,
           };
         }
       }
     } else if (domainType === "linguistic") {
-      nextCell = { value: rawValue ?? "", domain };
+      nextCell = { value: rawValue ?? "", expressionDomain: domain };
     } else {
       nextCell = raw;
     }
@@ -405,6 +415,13 @@ const AlternativeCriteriaMatrixView = (
     }
 
     if (params.field === "alternativeLabel") {
+      return;
+    }
+
+    const criterion = criterionById.get(params.field) || null;
+    const criterionDomainType = getDomainType(criterion?.expressionDomain);
+
+    if (criterionDomainType === "linguistic") {
       return;
     }
 

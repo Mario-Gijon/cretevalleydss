@@ -51,6 +51,70 @@ const ActiveIssueCriteriaTypeBadge = ({ type }) => {
   );
 };
 
+const getExpressionDomainTypeLabel = (type) => {
+  const normalized = String(type || "").trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === "numericContinuous" || normalized === "numericDiscrete") {
+    return "numeric";
+  }
+
+  return normalized;
+};
+
+const ActiveIssueCriteriaExpressionDomain = ({ expressionDomain }) => {
+  const theme = useTheme();
+  const domainName = String(
+    expressionDomain?.name || expressionDomain?.label || ""
+  ).trim();
+  const domainType = getExpressionDomainTypeLabel(expressionDomain?.type);
+  const linguisticLabelCount = Array.isArray(expressionDomain?.linguisticLabels)
+    ? expressionDomain.linguisticLabels.length
+    : 0;
+
+  if (!domainName && !domainType) {
+    return null;
+  }
+
+  return (
+    <Stack
+      direction="row"
+      spacing={0.6}
+      sx={{ alignItems: "center", flexWrap: "wrap" }}
+    >
+      <Typography
+        variant="caption"
+        sx={{ color: "text.secondary", fontWeight: 800 }}
+      >
+        {[domainName, domainType].filter(Boolean).join(" · ")}
+      </Typography>
+
+      {domainType === "linguistic" && linguisticLabelCount > 0 ? (
+        <Box
+          sx={{
+            px: 0.75,
+            py: 0.1,
+            borderRadius: 999,
+            border: "1px solid",
+            borderColor: alpha(theme.palette.text.primary, 0.12),
+            bgcolor: alpha(theme.palette.text.primary, 0.03),
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", fontWeight: 800 }}
+          >
+            {`${linguisticLabelCount} labels`}
+          </Typography>
+        </Box>
+      ) : null}
+    </Stack>
+  );
+};
+
 /**
  * Árbol de criterios mostrado en la pestaña de criterios.
  *
@@ -85,9 +149,18 @@ const ActiveIssueCriteriaTree = ({
         const isRoot = depth === 0;
         const showType = isRoot;
 
-        const leafWeightRaw = !hasChildren ? finalWeights?.[node?.name] : null;
+        const leafWeightRaw = !hasChildren
+          ? (
+              node?.display?.weight ??
+              finalWeights?.[node?.id] ??
+              finalWeights?.[node?.name] ??
+              null
+            )
+          : null;
         const leafWeight =
-          leafWeightRaw != null && typeof formatWeight === "function"
+          leafWeightRaw !== null &&
+          leafWeightRaw !== undefined &&
+          typeof formatWeight === "function"
             ? formatWeight(leafWeightRaw)
             : null;
 
@@ -127,6 +200,10 @@ const ActiveIssueCriteriaTree = ({
                 >
                   leaf
                 </Typography>
+
+                <ActiveIssueCriteriaExpressionDomain
+                  expressionDomain={node?.expressionDomain}
+                />
               </Stack>
 
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

@@ -12,7 +12,6 @@ from typing import Any
                 "issue": {
                     "id": "665f0b8f6f1e9c12a34b5600",
                     "name": "Supplier selection 2026",
-                    "currentStage": "{{ evaluation_structure_stage }}",
                     "consensusThreshold": 0.75,
                     "consensusMaxPhases": 3,
                 },
