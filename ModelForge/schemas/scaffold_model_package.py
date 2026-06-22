@@ -18,6 +18,10 @@ class ModelPackagePreviewRequest(BaseModel):
     )
 
 
+class ModelPackageApplyRequest(ModelPackagePreviewRequest):
+    pass
+
+
 class ModelPackagePreviewItem(BaseModel):
     kind: Literal["model", "parameter", "evaluation-structure"]
     key: str
@@ -32,3 +36,24 @@ class ModelPackagePreviewResponse(BaseModel):
     kind: Literal["model-package"] = "model-package"
     mode: Literal["preview"] = "preview"
     items: list[ModelPackagePreviewItem] = Field(default_factory=list)
+
+
+class AppliedScaffoldFile(BaseModel):
+    path: str
+
+
+class ModelPackageApplyItem(BaseModel):
+    kind: Literal["model", "parameter", "evaluation-structure"]
+    key: str
+    status: Literal["written", "skipped"]
+    reason: str | None
+    targetBasePath: str | None
+    writtenFiles: list[AppliedScaffoldFile] = Field(default_factory=list)
+    skippedFiles: list[AppliedScaffoldFile] = Field(default_factory=list)
+
+
+class ModelPackageApplyResponse(BaseModel):
+    service: Literal["model-forge"] = "model-forge"
+    kind: Literal["model-package"] = "model-package"
+    mode: Literal["apply"] = "apply"
+    items: list[ModelPackageApplyItem] = Field(default_factory=list)
