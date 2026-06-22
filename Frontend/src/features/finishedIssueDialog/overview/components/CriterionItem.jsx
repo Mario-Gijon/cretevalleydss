@@ -11,6 +11,48 @@ import {
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 
+const formatCriterionWeightLabel = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number(value).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  if (Array.isArray(value) && value.every((entry) => Number.isFinite(entry))) {
+    return `[${value
+      .map((entry) =>
+        Number(entry).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      )
+      .join(", ")}]`;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.label === "string" && value.label.trim()) {
+      return value.label;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "value")) {
+      return formatCriterionWeightLabel(value.value);
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
+};
+
 /**
  * Item recursivo para visualizar arbol de criterios en el summary.
  *
@@ -47,10 +89,7 @@ export const CriterionItem = ({ criterion, depth = 0, isChild = false }) => {
           size="small"
           variant="outlined"
           color="secondary"
-          label={Number(criterion.weight).toLocaleString("en-US", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          })}
+          label={formatCriterionWeightLabel(criterion.weight)}
         />
       ) : null}
 

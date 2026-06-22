@@ -28,6 +28,38 @@ export const resolveCriteriaWeightingPhase = async ({ issueId }) => {
   });
 };
 
+const normalizeCriteriaWeightValueOrThrow = ({
+  value,
+  field,
+  issueId,
+  criterionName,
+}) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const normalized = value.map((entry) => Number(entry));
+
+    if (
+      normalized.length === 0 ||
+      normalized.some((entry) => !Number.isFinite(entry))
+    ) {
+      throw createInternalError("Finished issue criteria weight array is invalid", {
+        field,
+        details: { issueId, criterionName },
+      });
+    }
+
+    return normalized;
+  }
+
+  throw createInternalError("Finished issue criteria weight is invalid", {
+    field,
+    details: { issueId, criterionName },
+  });
+};
+
 export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
   issue,
   orderedLeafCriteria,
@@ -75,20 +107,12 @@ export const resolveFinalCriteriaWeightsFromStageResultOrNull = async ({
     const criterionId = toIdString(criterion._id);
     const criterionName = criterion.name;
     const rawWeight = sourceWeightsByCriterion[criterionId];
-    const weight = Number(rawWeight);
-
-    if (!Number.isFinite(weight)) {
-      throw createInternalError(
-        `Criteria weighting stage result has invalid weight for criterion '${criterionName}'`,
-        {
-          field: "collectiveEvaluations.weightsByCriterion",
-          details: {
-            issueId: toIdString(issue._id),
-            criterionName,
-          },
-        }
-      );
-    }
+    const weight = normalizeCriteriaWeightValueOrThrow({
+      value: rawWeight,
+      field: `collectiveEvaluations.weightsByCriterion.${criterionId}`,
+      issueId: toIdString(issue._id),
+      criterionName,
+    });
 
     return {
       criterionId,
@@ -177,16 +201,12 @@ export const resolveFinalCriteriaWeightsFromModelParamsOrThrow = ({
       });
     }
 
-    const weight = Number(sourceWeights[criterionId]);
-    if (!Number.isFinite(weight)) {
-      throw createInternalError("Finished issue modelParameters.weights is invalid", {
-        field: `modelParameters.weights.${criterionId}`,
-        details: {
-          issueId: toIdString(issue._id),
-          criterionName: criterion.name,
-        },
-      });
-    }
+    const weight = normalizeCriteriaWeightValueOrThrow({
+      value: sourceWeights[criterionId],
+      field: `modelParameters.weights.${criterionId}`,
+      issueId: toIdString(issue._id),
+      criterionName: criterion.name,
+    });
 
     return {
       criterionId,

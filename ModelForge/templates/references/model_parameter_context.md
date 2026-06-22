@@ -37,12 +37,16 @@ const parameterContextExample = {
           expressionDomain: {
             id: "D1",
             name: "Cost scale",
-            type: "numericContinuous",
+            type: "numeric",
             numericRange: {
               min: 0,
               max: 1,
               step: 0.1
-            }
+            },
+            linguisticLabels: [],
+            membershipFunction: null,
+            valueCount: null,
+            valuesMode: null
           },
           children: []
         }
@@ -57,12 +61,16 @@ const parameterContextExample = {
       expressionDomain: {
         id: "D1",
         name: "Cost scale",
-        type: "numericContinuous",
+        type: "numeric",
         numericRange: {
           min: 0,
           max: 1,
           step: 0.1
-        }
+        },
+        linguisticLabels: [],
+        membershipFunction: null,
+        valueCount: null,
+        valuesMode: null
       }
     }
   ]

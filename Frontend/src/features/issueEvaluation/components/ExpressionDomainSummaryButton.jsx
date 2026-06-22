@@ -18,12 +18,11 @@ const ExpressionDomainSummaryButton = ({ criteria = [] }) => {
   const rows = useMemo(
     () =>
       criteria
-        .filter((criterion) => criterion.isLeaf)
         .map((criterion) => ({
           name: criterion.name || "-",
           domain: criterion.expressionDomain || null,
         }))
-        .filter((row) => row.domain),
+        .filter((row) => row.domain && row.name),
     [criteria]
   );
 

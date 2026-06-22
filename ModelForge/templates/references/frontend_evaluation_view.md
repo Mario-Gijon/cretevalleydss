@@ -59,12 +59,16 @@ const evaluationViewPropsExample = {
         expressionDomain: {
           id: "DOMAIN_1",
           name: "Cost scale",
-          type: "numericContinuous",
+          type: "numeric",
           numericRange: {
             min: 0,
             max: 1,
             step: 0.1
-          }
+          },
+          linguisticLabels: [],
+          membershipFunction: null,
+          valueCount: null,
+          valuesMode: null
         }
       },
       {

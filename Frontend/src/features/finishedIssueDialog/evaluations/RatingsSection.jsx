@@ -91,21 +91,50 @@ const RatingsSection = () => {
     .map((criterion) => criterion?.name)
     .filter(Boolean);
 
-  const formatNumericWeight = (value) => {
-    const numeric = Number(value);
-
-    if (!Number.isFinite(numeric)) {
-      return null;
+  const formatFinalWeight = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 3,
+      }).format(Object.is(value, -0) ? 0 : value);
     }
 
-    return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 3,
-    }).format(Object.is(numeric, -0) ? 0 : numeric);
+    if (Array.isArray(value) && value.every((entry) => Number.isFinite(entry))) {
+      return `[${value
+        .map((entry) =>
+          new Intl.NumberFormat("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(Object.is(entry, -0) ? 0 : entry)
+        )
+        .join(", ")}]`;
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (value && typeof value === "object") {
+      if (typeof value.label === "string" && value.label.trim()) {
+        return value.label;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(value, "value")) {
+        return formatFinalWeight(value.value);
+      }
+
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+
+    return null;
   };
 
   const getFinalWeightDisplayValue = (criterionName) => {
     const rawValue = finalWeightsByCriterion?.[criterionName];
-    const formatted = formatNumericWeight(rawValue);
+    const formatted = formatFinalWeight(rawValue);
 
     return formatted ?? "—";
   };

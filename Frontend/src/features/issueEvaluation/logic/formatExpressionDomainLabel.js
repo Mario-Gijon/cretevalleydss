@@ -1,23 +1,44 @@
-const isNumericDomain = (domain) => domain.type === "numeric";
-const isLinguisticDomain = (domain) => domain.type === "linguistic";
+const isNumericDomain = (domain) => domain?.type === "numeric";
+const isLinguisticDomain = (domain) => domain?.type === "linguistic";
+
+const formatNumber = (value) => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  return Number(value).toString();
+};
 
 export const formatExpressionDomainLabel = (domain) => {
   if (!domain) return "No domain";
+
+  const parts = [];
+  const domainName = typeof domain?.name === "string" ? domain.name.trim() : "";
+
+  if (domainName) {
+    parts.push(domainName);
+  }
 
   if (isNumericDomain(domain)) {
     const min = domain.numericRange?.min;
     const max = domain.numericRange?.max;
     const step = domain.numericRange?.step;
     const hasBounds = Number.isFinite(min) && Number.isFinite(max);
-    const isDiscrete = Number(step) === 1;
+    const boundsLabel =
+      hasBounds ? `${formatNumber(min)}-${formatNumber(max)}` : null;
+    const stepLabel = Number.isFinite(step) ? `step ${formatNumber(step)}` : null;
 
-    if (hasBounds) {
-      return isDiscrete
-        ? `Numeric ${min}-${max} discrete`
-        : `Numeric ${min}-${max} continuous`;
+    parts.push("numeric");
+
+    if (boundsLabel) {
+      parts.push(boundsLabel);
     }
 
-    return isDiscrete ? "Numeric discrete" : "Numeric continuous";
+    if (stepLabel) {
+      parts.push(stepLabel);
+    }
+
+    return parts.join(" · ");
   }
 
   if (isLinguisticDomain(domain)) {
@@ -27,10 +48,14 @@ export const formatExpressionDomainLabel = (domain) => {
         ? domain.linguisticLabels.length
         : 0);
 
-    return labelsCount > 0
-      ? `Linguistic ${labelsCount} labels`
-      : "Linguistic";
+    parts.push("linguistic");
+
+    if (labelsCount > 0) {
+      parts.push(`${labelsCount} labels`);
+    }
+
+    return parts.join(" · ");
   }
 
-  return domain.name || "No domain";
+  return parts.join(" · ") || "No domain";
 };
