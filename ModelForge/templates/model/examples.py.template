@@ -12,6 +12,7 @@ from typing import Any
                 "issue": {
                     "id": "665f0b8f6f1e9c12a34b5600",
                     "name": "Supplier selection 2026",
+                    "currentStage": "{{ evaluation_structure_stage }}",
                     "consensusThreshold": 0.75,
                     "consensusMaxPhases": 3,
                 },
@@ -30,9 +31,7 @@ from typing import Any
                     "stage": "{{ evaluation_structure_stage }}",
                 },
             },
-            "modelParameters": {
-                "sample_param": 0.5,
-            },
+            "modelParameters": {},
             "evaluations": [
                 {
                     "expert": {
@@ -54,6 +53,8 @@ from typing import Any
         },
     }
 }
+# Criteria-weighting model requests use the same shape, but context.alternatives
+# is omitted in runtime requests.
 
 
 {{ response_examples_constant }}: dict[str, dict[str, Any]] = {

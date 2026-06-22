@@ -8,6 +8,7 @@
 #     "issue": {
 #         "id": "665f0b8f6f1e9c12a34b5600",
 #         "name": "Supplier selection 2026",
+#         "currentStage": "{{ evaluation_structure_stage }}",
 #         "consensusThreshold": 0.75,
 #         "consensusMaxPhases": 3,
 #     },
@@ -26,6 +27,8 @@
 #     "previousStageResult": None,
 #     "consensusPhase": 0,
 # }
+# Criteria-weighting models receive the same request shape, but request.context
+# does not include alternatives.
 #
 # Example request.evaluations:
 # [
@@ -45,9 +48,7 @@
 # ]
 #
 # Example request.modelParameters:
-# {
-#     "sample_param": 0.5
-# }
+# {}
 
 from fastapi.responses import JSONResponse
 

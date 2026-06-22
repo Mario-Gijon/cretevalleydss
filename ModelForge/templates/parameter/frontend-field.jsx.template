@@ -9,6 +9,54 @@
 //   default: 0.5,
 //   restrictions: { min: 0, max: 1 },
 // }
+//
+// Example parameterContext:
+// {
+//   model: {
+//     id: "665f0b8f6f1e9c12a34b5690",
+//     name: "Sample Scaffold Model",
+//     apiModelKey: "sample_scaffold_model",
+//   },
+//   alternatives: [
+//     { id: "665f0b8f6f1e9c12a34b5672", name: "Supplier A" },
+//     { id: "665f0b8f6f1e9c12a34b5673", name: "Supplier B" },
+//   ],
+//   criteriaTree: [
+//     {
+//       id: "665f0b8f6f1e9c12a34b5679",
+//       name: "Economic criteria",
+//       type: null,
+//       expressionDomain: null,
+//       children: [
+//         {
+//           id: "665f0b8f6f1e9c12a34b5674",
+//           name: "Cost",
+//           type: "cost",
+//           expressionDomain: {
+//             id: "665f0b8f6f1e9c12a34b5701",
+//             name: "Numeric 0-10",
+//             type: "numericContinuous",
+//             numericRange: { min: 0, max: 10 },
+//           },
+//           children: [],
+//         },
+//       ],
+//     },
+//   ],
+//   leafCriteria: [
+//     {
+//       id: "665f0b8f6f1e9c12a34b5674",
+//       name: "Cost",
+//       type: "cost",
+//       expressionDomain: {
+//         id: "665f0b8f6f1e9c12a34b5701",
+//         name: "Numeric 0-10",
+//         type: "numericContinuous",
+//         numericRange: { min: 0, max: 10 },
+//       },
+//     },
+//   ],
+// }
 
 import { TextField } from "@mui/material";
 
@@ -18,7 +66,10 @@ export const {{ field_component_name }} = ({
   onChange,
   disabled = false,
   error = "",
+  parameterContext,
 }) => {
+  void parameterContext;
+
   const fieldValue =
     typeof value === "string"
       ? value

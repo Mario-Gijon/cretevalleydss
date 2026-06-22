@@ -8,24 +8,107 @@
 //   issue: {
 //     id: "665f0b8f6f1e9c12a34b5600",
 //     name: "Supplier selection 2026",
-//     isConsensus: true,
+//     currentStage: "alternativeEvaluation",
 //     consensusPhase: 0,
+//     isConsensus: true,
+//     consensusThreshold: 0.75,
+//     consensusMaxPhases: 3,
+//   },
+//   structure: {
+//     key: "{{ evaluation_structure_key }}",
+//     stage: "alternativeEvaluation",
+//   },
+//   model: {
+//     id: "665f0b8f6f1e9c12a34b5690",
+//     name: "Sample Scaffold Model",
+//     apiModelKey: "sample_scaffold_model",
+//   },
+//   modelParameters: {
+//     sample_param: 0.5,
+//   },
+//   criteriaWeightingParameters: {
+//     eps_penalty: 1,
 //   },
 //   alternatives: [
 //     { id: "665f0b8f6f1e9c12a34b5672", name: "Supplier A" },
 //     { id: "665f0b8f6f1e9c12a34b5673", name: "Supplier B" },
 //   ],
-//   criteria: [
-//     { id: "665f0b8f6f1e9c12a34b5674", name: "Cost", type: "cost" },
-//     { id: "665f0b8f6f1e9c12a34b5675", name: "Quality", type: "benefit" },
-//   ],
-//   domains: {
-//     numericContinuous: {
-//       key: "numericContinuous",
-//       label: "Numeric continuous",
-//       min: 0,
-//       max: 1,
+//   criteriaTree: [
+//     {
+//       id: "665f0b8f6f1e9c12a34b5679",
+//       name: "Economic criteria",
+//       type: null,
+//       expressionDomain: null,
+//       children: [
+//         {
+//           id: "665f0b8f6f1e9c12a34b5674",
+//           name: "Cost",
+//           type: "cost",
+//           expressionDomain: {
+//             id: "665f0b8f6f1e9c12a34b5701",
+//             name: "Numeric 0-10",
+//             type: "numericContinuous",
+//             numericRange: { min: 0, max: 10 },
+//           },
+//           children: [],
+//         },
+//         {
+//           id: "665f0b8f6f1e9c12a34b5675",
+//           name: "Quality",
+//           type: "benefit",
+//           expressionDomain: {
+//             id: "665f0b8f6f1e9c12a34b5702",
+//             name: "Five linguistic labels",
+//             type: "linguistic",
+//             linguisticLabels: [
+//               { label: "Very low" },
+//               { label: "Low" },
+//               { label: "Medium" },
+//               { label: "High" },
+//               { label: "Very high" },
+//             ],
+//           },
+//           children: [],
+//         },
+//       ],
 //     },
+//   ],
+//   leafCriteria: [
+//     {
+//       id: "665f0b8f6f1e9c12a34b5674",
+//       name: "Cost",
+//       type: "cost",
+//       expressionDomain: {
+//         id: "665f0b8f6f1e9c12a34b5701",
+//         name: "Numeric 0-10",
+//         type: "numericContinuous",
+//         numericRange: { min: 0, max: 10 },
+//       },
+//     },
+//     {
+//       id: "665f0b8f6f1e9c12a34b5675",
+//       name: "Quality",
+//       type: "benefit",
+//       expressionDomain: {
+//         id: "665f0b8f6f1e9c12a34b5702",
+//         name: "Five linguistic labels",
+//         type: "linguistic",
+//         linguisticLabels: [
+//           { label: "Very low" },
+//           { label: "Low" },
+//           { label: "Medium" },
+//           { label: "High" },
+//           { label: "Very high" },
+//         ],
+//       },
+//     },
+//   ],
+//   consensus: {
+//     phase: 0,
+//     maxPhases: 3,
+//     threshold: 0.75,
+//     currentCollectiveEvaluations: {},
+//     previousCollectiveEvaluations: {},
 //   },
 // }
 
