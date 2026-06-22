@@ -11,7 +11,6 @@ import {
   Chip,
   Divider,
   FormControlLabel,
-  Paper,
   Stack,
   Switch,
   TextField,

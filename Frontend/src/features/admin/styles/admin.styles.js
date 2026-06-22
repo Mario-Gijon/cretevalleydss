@@ -1,6 +1,5 @@
 import { alpha } from "@mui/material/styles";
 import {
-  getActiveIssuesAuroraBg,
   getActiveIssuesHeaderGlassSx as glassSxBase,
 } from "../../activeIssues/styles/activeIssues.styles";
 
