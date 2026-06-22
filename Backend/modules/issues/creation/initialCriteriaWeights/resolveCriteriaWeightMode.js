@@ -7,26 +7,31 @@ const MODE_CONFIGS = Object.freeze({
     source: "creator",
     method: "manual",
     structureKey: "manualCriteriaWeights",
+    defaultCriteriaWeightingModelKey: null,
   }),
   expertManual: Object.freeze({
     source: "experts",
     method: "manual",
     structureKey: "manualCriteriaWeights",
+    defaultCriteriaWeightingModelKey: "manual_criteria_weights",
   }),
   creatorApiModel: Object.freeze({
     source: "creator",
     method: "apiModel",
     structureKey: null,
+    defaultCriteriaWeightingModelKey: null,
   }),
   expertApiModel: Object.freeze({
     source: "experts",
     method: "apiModel",
     structureKey: null,
+    defaultCriteriaWeightingModelKey: null,
   }),
   creatorFuzzy: Object.freeze({
     source: "creator",
     method: "fuzzy",
     structureKey: null,
+    defaultCriteriaWeightingModelKey: null,
   }),
 });
 
@@ -101,11 +106,11 @@ export const resolveCriteriaWeightingModeConfigOrThrow = (rawConfig) => {
     method: modeConfig.method,
     structureKey: modeConfig.structureKey,
     payload: rawConfig.payload === undefined ? {} : rawConfig.payload,
-    criteriaWeightingModelKey: normalizeNonEmptyString(
-      rawConfig.criteriaWeightingModelKey
-    ),
-    criteriaWeightingModelId: normalizeNonEmptyString(
-      rawConfig.criteriaWeightingModelId
-    ),
+    criteriaWeightingModelKey:
+      modeConfig.defaultCriteriaWeightingModelKey ??
+      normalizeNonEmptyString(rawConfig.criteriaWeightingModelKey),
+    criteriaWeightingModelId: modeConfig.defaultCriteriaWeightingModelKey
+      ? null
+      : normalizeNonEmptyString(rawConfig.criteriaWeightingModelId),
   };
 };

@@ -16,6 +16,9 @@ import {
 } from "./runCriteriaWeightApiModel.js";
 import { isPlainObject } from "../../../../utils/common/objects.js";
 
+const isApiBackedCriteriaWeightingMode = (resolvedConfig) =>
+  resolvedConfig.method === "apiModel" || resolvedConfig.mode === "expertManual";
+
 const ensureCriteriaNamesOrThrow = (criterionNames) => {
   if (criterionNames.length === 0) {
     throw createInternalError("Issue has no leaf criteria", {
@@ -42,7 +45,10 @@ const validateCriteriaWeightingModeSupportOrThrow = ({
   resolvedConfig,
   criteriaWeightingModel,
 }) => {
-  if (resolvedConfig.method !== "apiModel" || !criteriaWeightingModel) {
+  if (
+    !isApiBackedCriteriaWeightingMode(resolvedConfig) ||
+    !criteriaWeightingModel
+  ) {
     return;
   }
 
@@ -240,7 +246,7 @@ const resolveApiModelMetadata = ({
   criteriaWeightingRuntime,
   normalizedCriteriaWeightingParameters,
 }) => {
-  if (resolvedConfig.method !== "apiModel") {
+  if (!isApiBackedCriteriaWeightingMode(resolvedConfig)) {
     return {
       criteriaWeightingApiModelKey: null,
       criteriaWeightingApiEndpoint: null,
@@ -259,11 +265,59 @@ const resolveCriteriaWeightingStructureKey = ({
   resolvedConfig,
   criteriaWeightingRuntime,
 }) => {
-  if (resolvedConfig.method === "apiModel") {
+  if (isApiBackedCriteriaWeightingMode(resolvedConfig)) {
     return criteriaWeightingRuntime.criteriaWeightsStructureKey;
   }
 
   return resolvedConfig.structureKey;
+};
+
+const validateExpertCriteriaWeightingResolutionOrThrow = ({
+  resolvedCriteriaWeighting,
+}) => {
+  if (
+    resolvedCriteriaWeighting.currentStage !==
+      EVALUATION_STAGES.CRITERIA_WEIGHTING ||
+    resolvedCriteriaWeighting.isCriteriaWeightingRequired !== true
+  ) {
+    return;
+  }
+
+  if (!resolvedCriteriaWeighting.criteriaWeightsStructureKey) {
+    throw createBadRequestError(
+      "Expert criteria weighting requires a criteria weights structure key",
+      {
+        field: "criteriaWeightsStructureKey",
+      }
+    );
+  }
+
+  if (!resolvedCriteriaWeighting.criteriaWeightingModel) {
+    throw createBadRequestError(
+      "Expert criteria weighting requires a persisted criteria weighting model",
+      {
+        field: "criteriaWeightingModel",
+      }
+    );
+  }
+
+  if (!resolvedCriteriaWeighting.criteriaWeightingApiModelKey) {
+    throw createBadRequestError(
+      "Expert criteria weighting requires a DecisionModelsService api model key",
+      {
+        field: "criteriaWeightingApiModelKey",
+      }
+    );
+  }
+
+  if (!resolvedCriteriaWeighting.criteriaWeightingApiEndpoint?.path) {
+    throw createBadRequestError(
+      "Expert criteria weighting requires a DecisionModelsService endpoint path",
+      {
+        field: "criteriaWeightingApiEndpoint.path",
+      }
+    );
+  }
 };
 
 const validateCriteriaWeightingStructureOrThrow = ({
@@ -378,7 +432,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   let criteriaWeightingRuntime = null;
   let normalizedCriteriaWeightingParameters = {};
 
-  if (resolvedConfig.method === "apiModel") {
+  if (isApiBackedCriteriaWeightingMode(resolvedConfig)) {
     const apiModelContext = await loadCriteriaWeightingApiModelContextOrThrow({
       resolvedConfig,
       criteriaWeightingParameters,
@@ -480,7 +534,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   if (resolvedConfig.source === "experts") {
-    return buildResolvedCriteriaWeightingConfig({
+    const resolvedCriteriaWeighting = buildResolvedCriteriaWeightingConfig({
       criteriaWeightsStructureKey: resolvedStructureKey,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
@@ -493,6 +547,12 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
       currentStage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       isCriteriaWeightingRequired: true,
     });
+
+    validateExpertCriteriaWeightingResolutionOrThrow({
+      resolvedCriteriaWeighting,
+    });
+
+    return resolvedCriteriaWeighting;
   }
 
   let modelWeights = null;
