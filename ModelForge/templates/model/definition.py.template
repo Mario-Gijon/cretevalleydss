@@ -21,7 +21,7 @@ MODEL_DEFINITION = ModelDefinition(
     # No-examples variant:
     # request_examples={}
     # response_examples={}
-    more_info_url=None,
+    more_info_url={{ more_info_url_literal }},
     # Generated scaffolds start as "scaffold" so they are not public usable.
     # Change to "ready" after implementing and testing executor.py/run.py.
     implementation_status="scaffold",

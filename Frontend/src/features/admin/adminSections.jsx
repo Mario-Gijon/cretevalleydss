@@ -1,6 +1,7 @@
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PsychologyIcon from "@mui/icons-material/Psychology";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 
@@ -31,6 +32,14 @@ export const ADMIN_SECTIONS = [
     tone: "info",
     icon: <PsychologyIcon />,
     group: "Operations",
+  },
+  {
+    key: "model-forge",
+    title: "Model Forge",
+    desc: "Generate scaffold packages for models, evaluation structures and parameters.",
+    tone: "secondary",
+    icon: <AutoFixHighIcon />,
+    group: "Development",
   },
   {
     key: "reports",

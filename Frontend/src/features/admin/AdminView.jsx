@@ -4,6 +4,7 @@ import AdminHome from "./components/AdminHome";
 import AdminSectionShell from "./components/AdminSectionShell";
 import AdminExpertsSection from "./experts/AdminExpertsSection";
 import AdminIssuesSection from "./issues/AdminIssuesSection";
+import AdminModelForgeSection from "./modelForge/AdminModelForgeSection";
 import AdminModelsSection from "./models/AdminModelsSection";
 import AdminReportsSection from "./reports/AdminReportsSection";
 import AdminLogsSection from "./logs/AdminLogsSection";
@@ -41,6 +42,14 @@ const AdminView = () => {
         element={(
           <AdminSectionShell sectionKey="models">
             <AdminModelsSection />
+          </AdminSectionShell>
+        )}
+      />
+      <Route
+        path="model-forge"
+        element={(
+          <AdminSectionShell sectionKey="model-forge">
+            <AdminModelForgeSection />
           </AdminSectionShell>
         )}
       />

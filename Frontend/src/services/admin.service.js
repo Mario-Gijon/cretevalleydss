@@ -338,6 +338,26 @@ export const getModelForgeCatalog = async () =>
     }
   );
 
+export const previewModelForgeModelPackage = async (payload) =>
+  requestJson(
+    `${API}/admin/model-forge/model-package/preview`,
+    jsonRequest("POST", payload),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error previewing Model Forge scaffold package.",
+    }
+  );
+
+export const applyModelForgeModelPackage = async (payload) =>
+  requestJson(
+    `${API}/admin/model-forge/model-package/apply`,
+    jsonRequest("POST", payload),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error applying Model Forge scaffold package.",
+    }
+  );
+
 /**
  * Actualiza si un modelo aparece en el flujo Create Issue.
  *

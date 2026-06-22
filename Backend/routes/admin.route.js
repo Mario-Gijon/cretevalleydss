@@ -18,6 +18,8 @@ import {
   removeIssueAdmin,
   getModelCatalogAdmin,
   getModelForgeCatalogAdmin,
+  previewModelForgeModelPackageAdmin,
+  applyModelForgeModelPackageAdmin,
   updateModelCatalogVisibilityAdmin,
   getModelManifestDryRunAdmin,
   syncModelManifestAdmin,
@@ -45,6 +47,20 @@ router.get(
   requireToken,
   requireAdmin,
   asyncHandler(getModelForgeCatalogAdmin)
+);
+
+router.post(
+  "/model-forge/model-package/preview",
+  requireToken,
+  requireAdmin,
+  asyncHandler(previewModelForgeModelPackageAdmin)
+);
+
+router.post(
+  "/model-forge/model-package/apply",
+  requireToken,
+  requireAdmin,
+  asyncHandler(applyModelForgeModelPackageAdmin)
 );
 
 router.patch(

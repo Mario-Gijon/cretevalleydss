@@ -61,6 +61,11 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "extended_description_literal": _format_python_string_literal(
             request.extendedDescription
         ),
+        "more_info_url_literal": (
+            "None"
+            if request.moreInfoUrl is None
+            else _format_python_string_literal(request.moreInfoUrl)
+        ),
         "snake_case_model_name": names.snake_case_model_name,
         "execute_function_name": names.execute_function_name,
         "run_function_name": names.run_function_name,

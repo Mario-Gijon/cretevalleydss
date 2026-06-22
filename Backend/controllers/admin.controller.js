@@ -26,7 +26,11 @@ import {
 } from "../modules/admin/users/index.js";
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
-import { fetchModelForgeCatalog } from "../services/modelForge/modelForgeClient.js";
+import {
+  applyModelForgeModelPackage,
+  fetchModelForgeCatalog,
+  previewModelForgeModelPackage,
+} from "../services/modelForge/modelForgeClient.js";
 
 import {
   createBadRequestError,
@@ -216,6 +220,26 @@ export const getModelForgeCatalogAdmin = async (_req, res) => {
     res,
     "Model Forge scaffold catalog fetched successfully",
     catalog
+  );
+};
+
+export const previewModelForgeModelPackageAdmin = async (req, res) => {
+  const preview = await previewModelForgeModelPackage(req.body || {});
+
+  return sendSuccess(
+    res,
+    "Model Forge scaffold preview completed successfully",
+    preview
+  );
+};
+
+export const applyModelForgeModelPackageAdmin = async (req, res) => {
+  const result = await applyModelForgeModelPackage(req.body || {});
+
+  return sendSuccess(
+    res,
+    "Model Forge scaffold apply completed successfully",
+    result
   );
 };
 

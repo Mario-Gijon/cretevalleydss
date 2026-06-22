@@ -17,6 +17,7 @@ class ModelScaffoldPreviewRequest(BaseModel):
     displayName: str
     smallDescription: str
     extendedDescription: str
+    moreInfoUrl: str | None = None
     modelKind: str
     evaluationStructureKey: str
     supportsConsensus: bool = False
@@ -60,6 +61,15 @@ class ModelScaffoldPreviewRequest(BaseModel):
         if not stripped:
             raise ValueError("field must not be empty")
         return stripped
+
+    @field_validator("moreInfoUrl")
+    @classmethod
+    def validate_more_info_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        stripped = value.strip()
+        return stripped or None
 
     @field_validator("supportedDomains")
     @classmethod
