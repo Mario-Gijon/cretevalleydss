@@ -140,5 +140,7 @@ export const getManifestModels = async (options = {}) => {
 export const getPublicIssueManifestModels = async (options = {}) => {
   const models = await getManifestModels(options);
 
-  return models.filter((model) => model?.isIssueModel === true);
+  return models.filter(
+    (model) => model?.isIssueModel === true && model?.publicUsable === true
+  );
 };

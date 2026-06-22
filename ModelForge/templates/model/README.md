@@ -8,6 +8,11 @@ Generated files:
 - `run.py`
 - `examples.py`
 
+Generated scaffold defaults:
+- `definition.py` sets `implementation_status="scaffold"`
+- `executor.py` returns a controlled `MODEL_UNDER_DEVELOPMENT` error
+- `run.py` is intentionally not called until the developer removes the executor guard
+
 Required placeholders:
 - `{{ api_model_key }}`
 - `{{ api_endpoint_path }}`
@@ -41,3 +46,4 @@ Rules:
 - Do not assume matrices, weights, rankings, or plots internally.
 - Do not assume one universal payload shape.
 - `run.py` should stay algorithm-focused and transport-agnostic.
+- Change `implementation_status` from `"scaffold"` to `"ready"` only after the model is implemented and tested.

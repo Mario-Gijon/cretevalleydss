@@ -96,6 +96,14 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 { label: "Mongo name", value: row.mongoName },
                 { label: "Mongo id", value: row.mongoId },
                 { label: "Lifecycle", value: toModelManifestTitle(row.lifecycleKind) },
+                {
+                  label: "Implementation status",
+                  value: toModelManifestTitle(row.implementationStatus),
+                },
+                {
+                  label: "Public usable",
+                  value: formatModelManifestBoolean(row.publicUsable),
+                },
                 { label: "Issue model", value: formatModelManifestBoolean(row.isIssueModel) },
                 {
                   label: "Create Issue visibility",

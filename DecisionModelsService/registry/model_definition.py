@@ -17,6 +17,7 @@ class ModelDefinition:
     extended_description: str
     request_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
     response_examples: dict[str, dict[str, Any]] = field(default_factory=dict)
+    implementation_status: str = "ready"
 
     more_info_url: str | None = None
     is_issue_model: bool = True
@@ -39,6 +40,12 @@ class ModelDefinition:
 
     def __post_init__(self) -> None:
         """Valida el contrato interno mínimo de metadata."""
+
+        if self.implementation_status not in {"ready", "scaffold"}:
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' has invalid "
+                f"implementation_status '{self.implementation_status}'."
+            )
 
         if self.is_issue_model and not self.alternative_evaluation_structure_key:
             raise ValueError(

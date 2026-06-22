@@ -2,6 +2,9 @@ def {{ run_function_name }}(*, context: dict, evaluations: list, model_parameter
     """
     Implement the model algorithm here.
 
+    This function is intentionally not called by the scaffold executor until the
+    developer implements the model.
+
     This layer should not know about:
     - FastAPI
     - HTTP responses

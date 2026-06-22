@@ -1,25 +1,4 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { isPlainObject } from "../../../../../utils/common/objects.js";
-import { resolveEvaluationEntitiesOrThrow } from "./{{ evaluation_structure_key }}.context.js";
-
-const EVALUATION_SAVE_MODES = Object.freeze({
-  DRAFT: "draft",
-  SUBMIT: "submit",
-});
-
-export const resolveRequireValueFromModeOrThrow = (mode) => {
-  if (mode === EVALUATION_SAVE_MODES.DRAFT) {
-    return false;
-  }
-
-  if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
-    return true;
-  }
-
-  throw createBadRequestError("Unsupported evaluation save mode", {
-    field: "mode",
-  });
-};
 
 export const {{ normalize_payload_function_name }} = async ({
   payload,
@@ -43,81 +22,15 @@ export const {{ normalize_payload_function_name }} = async ({
   - cell/value shape is structure-owned
   */
 
-  if (!isPlainObject(payload)) {
-    throw createBadRequestError("payload must be an object", {
+  void payload;
+  void evaluationContext;
+  void requireValue;
+
+  throw createBadRequestError(
+    "Evaluation structure scaffold is still under development",
+    {
+      code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
       field: "payload",
-    });
-  }
-
-  const {
-    alternatives,
-    criteria,
-    alternativeIds,
-    criterionIds,
-  } = resolveEvaluationEntitiesOrThrow({
-    evaluationContext,
-  });
-
-  const unknownAlternativeKeys = Object.keys(payload).filter(
-    (alternativeId) => !alternativeIds.includes(alternativeId)
+    }
   );
-
-  if (unknownAlternativeKeys.length > 0) {
-    throw createBadRequestError("payload contains unknown alternative keys", {
-      field: "payload",
-      details: {
-        unknownAlternativeKeys,
-      },
-    });
-  }
-
-  const normalizedPayload = {};
-
-  for (const alternative of alternatives) {
-    const alternativePayload = payload[alternative.id];
-
-    if (alternativePayload !== undefined && !isPlainObject(alternativePayload)) {
-      throw createBadRequestError(
-        `payload['${alternative.id}'] must be an object`,
-        {
-          field: "payload",
-        }
-      );
-    }
-
-    const safeAlternativePayload = isPlainObject(alternativePayload)
-      ? alternativePayload
-      : {};
-    const unknownCriterionKeys = Object.keys(safeAlternativePayload).filter(
-      (criterionId) => !criterionIds.includes(criterionId)
-    );
-
-    if (unknownCriterionKeys.length > 0) {
-      throw createBadRequestError(
-        `payload['${alternative.id}'] contains unknown criterion keys`,
-        {
-          field: "payload",
-          details: {
-            alternativeId: alternative.id,
-            unknownCriterionKeys,
-          },
-        }
-      );
-    }
-
-    normalizedPayload[alternative.id] = {};
-
-    for (const criterion of criteria) {
-      const cell = safeAlternativePayload[criterion.id];
-
-      // TODO:
-      // Validate the structure-owned shape here.
-      // Use criterion.expressionDomain and requireValue when relevant.
-      // Return the canonical id-keyed payload for this structure.
-      normalizedPayload[alternative.id][criterion.id] =
-        cell === undefined ? { value: "" } : cell;
-    }
-  }
-
-  return normalizedPayload;
 };

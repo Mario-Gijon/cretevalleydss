@@ -24,16 +24,16 @@ Required placeholders:
 
 Backend contract:
 - `key` must match the folder name.
-- `get` builds or normalizes a default payload for the UI.
-- `save` validates and normalizes draft or submit payloads.
-- `validateBeforeCompute` validates completed evaluations before model execution.
+- `get` may return a placeholder payload so the scaffold UI can render safely.
+- `save` must fail with a controlled under-development error until implemented.
+- `validateBeforeCompute` must fail with a controlled under-development error until implemented.
 - Payload shape is structure-owned.
 - Core entity references must stay id-based.
 
 Frontend contract:
 - `index.js` exports the registry entry with `key`, `stage`, `label`, `adapter`, and `View`.
 - `adapter` converts between canonical backend payloads and UI state.
-- `View` renders the structure editor or read-only display.
+- `View` renders the structure editor or a safe under-development placeholder.
 - DataGrid or row state is UI-only and must not leak into canonical payloads.
 
 `evaluationContext` includes:
@@ -52,4 +52,4 @@ Rules:
 - Use `alternative.id`, `criterion.id`, and `expressionDomain.id` for logic.
 - Use names only for UI labels and error text.
 - Do not add legacy aliases or name-keyed fallbacks.
-- No generation is implemented here yet.
+- Generated scaffolds should fail clearly until the structure is implemented.

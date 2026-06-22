@@ -47,6 +47,10 @@ export default function ModelCards({
                     label={row.isIssueModel ? "Issue model" : "Non-issue model"}
                     severity={row.isIssueModel ? "success" : "info"}
                   />
+                  <StatusChip
+                    label={`Source ${row.implementationStatus || "ready"}`}
+                    severity={row.publicUsable === true ? "success" : "warning"}
+                  />
                   <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
                   <StatusChip
                     label={getModelManifestSyncState(row)}
@@ -64,6 +68,14 @@ export default function ModelCards({
               <FieldGrid
                 rows={[
                   { label: "Catalog", value: getModelCatalogVisibilityLabel(row) },
+                  {
+                    label: "Source readiness",
+                    value: toModelManifestTitle(row.implementationStatus),
+                  },
+                  {
+                    label: "Public usable",
+                    value: formatModelManifestBoolean(row.publicUsable),
+                  },
                   { label: "Lifecycle", value: toModelManifestTitle(row.lifecycleKind) },
                   {
                     label: "Alternative structure",

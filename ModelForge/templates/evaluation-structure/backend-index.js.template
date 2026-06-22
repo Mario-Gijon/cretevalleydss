@@ -1,47 +1,41 @@
 import {
   EVALUATION_STAGES,
 } from "../../evaluationStages.js";
-import { {{ validate_before_compute_function_name }} } from "./{{ evaluation_structure_key }}.computeValidation.js";
-import {
-  {{ normalize_payload_function_name }},
-  resolveRequireValueFromModeOrThrow,
-} from "./{{ evaluation_structure_key }}.payload.js";
+import { createBadRequestError } from "../../../../../utils/common/errors.js";
 
 export const {{ backend_structure_export_name }} = Object.freeze({
   // key must match the folder name.
   key: "{{ evaluation_structure_key }}",
   stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
 
-  // get builds or normalizes an empty/default payload for the UI.
+  // get returns a placeholder payload so the scaffold view can render safely.
   async get({ evaluationContext }) {
-    return {{ normalize_payload_function_name }}({
-      payload: {},
-      evaluationContext,
-      requireValue: false,
-    });
+    void evaluationContext;
+    return {};
   },
 
-  // save validates and normalizes draft or submit payloads.
+  // save must stay blocked until the real structure is implemented.
   async save({ payload, evaluationContext, mode }) {
-    const requireValue = resolveRequireValueFromModeOrThrow(mode);
-
-    return {{ normalize_payload_function_name }}({
-      payload,
-      evaluationContext,
-      requireValue,
-    });
+    void payload;
+    void evaluationContext;
+    void mode;
+    throw createBadRequestError(
+      "Evaluation structure scaffold is still under development",
+      {
+        code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
+        field: "payload",
+      }
+    );
   },
 
-  // validateBeforeCompute checks completed evaluations before model execution.
-  async validateBeforeCompute({
-    evaluations,
-    alternatives,
-    criteria,
-  }) {
-    {{ validate_before_compute_function_name }}({
-      evaluations,
-      alternatives,
-      criteria,
+  // validateBeforeCompute must fail clearly until the structure is implemented.
+  async validateBeforeCompute() {
+    throw createBadRequestError(
+      "Evaluation structure scaffold is still under development",
+      {
+        code: "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT",
+        field: "evaluations",
+      }
     });
   },
 });
@@ -50,4 +44,5 @@ export const {{ backend_structure_export_name }} = Object.freeze({
 Notes:
 - payload shape is owned by this structure.
 - entity references must be id-based.
+- replace get/save/validateBeforeCompute after implementing the scaffold.
 */

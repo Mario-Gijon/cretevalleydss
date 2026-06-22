@@ -8,6 +8,16 @@ from .run import {{ run_function_name }}
 def {{ execute_function_name }}(
     request: GenericModelExecutionRequest,
 ) -> dict | JSONResponse:
+    # Generated scaffolds return a controlled under-development response by default.
+    # Replace this guard after implementing and testing run.py.
+    return error_response(
+        "{{ display_name }} is a generated scaffold and is still under development.",
+        code="MODEL_UNDER_DEVELOPMENT",
+    )
+
+    """
+    Reference implementation notes:
+
     try:
         context = request.context or {}
         evaluations = request.evaluations or []
@@ -89,3 +99,4 @@ def {{ execute_function_name }}(
             f"Error executing {{ display_name }}: {error}",
             code="INTERNAL_ERROR",
         )
+    """

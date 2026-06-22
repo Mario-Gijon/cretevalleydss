@@ -73,6 +73,8 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "smallDescription": model.small_description,
         "extendedDescription": model.extended_description,
         "moreInfoUrl": model.more_info_url,
+        "implementationStatus": model.implementation_status,
+        "publicUsable": model.implementation_status == "ready",
         "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
         "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
         "supportsConsensus": model.supports_consensus,

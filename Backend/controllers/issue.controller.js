@@ -72,6 +72,12 @@ export const modelsInfo = async (req, res) => {
           },
         ],
       },
+      {
+        $or: [
+          { publicUsable: { $exists: false } },
+          { publicUsable: { $ne: false } },
+        ],
+      },
       { "manifestSync.isStale": false },
     ],
   })

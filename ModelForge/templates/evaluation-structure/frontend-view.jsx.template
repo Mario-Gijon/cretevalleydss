@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useMemo } from "react";
-import { Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 
 const {{ view_component_name }} = (
   {
@@ -92,6 +92,11 @@ const {{ view_component_name }} = (
     <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
       <Box sx={{ width: "100%", maxWidth: "none", minWidth: 0, p: { xs: 1, sm: 1.5 } }}>
         <Stack spacing={1}>
+          <Alert severity="info">
+            This evaluation structure scaffold is under development. Replace this
+            placeholder view before using it in real evaluations.
+          </Alert>
+
           <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
             {{ evaluation_structure_key }}
           </Typography>

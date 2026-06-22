@@ -35,6 +35,12 @@ export const loadCreateIssueActorsAndModel = async ({
     });
   }
 
+  if (existingModel.isIssueModel !== true || existingModel.publicUsable === false) {
+    throw createBadRequestError("Selected model is not public usable", {
+      field: "selectedModelId",
+    });
+  }
+
   const {
     apiModelKey,
     apiEndpoint,

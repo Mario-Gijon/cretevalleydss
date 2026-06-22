@@ -98,6 +98,8 @@ export const normalizeModelCatalogRows = (models = []) =>
     mongoName: model?.name || "Unknown model",
     mongoId: model?.id || model?._id || null,
     isIssueModel: model?.isIssueModel === true,
+    implementationStatus: model?.implementationStatus || "ready",
+    publicUsable: model?.publicUsable !== false,
     visibleInIssueCreation: model?.visibleInIssueCreation !== false,
     apiInputFormat: model?.apiInputFormat || null,
     apiOutputFormat: model?.apiOutputFormat || null,

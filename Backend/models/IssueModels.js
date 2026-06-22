@@ -208,6 +208,15 @@ const issueModelSchema = new Schema({
     trim: true,
     default: null,
   },
+  implementationStatus: {
+    type: String,
+    enum: ["ready", "scaffold"],
+    default: "ready",
+  },
+  publicUsable: {
+    type: Boolean,
+    default: true,
+  },
   parameters: {
     type: [parameterSchema],
     default: [],

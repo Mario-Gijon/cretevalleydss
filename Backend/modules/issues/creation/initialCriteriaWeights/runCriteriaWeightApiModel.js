@@ -32,9 +32,19 @@ const loadCriteriaWeightingModelOrThrow = async ({
 
   const query = {
     isCriteriaWeightingModel: true,
-    $or: [
-      { visibleInCriteriaWeighting: { $exists: false } },
-      { visibleInCriteriaWeighting: { $ne: false } },
+    $and: [
+      {
+        $or: [
+          { visibleInCriteriaWeighting: { $exists: false } },
+          { visibleInCriteriaWeighting: { $ne: false } },
+        ],
+      },
+      {
+        $or: [
+          { publicUsable: { $exists: false } },
+          { publicUsable: { $ne: false } },
+        ],
+      },
     ],
   };
 

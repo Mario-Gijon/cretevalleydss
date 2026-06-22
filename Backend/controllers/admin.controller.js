@@ -78,6 +78,8 @@ const mapIssueModelCatalogItem = (model) => {
     apiModelKey: model.apiModelKey,
     isIssueModel: model.isIssueModel === true,
     isCriteriaWeightingModel: model.isCriteriaWeightingModel === true,
+    implementationStatus: model.implementationStatus || "ready",
+    publicUsable: model.publicUsable !== false,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint,

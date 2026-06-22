@@ -15,12 +15,16 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 const ISSUE_MODELS_SELECT =
-  "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains";
+  "_id name alternativeEvaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains implementationStatus publicUsable";
 
 const loadAvailableIssueModels = async () => {
   return IssueModel.find({
     isIssueModel: true,
     visibleInIssueCreation: true,
+    $or: [
+      { publicUsable: { $exists: false } },
+      { publicUsable: { $ne: false } },
+    ],
     "manifestSync.isStale": false,
   })
     .select(ISSUE_MODELS_SELECT)

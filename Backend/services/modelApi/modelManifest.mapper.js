@@ -199,6 +199,10 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const isIssueModel = manifestModel?.isIssueModel === true;
   const isCriteriaWeightingModel =
     manifestModel?.isCriteriaWeightingModel === true;
+  const implementationStatus = normalizeNonEmptyString(
+    manifestModel?.implementationStatus
+  );
+  const publicUsable = manifestModel?.publicUsable;
   const supportsCreatorCriteriaWeighting =
     manifestModel?.supportsCreatorCriteriaWeighting;
   const supportsExpertCriteriaWeighting =
@@ -218,6 +222,14 @@ export const validateSyncableManifestModel = (manifestModel) => {
   }
   if (typeof manifestModel?.isCriteriaWeightingModel !== "boolean") {
     missingFields.push("isCriteriaWeightingModel");
+  }
+  if (!implementationStatus) {
+    missingFields.push("implementationStatus");
+  } else if (!["ready", "scaffold"].includes(implementationStatus)) {
+    missingFields.push("implementationStatus (must be ready or scaffold)");
+  }
+  if (typeof publicUsable !== "boolean") {
+    missingFields.push("publicUsable");
   }
   if (isCriteriaWeightingModel) {
     if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
@@ -267,6 +279,9 @@ export const buildManifestTechnicalProjection = (manifestModel) => ({
   displayName: normalizeNonEmptyString(manifestModel?.displayName),
   isIssueModel: manifestModel?.isIssueModel === true,
   isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  implementationStatus:
+    normalizeNonEmptyString(manifestModel?.implementationStatus) || "ready",
+  publicUsable: manifestModel?.publicUsable === true,
   supportsCreatorCriteriaWeighting:
     manifestModel?.isCriteriaWeightingModel === true &&
     manifestModel?.supportsCreatorCriteriaWeighting === true,
