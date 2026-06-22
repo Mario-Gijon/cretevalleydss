@@ -50,7 +50,8 @@ export const getAdminPanelSx = (theme, strength = 0.14) => ({
   position: "relative",
   overflow: "hidden",
   ...glassSxBase(theme, strength, "crystal"),
-  ...getActiveIssuesAuroraBg(theme, 0.12),
+  backgroundImage: `radial-gradient(1100px 480px at 12% 0%, ${alpha(theme.palette.info.main, 0.12)}, transparent 62%),
+                    radial-gradient(0px 0px at 88% 16%, ${alpha(theme.palette.secondary.main, 0.12)}, transparent 58%)`,
   "&:after": {
     content: '""',
     position: "absolute",

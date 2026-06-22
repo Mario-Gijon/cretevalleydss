@@ -11,7 +11,6 @@ import {
   Chip,
   Divider,
   FormControlLabel,
-  Paper,
   Stack,
   Switch,
   TextField,
@@ -35,7 +34,6 @@ import {
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
 import EmptyState from "../models/components/EmptyState";
-import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
 const MODEL_KIND_OPTIONS = [
   { value: "issue", label: "Issue model" },
@@ -362,7 +360,7 @@ const formatJsonPreview = (value) => {
 
 const codeBlockSx = (theme) => ({
   m: 0,
-  p: 1.15,
+  p: { xs: 1, md: 1.2 },
   borderRadius: 2,
   bgcolor: alpha(theme.palette.common.black, 0.25),
   color: "text.secondary",
@@ -377,61 +375,24 @@ const quietPanelSx = () => ({
   bgcolor: "transparent",
 });
 
-const pagePanelSx = (theme) => ({
-  ...getAdminIssueDetailCardSx(theme),
-  p: { xs: 1.35, md: 1.75 },
-  borderRadius: 3,
-});
-
-const flatAccordionSx = (theme) => ({
-  bgcolor: alpha(theme.palette.common.white, 0.018),
-  borderRadius: 2,
-  boxShadow: "none",
-  overflow: "hidden",
-  "&:before": { display: "none" },
-  "&.Mui-expanded": {
-    my: 0,
-  },
-});
-
-const flatAccordionSummarySx = {
-  minHeight: 42,
-  px: 1.25,
-  "&.Mui-expanded": {
-    minHeight: 42,
-  },
-  "& .MuiAccordionSummary-content": {
-    my: 0.65,
-  },
-  "& .MuiAccordionSummary-content.Mui-expanded": {
-    my: 0.65,
-  },
-};
-
-const flatAccordionDetailsSx = {
-  px: 1.25,
-  pt: 0,
-  pb: 1.25,
+const sectionBlockSx = {
+  py: { xs: 1.55, md: 1.85 },
 };
 
 const sectionDividerSx = (theme) => ({
   borderColor: alpha(theme.palette.common.white, 0.085),
 });
 
-const parameterCardSx = () => ({
+const parameterCardSx = (theme) => ({
   py: { xs: 1.2, md: 1.35 },
   px: 0,
   bgcolor: "transparent",
   boxShadow: "none",
 });
 
-const sectionBlockSx = {
-  py: { xs: 2.15, md: 2.75 },
-};
-
 const modelFieldsGridSx = {
   display: "grid",
-  gap: { xs: 1.55, md: 1.8 },
+  gap: { xs: 1.2, md: 1.35 },
   gridTemplateColumns: {
     xs: "1fr",
     md: "repeat(2, minmax(0, 1fr))",
@@ -440,7 +401,7 @@ const modelFieldsGridSx = {
 
 const parameterTopGridSx = {
   display: "grid",
-  gap: { xs: 1.25, md: 1.55 },
+  gap: { xs: 1, md: 1.15 },
   gridTemplateColumns: {
     xs: "1fr",
     md: "minmax(180px, 0.9fr) minmax(220px, 1.1fr) minmax(240px, 1fr)",
@@ -507,10 +468,9 @@ const CapabilityToggle = ({ label, checked, onChange }) => {
       color={checked ? "info" : "inherit"}
       onClick={() => onChange(!checked)}
       sx={{
-        justifyContent: "center",
-        minHeight: 34,
-        minWidth: { xs: "100%", sm: 170 },
-        px: 1.35,
+        justifyContent: "flex-start",
+        minHeight: 38,
+        px: 1.15,
         borderRadius: 999,
         textTransform: "none",
         fontWeight: 850,
@@ -705,7 +665,7 @@ const ParameterCard = ({
 
   return (
     <Box sx={parameterCardSx}>
-      <Stack spacing={1.75}>
+      <Stack spacing={1.35}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
           <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap" useFlexGap>
             <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>
@@ -793,7 +753,7 @@ const ParameterCard = ({
         <Box
           sx={{
             display: "grid",
-            gap: { xs: 1.35, md: 1.65 },
+            gap: { xs: 1, md: 1.25 },
             gridTemplateColumns: {
               xs: "1fr",
               lg: "minmax(260px, 0.8fr) minmax(320px, 1.2fr)",
@@ -851,15 +811,19 @@ const ParameterCard = ({
           disableGutters
           expanded={parameter.advancedExpanded === true}
           onChange={(_event, expanded) => setParameterExpanded(parameter.id, expanded)}
-          sx={flatAccordionSx(theme)}
+          sx={{
+            bgcolor: alpha(theme.palette.common.white, 0.018),
+            borderRadius: 2,
+            boxShadow: "none",
+            "&:before": { display: "none" },
+          }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={flatAccordionSummarySx}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 42 }}>
             <Typography variant="body2" sx={{ fontWeight: 900 }}>
               Advanced JSON
             </Typography>
           </AccordionSummary>
-
-          <AccordionDetails sx={flatAccordionDetailsSx}>
+          <AccordionDetails sx={{ pt: 0 }}>
             <TextField
               color="info"
               label="Advanced JSON"
@@ -955,15 +919,7 @@ const InlineSection = ({ title, subtitle = null, action = null, children }) => (
   </Box>
 );
 
-const SectionDivider = ({ theme }) => (
-  <Divider
-    flexItem
-    sx={{
-      ...sectionDividerSx(theme),
-      my: { xs: 0.35, md: 0.55 },
-    }}
-  />
-);
+const SectionDivider = ({ theme }) => <Divider flexItem sx={sectionDividerSx(theme)} />;
 
 export default function AdminModelForgeSection() {
   const theme = useTheme();
@@ -1323,37 +1279,38 @@ export default function AdminModelForgeSection() {
 
   return (
     <>
-      <Box elevation={0} sx={pagePanelSx}>
-        <Stack spacing={0}>
-          <InlineSection
-            title="Registry tamplates"
-            subtitle="Preview first, then apply missing scaffold files."
-            action={(
-              <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="info"
-                  startIcon={<RefreshIcon />}
-                  onClick={() => loadCatalog()}
-                  disabled={loadingCatalog}
-                  sx={{ textTransform: "none", fontWeight: 900 }}
-                >
-                  Reload
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="secondary"
-                  onClick={loadExample}
-                  sx={{ textTransform: "none", fontWeight: 900 }}
-                >
-                  Load example
-                </Button>
-              </Stack>
-            )}
+      <Stack spacing={0}>
+        <Box sx={{ py: { xs: 0.35, md: 0.45 }, pb: { xs: 1.25, md: 1.45 } }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={0.8}
+            justifyContent="flex-end"
+            alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <Stack spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="info"
+              startIcon={<RefreshIcon />}
+              onClick={() => loadCatalog()}
+              disabled={loadingCatalog}
+              sx={{ textTransform: "none", fontWeight: 900 }}
+            >
+              Reload
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="secondary"
+              onClick={loadExample}
+              sx={{ textTransform: "none", fontWeight: 900 }}
+            >
+              Load example
+            </Button>
+          </Stack>
+
+          {(catalogError || actionError) && (
+            <Stack spacing={1} sx={{ mt: 1.15 }}>
               {catalogError && (
                 <Alert severity="warning" variant="outlined">
                   {catalogError}
@@ -1365,11 +1322,12 @@ export default function AdminModelForgeSection() {
                 </Alert>
               )}
             </Stack>
-          </InlineSection>
+          )}
+        </Box>
 
-          <SectionDivider theme={theme} />
+        <SectionDivider theme={theme} />
 
-          <InlineSection title="Model">
+        <InlineSection title="Model">
             <Stack spacing={1.65}>
               <Box sx={modelFieldsGridSx}>
                 <TextField
@@ -1539,10 +1497,13 @@ export default function AdminModelForgeSection() {
             <Stack spacing={1.55}>
               <Box
                 sx={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 0.9,
-                  alignItems: "center",
+                  display: "grid",
+                  gap: 0.85,
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    xl: "repeat(3, minmax(0, 1fr))",
+                  },
                 }}
               >
                 {formState.modelKind === "issue" && (
@@ -1705,31 +1666,24 @@ export default function AdminModelForgeSection() {
               </Stack>
             )}
           >
-            <Stack
-              spacing={2.35}
-              divider={<Divider flexItem sx={{ ...sectionDividerSx(theme), my: 0.25 }} />}
-            >
+            <Stack spacing={1.65}>
               <Accordion
                 disableGutters
-                defaultExpanded={false}
-                sx={flatAccordionSx(theme)}
+                sx={{
+                  bgcolor: "transparent",
+                  borderRadius: 0,
+                  boxShadow: "none",
+                  "&:before": { display: "none" },
+                  "&.Mui-expanded": { my: 0 },
+                }}
               >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={flatAccordionSummarySx}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 900 }}>
                     Request payload
                   </Typography>
                 </AccordionSummary>
-
-                <AccordionDetails sx={flatAccordionDetailsSx}>
-                  <Box
-                    component="pre"
-                    sx={{
-                      ...codeBlockSx(theme),
-                      p: 1.45,
-                      minHeight: 44,
-                      borderRadius: 1.5,
-                    }}
-                  >
+                <AccordionDetails sx={{ px: 0, pt: 0.25, pb: 0.5 }}>
+                  <Box component="pre" sx={codeBlockSx(theme)}>
                     {requestPayloadPreview
                       ? formatJsonPreview(requestPayloadPreview)
                       : "Run Preview to see the normalized request payload."}
@@ -1738,67 +1692,50 @@ export default function AdminModelForgeSection() {
               </Accordion>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1.15 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1 }}>
                   Preview result
                 </Typography>
-
                 {!previewResult ? (
-                  <Box sx={{ py: 0.4 }}>
-                    <EmptyState>No preview has been generated yet.</EmptyState>
-                  </Box>
+                  <EmptyState>No preview has been generated yet.</EmptyState>
                 ) : (
-                  <Stack
-                    spacing={0}
-                    divider={<Divider flexItem sx={sectionDividerSx(theme)} />}
-                  >
+                  <Stack spacing={0} divider={<Divider flexItem sx={sectionDividerSx(theme)} />}>
                     {(previewResult.items || []).map((item) => (
-                      <Box key={`${item.kind}-${item.key}`} sx={{ py: 1 }}>
-                        <ResultAccordion item={item} theme={theme} />
-                      </Box>
+                      <ResultAccordion key={`${item.kind}-${item.key}`} item={item} theme={theme} />
                     ))}
                   </Stack>
                 )}
               </Box>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1.35 }}>Apply results</Typography>
-
+                <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1 }}>
+                  Apply result
+                </Typography>
                 {!applyResult ? (
-                  <Box sx={{ py: 0.4 }}>
-                    <EmptyState>No scaffold package has been applied yet.</EmptyState>
-                  </Box>
+                  <EmptyState>No scaffold package has been applied yet.</EmptyState>
                 ) : (
-                  <Stack spacing={1.25}>
-                    <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
+                  <Stack spacing={1}>
+                    <Alert severity="info" variant="outlined">
                       Run Manifest Sync manually if you want newly generated models to appear in
                       the admin catalog.
                     </Alert>
 
-                    <Stack
-                      spacing={0}
-                      divider={<Divider flexItem sx={sectionDividerSx(theme)} />}
-                    >
+                    <Stack spacing={0} divider={<Divider flexItem sx={sectionDividerSx(theme)} />}>
                       {(applyResult.items || []).map((item) => (
                         <Box key={`${item.kind}-${item.key}`} sx={{ py: 1.15 }}>
-                          <Stack spacing={1}>
+                          <Stack spacing={0.8}>
                             <ResultItemSummary item={item} />
 
                             {item.writtenFiles?.length > 0 && (
                               <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 950, mb: 0.5 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 950, mb: 0.4 }}>
                                   Written files
                                 </Typography>
-
-                                <Stack spacing={0.45}>
+                                <Stack spacing={0.35}>
                                   {item.writtenFiles.map((file) => (
                                     <Typography
                                       key={file.path}
                                       variant="caption"
-                                      sx={{
-                                        color: "text.secondary",
-                                        fontWeight: 800,
-                                        wordBreak: "break-word",
-                                      }}
+                                      sx={{ color: "text.secondary", fontWeight: 800 }}
                                     >
                                       {file.path}
                                     </Typography>
@@ -1809,20 +1746,15 @@ export default function AdminModelForgeSection() {
 
                             {item.skippedFiles?.length > 0 && (
                               <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 950, mb: 0.5 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 950, mb: 0.4 }}>
                                   Skipped files
                                 </Typography>
-
-                                <Stack spacing={0.45}>
+                                <Stack spacing={0.35}>
                                   {item.skippedFiles.map((file) => (
                                     <Typography
                                       key={file.path}
                                       variant="caption"
-                                      sx={{
-                                        color: "text.secondary",
-                                        fontWeight: 800,
-                                        wordBreak: "break-word",
-                                      }}
+                                      sx={{ color: "text.secondary", fontWeight: 800 }}
                                     >
                                       {file.path}
                                     </Typography>
@@ -1839,8 +1771,7 @@ export default function AdminModelForgeSection() {
               </Box>
             </Stack>
           </InlineSection>
-        </Stack>
-      </Box>
+      </Stack>
 
       <ConfirmationDialog
         open={applyDialogOpen}

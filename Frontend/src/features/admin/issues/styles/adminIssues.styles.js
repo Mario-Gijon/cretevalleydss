@@ -41,6 +41,6 @@ export const getAdminIssuesSectionPanelSx = (theme) => ({
 export const getAdminIssueDetailCardSx = (theme) => ({
   borderRadius: 4,
   p: 1.35,
-  bgcolor: alpha(theme.palette.common.white, 0.04),
-  border: "1px solid rgba(255,255,255,0.08)",
+  /* bgcolor: alpha(theme.palette.common.white, 0.04),
+  border: "1px solid rgba(255,255,255,0.08)", */
 });
