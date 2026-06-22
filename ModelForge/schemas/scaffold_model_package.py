@@ -19,7 +19,23 @@ class ModelPackagePreviewRequest(BaseModel):
 
 
 class ModelPackageApplyRequest(ModelPackagePreviewRequest):
-    pass
+    runFullFrontendBuild: bool = False
+
+
+class ScaffoldValidationCheck(BaseModel):
+    name: str
+    status: Literal["passed", "failed", "skipped"]
+    command: str | None = None
+    cwd: str | None = None
+    exitCode: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    details: str | None = None
+
+
+class ScaffoldValidationResult(BaseModel):
+    status: Literal["passed", "failed", "skipped"]
+    checks: list[ScaffoldValidationCheck] = Field(default_factory=list)
 
 
 class ModelPackagePreviewItem(BaseModel):
@@ -36,6 +52,9 @@ class ModelPackagePreviewResponse(BaseModel):
     kind: Literal["model-package"] = "model-package"
     mode: Literal["preview"] = "preview"
     items: list[ModelPackagePreviewItem] = Field(default_factory=list)
+    validation: ScaffoldValidationResult = Field(
+        default_factory=lambda: ScaffoldValidationResult(status="skipped")
+    )
 
 
 class AppliedScaffoldFile(BaseModel):
@@ -57,3 +76,6 @@ class ModelPackageApplyResponse(BaseModel):
     kind: Literal["model-package"] = "model-package"
     mode: Literal["apply"] = "apply"
     items: list[ModelPackageApplyItem] = Field(default_factory=list)
+    validation: ScaffoldValidationResult = Field(
+        default_factory=lambda: ScaffoldValidationResult(status="skipped")
+    )

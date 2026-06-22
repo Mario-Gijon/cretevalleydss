@@ -14,6 +14,7 @@ from services.evaluation_structure_scaffold_preview import (
 )
 from services.model_scaffold_preview import build_model_scaffold_preview
 from services.parameter_scaffold_preview import build_parameter_scaffold_preview
+from services.scaffold_validation import validate_rendered_scaffold_files
 from services.scaffold_existence import (
     StructureExistence,
     get_evaluation_structure_existence,
@@ -44,7 +45,17 @@ def build_model_package_preview(
     for parameter_request in parameter_requests.values():
         items.append(_build_parameter_structure_item(parameter_request, project_root))
 
-    return ModelPackagePreviewResponse(items=items)
+    validation_files = [
+        file
+        for item in items
+        if item.status == "toGenerate"
+        for file in item.files
+    ]
+
+    return ModelPackagePreviewResponse(
+        items=items,
+        validation=validate_rendered_scaffold_files(validation_files),
+    )
 
 
 def _build_model_item(

@@ -40,14 +40,16 @@ const normalizeUpstreamErrorPayload = (payload) => {
   }
 
   if (Object.prototype.hasOwnProperty.call(payload, "detail")) {
+    const detail = payload.detail;
+
     return {
       message:
-        typeof payload.detail === "string"
-          ? payload.detail
-          : "ModelForge request failed",
+        typeof detail === "string"
+          ? detail
+          : detail?.message || payload.message || "ModelForge request failed",
       code: null,
       field: null,
-      details: payload.detail,
+      details: detail,
     };
   }
 

@@ -13,6 +13,11 @@ from schemas.scaffold_model_package import (
 )
 from services.model_package_preview import build_model_package_preview
 from services.scaffold_file_writer import write_scaffold_files
+from services.scaffold_validation import (
+    has_failed_validation,
+    validate_rendered_scaffold_files,
+    validate_written_scaffold_files,
+)
 
 
 def apply_model_package_scaffold(
@@ -44,6 +49,16 @@ def apply_model_package_scaffold(
         for file in item.files:
             files_to_write.append(file)
             file_paths_by_item[(item.kind, item.key)].add(file.path)
+
+    pre_write_validation = validate_rendered_scaffold_files(files_to_write)
+    if has_failed_validation(pre_write_validation):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Scaffold validation failed before files were written.",
+                "validation": pre_write_validation.model_dump(mode="json"),
+            },
+        )
 
     written_files: list[AppliedScaffoldFile] = []
     written_paths: set[str] = set()
@@ -92,4 +107,14 @@ def apply_model_package_scaffold(
             )
         )
 
-    return ModelPackageApplyResponse(items=items)
+    post_write_validation = validate_written_scaffold_files(
+        project_root=resolved_project_root,
+        request_run_full_frontend_build=request.runFullFrontendBuild,
+        model_api_key=request.model.apiModelKey,
+        written_files=files_to_write,
+    )
+
+    return ModelPackageApplyResponse(
+        items=items,
+        validation=post_write_validation,
+    )

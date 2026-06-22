@@ -344,7 +344,9 @@ const buildExampleFormState = () => ({
 
 const formatStatusSeverity = (status) => {
   if (status === "toGenerate" || status === "written") return "success";
+  if (status === "passed") return "success";
   if (status === "partial") return "warning";
+  if (status === "failed") return "error";
   if (status === "skipped" || status === "exists") return "info";
   return "default";
 };
@@ -469,6 +471,20 @@ const getCatalogKeyLabel = (option) => {
   return option?.key || "";
 };
 
+const summarizeValidationChecks = (validation) => {
+  const checks = Array.isArray(validation?.checks) ? validation.checks : [];
+
+  return checks.reduce(
+    (summary, check) => {
+      if (check?.status === "passed") summary.passed += 1;
+      if (check?.status === "failed") summary.failed += 1;
+      if (check?.status === "skipped") summary.skipped += 1;
+      return summary;
+    },
+    { passed: 0, failed: 0, skipped: 0 }
+  );
+};
+
 const ResultItemSummary = ({ item }) => (
   <Stack spacing={0.35} sx={{ minWidth: 0 }}>
     <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
@@ -496,6 +512,99 @@ const ResultItemSummary = ({ item }) => (
     )}
   </Stack>
 );
+
+const ValidationPanel = ({
+  theme,
+  title,
+  validation,
+  emptyMessage,
+  showFrontendSkippedNote = false,
+}) => {
+  if (!validation) {
+    return (
+      <Box sx={{ py: 0.4 }}>
+        <EmptyState>{emptyMessage}</EmptyState>
+      </Box>
+    );
+  }
+
+  const summary = summarizeValidationChecks(validation);
+  const checks = Array.isArray(validation.checks) ? validation.checks : [];
+  const frontendBuildSkipped = checks.some(
+    (check) => check?.name === "Frontend full build" && check?.status === "skipped"
+  );
+
+  return (
+    <Stack spacing={1.15}>
+      <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
+        <Chip
+          size="small"
+          label={`validation ${validation.status || "skipped"}`}
+          color={formatStatusSeverity(validation.status)}
+          variant="outlined"
+        />
+        <Chip size="small" label={`${summary.passed} passed`} variant="outlined" />
+        <Chip size="small" label={`${summary.failed} failed`} variant="outlined" />
+        <Chip size="small" label={`${summary.skipped} skipped`} variant="outlined" />
+      </Stack>
+
+      {showFrontendSkippedNote && frontendBuildSkipped && (
+        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          Frontend build was not run automatically.
+        </Typography>
+      )}
+
+      {checks.length === 0 ? (
+        <EmptyState>{emptyMessage}</EmptyState>
+      ) : (
+        <Stack spacing={0} divider={<Divider flexItem sx={sectionDividerSx(theme)} />}>
+          {checks.map((check, index) => (
+            <Box key={`${check.name}-${index}`} sx={{ py: 1 }}>
+              <Stack spacing={0.75}>
+                <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
+                  <Chip size="small" label={title} variant="outlined" />
+                  <Chip
+                    size="small"
+                    label={check.status}
+                    color={formatStatusSeverity(check.status)}
+                    variant="outlined"
+                  />
+                </Stack>
+
+                <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                  {check.name}
+                </Typography>
+
+                {check.details && (
+                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                    {check.details}
+                  </Typography>
+                )}
+
+                {check.command && (
+                  <Box component="pre" sx={codeBlockSx(theme)}>
+                    {check.command}
+                  </Box>
+                )}
+
+                {(check.cwd || check.exitCode != null || check.stdout || check.stderr) && (
+                  <Box component="pre" sx={codeBlockSx(theme)}>
+                    {formatJsonPreview({
+                      cwd: check.cwd || null,
+                      exitCode: check.exitCode ?? null,
+                      stdout: check.stdout || null,
+                      stderr: check.stderr || null,
+                    })}
+                  </Box>
+                )}
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+};
 
 const CapabilityToggle = ({ label, checked, onChange }) => {
   const theme = useTheme();
@@ -976,7 +1085,9 @@ export default function AdminModelForgeSection() {
   const [requestPayloadPreview, setRequestPayloadPreview] = useState(null);
   const [previewResult, setPreviewResult] = useState(null);
   const [applyResult, setApplyResult] = useState(null);
+  const [applyValidationResult, setApplyValidationResult] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [runFullFrontendBuild, setRunFullFrontendBuild] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
@@ -1094,12 +1205,14 @@ export default function AdminModelForgeSection() {
     }));
     setPreviewResult(null);
     setApplyResult(null);
+    setApplyValidationResult(null);
     setActionError("");
   }, []);
 
   const resetActionState = useCallback(() => {
     setPreviewResult(null);
     setApplyResult(null);
+    setApplyValidationResult(null);
     setActionError("");
   }, []);
 
@@ -1143,6 +1256,7 @@ export default function AdminModelForgeSection() {
     setFormState(buildExampleFormState());
     setPreviewResult(null);
     setApplyResult(null);
+    setApplyValidationResult(null);
     setActionError("");
     setRequestPayloadPreview(null);
     showSnackbarAlert("Sample scaffold form loaded", "success");
@@ -1235,6 +1349,7 @@ export default function AdminModelForgeSection() {
     setPreviewLoading(true);
     setActionError("");
     setApplyResult(null);
+    setApplyValidationResult(null);
 
     try {
       const response = await previewModelForgeModelPackage(payload);
@@ -1267,19 +1382,25 @@ export default function AdminModelForgeSection() {
 
     setApplyLoading(true);
     setActionError("");
+    setApplyValidationResult(null);
 
     try {
-      const response = await applyModelForgeModelPackage(requestPayloadPreview);
+      const response = await applyModelForgeModelPackage({
+        ...requestPayloadPreview,
+        runFullFrontendBuild,
+      });
 
       if (!response?.success) {
         const message =
           response?.message || "Error applying Model Forge scaffold package.";
+        setApplyValidationResult(response?.error?.details?.validation || null);
         setActionError(message);
         showSnackbarAlert(message, "error");
         return false;
       }
 
       setApplyResult(response.data || null);
+      setApplyValidationResult(response?.data?.validation || null);
       setApplyDialogOpen(false);
       showSnackbarAlert(response.message || "Scaffold package applied", "success");
       return true;
@@ -1292,7 +1413,7 @@ export default function AdminModelForgeSection() {
     } finally {
       setApplyLoading(false);
     }
-  }, [requestPayloadPreview, showSnackbarAlert]);
+  }, [requestPayloadPreview, runFullFrontendBuild, showSnackbarAlert]);
 
   const updateModelKind = useCallback((nextKind) => {
     if (!nextKind) return;
@@ -1701,6 +1822,18 @@ export default function AdminModelForgeSection() {
                 >
                   Apply
                 </Button>
+                <FormControlLabel
+                  sx={{ m: 0 }}
+                  control={(
+                    <Checkbox
+                      color="info"
+                      size="small"
+                      checked={runFullFrontendBuild}
+                      onChange={(event) => setRunFullFrontendBuild(event.target.checked)}
+                    />
+                  )}
+                  label="Run full frontend build after apply"
+                />
               </Stack>
             )}
           >
@@ -1757,6 +1890,18 @@ export default function AdminModelForgeSection() {
                     ))}
                   </Stack>
                 )}
+
+                <Box sx={{ pt: 1.35 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1.15 }}>
+                    Preview validation
+                  </Typography>
+                  <ValidationPanel
+                    theme={theme}
+                    title="preview"
+                    validation={previewResult?.validation || null}
+                    emptyMessage="No preview validation available yet."
+                  />
+                </Box>
               </Box>
 
               <Box>
@@ -1835,6 +1980,19 @@ export default function AdminModelForgeSection() {
                     </Stack>
                   </Stack>
                 )}
+
+                <Box sx={{ pt: 1.35 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1.15 }}>
+                    Apply validation
+                  </Typography>
+                  <ValidationPanel
+                    theme={theme}
+                    title="apply"
+                    validation={applyValidationResult}
+                    emptyMessage="No apply validation available yet."
+                    showFrontendSkippedNote
+                  />
+                </Box>
               </Box>
             </Stack>
           </InlineSection>
