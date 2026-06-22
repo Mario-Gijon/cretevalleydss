@@ -3,6 +3,7 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 from schemas.model_requests import GenericModelExecutionRequest
+from services.criteria_weights_consensus.mcc_weights import solve_mcc_weights
 from services.model_executors.responses import error_response, success_response
 from .run import run_bwm
 
@@ -43,6 +44,53 @@ def _normalize_bwm_scale_value(value: Any, field: str) -> float:
     return numeric
 
 
+def _build_weights_by_expert(
+    *,
+    criteria: list[dict[str, str]],
+    expert_weights: dict[str, list[float]],
+) -> dict[str, dict[str, float]]:
+    weights_by_expert: dict[str, dict[str, float]] = {}
+
+    for expert_key, weights in expert_weights.items():
+        if not isinstance(weights, list) or len(weights) != len(criteria):
+            raise ValueError(
+                f"BWM output for expert '{expert_key}' does not match criteria length"
+            )
+
+        weights_by_expert[expert_key] = {
+            criterion["id"]: float(weights[index])
+            for index, criterion in enumerate(criteria)
+        }
+
+    return weights_by_expert
+
+
+def _resolve_final_weights(
+    *,
+    criteria: list[dict[str, str]],
+    expert_weights_by_expert: dict[str, dict[str, float]],
+) -> tuple[dict[str, float], dict[str, Any]]:
+    if len(expert_weights_by_expert) == 0:
+        raise ValueError("BWM did not produce weights for any expert")
+
+    if len(expert_weights_by_expert) == 1:
+        expert_key = next(iter(expert_weights_by_expert))
+        return expert_weights_by_expert[expert_key], {
+            "useMcc": False,
+            "singleExpertKey": expert_key,
+        }
+
+    mcc_result = solve_mcc_weights(
+        criteria=criteria,
+        expert_weights_by_expert=expert_weights_by_expert,
+    )
+
+    return mcc_result["weightsByCriterion"], {
+        "useMcc": True,
+        "mcc": mcc_result,
+    }
+
+
 def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONResponse:
     try:
         criteria = _normalize_criteria(payload)
@@ -60,6 +108,9 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
             expert_key = str(expert.get("email") or expert.get("id") or "").strip()
             if not expert_key:
                 continue
+
+            if expert_key in experts_data:
+                return error_response(f"Duplicated BWM evaluation for expert '{expert_key}'")
 
             best_to_others = eval_payload.get("bestToOthers")
             others_to_worst = eval_payload.get("othersToWorst")
@@ -122,14 +173,33 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
         if not results.get("success", False):
             return error_response(results.get("message") or "Error executing BWM")
 
-        weights = results.get("weights", [])
-        if not isinstance(weights, list) or len(weights) < len(criteria):
-            return error_response("BWM output does not contain enough weights")
+        expert_weights = results.get("expertWeights", {})
+        if not isinstance(expert_weights, dict):
+            return error_response("BWM output does not contain expert weights")
 
-        weights_by_criterion = {
-            criterion["id"]: float(weights[index])
-            for index, criterion in enumerate(criteria)
+        expert_weights_by_expert = _build_weights_by_expert(
+            criteria=criteria,
+            expert_weights=expert_weights,
+        )
+
+        try:
+            weights_by_criterion, consensus_metadata = _resolve_final_weights(
+                criteria=criteria,
+                expert_weights_by_expert=expert_weights_by_expert,
+            )
+        except ValueError as error:
+            return error_response(f"Error applying MCC to BWM weights: {error}")
+
+        raw_output = {
+            **results,
+            "useMcc": consensus_metadata["useMcc"],
+            "expertWeightsByExpert": expert_weights_by_expert,
         }
+
+        if consensus_metadata["useMcc"]:
+            raw_output["mcc"] = consensus_metadata["mcc"]
+        else:
+            raw_output["singleExpertKey"] = consensus_metadata["singleExpertKey"]
 
         response_data = {
             "message": f"Criteria weights for '{payload.context.get('issue', {}).get('name', 'issue')}' successfully computed.",
@@ -143,7 +213,7 @@ def execute_bwm(payload: GenericModelExecutionRequest) -> dict[str, Any] | JSONR
                 "apiModelKey": "bwm",
                 "apiEndpointPath": "/bwm",
             },
-            "rawOutput": results,
+            "rawOutput": raw_output,
         }
 
         return success_response("BWM executed successfully", response_data)
