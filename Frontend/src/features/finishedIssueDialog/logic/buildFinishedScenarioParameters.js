@@ -24,13 +24,13 @@ const getParameterExpectedLength = (parameter, leafCount) => {
 
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
-  !["criteriaWeights", "fuzzyCriteriaWeights"].includes(param?.parameterStructureKey) &&
   param?.semanticRole !== "criteriaWeights";
 
 export const SCENARIO_WEIGHTS_SUM_TOLERANCE = 0.001;
 
 const isCriteriaWeightsParameter = (parameter) =>
-  parameter?.parameterStructureKey === "criteriaWeights";
+  parameter?.semanticRole === "criteriaWeights" &&
+  parameter?.type === "array";
 
 export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
@@ -199,7 +199,7 @@ const buildSyntheticWeightsParameter = (model) => {
     label: "Criteria weights",
     type: "array",
     scope: "perCriterion",
-    parameterStructureKey: "criteriaWeights",
+    semanticRole: "criteriaWeights",
     required: true,
     default: "equal",
     restrictions: {
@@ -498,7 +498,9 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
     }
 
     if (param.type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria =
+        param?.semanticRole === "criteriaWeights" &&
+        param?.type === "fuzzyArray";
       const fuzzyValueCount =
         Number(param?.restrictions?.length) || resolveFuzzyWeightsValueCount(model);
       if (
@@ -637,7 +639,9 @@ export const cleanParamsForSend = ({
     }
 
     if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria =
+        param?.semanticRole === "criteriaWeights" &&
+        param?.type === "fuzzyArray";
       const fuzzyValueCount =
         Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
       if (
@@ -881,7 +885,9 @@ export const validateParams = ({
     }
 
     if (type === "fuzzyArray") {
-      const isFuzzyWeightsByCriteria = param?.parameterStructureKey === "fuzzyCriteriaWeights";
+      const isFuzzyWeightsByCriteria =
+        param?.semanticRole === "criteriaWeights" &&
+        param?.type === "fuzzyArray";
       const fuzzyValueCount =
         Number(restrictions.length) || resolveFuzzyWeightsValueCount(model);
       if (

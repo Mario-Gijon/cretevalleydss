@@ -37,9 +37,7 @@ export const buildDefaultsResolved = ({ modelDoc, leafCount }) => {
         (defaultValue.length || 2);
 
       const isCriteriaWeights =
-        ["criteriaWeights", "fuzzyCriteriaWeights"].includes(
-          normalizeNonEmptyString(parameter.parameterStructureKey)
-        );
+        normalizeNonEmptyString(parameter.semanticRole) === "criteriaWeights";
 
       if (
         isCriteriaWeights &&

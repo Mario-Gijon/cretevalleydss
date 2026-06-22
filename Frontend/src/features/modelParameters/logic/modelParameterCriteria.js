@@ -6,8 +6,6 @@ export const isCriterionMapParameter = (parameter) =>
   parameter.parameterStructureKey === "selectCriterion";
 
 export const isCriteriaWeightLikeParameter = (parameter) =>
-  parameter.parameterStructureKey === "criteriaWeights" ||
-  parameter.parameterStructureKey === "fuzzyCriteriaWeights" ||
   parameter.semanticRole === "criteriaWeights";
 
 export const buildCriterionParameterRows = ({ parameterContext }) =>
