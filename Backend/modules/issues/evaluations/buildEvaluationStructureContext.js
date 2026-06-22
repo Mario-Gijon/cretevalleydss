@@ -75,9 +75,9 @@ const resolveStructureForIssueStageOrNull = ({ issue, stage, structure }) => {
 
   const structureKeyByStage = {
     [EVALUATION_STAGES.CRITERIA_WEIGHTING]:
-      issue?.criteriaWeightingStructureKey,
+      issue?.criteriaWeightsStructureKey,
     [EVALUATION_STAGES.ALTERNATIVE_EVALUATION]:
-      issue?.alternativeEvaluationStructureKey,
+      issue?.evaluationStructureKey,
   };
   const structureKey = structureKeyByStage[normalizedStage];
 

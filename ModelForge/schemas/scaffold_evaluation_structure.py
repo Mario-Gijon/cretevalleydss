@@ -12,6 +12,7 @@ JS_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 class EvaluationStructureScaffoldPreviewRequest(BaseModel):
     evaluationStructureKey: str
+    stageConstant: str = "ALTERNATIVE_EVALUATION"
     componentName: str | None = None
     backendStructureExportName: str | None = None
     adapterExportName: str | None = None
@@ -27,6 +28,16 @@ class EvaluationStructureScaffoldPreviewRequest(BaseModel):
         if not EVALUATION_STRUCTURE_KEY_PATTERN.fullmatch(stripped):
             raise ValueError(
                 "evaluationStructureKey must use the existing lower camelCase style"
+            )
+        return stripped
+
+    @field_validator("stageConstant")
+    @classmethod
+    def validate_stage_constant(cls, value: str) -> str:
+        stripped = value.strip()
+        if stripped not in {"ALTERNATIVE_EVALUATION", "CRITERIA_WEIGHTING"}:
+            raise ValueError(
+                "stageConstant must be ALTERNATIVE_EVALUATION or CRITERIA_WEIGHTING"
             )
         return stripped
 

@@ -34,9 +34,9 @@ const isFiniteNumber = (value) =>
 const getStructureForIssueStage = ({ issue, stage }) => {
   const structureKeyByStage = {
     [EVALUATION_STAGES.CRITERIA_WEIGHTING]:
-      issue.criteriaWeightingStructureKey,
+      issue.criteriaWeightsStructureKey,
     [EVALUATION_STAGES.ALTERNATIVE_EVALUATION]:
-      issue.alternativeEvaluationStructureKey,
+      issue.evaluationStructureKey,
   };
 
   return getEvaluationStructureOrThrow(structureKeyByStage[stage]);

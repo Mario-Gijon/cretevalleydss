@@ -121,7 +121,7 @@ export const buildFinishedPayloadContextOrThrow = async ({
     issue,
     allModels,
     issueAlternativeEvaluationStructureKey:
-      issue.alternativeEvaluationStructureKey,
+      issue.evaluationStructureKey,
     issueDomainSnapshots,
     leafCount,
   });

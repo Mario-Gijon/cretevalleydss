@@ -29,6 +29,7 @@ def _build_placeholder_values(
 
     return {
         "evaluation_structure_key": names.evaluation_structure_key,
+        "stage_constant": request.stageConstant,
         "backend_structure_export_name": names.backend_structure_export_name,
         "component_name": names.component_name,
         "view_component_name": names.view_component_name,

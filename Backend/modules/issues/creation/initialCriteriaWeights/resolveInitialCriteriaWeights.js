@@ -72,7 +72,7 @@ const validateCriteriaWeightingModeSupportOrThrow = ({
 };
 
 const buildResolvedCriteriaWeightingConfig = ({
-  criteriaWeightingStructureKey,
+  criteriaWeightsStructureKey,
   criteriaWeightingModel,
   criteriaWeightingRuntime,
   criteriaWeightingApiModelKey,
@@ -85,7 +85,7 @@ const buildResolvedCriteriaWeightingConfig = ({
   isCriteriaWeightingRequired,
 }) => {
   return {
-    criteriaWeightingStructureKey,
+    criteriaWeightsStructureKey,
     criteriaWeightingModel,
     criteriaWeightingRuntime,
     criteriaWeightingApiModelKey,
@@ -101,7 +101,7 @@ const buildResolvedCriteriaWeightingConfig = ({
 
 const buildNoCriteriaWeightingResolution = () =>
   buildResolvedCriteriaWeightingConfig({
-    criteriaWeightingStructureKey: null,
+    criteriaWeightsStructureKey: null,
     criteriaWeightingModel: null,
     criteriaWeightingRuntime: null,
     criteriaWeightingApiModelKey: null,
@@ -220,7 +220,7 @@ const remapDeferredCriteriaWeightingPayloadOrThrow = ({
     return null;
   }
 
-  if (resolvedCriteriaWeighting.criteriaWeightingStructureKey === "bestWorstCriteria") {
+  if (resolvedCriteriaWeighting.criteriaWeightsStructureKey === "bestWorstCriteria") {
     return remapBestWorstCriteriaPayloadOrThrow({
       payload: resolvedCriteriaWeighting.deferredPayload,
       idMap,
@@ -228,7 +228,7 @@ const remapDeferredCriteriaWeightingPayloadOrThrow = ({
   }
 
   throw createInternalError(
-    `Unsupported deferred criteria weighting structure '${resolvedCriteriaWeighting.criteriaWeightingStructureKey}'`,
+    `Unsupported deferred criteria weighting structure '${resolvedCriteriaWeighting.criteriaWeightsStructureKey}'`,
     {
       field: "criteriaWeightingConfig.structureKey",
     }
@@ -260,7 +260,7 @@ const resolveCriteriaWeightingStructureKey = ({
   criteriaWeightingRuntime,
 }) => {
   if (resolvedConfig.method === "apiModel") {
-    return criteriaWeightingRuntime.criteriaWeightingStructureKey;
+    return criteriaWeightingRuntime.criteriaWeightsStructureKey;
   }
 
   return resolvedConfig.structureKey;
@@ -422,7 +422,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
     if (isSingleLeafCriterion) {
       return buildResolvedCriteriaWeightingConfig({
-      criteriaWeightingStructureKey: resolvedStructureKey,
+      criteriaWeightsStructureKey: resolvedStructureKey,
       criteriaWeightingModel: null,
       criteriaWeightingRuntime: null,
       criteriaWeightingApiModelKey: null,
@@ -445,7 +445,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     });
 
     return buildResolvedCriteriaWeightingConfig({
-      criteriaWeightingStructureKey: resolvedStructureKey,
+      criteriaWeightsStructureKey: resolvedStructureKey,
       criteriaWeightingModel: null,
       criteriaWeightingRuntime: null,
       criteriaWeightingApiModelKey: null,
@@ -465,7 +465,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
     };
 
     return buildResolvedCriteriaWeightingConfig({
-      criteriaWeightingStructureKey: resolvedStructureKey,
+      criteriaWeightsStructureKey: resolvedStructureKey,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
       criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,
@@ -481,7 +481,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
 
   if (resolvedConfig.source === "experts") {
     return buildResolvedCriteriaWeightingConfig({
-      criteriaWeightingStructureKey: resolvedStructureKey,
+      criteriaWeightsStructureKey: resolvedStructureKey,
       criteriaWeightingModel,
       criteriaWeightingRuntime,
       criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,
@@ -523,7 +523,7 @@ export const resolveCriteriaWeightingConfigOrThrow = async ({
   }
 
   return buildResolvedCriteriaWeightingConfig({
-    criteriaWeightingStructureKey: resolvedStructureKey,
+    criteriaWeightsStructureKey: resolvedStructureKey,
     criteriaWeightingModel,
     criteriaWeightingRuntime,
     criteriaWeightingApiModelKey: apiModelMetadata.criteriaWeightingApiModelKey,

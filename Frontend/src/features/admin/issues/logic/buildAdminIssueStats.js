@@ -10,7 +10,7 @@ export const buildAdminIssueStats = (issues = []) => {
     consensus: list.filter((issue) => issue?.isConsensus).length,
     pairwise: list.filter(
       (issue) =>
-        issue?.alternativeEvaluationStructureKey ===
+        issue?.evaluationStructureKey ===
         "alternativePairwiseByCriterion"
     ).length,
   };

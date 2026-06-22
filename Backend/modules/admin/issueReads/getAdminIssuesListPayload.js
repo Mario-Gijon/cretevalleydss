@@ -97,7 +97,7 @@ export const getAdminIssuesListPayload = async ({
     .populate("createdBy", "name email role accountConfirm")
     .populate(
       "model",
-      "name alternativeEvaluationStructureKey criteriaWeightingStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation"
+      "name evaluationStructureKey criteriaWeightsStructureKey isMultiCriteria supportsConsensus supportsConsensusSimulation"
     )
     .sort({ active: -1, creationDate: -1, name: 1 })
     .lean();
@@ -288,7 +288,7 @@ export const getAdminIssuesListPayload = async ({
       };
 
       const modelAlternativeEvaluationStructureKey = issue.model
-        ? issue.model.alternativeEvaluationStructureKey
+        ? issue.model.evaluationStructureKey
         : null;
 
       const expectedPerExpert = await resolveExpectedEvaluationCellsPerExpert();
@@ -306,8 +306,8 @@ export const getAdminIssuesListPayload = async ({
         consensusThreshold: issue.consensusThreshold,
         creationDate: issue.creationDate,
         closureDate: issue.closureDate,
-        alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
-        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+        evaluationStructureKey: issue.evaluationStructureKey,
+        criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
         owner: issue.ownerId
           ? {
             id: toIdString(issue.ownerId._id),
@@ -330,10 +330,8 @@ export const getAdminIssuesListPayload = async ({
           ? {
             id: toIdString(issue.model._id),
             name: issue.model.name,
-            alternativeEvaluationStructureKey:
-              modelAlternativeEvaluationStructureKey,
-            criteriaWeightingStructureKey:
-              issue.model.criteriaWeightingStructureKey,
+            modelKind: issue.model.modelKind,
+            evaluationStructureKey: modelAlternativeEvaluationStructureKey,
             supportsConsensus: issue.model.supportsConsensus === true,
             supportsConsensusSimulation:
               issue.model.supportsConsensusSimulation === true,

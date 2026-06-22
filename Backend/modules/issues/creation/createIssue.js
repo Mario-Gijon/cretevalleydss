@@ -74,7 +74,7 @@ export const prepareIssueCreation = async ({
     expertByEmail,
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
     supportsConsensusSimulation: modelSupportsConsensusSimulation,
     usesCriteriaWeights,
@@ -91,7 +91,7 @@ export const prepareIssueCreation = async ({
   });
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
-    alternativeEvaluationStructureKey
+    evaluationStructureKey
   );
 
   if (alternativeEvaluationStructure.stage !== EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
@@ -99,7 +99,7 @@ export const prepareIssueCreation = async ({
       `Evaluation structure '${alternativeEvaluationStructure.key}' does not support stage '${EVALUATION_STAGES.ALTERNATIVE_EVALUATION}'`,
       {
         code: "EVALUATION_STRUCTURE_STAGE_MISMATCH",
-        field: "alternativeEvaluationStructureKey",
+        field: "evaluationStructureKey",
       }
     );
   }
@@ -178,7 +178,7 @@ export const prepareIssueCreation = async ({
     expertByEmail,
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     modelSupportsConsensus,
     simulateConsensus,
     isConsensus,
@@ -210,7 +210,7 @@ export const persistPreparedIssueCreation = async ({
     expertByEmail,
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     modelSupportsConsensus,
     simulateConsensus,
     isConsensus,
@@ -238,7 +238,7 @@ export const persistPreparedIssueCreation = async ({
     model,
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     supportsConsensus: modelSupportsConsensus,
     simulateConsensus,
     isConsensus,

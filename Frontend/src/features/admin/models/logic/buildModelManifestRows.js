@@ -78,10 +78,10 @@ export const normalizeModelManifestDryRunRows = (report) => {
 
   asList(report?.summary?.notSyncable).forEach((item) => {
     rows.push({
-      apiModelKey: item.key,
-      displayName: item.key,
+      apiModelKey: item.apiModelKey || null,
+      displayName: item.displayName || item.apiModelKey || null,
       lifecycleKind: item.lifecycleKind || null,
-      isIssueModel: item.isIssueModel ?? null,
+      modelKind: item.modelKind || null,
       safeToCreateIssueModel: item.safeToCreateIssueModel,
       reason: item.reason,
       syncState: "Not syncable",
@@ -97,7 +97,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     displayName: model?.name || "Unknown model",
     mongoName: model?.name || "Unknown model",
     mongoId: model?.id || model?._id || null,
-    isIssueModel: model?.isIssueModel === true,
+    modelKind: model?.modelKind || null,
     implementationStatus: model?.implementationStatus || "ready",
     publicUsable: model?.publicUsable !== false,
     visibleInIssueCreation: model?.visibleInIssueCreation !== false,
@@ -107,8 +107,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     modelOutputFields: asList(model?.modelOutputFields),
     lifecycleKind: model?.lifecycleKind || null,
     safeToCreateIssueModel: null,
-    alternativeEvaluationStructureKey:
-      model?.alternativeEvaluationStructureKey || null,
+    evaluationStructureKey: model?.evaluationStructureKey || null,
     usesCriteriaWeights: model?.usesCriteriaWeights === true,
     usesExpertWeights: model?.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model?.usesFuzzyCriteriaWeights === true,

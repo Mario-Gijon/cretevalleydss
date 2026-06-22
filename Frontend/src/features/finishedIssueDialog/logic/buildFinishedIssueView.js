@@ -43,8 +43,8 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     modelExecutionOutput?.rawOutput ??
     null;
   const scenarioEvaluationStructure =
-    scenario?.targetAlternativeEvaluationStructureKey ||
-    scenario?.alternativeEvaluationStructureKey ||
+    scenario?.targetEvaluationStructureKey ||
+    scenario?.evaluationStructureKey ||
     null;
   const normalizedRanking = normalizeScenarioRanking({ standardResult });
   const collectiveEvaluations =
@@ -58,8 +58,8 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
     model: scenario?.targetModelName || out?.summary?.model,
     modelName: scenario?.targetModelName || out?.summary?.modelName,
     targetModelName: scenario?.targetModelName,
-    alternativeEvaluationStructureKey:
-      scenarioEvaluationStructure || out?.summary?.alternativeEvaluationStructureKey,
+    evaluationStructureKey:
+      scenarioEvaluationStructure || out?.summary?.evaluationStructureKey,
     modelParameters:
       scenario?.config?.normalizedModelParameters ||
       scenario?.config?.modelParameters ||
@@ -70,9 +70,9 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
   out.modelParams.base = {
     ...(out.modelParams.base || {}),
     modelName: scenario?.targetModelName || out.modelParams.base?.modelName,
-    alternativeEvaluationStructureKey:
+    evaluationStructureKey:
       scenarioEvaluationStructure ||
-      out.modelParams.base?.alternativeEvaluationStructureKey,
+      out.modelParams.base?.evaluationStructureKey,
     paramsSaved:
       scenario?.config?.modelParameters || out.modelParams.base?.paramsSaved,
     paramsResolved:

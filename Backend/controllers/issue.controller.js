@@ -63,11 +63,11 @@ export const modelsInfo = async (req, res) => {
       {
         $or: [
           {
-            isIssueModel: true,
+            modelKind: "issue",
             visibleInIssueCreation: true,
           },
           {
-            isCriteriaWeightingModel: true,
+            modelKind: "criteriaWeighting",
             visibleInCriteriaWeighting: true,
           },
         ],
@@ -83,9 +83,9 @@ export const modelsInfo = async (req, res) => {
   })
     .select("-__v")
     .lean();
-  const issueModels = models.filter((model) => model.isIssueModel === true);
+  const issueModels = models.filter((model) => model.modelKind === "issue");
   const criteriaWeightingModels = models.filter(
-    (model) => model.isCriteriaWeightingModel === true
+    (model) => model.modelKind === "criteriaWeighting"
   );
 
   return sendSuccess(res, "Models fetched successfully", {

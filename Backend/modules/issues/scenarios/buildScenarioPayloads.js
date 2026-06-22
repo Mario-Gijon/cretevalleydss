@@ -12,12 +12,12 @@ const mapScenarioListItem = (scenario) => ({
   targetModelId: toIdString(scenario?.targetModel),
   targetModelName: scenario?.targetModelName || null,
   domainType: scenario?.domainType ?? null,
-  alternativeEvaluationStructureKey:
-    scenario?.alternativeEvaluationStructureKey ||
-    scenario?.targetAlternativeEvaluationStructureKey ||
+  evaluationStructureKey:
+    scenario?.evaluationStructureKey ||
+    scenario?.targetEvaluationStructureKey ||
     null,
-  criteriaWeightingStructureKey:
-    scenario?.criteriaWeightingStructureKey ||
+  criteriaWeightsStructureKey:
+    scenario?.criteriaWeightsStructureKey ||
     null,
   status: scenario?.status || null,
   createdAt: scenario?.createdAt || null,
@@ -37,13 +37,13 @@ const mapScenarioDetail = (scenarioDoc) => ({
   targetModelName: scenarioDoc?.targetModelName || null,
   targetApiModelKey: scenarioDoc?.targetApiModelKey || null,
   targetApiEndpoint: scenarioDoc?.targetApiEndpoint || null,
-  targetAlternativeEvaluationStructureKey:
-    scenarioDoc?.targetAlternativeEvaluationStructureKey || null,
+  targetEvaluationStructureKey:
+    scenarioDoc?.targetEvaluationStructureKey || null,
   targetSupportsConsensus: scenarioDoc?.targetSupportsConsensus === true,
-  alternativeEvaluationStructureKey:
-    scenarioDoc?.alternativeEvaluationStructureKey || null,
-  criteriaWeightingStructureKey:
-    scenarioDoc?.criteriaWeightingStructureKey || null,
+  evaluationStructureKey:
+    scenarioDoc?.evaluationStructureKey || null,
+  criteriaWeightsStructureKey:
+    scenarioDoc?.criteriaWeightsStructureKey || null,
   domainType: scenarioDoc?.domainType ?? null,
   status: scenarioDoc?.status || null,
   error: scenarioDoc?.error || null,
@@ -70,7 +70,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
     .select(
-      "_id name targetModel targetModelName domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey targetAlternativeEvaluationStructureKey status createdAt createdBy"
+      "_id name targetModel targetModelName domainType evaluationStructureKey criteriaWeightsStructureKey targetEvaluationStructureKey status createdAt createdBy"
     )
     .populate("createdBy", "email name")
     .lean();

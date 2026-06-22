@@ -82,7 +82,7 @@ export const getIssueExpertEvaluationsPayload = async ({
     latestAlternativeStageResult?.collectiveEvaluations || null;
 
   const alternativeEvaluationStructure = getEvaluationStructureOrThrow(
-    issue.alternativeEvaluationStructureKey
+    issue.evaluationStructureKey
   );
   const evaluationContext = await buildEvaluationStructureContext({
     issue,
@@ -109,8 +109,8 @@ export const getIssueExpertEvaluationsPayload = async ({
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
       active: issue.active,
-      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
-      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+      evaluationStructureKey: issue.evaluationStructureKey,
+      criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
     },
     expert: buildAdminExpertIdentityPayload(expert, expertId),
     participation: buildAdminExpertParticipationPayload(participation),

@@ -71,8 +71,8 @@ export default function ModelDetailDialog({ row, open, onClose }) {
             <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
               <StatusChip label={row.apiModelKey || "No key"} />
               <StatusChip
-                label={row.isIssueModel ? "Issue model" : "Non-issue model"}
-                severity={row.isIssueModel ? "success" : "info"}
+                label={toModelManifestTitle(row.modelKind)}
+                severity={row.modelKind === "issue" ? "success" : "info"}
               />
               <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
               <StatusChip
@@ -104,7 +104,7 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                   label: "Public usable",
                   value: formatModelManifestBoolean(row.publicUsable),
                 },
-                { label: "Issue model", value: formatModelManifestBoolean(row.isIssueModel) },
+                { label: "Model kind", value: toModelManifestTitle(row.modelKind) },
                 {
                   label: "Create Issue visibility",
                   value: getModelCatalogVisibilityLabel(row),
@@ -121,8 +121,8 @@ export default function ModelDetailDialog({ row, open, onClose }) {
             <FieldGrid
               rows={[
                 {
-                  label: "Alternative structure",
-                  value: toModelManifestTitle(row.alternativeEvaluationStructureKey),
+                  label: "Evaluation structure",
+                  value: toModelManifestTitle(row.evaluationStructureKey),
                 },
                 {
                   label: "Uses criteria weights",

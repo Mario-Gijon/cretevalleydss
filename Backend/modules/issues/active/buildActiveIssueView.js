@@ -132,8 +132,8 @@ export const buildActiveIssueView = ({
       owner: issue.ownerId.email,
       description: issue.description,
       model: issue.model,
-      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
+      criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
+      evaluationStructureKey: issue.evaluationStructureKey,
       isConsensus: issue.isConsensus,
       supportsConsensus: issue.supportsConsensus,
       simulateConsensus: issue.simulateConsensus,
@@ -190,8 +190,8 @@ export const buildActiveIssueView = ({
         statusKey: permissions.statusKey,
         statusLabel: permissions.statusLabel,
         deadline,
-        criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
-        alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
+        criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
+        evaluationStructureKey: issue.evaluationStructureKey,
         hasCriteriaWeighting:
           stage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
           stage === ISSUE_STAGES.WEIGHTS_FINISHED,

@@ -3,6 +3,8 @@ from typing import Any, Callable
 
 from pydantic import BaseModel
 
+MODEL_KINDS = {"issue", "criteriaWeighting"}
+
 
 @dataclass(frozen=True)
 class ModelDefinition:
@@ -20,13 +22,11 @@ class ModelDefinition:
     implementation_status: str = "ready"
 
     more_info_url: str | None = None
-    is_issue_model: bool = True
-    is_criteria_weighting_model: bool = False
+    model_kind: str = "issue"
     supports_creator_criteria_weighting: bool = False
     supports_expert_criteria_weighting: bool = False
 
-    alternative_evaluation_structure_key: str | None = None
-    criteria_weighting_structure_key: str | None = None
+    evaluation_structure_key: str = ""
     supports_consensus: bool = False
     supports_consensus_simulation: bool = False
     is_multi_criteria: bool | None = None
@@ -47,22 +47,21 @@ class ModelDefinition:
                 f"implementation_status '{self.implementation_status}'."
             )
 
-        if self.is_issue_model and not self.alternative_evaluation_structure_key:
+        if self.model_kind not in MODEL_KINDS:
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
-                "alternative_evaluation_structure_key for issue models."
+                f"model_kind in {sorted(MODEL_KINDS)}."
             )
 
-        if (
-            self.is_criteria_weighting_model
-            and not self.criteria_weighting_structure_key
+        if not isinstance(self.evaluation_structure_key, str) or (
+            not self.evaluation_structure_key.strip()
         ):
             raise ValueError(
                 f"ModelDefinition '{self.api_model_key}' requires "
-                "criteria_weighting_structure_key for criteria weighting models."
+                "a non-empty evaluation_structure_key."
             )
 
-        if self.is_criteria_weighting_model and not (
+        if self.model_kind == "criteriaWeighting" and not (
             isinstance(self.supports_creator_criteria_weighting, bool)
             and isinstance(self.supports_expert_criteria_weighting, bool)
         ):
@@ -71,7 +70,7 @@ class ModelDefinition:
                 "criteria-weighting capability flags."
             )
 
-        if self.is_criteria_weighting_model and not (
+        if self.model_kind == "criteriaWeighting" and not (
             self.supports_creator_criteria_weighting
             or self.supports_expert_criteria_weighting
         ):

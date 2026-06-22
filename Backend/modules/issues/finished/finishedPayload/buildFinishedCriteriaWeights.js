@@ -233,7 +233,7 @@ export const resolveExpertWeightingRequired = ({
   participations,
   criteriaWeightingEvaluationsByExpertId,
 }) => {
-  if (!issue.criteriaWeightingStructureKey) {
+  if (!issue.criteriaWeightsStructureKey) {
     return false;
   }
 
@@ -277,17 +277,17 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     criteriaWeightingEvaluationsByExpertId,
   });
   const criteriaWeightingStructure = isRequired
-    ? getEvaluationStructureOrThrow(issue.criteriaWeightingStructureKey)
+    ? getEvaluationStructureOrThrow(issue.criteriaWeightsStructureKey)
     : null;
 
   if (isRequired && typeof criteriaWeightingStructure.get !== "function") {
     throw createInternalError(
       "Criteria weighting structure must implement get({ payload, evaluationContext })",
       {
-        field: "criteriaWeightingStructureKey",
+        field: "criteriaWeightsStructureKey",
         details: {
           issueId: toIdString(issue._id),
-          criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+          criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
         },
       }
     );
@@ -332,7 +332,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     if (!isRequired) {
       mapByExpertEmail[expertEmail] = {
         status: "notRequired",
-        structureKey: issue.criteriaWeightingStructureKey,
+        structureKey: issue.criteriaWeightsStructureKey,
         payload: null,
         weightsByCriterion: null,
       };
@@ -344,7 +344,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
     if (!evaluation) {
       mapByExpertEmail[expertEmail] = {
         status: "notSubmitted",
-        structureKey: issue.criteriaWeightingStructureKey,
+        structureKey: issue.criteriaWeightsStructureKey,
         payload: null,
         weightsByCriterion: null,
       };
@@ -364,7 +364,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
           details: {
             issueId: toIdString(issue._id),
             evaluationId: toIdString(evaluation._id),
-            criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+            criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
           },
         }
       );
@@ -378,7 +378,7 @@ export const buildCriteriaWeightsEvaluationByExpert = async ({
 
     mapByExpertEmail[expertEmail] = {
       status,
-      structureKey: issue.criteriaWeightingStructureKey,
+      structureKey: issue.criteriaWeightsStructureKey,
       payload,
       weightsByCriterion,
     };

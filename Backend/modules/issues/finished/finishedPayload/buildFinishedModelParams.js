@@ -34,9 +34,9 @@ export const buildBaseModelParamsPayload = ({
   return {
     modelId: toIdString(model._id),
     modelName: model.name,
-    alternativeEvaluationStructureKey:
-      issue.alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+    evaluationStructureKey:
+      issue.evaluationStructureKey,
+    criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
     supportsConsensus: issue.supportsConsensus === true,
     parameters: model.parameters,
     paramsSaved: baseParamsSaved,

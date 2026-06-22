@@ -77,8 +77,7 @@ const mapIssueModelCatalogItem = (model) => {
     id,
     name: model.name,
     apiModelKey: model.apiModelKey,
-    isIssueModel: model.isIssueModel === true,
-    isCriteriaWeightingModel: model.isCriteriaWeightingModel === true,
+    modelKind: model.modelKind || null,
     implementationStatus: model.implementationStatus || "ready",
     publicUsable: model.publicUsable !== false,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
@@ -86,10 +85,7 @@ const mapIssueModelCatalogItem = (model) => {
     apiEndpoint: model.apiEndpoint,
     manifestSync: model.manifestSync,
     isMultiCriteria: model.isMultiCriteria,
-    alternativeEvaluationStructureKey:
-      model.alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey:
-      model.criteriaWeightingStructureKey,
+    evaluationStructureKey: model.evaluationStructureKey,
     usesCriteriaWeights: model.usesCriteriaWeights === true,
     usesExpertWeights: model.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,

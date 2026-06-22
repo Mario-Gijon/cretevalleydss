@@ -30,7 +30,7 @@ export const respondToIssueInvitation = async ({
 
   const issue = await getIssueByIdOrThrow(issueId, {
     select:
-      "_id name currentStage consensusPhase criteriaWeightingStructureKey",
+      "_id name currentStage consensusPhase criteriaWeightsStructureKey",
     lean: false,
     session,
   });
@@ -58,8 +58,8 @@ export const respondToIssueInvitation = async ({
       issue.currentStage === ISSUE_STAGES.CRITERIA_WEIGHTING ||
       issue.currentStage === ISSUE_STAGES.WEIGHTS_FINISHED;
     const requiresCriteriaWeighting =
-      issue.criteriaWeightingStructureKey !== null &&
-      issue.criteriaWeightingStructureKey !== undefined;
+      issue.criteriaWeightsStructureKey !== null &&
+      issue.criteriaWeightsStructureKey !== undefined;
 
     participation.evaluationCompleted = false;
     if (criteriaWeightingIsOpen && requiresCriteriaWeighting) {

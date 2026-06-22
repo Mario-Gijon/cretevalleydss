@@ -13,11 +13,11 @@ import EvaluationStructureDialog from "./EvaluationStructureDialog";
 
 const getIssueStructureKeyByStage = (issue, stage) => {
   if (stage === EVALUATION_STAGES.CRITERIA_WEIGHTING) {
-    return issue?.criteriaWeightingStructureKey || null;
+    return issue?.criteriaWeightsStructureKey || null;
   }
 
   if (stage === EVALUATION_STAGES.ALTERNATIVE_EVALUATION) {
-    return issue?.alternativeEvaluationStructureKey || null;
+    return issue?.evaluationStructureKey || null;
   }
 
   return null;

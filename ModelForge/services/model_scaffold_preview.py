@@ -1,5 +1,6 @@
 from pathlib import Path
 from pprint import pformat
+import json
 
 from schemas.scaffold_model import (
     ModelScaffoldPreviewRequest,
@@ -18,7 +19,7 @@ def _format_python_value(value) -> str:
 
 
 def _format_python_string_literal(value: str) -> str:
-    return repr(value)
+    return json.dumps(value)
 
 
 def _build_examples_import_block(
@@ -65,9 +66,11 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "run_function_name": names.run_function_name,
         "request_examples_constant": names.request_examples_constant,
         "response_examples_constant": names.response_examples_constant,
-        "alternative_evaluation_structure_key": request.alternativeEvaluationStructureKey,
-        "alternative_evaluation_structure_key_literal": _format_python_string_literal(
-            request.alternativeEvaluationStructureKey
+        "model_kind": request.modelKind,
+        "model_kind_literal": _format_python_string_literal(request.modelKind),
+        "evaluation_structure_key": request.evaluationStructureKey,
+        "evaluation_structure_key_literal": _format_python_string_literal(
+            request.evaluationStructureKey
         ),
         "supports_consensus": repr(request.supportsConsensus),
         "supports_consensus_simulation": repr(request.supportsConsensusSimulation),

@@ -129,13 +129,19 @@ export const normalizeSupportedDomains = (supportedDomains) => {
   };
 };
 
-export const getSyncBlockerReason = (manifestModel) => {
-  const isIssueModel = manifestModel?.isIssueModel === true;
-  const isCriteriaWeightingModel =
-    manifestModel?.isCriteriaWeightingModel === true;
+export const normalizeModelKind = (value) => {
+  const modelKind = normalizeNonEmptyString(value);
 
-  if (!isIssueModel && !isCriteriaWeightingModel) {
-    return "Model is not marked as issue model or criteria weighting model";
+  if (modelKind === "issue" || modelKind === "criteriaWeighting") {
+    return modelKind;
+  }
+
+  return null;
+};
+
+export const getSyncBlockerReason = (manifestModel) => {
+  if (!normalizeModelKind(manifestModel?.modelKind)) {
+    return "Model has invalid modelKind";
   }
 
   return null;
@@ -144,8 +150,7 @@ export const getSyncBlockerReason = (manifestModel) => {
 export const buildSkippedManifestModel = (manifestModel, reason) => ({
   apiModelKey: manifestModel?.apiModelKey ?? null,
   displayName: manifestModel?.displayName ?? null,
-  isIssueModel: manifestModel?.isIssueModel === true,
-  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  modelKind: normalizeModelKind(manifestModel?.modelKind),
   reason,
 });
 
@@ -190,15 +195,10 @@ export const validateSyncableManifestModel = (manifestModel) => {
   const apiModelKey = normalizeNonEmptyString(manifestModel?.apiModelKey);
   const displayName = normalizeNonEmptyString(manifestModel?.displayName);
   const endpointPath = normalizeNonEmptyString(manifestModel?.apiEndpoint?.path);
-  const alternativeEvaluationStructureKey = normalizeNonEmptyString(
-    manifestModel?.alternativeEvaluationStructureKey
+  const modelKind = normalizeModelKind(manifestModel?.modelKind);
+  const evaluationStructureKey = normalizeNonEmptyString(
+    manifestModel?.evaluationStructureKey
   );
-  const criteriaWeightingStructureKey = normalizeNonEmptyString(
-    manifestModel?.criteriaWeightingStructureKey
-  );
-  const isIssueModel = manifestModel?.isIssueModel === true;
-  const isCriteriaWeightingModel =
-    manifestModel?.isCriteriaWeightingModel === true;
   const implementationStatus = normalizeNonEmptyString(
     manifestModel?.implementationStatus
   );
@@ -211,17 +211,11 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (!apiModelKey) missingFields.push("apiModelKey");
   if (!displayName) missingFields.push("displayName");
   if (!endpointPath) missingFields.push("apiEndpoint.path");
-  if (isIssueModel && !alternativeEvaluationStructureKey) {
-    missingFields.push("alternativeEvaluationStructureKey");
+  if (!modelKind) {
+    missingFields.push("modelKind");
   }
-  if (isCriteriaWeightingModel && !criteriaWeightingStructureKey) {
-    missingFields.push("criteriaWeightingStructureKey");
-  }
-  if (typeof manifestModel?.isIssueModel !== "boolean") {
-    missingFields.push("isIssueModel");
-  }
-  if (typeof manifestModel?.isCriteriaWeightingModel !== "boolean") {
-    missingFields.push("isCriteriaWeightingModel");
+  if (!evaluationStructureKey) {
+    missingFields.push("evaluationStructureKey");
   }
   if (!implementationStatus) {
     missingFields.push("implementationStatus");
@@ -231,7 +225,7 @@ export const validateSyncableManifestModel = (manifestModel) => {
   if (typeof publicUsable !== "boolean") {
     missingFields.push("publicUsable");
   }
-  if (isCriteriaWeightingModel) {
+  if (modelKind === "criteriaWeighting") {
     if (typeof supportsCreatorCriteriaWeighting !== "boolean") {
       missingFields.push("supportsCreatorCriteriaWeighting");
     }
@@ -277,31 +271,27 @@ export const validateSyncableManifestModel = (manifestModel) => {
 export const buildManifestTechnicalProjection = (manifestModel) => ({
   apiModelKey: normalizeNonEmptyString(manifestModel?.apiModelKey),
   displayName: normalizeNonEmptyString(manifestModel?.displayName),
-  isIssueModel: manifestModel?.isIssueModel === true,
-  isCriteriaWeightingModel: manifestModel?.isCriteriaWeightingModel === true,
+  modelKind: normalizeModelKind(manifestModel?.modelKind),
   implementationStatus:
     normalizeNonEmptyString(manifestModel?.implementationStatus) || "ready",
   publicUsable: manifestModel?.publicUsable === true,
   supportsCreatorCriteriaWeighting:
-    manifestModel?.isCriteriaWeightingModel === true &&
+    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting" &&
     manifestModel?.supportsCreatorCriteriaWeighting === true,
   supportsExpertCriteriaWeighting:
-    manifestModel?.isCriteriaWeightingModel === true &&
+    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting" &&
     manifestModel?.supportsExpertCriteriaWeighting === true,
-  visibleInIssueCreation: manifestModel?.isIssueModel === true,
+  visibleInIssueCreation: normalizeModelKind(manifestModel?.modelKind) === "issue",
   visibleInCriteriaWeighting:
-    manifestModel?.isCriteriaWeightingModel === true,
+    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting",
   apiEndpoint: normalizeEndpoint(manifestModel?.apiEndpoint, {
     emptyValue: null,
   }),
   smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
   extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
   moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
-  alternativeEvaluationStructureKey: normalizeNonEmptyString(
-    manifestModel?.alternativeEvaluationStructureKey
-  ),
-  criteriaWeightingStructureKey: normalizeNonEmptyString(
-    manifestModel?.criteriaWeightingStructureKey
+  evaluationStructureKey: normalizeNonEmptyString(
+    manifestModel?.evaluationStructureKey
   ),
   supportsConsensus: manifestModel?.supportsConsensus === true,
   supportsConsensusSimulation:

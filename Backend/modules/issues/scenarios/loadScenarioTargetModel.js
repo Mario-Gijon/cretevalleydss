@@ -37,7 +37,7 @@ export const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
     });
   }
 
-  if (targetModel.isIssueModel !== true) {
+  if (targetModel.modelKind !== "issue") {
     throw createBadRequestError("Target model is not available for issue simulation", {
       field: "targetModelId",
       details: {

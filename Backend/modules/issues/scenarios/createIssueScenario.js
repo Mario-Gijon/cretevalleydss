@@ -91,11 +91,11 @@ export const createIssueScenario = async ({
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,
     targetApiEndpoint: context.targetRuntimeSnapshot.targetApiEndpoint,
-    targetAlternativeEvaluationStructureKey:
-      context.targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+    targetEvaluationStructureKey:
+      context.targetRuntimeSnapshot.targetEvaluationStructureKey,
     targetSupportsConsensus: context.targetRuntimeSnapshot.targetSupportsConsensus,
-    alternativeEvaluationStructureKey: context.issue.alternativeEvaluationStructureKey,
-    criteriaWeightingStructureKey: context.issue.criteriaWeightingStructureKey,
+    evaluationStructureKey: context.issue.evaluationStructureKey,
+    criteriaWeightsStructureKey: context.issue.criteriaWeightsStructureKey,
     domainType: context.domainType,
     status: "done",
     config: {

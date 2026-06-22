@@ -26,7 +26,8 @@ MODEL_DEFINITION = ModelDefinition(
     # Change to "ready" after implementing and testing executor.py/run.py.
     implementation_status="scaffold",
     # Runtime capability flags.
-    alternative_evaluation_structure_key={{ alternative_evaluation_structure_key_literal }},
+    model_kind={{ model_kind_literal }},
+    evaluation_structure_key={{ evaluation_structure_key_literal }},
     supports_consensus={{ supports_consensus }},
     supports_consensus_simulation={{ supports_consensus_simulation }},
     is_multi_criteria={{ is_multi_criteria }},

@@ -57,8 +57,8 @@ export const buildAvailableModelsPayload = ({
     return {
       id: toIdString(modelDoc._id),
       name: modelDoc.name,
-      alternativeEvaluationStructureKey:
-        modelDoc.alternativeEvaluationStructureKey,
+      evaluationStructureKey:
+        modelDoc.evaluationStructureKey,
       supportsConsensus: modelDoc.supportsConsensus,
       isMultiCriteria: modelDoc.isMultiCriteria,
       usesCriteriaWeights: modelDoc.usesCriteriaWeights,
@@ -85,7 +85,7 @@ export const buildAvailableModelsPayload = ({
       },
       compatibility: {
         alternativeEvaluationStructure:
-          modelDoc.alternativeEvaluationStructureKey ===
+          modelDoc.evaluationStructureKey ===
           issueAlternativeEvaluationStructureKey,
         domain: metadata.domainsMatch,
       },

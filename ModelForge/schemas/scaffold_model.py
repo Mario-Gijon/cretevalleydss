@@ -9,6 +9,7 @@ def _is_non_empty_string(value: str) -> bool:
 
 
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
+MODEL_KIND_VALUES = {"issue", "criteriaWeighting"}
 
 
 class ModelScaffoldPreviewRequest(BaseModel):
@@ -16,7 +17,8 @@ class ModelScaffoldPreviewRequest(BaseModel):
     displayName: str
     smallDescription: str
     extendedDescription: str
-    alternativeEvaluationStructureKey: str
+    modelKind: str
+    evaluationStructureKey: str
     supportsConsensus: bool = False
     supportsConsensusSimulation: bool = False
     isMultiCriteria: bool = True
@@ -38,11 +40,19 @@ class ModelScaffoldPreviewRequest(BaseModel):
             raise ValueError("apiModelKey must be snake_case")
         return stripped
 
+    @field_validator("modelKind")
+    @classmethod
+    def validate_model_kind(cls, value: str) -> str:
+        stripped = value.strip()
+        if stripped not in MODEL_KIND_VALUES:
+            raise ValueError("modelKind must be issue or criteriaWeighting")
+        return stripped
+
     @field_validator(
         "displayName",
         "smallDescription",
         "extendedDescription",
-        "alternativeEvaluationStructureKey",
+        "evaluationStructureKey",
     )
     @classmethod
     def validate_non_empty_string(cls, value: str) -> str:

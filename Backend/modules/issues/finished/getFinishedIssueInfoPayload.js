@@ -22,7 +22,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
     throw createInternalError(
       "Finished issue requires finished evaluation payload support",
       {
-        field: "alternativeEvaluationStructureKey",
+        field: "evaluationStructureKey",
         details: {
           issueId: issue._id.toString(),
         },

@@ -47,7 +47,7 @@ const issueScenarioSchema = new Schema(
         trim: true,
       },
     },
-    targetAlternativeEvaluationStructureKey: {
+    targetEvaluationStructureKey: {
       type: String,
       required: true,
       trim: true,
@@ -57,12 +57,12 @@ const issueScenarioSchema = new Schema(
       default: false,
     },
 
-    alternativeEvaluationStructureKey: {
+    evaluationStructureKey: {
       type: String,
       required: true,
       trim: true,
     },
-    criteriaWeightingStructureKey: {
+    criteriaWeightsStructureKey: {
       type: String,
       default: null,
       trim: true,

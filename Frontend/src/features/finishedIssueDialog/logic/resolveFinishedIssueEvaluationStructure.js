@@ -1,4 +1,4 @@
 export const resolveFinishedIssueEvaluationStructure = (viewIssue) =>
-  viewIssue?.summary?.alternativeEvaluationStructureKey ||
-  viewIssue?.modelParams?.base?.alternativeEvaluationStructureKey ||
+  viewIssue?.summary?.evaluationStructureKey ||
+  viewIssue?.modelParams?.base?.evaluationStructureKey ||
   null;

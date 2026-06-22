@@ -176,16 +176,14 @@ export const getIssueExpertsProgressPayload = async ({ issueId }) => {
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
       active: issue.active,
-      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
-      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+      evaluationStructureKey: issue.evaluationStructureKey,
+      criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
       model: issue.model
         ? {
           id: toIdString(issue.model._id),
           name: issue.model.name,
-          alternativeEvaluationStructureKey:
-            issue.model.alternativeEvaluationStructureKey,
-          criteriaWeightingStructureKey:
-            issue.model.criteriaWeightingStructureKey,
+          modelKind: issue.model.modelKind,
+          evaluationStructureKey: issue.model.evaluationStructureKey,
         }
         : null,
     },

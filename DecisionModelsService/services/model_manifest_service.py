@@ -62,8 +62,8 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
     return {
         "apiModelKey": model.api_model_key,
         "displayName": model.display_name,
-        "isIssueModel": model.is_issue_model,
-        "isCriteriaWeightingModel": model.is_criteria_weighting_model,
+        "modelKind": model.model_kind,
+        "evaluationStructureKey": model.evaluation_structure_key,
         "supportsCreatorCriteriaWeighting": model.supports_creator_criteria_weighting,
         "supportsExpertCriteriaWeighting": model.supports_expert_criteria_weighting,
         "apiEndpoint": {
@@ -75,8 +75,6 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "moreInfoUrl": model.more_info_url,
         "implementationStatus": model.implementation_status,
         "publicUsable": model.implementation_status == "ready",
-        "alternativeEvaluationStructureKey": model.alternative_evaluation_structure_key,
-        "criteriaWeightingStructureKey": model.criteria_weighting_structure_key,
         "supportsConsensus": model.supports_consensus,
         "supportsConsensusSimulation": model.supports_consensus_simulation,
         "isMultiCriteria": model.is_multi_criteria,

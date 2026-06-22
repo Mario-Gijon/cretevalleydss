@@ -3,17 +3,17 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 export const getFinishedAlternativeEvaluationStructureOrThrow = ({ issue }) => {
-  const structureKey = issue.alternativeEvaluationStructureKey;
+  const structureKey = issue.evaluationStructureKey;
   const structure = getEvaluationStructureOrThrow(structureKey);
 
   if (typeof structure.get !== "function") {
     throw createInternalError(
       "Finished issue evaluation structure does not support display payload retrieval",
       {
-        field: "alternativeEvaluationStructureKey",
+        field: "evaluationStructureKey",
         details: {
           issueId: toIdString(issue._id),
-          alternativeEvaluationStructureKey: structureKey,
+          evaluationStructureKey: structureKey,
         },
       }
     );

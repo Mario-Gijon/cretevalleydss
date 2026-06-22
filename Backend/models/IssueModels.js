@@ -126,15 +126,11 @@ const issueModelSchema = new Schema({
     required: true,
     index: true,
   },
-  isIssueModel: {
-    type: Boolean,
+  modelKind: {
+    type: String,
     required: true,
-    default: false,
-  },
-  isCriteriaWeightingModel: {
-    type: Boolean,
-    required: true,
-    default: false,
+    enum: ["issue", "criteriaWeighting"],
+    trim: true,
   },
   supportsCreatorCriteriaWeighting: {
     type: Boolean,
@@ -149,13 +145,13 @@ const issueModelSchema = new Schema({
   visibleInIssueCreation: {
     type: Boolean,
     default: function resolveDefaultVisibility() {
-      return this.isIssueModel === true;
+      return this.modelKind === "issue";
     },
   },
   visibleInCriteriaWeighting: {
     type: Boolean,
     default: function resolveDefaultCriteriaWeightingVisibility() {
-      return this.isCriteriaWeightingModel === true;
+      return this.modelKind === "criteriaWeighting";
     },
   },
   apiEndpoint: {
@@ -221,18 +217,10 @@ const issueModelSchema = new Schema({
     type: [parameterSchema],
     default: [],
   },
-  alternativeEvaluationStructureKey: {
+  evaluationStructureKey: {
     type: String,
     trim: true,
-    required: function resolveAlternativeStructureRequirement() {
-      return this.isIssueModel === true;
-    },
-    default: null,
-  },
-  criteriaWeightingStructureKey: {
-    type: String,
-    trim: true,
-    default: null,
+    required: true,
   },
   supportsConsensus: {
     type: Boolean,

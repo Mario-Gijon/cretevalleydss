@@ -112,7 +112,7 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
   const warnings = [];
 
   const localIssueVisibility = model.visibleInIssueCreation !== false;
-  const manifestIssueDefaultVisibility = payload.isIssueModel === true;
+  const manifestIssueDefaultVisibility = payload.modelKind === "issue";
   if (localIssueVisibility !== manifestIssueDefaultVisibility) {
     warnings.push(
       `IssueModel ${model.name} local visibleInIssueCreation=${localIssueVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
@@ -121,7 +121,7 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
 
   const localCriteriaVisibility = model.visibleInCriteriaWeighting !== false;
   const manifestCriteriaDefaultVisibility =
-    payload.isCriteriaWeightingModel === true;
+    payload.modelKind === "criteriaWeighting";
   if (localCriteriaVisibility !== manifestCriteriaDefaultVisibility) {
     warnings.push(
       `IssueModel ${model.name} local visibleInCriteriaWeighting=${localCriteriaVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
@@ -134,8 +134,8 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
 const createIssueModelFromManifest = async ({ manifestModel, payload }) => {
   const createdModel = await IssueModel.create({
     ...payload,
-    visibleInIssueCreation: payload.isIssueModel === true,
-    visibleInCriteriaWeighting: payload.isCriteriaWeightingModel === true,
+    visibleInIssueCreation: payload.modelKind === "issue",
+    visibleInCriteriaWeighting: payload.modelKind === "criteriaWeighting",
   });
 
   return {

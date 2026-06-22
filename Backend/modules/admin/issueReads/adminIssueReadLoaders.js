@@ -29,7 +29,7 @@ export const loadIssueForAdminDetailOrThrow = async ({ issueId }) => {
       {
         path: "model",
         select:
-          "name alternativeEvaluationStructureKey criteriaWeightingStructureKey isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation",
+          "name modelKind evaluationStructureKey isMultiCriteria parameters supportedDomains supportsConsensus supportsConsensusSimulation",
       },
     ],
     lean: true,
@@ -43,7 +43,7 @@ export const loadIssueForExpertsProgressOrThrow = async ({ issueId }) => {
     populate: {
       path: "model",
       select:
-        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+        "name modelKind evaluationStructureKey supportsConsensus supportsConsensusSimulation",
     },
     lean: true,
   });
@@ -56,7 +56,7 @@ export const loadIssueForExpertEvaluationsOrThrow = async ({ issueId }) => {
     populate: {
       path: "model",
       select:
-        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+        "name modelKind evaluationStructureKey supportsConsensus supportsConsensusSimulation",
     },
     lean: true,
   });
@@ -69,7 +69,7 @@ export const loadIssueForExpertWeightsOrThrow = async ({ issueId }) => {
     populate: {
       path: "model",
       select:
-        "name alternativeEvaluationStructureKey criteriaWeightingStructureKey supportsConsensus supportsConsensusSimulation",
+        "name modelKind evaluationStructureKey supportsConsensus supportsConsensusSimulation",
     },
     lean: true,
   });

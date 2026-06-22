@@ -65,11 +65,11 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
     });
   }
 
-  const alternativeEvaluationStructureKey = pushRuntimeErrorIfMissingString({
+  const evaluationStructureKey = pushRuntimeErrorIfMissingString({
     runtimeErrors,
-    field: "alternativeEvaluationStructureKey",
+    field: "evaluationStructureKey",
     message: "is required",
-    value: model.alternativeEvaluationStructureKey,
+    value: model.evaluationStructureKey,
   });
 
   if (typeof model.supportsConsensus !== "boolean") {
@@ -146,7 +146,7 @@ export const validateIssueModelRuntimeConfigOrThrow = (model) => {
       method: apiEndpoint ? normalizeNonEmptyString(apiEndpoint.method) : null,
       path: endpointPath,
     },
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     supportsConsensus: model.supportsConsensus,
     supportsConsensusSimulation: model.supportsConsensusSimulation,
     usesCriteriaWeights: model.usesCriteriaWeights,

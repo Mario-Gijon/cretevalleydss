@@ -35,7 +35,7 @@ export const loadCreateIssueActorsAndModel = async ({
     });
   }
 
-  if (existingModel.isIssueModel !== true || existingModel.publicUsable === false) {
+  if (existingModel.modelKind !== "issue" || existingModel.publicUsable === false) {
     throw createBadRequestError("Selected model is not public usable", {
       field: "selectedModelId",
     });
@@ -44,7 +44,7 @@ export const loadCreateIssueActorsAndModel = async ({
   const {
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,
@@ -96,7 +96,7 @@ export const loadCreateIssueActorsAndModel = async ({
     expertByEmail,
     apiModelKey,
     apiEndpoint,
-    alternativeEvaluationStructureKey,
+    evaluationStructureKey,
     supportsConsensus,
     supportsConsensusSimulation,
     usesCriteriaWeights,

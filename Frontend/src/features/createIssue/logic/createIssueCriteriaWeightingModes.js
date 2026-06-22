@@ -58,7 +58,7 @@ export const buildApiCriteriaWeightingConfig = ({
   void leafCriteria;
   const isCreatorMode = mode === CRITERIA_WEIGHTING_MODES.CREATOR_API_MODEL;
   const structureKey = String(
-    criteriaWeightingModel?.criteriaWeightingStructureKey || ""
+    criteriaWeightingModel?.evaluationStructureKey || ""
   ).trim();
   const modelId = String(criteriaWeightingModel?._id || criteriaWeightingModel?.id || "").trim();
   const modelKey = String(criteriaWeightingModel?.apiModelKey || "").trim();

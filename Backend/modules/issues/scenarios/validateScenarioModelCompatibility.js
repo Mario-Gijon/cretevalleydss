@@ -74,11 +74,11 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     value: targetModel.apiModelKey,
   });
   const endpointPath = normalizeEndpointPath(apiEndpoint.path);
-  const targetAlternativeEvaluationStructureKey =
+  const targetEvaluationStructureKey =
     getRequiredTrimmedRuntimeString({
       targetModel,
-      field: "alternativeEvaluationStructureKey",
-      value: targetModel.alternativeEvaluationStructureKey,
+      field: "evaluationStructureKey",
+      value: targetModel.evaluationStructureKey,
     });
   const targetSupportsConsensus = targetModel.supportsConsensus;
   const targetUsesCriteriaWeights = targetModel.usesCriteriaWeights;
@@ -106,7 +106,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
       method: apiEndpoint.method,
       path: endpointPath,
     },
-    targetAlternativeEvaluationStructureKey,
+    targetEvaluationStructureKey,
     targetSupportsConsensus,
     targetUsesCriteriaWeights,
     targetUsesFuzzyCriteriaWeights,
@@ -143,13 +143,13 @@ export const buildScenarioCompatibilityMetadata = ({
   issueDomainSnapshots,
 }) => {
   const issueAlternativeEvaluationStructureKey =
-    issue.alternativeEvaluationStructureKey;
-  const targetAlternativeEvaluationStructureKey =
-    targetModel.alternativeEvaluationStructureKey;
+    issue.evaluationStructureKey;
+  const targetEvaluationStructureKey =
+    targetModel.evaluationStructureKey;
   const targetSupportsConsensus = targetModel.supportsConsensus;
 
   const structureMatches =
-    targetAlternativeEvaluationStructureKey ===
+    targetEvaluationStructureKey ===
     issueAlternativeEvaluationStructureKey;
   const consensusModeMatches = buildConsensusModeMatches({
     issue,
@@ -220,8 +220,8 @@ export const validateScenarioModelCompatibilityOrThrow = ({
     issue,
     targetModel: {
       ...targetModel,
-      alternativeEvaluationStructureKey:
-        targetRuntimeSnapshot.targetAlternativeEvaluationStructureKey,
+      evaluationStructureKey:
+        targetRuntimeSnapshot.targetEvaluationStructureKey,
       supportsConsensus: targetRuntimeSnapshot.targetSupportsConsensus,
       supportedDomains: targetModelSupportedDomains,
     },

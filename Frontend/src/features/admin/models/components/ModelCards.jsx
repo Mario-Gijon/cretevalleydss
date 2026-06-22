@@ -44,8 +44,8 @@ export default function ModelCards({
                 <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap>
                   <StatusChip label={row.apiModelKey || "No key"} />
                   <StatusChip
-                    label={row.isIssueModel ? "Issue model" : "Non-issue model"}
-                    severity={row.isIssueModel ? "success" : "info"}
+                    label={toModelManifestTitle(row.modelKind)}
+                    severity={row.modelKind === "issue" ? "success" : "info"}
                   />
                   <StatusChip
                     label={`Source ${row.implementationStatus || "ready"}`}
@@ -78,8 +78,8 @@ export default function ModelCards({
                   },
                   { label: "Lifecycle", value: toModelManifestTitle(row.lifecycleKind) },
                   {
-                    label: "Alternative structure",
-                    value: toModelManifestTitle(row.alternativeEvaluationStructureKey),
+                    label: "Evaluation structure",
+                    value: toModelManifestTitle(row.evaluationStructureKey),
                   },
                   {
                     label: "Uses criteria weights",
@@ -92,8 +92,8 @@ export default function ModelCards({
                   { label: "Input", value: row.apiInputFormat },
                   { label: "Output", value: row.apiOutputFormat },
                   {
-                    label: "Issue model",
-                    value: formatModelManifestBoolean(row.isIssueModel),
+                    label: "Model kind",
+                    value: toModelManifestTitle(row.modelKind),
                   },
                 ]}
               />

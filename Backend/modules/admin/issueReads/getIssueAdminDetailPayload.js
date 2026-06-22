@@ -157,7 +157,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     IssueScenario.find({ issue: issueId })
       .sort({ createdAt: -1 })
       .select(
-        "_id name targetModel targetModelName domainType alternativeEvaluationStructureKey criteriaWeightingStructureKey status createdAt createdBy"
+        "_id name targetModel targetModelName domainType evaluationStructureKey criteriaWeightsStructureKey status createdAt createdBy"
       )
       .populate("createdBy", "name email")
       .lean(),
@@ -377,10 +377,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         ? {
           id: toIdString(issue.model._id),
           name: issue.model.name,
-          alternativeEvaluationStructureKey:
-            issue.model.alternativeEvaluationStructureKey,
-          criteriaWeightingStructureKey:
-            issue.model.criteriaWeightingStructureKey,
+          modelKind: issue.model.modelKind,
+          evaluationStructureKey: issue.model.evaluationStructureKey,
           supportsConsensus: issue.model.supportsConsensus === true,
           supportsConsensusSimulation:
             issue.model.supportsConsensusSimulation === true,
@@ -426,8 +424,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         targetModelId: toIdString(scenario.targetModel),
         targetModelName: scenario.targetModelName,
         domainType: scenario.domainType,
-        alternativeEvaluationStructureKey: scenario.alternativeEvaluationStructureKey,
-        criteriaWeightingStructureKey: scenario.criteriaWeightingStructureKey,
+        evaluationStructureKey: scenario.evaluationStructureKey,
+        criteriaWeightsStructureKey: scenario.criteriaWeightsStructureKey,
         status: scenario.status,
         createdAt: scenario.createdAt,
         createdBy: scenario.createdBy

@@ -21,6 +21,11 @@ from services.scaffold_existence import (
     get_parameter_structure_existence,
 )
 
+MODEL_KIND_STAGE_CONSTANT = {
+    "issue": "ALTERNATIVE_EVALUATION",
+    "criteriaWeighting": "CRITERIA_WEIGHTING",
+}
+
 
 def build_model_package_preview(
     request: ModelPackagePreviewRequest, project_root: Path
@@ -149,14 +154,21 @@ def _collect_evaluation_structure_requests(
 ) -> dict[str, EvaluationStructureScaffoldPreviewRequest]:
     requests: dict[str, EvaluationStructureScaffoldPreviewRequest] = {}
 
-    model_key = request.model.alternativeEvaluationStructureKey
+    model_key = request.model.evaluationStructureKey
     requests[model_key] = EvaluationStructureScaffoldPreviewRequest(
-        evaluationStructureKey=model_key
+        evaluationStructureKey=model_key,
+        stageConstant=MODEL_KIND_STAGE_CONSTANT[request.model.modelKind],
     )
 
     if request.evaluationStructure is not None:
         requests[request.evaluationStructure.evaluationStructureKey] = (
-            request.evaluationStructure
+            request.evaluationStructure.model_copy(
+                update={
+                    "stageConstant": MODEL_KIND_STAGE_CONSTANT[
+                        request.model.modelKind
+                    ]
+                }
+            )
         )
 
     return requests

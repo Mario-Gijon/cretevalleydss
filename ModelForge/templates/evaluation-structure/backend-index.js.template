@@ -6,7 +6,7 @@ import { createBadRequestError } from "../../../../../utils/common/errors.js";
 export const {{ backend_structure_export_name }} = Object.freeze({
   // key must match the folder name.
   key: "{{ evaluation_structure_key }}",
-  stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
+  stage: EVALUATION_STAGES.{{ stage_constant }},
 
   // get returns a placeholder payload so the scaffold view can render safely.
   async get({ evaluationContext }) {

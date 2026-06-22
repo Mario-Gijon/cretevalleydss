@@ -94,10 +94,10 @@ const compareLocalConfigurationFields = (manifestModel, mongoModel) => {
     let manifestRawValue = null;
 
     if (field === "visibleInIssueCreation") {
-      manifestRawValue = manifestProjection.isIssueModel === true;
+      manifestRawValue = manifestProjection.modelKind === "issue";
     }
     if (field === "visibleInCriteriaWeighting") {
-      manifestRawValue = manifestProjection.isCriteriaWeightingModel === true;
+      manifestRawValue = manifestProjection.modelKind === "criteriaWeighting";
     }
 
     const mongoRawValue = getMongoTechnicalValue(mongoModel, field);
@@ -164,8 +164,7 @@ const buildNotSyncableModels = (manifestModels) => {
     .map(({ model, blockerReason }) => ({
       apiModelKey: model?.apiModelKey ?? null,
       displayName: model?.displayName ?? null,
-      isIssueModel: model?.isIssueModel === true,
-      isCriteriaWeightingModel: model?.isCriteriaWeightingModel === true,
+      modelKind: model?.modelKind ?? null,
       reason: blockerReason,
     }));
 };
@@ -197,25 +196,16 @@ const buildModelRow = ({
     displayName: manifestProjection?.displayName ?? null,
     mongoName: mongoModel?.name ?? null,
     mongoId: toIdString(mongoModel?._id),
-    isIssueModel:
-      manifestProjection?.isIssueModel ?? mongoModel?.isIssueModel ?? null,
-    isCriteriaWeightingModel:
-      manifestProjection?.isCriteriaWeightingModel ??
-      mongoModel?.isCriteriaWeightingModel ??
-      null,
+    modelKind: manifestProjection?.modelKind ?? mongoModel?.modelKind ?? null,
     visibleInIssueCreation:
       mongoModel?.visibleInIssueCreation ??
-      (manifestProjection?.isIssueModel === true ? true : null),
+      (manifestProjection?.modelKind === "issue" ? true : null),
     visibleInCriteriaWeighting:
       mongoModel?.visibleInCriteriaWeighting ??
-      (manifestProjection?.isCriteriaWeightingModel === true ? true : null),
-    alternativeEvaluationStructureKey:
-      manifestProjection?.alternativeEvaluationStructureKey ??
-      mongoModel?.alternativeEvaluationStructureKey ??
-      null,
-    criteriaWeightingStructureKey:
-      manifestProjection?.criteriaWeightingStructureKey ??
-      mongoModel?.criteriaWeightingStructureKey ??
+      (manifestProjection?.modelKind === "criteriaWeighting" ? true : null),
+    evaluationStructureKey:
+      manifestProjection?.evaluationStructureKey ??
+      mongoModel?.evaluationStructureKey ??
       null,
     supportsCreatorCriteriaWeighting:
       manifestProjection?.supportsCreatorCriteriaWeighting ??

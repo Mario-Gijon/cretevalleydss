@@ -50,7 +50,7 @@ const issueSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    criteriaWeightingStructureKey: {
+    criteriaWeightsStructureKey: {
       type: String,
       trim: true,
       default: null,
@@ -81,7 +81,7 @@ const issueSchema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
-    alternativeEvaluationStructureKey: {
+    evaluationStructureKey: {
       type: String,
       trim: true,
       required: true,

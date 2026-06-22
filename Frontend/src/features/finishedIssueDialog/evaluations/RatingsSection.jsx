@@ -186,7 +186,7 @@ const RatingsSection = () => {
                     stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
                     structureKey={
                       criteriaWeightsEvaluation?.structureKey ||
-                      viewIssue?.summary?.criteriaWeightingStructureKey ||
+                      viewIssue?.summary?.criteriaWeightsStructureKey ||
                       ""
                     }
                     backendPayload={criteriaWeightsEvaluation.payload}

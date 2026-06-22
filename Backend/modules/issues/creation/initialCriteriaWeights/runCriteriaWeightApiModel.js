@@ -31,7 +31,7 @@ const loadCriteriaWeightingModelOrThrow = async ({
   }
 
   const query = {
-    isCriteriaWeightingModel: true,
+    modelKind: "criteriaWeighting",
     $and: [
       {
         $or: [
@@ -113,7 +113,7 @@ export const normalizeCreatorApiCriteriaWeightingPayloadOrThrow = async ({
   criteriaWeightingParameters,
 }) => {
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
-    criteriaWeightingRuntime.criteriaWeightingStructureKey
+    criteriaWeightingRuntime.criteriaWeightsStructureKey
   );
   const criteria = Array.isArray(leafCriteria) ? leafCriteria : [];
   if (criteria.length === 0) {
@@ -166,7 +166,7 @@ export const resolveCreatorApiCriteriaWeightingModelWeightsOrThrow = async ({
 
   const normalizedBaseUrl = decisionModelsServiceBaseUrl.replace(/\/+$/g, "");
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
-    criteriaWeightingRuntime.criteriaWeightingStructureKey
+    criteriaWeightingRuntime.criteriaWeightsStructureKey
   );
   const criteria = Array.isArray(leafCriteria) ? leafCriteria : [];
   if (criteria.length === 0) {

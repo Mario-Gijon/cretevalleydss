@@ -23,11 +23,11 @@ import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations
 import { buildEvaluationStructureContext } from "../../issues/evaluations/index.js";
 
 const requireCriteriaWeightingStructureOrThrow = ({
-  criteriaWeightingStructureKey,
+  criteriaWeightsStructureKey,
   issueId,
 }) => {
   const criteriaWeightingStructure = getEvaluationStructureOrThrow(
-    criteriaWeightingStructureKey
+    criteriaWeightsStructureKey
   );
 
   if (
@@ -38,7 +38,7 @@ const requireCriteriaWeightingStructureOrThrow = ({
       field: "criteriaWeightingStructure.key",
       details: {
         issueId,
-        criteriaWeightingStructureKey,
+        criteriaWeightsStructureKey,
       },
     });
   }
@@ -51,7 +51,7 @@ const requireCriteriaWeightingStructureOrThrow = ({
       field: "criteriaWeightingStructure.label",
       details: {
         issueId,
-        criteriaWeightingStructureKey,
+        criteriaWeightsStructureKey,
       },
     });
   }
@@ -61,7 +61,7 @@ const requireCriteriaWeightingStructureOrThrow = ({
       field: "criteriaWeightingStructure.get",
       details: {
         issueId,
-        criteriaWeightingStructureKey,
+        criteriaWeightsStructureKey,
       },
     });
   }
@@ -71,14 +71,14 @@ const requireCriteriaWeightingStructureOrThrow = ({
 
 const resolveWeightsKind = ({
   leafNames,
-  criteriaWeightingStructureKey,
+  criteriaWeightsStructureKey,
   criteriaWeightingStructure,
 }) => {
   if (leafNames.length === 1) {
     return "singleLeaf";
   }
 
-  if (!criteriaWeightingStructureKey) {
+  if (!criteriaWeightsStructureKey) {
     return "notRequired";
   }
 
@@ -170,10 +170,10 @@ export const getIssueExpertWeightsPayload = async ({
         }, {})
       : null;
 
-  const criteriaWeightingStructureKey = issue.criteriaWeightingStructureKey || null;
-  const criteriaWeightingStructure = criteriaWeightingStructureKey
+  const criteriaWeightsStructureKey = issue.criteriaWeightsStructureKey || null;
+  const criteriaWeightingStructure = criteriaWeightsStructureKey
     ? requireCriteriaWeightingStructureOrThrow({
-        criteriaWeightingStructureKey,
+        criteriaWeightsStructureKey,
         issueId: toIdString(issue._id),
       })
     : null;
@@ -195,11 +195,11 @@ export const getIssueExpertWeightsPayload = async ({
 
   const kind = resolveWeightsKind({
     leafNames,
-    criteriaWeightingStructureKey,
+    criteriaWeightsStructureKey,
     criteriaWeightingStructure,
   });
 
-  const criteriaWeightsStatus = !criteriaWeightingStructureKey
+  const criteriaWeightsStatus = !criteriaWeightsStructureKey
     ? "notRequired"
     : !weightDoc
       ? "notSubmitted"
@@ -214,16 +214,14 @@ export const getIssueExpertWeightsPayload = async ({
       currentStage: issue.currentStage,
       weightingMode: issue.weightingMode,
       active: issue.active,
-      alternativeEvaluationStructureKey: issue.alternativeEvaluationStructureKey,
-      criteriaWeightingStructureKey: issue.criteriaWeightingStructureKey,
+      evaluationStructureKey: issue.evaluationStructureKey,
+      criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
       model: issue.model
         ? {
             id: toIdString(issue.model._id),
             name: issue.model.name,
-            alternativeEvaluationStructureKey:
-              issue.model.alternativeEvaluationStructureKey,
-            criteriaWeightingStructureKey:
-              issue.model.criteriaWeightingStructureKey,
+            modelKind: issue.model.modelKind,
+            evaluationStructureKey: issue.model.evaluationStructureKey,
           }
         : null,
     },
@@ -232,7 +230,7 @@ export const getIssueExpertWeightsPayload = async ({
     weights: {
       kind,
       status: criteriaWeightsStatus,
-      structureKey: issue.criteriaWeightingStructureKey || null,
+      structureKey: issue.criteriaWeightsStructureKey || null,
       structureLabel: resolveStructureLabel({
         kind,
         criteriaWeightingStructure,

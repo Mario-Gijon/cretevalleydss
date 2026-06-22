@@ -93,7 +93,7 @@ export const CriteriaWeightingPanel = ({
   const availableCriteriaWeightingModels = useMemo(
     () =>
       (Array.isArray(criteriaWeightingModels) ? criteriaWeightingModels : []).filter(
-        (modelItem) => modelItem?.isCriteriaWeightingModel === true
+        (modelItem) => modelItem?.modelKind === "criteriaWeighting"
       ),
     [criteriaWeightingModels]
   );
@@ -149,7 +149,7 @@ export const CriteriaWeightingPanel = ({
     () =>
       getEvaluationStructureEntryForStage({
         structureKey:
-          selectedApiCriteriaWeightingModel?.criteriaWeightingStructureKey || "",
+          selectedApiCriteriaWeightingModel?.evaluationStructureKey || "",
         stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
       }),
     [selectedApiCriteriaWeightingModel]

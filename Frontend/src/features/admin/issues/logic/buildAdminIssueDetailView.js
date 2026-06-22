@@ -33,16 +33,16 @@ export const buildAdminIssueDetailView = ({
   expertWeights,
 }) => {
   const criteriaWeightingStructureEntry = getEvaluationStructureEntryForStage({
-    structureKey: issueDetail?.criteriaWeightingStructureKey,
+    structureKey: issueDetail?.criteriaWeightsStructureKey,
     stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,
   });
   const alternativeEvaluationStructureEntry = getEvaluationStructureEntryForStage({
-    structureKey: issueDetail?.alternativeEvaluationStructureKey,
+    structureKey: issueDetail?.evaluationStructureKey,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
   });
   const expertAlternativeEvaluationStructureEntry =
     getEvaluationStructureEntryForStage({
-      structureKey: expertEvaluations?.issue?.alternativeEvaluationStructureKey,
+      structureKey: expertEvaluations?.issue?.evaluationStructureKey,
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
     });
 
@@ -67,11 +67,11 @@ export const buildAdminIssueDetailView = ({
   return {
     criteriaWeightingStructureLabel:
       criteriaWeightingStructureEntry?.label ||
-      issueDetail?.criteriaWeightingStructureKey ||
+      issueDetail?.criteriaWeightsStructureKey ||
       "—",
     alternativeEvaluationStructureLabel:
       alternativeEvaluationStructureEntry?.label ||
-      issueDetail?.alternativeEvaluationStructureKey ||
+      issueDetail?.evaluationStructureKey ||
       "—",
     alternativeEvaluationViewComponent:
       expertAlternativeEvaluationStructureEntry?.View || null,

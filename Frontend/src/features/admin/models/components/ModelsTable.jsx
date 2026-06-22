@@ -32,10 +32,10 @@ const TABLE_HEADINGS = [
   "Model",
   "Key",
   "Lifecycle",
-  "Alternative structure",
+  "Evaluation structure",
   "Input",
   "Output",
-  "Issue model",
+  "Model kind",
   "Sync state",
   "Active",
 ];
@@ -122,7 +122,7 @@ export default function ModelsTable({
 
                 <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
                   <Typography variant="body2" sx={{ fontWeight: 850, whiteSpace: "nowrap" }}>
-                    {toModelManifestTitle(row.alternativeEvaluationStructureKey)}
+                    {toModelManifestTitle(row.evaluationStructureKey)}
                   </Typography>
                 </TableCell>
 
@@ -139,7 +139,7 @@ export default function ModelsTable({
                 </TableCell>
 
                 <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>
-                  {formatModelManifestBoolean(row.isIssueModel)}
+                  {toModelManifestTitle(row.modelKind)}
                 </TableCell>
 
                 <TableCell sx={(theme) => getModelCatalogTableBodyCellSx(theme)}>

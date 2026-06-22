@@ -2,8 +2,8 @@ export const applyInitialCriteriaWeightsToIssue = ({
   issue,
   resolvedCriteriaWeighting,
 }) => {
-  issue.criteriaWeightingStructureKey =
-    resolvedCriteriaWeighting.criteriaWeightingStructureKey;
+  issue.criteriaWeightsStructureKey =
+    resolvedCriteriaWeighting.criteriaWeightsStructureKey;
   issue.criteriaWeightingModel =
     resolvedCriteriaWeighting.criteriaWeightingModel
       ? resolvedCriteriaWeighting.criteriaWeightingModel._id

@@ -45,11 +45,11 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
   const runtimeErrors = [];
   const apiEndpoint = model.apiEndpoint;
 
-  if (model.isCriteriaWeightingModel !== true) {
+  if (model.modelKind !== "criteriaWeighting") {
     runtimeErrors.push({
-      field: "isCriteriaWeightingModel",
-      message: "must be true",
-      value: model.isCriteriaWeightingModel,
+      field: "modelKind",
+      message: "must be criteriaWeighting",
+      value: model.modelKind,
     });
   }
 
@@ -73,11 +73,11 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
     });
   }
 
-  const criteriaWeightingStructureKey = pushRuntimeErrorIfMissingString({
+  const evaluationStructureKey = pushRuntimeErrorIfMissingString({
     runtimeErrors,
-    field: "criteriaWeightingStructureKey",
+    field: "evaluationStructureKey",
     message: "is required",
-    value: model.criteriaWeightingStructureKey,
+    value: model.evaluationStructureKey,
   });
   const supportsCreatorCriteriaWeighting =
     model.supportsCreatorCriteriaWeighting;
@@ -124,7 +124,7 @@ export const validateCriteriaWeightingModelRuntimeConfigOrThrow = (model) => {
       method: apiEndpoint ? normalizeNonEmptyString(apiEndpoint.method) : null,
       path: endpointPath,
     },
-    criteriaWeightingStructureKey,
+    criteriaWeightsStructureKey: evaluationStructureKey,
     supportsCreatorCriteriaWeighting,
     supportsExpertCriteriaWeighting,
   };

@@ -10,7 +10,7 @@ export const supportsFinishedPayload = (issue) => {
 
   try {
     const structure = getEvaluationStructureOrThrow(
-      issue?.alternativeEvaluationStructureKey
+      issue?.evaluationStructureKey
     );
     return typeof structure?.get === "function";
   } catch {

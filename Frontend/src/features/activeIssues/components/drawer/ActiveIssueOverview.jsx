@@ -337,16 +337,16 @@ const ActiveIssueOverview = ({
               label="Criteria weighting structure"
               value={
                 CRITERIA_WEIGHTING_STRUCTURE_LABELS[
-                  selectedIssue?.criteriaWeightingStructureKey
-                ] || selectedIssue?.criteriaWeightingStructureKey || "—"
+                  selectedIssue?.criteriaWeightsStructureKey
+                ] || selectedIssue?.criteriaWeightsStructureKey || "—"
               }
             />
             <ActiveIssueInfoRow
               label="Alternative evaluation structure"
               value={
                 ALTERNATIVE_STRUCTURE_LABELS[
-                  selectedIssue?.alternativeEvaluationStructureKey
-                ] || selectedIssue?.alternativeEvaluationStructureKey || "—"
+                  selectedIssue?.evaluationStructureKey
+                ] || selectedIssue?.evaluationStructureKey || "—"
               }
             />
             <ActiveIssueInfoRow

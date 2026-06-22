@@ -141,6 +141,6 @@ export const getPublicIssueManifestModels = async (options = {}) => {
   const models = await getManifestModels(options);
 
   return models.filter(
-    (model) => model?.isIssueModel === true && model?.publicUsable === true
+    (model) => model?.modelKind === "issue" && model?.publicUsable === true
   );
 };
