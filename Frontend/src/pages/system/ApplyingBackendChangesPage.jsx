@@ -5,10 +5,15 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuthContext } from "../../context/auth/auth.context";
 import { useSnackbarAlertContext } from "../../context/snackbarAlert/snackbarAlert.context";
-import { fetchProtectedData } from "../../services/auth.service";
+import { EmptyAuthState, fetchProtectedDataForBootstrap } from "../../services/auth.service";
 import { getBackendHealth, restartBackendAdmin } from "../../services/admin.service";
+import {
+  clearPendingBackendChange,
+  getPendingBackendChange,
+  isRecentPendingBackendChange,
+  updatePendingBackendChange,
+} from "../../utils/pendingBackendChange.js";
 
-const PENDING_BACKEND_CHANGE_KEY = "system.pendingBackendChange";
 const PENDING_SUCCESS_MESSAGE_KEY = "system.pendingSuccessMessage";
 const BACKEND_CHANGE_MAX_AGE_MS = 2 * 60 * 1000;
 const BACKEND_CHANGE_POLL_INTERVAL_MS = 1000;
@@ -21,57 +26,38 @@ const BACKEND_RESTART_TIMEOUT_MESSAGE =
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const parsePendingBackendChange = (rawValue) => {
-  if (!rawValue) return null;
+const normalizePendingBackendChange = (value) => {
+  if (!value || typeof value !== "object") return null;
 
-  try {
-    const parsed = JSON.parse(rawValue);
-    if (!parsed || typeof parsed !== "object") return null;
-
-    return {
-      type: typeof parsed.type === "string" ? parsed.type : null,
-      createdAt: Number(parsed.createdAt) || 0,
-      restartRequested: parsed.restartRequested === true,
-      backendStartedAtBefore:
-        typeof parsed.backendStartedAtBefore === "string"
-          ? parsed.backendStartedAtBefore
-          : null,
-      successMessage:
-        typeof parsed.successMessage === "string" && parsed.successMessage.trim()
-          ? parsed.successMessage
-          : "Backend changes applied successfully.",
-      destinationPath:
-        typeof parsed.destinationPath === "string" && parsed.destinationPath.trim()
-          ? parsed.destinationPath
-          : DEFAULT_DESTINATION_PATH,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const readPendingBackendChange = () =>
-  parsePendingBackendChange(window.sessionStorage.getItem(PENDING_BACKEND_CHANGE_KEY));
-
-const writePendingBackendChange = (value) => {
-  window.sessionStorage.setItem(
-    PENDING_BACKEND_CHANGE_KEY,
-    JSON.stringify(value)
-  );
-};
-
-const clearPendingBackendChange = () => {
-  window.sessionStorage.removeItem(PENDING_BACKEND_CHANGE_KEY);
+  return {
+    type: typeof value.type === "string" ? value.type : null,
+    createdAt: Number(value.createdAt) || 0,
+    restartRequested: value.restartRequested === true,
+    backendStartedAtBefore:
+      typeof value.backendStartedAtBefore === "string"
+        ? value.backendStartedAtBefore
+        : null,
+    successMessage:
+      typeof value.successMessage === "string" && value.successMessage.trim()
+        ? value.successMessage
+        : "Backend changes applied successfully.",
+    destinationPath:
+      typeof value.destinationPath === "string" && value.destinationPath.trim()
+        ? value.destinationPath
+        : DEFAULT_DESTINATION_PATH,
+  };
 };
 
 export default function ApplyingBackendChangesPage() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { setValue, setIsLoggedIn } = useAuthContext();
+  const { isLoggedIn, setValue, setIsLoggedIn } = useAuthContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const isMountedRef = useRef(true);
   const [pendingChange, setPendingChange] = useState(() =>
-    typeof window === "undefined" ? null : readPendingBackendChange()
+    typeof window === "undefined"
+      ? null
+      : normalizePendingBackendChange(getPendingBackendChange())
   );
   const [status, setStatus] = useState("checking");
   const [message, setMessage] = useState("");
@@ -83,7 +69,7 @@ export default function ApplyingBackendChangesPage() {
   );
 
   const restoreAuthIfPossible = useCallback(async () => {
-    const response = await fetchProtectedData();
+    const response = await fetchProtectedDataForBootstrap();
     const user = response?.data?.user ?? null;
 
     if (response?.success && user) {
@@ -96,11 +82,23 @@ export default function ApplyingBackendChangesPage() {
         isAdmin: user.isAdmin ?? user.role === "admin",
       });
       setIsLoggedIn(true);
-      return true;
+      return { restored: true, unauthorized: false, networkError: false };
     }
 
-    return false;
-  }, [setIsLoggedIn, setValue]);
+    if (response?.status === 401 || response?.status === 403) {
+      setValue(EmptyAuthState);
+      setIsLoggedIn(false);
+      navigate("/login", { replace: true });
+      return { restored: false, unauthorized: true, networkError: false };
+    }
+
+    return {
+      restored: false,
+      unauthorized: false,
+      networkError:
+        response?.status === 0 || response?.error?.code === "NETWORK_ERROR",
+    };
+  }, [navigate, setIsLoggedIn, setValue]);
 
   const completeFlow = useCallback(
     async (resolvedPendingChange) => {
@@ -109,13 +107,38 @@ export default function ApplyingBackendChangesPage() {
         PENDING_SUCCESS_MESSAGE_KEY,
         resolvedPendingChange.successMessage
       );
-      await restoreAuthIfPossible();
+      const authRecovery = await restoreAuthIfPossible();
+
+      if (authRecovery?.unauthorized) {
+        return;
+      }
+
+      if (!authRecovery?.restored && !isLoggedIn) {
+        if (isMountedRef.current) {
+          setStatus("applying");
+        }
+
+        await delay(1000);
+        const retryAuthRecovery = await restoreAuthIfPossible();
+        if (retryAuthRecovery?.unauthorized) {
+          return;
+        }
+        if (!retryAuthRecovery?.restored && !isLoggedIn) {
+          if (isMountedRef.current) {
+            setStatus("timeout");
+            setMessage(BACKEND_RESTART_TIMEOUT_MESSAGE);
+            setCanRetry(true);
+          }
+          return;
+        }
+      }
+
       navigate(
         resolvedPendingChange.destinationPath || DEFAULT_DESTINATION_PATH,
         { replace: true }
       );
     },
-    [navigate, restoreAuthIfPossible]
+    [isLoggedIn, navigate, restoreAuthIfPossible]
   );
 
   const pollForHealthyRestart = useCallback(
@@ -159,7 +182,9 @@ export default function ApplyingBackendChangesPage() {
   );
 
   const runApplyingFlow = useCallback(async () => {
-    const resolvedPendingChange = readPendingBackendChange();
+    const resolvedPendingChange = normalizePendingBackendChange(
+      getPendingBackendChange()
+    );
 
     if (!resolvedPendingChange) {
       setPendingChange(null);
@@ -169,7 +194,7 @@ export default function ApplyingBackendChangesPage() {
       return;
     }
 
-    if (Date.now() - resolvedPendingChange.createdAt > BACKEND_CHANGE_MAX_AGE_MS) {
+    if (!isRecentPendingBackendChange(BACKEND_CHANGE_MAX_AGE_MS)) {
       clearPendingBackendChange();
       setPendingChange(null);
       setStatus("stale");
@@ -184,8 +209,7 @@ export default function ApplyingBackendChangesPage() {
     setCanRetry(false);
 
     if (resolvedPendingChange.restartRequested !== true) {
-      writePendingBackendChange({
-        ...resolvedPendingChange,
+      updatePendingBackendChange({
         restartRequested: true,
       });
 

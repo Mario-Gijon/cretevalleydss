@@ -4,6 +4,7 @@ import { Box, useColorScheme } from "@mui/material";
 
 import { CircularLoading } from "./components/LoadingProgress/CircularLoading";
 import { useAuthContext } from "./context/auth/auth.context";
+import { isRecentPendingBackendChange } from "./utils/pendingBackendChange.js";
 
 const AuthLayout = lazy(() => import("./features/auth/components/AuthLayout"));
 const LogInForm = lazy(() => import("./features/auth/components/LogInForm"));
@@ -57,7 +58,7 @@ export function App() {
     window.location.pathname === "/system/applying-changes";
   const hasPendingBackendChange =
     typeof window !== "undefined" &&
-    Boolean(window.sessionStorage.getItem("system.pendingBackendChange"));
+    isRecentPendingBackendChange();
 
   if (loading && !(isApplyingBackendChangesRoute && hasPendingBackendChange)) {
     return <AppLoadingScreen />;

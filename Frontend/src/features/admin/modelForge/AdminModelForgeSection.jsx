@@ -36,6 +36,7 @@ import {
   getModelForgeCatalog,
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
+import { setPendingBackendChange } from "../../../utils/pendingBackendChange.js";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
@@ -79,7 +80,6 @@ const RESTRICTIONS_MODE_OPTIONS = [
 
 const modelKeyPattern = /^[a-z][a-z0-9_]*$/;
 const lowerCamelCasePattern = /^[a-z][A-Za-z0-9]*$/;
-const PENDING_BACKEND_CHANGE_KEY = "system.pendingBackendChange";
 const BACKEND_CHANGE_SUCCESS_MESSAGE =
   "Scaffold package created and Backend restarted successfully.";
 const BACKEND_CHANGE_DESTINATION_PATH =
@@ -1450,10 +1450,7 @@ export default function AdminModelForgeSection() {
         destinationPath: BACKEND_CHANGE_DESTINATION_PATH,
       };
 
-      window.sessionStorage.setItem(
-        PENDING_BACKEND_CHANGE_KEY,
-        JSON.stringify(pendingChange)
-      );
+      setPendingBackendChange(pendingChange);
 
       navigate("/system/applying-changes");
       return true;

@@ -4,10 +4,11 @@ import Cookies from "js-cookie";
 import { AuthContext } from "./auth.context.js";
 import {
   EmptyAuthState,
-  fetchProtectedData,
+  fetchProtectedDataForBootstrap,
   getNotifications,
   logout,
 } from "../../services/auth.service.js";
+import { isRecentPendingBackendChange } from "../../utils/pendingBackendChange.js";
 
 /**
  * Expone el estado de autenticación y las notificaciones del usuario.
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await fetchProtectedData();
+        const response = await fetchProtectedDataForBootstrap();
         const user = response?.data?.user ?? null;
 
         if (response?.success && user) {
@@ -57,6 +58,20 @@ export const AuthProvider = ({ children }) => {
 
           setIsLoggedIn(true);
           await fetchNotifications();
+          return;
+        }
+
+        if (response?.status === 401 || response?.status === 403) {
+          setValue(EmptyAuthState);
+          setIsLoggedIn(false);
+          return;
+        }
+
+        if (
+          response?.status === 0 &&
+          response?.error?.code === "NETWORK_ERROR" &&
+          isRecentPendingBackendChange()
+        ) {
           return;
         }
 

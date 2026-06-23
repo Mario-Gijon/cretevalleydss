@@ -7,6 +7,7 @@ import {
 import {
   API,
   buildNetworkErrorResponse,
+  normalizeApiResponse,
   jsonRequest,
   safeJson,
 } from "./httpRequest.service.js";
@@ -105,6 +106,22 @@ export const fetchProtectedData = async () => {
   );
 
   return data?.success ? data : false;
+};
+
+export const fetchProtectedDataForBootstrap = async () => {
+  try {
+    const response = await authFetch(`${API}/auth/me`, { method: "GET" });
+    const payload = await safeJson(response);
+
+    return normalizeApiResponse(
+      payload,
+      response,
+      "Error fetching authenticated user."
+    );
+  } catch (error) {
+    console.error("Error fetching authenticated user:", error);
+    return buildNetworkErrorResponse("Error fetching authenticated user.");
+  }
 };
 
 /**
