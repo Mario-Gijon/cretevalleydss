@@ -1,0 +1,8 @@
+{
+  "watch": ["."],
+  "ext": "js,mjs,cjs,json",
+  "ignore": [
+    "modules/decisionPlugins/evaluations/structures/**",
+    "modules/decisionPlugins/modelParameters/structures/**"
+  ]
+}

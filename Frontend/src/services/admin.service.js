@@ -358,6 +358,25 @@ export const applyModelForgeModelPackage = async (payload) =>
     }
   );
 
+export const restartBackendAdmin = async () =>
+  requestJson(
+    `${API}/admin/system/restart-backend`,
+    jsonRequest("POST"),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error restarting Backend.",
+    }
+  );
+
+export const getBackendHealth = async () =>
+  requestJson(
+    `${API}/health`,
+    { method: "GET" },
+    {
+      fallbackMessage: "Backend health check failed.",
+    }
+  );
+
 /**
  * Actualiza si un modelo aparece en el flujo Create Issue.
  *

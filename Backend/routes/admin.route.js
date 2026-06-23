@@ -20,6 +20,7 @@ import {
   getModelForgeCatalogAdmin,
   previewModelForgeModelPackageAdmin,
   applyModelForgeModelPackageAdmin,
+  restartBackendAdmin,
   updateModelCatalogVisibilityAdmin,
   getModelManifestDryRunAdmin,
   syncModelManifestAdmin,
@@ -61,6 +62,13 @@ router.post(
   requireToken,
   requireAdmin,
   asyncHandler(applyModelForgeModelPackageAdmin)
+);
+
+router.post(
+  "/system/restart-backend",
+  requireToken,
+  requireAdmin,
+  asyncHandler(restartBackendAdmin)
 );
 
 router.patch(

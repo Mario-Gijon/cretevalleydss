@@ -48,6 +48,17 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+app.get("/api/health", (_req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Backend is healthy",
+    data: {
+      service: "backend",
+      status: "ok",
+    },
+  });
+});
+
 app.get("/api/openapi.json", (_req, res) => {
   return res.sendFile(openApiJsonPath);
 });

@@ -35,6 +35,7 @@ import {
 import {
   createBadRequestError,
   createConflictError,
+  createForbiddenError,
   createNotFoundError,
 } from "../utils/common/errors.js";
 import { toIdString } from "../utils/common/ids.js";
@@ -245,6 +246,36 @@ export const applyModelForgeModelPackageAdmin = async (req, res) => {
     res,
     "Model Forge scaffold apply completed successfully",
     result
+  );
+};
+
+export const restartBackendAdmin = async (_req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    throw createForbiddenError("Backend restart is disabled in production.", {
+      code: "BACKEND_RESTART_DISABLED",
+    });
+  }
+
+  let restartScheduled = false;
+  const scheduleRestart = () => {
+    if (restartScheduled) return;
+    restartScheduled = true;
+
+    setTimeout(() => {
+      process.exit(0);
+    }, 500);
+  };
+
+  res.on("finish", scheduleRestart);
+
+  return sendSuccess(
+    res,
+    "Backend restart scheduled successfully",
+    {
+      service: "backend",
+      restartScheduled: true,
+    },
+    202
   );
 };
 

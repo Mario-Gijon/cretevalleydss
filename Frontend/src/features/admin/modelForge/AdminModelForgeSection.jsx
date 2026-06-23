@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Alert,
+  AlertTitle,
   Autocomplete,
   Box,
   Button,
@@ -30,8 +31,10 @@ import { ConfirmationDialog } from "../../../components/StyledComponents/Confirm
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
   applyModelForgeModelPackage,
+  getBackendHealth,
   getModelForgeCatalog,
   previewModelForgeModelPackage,
+  restartBackendAdmin,
 } from "../../../services/admin.service";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
@@ -76,6 +79,56 @@ const RESTRICTIONS_MODE_OPTIONS = [
 
 const modelKeyPattern = /^[a-z][a-z0-9_]*$/;
 const lowerCamelCasePattern = /^[a-z][A-Za-z0-9]*$/;
+const MODEL_FORGE_PENDING_BACKEND_RESTART_KEY =
+  "modelForge.pendingBackendRestart";
+const BACKEND_RESTART_SUCCESS_MESSAGE =
+  "Scaffold package created and Backend restarted successfully.";
+const BACKEND_RESTART_TIMEOUT_MESSAGE =
+  "Backend restart was requested, but reconnect timed out. Refresh the page manually.";
+const BACKEND_RESTART_MAX_AGE_MS = 2 * 60 * 1000;
+const BACKEND_RESTART_POLL_INTERVAL_MS = 1000;
+const BACKEND_RESTART_POLL_TIMEOUT_MS = 30 * 1000;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const readPendingBackendRestart = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const rawValue = window.sessionStorage.getItem(
+      MODEL_FORGE_PENDING_BACKEND_RESTART_KEY
+    );
+    if (!rawValue) return null;
+
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed !== "object") return null;
+
+    return {
+      createdAt: Number(parsed.createdAt) || 0,
+      message:
+        typeof parsed.message === "string" && parsed.message.trim()
+          ? parsed.message
+          : BACKEND_RESTART_SUCCESS_MESSAGE,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writePendingBackendRestart = (value) => {
+  if (typeof window === "undefined") return;
+
+  window.sessionStorage.setItem(
+    MODEL_FORGE_PENDING_BACKEND_RESTART_KEY,
+    JSON.stringify(value)
+  );
+};
+
+const clearPendingBackendRestart = () => {
+  if (typeof window === "undefined") return;
+
+  window.sessionStorage.removeItem(MODEL_FORGE_PENDING_BACKEND_RESTART_KEY);
+};
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -1076,6 +1129,7 @@ const SectionDivider = ({ theme }) => (
 export default function AdminModelForgeSection() {
   const theme = useTheme();
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const isMountedRef = useRef(true);
 
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
@@ -1091,6 +1145,8 @@ export default function AdminModelForgeSection() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [backendRestartRequired, setBackendRestartRequired] = useState(false);
+  const [backendRestarting, setBackendRestarting] = useState(false);
 
   const loadCatalog = useCallback(
     async ({ quiet = false } = {}) => {
@@ -1125,9 +1181,74 @@ export default function AdminModelForgeSection() {
     [showSnackbarAlert]
   );
 
+  const waitForBackendHealth = useCallback(
+    async (
+      pendingRestart,
+      { timeoutMs = BACKEND_RESTART_POLL_TIMEOUT_MS, showTimeoutWarning = true } = {}
+    ) => {
+      const startedAt = Date.now();
+
+      if (isMountedRef.current) {
+        setBackendRestarting(true);
+      }
+
+      while (Date.now() - startedAt < timeoutMs) {
+        const response = await getBackendHealth();
+
+        if (response?.success) {
+          clearPendingBackendRestart();
+
+          if (isMountedRef.current) {
+            setBackendRestarting(false);
+            setBackendRestartRequired(false);
+            showSnackbarAlert(
+              pendingRestart?.message || BACKEND_RESTART_SUCCESS_MESSAGE,
+              "success"
+            );
+            await loadCatalog({ quiet: true });
+          }
+
+          return true;
+        }
+
+        await delay(BACKEND_RESTART_POLL_INTERVAL_MS);
+      }
+
+      if (isMountedRef.current) {
+        setBackendRestarting(false);
+        if (showTimeoutWarning) {
+          showSnackbarAlert(BACKEND_RESTART_TIMEOUT_MESSAGE, "warning");
+        }
+      }
+
+      return false;
+    },
+    [loadCatalog, showSnackbarAlert]
+  );
+
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const pendingRestart = readPendingBackendRestart();
+
+    if (!pendingRestart) return;
+
+    if (Date.now() - pendingRestart.createdAt > BACKEND_RESTART_MAX_AGE_MS) {
+      clearPendingBackendRestart();
+      return;
+    }
+
+    setBackendRestartRequired(true);
+    waitForBackendHealth(pendingRestart, { showTimeoutWarning: false });
+  }, [waitForBackendHealth]);
 
   const evaluationStructures = useMemo(
     () => (Array.isArray(catalog?.evaluationStructures) ? catalog.evaluationStructures : []),
@@ -1214,6 +1335,8 @@ export default function AdminModelForgeSection() {
     setApplyResult(null);
     setApplyValidationResult(null);
     setActionError("");
+    setBackendRestartRequired(false);
+    setBackendRestarting(false);
   }, []);
 
   const setParameterField = useCallback((id, field, value) => {
@@ -1402,6 +1525,8 @@ export default function AdminModelForgeSection() {
       setApplyResult(response.data || null);
       setApplyValidationResult(response?.data?.validation || null);
       setApplyDialogOpen(false);
+      setBackendRestartRequired(true);
+      setBackendRestarting(false);
       showSnackbarAlert(response.message || "Scaffold package applied", "success");
       return true;
     } catch (error) {
@@ -1414,6 +1539,42 @@ export default function AdminModelForgeSection() {
       setApplyLoading(false);
     }
   }, [requestPayloadPreview, runFullFrontendBuild, showSnackbarAlert]);
+
+  const handleRestartBackend = useCallback(async () => {
+    const pendingRestart = {
+      createdAt: Date.now(),
+      message: BACKEND_RESTART_SUCCESS_MESSAGE,
+    };
+
+    writePendingBackendRestart(pendingRestart);
+    setBackendRestarting(true);
+    setActionError("");
+
+    try {
+      const response = await restartBackendAdmin();
+
+      if (!response?.success) {
+        clearPendingBackendRestart();
+        setBackendRestarting(false);
+
+        const message = response?.message || "Error restarting Backend.";
+        setActionError(message);
+        showSnackbarAlert(message, "error");
+        return false;
+      }
+
+      return await waitForBackendHealth(pendingRestart);
+    } catch (error) {
+      console.error(error);
+      clearPendingBackendRestart();
+      setBackendRestarting(false);
+
+      const message = "Unexpected error restarting Backend.";
+      setActionError(message);
+      showSnackbarAlert(message, "error");
+      return false;
+    }
+  }, [showSnackbarAlert, waitForBackendHealth]);
 
   const updateModelKind = useCallback((nextKind) => {
     if (!nextKind) return;
@@ -1917,6 +2078,30 @@ export default function AdminModelForgeSection() {
                       Run Manifest Sync manually if you want newly generated models to appear in
                       the admin catalog.
                     </Alert>
+
+                    {backendRestartRequired && (
+                      <Alert
+                        severity="warning"
+                        variant="outlined"
+                        sx={{ borderRadius: 2 }}
+                        action={(
+                          <Button
+                            color="warning"
+                            variant="outlined"
+                            size="small"
+                            onClick={handleRestartBackend}
+                            disabled={backendRestarting}
+                            sx={{ textTransform: "none", fontWeight: 900 }}
+                          >
+                            {backendRestarting ? "Restarting Backend..." : "Restart Backend"}
+                          </Button>
+                        )}
+                      >
+                        <AlertTitle>Backend restart required</AlertTitle>
+                        Generated backend runtime files are written, but the Backend must restart
+                        to load them.
+                      </Alert>
+                    )}
 
                     <Stack
                       spacing={0}
