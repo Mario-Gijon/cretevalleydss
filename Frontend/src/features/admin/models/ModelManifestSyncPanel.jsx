@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Box, Paper, Stack, Tab, Tabs } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useSearchParams } from "react-router-dom";
 
 import SearchIcon from "@mui/icons-material/Search";
 import SyncIcon from "@mui/icons-material/Sync";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
+import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { getAdminIssuesSectionPanelSx } from "../issues/styles/adminIssues.styles";
 import ModelCatalogTab from "./components/ModelCatalogTab";
 import ModelDetailDialog from "./components/ModelDetailDialog";
@@ -27,8 +29,24 @@ const MODEL_MANIFEST_TABS = {
   REVIEW: 2,
 };
 
+const TAB_KEY_TO_VALUE = {
+  catalog: MODEL_MANIFEST_TABS.CATALOG,
+  "manifest-sync": MODEL_MANIFEST_TABS.SYNC,
+  review: MODEL_MANIFEST_TABS.REVIEW,
+};
+
+const TAB_VALUE_TO_KEY = {
+  [MODEL_MANIFEST_TABS.CATALOG]: "catalog",
+  [MODEL_MANIFEST_TABS.SYNC]: "manifest-sync",
+  [MODEL_MANIFEST_TABS.REVIEW]: "review",
+};
+
+const PENDING_SUCCESS_MESSAGE_KEY = "system.pendingSuccessMessage";
+
 export default function ModelManifestSyncPanel() {
   const theme = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { showSnackbarAlert } = useSnackbarAlertContext();
   const [activeTab, setActiveTab] = useState(MODEL_MANIFEST_TABS.CATALOG);
   const [selectedModel, setSelectedModel] = useState(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
@@ -50,6 +68,40 @@ export default function ModelManifestSyncPanel() {
     onCatalogShouldRefresh: loadCatalog,
     onAfterSync: () => setActiveTab(MODEL_MANIFEST_TABS.SYNC),
   });
+
+  useEffect(() => {
+    const tabKey = String(searchParams.get("tab") || "").trim();
+    const resolvedTab =
+      Object.prototype.hasOwnProperty.call(TAB_KEY_TO_VALUE, tabKey)
+        ? TAB_KEY_TO_VALUE[tabKey]
+        : null;
+
+    if (resolvedTab !== null) {
+      setActiveTab(resolvedTab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const currentTabKey = TAB_VALUE_TO_KEY[activeTab] || "catalog";
+    const existingTabKey = String(searchParams.get("tab") || "").trim();
+
+    if (existingTabKey === currentTabKey) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", currentTabKey);
+    setSearchParams(nextParams, { replace: true });
+  }, [activeTab, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const rawValue = window.sessionStorage.getItem(PENDING_SUCCESS_MESSAGE_KEY);
+    if (!rawValue) return;
+
+    window.sessionStorage.removeItem(PENDING_SUCCESS_MESSAGE_KEY);
+    const message = rawValue.trim();
+    if (message) {
+      showSnackbarAlert(message, "success");
+    }
+  }, [showSnackbarAlert]);
 
   const dryRunRows = useMemo(
     () => normalizeModelManifestDryRunRows(dryRunReport),

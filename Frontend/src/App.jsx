@@ -14,6 +14,9 @@ const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/Fin
 const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));
 const AdminRoute = lazy(() => import("./pages/private/admin/AdminRoute"));
 const AdminPage = lazy(() => import("./pages/private/admin/AdminPage"));
+const ApplyingBackendChangesPage = lazy(() =>
+  import("./pages/system/ApplyingBackendChangesPage")
+);
 
 const APP_LOADING_CONTAINER_SX = {
   minHeight: "100vh",
@@ -49,8 +52,14 @@ function PrivateRoute({ isLoggedIn, children }) {
 
 export function App() {
   const { loading, isLoggedIn } = useAuthContext();
+  const isApplyingBackendChangesRoute =
+    typeof window !== "undefined" &&
+    window.location.pathname === "/system/applying-changes";
+  const hasPendingBackendChange =
+    typeof window !== "undefined" &&
+    Boolean(window.sessionStorage.getItem("system.pendingBackendChange"));
 
-  if (loading) {
+  if (loading && !(isApplyingBackendChangesRoute && hasPendingBackendChange)) {
     return <AppLoadingScreen />;
   }
 
@@ -115,6 +124,11 @@ export function App() {
             <Route path="finished/*" element={<Navigate to="/dashboard/finished" replace />} />
             <Route path="create/*" element={<Navigate to="/dashboard/create" replace />} />
           </Route>
+
+          <Route
+            path="/system/applying-changes"
+            element={<ApplyingBackendChangesPage />}
+          />
 
           <Route
             path="*"

@@ -9,6 +9,7 @@ import issueRouter from "./routes/issue.route.js";
 import adminRouter from "./routes/admin.route.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
+const BACKEND_STARTED_AT = new Date().toISOString();
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +56,7 @@ app.get("/api/health", (_req, res) => {
     data: {
       service: "backend",
       status: "ok",
+      startedAt: BACKEND_STARTED_AT,
     },
   });
 });
