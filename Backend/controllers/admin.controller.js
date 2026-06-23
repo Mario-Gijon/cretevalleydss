@@ -1,3 +1,6 @@
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 import axios from "axios";
 import mongoose from "mongoose";
 
@@ -50,6 +53,13 @@ import {
 } from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
 import { getIssueByIdOrThrow } from "../modules/issues/shared/queries.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKEND_RELOAD_MARKER_PATH = path.resolve(
+  __dirname,
+  "../runtime/backendReloadMarker.json"
+);
 
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
@@ -311,9 +321,26 @@ export const restartBackendAdmin = async (_req, res) => {
     if (restartScheduled) return;
     restartScheduled = true;
 
-    setTimeout(() => {
-      process.exit(0);
-    }, 500);
+    setTimeout(async () => {
+      try {
+        await mkdir(path.dirname(BACKEND_RELOAD_MARKER_PATH), {
+          recursive: true,
+        });
+        await writeFile(
+          BACKEND_RELOAD_MARKER_PATH,
+          JSON.stringify(
+            {
+              updatedAt: new Date().toISOString(),
+            },
+            null,
+            2
+          ) + "\n",
+          "utf-8"
+        );
+      } catch (error) {
+        console.error("Failed to update backend reload marker", error);
+      }
+    }, 250);
   };
 
   res.on("finish", scheduleRestart);

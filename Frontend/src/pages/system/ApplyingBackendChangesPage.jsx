@@ -41,9 +41,13 @@ const DEFAULT_DESTINATION_PATH = "/dashboard/admin/models?tab=manifest-sync";
 const BACKEND_RESTART_DISABLED_MESSAGE =
   "Backend restart is disabled in this environment.";
 const BACKEND_RESTART_TIMEOUT_MESSAGE =
-  "The Backend restart was requested, but reconnect timed out. Refresh the page manually.";
+  "Backend restart was requested, but the development server did not come back. Check that nodemon is running with the project nodemon.json configuration.";
 const MANIFEST_WARNING_MESSAGE =
   "Generated files were written, but DecisionModelsService has not published the generated model yet.";
+const APPLY_INTERRUPTED_MESSAGE =
+  "Apply response was interrupted. Waiting for Backend recovery.";
+const ADMIN_AUTH_REQUIRED_MESSAGE =
+  "Your admin session could not be restored during the applying flow. Sign in again and retry.";
 
 const STEP_KEYS = {
   apply: "apply",
@@ -182,6 +186,56 @@ export default function ApplyingBackendChangesPage() {
     return { restored: false, unauthorized: false };
   }, [navigate, setIsLoggedIn, setValue]);
 
+  const recoverAuthForAdminFlow = useCallback(async () => {
+    const response = await fetchProtectedDataForBootstrap();
+    const user = response?.data?.user ?? null;
+
+    if (response?.success && user) {
+      setValue({
+        name: user.name || "",
+        university: user.university || "",
+        email: user.email || "",
+        accountCreation: user.accountCreation || "",
+        role: user.role ?? "user",
+        isAdmin: user.isAdmin ?? user.role === "admin",
+      });
+      setIsLoggedIn(true);
+      return true;
+    }
+
+    return false;
+  }, [setIsLoggedIn, setValue]);
+
+  const callAdminWithRecovery = useCallback(
+    async (requestFn) => {
+      let response = await requestFn();
+      const errorCode = response?.error?.code || "";
+      const unauthorized =
+        response?.status === 401 ||
+        response?.status === 403 ||
+        errorCode === "UNAUTHORIZED" ||
+        errorCode === "NO_TOKEN";
+
+      if (!unauthorized) {
+        return response;
+      }
+
+      const restored = await recoverAuthForAdminFlow();
+      if (!restored) {
+        if (isMountedRef.current) {
+          setStatus("unauthorized");
+          setMessage(ADMIN_AUTH_REQUIRED_MESSAGE);
+          setRetryMode(null);
+        }
+        return null;
+      }
+
+      response = await requestFn();
+      return response;
+    },
+    [recoverAuthForAdminFlow]
+  );
+
   const completeFlow = useCallback(
     async (resolvedPendingChange) => {
       clearPendingBackendChange();
@@ -285,7 +339,12 @@ export default function ApplyingBackendChangesPage() {
       const startedAt = Date.now();
 
       while (Date.now() - startedAt < MANIFEST_POLL_TIMEOUT_MS) {
-        const response = await getCurrentModelManifestAdmin();
+        const response = await callAdminWithRecovery(() =>
+          getCurrentModelManifestAdmin()
+        );
+        if (response === null) {
+          return false;
+        }
         const models = Array.isArray(response?.data?.models)
           ? response.data.models
           : [];
@@ -380,6 +439,7 @@ export default function ApplyingBackendChangesPage() {
             setSingleStepStatus(STEP_KEYS.apply, "completed");
           } else if (applyResponse?.error?.code === "NETWORK_ERROR") {
             applyRequestHadNetworkFailure = true;
+            setMessage(APPLY_INTERRUPTED_MESSAGE);
             nextPendingChange = updatePendingBackendChange({
               applyNetworkInterrupted: true,
             }) || {
@@ -436,7 +496,12 @@ export default function ApplyingBackendChangesPage() {
             backendRestartRequested: true,
           };
 
-          const restartResponse = await restartBackendAdmin();
+          const restartResponse = await callAdminWithRecovery(() =>
+            restartBackendAdmin()
+          );
+          if (restartResponse === null) {
+            return;
+          }
           if (!restartResponse?.success) {
             const errorCode = restartResponse?.error?.code || "";
 
@@ -476,6 +541,7 @@ export default function ApplyingBackendChangesPage() {
       await completeFlow(nextPendingChange);
     },
     [
+      callAdminWithRecovery,
       completeFlow,
       pollForHealthyBackend,
       pollForManifestModel,
