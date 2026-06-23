@@ -18,8 +18,10 @@ import {
   removeIssueAdmin,
   getModelCatalogAdmin,
   getModelForgeCatalogAdmin,
+  getModelForgeAssetsAdmin,
   previewModelForgeModelPackageAdmin,
   applyModelForgeModelPackageAdmin,
+  deleteModelForgeAssetAdmin,
   restartBackendAdmin,
   getDecisionModelsServiceHealthAdmin,
   reloadDecisionModelsServiceAdmin,
@@ -53,6 +55,13 @@ router.get(
   asyncHandler(getModelForgeCatalogAdmin)
 );
 
+router.get(
+  "/model-forge/assets",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getModelForgeAssetsAdmin)
+);
+
 router.post(
   "/model-forge/model-package/preview",
   requireToken,
@@ -65,6 +74,13 @@ router.post(
   requireToken,
   requireAdmin,
   asyncHandler(applyModelForgeModelPackageAdmin)
+);
+
+router.delete(
+  "/model-forge/assets/:kind/:key",
+  requireToken,
+  requireAdmin,
+  asyncHandler(deleteModelForgeAssetAdmin)
 );
 
 router.post(

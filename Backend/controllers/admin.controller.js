@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import mongoose from "mongoose";
 
+import { Issue } from "../models/Issues.js";
 import { IssueModel } from "../models/IssueModels.js";
 
 import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
@@ -36,6 +37,8 @@ import { fetchModelManifest } from "../services/modelApi/modelManifestClient.js"
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 import {
   applyModelForgeModelPackage,
+  deleteModelForgeAsset,
+  fetchModelForgeAssets,
   fetchModelForgeCatalog,
   previewModelForgeModelPackage,
 } from "../services/modelForge/modelForgeClient.js";
@@ -60,6 +63,12 @@ const BACKEND_RELOAD_MARKER_PATH = path.resolve(
   __dirname,
   "../runtime/backendReloadMarker.json"
 );
+const MODEL_FORGE_ASSET_KIND_SET = new Set([
+  "model",
+  "evaluationStructure",
+  "parameterStructure",
+]);
+const MODEL_FORGE_ASSET_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
@@ -142,6 +151,89 @@ const getModelCatalogSortRank = (model) => {
 
   return 4;
 };
+
+const normalizeModelForgeAssetKeyOrThrow = (key) => {
+  const normalizedKey = String(key || "").trim();
+
+  if (!normalizedKey || !MODEL_FORGE_ASSET_KEY_PATTERN.test(normalizedKey)) {
+    throw createBadRequestError("Valid asset key is required", {
+      field: "key",
+    });
+  }
+
+  return normalizedKey;
+};
+
+const normalizeModelForgeAssetKindOrThrow = (kind) => {
+  const normalizedKind = String(kind || "").trim();
+
+  if (!MODEL_FORGE_ASSET_KIND_SET.has(normalizedKind)) {
+    throw createBadRequestError("Valid asset kind is required", {
+      field: "kind",
+    });
+  }
+
+  return normalizedKind;
+};
+
+const countIssuesUsingIssueModelIds = async (modelIds) => {
+  if (!Array.isArray(modelIds) || modelIds.length === 0) return 0;
+
+  return Issue.countDocuments({
+    $or: [
+      { model: { $in: modelIds } },
+      { criteriaWeightingModel: { $in: modelIds } },
+    ],
+  });
+};
+
+const countIssuesUsingModelForgeAsset = async ({ kind, key }) => {
+  if (kind === "model") {
+    const models = await IssueModel.find({ apiModelKey: key }).select("_id").lean();
+    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
+  }
+
+  if (kind === "evaluationStructure") {
+    const models = await IssueModel.find({ evaluationStructureKey: key })
+      .select("_id")
+      .lean();
+    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
+  }
+
+  if (kind === "parameterStructure") {
+    const models = await IssueModel.find({
+      "parameters.parameterStructureKey": key,
+    })
+      .select("_id")
+      .lean();
+    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
+  }
+
+  throw createBadRequestError("Valid asset kind is required", {
+    field: "kind",
+  });
+};
+
+const enrichModelForgeAssetsWithUsage = async (items = []) =>
+  Promise.all(
+    items.map(async (item) => {
+      const kind = String(item?.kind || "").trim();
+      const key = String(item?.key || "").trim();
+      const resolvedUsageCount = await countIssuesUsingModelForgeAsset({
+        kind,
+        key,
+      });
+      const usedByIssuesCount = Number.isFinite(resolvedUsageCount)
+        ? resolvedUsageCount
+        : 0;
+
+      return {
+        ...item,
+        usedByIssuesCount,
+        deletable: usedByIssuesCount === 0,
+      };
+    })
+  );
 
 export const getAllUsersAdmin = async (req, res) => {
   const data = await getAdminUsersListPayload({
@@ -289,6 +381,26 @@ export const getModelForgeCatalogAdmin = async (_req, res) => {
   );
 };
 
+export const getModelForgeAssetsAdmin = async (_req, res) => {
+  const assets = await fetchModelForgeAssets();
+  const [models, evaluationStructures, parameterStructures] = await Promise.all([
+    enrichModelForgeAssetsWithUsage(assets?.models || []),
+    enrichModelForgeAssetsWithUsage(assets?.evaluationStructures || []),
+    enrichModelForgeAssetsWithUsage(assets?.parameterStructures || []),
+  ]);
+
+  return sendSuccess(
+    res,
+    "Model Forge generated assets fetched successfully",
+    {
+      ...assets,
+      models,
+      evaluationStructures,
+      parameterStructures,
+    }
+  );
+};
+
 export const previewModelForgeModelPackageAdmin = async (req, res) => {
   const preview = await previewModelForgeModelPackage(req.body || {});
 
@@ -306,6 +418,39 @@ export const applyModelForgeModelPackageAdmin = async (req, res) => {
     res,
     "Model Forge scaffold apply completed successfully",
     result
+  );
+};
+
+export const deleteModelForgeAssetAdmin = async (req, res) => {
+  const kind = normalizeModelForgeAssetKindOrThrow(req.params?.kind);
+  const key = normalizeModelForgeAssetKeyOrThrow(req.params?.key);
+  const usedByIssuesCount = await countIssuesUsingModelForgeAsset({ kind, key });
+
+  if (usedByIssuesCount > 0) {
+    throw createConflictError(
+      "This asset is used by existing issues and cannot be deleted.",
+      {
+        code: "MODEL_FORGE_ASSET_IN_USE",
+        field: "key",
+        details: {
+          kind,
+          key,
+          usedByIssuesCount,
+        },
+      }
+    );
+  }
+
+  const result = await deleteModelForgeAsset(kind, key);
+
+  return sendSuccess(
+    res,
+    "Model Forge generated asset deleted successfully",
+    {
+      ...result,
+      usedByIssuesCount,
+      deletable: true,
+    }
   );
 };
 

@@ -44,6 +44,8 @@ const BACKEND_RESTART_TIMEOUT_MESSAGE =
   "Backend restart was requested, but the development server did not come back. Check that nodemon is running with the project nodemon.json configuration.";
 const MANIFEST_WARNING_MESSAGE =
   "Generated files were written, but DecisionModelsService has not published the generated model yet.";
+const MANIFEST_DELETE_WARNING_MESSAGE =
+  "Generated files were deleted, but DecisionModelsService still reports the model in the manifest.";
 const APPLY_INTERRUPTED_MESSAGE =
   "Apply response was interrupted. Verifying generated files through the model manifest.";
 const ADMIN_AUTH_REQUIRED_MESSAGE =
@@ -56,11 +58,17 @@ const STEP_KEYS = {
   redirect: "redirect",
 };
 
-const STEP_LABELS = {
+const DEFAULT_STEP_LABELS = {
   [STEP_KEYS.apply]: "Writing scaffold files",
   [STEP_KEYS.backend]: "Restarting Backend",
   [STEP_KEYS.manifest]: "Waiting for generated model manifest",
   [STEP_KEYS.redirect]: "Redirecting to Manifest Sync",
+};
+
+const DELETE_STEP_LABELS = {
+  [STEP_KEYS.backend]: "Restarting Backend",
+  [STEP_KEYS.manifest]: "Waiting for generated model manifest",
+  [STEP_KEYS.redirect]: "Redirecting to Registry",
 };
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -98,9 +106,19 @@ const normalizePendingBackendChange = (value) => {
       value.expectedApiModelKey.trim()
         ? value.expectedApiModelKey.trim()
         : null,
+    expectedManifestState:
+      value.expectedManifestState === "absent" ? "absent" : "present",
     applyRequestPayload: isPlainObject(value.applyRequestPayload)
       ? value.applyRequestPayload
       : null,
+    deletedAssetKind:
+      typeof value.deletedAssetKind === "string" && value.deletedAssetKind.trim()
+        ? value.deletedAssetKind.trim()
+        : null,
+    deletedAssetKey:
+      typeof value.deletedAssetKey === "string" && value.deletedAssetKey.trim()
+        ? value.deletedAssetKey.trim()
+        : null,
     successMessage:
       typeof value.successMessage === "string" && value.successMessage.trim()
         ? value.successMessage
@@ -132,6 +150,20 @@ export default function ApplyingBackendChangesPage() {
     () => pendingChange?.destinationPath || DEFAULT_DESTINATION_PATH,
     [pendingChange]
   );
+  const stepLabels = useMemo(
+    () =>
+      pendingChange?.type === "modelForgeAssetDelete"
+        ? DELETE_STEP_LABELS
+        : DEFAULT_STEP_LABELS,
+    [pendingChange]
+  );
+  const destinationActionLabel = useMemo(
+    () =>
+      pendingChange?.type === "modelForgeAssetDelete"
+        ? "Go to Model Forge anyway"
+        : "Go to Admin Models anyway",
+    [pendingChange]
+  );
 
   const setSingleStepStatus = useCallback((stepKey, nextStatus) => {
     setSteps((current) => ({
@@ -140,7 +172,9 @@ export default function ApplyingBackendChangesPage() {
     }));
   }, []);
 
-  const resetStepsForMode = useCallback((mode) => {
+  const resetStepsForMode = useCallback((mode, resolvedPendingChange = null) => {
+    const isDeleteFlow = resolvedPendingChange?.type === "modelForgeAssetDelete";
+
     if (mode === "manifestOnly") {
       setSteps(
         buildStepState({
@@ -154,7 +188,7 @@ export default function ApplyingBackendChangesPage() {
 
     setSteps(
       buildStepState({
-        apply: "active",
+        apply: isDeleteFlow ? "completed" : "active",
       })
     );
   }, []);
@@ -337,6 +371,8 @@ export default function ApplyingBackendChangesPage() {
 
       setSingleStepStatus(STEP_KEYS.manifest, "active");
       const startedAt = Date.now();
+      const expectAbsence =
+        resolvedPendingChange?.expectedManifestState === "absent";
 
       while (Date.now() - startedAt < MANIFEST_POLL_TIMEOUT_MS) {
         const response = await callAdminWithRecovery(() =>
@@ -348,14 +384,16 @@ export default function ApplyingBackendChangesPage() {
         const models = Array.isArray(response?.data?.models)
           ? response.data.models
           : [];
+        const manifestContainsModel = models.some(
+          (model) =>
+            String(model?.apiModelKey || "").trim() ===
+            resolvedPendingChange.expectedApiModelKey
+        );
 
         if (
           response?.success &&
-          models.some(
-            (model) =>
-              String(model?.apiModelKey || "").trim() ===
-              resolvedPendingChange.expectedApiModelKey
-          )
+          ((expectAbsence && !manifestContainsModel) ||
+            (!expectAbsence && manifestContainsModel))
         ) {
           setSingleStepStatus(STEP_KEYS.manifest, "completed");
           return true;
@@ -365,16 +403,19 @@ export default function ApplyingBackendChangesPage() {
       }
 
       if (isMountedRef.current) {
+        const warningMessage = expectAbsence
+          ? MANIFEST_DELETE_WARNING_MESSAGE
+          : MANIFEST_WARNING_MESSAGE;
         setSingleStepStatus(STEP_KEYS.manifest, "failed");
         setStatus("manifest-warning");
-        setMessage(MANIFEST_WARNING_MESSAGE);
+        setMessage(warningMessage);
         setRetryMode("manifest");
-        showSnackbarAlert(MANIFEST_WARNING_MESSAGE, "warning");
+        showSnackbarAlert(warningMessage, "warning");
       }
 
       return false;
     },
-    [setSingleStepStatus, showSnackbarAlert]
+    [callAdminWithRecovery, setSingleStepStatus, showSnackbarAlert]
   );
 
   const runApplyingFlow = useCallback(
@@ -406,12 +447,14 @@ export default function ApplyingBackendChangesPage() {
       setStatus("applying");
       setMessage("");
       setRetryMode(null);
-      resetStepsForMode(mode);
+      resetStepsForMode(mode, resolvedPendingChange);
 
       let nextPendingChange = resolvedPendingChange;
       let applyRequestHadNetworkFailure = false;
+      const isAssetDeleteFlow =
+        nextPendingChange.type === "modelForgeAssetDelete";
 
-      if (mode === "full") {
+      if (mode === "full" && !isAssetDeleteFlow) {
         setSingleStepStatus(STEP_KEYS.apply, "active");
 
         if (nextPendingChange.applyRequested !== true) {
@@ -537,7 +580,7 @@ export default function ApplyingBackendChangesPage() {
       const manifestReady = await pollForManifestModel(nextPendingChange);
       if (!manifestReady) return;
 
-      if (nextPendingChange.applyCompleted !== true) {
+      if (!isAssetDeleteFlow && nextPendingChange.applyCompleted !== true) {
         nextPendingChange = updatePendingBackendChange({
           applyCompleted: true,
           applyNetworkInterrupted: false,
@@ -548,7 +591,9 @@ export default function ApplyingBackendChangesPage() {
         };
       }
 
-      setSingleStepStatus(STEP_KEYS.apply, "completed");
+      if (!isAssetDeleteFlow) {
+        setSingleStepStatus(STEP_KEYS.apply, "completed");
+      }
       setSingleStepStatus(STEP_KEYS.backend, "completed");
       setSingleStepStatus(STEP_KEYS.manifest, "completed");
       setSingleStepStatus(STEP_KEYS.redirect, "active");
@@ -604,7 +649,7 @@ export default function ApplyingBackendChangesPage() {
         onClick={() => navigate(destinationPath, { replace: true })}
         sx={{ textTransform: "none", fontWeight: 900 }}
       >
-        Go to Admin Models anyway
+        {destinationActionLabel}
       </Button>
     </Stack>
   );
@@ -649,7 +694,7 @@ export default function ApplyingBackendChangesPage() {
           </Stack>
 
           <Stack spacing={0.85} sx={{ width: "100%" }}>
-            {Object.entries(STEP_LABELS).map(([stepKey, label]) => {
+            {Object.entries(stepLabels).map(([stepKey, label]) => {
               const stepStatus = steps[stepKey] || "pending";
               const color =
                 stepStatus === "completed"

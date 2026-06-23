@@ -3,6 +3,7 @@ import axios from "axios";
 import { AppError, isAppError } from "../../utils/common/errors.js";
 
 const SCAFFOLD_CATALOG_PATH = "/scaffold/catalog";
+const SCAFFOLD_ASSETS_PATH = "/scaffold/assets";
 const MODEL_PACKAGE_PREVIEW_PATH = "/scaffold/model-package/preview";
 const MODEL_PACKAGE_APPLY_PATH = "/scaffold/model-package/apply";
 
@@ -137,6 +138,68 @@ export const fetchModelForgeCatalog = async ({
   }
 };
 
+const validateAssetsPayload = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    throw new AppError("ModelForge scaffold assets response is invalid", {
+      statusCode: 502,
+      code: "MODEL_FORGE_INVALID_RESPONSE",
+    });
+  }
+
+  if (!Array.isArray(payload.models)) {
+    throw new AppError("ModelForge scaffold assets models is invalid", {
+      statusCode: 502,
+      code: "MODEL_FORGE_INVALID_RESPONSE",
+      field: "models",
+    });
+  }
+
+  if (!Array.isArray(payload.evaluationStructures)) {
+    throw new AppError(
+      "ModelForge scaffold assets evaluationStructures is invalid",
+      {
+        statusCode: 502,
+        code: "MODEL_FORGE_INVALID_RESPONSE",
+        field: "evaluationStructures",
+      }
+    );
+  }
+
+  if (!Array.isArray(payload.parameterStructures)) {
+    throw new AppError(
+      "ModelForge scaffold assets parameterStructures is invalid",
+      {
+        statusCode: 502,
+        code: "MODEL_FORGE_INVALID_RESPONSE",
+        field: "parameterStructures",
+      }
+    );
+  }
+
+  return payload;
+};
+
+export const fetchModelForgeAssets = async ({
+  httpClient = axios,
+  modelForgeBaseUrl = process.env.MODEL_FORGE_BASE_URL,
+} = {}) => {
+  const baseUrl = String(modelForgeBaseUrl || "").trim();
+
+  if (!baseUrl) {
+    throw createConfigError();
+  }
+
+  try {
+    const response = await httpClient.get(joinUrl(baseUrl, SCAFFOLD_ASSETS_PATH));
+    return validateAssetsPayload(response?.data);
+  } catch (error) {
+    throw createRequestError(
+      error,
+      "Unable to fetch scaffold assets from ModelForge"
+    );
+  }
+};
+
 const requestModelForgeJson = async ({
   httpClient = axios,
   modelForgeBaseUrl = process.env.MODEL_FORGE_BASE_URL,
@@ -180,4 +243,14 @@ export const applyModelForgeModelPackage = async (payload, options = {}) =>
     path: MODEL_PACKAGE_APPLY_PATH,
     payload,
     fallbackMessage: "Unable to apply scaffold package in ModelForge",
+  });
+
+export const deleteModelForgeAsset = (kind, key, options = {}) =>
+  requestModelForgeJson({
+    ...options,
+    method: "DELETE",
+    path: `${SCAFFOLD_ASSETS_PATH}/${encodeURIComponent(kind)}/${encodeURIComponent(
+      key
+    )}`,
+    fallbackMessage: "Unable to delete scaffold asset in ModelForge",
   });

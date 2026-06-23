@@ -338,6 +338,16 @@ export const getModelForgeCatalog = async () =>
     }
   );
 
+export const getModelForgeAssetsAdmin = async () =>
+  requestJson(
+    `${API}/admin/model-forge/assets`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error fetching Model Forge assets.",
+    }
+  );
+
 export const previewModelForgeModelPackage = async (payload) =>
   requestJson(
     `${API}/admin/model-forge/model-package/preview`,
@@ -355,6 +365,18 @@ export const applyModelForgeModelPackage = async (payload) =>
     {
       fetcher: authFetch,
       fallbackMessage: "Error applying Model Forge scaffold package.",
+    }
+  );
+
+export const deleteModelForgeAssetAdmin = async (kind, key) =>
+  requestJson(
+    `${API}/admin/model-forge/assets/${encodeURIComponent(kind)}/${encodeURIComponent(
+      key
+    )}`,
+    { method: "DELETE" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error deleting Model Forge asset.",
     }
   );
 

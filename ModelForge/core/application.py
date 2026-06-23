@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from api.routers.health import router as health_router
 from api.routers.project_paths import router as project_paths_router
+from api.routers.scaffold_assets import router as scaffold_assets_router
 from api.routers.scaffold_catalog import router as scaffold_catalog_router
 from api.routers.scaffold_evaluation_structure import (
     router as scaffold_evaluation_structure_router,
@@ -25,6 +26,7 @@ def create_application() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(project_paths_router)
+    app.include_router(scaffold_assets_router)
     app.include_router(scaffold_catalog_router)
     app.include_router(scaffold_evaluation_structure_router)
     app.include_router(scaffold_model_router)

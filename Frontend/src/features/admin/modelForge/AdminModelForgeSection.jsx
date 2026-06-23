@@ -11,8 +11,11 @@ import {
   Chip,
   Divider,
   FormControlLabel,
+  Paper,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -25,16 +28,19 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
+  deleteModelForgeAssetAdmin,
   getBackendHealth,
+  getModelForgeAssetsAdmin,
   getModelForgeCatalog,
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
 import { setPendingBackendChange } from "../../../utils/pendingBackendChange.js";
+import ModelForgeRegistryTab from "./ModelForgeRegistryTab";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
@@ -82,6 +88,21 @@ const BACKEND_CHANGE_SUCCESS_MESSAGE =
   "Scaffold package created and generated services refreshed successfully.";
 const BACKEND_CHANGE_DESTINATION_PATH =
   "/dashboard/admin/models?tab=manifest-sync";
+const ASSET_DELETE_SUCCESS_MESSAGE = "Asset deleted successfully.";
+const ASSET_DELETE_DESTINATION_PATH =
+  "/dashboard/admin/model-forge?tab=registry";
+const MODEL_FORGE_TABS = {
+  REGISTRY: 0,
+  GENERATE: 1,
+};
+const TAB_KEY_TO_VALUE = {
+  registry: MODEL_FORGE_TABS.REGISTRY,
+  generate: MODEL_FORGE_TABS.GENERATE,
+};
+const TAB_VALUE_TO_KEY = {
+  [MODEL_FORGE_TABS.REGISTRY]: "registry",
+  [MODEL_FORGE_TABS.GENERATE]: "generate",
+};
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -1082,11 +1103,20 @@ const SectionDivider = ({ theme }) => (
 export default function AdminModelForgeSection() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const tabKey = String(searchParams.get("tab") || "registry").trim();
+  const activeTab = TAB_KEY_TO_VALUE[tabKey] ?? MODEL_FORGE_TABS.REGISTRY;
 
   const [catalog, setCatalog] = useState(null);
   const [catalogError, setCatalogError] = useState("");
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [assets, setAssets] = useState(null);
+  const [registryError, setRegistryError] = useState("");
+  const [registryActionError, setRegistryActionError] = useState("");
+  const [loadingAssets, setLoadingAssets] = useState(true);
+  const [pendingDeleteAsset, setPendingDeleteAsset] = useState(null);
+  const [deleteBusyId, setDeleteBusyId] = useState("");
 
   const [formState, setFormState] = useState(buildInitialFormState);
   const [requestPayloadPreview, setRequestPayloadPreview] = useState(null);
@@ -1097,6 +1127,17 @@ export default function AdminModelForgeSection() {
   const [runFullFrontendBuild, setRunFullFrontendBuild] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+
+  const selectTab = useCallback((nextTab) => {
+    const nextTabKey = TAB_VALUE_TO_KEY[nextTab] || "registry";
+    const currentTabKey = String(searchParams.get("tab") || "").trim();
+
+    if (currentTabKey === nextTabKey) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", nextTabKey);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadCatalog = useCallback(
     async ({ quiet = false } = {}) => {
@@ -1131,9 +1172,56 @@ export default function AdminModelForgeSection() {
     [showSnackbarAlert]
   );
 
+  const loadAssets = useCallback(
+    async ({ quiet = false } = {}) => {
+      if (!quiet) setLoadingAssets(true);
+
+      setRegistryError("");
+
+      try {
+        const response = await getModelForgeAssetsAdmin();
+
+        if (!response?.success) {
+          const message =
+            response?.message ||
+            "ModelForge asset registry is not configured or not available.";
+          setRegistryError(message);
+          showSnackbarAlert(message, "error");
+          return false;
+        }
+
+        setAssets(response.data || null);
+        return true;
+      } catch (error) {
+        console.error(error);
+        const message =
+          "ModelForge asset registry is not configured or not available.";
+        setRegistryError(message);
+        showSnackbarAlert(message, "error");
+        return false;
+      } finally {
+        if (!quiet) setLoadingAssets(false);
+      }
+    },
+    [showSnackbarAlert]
+  );
+
   useEffect(() => {
     loadCatalog();
-  }, [loadCatalog]);
+    loadAssets();
+  }, [loadAssets, loadCatalog]);
+
+  useEffect(() => {
+    const currentTabKey = String(searchParams.get("tab") || "").trim();
+    if (
+      currentTabKey &&
+      !Object.prototype.hasOwnProperty.call(TAB_KEY_TO_VALUE, currentTabKey)
+    ) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("tab", "registry");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const evaluationStructures = useMemo(
     () => (Array.isArray(catalog?.evaluationStructures) ? catalog.evaluationStructures : []),
@@ -1436,6 +1524,70 @@ export default function AdminModelForgeSection() {
     showSnackbarAlert,
   ]);
 
+  const handleDeleteAsset = useCallback(async () => {
+    if (!pendingDeleteAsset) return false;
+
+    const assetId = `${pendingDeleteAsset.kind}:${pendingDeleteAsset.key}`;
+    setDeleteBusyId(assetId);
+    setRegistryActionError("");
+
+    let backendStartedAtBefore = null;
+
+    try {
+      const healthResponse = await getBackendHealth();
+      if (healthResponse?.success) {
+        backendStartedAtBefore = healthResponse?.data?.startedAt || null;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    try {
+      const response = await deleteModelForgeAssetAdmin(
+        pendingDeleteAsset.kind,
+        pendingDeleteAsset.key
+      );
+
+      if (!response?.success) {
+        const message =
+          response?.message || "Error deleting Model Forge asset.";
+        setRegistryActionError(message);
+        showSnackbarAlert(message, "error");
+        return false;
+      }
+
+      const pendingChange = {
+        type: "modelForgeAssetDelete",
+        createdAt: Date.now(),
+        applyRequested: false,
+        applyCompleted: true,
+        backendRestartRequested: false,
+        backendStartedAtBefore,
+        expectedApiModelKey:
+          pendingDeleteAsset.kind === "model" ? pendingDeleteAsset.key : null,
+        expectedManifestState:
+          pendingDeleteAsset.kind === "model" ? "absent" : null,
+        deletedAssetKind: pendingDeleteAsset.kind,
+        deletedAssetKey: pendingDeleteAsset.key,
+        destinationPath: ASSET_DELETE_DESTINATION_PATH,
+        successMessage: ASSET_DELETE_SUCCESS_MESSAGE,
+      };
+
+      setPendingBackendChange(pendingChange);
+      setPendingDeleteAsset(null);
+      navigate("/system/applying-changes");
+      return true;
+    } catch (error) {
+      console.error(error);
+      const message = "Could not prepare generated asset deletion flow.";
+      setRegistryActionError(message);
+      showSnackbarAlert(message, "error");
+      return false;
+    } finally {
+      setDeleteBusyId("");
+    }
+  }, [navigate, pendingDeleteAsset, showSnackbarAlert]);
+
   const updateModelKind = useCallback((nextKind) => {
     if (!nextKind) return;
 
@@ -1464,10 +1616,59 @@ export default function AdminModelForgeSection() {
 
   return (
     <>
-      <Box elevation={0} sx={pagePanelSx}>
-        <Stack spacing={0}>
+      <Stack spacing={1.25}>
+        <Paper
+          elevation={0}
+          sx={{ ...getAdminIssueDetailCardSx(theme), px: 1, py: 0.45 }}
+        >
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_event, value) => selectTab(value)}
+              variant="scrollable"
+              scrollButtons="auto"
+              textColor="secondary"
+              indicatorColor="secondary"
+              sx={{
+                minHeight: 42,
+                "& .MuiTabs-indicator": {
+                  height: 3,
+                  borderRadius: 999,
+                },
+                "& .MuiTab-root": {
+                  minHeight: 42,
+                  textTransform: "none",
+                  fontWeight: 950,
+                  color: "text.secondary",
+                  "&.Mui-selected": {
+                    color: "secondary.main",
+                  },
+                },
+              }}
+            >
+              <Tab label="Registry" />
+              <Tab label="Generate scaffolds" />
+            </Tabs>
+          </Box>
+        </Paper>
+
+        {activeTab === MODEL_FORGE_TABS.REGISTRY && (
+          <ModelForgeRegistryTab
+            assets={assets}
+            loading={loadingAssets}
+            error={registryError}
+            actionError={registryActionError}
+            onReload={loadAssets}
+            onAskDelete={setPendingDeleteAsset}
+            deleteBusyId={deleteBusyId}
+          />
+        )}
+
+        {activeTab === MODEL_FORGE_TABS.GENERATE && (
+          <Box elevation={0} sx={pagePanelSx}>
+            <Stack spacing={0}>
           <InlineSection
-            title="Registry tamplates"
+            title="Generate scaffolds"
             subtitle="Preview first, then apply missing scaffold files."
             action={(
               <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
@@ -2017,8 +2218,10 @@ export default function AdminModelForgeSection() {
               </Box>
             </Stack>
           </InlineSection>
-        </Stack>
-      </Box>
+            </Stack>
+          </Box>
+        )}
+      </Stack>
 
       <ConfirmationDialog
         open={applyDialogOpen}
@@ -2040,6 +2243,37 @@ export default function AdminModelForgeSection() {
             color: "warning",
             variant: "contained",
             onClick: handleApplyScaffold,
+            autoFocus: true,
+          },
+        ]}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(pendingDeleteAsset)}
+        onClose={() => {
+          if (!deleteBusyId) setPendingDeleteAsset(null);
+        }}
+        title="Delete generated asset?"
+        subtitle={
+          pendingDeleteAsset
+            ? `This will delete files for "${pendingDeleteAsset.key}". This action is only allowed when no existing issue uses the asset.`
+            : ""
+        }
+        tone="warning"
+        actions={[
+          {
+            id: "cancel-delete-model-forge-asset",
+            label: "Cancel",
+            onClick: () => setPendingDeleteAsset(null),
+            disabled: Boolean(deleteBusyId),
+          },
+          {
+            id: "confirm-delete-model-forge-asset",
+            label: "Delete",
+            color: "warning",
+            variant: "contained",
+            onClick: handleDeleteAsset,
+            loading: Boolean(deleteBusyId),
             autoFocus: true,
           },
         ]}
