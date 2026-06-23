@@ -368,6 +368,36 @@ export const restartBackendAdmin = async () =>
     }
   );
 
+export const getDecisionModelsServiceHealth = async () =>
+  requestJson(
+    `${API}/admin/decision-models-service/health`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "DecisionModelsService health check failed.",
+    }
+  );
+
+export const reloadDecisionModelsServiceAdmin = async () =>
+  requestJson(
+    `${API}/admin/decision-models-service/reload`,
+    jsonRequest("POST"),
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error refreshing DecisionModelsService.",
+    }
+  );
+
+export const getCurrentModelManifestAdmin = async () =>
+  requestJson(
+    `${API}/admin/model-manifest/current`,
+    { method: "GET" },
+    {
+      fetcher: authFetch,
+      fallbackMessage: "Error fetching current model manifest.",
+    }
+  );
+
 export const getBackendHealth = async () =>
   requestJson(
     `${API}/health`,

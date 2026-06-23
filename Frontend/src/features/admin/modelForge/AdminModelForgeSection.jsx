@@ -33,6 +33,7 @@ import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbar
 import {
   applyModelForgeModelPackage,
   getBackendHealth,
+  getDecisionModelsServiceHealth,
   getModelForgeCatalog,
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
@@ -81,7 +82,7 @@ const RESTRICTIONS_MODE_OPTIONS = [
 const modelKeyPattern = /^[a-z][a-z0-9_]*$/;
 const lowerCamelCasePattern = /^[a-z][A-Za-z0-9]*$/;
 const BACKEND_CHANGE_SUCCESS_MESSAGE =
-  "Scaffold package created and Backend restarted successfully.";
+  "Scaffold package created and generated services refreshed successfully.";
 const BACKEND_CHANGE_DESTINATION_PATH =
   "/dashboard/admin/models?tab=manifest-sync";
 
@@ -1431,7 +1432,10 @@ export default function AdminModelForgeSection() {
     setActionError("");
 
     try {
-      const healthResponse = await getBackendHealth();
+      const [healthResponse, decisionModelsHealthResponse] = await Promise.all([
+        getBackendHealth(),
+        getDecisionModelsServiceHealth(),
+      ]);
 
       if (!healthResponse?.success) {
         const message =
@@ -1445,7 +1449,13 @@ export default function AdminModelForgeSection() {
         type: "modelForgeScaffoldApply",
         createdAt: Date.now(),
         restartRequested: false,
+        decisionModelsReloadRequested: false,
         backendStartedAtBefore: healthResponse?.data?.startedAt || null,
+        decisionModelsStartedAtBefore:
+          decisionModelsHealthResponse?.success
+            ? decisionModelsHealthResponse?.data?.startedAt || null
+            : null,
+        expectedApiModelKey: String(formState.apiModelKey || "").trim() || null,
         successMessage: BACKEND_CHANGE_SUCCESS_MESSAGE,
         destinationPath: BACKEND_CHANGE_DESTINATION_PATH,
       };
@@ -1461,7 +1471,7 @@ export default function AdminModelForgeSection() {
       showSnackbarAlert(message, "error");
       return false;
     }
-  }, [navigate, showSnackbarAlert]);
+  }, [formState.apiModelKey, navigate, showSnackbarAlert]);
 
   const updateModelKind = useCallback((nextKind) => {
     if (!nextKind) return;

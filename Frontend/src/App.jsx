@@ -43,11 +43,19 @@ function AppLoadingScreen() {
   );
 }
 
-function PublicOnlyRoute({ isLoggedIn, children }) {
+function PublicOnlyRoute({ isLoggedIn, hasPendingBackendChange, children }) {
+  if (hasPendingBackendChange) {
+    return <Navigate to="/system/applying-changes" replace />;
+  }
+
   return isLoggedIn ? <Navigate to="/dashboard" replace /> : children;
 }
 
-function PrivateRoute({ isLoggedIn, children }) {
+function PrivateRoute({ isLoggedIn, hasPendingBackendChange, children }) {
+  if (!isLoggedIn && hasPendingBackendChange) {
+    return <Navigate to="/system/applying-changes" replace />;
+  }
+
   return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
 
@@ -72,7 +80,10 @@ export function App() {
             <Route
               path="login"
               element={
-                <PublicOnlyRoute isLoggedIn={isLoggedIn}>
+                <PublicOnlyRoute
+                  isLoggedIn={isLoggedIn}
+                  hasPendingBackendChange={hasPendingBackendChange}
+                >
                   <LogInForm />
                 </PublicOnlyRoute>
               }
@@ -80,7 +91,10 @@ export function App() {
             <Route
               path="signup"
               element={
-                <PublicOnlyRoute isLoggedIn={isLoggedIn}>
+                <PublicOnlyRoute
+                  isLoggedIn={isLoggedIn}
+                  hasPendingBackendChange={hasPendingBackendChange}
+                >
                   <SignUpForm />
                 </PublicOnlyRoute>
               }
@@ -93,6 +107,8 @@ export function App() {
               element={
                 isLoggedIn ? (
                   <Navigate to="/dashboard" replace />
+                ) : hasPendingBackendChange ? (
+                  <Navigate to="/system/applying-changes" replace />
                 ) : (
                   <Navigate to="/login" replace />
                 )
@@ -103,7 +119,10 @@ export function App() {
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute isLoggedIn={isLoggedIn}>
+              <PrivateRoute
+                isLoggedIn={isLoggedIn}
+                hasPendingBackendChange={hasPendingBackendChange}
+              >
                 <PrivateLayout />
               </PrivateRoute>
             }
@@ -133,7 +152,18 @@ export function App() {
 
           <Route
             path="*"
-            element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />}
+            element={
+              <Navigate
+                to={
+                  hasPendingBackendChange
+                    ? "/system/applying-changes"
+                    : isLoggedIn
+                      ? "/dashboard"
+                      : "/login"
+                }
+                replace
+              />
+            }
           />
         </Routes>
       </Suspense>

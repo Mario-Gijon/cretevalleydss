@@ -21,6 +21,9 @@ import {
   previewModelForgeModelPackageAdmin,
   applyModelForgeModelPackageAdmin,
   restartBackendAdmin,
+  getDecisionModelsServiceHealthAdmin,
+  reloadDecisionModelsServiceAdmin,
+  getCurrentModelManifestAdmin,
   updateModelCatalogVisibilityAdmin,
   getModelManifestDryRunAdmin,
   syncModelManifestAdmin,
@@ -69,6 +72,27 @@ router.post(
   requireToken,
   requireAdmin,
   asyncHandler(restartBackendAdmin)
+);
+
+router.get(
+  "/decision-models-service/health",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getDecisionModelsServiceHealthAdmin)
+);
+
+router.post(
+  "/decision-models-service/reload",
+  requireToken,
+  requireAdmin,
+  asyncHandler(reloadDecisionModelsServiceAdmin)
+);
+
+router.get(
+  "/model-manifest/current",
+  requireToken,
+  requireAdmin,
+  asyncHandler(getCurrentModelManifestAdmin)
 );
 
 router.patch(

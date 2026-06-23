@@ -25,6 +25,11 @@ import {
   updateAdminUser as updateAdminUserUseCase,
 } from "../modules/admin/users/index.js";
 import { runModelManifestDryRun } from "../services/modelApi/modelManifestDryRun.js";
+import {
+  fetchDecisionModelsServiceHealth,
+  reloadDecisionModelsService,
+} from "../services/modelApi/decisionModelsServiceSystemClient.js";
+import { fetchModelManifest } from "../services/modelApi/modelManifestClient.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 import {
   applyModelForgeModelPackage,
@@ -321,6 +326,37 @@ export const restartBackendAdmin = async (_req, res) => {
       restartScheduled: true,
     },
     202
+  );
+};
+
+export const getDecisionModelsServiceHealthAdmin = async (_req, res) => {
+  const data = await fetchDecisionModelsServiceHealth({ httpClient: axios });
+
+  return sendSuccess(
+    res,
+    "DecisionModelsService health retrieved successfully",
+    data
+  );
+};
+
+export const reloadDecisionModelsServiceAdmin = async (_req, res) => {
+  const data = await reloadDecisionModelsService({ httpClient: axios });
+
+  return sendSuccess(
+    res,
+    "DecisionModelsService reload scheduled successfully",
+    data,
+    202
+  );
+};
+
+export const getCurrentModelManifestAdmin = async (_req, res) => {
+  const manifest = await fetchModelManifest({ httpClient: axios });
+
+  return sendSuccess(
+    res,
+    "Current DecisionModelsService manifest retrieved successfully",
+    manifest
   );
 };
 

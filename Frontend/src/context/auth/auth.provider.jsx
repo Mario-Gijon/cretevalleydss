@@ -68,7 +68,6 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (
-          response?.status === 0 &&
           response?.error?.code === "NETWORK_ERROR" &&
           isRecentPendingBackendChange()
         ) {
@@ -79,6 +78,11 @@ export const AuthProvider = ({ children }) => {
         setIsLoggedIn(false);
       } catch (error) {
         console.error("Failed to initialize authentication", error);
+
+        if (isRecentPendingBackendChange()) {
+          return;
+        }
+
         setValue(EmptyAuthState);
         setIsLoggedIn(false);
       } finally {

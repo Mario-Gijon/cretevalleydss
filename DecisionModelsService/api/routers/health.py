@@ -1,9 +1,12 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter
 
 from registry.model_registry import MODEL_DEFINITIONS
 from schemas.common import ModelExecutionResponse
 
 router = APIRouter(tags=["Health"])
+STARTED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 @router.get(
@@ -24,6 +27,7 @@ async def get_health():
             "service": "DecisionModelsService",
             "status": "healthy",
             "modelsCount": len(MODEL_DEFINITIONS),
+            "startedAt": STARTED_AT,
         },
         "error": None,
     }
