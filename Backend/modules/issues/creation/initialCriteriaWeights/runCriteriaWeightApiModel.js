@@ -32,20 +32,11 @@ const loadCriteriaWeightingModelOrThrow = async ({
 
   const query = {
     modelKind: "criteriaWeighting",
-    $and: [
-      {
-        $or: [
-          { visibleInCriteriaWeighting: { $exists: false } },
-          { visibleInCriteriaWeighting: { $ne: false } },
-        ],
-      },
-      {
-        $or: [
-          { publicUsable: { $exists: false } },
-          { publicUsable: { $ne: false } },
-        ],
-      },
+    $or: [
+      { visibleInCriteriaWeighting: { $exists: false } },
+      { visibleInCriteriaWeighting: { $ne: false } },
     ],
+    "manifestSync.isStale": false,
   };
 
   if (selectedModelId) {

@@ -132,9 +132,10 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
 };
 
 const createIssueModelFromManifest = async ({ manifestModel, payload }) => {
+  const isScaffold = payload.implementationStatus === "scaffold";
   const createdModel = await IssueModel.create({
     ...payload,
-    visibleInIssueCreation: payload.modelKind === "issue",
+    visibleInIssueCreation: payload.modelKind === "issue" && !isScaffold,
     visibleInCriteriaWeighting: payload.modelKind === "criteriaWeighting",
   });
 

@@ -19,7 +19,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import {
   formatModelManifestBoolean,
-  getModelCatalogVisibilityLabel,
+  getModelAdminEnabledLabel,
   getModelManifestDisplayName,
   modelManifestValueToText,
   toModelManifestTitle,
@@ -106,8 +106,8 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 },
                 { label: "Model kind", value: toModelManifestTitle(row.modelKind) },
                 {
-                  label: "Create Issue visibility",
-                  value: getModelCatalogVisibilityLabel(row),
+                  label: "Enabled",
+                  value: getModelAdminEnabledLabel(row),
                 },
                 {
                   label: "Safe to create IssueModel",

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Paper, Stack, Tab, Tabs } from "@mui/material";
+import { Alert, Box, Paper, Stack, Tab, Tabs } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -32,6 +32,7 @@ export default function ModelManifestSyncPanel() {
   const [activeTab, setActiveTab] = useState(MODEL_MANIFEST_TABS.CATALOG);
   const [selectedModel, setSelectedModel] = useState(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingVisibilityRow, setPendingVisibilityRow] = useState(null);
 
   const { catalogModels, catalogError, loadingCatalog, loadCatalog } = useAdminModelCatalog();
 
@@ -116,7 +117,7 @@ export default function ModelManifestSyncPanel() {
             loadingCatalog={loadingCatalog}
             catalogError={catalogError}
             onViewDetails={setSelectedModel}
-            onAskVisibilityChange={updateVisibility}
+            onAskVisibilityChange={setPendingVisibilityRow}
             visibilityBusyId={visibilityBusyId}
           />
         )}
@@ -170,6 +171,63 @@ export default function ModelManifestSyncPanel() {
           },
         ]}
       />
+
+      <ConfirmationDialog
+        open={Boolean(pendingVisibilityRow)}
+        onClose={() => {
+          if (!visibilityBusyId) setPendingVisibilityRow(null);
+        }}
+        title={
+          pendingVisibilityRow?.visibleInIssueCreation !== false
+            ? "Disable model?"
+            : "Enable model?"
+        }
+        subtitle={
+          pendingVisibilityRow?.implementationStatus === "scaffold" &&
+          pendingVisibilityRow?.visibleInIssueCreation === false
+            ? "This model is marked as scaffold. It may return MODEL_UNDER_DEVELOPMENT until implemented."
+            : "This updates the admin-controlled publication flag for issue creation."
+        }
+        tone={
+          pendingVisibilityRow?.implementationStatus === "scaffold" &&
+          pendingVisibilityRow?.visibleInIssueCreation === false
+            ? "warning"
+            : "info"
+        }
+        actions={[
+          {
+            id: "cancel-visibility",
+            label: "Cancel",
+            onClick: () => setPendingVisibilityRow(null),
+            disabled: Boolean(visibilityBusyId),
+          },
+          {
+            id: "confirm-visibility",
+            label:
+              pendingVisibilityRow?.visibleInIssueCreation !== false
+                ? "Disable"
+                : "Enable",
+            color:
+              pendingVisibilityRow?.visibleInIssueCreation !== false
+                ? "warning"
+                : "success",
+            variant: "contained",
+            loading: visibilityBusyId === pendingVisibilityRow?.mongoId,
+            onClick: async () => {
+              const success = await updateVisibility(pendingVisibilityRow);
+              if (success) setPendingVisibilityRow(null);
+            },
+            autoFocus: true,
+          },
+        ]}
+      >
+        {pendingVisibilityRow?.implementationStatus === "scaffold" &&
+        pendingVisibilityRow?.visibleInIssueCreation === false ? (
+          <Alert severity="warning" variant="outlined" sx={{ mt: 1.25 }}>
+            This model is marked as scaffold. It may return MODEL_UNDER_DEVELOPMENT until implemented.
+          </Alert>
+        ) : null}
+      </ConfirmationDialog>
     </>
   );
 }

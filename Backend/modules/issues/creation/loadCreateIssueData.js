@@ -35,8 +35,12 @@ export const loadCreateIssueActorsAndModel = async ({
     });
   }
 
-  if (existingModel.modelKind !== "issue" || existingModel.publicUsable === false) {
-    throw createBadRequestError("Selected model is not public usable", {
+  if (
+    existingModel.modelKind !== "issue" ||
+    existingModel.visibleInIssueCreation === false ||
+    existingModel?.manifestSync?.isStale === true
+  ) {
+    throw createBadRequestError("Selected model is not enabled for issue creation", {
       field: "selectedModelId",
     });
   }

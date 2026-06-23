@@ -38,3 +38,6 @@ export const isModelVisibleInCreateIssue = (row = {}) =>
 
 export const getModelCatalogVisibilityLabel = (row = {}) =>
   isModelVisibleInCreateIssue(row) ? "Active" : "Inactive";
+
+export const getModelAdminEnabledLabel = (row = {}) =>
+  isModelVisibleInCreateIssue(row) ? "Enabled" : "Disabled";

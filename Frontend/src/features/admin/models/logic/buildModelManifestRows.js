@@ -101,6 +101,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     implementationStatus: model?.implementationStatus || "ready",
     publicUsable: model?.publicUsable !== false,
     visibleInIssueCreation: model?.visibleInIssueCreation !== false,
+    visibleInCriteriaWeighting: model?.visibleInCriteriaWeighting !== false,
     apiInputFormat: model?.apiInputFormat || null,
     apiOutputFormat: model?.apiOutputFormat || null,
     modelInputFields: asList(model?.modelInputFields),

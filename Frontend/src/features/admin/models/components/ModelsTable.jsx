@@ -11,7 +11,7 @@ import {
 import { alpha } from "@mui/material/styles";
 
 import {
-  formatModelManifestBoolean,
+  getModelAdminEnabledLabel,
   getModelManifestDisplayName,
   isModelVisibleInCreateIssue,
   toModelManifestTitle,
@@ -104,6 +104,16 @@ export default function ModelsTable({
                     <Typography variant="body2" sx={{ fontWeight: 950 }}>
                       {getModelManifestDisplayName(row)}
                     </Typography>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      <StatusChip
+                        label={getModelAdminEnabledLabel(row)}
+                        severity={visible ? "success" : "error"}
+                      />
+                      <StatusChip
+                        label={toModelManifestTitle(row.implementationStatus)}
+                        severity={row.implementationStatus === "scaffold" ? "warning" : "success"}
+                      />
+                    </Stack>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                       ID: {row.mongoId || "No Mongo id"}
                     </Typography>

@@ -75,6 +75,11 @@ const throwIfDuplicateEmailError = (error) => {
 
 const mapIssueModelCatalogItem = (model) => {
   const id = toIdString(model._id);
+  const isStale = model?.manifestSync?.isStale === true;
+  const publicUsable =
+    model.modelKind === "criteriaWeighting"
+      ? model.visibleInCriteriaWeighting !== false && !isStale
+      : model.visibleInIssueCreation !== false && !isStale;
 
   return {
     _id: id,
@@ -83,7 +88,7 @@ const mapIssueModelCatalogItem = (model) => {
     apiModelKey: model.apiModelKey,
     modelKind: model.modelKind || null,
     implementationStatus: model.implementationStatus || "ready",
-    publicUsable: model.publicUsable !== false,
+    publicUsable,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint,

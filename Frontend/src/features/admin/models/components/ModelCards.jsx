@@ -4,7 +4,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { getAdminIssueDetailCardSx } from "../../issues/styles/adminIssues.styles";
 import {
   formatModelManifestBoolean,
-  getModelCatalogVisibilityLabel,
+  getModelAdminEnabledLabel,
   getModelManifestDisplayName,
   isModelVisibleInCreateIssue,
   toModelManifestTitle,
@@ -48,8 +48,8 @@ export default function ModelCards({
                     severity={row.modelKind === "issue" ? "success" : "info"}
                   />
                   <StatusChip
-                    label={`Source ${row.implementationStatus || "ready"}`}
-                    severity={row.publicUsable === true ? "success" : "warning"}
+                    label={toModelManifestTitle(row.implementationStatus)}
+                    severity={row.implementationStatus === "scaffold" ? "warning" : "success"}
                   />
                   <StatusChip label={toModelManifestTitle(row.lifecycleKind)} />
                   <StatusChip
@@ -59,7 +59,7 @@ export default function ModelCards({
                     )}
                   />
                   <StatusChip
-                    label={getModelCatalogVisibilityLabel(row)}
+                    label={getModelAdminEnabledLabel(row)}
                     severity={visible ? "success" : "error"}
                   />
                 </Stack>
@@ -67,7 +67,7 @@ export default function ModelCards({
 
               <FieldGrid
                 rows={[
-                  { label: "Catalog", value: getModelCatalogVisibilityLabel(row) },
+                  { label: "Enabled", value: getModelAdminEnabledLabel(row) },
                   {
                     label: "Source readiness",
                     value: toModelManifestTitle(row.implementationStatus),

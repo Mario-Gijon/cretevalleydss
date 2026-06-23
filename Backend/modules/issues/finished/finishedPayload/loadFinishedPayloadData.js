@@ -21,10 +21,6 @@ const loadAvailableIssueModels = async () => {
   return IssueModel.find({
     modelKind: "issue",
     visibleInIssueCreation: true,
-    $or: [
-      { publicUsable: { $exists: false } },
-      { publicUsable: { $ne: false } },
-    ],
     "manifestSync.isStale": false,
   })
     .select(ISSUE_MODELS_SELECT)
