@@ -5,8 +5,17 @@ from typing import Literal
 
 @dataclass(frozen=True)
 class ModelExistence:
-    status: Literal["exists", "missing"]
+    status: Literal["exists", "missing", "partial"]
     path: Path
+    missing_files: tuple[str, ...] = ()
+
+
+MODEL_REQUIRED_FILES = (
+    "definition.py",
+    "executor.py",
+    "run.py",
+    "examples.py",
+)
 
 
 @dataclass(frozen=True)
@@ -20,9 +29,22 @@ class StructureExistence:
 
 def get_model_existence(project_root: Path, api_model_key: str) -> ModelExistence:
     model_path = project_root / "DecisionModelsService" / "models" / api_model_key
+    if not model_path.exists():
+        return ModelExistence(
+            status="missing",
+            path=model_path,
+        )
+
+    missing_files = tuple(
+        file_name
+        for file_name in MODEL_REQUIRED_FILES
+        if not (model_path / file_name).is_file()
+    )
+
     return ModelExistence(
-        status="exists" if model_path.exists() else "missing",
+        status="partial" if missing_files else "exists",
         path=model_path,
+        missing_files=missing_files,
     )
 
 

@@ -16,6 +16,7 @@ from services.model_scaffold_preview import build_model_scaffold_preview
 from services.parameter_scaffold_preview import build_parameter_scaffold_preview
 from services.scaffold_validation import validate_rendered_scaffold_files
 from services.scaffold_existence import (
+    ModelExistence,
     StructureExistence,
     get_evaluation_structure_existence,
     get_model_existence,
@@ -69,6 +70,16 @@ def _build_model_item(
             key=request.model.apiModelKey,
             status="exists",
             reason="Model scaffold already exists.",
+            targetBasePath=None,
+            files=[],
+        )
+
+    if existence.status == "partial":
+        return ModelPackagePreviewItem(
+            kind="model",
+            key=request.model.apiModelKey,
+            status="partial",
+            reason=_build_partial_model_reason(existence),
             targetBasePath=None,
             files=[],
         )
@@ -215,4 +226,12 @@ def _build_partial_reason(label: str, existence: StructureExistence) -> str:
     return (
         f"{label} exists partially: backend is {backend_status} and frontend is "
         f"{frontend_status}."
+    )
+
+
+def _build_partial_model_reason(existence: ModelExistence) -> str:
+    missing_files = ", ".join(existence.missing_files) or "unknown files"
+    return (
+        "Model scaffold folder exists partially in DecisionModelsService: "
+        f"missing {missing_files}."
     )

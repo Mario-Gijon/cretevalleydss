@@ -31,7 +31,6 @@ import { ConfirmationDialog } from "../../../components/StyledComponents/Confirm
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
   getBackendHealth,
-  getDecisionModelsServiceHealth,
   getModelForgeCatalog,
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
@@ -1391,10 +1390,7 @@ export default function AdminModelForgeSection() {
     setApplyValidationResult(null);
 
     try {
-      const [healthResponse, decisionModelsHealthResponse] = await Promise.all([
-        getBackendHealth(),
-        getDecisionModelsServiceHealth(),
-      ]);
+      const healthResponse = await getBackendHealth();
 
       if (!healthResponse?.success) {
         const message =
@@ -1410,13 +1406,8 @@ export default function AdminModelForgeSection() {
         applyRequested: false,
         applyCompleted: false,
         backendRestartRequested: false,
-        decisionModelsReloadRequested: false,
         runFullFrontendBuild,
         backendStartedAtBefore: healthResponse?.data?.startedAt || null,
-        decisionModelsStartedAtBefore:
-          decisionModelsHealthResponse?.success
-            ? decisionModelsHealthResponse?.data?.startedAt || null
-            : null,
         expectedApiModelKey: String(formState.apiModelKey || "").trim() || null,
         applyRequestPayload: {
           ...requestPayloadPreview,

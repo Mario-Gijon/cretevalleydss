@@ -22,8 +22,6 @@ import {
   applyModelForgeModelPackage,
   getBackendHealth,
   getCurrentModelManifestAdmin,
-  getDecisionModelsServiceHealth,
-  reloadDecisionModelsServiceAdmin,
   restartBackendAdmin,
 } from "../../services/admin.service";
 import {
@@ -38,20 +36,18 @@ const BACKEND_CHANGE_MAX_AGE_MS = 2 * 60 * 1000;
 const POLL_INTERVAL_MS = 1000;
 const APPLY_SETTLE_DELAY_MS = 1500;
 const BACKEND_CHANGE_POLL_TIMEOUT_MS = 30 * 1000;
-const DECISION_MODELS_POLL_TIMEOUT_MS = 30 * 1000;
 const MANIFEST_POLL_TIMEOUT_MS = 45 * 1000;
 const DEFAULT_DESTINATION_PATH = "/dashboard/admin/models?tab=manifest-sync";
 const BACKEND_RESTART_DISABLED_MESSAGE =
   "Backend restart is disabled in this environment.";
 const BACKEND_RESTART_TIMEOUT_MESSAGE =
   "The Backend restart was requested, but reconnect timed out. Refresh the page manually.";
-const DECISION_MODELS_WARNING_MESSAGE =
+const MANIFEST_WARNING_MESSAGE =
   "Generated files were written, but DecisionModelsService has not published the generated model yet.";
 
 const STEP_KEYS = {
   apply: "apply",
   backend: "backend",
-  decisionModels: "decisionModels",
   manifest: "manifest",
   redirect: "redirect",
 };
@@ -59,7 +55,6 @@ const STEP_KEYS = {
 const STEP_LABELS = {
   [STEP_KEYS.apply]: "Writing scaffold files",
   [STEP_KEYS.backend]: "Restarting Backend",
-  [STEP_KEYS.decisionModels]: "Refreshing DecisionModelsService",
   [STEP_KEYS.manifest]: "Waiting for generated model manifest",
   [STEP_KEYS.redirect]: "Redirecting to Manifest Sync",
 };
@@ -69,13 +64,11 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const buildStepState = ({
   apply = "pending",
   backend = "pending",
-  decisionModels = "pending",
   manifest = "pending",
   redirect = "pending",
 } = {}) => ({
   [STEP_KEYS.apply]: apply,
   [STEP_KEYS.backend]: backend,
-  [STEP_KEYS.decisionModels]: decisionModels,
   [STEP_KEYS.manifest]: manifest,
   [STEP_KEYS.redirect]: redirect,
 });
@@ -92,16 +85,9 @@ const normalizePendingBackendChange = (value) => {
     applyRequested: value.applyRequested === true,
     applyCompleted: value.applyCompleted === true,
     backendRestartRequested: value.backendRestartRequested === true,
-    decisionModelsReloadRequested:
-      value.decisionModelsReloadRequested === true,
-    runFullFrontendBuild: value.runFullFrontendBuild === true,
     backendStartedAtBefore:
       typeof value.backendStartedAtBefore === "string"
         ? value.backendStartedAtBefore
-        : null,
-    decisionModelsStartedAtBefore:
-      typeof value.decisionModelsStartedAtBefore === "string"
-        ? value.decisionModelsStartedAtBefore
         : null,
     expectedApiModelKey:
       typeof value.expectedApiModelKey === "string" &&
@@ -156,19 +142,7 @@ export default function ApplyingBackendChangesPage() {
         buildStepState({
           apply: "completed",
           backend: "completed",
-          decisionModels: "completed",
           manifest: "active",
-        })
-      );
-      return;
-    }
-
-    if (mode === "serviceRefresh") {
-      setSteps(
-        buildStepState({
-          apply: "completed",
-          backend: "completed",
-          decisionModels: "active",
         })
       );
       return;
@@ -270,7 +244,7 @@ export default function ApplyingBackendChangesPage() {
 
           if (backendRestarted) {
             setSingleStepStatus(STEP_KEYS.backend, "completed");
-            return { healthy: true, restarted: true, startedAt: nextStartedAt };
+            return { healthy: true, restarted: true };
           }
 
           if (
@@ -278,7 +252,7 @@ export default function ApplyingBackendChangesPage() {
             Date.now() - startedAt >= APPLY_SETTLE_DELAY_MS
           ) {
             setSingleStepStatus(STEP_KEYS.backend, "completed");
-            return { healthy: true, restarted: false, startedAt: nextStartedAt };
+            return { healthy: true, restarted: false };
           }
         } else {
           sawFailure = true;
@@ -295,49 +269,7 @@ export default function ApplyingBackendChangesPage() {
         showSnackbarAlert(BACKEND_RESTART_TIMEOUT_MESSAGE, "warning");
       }
 
-      return { healthy: false, restarted: false, startedAt: null };
-    },
-    [setSingleStepStatus, showSnackbarAlert]
-  );
-
-  const pollForDecisionModelsHealth = useCallback(
-    async (resolvedPendingChange) => {
-      setSingleStepStatus(STEP_KEYS.decisionModels, "active");
-      const startedAt = Date.now();
-      let sawFailure = false;
-
-      while (Date.now() - startedAt < DECISION_MODELS_POLL_TIMEOUT_MS) {
-        const response = await getDecisionModelsServiceHealth();
-
-        if (response?.success) {
-          const nextStartedAt = response?.data?.startedAt || null;
-          const startedAtBefore =
-            resolvedPendingChange?.decisionModelsStartedAtBefore || null;
-          const reloaded =
-            startedAtBefore && nextStartedAt
-              ? nextStartedAt !== startedAtBefore
-              : sawFailure || Date.now() - startedAt >= 3000;
-
-          if (reloaded) {
-            setSingleStepStatus(STEP_KEYS.decisionModels, "completed");
-            return true;
-          }
-        } else {
-          sawFailure = true;
-        }
-
-        await delay(POLL_INTERVAL_MS);
-      }
-
-      if (isMountedRef.current) {
-        setSingleStepStatus(STEP_KEYS.decisionModels, "failed");
-        setStatus("service-warning");
-        setMessage(DECISION_MODELS_WARNING_MESSAGE);
-        setRetryMode("service");
-        showSnackbarAlert(DECISION_MODELS_WARNING_MESSAGE, "warning");
-      }
-
-      return false;
+      return { healthy: false, restarted: false };
     },
     [setSingleStepStatus, showSnackbarAlert]
   );
@@ -376,9 +308,9 @@ export default function ApplyingBackendChangesPage() {
       if (isMountedRef.current) {
         setSingleStepStatus(STEP_KEYS.manifest, "failed");
         setStatus("manifest-warning");
-        setMessage(DECISION_MODELS_WARNING_MESSAGE);
+        setMessage(MANIFEST_WARNING_MESSAGE);
         setRetryMode("manifest");
-        showSnackbarAlert(DECISION_MODELS_WARNING_MESSAGE, "warning");
+        showSnackbarAlert(MANIFEST_WARNING_MESSAGE, "warning");
       }
 
       return false;
@@ -468,7 +400,8 @@ export default function ApplyingBackendChangesPage() {
           }
         } else {
           const currentPendingChange = getPendingBackendChange();
-          const currentApplyCompleted = currentPendingChange?.applyCompleted === true;
+          const currentApplyCompleted =
+            currentPendingChange?.applyCompleted === true;
           setSingleStepStatus(
             STEP_KEYS.apply,
             currentApplyCompleted ? "completed" : "active"
@@ -487,15 +420,13 @@ export default function ApplyingBackendChangesPage() {
         const backendHealthState = await pollForHealthyBackend(
           nextPendingChange,
           {
-            allowHealthyWithoutRestart:
-              nextPendingChange.applyCompleted === true &&
-              applyRequestHadNetworkFailure !== true,
+            allowHealthyWithoutRestart: true,
           }
         );
         if (!backendHealthState.healthy) return;
 
         if (
-          !backendHealthState.restarted &&
+          (!backendHealthState.restarted || applyRequestHadNetworkFailure) &&
           nextPendingChange.backendRestartRequested !== true
         ) {
           nextPendingChange = updatePendingBackendChange({
@@ -538,41 +469,6 @@ export default function ApplyingBackendChangesPage() {
         setSingleStepStatus(STEP_KEYS.backend, "completed");
       }
 
-      if (mode === "full" || mode === "serviceRefresh") {
-        const shouldReload =
-          mode === "serviceRefresh" ||
-          nextPendingChange.decisionModelsReloadRequested !== true;
-
-        if (shouldReload) {
-          nextPendingChange = updatePendingBackendChange({
-            decisionModelsReloadRequested: true,
-          }) || {
-            ...nextPendingChange,
-            decisionModelsReloadRequested: true,
-          };
-
-          const reloadResponse = await reloadDecisionModelsServiceAdmin();
-          if (!reloadResponse?.success) {
-            if (isMountedRef.current) {
-              setSingleStepStatus(STEP_KEYS.decisionModels, "failed");
-              setStatus("service-warning");
-              setMessage(
-                reloadResponse?.message || DECISION_MODELS_WARNING_MESSAGE
-              );
-              setRetryMode("service");
-            }
-            return;
-          }
-        }
-
-        const decisionModelsReady = await pollForDecisionModelsHealth(
-          nextPendingChange
-        );
-        if (!decisionModelsReady) return;
-      } else {
-        setSingleStepStatus(STEP_KEYS.decisionModels, "completed");
-      }
-
       const manifestReady = await pollForManifestModel(nextPendingChange);
       if (!manifestReady) return;
 
@@ -581,7 +477,6 @@ export default function ApplyingBackendChangesPage() {
     },
     [
       completeFlow,
-      pollForDecisionModelsHealth,
       pollForHealthyBackend,
       pollForManifestModel,
       resetStepsForMode,
@@ -612,18 +507,7 @@ export default function ApplyingBackendChangesPage() {
         </Button>
       )}
 
-      {(retryMode === "service" || retryMode === "manifest") && (
-        <Button
-          variant="outlined"
-          color="warning"
-          onClick={() => runApplyingFlow("serviceRefresh")}
-          sx={{ textTransform: "none", fontWeight: 900 }}
-        >
-          Retry service refresh
-        </Button>
-      )}
-
-      {(retryMode === "service" || retryMode === "manifest") && (
+      {retryMode === "manifest" && (
         <Button
           variant="outlined"
           color="info"

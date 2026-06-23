@@ -3,7 +3,7 @@
 from typing import Any
 
 from registry.model_definition import ModelDefinition
-from registry.model_registry import MODEL_DEFINITIONS
+from registry.model_registry import get_model_definitions
 
 
 def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]:
@@ -98,5 +98,8 @@ def build_model_manifest() -> dict[str, Any]:
     """Construye el manifest read-only desde las definiciones de DecisionModelsService."""
 
     return {
-        "models": [_build_manifest_entry(model) for model in MODEL_DEFINITIONS],
+        "models": [
+            _build_manifest_entry(model)
+            for model in get_model_definitions(strict=False)
+        ],
     }

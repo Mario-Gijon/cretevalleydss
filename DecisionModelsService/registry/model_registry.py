@@ -1,5 +1,6 @@
-from importlib import import_module
+from importlib import import_module, invalidate_caches, reload
 from pathlib import Path
+import sys
 
 from registry.model_definition import ModelDefinition
 
@@ -7,7 +8,10 @@ from registry.model_definition import ModelDefinition
 MODELS_ROOT = Path(__file__).resolve().parents[1] / "models"
 
 
-def _iter_model_dirs() -> list[Path]:
+def _iter_candidate_model_dirs() -> list[Path]:
+    if not MODELS_ROOT.exists():
+        return []
+
     return sorted(
         (
             path
@@ -20,7 +24,11 @@ def _iter_model_dirs() -> list[Path]:
 
 def _load_model_definition(model_dir: Path) -> ModelDefinition:
     module_path = f"models.{model_dir.name}.definition"
-    module = import_module(module_path)
+
+    if module_path in sys.modules:
+        module = reload(sys.modules[module_path])
+    else:
+        module = import_module(module_path)
 
     if not hasattr(module, "MODEL_DEFINITION"):
         raise ValueError(f"{module_path} must export MODEL_DEFINITION")
@@ -41,31 +49,67 @@ def _load_model_definition(model_dir: Path) -> ModelDefinition:
     return model_definition
 
 
-def _build_model_definitions() -> tuple[ModelDefinition, ...]:
-    definitions = tuple(
-        _load_model_definition(model_dir)
-        for model_dir in _iter_model_dirs()
-    )
-
-    seen_model_keys: set[str] = set()
-    seen_endpoint_paths: set[str] = set()
-
-    for definition in definitions:
-        if definition.api_model_key in seen_model_keys:
+def _append_definition_or_raise(
+    *,
+    definitions: list[ModelDefinition],
+    definition: ModelDefinition,
+    seen_model_keys: set[str],
+    seen_endpoint_paths: set[str],
+    strict: bool,
+) -> None:
+    if definition.api_model_key in seen_model_keys:
+        if strict:
             raise ValueError(
                 f"Duplicate api_model_key detected: {definition.api_model_key}"
             )
-        seen_model_keys.add(definition.api_model_key)
+        return
 
-        if definition.api_endpoint_path in seen_endpoint_paths:
+    if definition.api_endpoint_path in seen_endpoint_paths:
+        if strict:
             raise ValueError(
                 f"Duplicate api_endpoint_path detected: {definition.api_endpoint_path}"
             )
-        seen_endpoint_paths.add(definition.api_endpoint_path)
+        return
 
-    return definitions
+    seen_model_keys.add(definition.api_model_key)
+    seen_endpoint_paths.add(definition.api_endpoint_path)
+    definitions.append(definition)
 
 
-MODEL_DEFINITIONS = _build_model_definitions()
+def get_model_definitions(*, strict: bool = True) -> tuple[ModelDefinition, ...]:
+    invalidate_caches()
 
-__all__ = ["MODEL_DEFINITIONS"]
+    definitions: list[ModelDefinition] = []
+    seen_model_keys: set[str] = set()
+    seen_endpoint_paths: set[str] = set()
+
+    for model_dir in _iter_candidate_model_dirs():
+        try:
+            definition = _load_model_definition(model_dir)
+        except Exception:
+            if strict:
+                raise
+            continue
+
+        _append_definition_or_raise(
+            definitions=definitions,
+            definition=definition,
+            seen_model_keys=seen_model_keys,
+            seen_endpoint_paths=seen_endpoint_paths,
+            strict=strict,
+        )
+
+    return tuple(definitions)
+
+
+def get_model_definition_by_endpoint_path(endpoint_path: str) -> ModelDefinition | None:
+    normalized_endpoint_path = f"/{str(endpoint_path or '').strip('/')}"
+
+    for definition in get_model_definitions(strict=False):
+        if definition.api_endpoint_path == normalized_endpoint_path:
+            return definition
+
+    return None
+
+
+__all__ = ["get_model_definition_by_endpoint_path", "get_model_definitions"]
