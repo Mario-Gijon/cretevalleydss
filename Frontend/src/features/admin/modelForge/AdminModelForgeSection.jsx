@@ -4,7 +4,6 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
-  AlertTitle,
   Autocomplete,
   Box,
   Button,
@@ -31,7 +30,6 @@ import { useNavigate } from "react-router-dom";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import {
-  applyModelForgeModelPackage,
   getBackendHealth,
   getDecisionModelsServiceHealth,
   getModelForgeCatalog,
@@ -1099,9 +1097,7 @@ export default function AdminModelForgeSection() {
   const [actionError, setActionError] = useState("");
   const [runFullFrontendBuild, setRunFullFrontendBuild] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [applyLoading, setApplyLoading] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
-  const [backendRestartRequired, setBackendRestartRequired] = useState(false);
 
   const loadCatalog = useCallback(
     async ({ quiet = false } = {}) => {
@@ -1225,7 +1221,6 @@ export default function AdminModelForgeSection() {
     setApplyResult(null);
     setApplyValidationResult(null);
     setActionError("");
-    setBackendRestartRequired(false);
   }, []);
 
   const setParameterField = useCallback((id, field, value) => {
@@ -1389,47 +1384,11 @@ export default function AdminModelForgeSection() {
     }
   }, [buildRequestPayload, showSnackbarAlert]);
 
-  const runApply = useCallback(async () => {
+  const handleApplyScaffold = useCallback(async () => {
     if (!requestPayloadPreview) return false;
 
-    setApplyLoading(true);
     setActionError("");
     setApplyValidationResult(null);
-
-    try {
-      const response = await applyModelForgeModelPackage({
-        ...requestPayloadPreview,
-        runFullFrontendBuild,
-      });
-
-      if (!response?.success) {
-        const message =
-          response?.message || "Error applying Model Forge scaffold package.";
-        setApplyValidationResult(response?.error?.details?.validation || null);
-        setActionError(message);
-        showSnackbarAlert(message, "error");
-        return false;
-      }
-
-      setApplyResult(response.data || null);
-      setApplyValidationResult(response?.data?.validation || null);
-      setApplyDialogOpen(false);
-      setBackendRestartRequired(true);
-      showSnackbarAlert(response.message || "Scaffold package applied", "success");
-      return true;
-    } catch (error) {
-      console.error(error);
-      const message = "Unexpected error applying Model Forge scaffold package.";
-      setActionError(message);
-      showSnackbarAlert(message, "error");
-      return false;
-    } finally {
-      setApplyLoading(false);
-    }
-  }, [requestPayloadPreview, runFullFrontendBuild, showSnackbarAlert]);
-
-  const handleApplyBackendChanges = useCallback(async () => {
-    setActionError("");
 
     try {
       const [healthResponse, decisionModelsHealthResponse] = await Promise.all([
@@ -1448,20 +1407,27 @@ export default function AdminModelForgeSection() {
       const pendingChange = {
         type: "modelForgeScaffoldApply",
         createdAt: Date.now(),
-        restartRequested: false,
+        applyRequested: false,
+        applyCompleted: false,
+        backendRestartRequested: false,
         decisionModelsReloadRequested: false,
+        runFullFrontendBuild,
         backendStartedAtBefore: healthResponse?.data?.startedAt || null,
         decisionModelsStartedAtBefore:
           decisionModelsHealthResponse?.success
             ? decisionModelsHealthResponse?.data?.startedAt || null
             : null,
         expectedApiModelKey: String(formState.apiModelKey || "").trim() || null,
+        applyRequestPayload: {
+          ...requestPayloadPreview,
+          runFullFrontendBuild,
+        },
         successMessage: BACKEND_CHANGE_SUCCESS_MESSAGE,
         destinationPath: BACKEND_CHANGE_DESTINATION_PATH,
       };
 
       setPendingBackendChange(pendingChange);
-
+      setApplyDialogOpen(false);
       navigate("/system/applying-changes");
       return true;
     } catch (error) {
@@ -1471,7 +1437,13 @@ export default function AdminModelForgeSection() {
       showSnackbarAlert(message, "error");
       return false;
     }
-  }, [formState.apiModelKey, navigate, showSnackbarAlert]);
+  }, [
+    formState.apiModelKey,
+    navigate,
+    requestPayloadPreview,
+    runFullFrontendBuild,
+    showSnackbarAlert,
+  ]);
 
   const updateModelKind = useCallback((nextKind) => {
     if (!nextKind) return;
@@ -1875,7 +1847,7 @@ export default function AdminModelForgeSection() {
                   color="secondary"
                   startIcon={<SaveOutlinedIcon />}
                   onClick={() => setApplyDialogOpen(true)}
-                  disabled={!previewResult || previewLoading || applyLoading}
+                  disabled={!previewResult || previewLoading}
                   sx={{ textTransform: "none", fontWeight: 900 }}
                 >
                   Apply
@@ -1976,29 +1948,6 @@ export default function AdminModelForgeSection() {
                       the admin catalog.
                     </Alert>
 
-                    {backendRestartRequired && (
-                      <Alert
-                        severity="warning"
-                        variant="outlined"
-                        sx={{ borderRadius: 2 }}
-                        action={(
-                          <Button
-                            color="warning"
-                            variant="outlined"
-                            size="small"
-                            onClick={handleApplyBackendChanges}
-                            sx={{ textTransform: "none", fontWeight: 900 }}
-                          >
-                            Apply backend changes
-                          </Button>
-                        )}
-                      >
-                        <AlertTitle>Backend restart required</AlertTitle>
-                        Generated backend runtime files are written, but the Backend must restart
-                        to load them.
-                      </Alert>
-                    )}
-
                     <Stack
                       spacing={0}
                       divider={<Divider flexItem sx={sectionDividerSx(theme)} />}
@@ -2083,7 +2032,7 @@ export default function AdminModelForgeSection() {
       <ConfirmationDialog
         open={applyDialogOpen}
         onClose={() => {
-          if (!applyLoading) setApplyDialogOpen(false);
+          setApplyDialogOpen(false);
         }}
         title="Apply scaffold package?"
         subtitle="This will write missing scaffold files to the project. Existing items are skipped."
@@ -2093,15 +2042,13 @@ export default function AdminModelForgeSection() {
             id: "cancel-apply-model-forge",
             label: "Cancel",
             onClick: () => setApplyDialogOpen(false),
-            disabled: applyLoading,
           },
           {
             id: "confirm-apply-model-forge",
             label: "Apply scaffold",
             color: "warning",
             variant: "contained",
-            onClick: runApply,
-            loading: applyLoading,
+            onClick: handleApplyScaffold,
             autoFocus: true,
           },
         ]}

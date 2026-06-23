@@ -19,6 +19,7 @@ import {
   fetchProtectedDataForBootstrap,
 } from "../../services/auth.service";
 import {
+  applyModelForgeModelPackage,
   getBackendHealth,
   getCurrentModelManifestAdmin,
   getDecisionModelsServiceHealth,
@@ -35,6 +36,7 @@ import {
 const PENDING_SUCCESS_MESSAGE_KEY = "system.pendingSuccessMessage";
 const BACKEND_CHANGE_MAX_AGE_MS = 2 * 60 * 1000;
 const POLL_INTERVAL_MS = 1000;
+const APPLY_SETTLE_DELAY_MS = 1500;
 const BACKEND_CHANGE_POLL_TIMEOUT_MS = 30 * 1000;
 const DECISION_MODELS_POLL_TIMEOUT_MS = 30 * 1000;
 const MANIFEST_POLL_TIMEOUT_MS = 45 * 1000;
@@ -47,6 +49,7 @@ const DECISION_MODELS_WARNING_MESSAGE =
   "Generated files were written, but DecisionModelsService has not published the generated model yet.";
 
 const STEP_KEYS = {
+  apply: "apply",
   backend: "backend",
   decisionModels: "decisionModels",
   manifest: "manifest",
@@ -54,6 +57,7 @@ const STEP_KEYS = {
 };
 
 const STEP_LABELS = {
+  [STEP_KEYS.apply]: "Writing scaffold files",
   [STEP_KEYS.backend]: "Restarting Backend",
   [STEP_KEYS.decisionModels]: "Refreshing DecisionModelsService",
   [STEP_KEYS.manifest]: "Waiting for generated model manifest",
@@ -63,26 +67,34 @@ const STEP_LABELS = {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const buildStepState = ({
+  apply = "pending",
   backend = "pending",
   decisionModels = "pending",
   manifest = "pending",
   redirect = "pending",
 } = {}) => ({
+  [STEP_KEYS.apply]: apply,
   [STEP_KEYS.backend]: backend,
   [STEP_KEYS.decisionModels]: decisionModels,
   [STEP_KEYS.manifest]: manifest,
   [STEP_KEYS.redirect]: redirect,
 });
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 const normalizePendingBackendChange = (value) => {
-  if (!value || typeof value !== "object") return null;
+  if (!isPlainObject(value)) return null;
 
   return {
     type: typeof value.type === "string" ? value.type : null,
     createdAt: Number(value.createdAt) || 0,
-    restartRequested: value.restartRequested === true,
+    applyRequested: value.applyRequested === true,
+    applyCompleted: value.applyCompleted === true,
+    backendRestartRequested: value.backendRestartRequested === true,
     decisionModelsReloadRequested:
       value.decisionModelsReloadRequested === true,
+    runFullFrontendBuild: value.runFullFrontendBuild === true,
     backendStartedAtBefore:
       typeof value.backendStartedAtBefore === "string"
         ? value.backendStartedAtBefore
@@ -92,9 +104,13 @@ const normalizePendingBackendChange = (value) => {
         ? value.decisionModelsStartedAtBefore
         : null,
     expectedApiModelKey:
-      typeof value.expectedApiModelKey === "string" && value.expectedApiModelKey.trim()
+      typeof value.expectedApiModelKey === "string" &&
+      value.expectedApiModelKey.trim()
         ? value.expectedApiModelKey.trim()
         : null,
+    applyRequestPayload: isPlainObject(value.applyRequestPayload)
+      ? value.applyRequestPayload
+      : null,
     successMessage:
       typeof value.successMessage === "string" && value.successMessage.trim()
         ? value.successMessage
@@ -138,6 +154,7 @@ export default function ApplyingBackendChangesPage() {
     if (mode === "manifestOnly") {
       setSteps(
         buildStepState({
+          apply: "completed",
           backend: "completed",
           decisionModels: "completed",
           manifest: "active",
@@ -149,6 +166,7 @@ export default function ApplyingBackendChangesPage() {
     if (mode === "serviceRefresh") {
       setSteps(
         buildStepState({
+          apply: "completed",
           backend: "completed",
           decisionModels: "active",
         })
@@ -158,7 +176,7 @@ export default function ApplyingBackendChangesPage() {
 
     setSteps(
       buildStepState({
-        backend: "active",
+        apply: "active",
       })
     );
   }, []);
@@ -229,8 +247,11 @@ export default function ApplyingBackendChangesPage() {
     [isLoggedIn, navigate, restoreAuthIfPossible, setSingleStepStatus]
   );
 
-  const pollForHealthyRestart = useCallback(
-    async (resolvedPendingChange) => {
+  const pollForHealthyBackend = useCallback(
+    async (
+      resolvedPendingChange,
+      { allowHealthyWithoutRestart = false } = {}
+    ) => {
       setSingleStepStatus(STEP_KEYS.backend, "active");
       const startedAt = Date.now();
       let sawFailure = false;
@@ -240,16 +261,24 @@ export default function ApplyingBackendChangesPage() {
 
         if (response?.success) {
           const nextStartedAt = response?.data?.startedAt || null;
-          const backendStartedAtBefore =
+          const previousStartedAt =
             resolvedPendingChange?.backendStartedAtBefore || null;
           const backendRestarted =
-            backendStartedAtBefore && nextStartedAt
-              ? nextStartedAt !== backendStartedAtBefore
+            previousStartedAt && nextStartedAt
+              ? nextStartedAt !== previousStartedAt
               : sawFailure || Date.now() - startedAt >= 3000;
 
           if (backendRestarted) {
             setSingleStepStatus(STEP_KEYS.backend, "completed");
-            return true;
+            return { healthy: true, restarted: true, startedAt: nextStartedAt };
+          }
+
+          if (
+            allowHealthyWithoutRestart &&
+            Date.now() - startedAt >= APPLY_SETTLE_DELAY_MS
+          ) {
+            setSingleStepStatus(STEP_KEYS.backend, "completed");
+            return { healthy: true, restarted: false, startedAt: nextStartedAt };
           }
         } else {
           sawFailure = true;
@@ -266,7 +295,7 @@ export default function ApplyingBackendChangesPage() {
         showSnackbarAlert(BACKEND_RESTART_TIMEOUT_MESSAGE, "warning");
       }
 
-      return false;
+      return { healthy: false, restarted: false, startedAt: null };
     },
     [setSingleStepStatus, showSnackbarAlert]
   );
@@ -325,7 +354,9 @@ export default function ApplyingBackendChangesPage() {
 
       while (Date.now() - startedAt < MANIFEST_POLL_TIMEOUT_MS) {
         const response = await getCurrentModelManifestAdmin();
-        const models = Array.isArray(response?.data?.models) ? response.data.models : [];
+        const models = Array.isArray(response?.data?.models)
+          ? response.data.models
+          : [];
 
         if (
           response?.success &&
@@ -387,14 +418,91 @@ export default function ApplyingBackendChangesPage() {
       resetStepsForMode(mode);
 
       let nextPendingChange = resolvedPendingChange;
+      let applyRequestHadNetworkFailure = false;
 
       if (mode === "full") {
-        if (nextPendingChange.restartRequested !== true) {
+        setSingleStepStatus(STEP_KEYS.apply, "active");
+
+        if (nextPendingChange.applyRequested !== true) {
           nextPendingChange = updatePendingBackendChange({
-            restartRequested: true,
+            applyRequested: true,
           }) || {
             ...nextPendingChange,
-            restartRequested: true,
+            applyRequested: true,
+          };
+
+          const applyResponse = await applyModelForgeModelPackage(
+            nextPendingChange.applyRequestPayload || {}
+          );
+
+          if (applyResponse?.success) {
+            nextPendingChange = updatePendingBackendChange({
+              applyCompleted: true,
+              applyNetworkInterrupted: false,
+              applyResult: applyResponse.data || null,
+              applyValidationResult: applyResponse?.data?.validation || null,
+            }) || {
+              ...nextPendingChange,
+              applyCompleted: true,
+            };
+            setSingleStepStatus(STEP_KEYS.apply, "completed");
+          } else if (applyResponse?.error?.code === "NETWORK_ERROR") {
+            applyRequestHadNetworkFailure = true;
+            nextPendingChange = updatePendingBackendChange({
+              applyNetworkInterrupted: true,
+            }) || {
+              ...nextPendingChange,
+              applyNetworkInterrupted: true,
+            };
+          } else {
+            if (isMountedRef.current) {
+              setSingleStepStatus(STEP_KEYS.apply, "failed");
+              setStatus("apply-error");
+              setMessage(
+                applyResponse?.message ||
+                  "Error applying Model Forge scaffold package."
+              );
+              setRetryMode(null);
+            }
+            return;
+          }
+        } else {
+          const currentPendingChange = getPendingBackendChange();
+          const currentApplyCompleted = currentPendingChange?.applyCompleted === true;
+          setSingleStepStatus(
+            STEP_KEYS.apply,
+            currentApplyCompleted ? "completed" : "active"
+          );
+          applyRequestHadNetworkFailure = currentApplyCompleted !== true;
+          nextPendingChange = {
+            ...nextPendingChange,
+            applyCompleted: currentApplyCompleted,
+          };
+        }
+      } else {
+        setSingleStepStatus(STEP_KEYS.apply, "completed");
+      }
+
+      if (mode === "full") {
+        const backendHealthState = await pollForHealthyBackend(
+          nextPendingChange,
+          {
+            allowHealthyWithoutRestart:
+              nextPendingChange.applyCompleted === true &&
+              applyRequestHadNetworkFailure !== true,
+          }
+        );
+        if (!backendHealthState.healthy) return;
+
+        if (
+          !backendHealthState.restarted &&
+          nextPendingChange.backendRestartRequested !== true
+        ) {
+          nextPendingChange = updatePendingBackendChange({
+            backendRestartRequested: true,
+          }) || {
+            ...nextPendingChange,
+            backendRestartRequested: true,
           };
 
           const restartResponse = await restartBackendAdmin();
@@ -420,10 +528,12 @@ export default function ApplyingBackendChangesPage() {
             }
             return;
           }
-        }
 
-        const backendReady = await pollForHealthyRestart(nextPendingChange);
-        if (!backendReady) return;
+          const restartedAfterRequest = await pollForHealthyBackend(
+            nextPendingChange
+          );
+          if (!restartedAfterRequest.healthy) return;
+        }
       } else {
         setSingleStepStatus(STEP_KEYS.backend, "completed");
       }
@@ -472,7 +582,7 @@ export default function ApplyingBackendChangesPage() {
     [
       completeFlow,
       pollForDecisionModelsHealth,
-      pollForHealthyRestart,
+      pollForHealthyBackend,
       pollForManifestModel,
       resetStepsForMode,
       setSingleStepStatus,
