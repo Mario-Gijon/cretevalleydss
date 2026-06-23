@@ -45,7 +45,7 @@ const BACKEND_RESTART_TIMEOUT_MESSAGE =
 const MANIFEST_WARNING_MESSAGE =
   "Generated files were written, but DecisionModelsService has not published the generated model yet.";
 const APPLY_INTERRUPTED_MESSAGE =
-  "Apply response was interrupted. Waiting for Backend recovery.";
+  "Apply response was interrupted. Verifying generated files through the model manifest.";
 const ADMIN_AUTH_REQUIRED_MESSAGE =
   "Your admin session could not be restored during the applying flow. Sign in again and retry.";
 
@@ -537,6 +537,20 @@ export default function ApplyingBackendChangesPage() {
       const manifestReady = await pollForManifestModel(nextPendingChange);
       if (!manifestReady) return;
 
+      if (nextPendingChange.applyCompleted !== true) {
+        nextPendingChange = updatePendingBackendChange({
+          applyCompleted: true,
+          applyNetworkInterrupted: false,
+        }) || {
+          ...nextPendingChange,
+          applyCompleted: true,
+          applyNetworkInterrupted: false,
+        };
+      }
+
+      setSingleStepStatus(STEP_KEYS.apply, "completed");
+      setSingleStepStatus(STEP_KEYS.backend, "completed");
+      setSingleStepStatus(STEP_KEYS.manifest, "completed");
       setSingleStepStatus(STEP_KEYS.redirect, "active");
       await completeFlow(nextPendingChange);
     },
