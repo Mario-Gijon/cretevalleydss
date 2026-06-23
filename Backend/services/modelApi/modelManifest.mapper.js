@@ -262,44 +262,50 @@ export const validateSyncableManifestModel = (manifestModel) => {
   return missingFields;
 };
 
-export const buildManifestTechnicalProjection = (manifestModel) => ({
-  apiModelKey: normalizeNonEmptyString(manifestModel?.apiModelKey),
-  displayName: normalizeNonEmptyString(manifestModel?.displayName),
-  modelKind: normalizeModelKind(manifestModel?.modelKind),
-  implementationStatus:
-    normalizeNonEmptyString(manifestModel?.implementationStatus) || "ready",
-  publicUsable: manifestModel?.publicUsable === true,
-  supportsCreatorCriteriaWeighting:
-    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting" &&
-    manifestModel?.supportsCreatorCriteriaWeighting === true,
-  supportsExpertCriteriaWeighting:
-    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting" &&
-    manifestModel?.supportsExpertCriteriaWeighting === true,
-  visibleInIssueCreation: normalizeModelKind(manifestModel?.modelKind) === "issue",
-  visibleInCriteriaWeighting:
-    normalizeModelKind(manifestModel?.modelKind) === "criteriaWeighting",
-  apiEndpoint: normalizeEndpoint(manifestModel?.apiEndpoint, {
-    emptyValue: null,
-  }),
-  smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
-  extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
-  moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
-  evaluationStructureKey: normalizeNonEmptyString(
-    manifestModel?.evaluationStructureKey
-  ),
-  supportsConsensus: manifestModel?.supportsConsensus === true,
-  supportsConsensusSimulation:
-    manifestModel?.supportsConsensusSimulation === true,
-  isMultiCriteria: manifestModel?.isMultiCriteria === true,
-  usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
-  usesExpertWeights: manifestModel?.usesExpertWeights === true,
-  usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
-  usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
-  supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
-  parameters: normalizeParameters(manifestModel?.parameters),
-  request: normalizeDynamicObject(manifestModel?.request),
-  response: normalizeDynamicObject(manifestModel?.response),
-});
+export const buildManifestTechnicalProjection = (manifestModel) => {
+  const modelKind = normalizeModelKind(manifestModel?.modelKind);
+  const implementationStatus =
+    normalizeNonEmptyString(manifestModel?.implementationStatus) || "ready";
+  const isScaffold = implementationStatus === "scaffold";
+
+  return {
+    apiModelKey: normalizeNonEmptyString(manifestModel?.apiModelKey),
+    displayName: normalizeNonEmptyString(manifestModel?.displayName),
+    modelKind,
+    implementationStatus,
+    publicUsable: manifestModel?.publicUsable === true,
+    supportsCreatorCriteriaWeighting:
+      modelKind === "criteriaWeighting" &&
+      manifestModel?.supportsCreatorCriteriaWeighting === true,
+    supportsExpertCriteriaWeighting:
+      modelKind === "criteriaWeighting" &&
+      manifestModel?.supportsExpertCriteriaWeighting === true,
+    visibleInIssueCreation: modelKind === "issue" && !isScaffold,
+    visibleInCriteriaWeighting:
+      modelKind === "criteriaWeighting" && !isScaffold,
+    apiEndpoint: normalizeEndpoint(manifestModel?.apiEndpoint, {
+      emptyValue: null,
+    }),
+    smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
+    extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
+    moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
+    evaluationStructureKey: normalizeNonEmptyString(
+      manifestModel?.evaluationStructureKey
+    ),
+    supportsConsensus: manifestModel?.supportsConsensus === true,
+    supportsConsensusSimulation:
+      manifestModel?.supportsConsensusSimulation === true,
+    isMultiCriteria: manifestModel?.isMultiCriteria === true,
+    usesCriteriaWeights: manifestModel?.usesCriteriaWeights === true,
+    usesExpertWeights: manifestModel?.usesExpertWeights === true,
+    usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
+    usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
+    supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
+    parameters: normalizeParameters(manifestModel?.parameters),
+    request: normalizeDynamicObject(manifestModel?.request),
+    response: normalizeDynamicObject(manifestModel?.response),
+  };
+};
 
 export const buildTechnicalPayload = ({ manifest, manifestModel, now }) => {
   const { displayName, ...manifestTechnicalProjection } =

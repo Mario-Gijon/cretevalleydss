@@ -7,14 +7,15 @@ export const getModelManifestSyncSeverity = (syncState) => {
   if (normalized === "available") return "success";
   if (normalized === "not syncable") return "info";
   if (normalized === "pending integration") return "warning";
-  if (normalized === "missing in mongo" || normalized === "missing in manifest") {
+  if (
+    normalized === "missing in mongo" ||
+    normalized === "missing from manifest" ||
+    normalized === "will be deleted" ||
+    normalized === "protected historical model"
+  ) {
     return "warning";
   }
-  if (
-    normalized === "has differences" ||
-    normalized === "stale" ||
-    normalized === "unavailable"
-  ) {
+  if (normalized === "has differences" || normalized === "unavailable") {
     return "warning";
   }
 

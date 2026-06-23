@@ -19,7 +19,8 @@ function SyncSummary({ report }) {
   const technicalDifferences = flattenModelManifestTechnicalDifferences(report);
   const reviewNeeded =
     countItems(summary.missingInMongo) +
-    countItems(summary.missingInManifest) +
+    countItems(summary.deletedCandidates) +
+    countItems(summary.blockedDeletions) +
     technicalDifferences.length;
 
   return (
@@ -74,7 +75,7 @@ function SyncResult({ result }) {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
-            lg: "repeat(6, minmax(0, 1fr))",
+            lg: "repeat(7, minmax(0, 1fr))",
           },
         }}
       >
@@ -101,8 +102,13 @@ function SyncResult({ result }) {
           severity="warning"
         />
         <MetricCard
-          label="Stale"
-          value={summary.stale ?? countItems(result.stale)}
+          label="Deleted"
+          value={summary.deleted ?? countItems(result.deleted)}
+          severity="warning"
+        />
+        <MetricCard
+          label="Blocked deletions"
+          value={summary.blockedDeletions ?? countItems(result.blockedDeletions)}
           severity="warning"
         />
         <MetricCard
@@ -148,9 +154,17 @@ function SyncResult({ result }) {
           renderItem={(item) => `${item?.apiModelKey || "unknown"} - ${item?.reason || "No reason"}`}
         />
         <ReviewList
-          title="Stale"
-          items={result.stale}
-          emptyText="No stale models marked."
+          title="Deleted"
+          items={result.deleted}
+          emptyText="No models deleted."
+          renderItem={(item) =>
+            `${item?.apiModelKey || "unknown"} - ${item?.mongoName || "unknown"} - ${item?.reason || "No reason"}`
+          }
+        />
+        <ReviewList
+          title="Blocked deletions"
+          items={result.blockedDeletions}
+          emptyText="No protected historical models."
           renderItem={(item) =>
             `${item?.apiModelKey || "unknown"} - ${item?.mongoName || "unknown"} - ${item?.reason || "No reason"}`
           }
@@ -207,7 +221,7 @@ export default function ModelManifestSyncTab({
       >
         <Stack spacing={0.8}>
           <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-            The synchronization does not delete models, does not overwrite editorial fields, and only applies technical metadata from ApiModels.
+            The synchronization applies technical metadata from ApiModels, deletes missing unreferenced managed models, and preserves protected historical models that are still referenced by issues.
           </Typography>
           {errorMessage && (
             <Alert severity="error" variant="outlined">

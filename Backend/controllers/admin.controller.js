@@ -90,6 +90,7 @@ const mapIssueModelCatalogItem = (model) => {
     modelKind: model.modelKind || null,
     implementationStatus: model.implementationStatus || "ready",
     publicUsable,
+    protectedHistoricalModel: isStale,
     visibleInIssueCreation: model.visibleInIssueCreation !== false,
     visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
     apiEndpoint: model.apiEndpoint,
@@ -117,7 +118,7 @@ const mapIssueModelCatalogItem = (model) => {
 const getModelCatalogSortRank = (model) => {
   const visibleInIssueCreation = model.visibleInIssueCreation !== false;
   const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
-  const stale = model.manifestSync.isStale === true;
+  const stale = model?.manifestSync?.isStale === true;
 
   if (visibleInIssueCreation && !stale) return 0;
   if (visibleInIssueCreation) return 1;
@@ -177,6 +178,33 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
     );
   }
 
+  const currentModel = await IssueModel.findById(id);
+
+  if (!currentModel) {
+    throw createNotFoundError("Model not found", {
+      field: "id",
+    });
+  }
+
+  const isProtectedHistoricalModel =
+    currentModel?.manifestSync?.isStale === true;
+  if (
+    isProtectedHistoricalModel &&
+    ((hasIssueVisibility && visibleInIssueCreation === true) ||
+      (hasCriteriaVisibility && visibleInCriteriaWeighting === true))
+  ) {
+    throw createBadRequestError(
+      "This model is no longer present in the DecisionModelsService manifest and is kept only because existing issues reference it.",
+      {
+        code: "PROTECTED_HISTORICAL_MODEL_NOT_ACTIVABLE",
+        field:
+          hasIssueVisibility && visibleInIssueCreation === true
+            ? "visibleInIssueCreation"
+            : "visibleInCriteriaWeighting",
+      }
+    );
+  }
+
   const visibilityUpdate = {};
   if (hasIssueVisibility) {
     visibilityUpdate.visibleInIssueCreation = visibleInIssueCreation;
@@ -186,19 +214,12 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
       visibleInCriteriaWeighting;
   }
 
-  const model = await IssueModel.findByIdAndUpdate(
-    id,
-    { $set: visibilityUpdate },
-    { new: true, runValidators: true }
-  )
+  currentModel.set(visibilityUpdate);
+  await currentModel.save();
+
+  const model = await IssueModel.findById(currentModel._id)
     .select("-__v")
     .lean();
-
-  if (!model) {
-    throw createNotFoundError("Model not found", {
-      field: "id",
-    });
-  }
 
   return sendSuccess(
     res,

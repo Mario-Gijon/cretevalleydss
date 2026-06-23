@@ -4,7 +4,7 @@ const asList = (value) => (Array.isArray(value) ? value : []);
 const countEntries = (value) => asList(value).length;
 
 const getCatalogSyncState = (model = {}) => {
-  if (model?.manifestSync?.isStale) return "Stale";
+  if (model?.manifestSync?.isStale) return "Missing from manifest";
   if (model?.manifestSync?.lastSyncedAt) return "Synced";
   if (model?.apiModelKey) return "Available";
   return "Unknown";
@@ -67,12 +67,24 @@ export const normalizeModelManifestDryRunRows = (report) => {
     });
   });
 
-  asList(report?.summary?.missingInManifest).forEach((item) => {
+  asList(report?.summary?.deletedCandidates).forEach((item) => {
     rows.push({
+      apiModelKey: item.apiModelKey || null,
       mongoName: item.mongoName,
       mongoId: item.mongoId,
       reason: item.reason,
-      syncState: "Missing in manifest",
+      syncState: "Will be deleted",
+    });
+  });
+
+  asList(report?.summary?.blockedDeletions).forEach((item) => {
+    rows.push({
+      apiModelKey: item.apiModelKey || null,
+      mongoName: item.mongoName,
+      mongoId: item.mongoId,
+      reason: item.reason,
+      references: item.references || null,
+      syncState: "Protected historical model",
     });
   });
 
@@ -102,6 +114,7 @@ export const normalizeModelCatalogRows = (models = []) =>
     publicUsable: model?.publicUsable !== false,
     visibleInIssueCreation: model?.visibleInIssueCreation !== false,
     visibleInCriteriaWeighting: model?.visibleInCriteriaWeighting !== false,
+    protectedHistoricalModel: model?.protectedHistoricalModel === true,
     apiInputFormat: model?.apiInputFormat || null,
     apiOutputFormat: model?.apiOutputFormat || null,
     modelInputFields: asList(model?.modelInputFields),
@@ -147,7 +160,13 @@ export const mergeModelCatalogRowsWithDryRun = (catalogRows, dryRunRows) => {
     const dryRunSyncState = getModelManifestSyncState(dryRunRow);
     const syncState =
       differences.length > 0 ||
-      ["Has differences", "Missing in manifest", "Review needed", "Stale"].includes(
+      [
+        "Has differences",
+        "Will be deleted",
+        "Protected historical model",
+        "Missing from manifest",
+        "Review needed",
+      ].includes(
         dryRunSyncState
       )
         ? dryRunSyncState

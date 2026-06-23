@@ -1,4 +1,5 @@
 import { IssueModel } from "../../models/IssueModels.js";
+import { Issue } from "../../models/Issues.js";
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
@@ -112,7 +113,7 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
   const warnings = [];
 
   const localIssueVisibility = model.visibleInIssueCreation !== false;
-  const manifestIssueDefaultVisibility = payload.modelKind === "issue";
+  const manifestIssueDefaultVisibility = payload.visibleInIssueCreation !== false;
   if (localIssueVisibility !== manifestIssueDefaultVisibility) {
     warnings.push(
       `IssueModel ${model.name} local visibleInIssueCreation=${localIssueVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
@@ -121,7 +122,7 @@ const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
 
   const localCriteriaVisibility = model.visibleInCriteriaWeighting !== false;
   const manifestCriteriaDefaultVisibility =
-    payload.modelKind === "criteriaWeighting";
+    payload.visibleInCriteriaWeighting !== false;
   if (localCriteriaVisibility !== manifestCriteriaDefaultVisibility) {
     warnings.push(
       `IssueModel ${model.name} local visibleInCriteriaWeighting=${localCriteriaVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
@@ -136,7 +137,8 @@ const createIssueModelFromManifest = async ({ manifestModel, payload }) => {
   const createdModel = await IssueModel.create({
     ...payload,
     visibleInIssueCreation: payload.modelKind === "issue" && !isScaffold,
-    visibleInCriteriaWeighting: payload.modelKind === "criteriaWeighting",
+    visibleInCriteriaWeighting:
+      payload.modelKind === "criteriaWeighting" && !isScaffold,
   });
 
   return {
@@ -154,8 +156,35 @@ const canMarkStale = (model) => {
   return model?.manifestSync?.source === MANIFEST_SYNC_SOURCE;
 };
 
-const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) => {
-  const stale = [];
+const loadMissingModelReferences = async (modelId) => {
+  const [issueModelReference, criteriaWeightingReference] = await Promise.all([
+    Issue.exists({ model: modelId }),
+    Issue.exists({ criteriaWeightingModel: modelId }),
+  ]);
+
+  return {
+    issueModel: Boolean(issueModelReference),
+    criteriaWeightingModel: Boolean(criteriaWeightingReference),
+  };
+};
+
+const buildBlockedDeletionItem = ({ entry, apiModelKey, references }) => ({
+  apiModelKey,
+  mongoName: entry.model.name,
+  mongoId: toIdString(entry.model._id),
+  reason:
+    "This model is no longer present in the DecisionModelsService manifest, but it is referenced by existing issues. It was kept in MongoDB as a protected historical model and disabled for new issues.",
+  references,
+});
+
+const reconcileMissingManagedModels = async ({
+  mongoEntries,
+  syncableKeys,
+  now,
+  warnings,
+}) => {
+  const deleted = [];
+  const blockedDeletions = [];
 
   for (const entry of mongoEntries) {
     const apiModelKey = String(entry.model.apiModelKey || "").trim();
@@ -166,17 +195,30 @@ const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) =>
 
     if (!canMarkStale(entry.model)) {
       warnings.push(
-        `IssueModel ${entry.model.name} has apiModelKey ${apiModelKey} but is not managed by DecisionModelsService; stale status was not changed.`
+        `IssueModel ${entry.model.name} has apiModelKey ${apiModelKey} but is not managed by DecisionModelsService; deletion review was skipped.`
       );
+      continue;
+    }
+
+    const references = await loadMissingModelReferences(entry.model._id);
+    const isReferenced =
+      references.issueModel === true ||
+      references.criteriaWeightingModel === true;
+
+    if (!isReferenced) {
+      await IssueModel.deleteOne({ _id: entry.model._id });
+      deleted.push({
+        apiModelKey,
+        mongoName: entry.model.name,
+        mongoId: toIdString(entry.model._id),
+        reason:
+          "This managed model is no longer present in the DecisionModelsService manifest and is not referenced by any issue. It was deleted from MongoDB.",
+      });
       continue;
     }
 
     const previousManifestSync =
       entry.model.manifestSync?.toObject?.() || entry.model.manifestSync || {};
-
-    if (previousManifestSync.isStale === true) {
-      continue;
-    }
 
     const nextManifestSync = {
       ...previousManifestSync,
@@ -187,17 +229,23 @@ const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) =>
 
     await IssueModel.updateOne(
       { _id: entry.model._id },
-      { $set: { manifestSync: nextManifestSync } },
+      {
+        $set: {
+          visibleInIssueCreation: false,
+          visibleInCriteriaWeighting: false,
+          manifestSync: nextManifestSync,
+        },
+      },
       { runValidators: false }
     );
 
-    stale.push({
-      apiModelKey,
-      mongoName: entry.model.name,
-      mongoId: toIdString(entry.model._id),
-      updatedFields: ["manifestSync.isStale"],
-      reason: "IssueModel is not present in syncable manifest models",
-    });
+    blockedDeletions.push(
+      buildBlockedDeletionItem({
+        entry,
+        apiModelKey,
+        references,
+      })
+    );
   }
 
   for (const entry of mongoEntries) {
@@ -210,7 +258,10 @@ const markStaleModels = async ({ mongoEntries, syncableKeys, now, warnings }) =>
     );
   }
 
-  return stale;
+  return {
+    deleted,
+    blockedDeletions,
+  };
 };
 
 const buildSummary = ({
@@ -218,14 +269,16 @@ const buildSummary = ({
   updated,
   unchanged,
   skipped,
-  stale,
+  deleted,
+  blockedDeletions,
   warnings,
 }) => ({
   created: created.length,
   updated: updated.length,
   unchanged: unchanged.length,
   skipped: skipped.length,
-  stale: stale.length,
+  deleted: deleted.length,
+  blockedDeletions: blockedDeletions.length,
   warnings: warnings.length,
 });
 
@@ -313,7 +366,7 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
     created.push(createdItem);
   }
 
-  const stale = await markStaleModels({
+  const { deleted, blockedDeletions } = await reconcileMissingManagedModels({
     mongoEntries,
     syncableKeys,
     now,
@@ -325,7 +378,8 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
     updated,
     unchanged,
     skipped,
-    stale,
+    deleted,
+    blockedDeletions,
     warnings,
   });
 
@@ -339,7 +393,8 @@ export const syncModelManifestToIssueModels = async (options = {}) => {
     updated,
     unchanged,
     skipped,
-    stale,
+    deleted,
+    blockedDeletions,
     warnings,
     summary,
   };

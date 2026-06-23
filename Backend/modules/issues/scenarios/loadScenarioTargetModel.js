@@ -47,12 +47,15 @@ export const getTargetScenarioModelOrThrow = async ({ targetModelId }) => {
   }
 
   if (targetModel.manifestSync.isStale === true) {
-    throw createBadRequestError("Target model is stale and cannot be used for simulation", {
+    throw createBadRequestError(
+      "Target model is missing from the current manifest and cannot be used for simulation",
+      {
       field: "targetModelId",
       details: {
         targetModelId: cleanTargetModelId,
       },
-    });
+    }
+    );
   }
 
   return targetModel;

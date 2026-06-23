@@ -12,8 +12,9 @@ import { getModelManifestSyncState } from "../logic/getModelManifestSeverity";
 const REVIEW_SYNC_STATES = [
   "Has differences",
   "Missing in Mongo",
-  "Missing in manifest",
-  "Stale",
+  "Will be deleted",
+  "Protected historical model",
+  "Missing from manifest",
 ];
 
 export default function ModelCatalogTab({

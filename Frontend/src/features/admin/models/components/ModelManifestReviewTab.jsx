@@ -18,7 +18,8 @@ export default function ModelManifestReviewTab({ report }) {
   const hasReviewItems =
     technicalDifferences.length > 0 ||
     countItems(summary.missingInMongo) > 0 ||
-    countItems(summary.missingInManifest) > 0 ||
+    countItems(summary.deletedCandidates) > 0 ||
+    countItems(summary.blockedDeletions) > 0 ||
     countItems(summary.notSyncable) > 0 ||
     warnings.length > 0;
 
@@ -49,18 +50,23 @@ export default function ModelManifestReviewTab({ report }) {
           <ReviewList
             title="Missing in Mongo"
             items={summary.missingInMongo}
-            renderItem={(item) => `${item?.key || "unknown"} - ${item?.reason || "No reason"}`}
+            renderItem={(item) => `${item?.apiModelKey || "unknown"} - ${item?.reason || "No reason"}`}
           />
           <ReviewList
-            title="Missing in manifest"
-            items={summary.missingInManifest}
+            title="Will be deleted"
+            items={summary.deletedCandidates}
+            renderItem={(item) => `${item?.mongoName || "unknown"} - ${item?.reason || "No reason"}`}
+          />
+          <ReviewList
+            title="Protected historical models"
+            items={summary.blockedDeletions}
             renderItem={(item) => `${item?.mongoName || "unknown"} - ${item?.reason || "No reason"}`}
           />
           <ReviewList
             title="Not syncable"
             items={summary.notSyncable}
             renderItem={(item) =>
-              `${item?.key || "unknown"} - ${toModelManifestTitle(item?.role)} - ${toModelManifestTitle(item?.status)} - ${item?.reason || "No reason"}`
+              `${item?.apiModelKey || "unknown"} - ${toModelManifestTitle(item?.modelKind)} - ${item?.reason || "No reason"}`
             }
           />
           <ReviewList title="Warnings" items={warnings} renderItem={(item) => item} />

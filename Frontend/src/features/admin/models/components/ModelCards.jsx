@@ -28,6 +28,7 @@ export default function ModelCards({
       {rows.map((row, index) => {
         const visible = isModelVisibleInCreateIssue(row);
         const loadingVisibility = visibilityBusyId === row.mongoId;
+        const isProtectedHistoricalModel = row.protectedHistoricalModel === true;
 
         return (
           <Paper
@@ -62,6 +63,12 @@ export default function ModelCards({
                     label={getModelAdminEnabledLabel(row)}
                     severity={visible ? "success" : "error"}
                   />
+                  {isProtectedHistoricalModel && (
+                    <StatusChip
+                      label="Protected"
+                      severity="warning"
+                    />
+                  )}
                 </Stack>
               </Stack>
 
@@ -118,7 +125,7 @@ export default function ModelCards({
                 <CatalogVisibilitySwitch
                   checked={visible}
                   loading={loadingVisibility}
-                  disabled={!row.mongoId}
+                  disabled={!row.mongoId || isProtectedHistoricalModel}
                   onChange={() => onAskVisibilityChange(row)}
                 />
               </Stack>

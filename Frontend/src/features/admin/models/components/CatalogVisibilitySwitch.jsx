@@ -11,7 +11,13 @@ export default function CatalogVisibilitySwitch({
     <Tooltip
       arrow
       placement="top"
-      title={checked ? "Visible in Create Issue" : "Hidden from Create Issue"}
+      title={
+        disabled
+          ? "This model cannot be activated for new issues"
+          : checked
+            ? "Visible in Create Issue"
+            : "Hidden from Create Issue"
+      }
     >
       <Switch
         checked={checked}

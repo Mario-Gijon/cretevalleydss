@@ -68,6 +68,7 @@ export default function ModelsTable({
             const syncState = getModelManifestSyncState(row);
             const visible = isModelVisibleInCreateIssue(row);
             const loadingVisibility = visibilityBusyId === row.mongoId;
+            const isProtectedHistoricalModel = row.protectedHistoricalModel === true;
 
             return (
               <TableRow
@@ -113,6 +114,9 @@ export default function ModelsTable({
                         label={toModelManifestTitle(row.implementationStatus)}
                         severity={row.implementationStatus === "scaffold" ? "warning" : "success"}
                       />
+                      {isProtectedHistoricalModel && (
+                        <StatusChip label="Protected" severity="warning" />
+                      )}
                     </Stack>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                       ID: {row.mongoId || "No Mongo id"}
@@ -170,7 +174,7 @@ export default function ModelsTable({
                   <CatalogVisibilitySwitch
                     checked={visible}
                     loading={loadingVisibility}
-                    disabled={!row.mongoId}
+                    disabled={!row.mongoId || isProtectedHistoricalModel}
                     onChange={() => onAskVisibilityChange(row)}
                   />
                 </TableCell>

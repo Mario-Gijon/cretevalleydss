@@ -1,4 +1,5 @@
 import { IssueModel } from "../../models/IssueModels.js";
+import { Issue } from "../../models/Issues.js";
 import { hasOwnKey } from "../../utils/common/objects.js";
 import { fetchModelManifest } from "./modelManifestClient.js";
 import {
@@ -94,10 +95,10 @@ const compareLocalConfigurationFields = (manifestModel, mongoModel) => {
     let manifestRawValue = null;
 
     if (field === "visibleInIssueCreation") {
-      manifestRawValue = manifestProjection.modelKind === "issue";
+      manifestRawValue = manifestProjection.visibleInIssueCreation;
     }
     if (field === "visibleInCriteriaWeighting") {
-      manifestRawValue = manifestProjection.modelKind === "criteriaWeighting";
+      manifestRawValue = manifestProjection.visibleInCriteriaWeighting;
     }
 
     const mongoRawValue = getMongoTechnicalValue(mongoModel, field);
@@ -258,7 +259,22 @@ const buildModelRow = ({
   };
 };
 
-export const buildModelManifestDryRunReport = ({
+const canManageMissingModel = (mongoModel) =>
+  mongoModel?.manifestSync?.source === "DecisionModelsService";
+
+const loadMissingModelReferences = async (modelId) => {
+  const [issueModelReference, criteriaWeightingReference] = await Promise.all([
+    Issue.exists({ model: modelId }),
+    Issue.exists({ criteriaWeightingModel: modelId }),
+  ]);
+
+  return {
+    issueModel: Boolean(issueModelReference),
+    criteriaWeightingModel: Boolean(criteriaWeightingReference),
+  };
+};
+
+export const buildModelManifestDryRunReport = async ({
   manifest,
   issueModels = [],
 }) => {
@@ -389,38 +405,79 @@ export const buildModelManifestDryRunReport = ({
     }
   }
 
-  const missingInManifest = mongoEntries
-    .filter((entry) => !entry.matched)
-    .map((entry) => ({
-      apiModelKey: entry.model?.apiModelKey ?? null,
-      mongoName: entry.model?.name ?? null,
-      mongoId: toIdString(entry.model?._id),
-      reason: "Mongo IssueModel is not present in syncable manifest models",
-    }));
+  const deletedCandidates = [];
+  const blockedDeletions = [];
 
-  mongoEntries
-    .filter((entry) => !entry.matched)
-    .forEach((entry) => {
-      const isStale = entry.model?.manifestSync?.isStale === true;
+  for (const entry of mongoEntries.filter((mongoEntry) => !mongoEntry.matched)) {
+    const apiModelKey = entry.model?.apiModelKey ?? null;
+    const mongoName = entry.model?.name ?? null;
+    const mongoId = toIdString(entry.model?._id);
 
+    if (!canManageMissingModel(entry.model)) {
+      warnings.push(
+        `Mongo IssueModel ${mongoName || apiModelKey || "unknown"} is not present in syncable manifest models and is not managed by DecisionModelsService.`
+      );
       modelRows.push(
         buildModelRow({
           mongoModel: entry.model,
-          syncState: isStale ? "Stale" : "Missing in manifest",
+          syncState: "Missing from manifest",
           reason: "Mongo IssueModel is not present in syncable manifest models",
         })
       );
-    });
+      continue;
+    }
+
+    const references = await loadMissingModelReferences(entry.model._id);
+    const isReferenced =
+      references.issueModel === true ||
+      references.criteriaWeightingModel === true;
+
+    if (!isReferenced) {
+      const item = {
+        apiModelKey,
+        mongoName,
+        mongoId,
+        reason:
+          "This managed model is no longer present in the DecisionModelsService manifest and is not referenced by any issue. It will be deleted during sync.",
+      };
+      deletedCandidates.push(item);
+      warnings.push(
+        `Managed IssueModel ${mongoName || apiModelKey || "unknown"} will be deleted because it is no longer present in the manifest and has no issue references.`
+      );
+      modelRows.push(
+        buildModelRow({
+          mongoModel: entry.model,
+          syncState: "Will be deleted",
+          reason: item.reason,
+        })
+      );
+      continue;
+    }
+
+    const blockedItem = {
+      apiModelKey,
+      mongoName,
+      mongoId,
+      reason:
+        "This model is no longer present in the DecisionModelsService manifest, but it is referenced by at least one active or finished issue. As a precaution, it was kept in the system database and disabled for new issues.",
+      references,
+    };
+    blockedDeletions.push(blockedItem);
+    warnings.push(
+      `Managed IssueModel ${mongoName || apiModelKey || "unknown"} is missing from the manifest but is referenced by existing issues, so it will be kept as a protected historical model.`
+    );
+    modelRows.push(
+      buildModelRow({
+        mongoModel: entry.model,
+        syncState: "Protected historical model",
+        reason: blockedItem.reason,
+      })
+    );
+  }
 
   for (const missingModel of missingInMongo) {
     warnings.push(
       `Syncable manifest model ${missingModel.apiModelKey} was not found in Mongo IssueModels.`
-    );
-  }
-
-  for (const missingModel of missingInManifest) {
-    warnings.push(
-      `Mongo IssueModel ${missingModel.mongoName} is not present in syncable manifest models.`
     );
   }
 
@@ -449,9 +506,9 @@ export const buildModelManifestDryRunReport = ({
     );
   }
 
-  if (missingInManifest.length > 0) {
+  if (deletedCandidates.length > 0 || blockedDeletions.length > 0) {
     recommendations.push(
-      "Review Mongo IssueModels that are not present in syncable manifest models."
+      "Review managed Mongo IssueModels that are missing from the manifest before synchronization."
     );
   }
 
@@ -484,7 +541,8 @@ export const buildModelManifestDryRunReport = ({
     summary: {
       matched: matches.length,
       missingInMongo,
-      missingInManifest,
+      deletedCandidates,
+      blockedDeletions,
       notSyncable,
       invalidManifestRuntimeFields,
       technicalDifferences,
