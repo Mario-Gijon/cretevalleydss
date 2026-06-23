@@ -378,19 +378,16 @@ export const getBackendHealth = async () =>
   );
 
 /**
- * Actualiza si un modelo aparece en el flujo Create Issue.
+ * Actualiza la visibilidad de catálogo aplicable para un modelo.
  *
  * @param {string} modelId Id del modelo.
- * @param {boolean} visibleInIssueCreation Nueva visibilidad.
+ * @param {object} visibilityUpdate Campo de visibilidad a actualizar.
  * @returns {Promise<object>}
  */
-export const updateModelCatalogVisibility = async (
-  modelId,
-  visibleInIssueCreation
-) =>
+export const updateModelCatalogVisibility = async (modelId, visibilityUpdate) =>
   requestJson(
     `${API}/admin/models/${modelId}/catalog-visibility`,
-    jsonRequest("PATCH", { visibleInIssueCreation }),
+    jsonRequest("PATCH", visibilityUpdate),
     {
       fetcher: authFetch,
       fallbackMessage: "Error updating model catalog visibility.",

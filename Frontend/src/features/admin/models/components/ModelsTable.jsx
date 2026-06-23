@@ -13,7 +13,8 @@ import { alpha } from "@mui/material/styles";
 import {
   getModelAdminEnabledLabel,
   getModelManifestDisplayName,
-  isModelVisibleInCreateIssue,
+  getModelVisibilityTooltip,
+  isModelActiveInCatalog,
   toModelManifestTitle,
 } from "../logic/formatModelManifestDisplay";
 import {
@@ -66,7 +67,7 @@ export default function ModelsTable({
         <TableBody>
           {rows.map((row, index) => {
             const syncState = getModelManifestSyncState(row);
-            const visible = isModelVisibleInCreateIssue(row);
+            const visible = isModelActiveInCatalog(row);
             const loadingVisibility = visibilityBusyId === row.mongoId;
             const isProtectedHistoricalModel = row.protectedHistoricalModel === true;
 
@@ -175,6 +176,7 @@ export default function ModelsTable({
                     checked={visible}
                     loading={loadingVisibility}
                     disabled={!row.mongoId || isProtectedHistoricalModel}
+                    tooltip={getModelVisibilityTooltip(row, visible)}
                     onChange={() => onAskVisibilityChange(row)}
                   />
                 </TableCell>

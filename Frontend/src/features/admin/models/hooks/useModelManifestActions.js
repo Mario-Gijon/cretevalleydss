@@ -6,7 +6,10 @@ import {
   syncModelManifest,
   updateModelCatalogVisibility,
 } from "../../../../services/admin.service";
-import { isModelVisibleInCreateIssue } from "../logic/formatModelManifestDisplay";
+import {
+  getModelVisibilityFieldForKind,
+  isModelActiveInCatalog,
+} from "../logic/formatModelManifestDisplay";
 
 export default function useModelManifestActions({ onCatalogShouldRefresh, onAfterSync } = {}) {
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -77,13 +80,16 @@ export default function useModelManifestActions({ onCatalogShouldRefresh, onAfte
     async (row) => {
       if (!row?.mongoId) return false;
 
-      const nextVisibility = !isModelVisibleInCreateIssue(row);
+      const visibilityField = getModelVisibilityFieldForKind(row);
+      const nextVisibility = !isModelActiveInCatalog(row);
 
       setVisibilityBusyId(row.mongoId);
       setErrorMessage("");
 
       try {
-        const response = await updateModelCatalogVisibility(row.mongoId, nextVisibility);
+        const response = await updateModelCatalogVisibility(row.mongoId, {
+          [visibilityField]: nextVisibility,
+        });
 
         if (!response?.success) {
           const message = response?.message || "Error updating model visibility";

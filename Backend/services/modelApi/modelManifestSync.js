@@ -69,6 +69,29 @@ const getChangedSyncFields = (model, payload) => {
   );
 };
 
+const getApplicableVisibilityField = (modelKind) => {
+  if (modelKind === "criteriaWeighting") {
+    return "visibleInCriteriaWeighting";
+  }
+
+  return "visibleInIssueCreation";
+};
+
+const applyVisibilityInvariantToModel = (model, payload) => {
+  const modelKind = payload.modelKind || model?.modelKind;
+  const applicableVisibilityField = getApplicableVisibilityField(modelKind);
+
+  if (applicableVisibilityField === "visibleInCriteriaWeighting") {
+    model.visibleInIssueCreation = false;
+    model.visibleInCriteriaWeighting =
+      model.visibleInCriteriaWeighting !== false;
+    return;
+  }
+
+  model.visibleInIssueCreation = model.visibleInIssueCreation !== false;
+  model.visibleInCriteriaWeighting = false;
+};
+
 const updateExistingModel = async ({ entry, payload, manifestModel }) => {
   const payloadForUpdate = { ...payload };
   delete payloadForUpdate.visibleInIssueCreation;
@@ -93,6 +116,7 @@ const updateExistingModel = async ({ entry, payload, manifestModel }) => {
   }
 
   entry.model.set(payloadForUpdate);
+  applyVisibilityInvariantToModel(entry.model, payload);
   await entry.model.save();
 
   return {
@@ -110,35 +134,24 @@ const updateExistingModel = async ({ entry, payload, manifestModel }) => {
 };
 
 const buildVisibilityOverrideWarning = ({ model, payload, manifestModel }) => {
-  const warnings = [];
+  const visibilityField = getApplicableVisibilityField(payload.modelKind);
+  const localVisibility = model[visibilityField] !== false;
+  const manifestDefaultVisibility = payload[visibilityField] !== false;
 
-  const localIssueVisibility = model.visibleInIssueCreation !== false;
-  const manifestIssueDefaultVisibility = payload.visibleInIssueCreation !== false;
-  if (localIssueVisibility !== manifestIssueDefaultVisibility) {
-    warnings.push(
-      `IssueModel ${model.name} local visibleInIssueCreation=${localIssueVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
-    );
+  if (localVisibility === manifestDefaultVisibility) {
+    return null;
   }
 
-  const localCriteriaVisibility = model.visibleInCriteriaWeighting !== false;
-  const manifestCriteriaDefaultVisibility =
-    payload.visibleInCriteriaWeighting !== false;
-  if (localCriteriaVisibility !== manifestCriteriaDefaultVisibility) {
-    warnings.push(
-      `IssueModel ${model.name} local visibleInCriteriaWeighting=${localCriteriaVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`
-    );
-  }
-
-  return warnings.length > 0 ? warnings.join(" ") : null;
+  return `IssueModel ${model.name} local ${visibilityField}=${localVisibility} differs from manifest model ${manifestModel.apiModelKey}; sync preserved local Admin visibility.`;
 };
 
 const createIssueModelFromManifest = async ({ manifestModel, payload }) => {
   const isScaffold = payload.implementationStatus === "scaffold";
+  const isIssueModel = payload.modelKind === "issue";
   const createdModel = await IssueModel.create({
     ...payload,
-    visibleInIssueCreation: payload.modelKind === "issue" && !isScaffold,
-    visibleInCriteriaWeighting:
-      payload.modelKind === "criteriaWeighting" && !isScaffold,
+    visibleInIssueCreation: isIssueModel && !isScaffold,
+    visibleInCriteriaWeighting: !isIssueModel && !isScaffold,
   });
 
   return {

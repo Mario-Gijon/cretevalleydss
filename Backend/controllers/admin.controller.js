@@ -188,6 +188,30 @@ export const updateModelCatalogVisibilityAdmin = async (req, res) => {
 
   const isProtectedHistoricalModel =
     currentModel?.manifestSync?.isStale === true;
+  const isIssueModel = currentModel?.modelKind === "issue";
+  const isCriteriaWeightingModel =
+    currentModel?.modelKind === "criteriaWeighting";
+
+  if (isIssueModel && visibleInCriteriaWeighting === true) {
+    throw createBadRequestError(
+      "This visibility flag is not applicable to the selected model kind.",
+      {
+        code: "MODEL_VISIBILITY_NOT_APPLICABLE",
+        field: "visibleInCriteriaWeighting",
+      }
+    );
+  }
+
+  if (isCriteriaWeightingModel && visibleInIssueCreation === true) {
+    throw createBadRequestError(
+      "This visibility flag is not applicable to the selected model kind.",
+      {
+        code: "MODEL_VISIBILITY_NOT_APPLICABLE",
+        field: "visibleInIssueCreation",
+      }
+    );
+  }
+
   if (
     isProtectedHistoricalModel &&
     ((hasIssueVisibility && visibleInIssueCreation === true) ||

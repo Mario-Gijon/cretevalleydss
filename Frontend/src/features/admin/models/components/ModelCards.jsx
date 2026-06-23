@@ -6,7 +6,8 @@ import {
   formatModelManifestBoolean,
   getModelAdminEnabledLabel,
   getModelManifestDisplayName,
-  isModelVisibleInCreateIssue,
+  getModelVisibilityTooltip,
+  isModelActiveInCatalog,
   toModelManifestTitle,
 } from "../logic/formatModelManifestDisplay";
 import {
@@ -26,7 +27,7 @@ export default function ModelCards({
   return (
     <Stack spacing={1}>
       {rows.map((row, index) => {
-        const visible = isModelVisibleInCreateIssue(row);
+        const visible = isModelActiveInCatalog(row);
         const loadingVisibility = visibilityBusyId === row.mongoId;
         const isProtectedHistoricalModel = row.protectedHistoricalModel === true;
 
@@ -126,6 +127,7 @@ export default function ModelCards({
                   checked={visible}
                   loading={loadingVisibility}
                   disabled={!row.mongoId || isProtectedHistoricalModel}
+                  tooltip={getModelVisibilityTooltip(row, visible)}
                   onChange={() => onAskVisibilityChange(row)}
                 />
               </Stack>
