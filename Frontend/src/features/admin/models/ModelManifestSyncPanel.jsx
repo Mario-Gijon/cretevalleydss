@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Box, Paper, Stack, Tab, Tabs } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
@@ -47,10 +47,23 @@ export default function ModelManifestSyncPanel() {
   const theme = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showSnackbarAlert } = useSnackbarAlertContext();
-  const [activeTab, setActiveTab] = useState(MODEL_MANIFEST_TABS.CATALOG);
   const [selectedModel, setSelectedModel] = useState(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingVisibilityRow, setPendingVisibilityRow] = useState(null);
+  const tabKey = String(searchParams.get("tab") || "catalog").trim();
+  const activeTab =
+    TAB_KEY_TO_VALUE[tabKey] ?? MODEL_MANIFEST_TABS.CATALOG;
+
+  const selectTab = useCallback((nextTab) => {
+    const nextTabKey = TAB_VALUE_TO_KEY[nextTab] || "catalog";
+    const currentTabKey = String(searchParams.get("tab") || "").trim();
+
+    if (currentTabKey === nextTabKey) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", nextTabKey);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const { catalogModels, catalogError, loadingCatalog, loadCatalog } = useAdminModelCatalog();
 
@@ -66,31 +79,20 @@ export default function ModelManifestSyncPanel() {
     updateVisibility,
   } = useModelManifestActions({
     onCatalogShouldRefresh: loadCatalog,
-    onAfterSync: () => setActiveTab(MODEL_MANIFEST_TABS.SYNC),
+    onAfterSync: () => selectTab(MODEL_MANIFEST_TABS.SYNC),
   });
 
   useEffect(() => {
-    const tabKey = String(searchParams.get("tab") || "").trim();
-    const resolvedTab =
-      Object.prototype.hasOwnProperty.call(TAB_KEY_TO_VALUE, tabKey)
-        ? TAB_KEY_TO_VALUE[tabKey]
-        : null;
-
-    if (resolvedTab !== null) {
-      setActiveTab(resolvedTab);
+    const currentTabKey = String(searchParams.get("tab") || "").trim();
+    if (
+      currentTabKey &&
+      !Object.prototype.hasOwnProperty.call(TAB_KEY_TO_VALUE, currentTabKey)
+    ) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("tab", "catalog");
+      setSearchParams(nextParams, { replace: true });
     }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const currentTabKey = TAB_VALUE_TO_KEY[activeTab] || "catalog";
-    const existingTabKey = String(searchParams.get("tab") || "").trim();
-
-    if (existingTabKey === currentTabKey) return;
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("tab", currentTabKey);
-    setSearchParams(nextParams, { replace: true });
-  }, [activeTab, searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const rawValue = window.sessionStorage.getItem(PENDING_SUCCESS_MESSAGE_KEY);
@@ -133,7 +135,7 @@ export default function ModelManifestSyncPanel() {
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <Tabs
               value={activeTab}
-              onChange={(_event, value) => setActiveTab(value)}
+              onChange={(_event, value) => selectTab(value)}
               variant="scrollable"
               scrollButtons="auto"
               textColor="secondary"
