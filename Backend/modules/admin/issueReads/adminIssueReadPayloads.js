@@ -96,6 +96,28 @@ export const getOwnerActionFlags = ({
   };
 };
 
+export const getAdminActionFlags = ({
+  issue,
+  acceptedExperts = 0,
+  pendingExperts = 0,
+  weightsDoneAccepted = 0,
+  evaluationsDoneAccepted = 0,
+}) => {
+  const ownerFlags = getOwnerActionFlags({
+    issue,
+    acceptedExperts,
+    pendingExperts,
+    weightsDoneAccepted,
+    evaluationsDoneAccepted,
+  });
+
+  return {
+    ...ownerFlags,
+    canEditExperts: true,
+    canRemoveIssue: true,
+  };
+};
+
 export const buildParticipantExpertPayload = (expert, fallbackId = "") => {
   if (!expert) {
     return {

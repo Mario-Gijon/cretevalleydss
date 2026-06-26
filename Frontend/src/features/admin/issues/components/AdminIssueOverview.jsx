@@ -36,6 +36,8 @@ export default function AdminIssueOverview({
   onRequestRemove,
 }) {
   const theme = useTheme();
+  const actionState =
+    issueDetail?.adminActionsState || issueDetail?.ownerActionsState || {};
   const parameterContext = buildParameterContext({
     model: issueDetail?.model
       ? {
@@ -119,7 +121,7 @@ export default function AdminIssueOverview({
               variant="outlined"
               color="secondary"
               startIcon={<EditOutlinedIcon />}
-              disabled={!issueDetail?.ownerActionsState?.canEditExperts}
+              disabled={!actionState.canEditExperts}
               onClick={onGoToExperts}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -131,7 +133,7 @@ export default function AdminIssueOverview({
               color="warning"
               startIcon={<CalculateIcon />}
               loading={actionBusy.compute}
-              disabled={!issueDetail?.ownerActionsState?.canComputeWeights}
+              disabled={!actionState.canComputeWeights}
               onClick={onRequestCompute}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -143,7 +145,7 @@ export default function AdminIssueOverview({
               color="warning"
               startIcon={<GavelIcon />}
               loading={actionBusy.resolve}
-              disabled={!issueDetail?.ownerActionsState?.canResolveIssue}
+              disabled={!actionState.canResolveIssue}
               onClick={onRequestResolve}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >
@@ -155,7 +157,7 @@ export default function AdminIssueOverview({
               color="error"
               startIcon={<DeleteOutlineIcon />}
               loading={actionBusy.remove}
-              disabled={!issueDetail?.ownerActionsState?.canRemoveIssue}
+              disabled={!actionState.canRemoveIssue}
               onClick={onRequestRemove}
               sx={{ borderRadius: 999, fontWeight: 950, justifyContent: "flex-start" }}
             >

@@ -38,6 +38,8 @@ export default function AdminIssueExpertsProgress({
   onInspectExpert,
 }) {
   const theme = useTheme();
+  const actionState =
+    issueDetail?.adminActionsState || issueDetail?.ownerActionsState || {};
   const hasPendingChanges =
     actions.expertsToAdd.length > 0 || actions.expertsToRemove.length > 0;
 
@@ -68,7 +70,7 @@ export default function AdminIssueExpertsProgress({
               variant="outlined"
               color="info"
               startIcon={<PersonAddAlt1Icon />}
-              disabled={!issueDetail?.ownerActionsState?.canEditExperts}
+              disabled={!actionState.canEditExperts}
               onClick={actions.handleOpenAddExperts}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -79,7 +81,7 @@ export default function AdminIssueExpertsProgress({
               variant="outlined"
               color="warning"
               startIcon={<UndoIcon />}
-              disabled={!issueDetail?.ownerActionsState?.canEditExperts || !hasPendingChanges}
+              disabled={!actionState.canEditExperts || !hasPendingChanges}
               onClick={actions.handleResetExpertChanges}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -91,7 +93,7 @@ export default function AdminIssueExpertsProgress({
               color="secondary"
               startIcon={<DoneAllIcon />}
               loading={actions.actionBusy.editExperts}
-              disabled={!issueDetail?.ownerActionsState?.canEditExperts || !hasPendingChanges}
+              disabled={!actionState.canEditExperts || !hasPendingChanges}
               onClick={actions.handleSaveExpertsChanges}
               sx={{ borderRadius: 999, fontWeight: 950 }}
             >
@@ -199,7 +201,7 @@ export default function AdminIssueExpertsProgress({
                   const email = row?.expert?.email || "";
                   const isMarkedForRemove = actions.expertsToRemove.includes(email);
                   const canMarkRemove =
-                    issueDetail?.ownerActionsState?.canEditExperts &&
+                    actionState.canEditExperts &&
                     row?.currentParticipant &&
                     Boolean(email);
 

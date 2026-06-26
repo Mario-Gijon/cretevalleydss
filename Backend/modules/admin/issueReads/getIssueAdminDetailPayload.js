@@ -19,6 +19,7 @@ import {
   buildCriteriaTreeAdmin,
   buildParticipantExpertPayload,
   formatIssueSnapshotDomain,
+  getAdminActionFlags,
   getOwnerActionFlags,
   getIssueStageMeta,
 } from "./adminIssueReadPayloads.js";
@@ -452,6 +453,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
         totalDraftEvaluationDocs,
       },
       ownerActionsState: getOwnerActionFlags({
+        issue,
+        acceptedExperts: acceptedExperts.length,
+        pendingExperts: pendingExperts.length,
+        weightsDoneAccepted: acceptedExpertsWithWeightsDone,
+        evaluationsDoneAccepted: acceptedExpertsWithEvaluationsDone,
+      }),
+      adminActionsState: getAdminActionFlags({
         issue,
         acceptedExperts: acceptedExperts.length,
         pendingExperts: pendingExperts.length,

@@ -11,7 +11,9 @@ import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/p
 import {
   computeIssueEvaluationStage,
 } from "../modules/issues/computation/index.js";
-import { deleteActiveIssueAsOwner } from "../modules/issues/lifecycle/index.js";
+import {
+  deleteIssueCascade,
+} from "../modules/issues/lifecycle/index.js";
 
 import {
   getAdminIssuesListPayload,
@@ -797,18 +799,16 @@ export const removeIssueAdmin = async (req, res) => {
     let removedIssueName = "";
 
     await session.withTransaction(async () => {
-      const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
+      const { issue } = await getAdminIssueExecutionContextOrThrow({
         issueId,
         session,
       });
+      removedIssueName = issue.name;
 
-      const result = await deleteActiveIssueAsOwner({
-        issueId,
-        userId: ownerUserId,
+      await deleteIssueCascade({
+        issueId: issue._id,
         session,
       });
-
-      removedIssueName = result.issueName;
     });
 
     return sendSuccess(

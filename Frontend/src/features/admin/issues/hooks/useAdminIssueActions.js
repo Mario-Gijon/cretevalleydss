@@ -46,6 +46,8 @@ export const useAdminIssueActions = ({
   const [expertsToAdd, setExpertsToAdd] = useState([]);
   const [expertsToRemove, setExpertsToRemove] = useState([]);
   const [assignDomainsOpen, setAssignDomainsOpen] = useState(false);
+  const actionState =
+    issueDetail?.adminActionsState || issueDetail?.ownerActionsState || {};
 
   const { issueForDomains } = useMemo(() => {
     return buildAdminIssueDetailView({
@@ -205,7 +207,7 @@ export const useAdminIssueActions = ({
   };
 
   const handleOpenAddExperts = async () => {
-    if (!issueDetail?.ownerActionsState?.canEditExperts) {
+    if (!actionState.canEditExperts) {
       showSnackbarAlert("You cannot edit experts in this issue right now.", "error");
       return;
     }
@@ -281,7 +283,7 @@ export const useAdminIssueActions = ({
   };
 
   const handleSaveExpertsChanges = async () => {
-    if (!issueDetail?.ownerActionsState?.canEditExperts) {
+    if (!actionState.canEditExperts) {
       showSnackbarAlert("You cannot edit experts in this issue right now.", "error");
       return;
     }
