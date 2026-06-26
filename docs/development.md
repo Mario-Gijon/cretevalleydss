@@ -39,6 +39,7 @@ Open:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:5000/api
 - DecisionModelsService: http://localhost:7000
+- ModelForge: http://localhost:7100
 
 ## Normal restart
 
@@ -64,6 +65,15 @@ docker compose -f docker-compose.dev.yml build --no-cache
 docker compose -f docker-compose.dev.yml logs -f backend
 docker compose -f docker-compose.dev.yml logs -f frontend
 docker compose -f docker-compose.dev.yml logs -f decision-models-service
+docker compose -f docker-compose.dev.yml logs -f model-forge
+```
+
+## Optional health checks
+
+```bash
+curl http://localhost:5000/api/health
+curl http://localhost:7000/health
+curl http://localhost:7100/health
 ```
 
 ## Hot reload
