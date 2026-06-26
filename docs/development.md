@@ -1,59 +1,62 @@
 # Development Docker Setup
 
-This setup is for local development only.
+This document covers the local development workflow only.
 
-The existing deployment Docker files remain separate and untouched:
+For production-style local testing and server deployment, see [deployment.md](./deployment.md).
 
-- `docker-compose.yml`
-- `cretevalley-docker-compose.yml`
-- `Dockerfile.frontend`
-- `Dockerfile.backend`
-- `Dockerfile.decision-models-service`
+## Workflow
 
-## Prerequisites
+Run the full local stack with Docker:
 
-- Docker
-- Docker Compose
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
 
-## First setup
+This workflow builds from local source code and keeps the normal development setup:
 
-Copy the safe example files and create your local env files:
+- Frontend dev server on http://localhost:5173
+- Backend API on http://localhost:5000/api
+- DecisionModelsService on http://localhost:7000
+- ModelForge on http://localhost:7100
+
+Inside Docker networking:
+
+- Backend calls DMS at `http://decision-models-service:7000`
+- Backend calls ModelForge at `http://model-forge:7100`
+- Frontend dev calls backend with `VITE_API_BACK=http://localhost:5000/api`
+
+## Required env files
+
+Create the local development env files from the safe examples:
 
 ```bash
 cp Backend/.env.example Backend/.env
 cp Frontend/.env.development.example Frontend/.env.development
 ```
 
-Fill `Backend/.env` locally with your real credentials.
+Fill `Backend/.env` locally with your own credentials. Never commit `.env` files.
 
-Never commit `.env` files.
+## Common commands
 
-## Start the development stack
+Start:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Open:
-
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000/api
-- DecisionModelsService: http://localhost:7000
-- ModelForge: http://localhost:7100
-
-## Normal restart
+Restart without rebuilding:
 
 ```bash
 docker compose -f docker-compose.dev.yml up
 ```
 
-## Stop the stack
+Stop:
 
 ```bash
 docker compose -f docker-compose.dev.yml down
 ```
 
-## Rebuild after dependency or Dockerfile changes
+Rebuild after dependency or Dockerfile changes:
 
 ```bash
 docker compose -f docker-compose.dev.yml build --no-cache
@@ -62,8 +65,8 @@ docker compose -f docker-compose.dev.yml build --no-cache
 ## Logs
 
 ```bash
-docker compose -f docker-compose.dev.yml logs -f backend
 docker compose -f docker-compose.dev.yml logs -f frontend
+docker compose -f docker-compose.dev.yml logs -f backend
 docker compose -f docker-compose.dev.yml logs -f decision-models-service
 docker compose -f docker-compose.dev.yml logs -f model-forge
 ```
@@ -76,21 +79,8 @@ curl http://localhost:7000/health
 curl http://localhost:7100/health
 ```
 
-## Hot reload
+## Notes
 
-Normal source-code changes should hot reload without rebuilding.
+Hot reload should work through the existing bind mounts and containerized dependency folders.
 
-Dependency changes require rebuilds.
-
-## Update flow
-
-```bash
-git pull
-docker compose -f docker-compose.dev.yml up
-```
-
-If dependencies or Dockerfiles changed, use:
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
+If you pull new changes that affect dependencies or Dockerfiles, rerun with `--build`.

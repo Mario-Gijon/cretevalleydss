@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BACK: /api
+        VITE_MODE: production
     ports:
       - "80:80"
     depends_on:
