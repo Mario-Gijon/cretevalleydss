@@ -143,7 +143,7 @@ const preserveCellShape = (previousCell, nextValue) => {
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const buildCell = ({ value = "", expressionDomain = null }) => ({
+const buildCell = ({ value = "", expressionDomain = null } = {}) => ({
   value,
   expressionDomain,
 });
