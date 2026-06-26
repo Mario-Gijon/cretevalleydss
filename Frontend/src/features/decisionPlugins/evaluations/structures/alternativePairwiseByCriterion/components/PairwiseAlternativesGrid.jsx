@@ -148,6 +148,18 @@ const buildCell = ({ value = "", expressionDomain = null } = {}) => ({
   expressionDomain,
 });
 
+const normalizeComparisonCell = (cell) => {
+  if (isPlainObject(cell)) {
+    return cell;
+  }
+
+  if (cell === "" || cell == null) {
+    return buildCell();
+  }
+
+  return buildCell({ value: cell });
+};
+
 const buildRowsFromComparisons = ({
   alternatives,
   comparisons,
@@ -171,9 +183,7 @@ const buildRowsFromComparisons = ({
       }
 
       const cell = rowComparisons[colAlternative.id];
-      row[colAlternative.id] = isPlainObject(cell)
-        ? cell
-        : buildCell();
+      row[colAlternative.id] = normalizeComparisonCell(cell);
     }
 
     return row;
