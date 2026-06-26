@@ -3,26 +3,22 @@ version: '3.8'
 services:
   frontend:
     image: mariogijon/cretevalleydss_frontend:latest
-    # Este servicio solo construye, no necesita exponer puertos
-    volumes:
-      - frontend_dist:/frontend_dist
-    # No necesita mantenerse vivo
-    command: echo "Frontend built"
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
   backend:
     image: mariogijon/cretevalleydss_backend:latest
-    volumes:
-      - frontend_dist:/app/dist
-    ports:
-      - "80:5000"
+    expose:
+      - "5000"
     depends_on:
-      - frontend
       - decision-models-service
 
   decision-models-service:
     image: mariogijon/cretevalleydss_decision-models-service:latest
-    ports:
-      - "7000:7000"
+    expose:
+      - "7000"
     healthcheck:
       test:
         - CMD
@@ -33,6 +29,3 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
-
-volumes:
-  frontend_dist:
