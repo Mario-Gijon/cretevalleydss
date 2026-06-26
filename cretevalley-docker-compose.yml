@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   frontend:
     image: mariogijon/cretevalleydss_frontend:latest
