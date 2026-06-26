@@ -28,8 +28,8 @@ const requireNonEmptyId = (value, field) => {
   return id;
 };
 
-const requirePositiveInteger = (value, field, details) => {
-  if (!Number.isInteger(value) || value < 1) {
+const requireNonNegativeInteger = (value, field, details) => {
+  if (!Number.isInteger(value) || value < 0) {
     throw createInternalError(`Exit user issue ${field} is invalid`, {
       field,
       details,
@@ -60,7 +60,7 @@ export const registerUserExit = async ({
 }) => {
   const normalizedIssueId = requireNonEmptyId(issueId, "issueId");
   const normalizedUserId = requireNonEmptyId(userId, "userId");
-  const validatedPhase = requirePositiveInteger(phase, "phase", {
+  const validatedPhase = requireNonNegativeInteger(phase, "phase", {
     issueId: normalizedIssueId,
     userId: normalizedUserId,
     phase,
