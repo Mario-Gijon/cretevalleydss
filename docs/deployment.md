@@ -1,17 +1,18 @@
 # Deployment Docker Setup
 
-This document covers the production-style Docker workflows:
+This document covers the real deployment workflow used by the project:
 
-- local production-style image test
+- local image build and push from the repository root
 - server deployment from Docker Hub images
 
 ModelForge is not part of production deployment at this time. It remains a local/development tool.
 
-## Compose files
+## Main files
 
 - `docker-compose.dev.yml`: local development from source with hot reload
-- `docker-compose.yml`: local production-style test build from source
-- `cretevalley-docker-compose.yml`: server deployment from Docker Hub images
+- `docker-compose.yml`: production deployment compose copied to the server
+- `build_and_push.sh`: local build and push script
+- `deploy.sh`: server deploy script
 
 ## Frontend production behavior
 
@@ -26,34 +27,25 @@ Backend and DecisionModelsService are internal-only in production Compose. The o
 
 ## Required env files
 
-Local production-style test:
+Local build machine:
 
-```bash
-cp Backend/.env.production.example Backend/.env.production
-```
+- `Frontend/.env.production`
+- `Backend/.env.production`
+
+Those files are configured locally before building and pushing images.
 
 Server deployment:
 
-- `Backend/.env.production` must exist on the server with real production values
+- no `.env.production` file is required on the server in the current workflow
 
 Do not commit real `.env` files or secrets.
-
-## Local production-style test
-
-Build the production images locally and run them with Compose:
-
-```bash
-docker compose -f docker-compose.yml up --build
-```
-
-This is useful to verify the Nginx frontend plus internal backend/DMS networking before pushing images.
 
 ## Build and push images
 
 Use the repository script:
 
 ```bash
-./docker/scripts/build-and-push.sh
+./build_and_push.sh
 ```
 
 By default it builds and pushes:
@@ -65,23 +57,28 @@ By default it builds and pushes:
 You can override the Docker Hub namespace or project prefix with:
 
 ```bash
-DOCKERHUB_USER=myuser DOCKER_PROJECT=cretevalleydss ./docker/scripts/build-and-push.sh
+DOCKERHUB_USER=myuser DOCKER_PROJECT=cretevalleydss ./build_and_push.sh
 ```
 
 ## Server deployment
 
-Deploy or refresh the server with:
+The server folder only needs:
+
+- `docker-compose.yml`
+- `deploy.sh`
+
+Deploy or refresh from that folder with:
 
 ```bash
-./docker/scripts/deploy-server.sh
+./deploy.sh
 ```
 
 That script runs:
 
 ```bash
-docker compose -f cretevalley-docker-compose.yml pull
-docker compose -f cretevalley-docker-compose.yml up -d --remove-orphans
-docker compose -f cretevalley-docker-compose.yml ps
+sudo docker-compose pull
+sudo docker-compose up -d --remove-orphans
+sudo docker-compose ps
 ```
 
 It does not remove volumes and is safe for repeated deployments.
