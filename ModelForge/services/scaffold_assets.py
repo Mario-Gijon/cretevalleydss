@@ -25,9 +25,6 @@ PARAMETER_BACKEND_ROOT = Path(
 PARAMETER_FRONTEND_FIELDS_ROOT = Path(
     "Frontend/src/features/decisionPlugins/modelParameters/fields"
 )
-PARAMETER_FRONTEND_STRUCTURES_ROOT = Path(
-    "Frontend/src/features/decisionPlugins/modelParameters/structures"
-)
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -149,22 +146,17 @@ def _build_parameter_structure_assets(project_root: Path) -> list[ScaffoldAssetI
     keys = _collect_union_keys(
         project_root / PARAMETER_BACKEND_ROOT,
         project_root / PARAMETER_FRONTEND_FIELDS_ROOT,
-        project_root / PARAMETER_FRONTEND_STRUCTURES_ROOT,
     )
 
     items: list[ScaffoldAssetItem] = []
     for key in keys:
         backend_path = project_root / PARAMETER_BACKEND_ROOT / key
         frontend_fields_path = project_root / PARAMETER_FRONTEND_FIELDS_ROOT / key
-        frontend_structures_path = (
-            project_root / PARAMETER_FRONTEND_STRUCTURES_ROOT / key
-        )
         existing_locations, missing_locations = _split_existing_locations(
             project_root,
             [
                 backend_path,
                 frontend_fields_path,
-                frontend_structures_path,
             ],
         )
 

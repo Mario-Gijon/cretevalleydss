@@ -287,7 +287,9 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
       emptyValue: null,
     }),
     smallDescription: normalizeNonEmptyString(manifestModel?.smallDescription),
-    extendDescription: normalizeNonEmptyString(manifestModel?.extendDescription),
+    extendDescription: normalizeNonEmptyString(
+      manifestModel?.extendedDescription ?? manifestModel?.extendDescription
+    ),
     moreInfoUrl: normalizeNonEmptyString(manifestModel?.moreInfoUrl),
     evaluationStructureKey: normalizeNonEmptyString(
       manifestModel?.evaluationStructureKey
