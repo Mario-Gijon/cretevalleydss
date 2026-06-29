@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 vi.mock("../../src/utils/authFetch.js", async () => {
   const actual = await vi.importActual("../../src/utils/authFetch.js");
 

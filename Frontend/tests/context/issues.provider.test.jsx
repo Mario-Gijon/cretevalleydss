@@ -1,5 +1,6 @@
-import React from "react";
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 
 import { IssuesDataProvider } from "../../src/context/issues/issues.provider.jsx";
@@ -95,6 +96,8 @@ describe("IssuesDataProvider", () => {
   });
 
   it("refetches active issues when issueCreated changes", async () => {
+    const user = userEvent.setup();
+
     renderWithProviders(
       <IssuesDataProvider>
         <IssuesConsumerProbe />
@@ -121,7 +124,7 @@ describe("IssuesDataProvider", () => {
       )
     );
 
-    screen.getByRole("button", { name: "trigger refresh" }).click();
+    await user.click(screen.getByRole("button", { name: "trigger refresh" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("active-count")).toHaveTextContent("2")

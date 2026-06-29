@@ -1,4 +1,3 @@
-import React from "react";
 import { render } from "@testing-library/react";
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";

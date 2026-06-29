@@ -1,5 +1,5 @@
-import React from "react";
 import { screen, waitFor } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 
 import { AuthProvider } from "../../src/context/auth/auth.provider.jsx";

@@ -69,8 +69,12 @@ const normalizeLeafCriterion = (criterion) => {
     return null;
   }
 
-  const { children, ...leafCriterion } = normalizedCriterion;
-  return leafCriterion;
+  return {
+    id: normalizedCriterion.id,
+    name: normalizedCriterion.name,
+    type: normalizedCriterion.type,
+    expressionDomain: normalizedCriterion.expressionDomain,
+  };
 };
 
 export const buildParameterContext = ({

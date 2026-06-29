@@ -16,18 +16,6 @@ const stripWeights = (obj) => {
 
 const stripWeightsDeep = (value) => stripWeights(value);
 
-const getParameterExpectedLength = (parameter, leafCount) => {
-  if (
-    parameter?.semanticRole === "criteriaWeights" ||
-    parameter?.parameterStructureKey === "numberCriterion" ||
-    parameter?.parameterStructureKey === "selectCriterion"
-  ) {
-    return leafCount;
-  }
-  const length = parameter?.restrictions?.length;
-  return typeof length === "number" ? length : null;
-};
-
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
   param?.semanticRole !== "criteriaWeights";
@@ -187,11 +175,6 @@ export const validateScenarioCriteriaWeights = ({ weights, leafCriteria = [], le
     ok: true,
     normalized,
   };
-};
-
-const resolveFuzzyWeightsValueCount = (model) => {
-  const valueCount = Number(model?.fuzzyWeightsValueCount);
-  return Number.isInteger(valueCount) && valueCount >= 2 ? valueCount : null;
 };
 
 const buildSyntheticWeightsParameter = (model) => {
@@ -510,7 +493,7 @@ export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => 
         continue;
       }
 
-      if (isWeightsByCriteria && param?.default === "equal" && count > 0) {
+      if (isWeightsByCriteria && param?.default === "equal" && safeLeafCount > 0) {
         out[key] = defaultWeights;
         continue;
       }

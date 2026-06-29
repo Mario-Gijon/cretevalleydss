@@ -1,7 +1,7 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { ThemeProvider } from "@mui/material/styles";
 import { Outlet } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../../src/App.jsx";
 import { theme } from "../../src/theme/appTheme.js";
