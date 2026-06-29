@@ -27,6 +27,16 @@ export const loadCreateIssueActorsAndModel = async ({
   uniqueExpertEmails,
   session = null,
 }) => {
+  const normalizedExpertEmails = [
+    ...new Set(uniqueExpertEmails.map((email) => normalizeEmail(email)).filter(Boolean)),
+  ];
+
+  if (normalizedExpertEmails.length === 0) {
+    throw createBadRequestError("Must be at least one expert", {
+      field: "addedExperts",
+    });
+  }
+
   const existingModel = await IssueModel.findById(selectedModelId).session(session);
 
   if (!existingModel) {
@@ -73,14 +83,14 @@ export const loadCreateIssueActorsAndModel = async ({
   }
 
   const expertUsers = await User.find({
-    email: { $in: uniqueExpertEmails },
+    email: { $in: normalizedExpertEmails },
   }).session(session);
 
   const expertByEmail = new Map(
     expertUsers.map((user) => [normalizeEmail(user.email), user])
   );
 
-  const missingExperts = uniqueExpertEmails.filter(
+  const missingExperts = normalizedExpertEmails.filter(
     (email) => !expertByEmail.has(email)
   );
 
