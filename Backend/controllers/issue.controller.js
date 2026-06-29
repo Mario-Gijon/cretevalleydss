@@ -89,8 +89,11 @@ export const modelsInfo = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-  const users = await User.find({ accountConfirm: true })
-    .select("name university email")
+  const users = await User.find({
+    accountConfirm: true,
+    isDeleted: { $ne: true },
+  })
+    .select("-_id name university email")
     .lean();
 
   return sendSuccess(res, "Users fetched successfully", users);
@@ -427,6 +430,7 @@ export const getFinishedIssueInfo = async (req, res) => {
 
   const issueInfo = await getFinishedIssueInfoPayload({
     issueId: id,
+    userId: req.uid,
   });
 
   return sendSuccess(res, "Issue info sent", issueInfo);
@@ -459,7 +463,10 @@ export const createIssueScenario = async (req, res) => {
 export const getIssueScenarios = async (req, res) => {
   const issueId = req.params.id;
 
-  const { scenarios } = await getIssueScenariosPayload({ issueId });
+  const { scenarios } = await getIssueScenariosPayload({
+    issueId,
+    userId: req.uid,
+  });
 
   return sendSuccess(res, "Scenarios fetched successfully", scenarios);
 };
@@ -467,7 +474,10 @@ export const getIssueScenarios = async (req, res) => {
 export const getScenarioById = async (req, res) => {
   const scenarioId = req.params.scenarioId;
 
-  const { scenario } = await getScenarioByIdPayload({ scenarioId });
+  const { scenario } = await getScenarioByIdPayload({
+    scenarioId,
+    userId: req.uid,
+  });
 
   return sendSuccess(res, "Scenario fetched successfully", scenario);
 };

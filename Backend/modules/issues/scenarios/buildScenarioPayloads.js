@@ -5,6 +5,10 @@ import {
 } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
+import {
+  assertUserCanAccessIssue,
+  getIssueByIdOrThrow,
+} from "../shared/queries.js";
 
 const mapScenarioListItem = (scenario) => ({
   id: toIdString(scenario?._id),
@@ -60,12 +64,18 @@ const mapScenarioDetail = (scenarioDoc) => ({
     : null,
 });
 
-export const getIssueScenariosPayload = async ({ issueId }) => {
+export const getIssueScenariosPayload = async ({ issueId, userId }) => {
   if (!issueId || !isValidObjectIdLike(issueId)) {
     throw createBadRequestError("Valid issue id is required", {
       field: "issueId",
     });
   }
+
+  await assertUserCanAccessIssue({
+    issueId,
+    userId,
+    message: "Not authorized to access scenarios for this issue",
+  });
 
   const scenarioDocs = await IssueScenario.find({ issue: issueId })
     .sort({ createdAt: -1 })
@@ -80,7 +90,7 @@ export const getIssueScenariosPayload = async ({ issueId }) => {
   };
 };
 
-export const getScenarioByIdPayload = async ({ scenarioId }) => {
+export const getScenarioByIdPayload = async ({ scenarioId, userId }) => {
   if (!scenarioId || !isValidObjectIdLike(scenarioId)) {
     throw createBadRequestError("Valid scenario id is required", {
       field: "scenarioId",
@@ -96,6 +106,17 @@ export const getScenarioByIdPayload = async ({ scenarioId }) => {
       field: "scenarioId",
     });
   }
+
+  const issue = await getIssueByIdOrThrow(scenarioDoc.issue, {
+    select: "ownerId active",
+    lean: true,
+  });
+
+  await assertUserCanAccessIssue({
+    issue,
+    userId,
+    message: "Not authorized to access this scenario",
+  });
 
   return {
     scenario: mapScenarioDetail(scenarioDoc),

@@ -2,13 +2,16 @@ import {
   buildFinishedPayload,
   supportsFinishedPayload,
 } from "./finishedPayload/index.js";
-import { getIssueByIdOrThrow } from "../shared/queries.js";
+import {
+  assertUserCanAccessIssue,
+  getIssueByIdOrThrow,
+} from "../shared/queries.js";
 
 import {
   createInternalError,
 } from "../../../utils/common/errors.js";
 
-export const getFinishedIssueInfoPayload = async ({ issueId }) => {
+export const getFinishedIssueInfoPayload = async ({ issueId, userId }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     populate: [
       { path: "model" },
@@ -16,6 +19,12 @@ export const getFinishedIssueInfoPayload = async ({ issueId }) => {
       { path: "createdBy", select: "email name" },
     ],
     lean: true,
+  });
+
+  await assertUserCanAccessIssue({
+    issue,
+    userId,
+    message: "You are not allowed to access this finished issue",
   });
 
   if (!supportsFinishedPayload(issue)) {

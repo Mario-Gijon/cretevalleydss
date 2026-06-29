@@ -3,9 +3,10 @@ import { Issue } from "../../../models/Issues.js";
 import { Participation } from "../../../models/Participations.js";
 import {
   createBadRequestError,
+  createForbiddenError,
   createNotFoundError,
 } from "../../../utils/common/errors.js";
-import { toIdString, uniqueIdStrings } from "../../../utils/common/ids.js";
+import { sameId, toIdString, uniqueIdStrings } from "../../../utils/common/ids.js";
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 
 const validateIssueIdOrThrow = (issueId) => {
@@ -52,6 +53,81 @@ export const getAcceptedParticipation = async (issueId, userId) =>
     expert: userId,
     invitationStatus: "accepted",
   });
+
+export const assertUserCanAccessIssue = async ({
+  issue = null,
+  issueId = null,
+  userId,
+  session = null,
+  message = "Not authorized to access this issue",
+}) => {
+  const normalizedUserId = toIdString(userId);
+
+  if (!normalizedUserId) {
+    throw createBadRequestError("Valid user id is required", {
+      field: "userId",
+    });
+  }
+
+  const resolvedIssue = issue
+    ? issue
+    : await getIssueByIdOrThrow(issueId, {
+      select: "ownerId active",
+      lean: true,
+      session,
+    });
+
+  if (sameId(resolvedIssue.ownerId, normalizedUserId)) {
+    if (resolvedIssue.active !== false) {
+      return resolvedIssue;
+    }
+
+    const hiddenExit = await ExitUserIssue.findOne({
+      issue: resolvedIssue._id,
+      user: normalizedUserId,
+      hidden: true,
+    })
+      .select("_id")
+      .session(session)
+      .lean();
+
+    if (!hiddenExit) {
+      return resolvedIssue;
+    }
+
+    throw createForbiddenError(message);
+  }
+
+  const acceptedParticipation = await Participation.findOne({
+    issue: resolvedIssue._id,
+    expert: normalizedUserId,
+    invitationStatus: "accepted",
+  })
+    .select("_id")
+    .session(session)
+    .lean();
+
+  if (!acceptedParticipation) {
+    throw createForbiddenError(message);
+  }
+
+  if (resolvedIssue.active === false) {
+    const hiddenExit = await ExitUserIssue.findOne({
+      issue: resolvedIssue._id,
+      user: normalizedUserId,
+      hidden: true,
+    })
+      .select("_id")
+      .session(session)
+      .lean();
+
+    if (hiddenExit) {
+      throw createForbiddenError(message);
+    }
+  }
+
+  return resolvedIssue;
+};
 
 export const getWeightCompletionStats = async (issueId) => {
   const [totalParticipants, totalWeightsDone] = await Promise.all([

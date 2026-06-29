@@ -1,5 +1,8 @@
 import { IssueScenario } from "../../../models/IssueScenarios.js";
-import { getIssueByIdOrThrow } from "../shared/queries.js";
+import {
+  assertUserCanAccessIssue,
+  getIssueByIdOrThrow,
+} from "../shared/queries.js";
 import {
   createBadRequestError,
   createForbiddenError,
@@ -23,8 +26,14 @@ export const removeIssueScenario = async ({ scenarioId, userId }) => {
   }
 
   const issue = await getIssueByIdOrThrow(scenario.issue, {
-    select: "ownerId",
+    select: "ownerId active",
     lean: true,
+  });
+
+  await assertUserCanAccessIssue({
+    issue,
+    userId,
+    message: "Not authorized to delete this scenario",
   });
 
   const isCreator = sameId(scenario.createdBy, userId);
