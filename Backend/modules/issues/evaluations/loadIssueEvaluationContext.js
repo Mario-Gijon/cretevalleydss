@@ -66,6 +66,8 @@ export const loadIssueEvaluationContext = async ({
   await requireAcceptedParticipation({
     issueId: issue._id,
     userId,
+    issue,
+    stage,
     session,
   });
 

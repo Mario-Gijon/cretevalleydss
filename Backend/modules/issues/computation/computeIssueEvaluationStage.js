@@ -181,8 +181,12 @@ const loadEvaluationsForCompute = async ({
     participations.map((participation) => toIdString(participation.expert))
   );
 
+  const relevantEvaluations = evaluations.filter((evaluation) =>
+    expectedExperts.has(toIdString(evaluation.expert._id || evaluation.expert))
+  );
+
   const completedExperts = new Set(
-    evaluations.map((evaluation) =>
+    relevantEvaluations.map((evaluation) =>
       toIdString(evaluation.expert._id || evaluation.expert)
     )
   );
@@ -192,7 +196,7 @@ const loadEvaluationsForCompute = async ({
   );
 
   if (
-    evaluations.length !== participations.length ||
+    relevantEvaluations.length !== participations.length ||
     missingExperts.length > 0
   ) {
     throw createBadRequestError(
@@ -204,7 +208,7 @@ const loadEvaluationsForCompute = async ({
     );
   }
 
-  return evaluations;
+  return relevantEvaluations;
 };
 
 const resetAlternativeRoundCompletion = async (issueId, session = null) => {

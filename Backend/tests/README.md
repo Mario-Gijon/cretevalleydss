@@ -19,7 +19,9 @@ Current layers cover:
 - participation timeline integrity: `Participation` stays the current-state record, while `ExitUserIssue.history` preserves entered/exited events across re-entry cycles
 - evaluation lifecycle coverage: save/get/submit, permissions, stage guards, and participation completion flags
 - compute/orchestration coverage: stage compute permissions, stage transitions, persisted `IssueStageResult`, consensus lifecycle, and mocked DecisionModelsService integration
+- final backend hardening coverage: entryPhase/entryStage evaluation guards, compute against current participation timeline, and finished payload robustness under historical/deleted-user scenarios
 - DecisionModelsService calls are mocked in backend tests; model correctness remains deferred to DecisionModelsService/model-specific test layers
+- DecisionModelsService/model correctness remains deferred to Python/service-level tests rather than this backend suite
 - evaluation payload tests stay structure-level and flexible rather than model-algorithm specific
 - notifications behavior and notification API contracts
 - issue model runtime and actor/model loading

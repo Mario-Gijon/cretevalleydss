@@ -13,7 +13,6 @@ import {
   createConfirmedUser,
   createExpressionDomainFixture,
   createIssueModel,
-  persistPreparedIssueCreationInTransaction,
   prepareAndPersistIssueCreation,
 } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
