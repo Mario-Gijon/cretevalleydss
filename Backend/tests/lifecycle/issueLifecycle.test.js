@@ -11,25 +11,19 @@ import { IssueStageResult } from "../../models/IssueStageResults.js";
 import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
-import { User } from "../../models/Users.js";
 import { deleteActiveIssueAsOwner } from "../../modules/issues/lifecycle/deleteActiveIssue.js";
+import { leaveActiveIssue } from "../../modules/issues/lifecycle/leaveActiveIssue.js";
 import { hideFinishedIssueForUser } from "../../modules/issues/lifecycle/hideFinishedIssue.js";
+import {
+  createConfirmedUser,
+  createIssueCriteriaFixture,
+  createIssueFixture,
+  createIssueEvaluationFixture,
+  createParticipationFixture,
+} from "../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../setup/database.js";
 
 setupMongoDbTestHooks();
-
-const createUser = async (overrides = {}) => {
-  const suffix = new mongoose.Types.ObjectId().toString().slice(-8);
-
-  return User.create({
-    name: "Lifecycle User",
-    university: "Testing University",
-    email: `lifecycle-${suffix}@example.com`,
-    password: "Abc123",
-    accountConfirm: true,
-    ...overrides,
-  });
-};
 
 const createIssue = async ({
   ownerId,
@@ -59,8 +53,8 @@ const createIssue = async ({
 };
 
 const createCascadeFixture = async () => {
-  const owner = await createUser();
-  const participant = await createUser();
+  const owner = await createConfirmedUser();
+  const participant = await createConfirmedUser();
   const issue = await createIssue({ ownerId: owner._id });
   const targetModelId = new mongoose.Types.ObjectId();
 
@@ -183,8 +177,8 @@ describe("issue lifecycle", () => {
   });
 
   it("deleteActiveIssueAsOwner rejects a non-owner", async () => {
-    const owner = await createUser();
-    const otherUser = await createUser();
+    const owner = await createConfirmedUser();
+    const otherUser = await createConfirmedUser();
     const issue = await createIssue({ ownerId: owner._id });
 
     await expect(
@@ -201,8 +195,8 @@ describe("issue lifecycle", () => {
   });
 
   it("hideFinishedIssueForUser hides a finished issue for one visible user without deleting it permanently", async () => {
-    const owner = await createUser();
-    const expert = await createUser();
+    const owner = await createConfirmedUser();
+    const expert = await createConfirmedUser();
     const issue = await createIssue({
       ownerId: owner._id,
       active: false,
@@ -241,8 +235,8 @@ describe("issue lifecycle", () => {
   });
 
   it("hideFinishedIssueForUser deletes the issue permanently only after all visible users have hidden it", async () => {
-    const owner = await createUser();
-    const expert = await createUser();
+    const owner = await createConfirmedUser();
+    const expert = await createConfirmedUser();
     const issue = await createIssue({
       ownerId: owner._id,
       active: false,
@@ -273,5 +267,146 @@ describe("issue lifecycle", () => {
     });
     expect(await Issue.findById(issue._id)).toBeNull();
     expect(await ExitUserIssue.countDocuments({ issue: issue._id })).toBe(0);
+  });
+
+  it("accepted participant can leave an active issue and cleanup incomplete drafts", async () => {
+    const owner = await createConfirmedUser();
+    const participant = await createConfirmedUser();
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 1,
+      name: "Active issue",
+    });
+
+    await createIssueCriteriaFixture({
+      issueId: issue._id,
+      leafNames: ["Leaf criterion", "Second criterion"],
+    });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: false,
+      weightsCompleted: false,
+      entryPhase: 1,
+      entryStage: "alternativeEvaluation",
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "criteriaWeighting",
+      consensusPhase: 1,
+      completed: false,
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+      completed: true,
+      payload: { done: true },
+    });
+
+    const result = await leaveActiveIssue({
+      issueId: issue._id,
+      userId: participant._id,
+    });
+
+    const exitLog = await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: participant._id,
+    }).lean();
+
+    expect(result).toEqual({
+      issueName: "Active issue",
+    });
+    expect(
+      await Participation.findOne({
+        issue: issue._id,
+        expert: participant._id,
+      })
+    ).toBeNull();
+    expect(
+      await IssueEvaluation.countDocuments({
+        issue: issue._id,
+        expert: participant._id,
+        completed: false,
+      })
+    ).toBe(0);
+    expect(
+      await IssueEvaluation.countDocuments({
+        issue: issue._id,
+        expert: participant._id,
+        completed: true,
+      })
+    ).toBe(1);
+    expect(exitLog).toMatchObject({
+      hidden: true,
+      reason: "Left by user",
+      phase: 1,
+      stage: "alternativeEvaluation",
+    });
+  });
+
+  it("owner cannot leave their own issue", async () => {
+    const owner = await createConfirmedUser();
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+    });
+
+    await expect(
+      leaveActiveIssue({
+        issueId: issue._id,
+        userId: owner._id,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      message: "An owner can not leave an issue",
+    });
+  });
+
+  it("user who is not a participant cannot leave", async () => {
+    const owner = await createConfirmedUser();
+    const otherUser = await createConfirmedUser();
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+    });
+
+    await expect(
+      leaveActiveIssue({
+        issueId: issue._id,
+        userId: otherUser._id,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "You are not a participant of this issue",
+    });
+  });
+
+  it("user cannot leave a non-active issue", async () => {
+    const owner = await createConfirmedUser();
+    const participant = await createConfirmedUser();
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      active: false,
+      currentStage: "finished",
+    });
+
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      invitationStatus: "accepted",
+    });
+
+    await expect(
+      leaveActiveIssue({
+        issueId: issue._id,
+        userId: participant._id,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Issue is not active",
+    });
   });
 });

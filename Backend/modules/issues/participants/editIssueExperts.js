@@ -1,6 +1,7 @@
 import { User } from "../../../models/Users.js";
 
 import { normalizeEmail } from "../../../utils/common/strings.js";
+import { createBadRequestError } from "../../../utils/common/errors.js";
 import {
   addExpertsToActiveIssue,
   removeExpertsFromActiveIssue,
@@ -30,6 +31,12 @@ export const editIssueExperts = async ({
     userId,
     session,
   });
+
+  if (finalExpertsToRemove.includes(normalizeEmail(context.owner.email))) {
+    throw createBadRequestError("Issue owner cannot be removed", {
+      field: "expertsToRemove",
+    });
+  }
 
   const allEmailsToFetch = Array.from(
     new Set([...finalExpertsToAdd, ...finalExpertsToRemove])

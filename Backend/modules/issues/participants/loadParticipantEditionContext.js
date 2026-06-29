@@ -65,6 +65,10 @@ export const loadParticipantEditionContext = async ({
     session,
   });
 
+  if (!issue.active) {
+    throw createBadRequestError("Issue is not active");
+  }
+
   if (!sameId(issue.ownerId, userId)) {
     throw createForbiddenError("Not authorized to edit this issue's experts.");
   }

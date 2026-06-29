@@ -1,4 +1,4 @@
-``# Backend Tests
+# Backend Tests
 
 Run the backend tests with:
 
@@ -13,6 +13,7 @@ Current layers cover:
 - expression domains
 - issue input normalization
 - issue lifecycle behavior
+- issue participation editing, invitations, and leaving/removal flows
 - issue model runtime and actor/model loading
 - issue creation integration and protected issue API basics
 

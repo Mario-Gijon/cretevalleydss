@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+import { Criterion } from "../../models/Criteria.js";
+import { IssueEvaluation } from "../../models/IssueEvaluations.js";
+import { Issue } from "../../models/Issues.js";
+import { Participation } from "../../models/Participations.js";
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { IssueModel } from "../../models/IssueModels.js";
 import { User } from "../../models/Users.js";
@@ -97,6 +101,121 @@ export const createExpressionDomainFixture = async ({
     valuesMode: type === "linguistic" ? valuesMode : null,
     linguisticLabels: type === "linguistic" ? linguisticLabels : [],
     ...overrides,
+  });
+};
+
+export const createIssueFixture = async ({
+  ownerId,
+  createdBy = ownerId,
+  modelId = new mongoose.Types.ObjectId(),
+  name = `Issue ${uniqueSuffix()}`,
+  description = "Minimal issue fixture",
+  active = true,
+  currentStage = "criteriaWeighting",
+  consensusPhase = 0,
+  criteriaWeightsStructureKey = null,
+  evaluationStructureKey = "alternativeCriteriaMatrix",
+  supportsConsensus = false,
+  simulateConsensus = false,
+  ...overrides
+} = {}) => {
+  return Issue.create({
+    ownerId,
+    createdBy,
+    model: modelId,
+    apiModelKey: "test-model",
+    apiEndpoint: {
+      method: "POST",
+      path: "/execute",
+    },
+    name,
+    evaluationStructureKey,
+    criteriaWeightsStructureKey,
+    description,
+    active,
+    currentStage,
+    consensusPhase,
+    supportsConsensus,
+    simulateConsensus,
+    ...overrides,
+  });
+};
+
+export const createIssueCriteriaFixture = async ({
+  issueId,
+  rootName = "Root criterion",
+  leafNames = ["Leaf criterion"],
+  leafType = "benefit",
+} = {}) => {
+  const rootCriterion = await Criterion.create({
+    issue: issueId,
+    parentCriterion: null,
+    name: rootName,
+    type: "group",
+    isLeaf: false,
+    position: 0,
+  });
+
+  const leafCriteria = [];
+
+  for (const [index, leafName] of leafNames.entries()) {
+    const leafCriterion = await Criterion.create({
+      issue: issueId,
+      parentCriterion: rootCriterion._id,
+      name: leafName,
+      type: leafType,
+      isLeaf: true,
+      position: index,
+    });
+
+    leafCriteria.push(leafCriterion);
+  }
+
+  return {
+    rootCriterion,
+    leafCriteria,
+  };
+};
+
+export const createParticipationFixture = async ({
+  issueId,
+  expertId,
+  invitationStatus = "pending",
+  evaluationCompleted = false,
+  weightsCompleted = false,
+  entryPhase = null,
+  entryStage = null,
+  joinedAt = new Date(),
+  weight = null,
+} = {}) => {
+  return Participation.create({
+    issue: issueId,
+    expert: expertId,
+    invitationStatus,
+    evaluationCompleted,
+    weightsCompleted,
+    entryPhase,
+    entryStage,
+    joinedAt,
+    weight,
+  });
+};
+
+export const createIssueEvaluationFixture = async ({
+  issueId,
+  expertId,
+  stage = "criteriaWeighting",
+  consensusPhase = 0,
+  payload = {},
+  completed = false,
+} = {}) => {
+  return IssueEvaluation.create({
+    issue: issueId,
+    expert: expertId,
+    stage,
+    consensusPhase,
+    payload,
+    completed,
   });
 };
 
