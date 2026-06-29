@@ -16,26 +16,26 @@ vi.mock("jsonwebtoken", () => ({
   },
 }));
 
-vi.mock("../../services/email.service.js", () => ({
+vi.mock("../../../services/email.service.js", () => ({
   sendVerificationEmail: vi.fn(),
   sendEmailChangeConfirmation: vi.fn(),
   sendExpertInvitationEmail: vi.fn(),
 }));
 
-import app from "../../app.js";
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueScenario } from "../../models/IssueScenarios.js";
+import app from "../../../app.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { IssueScenario } from "../../../models/IssueScenarios.js";
 import {
   getIssueScenariosPayload,
   getScenarioByIdPayload,
   removeIssueScenario,
-} from "../../modules/issues/scenarios/index.js";
+} from "../../../modules/issues/scenarios/index.js";
 import {
   createConfirmedUser,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

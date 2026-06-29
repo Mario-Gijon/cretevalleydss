@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 
-import { loadCreateIssueActorsAndModel } from "../../modules/issues/creation/loadCreateIssueData.js";
-import { validateIssueModelRuntimeConfigOrThrow } from "../../modules/issues/creation/validateIssueModelRuntime.js";
+import { loadCreateIssueActorsAndModel } from "../../../modules/issues/creation/loadCreateIssueData.js";
+import { validateIssueModelRuntimeConfigOrThrow } from "../../../modules/issues/creation/validateIssueModelRuntime.js";
 import {
   buildCreateIssueInfo,
   createConfirmedUser,
   createIssueModel,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

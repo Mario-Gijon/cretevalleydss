@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { IssueEvaluation } from "../../models/IssueEvaluations.js";
-import { IssueStageResult } from "../../models/IssueStageResults.js";
-import { Issue } from "../../models/Issues.js";
-import { Participation } from "../../models/Participations.js";
-import { computeIssueEvaluationStage } from "../../modules/issues/computation/index.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { Issue } from "../../../models/Issues.js";
+import { Participation } from "../../../models/Participations.js";
+import { computeIssueEvaluationStage } from "../../../modules/issues/computation/index.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -13,8 +13,8 @@ import {
   createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

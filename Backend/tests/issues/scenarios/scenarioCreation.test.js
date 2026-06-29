@@ -6,18 +6,18 @@ const scenarioExecutionState = vi.hoisted(() => ({
   executeScenarioModel: vi.fn(),
 }));
 
-vi.mock("../../modules/issues/scenarios/buildScenarioExecutionContext.js", () => ({
+vi.mock("../../../modules/issues/scenarios/buildScenarioExecutionContext.js", () => ({
   buildScenarioExecutionContext:
     scenarioExecutionState.buildScenarioExecutionContext,
 }));
 
-vi.mock("../../modules/issues/modelExecution/index.js", () => ({
+vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
   executeScenarioModel: scenarioExecutionState.executeScenarioModel,
 }));
 
-import { IssueScenario } from "../../models/IssueScenarios.js";
-import { createIssueScenario } from "../../modules/issues/scenarios/createIssueScenario.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { createIssueScenario } from "../../../modules/issues/scenarios/createIssueScenario.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

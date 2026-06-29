@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueEvaluation } from "../../models/IssueEvaluations.js";
-import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notifications.js";
-import { Participation } from "../../models/Participations.js";
-import { editIssueExperts } from "../../modules/issues/participants/editIssueExperts.js";
-import { normalizeParticipantEditionRequest } from "../../modules/issues/participants/loadParticipantEditionContext.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { Issue } from "../../../models/Issues.js";
+import { Notification } from "../../../models/Notifications.js";
+import { Participation } from "../../../models/Participations.js";
+import { editIssueExperts } from "../../../modules/issues/participants/editIssueExperts.js";
+import { normalizeParticipantEditionRequest } from "../../../modules/issues/participants/loadParticipantEditionContext.js";
 import {
   createConfirmedUser,
   createIssueCriteriaFixture,
   createIssueEvaluationFixture,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

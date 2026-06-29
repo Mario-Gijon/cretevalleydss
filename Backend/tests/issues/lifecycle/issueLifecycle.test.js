@@ -1,27 +1,27 @@
 import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 
-import { Alternative } from "../../models/Alternatives.js";
-import { Criterion } from "../../models/Criteria.js";
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
-import { IssueEvaluation } from "../../models/IssueEvaluations.js";
-import { IssueScenario } from "../../models/IssueScenarios.js";
-import { IssueStageResult } from "../../models/IssueStageResults.js";
-import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notifications.js";
-import { Participation } from "../../models/Participations.js";
-import { deleteActiveIssueAsOwner } from "../../modules/issues/lifecycle/deleteActiveIssue.js";
-import { leaveActiveIssue } from "../../modules/issues/lifecycle/leaveActiveIssue.js";
-import { hideFinishedIssueForUser } from "../../modules/issues/lifecycle/hideFinishedIssue.js";
+import { Alternative } from "../../../models/Alternatives.js";
+import { Criterion } from "../../../models/Criteria.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueScenario } from "../../../models/IssueScenarios.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { Issue } from "../../../models/Issues.js";
+import { Notification } from "../../../models/Notifications.js";
+import { Participation } from "../../../models/Participations.js";
+import { deleteActiveIssueAsOwner } from "../../../modules/issues/lifecycle/deleteActiveIssue.js";
+import { leaveActiveIssue } from "../../../modules/issues/lifecycle/leaveActiveIssue.js";
+import { hideFinishedIssueForUser } from "../../../modules/issues/lifecycle/hideFinishedIssue.js";
 import {
   createConfirmedUser,
   createIssueCriteriaFixture,
   createIssueFixture,
   createIssueEvaluationFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

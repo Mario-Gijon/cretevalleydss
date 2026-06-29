@@ -25,13 +25,13 @@ vi.mock("axios", () => ({
   },
 }));
 
-vi.mock("../../services/email.service.js", () => ({
+vi.mock("../../../services/email.service.js", () => ({
   sendVerificationEmail: vi.fn(),
   sendEmailChangeConfirmation: vi.fn(),
   sendExpertInvitationEmail: vi.fn(),
 }));
 
-import app from "../../app.js";
+import app from "../../../app.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -40,8 +40,8 @@ import {
   createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

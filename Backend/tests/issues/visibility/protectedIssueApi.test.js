@@ -1,7 +1,7 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { Participation } from "../../models/Participations.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { Participation } from "../../../models/Participations.js";
 
 const authState = vi.hoisted(() => ({
   currentPayload: {
@@ -21,13 +21,13 @@ vi.mock("jsonwebtoken", () => ({
   },
 }));
 
-vi.mock("../../services/email.service.js", () => ({
+vi.mock("../../../services/email.service.js", () => ({
   sendVerificationEmail: vi.fn(),
   sendEmailChangeConfirmation: vi.fn(),
   sendExpertInvitationEmail: emailServiceState.sendExpertInvitationEmail,
 }));
 
-import app from "../../app.js";
+import app from "../../../app.js";
 import {
   buildCreateIssueInfo,
   createConfirmedUser,
@@ -37,8 +37,8 @@ import {
   createIssueModel,
   createParticipationFixture,
   prepareAndPersistIssueCreation,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

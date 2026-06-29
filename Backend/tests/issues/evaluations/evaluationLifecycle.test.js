@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueEvaluation } from "../../models/IssueEvaluations.js";
-import { IssueStageResult } from "../../models/IssueStageResults.js";
-import { Issue } from "../../models/Issues.js";
-import { Participation } from "../../models/Participations.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { Issue } from "../../../models/Issues.js";
+import { Participation } from "../../../models/Participations.js";
 import {
   getIssueEvaluationPayload,
   saveIssueEvaluationDraft,
   submitIssueEvaluation,
-} from "../../modules/issues/evaluations/index.js";
-import { loadIssueEvaluationContext } from "../../modules/issues/evaluations/loadIssueEvaluationContext.js";
+} from "../../../modules/issues/evaluations/index.js";
+import { loadIssueEvaluationContext } from "../../../modules/issues/evaluations/loadIssueEvaluationContext.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -19,8 +19,8 @@ import {
   createIssueExpressionDomainSnapshotFixture,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

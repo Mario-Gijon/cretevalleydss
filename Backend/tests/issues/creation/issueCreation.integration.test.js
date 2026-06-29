@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 
-import { Alternative } from "../../models/Alternatives.js";
-import { Criterion } from "../../models/Criteria.js";
-import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
-import { Issue } from "../../models/Issues.js";
-import { Notification } from "../../models/Notifications.js";
-import { Participation } from "../../models/Participations.js";
-import { prepareIssueCreation } from "../../modules/issues/creation/createIssue.js";
+import { Alternative } from "../../../models/Alternatives.js";
+import { Criterion } from "../../../models/Criteria.js";
+import { IssueExpressionDomain } from "../../../models/IssueExpressionDomains.js";
+import { Issue } from "../../../models/Issues.js";
+import { Notification } from "../../../models/Notifications.js";
+import { Participation } from "../../../models/Participations.js";
+import { prepareIssueCreation } from "../../../modules/issues/creation/createIssue.js";
 import {
   buildCreateIssueInfo,
   createConfirmedUser,
@@ -15,8 +15,8 @@ import {
   createIssueModel,
   persistPreparedIssueCreationInTransaction,
   prepareAndPersistIssueCreation,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

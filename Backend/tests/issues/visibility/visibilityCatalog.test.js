@@ -25,24 +25,24 @@ vi.mock("jsonwebtoken", () => ({
   },
 }));
 
-vi.mock("../../services/email.service.js", () => ({
+vi.mock("../../../services/email.service.js", () => ({
   sendVerificationEmail: vi.fn(),
   sendEmailChangeConfirmation: vi.fn(),
   sendExpertInvitationEmail: vi.fn(),
 }));
 
-vi.mock("../../modules/issues/finished/finishedPayload/index.js", () => ({
+vi.mock("../../../modules/issues/finished/finishedPayload/index.js", () => ({
   buildFinishedPayload: finishedPayloadState.buildFinishedPayload,
   supportsFinishedPayload: finishedPayloadState.supportsFinishedPayload,
 }));
 
-import app from "../../app.js";
-import { Issue } from "../../models/Issues.js";
-import { Participation } from "../../models/Participations.js";
-import { deleteAuthenticatedUserAccount } from "../../modules/auth/account.js";
-import { getActiveIssuesPayload } from "../../modules/issues/active/index.js";
-import { getFinishedIssueInfoPayload } from "../../modules/issues/finished/getFinishedIssueInfoPayload.js";
-import { hideFinishedIssueForUser } from "../../modules/issues/lifecycle/hideFinishedIssue.js";
+import app from "../../../app.js";
+import { Issue } from "../../../models/Issues.js";
+import { Participation } from "../../../models/Participations.js";
+import { deleteAuthenticatedUserAccount } from "../../../modules/auth/account.js";
+import { getActiveIssuesPayload } from "../../../modules/issues/active/index.js";
+import { getFinishedIssueInfoPayload } from "../../../modules/issues/finished/getFinishedIssueInfoPayload.js";
+import { hideFinishedIssueForUser } from "../../../modules/issues/lifecycle/hideFinishedIssue.js";
 import {
   buildCreateIssueInfo,
   createConfirmedUser,
@@ -51,8 +51,8 @@ import {
   createIssueModel,
   createParticipationFixture,
   prepareAndPersistIssueCreation,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ExitUserIssue } from "../../models/ExitUserIssue.js";
-import { IssueStageResult } from "../../models/IssueStageResults.js";
-import { getFinishedIssueInfoPayload } from "../../modules/issues/finished/getFinishedIssueInfoPayload.js";
+import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
+import { IssueStageResult } from "../../../models/IssueStageResults.js";
+import { getFinishedIssueInfoPayload } from "../../../modules/issues/finished/getFinishedIssueInfoPayload.js";
 import {
   createConfirmedUser,
   createIssueAlternativesFixture,
@@ -12,8 +12,8 @@ import {
   createIssueFixture,
   createIssueModel,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

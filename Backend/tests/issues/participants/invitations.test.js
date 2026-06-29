@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { Participation } from "../../models/Participations.js";
-import { respondToIssueInvitation } from "../../modules/issues/notifications/respondToIssueInvitation.js";
+import { Participation } from "../../../models/Participations.js";
+import { respondToIssueInvitation } from "../../../modules/issues/notifications/respondToIssueInvitation.js";
 import {
   createConfirmedUser,
   createIssueCriteriaFixture,
   createIssueFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

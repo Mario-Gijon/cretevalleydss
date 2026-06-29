@@ -15,20 +15,20 @@ vi.mock("jsonwebtoken", () => ({
   },
 }));
 
-import app from "../../app.js";
-import { Notification } from "../../models/Notifications.js";
+import app from "../../../app.js";
+import { Notification } from "../../../models/Notifications.js";
 import {
   getNotificationsPayload,
-} from "../../modules/issues/notifications/getNotificationsPayload.js";
-import { markAllNotificationsAsRead } from "../../modules/issues/notifications/markNotificationsAsRead.js";
-import { removeNotificationForUser } from "../../modules/issues/notifications/removeNotificationForUser.js";
+} from "../../../modules/issues/notifications/getNotificationsPayload.js";
+import { markAllNotificationsAsRead } from "../../../modules/issues/notifications/markNotificationsAsRead.js";
+import { removeNotificationForUser } from "../../../modules/issues/notifications/removeNotificationForUser.js";
 import {
   createConfirmedUser,
   createIssueFixture,
   createNotificationFixture,
   createParticipationFixture,
-} from "../setup/fixtures.js";
-import { setupMongoDbTestHooks } from "../setup/database.js";
+} from "../../setup/fixtures.js";
+import { setupMongoDbTestHooks } from "../../setup/database.js";
 
 setupMongoDbTestHooks();
 

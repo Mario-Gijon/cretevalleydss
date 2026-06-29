@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 
-import { normalizeCreateIssueInput } from "../../modules/issues/creation/normalizeCreateIssueInput.js";
+import { normalizeCreateIssueInput } from "../../../modules/issues/creation/normalizeCreateIssueInput.js";
 
 const createValidIssueInfo = (overrides = {}) => ({
   issueName: "  New issue  ",
