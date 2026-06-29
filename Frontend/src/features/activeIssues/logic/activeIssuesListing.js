@@ -14,7 +14,8 @@ const parseIssueDateDDMMYYYY = (value) => {
 const sortActiveIssues = (issues, sortBy) => {
   const list = [...issues];
 
-  const compareByName = (a, b) => a.name.localeCompare(b.name);
+  const compareByName = (a, b) =>
+    String(a?.name || "").localeCompare(String(b?.name || ""));
 
   const creationTimestamp = (issue) => {
     const fromCreatedAt = new Date(issue.createdAt).getTime();
@@ -83,7 +84,9 @@ export const buildFilteredActiveIssues = ({
   searchBy,
   sortBy,
 }) => {
-  const filteredIssues = activeIssues.filter((issue) =>
+  const safeIssues = Array.isArray(activeIssues) ? activeIssues : [];
+
+  const filteredIssues = safeIssues.filter((issue) =>
     issueMatchesSearch(issue, query, searchBy)
   );
 
@@ -99,13 +102,15 @@ export const buildFilteredActiveIssues = ({
  * @returns {Object}
  */
 export const buildActiveIssuesOverview = ({ activeIssues, tasksCount }) => {
-  const ownerCount = activeIssues.filter((issue) => issue.isIssueOwner).length;
-  const readyResolve = activeIssues.filter(
-    (issue) => issue.statusFlags.canResolveIssue
+  const safeIssues = Array.isArray(activeIssues) ? activeIssues : [];
+
+  const ownerCount = safeIssues.filter((issue) => issue?.isIssueOwner).length;
+  const readyResolve = safeIssues.filter(
+    (issue) => issue?.statusFlags?.canResolveIssue
   ).length;
 
   return {
-    total: activeIssues.length,
+    total: safeIssues.length,
     tasks: tasksCount,
     owner: ownerCount,
     readyResolve,

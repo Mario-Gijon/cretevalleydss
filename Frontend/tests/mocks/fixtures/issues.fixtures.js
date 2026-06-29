@@ -8,6 +8,73 @@ export const activeIssuesFixture = {
   },
 };
 
+export const activeIssuesDashboardFixture = [
+  {
+    id: "issue-active-1",
+    _id: "issue-active-1",
+    name: "Budget Planning",
+    model: { name: "AHP" },
+    owner: "Alice Owner",
+    alternatives: ["Redwood", "Cedar"],
+    criteria: [
+      {
+        name: "Cost",
+        children: [{ name: "Maintenance", children: [] }],
+      },
+    ],
+    createdAt: "2025-06-10T10:00:00.000Z",
+    creationDate: "10/06/2025",
+    closureDate: "12/07/2025",
+    isIssueOwner: true,
+    statusFlags: { canResolveIssue: true },
+  },
+  {
+    id: "issue-active-2",
+    _id: "issue-active-2",
+    name: "Campus Labs",
+    model: { name: "TOPSIS" },
+    owner: "Bob Builder",
+    alternatives: [{ name: "Solar Roof" }],
+    criteria: [{ name: "Sustainability", children: [] }],
+    createdAt: "",
+    creationDate: "09/06/2025",
+    closureDate: "",
+    isIssueOwner: false,
+    statusFlags: { canResolveIssue: false },
+  },
+  {
+    id: "issue-active-3",
+    _id: "issue-active-3",
+    name: "Hiring Committee",
+    model: { name: "PROMETHEE" },
+    owner: "Carol Chair",
+    alternatives: ["Candidate A"],
+    criteria: [
+      {
+        name: "Experience",
+        children: [{ name: "Research", children: [] }],
+      },
+    ],
+    createdAt: "2025-06-01T08:00:00.000Z",
+    creationDate: "01/06/2025",
+    closureDate: "01/07/2025",
+    isIssueOwner: true,
+    statusFlags: { canResolveIssue: false },
+  },
+  {
+    id: "issue-active-4",
+    _id: "issue-active-4",
+    name: "Dorm Upgrade",
+    model: null,
+    owner: null,
+    createdAt: "",
+    creationDate: "11/06/2025",
+    closureDate: null,
+    isIssueOwner: false,
+    statusFlags: null,
+  },
+];
+
 export const finishedIssuesFixture = {
   success: true,
   message: "Finished issues fetched.",

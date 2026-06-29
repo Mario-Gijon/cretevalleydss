@@ -5,7 +5,7 @@
  * @returns {string}
  */
 export const normalizeActiveIssueValue = (value) => {
-  return value ? value.toLowerCase() : "";
+  return value == null ? "" : String(value).toLowerCase();
 };
 
 /**
@@ -17,17 +17,19 @@ export const normalizeActiveIssueValue = (value) => {
  */
 export const criteriaContainsQuery = (nodes, query) => {
   if (!query) return true;
-  if (nodes.length === 0) return false;
+  if (!Array.isArray(nodes) || nodes.length === 0) return false;
 
   const stack = [...nodes];
 
   while (stack.length > 0) {
     const node = stack.pop();
-    if (normalizeActiveIssueValue(node.name).includes(query)) {
+    if (!node) continue;
+
+    if (normalizeActiveIssueValue(node?.name).includes(query)) {
       return true;
     }
 
-    if (node.children.length > 0) {
+    if (Array.isArray(node?.children) && node.children.length > 0) {
       stack.push(...node.children);
     }
   }
@@ -45,7 +47,19 @@ export const criteriaContainsQuery = (nodes, query) => {
 export const ownerContainsQuery = (issue, query) => {
   if (!query) return true;
 
-  return normalizeActiveIssueValue(issue.owner).includes(query);
+  const candidates = [
+    issue?.owner,
+    issue?.ownerName,
+    issue?.ownerEmail,
+    issue?.owner?.name,
+    issue?.owner?.email,
+    issue?.createdBy?.name,
+    issue?.createdBy?.email,
+  ];
+
+  return candidates.some((candidate) =>
+    normalizeActiveIssueValue(candidate).includes(query)
+  );
 };
 
 /**
@@ -58,9 +72,17 @@ export const ownerContainsQuery = (issue, query) => {
 export const alternativesContainsQuery = (issue, query) => {
   if (!query) return true;
 
-  return issue.alternatives.some((alternative) =>
-    normalizeActiveIssueValue(alternative).includes(query)
-  );
+  const alternatives = Array.isArray(issue?.alternatives) ? issue.alternatives : [];
+
+  return alternatives.some((alternative) => {
+    if (typeof alternative === "string") {
+      return normalizeActiveIssueValue(alternative).includes(query);
+    }
+
+    return normalizeActiveIssueValue(
+      alternative?.name || alternative?.title || alternative?.label
+    ).includes(query);
+  });
 };
 
 /**
@@ -72,15 +94,15 @@ export const alternativesContainsQuery = (issue, query) => {
  * @returns {boolean}
  */
 export const issueMatchesSearch = (issue, query, searchBy) => {
-  const normalizedQuery = normalizeActiveIssueValue(query.trim());
+  const normalizedQuery = normalizeActiveIssueValue(query).trim();
 
   if (!normalizedQuery) return true;
 
-  const byIssue = normalizeActiveIssueValue(issue.name).includes(normalizedQuery);
-  const byModel = normalizeActiveIssueValue(issue.model.name).includes(normalizedQuery);
+  const byIssue = normalizeActiveIssueValue(issue?.name).includes(normalizedQuery);
+  const byModel = normalizeActiveIssueValue(issue?.model?.name).includes(normalizedQuery);
   const byOwner = ownerContainsQuery(issue, normalizedQuery);
   const byAlternatives = alternativesContainsQuery(issue, normalizedQuery);
-  const byCriteria = criteriaContainsQuery(issue.criteria, normalizedQuery);
+  const byCriteria = criteriaContainsQuery(issue?.criteria, normalizedQuery);
 
   if (searchBy === "issue") return byIssue;
   if (searchBy === "model") return byModel;
