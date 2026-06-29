@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { Criterion } from "../../models/Criteria.js";
 import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { Issue } from "../../models/Issues.js";
+import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { IssueModel } from "../../models/IssueModels.js";
@@ -216,6 +217,28 @@ export const createIssueEvaluationFixture = async ({
     consensusPhase,
     payload,
     completed,
+  });
+};
+
+export const createNotificationFixture = async ({
+  expertId,
+  issueId = null,
+  type = "invitation",
+  message = "Test notification",
+  requiresAction = true,
+  actionTaken = null,
+  read = false,
+  createdAt = new Date(),
+} = {}) => {
+  return Notification.create({
+    expert: expertId,
+    issue: issueId,
+    type,
+    message,
+    requiresAction,
+    actionTaken,
+    read,
+    createdAt,
   });
 };
 

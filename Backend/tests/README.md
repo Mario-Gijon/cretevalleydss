@@ -10,10 +10,12 @@ bun run test
 Current layers cover:
 
 - auth and account/session behavior
+- profile, account update, email change, and account deletion behavior
 - expression domains
 - issue input normalization
 - issue lifecycle behavior
 - issue participation editing, invitations, and leaving/removal flows
+- notifications behavior and notification API contracts
 - issue model runtime and actor/model loading
 - issue creation integration and protected issue API basics
 
