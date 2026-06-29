@@ -37,6 +37,7 @@ export const buildIssueModelRequestPayload = async ({
         id: toIdString(criterion._id),
         name: criterion.name,
         type: criterion.type,
+        expressionDomain: criterion.expressionDomain,
       })),
       consensusPhase: phase,
       previousStageResult: null,

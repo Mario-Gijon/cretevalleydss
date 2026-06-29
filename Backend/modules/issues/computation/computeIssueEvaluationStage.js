@@ -13,6 +13,7 @@ import { sameId, toIdString } from "../../../utils/common/ids.js";
 import { endSessionSafely } from "../../../utils/common/mongoose.js";
 import {
   EVALUATION_STAGES,
+  EVALUATION_STAGE_VALUES,
 } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { ISSUE_STAGES } from "../shared/issueStages.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
@@ -30,6 +31,18 @@ import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
 
+const validateComputeStageOrThrow = (stage) => {
+  if (!EVALUATION_STAGE_VALUES.includes(stage)) {
+    throw createBadRequestError(
+      `Unsupported evaluation stage: ${String(stage)}`,
+      {
+        code: "UNSUPPORTED_EVALUATION_STAGE",
+        field: "stage",
+      }
+    );
+  }
+};
+
 const getStructureForIssueStage = ({ issue, stage }) => {
   const structureKeyByStage = {
     [EVALUATION_STAGES.CRITERIA_WEIGHTING]:
@@ -42,11 +55,20 @@ const getStructureForIssueStage = ({ issue, stage }) => {
 };
 
 const loadComputeContext = async ({ issueId, userId, stage }) => {
+  validateComputeStageOrThrow(stage);
+
   const issue = await getIssueByIdOrThrow(issueId, { lean: false });
 
   if (!sameId(issue.ownerId, userId)) {
     throw createForbiddenError("Only the issue owner can compute evaluation stages", {
       field: "userId",
+    });
+  }
+
+  if (issue.active !== true) {
+    throw createBadRequestError("Issue is not active", {
+      code: "ISSUE_NOT_ACTIVE",
+      field: "issueId",
     });
   }
 
