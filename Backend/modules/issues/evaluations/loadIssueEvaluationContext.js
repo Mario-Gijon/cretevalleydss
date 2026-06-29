@@ -1,6 +1,9 @@
 import { getIssueByIdOrThrow } from "../shared/queries.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import {
+  EVALUATION_STAGES,
+  EVALUATION_STAGE_VALUES,
+} from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { getEvaluationStructureOrThrow } from "../../decisionPlugins/evaluations/evaluationStructureRegistry.js";
 import { requireAcceptedParticipation } from "./issueEvaluationParticipation.js";
 
@@ -21,10 +24,30 @@ export const loadIssueEvaluationContext = async ({
   stage,
   session = null,
 }) => {
+  if (!EVALUATION_STAGE_VALUES.includes(stage)) {
+    throw createBadRequestError("Unsupported evaluation stage", {
+      code: "UNSUPPORTED_EVALUATION_STAGE",
+      field: "stage",
+      details: {
+        requestedStage: stage,
+      },
+    });
+  }
+
   const issue = await getIssueByIdOrThrow(issueId, {
     lean: false,
     session,
   });
+
+  if (issue.active !== true) {
+    throw createBadRequestError("Issue is not active", {
+      code: "ISSUE_NOT_ACTIVE",
+      field: "issueId",
+      details: {
+        currentStage: issue.currentStage,
+      },
+    });
+  }
 
   if (issue.currentStage !== stage) {
     throw createBadRequestError(

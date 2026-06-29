@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 
+import { Alternative } from "../../models/Alternatives.js";
 import { Criterion } from "../../models/Criteria.js";
 import { IssueEvaluation } from "../../models/IssueEvaluations.js";
+import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
 import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
@@ -147,6 +149,7 @@ export const createIssueCriteriaFixture = async ({
   rootName = "Root criterion",
   leafNames = ["Leaf criterion"],
   leafType = "benefit",
+  expressionDomainId = null,
 } = {}) => {
   const rootCriterion = await Criterion.create({
     issue: issueId,
@@ -166,6 +169,7 @@ export const createIssueCriteriaFixture = async ({
       name: leafName,
       type: leafType,
       isLeaf: true,
+      expressionDomain: expressionDomainId,
       position: index,
     });
 
@@ -176,6 +180,49 @@ export const createIssueCriteriaFixture = async ({
     rootCriterion,
     leafCriteria,
   };
+};
+
+export const createIssueAlternativesFixture = async ({
+  issueId,
+  names = ["Alternative A", "Alternative B"],
+} = {}) => {
+  const alternatives = [];
+
+  for (const [index, name] of names.entries()) {
+    const alternative = await Alternative.create({
+      issue: issueId,
+      name,
+      position: index,
+    });
+
+    alternatives.push(alternative);
+  }
+
+  return alternatives;
+};
+
+export const createIssueExpressionDomainSnapshotFixture = async ({
+  issueId,
+  sourceDomain = null,
+  name = `Issue domain ${uniqueSuffix()}`,
+  type = "numeric",
+  numericRange = { min: 0, max: 10, step: 1 },
+  membershipFunction = null,
+  valueCount = null,
+  valuesMode = null,
+  linguisticLabels = [],
+} = {}) => {
+  return IssueExpressionDomain.create({
+    issue: issueId,
+    sourceDomain,
+    name,
+    type,
+    numericRange: type === "numeric" ? numericRange : undefined,
+    membershipFunction: type === "linguistic" ? membershipFunction : null,
+    valueCount: type === "linguistic" ? valueCount : null,
+    valuesMode: type === "linguistic" ? valuesMode : null,
+    linguisticLabels: type === "linguistic" ? linguisticLabels : [],
+  });
 };
 
 export const createParticipationFixture = async ({
