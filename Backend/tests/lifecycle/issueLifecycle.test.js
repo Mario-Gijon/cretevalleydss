@@ -344,6 +344,14 @@ describe("issue lifecycle", () => {
       phase: 1,
       stage: "alternativeEvaluation",
     });
+    expect(exitLog.history).toEqual([
+      expect.objectContaining({
+        action: "exited",
+        reason: "Left by user",
+        phase: 1,
+        stage: "alternativeEvaluation",
+      }),
+    ]);
   });
 
   it("accepted participant leaving a consensus issue preserves only completed previous-phase alternative evaluations", async () => {

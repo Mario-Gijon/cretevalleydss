@@ -1,5 +1,6 @@
 export { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 export {
+  registerUserEntry,
   registerUserExit,
   leaveActiveIssue,
   cleanupExpertDraftsOnExit,

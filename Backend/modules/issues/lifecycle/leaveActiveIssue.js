@@ -50,12 +50,14 @@ const requireNonEmptyString = (value, field, details) => {
   return value.trim();
 };
 
-export const registerUserExit = async ({
+const registerUserTimelineEvent = async ({
   issueId,
   userId,
   phase,
   stage,
   reason,
+  action,
+  hidden,
   session = null,
 }) => {
   const normalizedIssueId = requireNonEmptyId(issueId, "issueId");
@@ -75,13 +77,18 @@ export const registerUserExit = async ({
     userId: normalizedUserId,
     reason,
   });
+  const validatedAction = requireNonEmptyString(action, "action", {
+    issueId: normalizedIssueId,
+    userId: normalizedUserId,
+    action,
+  });
   const now = new Date();
 
   const historyEntry = {
     timestamp: now,
     phase: validatedPhase,
     stage: validatedStage,
-    action: "exited",
+    action: validatedAction,
     reason: validatedReason,
   };
 
@@ -94,7 +101,7 @@ export const registerUserExit = async ({
           user: normalizedUserId,
         },
         $set: {
-          hidden: true,
+          hidden,
           timestamp: now,
           phase: validatedPhase,
           stage: validatedStage,
@@ -108,6 +115,46 @@ export const registerUserExit = async ({
     ),
     session
   );
+};
+
+export const registerUserEntry = async ({
+  issueId,
+  userId,
+  phase,
+  stage,
+  reason,
+  session = null,
+}) => {
+  await registerUserTimelineEvent({
+    issueId,
+    userId,
+    phase,
+    stage,
+    reason,
+    action: "entered",
+    hidden: false,
+    session,
+  });
+};
+
+export const registerUserExit = async ({
+  issueId,
+  userId,
+  phase,
+  stage,
+  reason,
+  session = null,
+}) => {
+  await registerUserTimelineEvent({
+    issueId,
+    userId,
+    phase,
+    stage,
+    reason,
+    action: "exited",
+    hidden: true,
+    session,
+  });
 };
 
 export const leaveActiveIssue = async ({

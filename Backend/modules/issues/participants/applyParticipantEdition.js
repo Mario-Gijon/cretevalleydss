@@ -3,6 +3,7 @@ import { Participation } from "../../../models/Participations.js";
 
 import {
   cleanupIssueEvaluationsForExpertExit,
+  registerUserEntry,
   registerUserExit,
 } from "../lifecycle/index.js";
 import { isSingleLeafCriterionCount } from "../shared/participantEntry.js";
@@ -35,6 +36,7 @@ export const addExpertsToActiveIssue = async ({
 
     const isOwnerExpert = sameId(expertUser._id, userId);
     const weightsCompleted = isSingleLeafCriterionCount(leafCriteria.length);
+    const entryReason = isOwnerExpert ? "Added by owner" : "Invited by owner";
 
     await Participation.create(
       [{
@@ -49,6 +51,15 @@ export const addExpertsToActiveIssue = async ({
       }],
       { session }
     );
+
+    await registerUserEntry({
+      issueId: issue._id,
+      userId: expertUser._id,
+      phase: currentPhase,
+      stage: stageForLog,
+      reason: entryReason,
+      session,
+    });
 
     if (!isOwnerExpert) {
       await Notification.create(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../models/IssueEvaluations.js";
+import { Issue } from "../../models/Issues.js";
 import { Notification } from "../../models/Notifications.js";
 import { Participation } from "../../models/Participations.js";
 import { editIssueExperts } from "../../modules/issues/participants/editIssueExperts.js";
@@ -103,6 +104,10 @@ describe("editIssueExperts", () => {
 
     const participations = await Participation.find({ issue: issue._id }).lean();
     const notifications = await Notification.find({ issue: issue._id }).lean();
+    const exitLog = await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: expert._id,
+    }).lean();
 
     expect(result).toEqual({
       issueName: "Participant issue",
@@ -135,6 +140,20 @@ describe("editIssueExperts", () => {
       requiresAction: true,
       read: false,
     });
+    expect(exitLog).toMatchObject({
+      hidden: false,
+      reason: "Invited by owner",
+      phase: 2,
+      stage: "criteriaWeighting",
+    });
+    expect(exitLog.history).toHaveLength(1);
+    expect(exitLog.history[0]).toMatchObject({
+      action: "entered",
+      reason: "Invited by owner",
+      phase: 2,
+      stage: "criteriaWeighting",
+    });
+    expect(exitLog.history[0].timestamp).toBeTruthy();
   });
 
   it("adding an already participating expert is idempotent", async () => {
@@ -160,6 +179,22 @@ describe("editIssueExperts", () => {
       entryStage: "criteriaWeighting",
       weightsCompleted: true,
     });
+    await ExitUserIssue.create({
+      issue: issue._id,
+      user: expert._id,
+      hidden: false,
+      phase: 0,
+      stage: "criteriaWeighting",
+      reason: "Invited by owner",
+      history: [
+        {
+          phase: 0,
+          stage: "criteriaWeighting",
+          action: "entered",
+          reason: "Invited by owner",
+        },
+      ],
+    });
     await Notification.create({
       expert: expert._id,
       issue: issue._id,
@@ -179,6 +214,12 @@ describe("editIssueExperts", () => {
     expect(result.invitationEmailsToSend).toEqual([]);
     expect(await Participation.countDocuments({ issue: issue._id })).toBe(1);
     expect(await Notification.countDocuments({ issue: issue._id })).toBe(1);
+    const exitLog = await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: expert._id,
+    }).lean();
+    expect(exitLog.history).toHaveLength(1);
+    expect(exitLog.hidden).toBe(false);
   });
 
   it("adding an unknown email does not crash and does not create participation", async () => {
@@ -203,6 +244,61 @@ describe("editIssueExperts", () => {
     expect(result.invitationEmailsToSend).toEqual([]);
     expect(await Participation.countDocuments({ issue: issue._id })).toBe(0);
     expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
+  });
+
+  it("adding the owner as expert records an entered timeline event without sending an invitation", async () => {
+    const owner = await createConfirmedUser({
+      name: "Owner User",
+      email: "owner@example.com",
+    });
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 4,
+    });
+
+    await createIssueCriteriaFixture({
+      issueId: issue._id,
+      leafNames: ["Leaf criterion"],
+    });
+
+    const result = await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [owner.email],
+      expertsToRemove: [],
+    });
+
+    const participation = await Participation.findOne({
+      issue: issue._id,
+      expert: owner._id,
+    }).lean();
+    const exitLog = await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: owner._id,
+    }).lean();
+
+    expect(result.invitationEmailsToSend).toEqual([]);
+    expect(participation).toMatchObject({
+      invitationStatus: "accepted",
+      entryPhase: 4,
+      entryStage: "alternativeEvaluation",
+    });
+    expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
+    expect(exitLog).toMatchObject({
+      hidden: false,
+      reason: "Added by owner",
+      phase: 4,
+      stage: "alternativeEvaluation",
+    });
+    expect(exitLog.history).toEqual([
+      expect.objectContaining({
+        action: "entered",
+        reason: "Added by owner",
+        phase: 4,
+        stage: "alternativeEvaluation",
+      }),
+    ]);
   });
 
   it("owner can remove an existing expert from a non-consensus active issue and cleanup their evaluations", async () => {
@@ -277,6 +373,122 @@ describe("editIssueExperts", () => {
       phase: 3,
       stage: "alternativeEvaluation",
     });
+    expect(exitLog.history).toEqual([
+      expect.objectContaining({
+        action: "exited",
+        reason: "Expelled by owner",
+        phase: 3,
+        stage: "alternativeEvaluation",
+      }),
+    ]);
+  });
+
+  it("re-adding a removed expert appends entry and exit history on the same timeline record", async () => {
+    const owner = await createConfirmedUser({
+      email: "owner@example.com",
+    });
+    const expert = await createConfirmedUser({
+      email: "expert@example.com",
+    });
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 0,
+    });
+
+    await createIssueCriteriaFixture({
+      issueId: issue._id,
+      leafNames: ["Leaf criterion"],
+    });
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [expert.email],
+      expertsToRemove: [],
+    });
+
+    await Issue.updateOne(
+      { _id: issue._id },
+      { $set: { consensusPhase: 2 } }
+    );
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [expert.email],
+    });
+
+    await Issue.updateOne(
+      { _id: issue._id },
+      { $set: { consensusPhase: 5 } }
+    );
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [expert.email],
+      expertsToRemove: [],
+    });
+
+    await Issue.updateOne(
+      { _id: issue._id },
+      { $set: { consensusPhase: 8 } }
+    );
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [expert.email],
+    });
+
+    await Issue.updateOne(
+      { _id: issue._id },
+      { $set: { consensusPhase: 12 } }
+    );
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [expert.email],
+      expertsToRemove: [],
+    });
+
+    const exitLog = await ExitUserIssue.findOne({
+      issue: issue._id,
+      user: expert._id,
+    }).lean();
+
+    expect(await ExitUserIssue.countDocuments({ issue: issue._id, user: expert._id })).toBe(1);
+    expect(await Participation.countDocuments({ issue: issue._id, expert: expert._id })).toBe(1);
+    expect(exitLog).toMatchObject({
+      hidden: false,
+      reason: "Invited by owner",
+      phase: 12,
+      stage: "alternativeEvaluation",
+    });
+    expect(exitLog.history).toHaveLength(5);
+    expect(exitLog.history.map((entry) => entry.action)).toEqual([
+      "entered",
+      "exited",
+      "entered",
+      "exited",
+      "entered",
+    ]);
+    expect(exitLog.history.map((entry) => entry.phase)).toEqual([0, 2, 5, 8, 12]);
+    expect(exitLog.history.map((entry) => entry.reason)).toEqual([
+      "Invited by owner",
+      "Expelled by owner",
+      "Invited by owner",
+      "Expelled by owner",
+      "Invited by owner",
+    ]);
+    for (const entry of exitLog.history) {
+      expect(entry.stage).toBe("alternativeEvaluation");
+      expect(entry.timestamp).toBeTruthy();
+    }
   });
 
   it("owner removal from a simulated-consensus issue preserves only completed previous-phase alternative evaluations", async () => {

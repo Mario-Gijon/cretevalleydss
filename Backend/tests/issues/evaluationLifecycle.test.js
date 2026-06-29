@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ExitUserIssue } from "../../models/ExitUserIssue.js";
 import { IssueEvaluation } from "../../models/IssueEvaluations.js";
 import { IssueStageResult } from "../../models/IssueStageResults.js";
 import { Issue } from "../../models/Issues.js";
@@ -272,6 +273,28 @@ describe("evaluation context and permission guards", () => {
     });
 
     await Participation.deleteOne({ _id: participation._id });
+    await ExitUserIssue.create({
+      issue: issue._id,
+      user: expert._id,
+      hidden: true,
+      phase: 1,
+      stage: "criteriaWeighting",
+      reason: "Expelled by owner",
+      history: [
+        {
+          phase: 0,
+          stage: "criteriaWeighting",
+          action: "entered",
+          reason: "Invited by owner",
+        },
+        {
+          phase: 1,
+          stage: "criteriaWeighting",
+          action: "exited",
+          reason: "Expelled by owner",
+        },
+      ],
+    });
 
     await expectEvaluationOpsRejected({
       issueId: issue._id,
@@ -1254,6 +1277,34 @@ describe("consensus phase and re-entry behavior", () => {
       }),
       completed: false,
     });
+    await ExitUserIssue.create({
+      issue: issue._id,
+      user: expert._id,
+      hidden: false,
+      phase: 2,
+      stage: "alternativeEvaluation",
+      reason: "Invited by owner",
+      history: [
+        {
+          phase: 0,
+          stage: "alternativeEvaluation",
+          action: "entered",
+          reason: "Invited by owner",
+        },
+        {
+          phase: 1,
+          stage: "alternativeEvaluation",
+          action: "exited",
+          reason: "Expelled by owner",
+        },
+        {
+          phase: 2,
+          stage: "alternativeEvaluation",
+          action: "entered",
+          reason: "Invited by owner",
+        },
+      ],
+    });
 
     const beforeSave = await getIssueEvaluationPayload({
       issueId: issue._id,
@@ -1265,18 +1316,35 @@ describe("consensus phase and re-entry behavior", () => {
     expect(beforeSave.completed).toBe(false);
     expect(beforeSave.payload[firstAlternativeId][String(leafCriteria[0]._id)].value).toBe("");
 
+    const currentPhasePayload = buildAlternativeMatrixPayload({
+      alternatives,
+      leafCriteria,
+      valuesByAlternativeId: {
+        [firstAlternativeId]: 9,
+        [String(alternatives[1]._id)]: 1,
+      },
+    });
+
     await saveIssueEvaluationDraft({
       issueId: issue._id,
       userId: expert._id,
       stage: "alternativeEvaluation",
-      payload: buildAlternativeMatrixPayload({
-        alternatives,
-        leafCriteria,
-        valuesByAlternativeId: {
-          [firstAlternativeId]: 9,
-          [String(alternatives[1]._id)]: 1,
-        },
-      }),
+      payload: currentPhasePayload,
+    });
+    const afterSave = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    expect(afterSave.consensusPhase).toBe(2);
+    expect(afterSave.payload[firstAlternativeId][String(leafCriteria[0]._id)].value).toBe(9);
+
+    await submitIssueEvaluation({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+      payload: currentPhasePayload,
     });
 
     const evaluations = await IssueEvaluation.find({
@@ -1288,7 +1356,13 @@ describe("consensus phase and re-entry behavior", () => {
       .lean();
 
     expect(evaluations).toHaveLength(2);
-    expect(evaluations[0].consensusPhase).toBe(0);
-    expect(evaluations[1].consensusPhase).toBe(2);
+    expect(evaluations[0]).toMatchObject({
+      consensusPhase: 0,
+      completed: false,
+    });
+    expect(evaluations[1]).toMatchObject({
+      consensusPhase: 2,
+      completed: true,
+    });
   });
 });

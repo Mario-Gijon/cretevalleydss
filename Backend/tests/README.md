@@ -16,6 +16,7 @@ Current layers cover:
 - issue lifecycle behavior
 - scenario access, payload, delete, and creation-boundary behavior
 - issue participation editing, invitations, and leaving/removal flows
+- participation timeline integrity: `Participation` stays the current-state record, while `ExitUserIssue.history` preserves entered/exited events across re-entry cycles
 - evaluation lifecycle coverage: save/get/submit, permissions, stage guards, and participation completion flags
 - evaluation payload tests stay structure-level and flexible rather than model-algorithm specific
 - notifications behavior and notification API contracts
