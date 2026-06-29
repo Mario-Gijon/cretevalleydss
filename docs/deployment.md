@@ -13,6 +13,7 @@ ModelForge is not part of production deployment at this time. It remains a local
 - `docker-compose.yml`: production deployment compose copied to the server
 - `build_and_push.sh`: local build and push script
 - `deploy.sh`: server deploy script
+- `docker/`: service Dockerfiles and nginx config
 
 ## Frontend production behavior
 

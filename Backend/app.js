@@ -82,12 +82,11 @@ app.use("/api", (_req, res) => {
   });
 });
 
-const distPath = path.join(__dirname, "dist");
-
-app.use(express.static(distPath));
-
-app.get("*", (_req, res) => {
-  return res.sendFile(path.join(distPath, "index.html"));
+app.use((_req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
 app.use(errorHandler);

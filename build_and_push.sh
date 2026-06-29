@@ -5,9 +5,9 @@ DOCKERHUB_USER="${DOCKERHUB_USER:-mariogijon}"
 DOCKER_PROJECT="${DOCKER_PROJECT:-cretevalleydss}"
 
 SERVICES=(
-  "backend:Dockerfile.backend"
-  "frontend:Dockerfile.frontend"
-  "decision-models-service:Dockerfile.decision-models-service"
+  "backend:docker/backend/Dockerfile"
+  "frontend:docker/frontend/Dockerfile"
+  "decision-models-service:docker/decision-models-service/Dockerfile"
 )
 
 for entry in "${SERVICES[@]}"; do

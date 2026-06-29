@@ -44,7 +44,7 @@ const redirectToFrontend = (res) => {
 export const loginUser = async (req, res) => {
   const result = await loginUserUseCase({
     email: req.body?.email,
-    password: req.body?.password,
+    password: req.body?.passwqord,
   });
 
   generateRefreshToken(result.userId, res);

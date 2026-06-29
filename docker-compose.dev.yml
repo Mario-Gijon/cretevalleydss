@@ -2,7 +2,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend.dev
+      dockerfile: docker/frontend/Dockerfile.dev
     working_dir: /app
     env_file:
       - ./Frontend/.env.development
@@ -27,7 +27,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend.dev
+      dockerfile: docker/backend/Dockerfile.dev
     working_dir: /app
     env_file:
       - ./Backend/.env
@@ -58,7 +58,7 @@ services:
   decision-models-service:
     build:
       context: .
-      dockerfile: Dockerfile.decision-models-service.dev
+      dockerfile: docker/decision-models-service/Dockerfile.dev
     working_dir: /app
     command:
       - uvicorn
@@ -86,7 +86,7 @@ services:
   model-forge:
     build:
       context: .
-      dockerfile: Dockerfile.model-forge.dev
+      dockerfile: docker/model-forge/Dockerfile.dev
     working_dir: /app
     command:
       - uvicorn
