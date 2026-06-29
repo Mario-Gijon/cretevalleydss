@@ -5,6 +5,10 @@ export {
   cleanupExpertDraftsOnExit,
 } from "./leaveActiveIssue.js";
 export {
+  cleanupIssueEvaluationsForExpertExit as cleanupIssueEvaluationsForExpertExitShared,
+  cleanupIssueEvaluationsForExpertExit,
+} from "./cleanupIssueEvaluationsForExpertExit.js";
+export {
   deleteIssueCascade,
 } from "./deleteIssueCascade.js";
 export {

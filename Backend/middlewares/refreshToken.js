@@ -8,7 +8,12 @@ import { sendSuccess } from "../utils/common/responses.js";
 
 export const refreshToken = async (req, res, next) => {
   try {
-    const user = await User.findById(req.uid).select("role").lean();
+    const user = await User.findOne({
+      _id: req.uid,
+      isDeleted: { $ne: true },
+    })
+      .select("role")
+      .lean();
 
     if (!user) {
       return next(createUnauthorizedError("User not found."));

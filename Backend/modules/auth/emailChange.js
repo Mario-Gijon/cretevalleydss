@@ -25,7 +25,7 @@ export const requestAuthenticatedUserEmailChange = async ({
 
   const user = await applyOptionalSession(User.findById(userId), session);
 
-  if (!user) {
+  if (!user || user.isDeleted === true) {
     throw createNotFoundError("User not found", {
       field: "userId",
     });
@@ -85,6 +85,12 @@ export const confirmAuthenticatedUserEmailChange = async ({
   );
 
   if (!user) {
+    throw createNotFoundError("Email change confirmation not found", {
+      field: "token",
+    });
+  }
+
+  if (user.isDeleted === true) {
     throw createNotFoundError("Email change confirmation not found", {
       field: "token",
     });

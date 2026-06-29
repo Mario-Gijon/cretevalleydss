@@ -18,7 +18,10 @@ export const loginUser = async ({ email, password }) => {
     throw createLoginFieldError("password", "Password is required");
   }
 
-  const user = await User.findOne({ email: cleanEmail });
+  const user = await User.findOne({
+    email: cleanEmail,
+    isDeleted: { $ne: true },
+  });
 
   if (!user) {
     throw createLoginFieldError("email", "User does not exist");

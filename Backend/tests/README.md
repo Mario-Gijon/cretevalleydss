@@ -10,7 +10,7 @@ bun run test
 Current layers cover:
 
 - auth and account/session behavior
-- profile, account update, email change, and account deletion behavior
+- profile, account update, email change, and safe account deletion/purge behavior
 - expression domains
 - issue input normalization
 - issue lifecycle behavior

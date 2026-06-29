@@ -21,7 +21,7 @@ const buildAuthenticatedUserProfilePayload = (user) => {
 export const getAuthenticatedUserProfilePayload = async ({ userId }) => {
   const user = await User.findById(userId).lean();
 
-  if (!user) {
+  if (!user || user.isDeleted === true) {
     throw createNotFoundError("User not found", {
       field: "userId",
     });
@@ -45,7 +45,7 @@ export const updateAuthenticatedUserName = async ({
 
   const user = await applyOptionalSession(User.findById(userId), session);
 
-  if (!user) {
+  if (!user || user.isDeleted === true) {
     throw createNotFoundError("User not found", {
       field: "userId",
     });
@@ -75,7 +75,7 @@ export const updateAuthenticatedUserUniversity = async ({
 
   const user = await applyOptionalSession(User.findById(userId), session);
 
-  if (!user) {
+  if (!user || user.isDeleted === true) {
     throw createNotFoundError("User not found", {
       field: "userId",
     });
@@ -119,7 +119,7 @@ export const updateAuthenticatedUserPassword = async ({
 
   const user = await applyOptionalSession(User.findById(userId), session);
 
-  if (!user) {
+  if (!user || user.isDeleted === true) {
     throw createNotFoundError("User not found", {
       field: "userId",
     });

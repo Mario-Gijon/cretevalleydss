@@ -271,7 +271,7 @@ describe("auth profile module", () => {
     });
   });
 
-  it("deleteAuthenticatedUserAccount deletes only the authenticated user document", async () => {
+  it("deleteAuthenticatedUserAccount purges an unreferenced authenticated user", async () => {
     const user = await createConfirmedUser({
       email: "delete-me@example.com",
     });

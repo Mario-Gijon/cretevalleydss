@@ -1,9 +1,9 @@
-import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { ExitUserIssue } from "../../../models/ExitUserIssue.js";
 import { Participation } from "../../../models/Participations.js";
 import { getIssueByIdOrThrow } from "../shared/queries.js";
 
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
+import { cleanupIssueEvaluationsForExpertExit } from "./cleanupIssueEvaluationsForExpertExit.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 
 import {
@@ -137,8 +137,8 @@ export const leaveActiveIssue = async ({
     throw createBadRequestError("You are not a participant of this issue");
   }
 
-  await cleanupExpertDraftsOnExit({
-    issueId: issue._id,
+  await cleanupIssueEvaluationsForExpertExit({
+    issue,
     expertId: userId,
     session,
   });
@@ -168,16 +168,13 @@ export const leaveActiveIssue = async ({
 };
 
 export const cleanupExpertDraftsOnExit = async ({
-  issueId,
+  issue,
   expertId,
   session = null,
 }) => {
-  await applyOptionalSession(
-    IssueEvaluation.deleteMany({
-      issue: issueId,
-      expert: expertId,
-      completed: false,
-    }),
-    session
-  );
+  return cleanupIssueEvaluationsForExpertExit({
+    issue,
+    expertId,
+    session,
+  });
 };

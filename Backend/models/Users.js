@@ -40,6 +40,15 @@ const userSchema = new Schema({
     type: String,
     default: null,
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
   accountConfirm: {
     type: Boolean,
     default: false,

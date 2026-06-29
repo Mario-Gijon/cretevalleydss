@@ -269,7 +269,7 @@ describe("issue lifecycle", () => {
     expect(await ExitUserIssue.countDocuments({ issue: issue._id })).toBe(0);
   });
 
-  it("accepted participant can leave an active issue and cleanup incomplete drafts", async () => {
+  it("accepted participant can leave a non-consensus active issue and cleanup their evaluations", async () => {
     const owner = await createConfirmedUser();
     const participant = await createConfirmedUser();
     const issue = await createIssueFixture({
@@ -327,26 +327,109 @@ describe("issue lifecycle", () => {
         expert: participant._id,
       })
     ).toBeNull();
-    expect(
-      await IssueEvaluation.countDocuments({
-        issue: issue._id,
-        expert: participant._id,
-        completed: false,
-      })
-    ).toBe(0);
-    expect(
-      await IssueEvaluation.countDocuments({
-        issue: issue._id,
-        expert: participant._id,
-        completed: true,
-      })
-    ).toBe(1);
+    const remainingEvaluations = await IssueEvaluation.find({
+      issue: issue._id,
+      expert: participant._id,
+    }).lean();
+
+    expect(remainingEvaluations).toHaveLength(1);
+    expect(remainingEvaluations[0]).toMatchObject({
+      stage: "criteriaWeighting",
+      consensusPhase: 1,
+      completed: false,
+    });
     expect(exitLog).toMatchObject({
       hidden: true,
       reason: "Left by user",
       phase: 1,
       stage: "alternativeEvaluation",
     });
+  });
+
+  it("accepted participant leaving a consensus issue preserves only completed previous-phase alternative evaluations", async () => {
+    const owner = await createConfirmedUser();
+    const participant = await createConfirmedUser();
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 2,
+      isConsensus: true,
+      name: "Consensus issue",
+    });
+
+    await createIssueCriteriaFixture({
+      issueId: issue._id,
+      leafNames: ["Leaf criterion", "Second criterion"],
+    });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: false,
+      weightsCompleted: false,
+      entryPhase: 2,
+      entryStage: "alternativeEvaluation",
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "criteriaWeighting",
+      consensusPhase: 2,
+      completed: true,
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+      completed: true,
+      payload: { kept: true },
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 2,
+      completed: true,
+      payload: { removedCurrentPhase: true },
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: participant._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      completed: false,
+      payload: { removedIncomplete: true },
+    });
+
+    await leaveActiveIssue({
+      issueId: issue._id,
+      userId: participant._id,
+    });
+
+    const remainingEvaluations = await IssueEvaluation.find({
+      issue: issue._id,
+      expert: participant._id,
+    })
+      .sort({ stage: 1, consensusPhase: 1 })
+      .lean();
+
+    expect(remainingEvaluations).toHaveLength(2);
+    expect(remainingEvaluations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "criteriaWeighting",
+          consensusPhase: 2,
+          completed: true,
+        }),
+        expect.objectContaining({
+          stage: "alternativeEvaluation",
+          consensusPhase: 1,
+          completed: true,
+          payload: { kept: true },
+        }),
+      ])
+    );
   });
 
   it("owner cannot leave their own issue", async () => {

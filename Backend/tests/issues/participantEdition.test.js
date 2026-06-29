@@ -205,7 +205,7 @@ describe("editIssueExperts", () => {
     expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
   });
 
-  it("owner can remove an existing expert from an active issue and cleanup drafts", async () => {
+  it("owner can remove an existing expert from a non-consensus active issue and cleanup their evaluations", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",
     });
@@ -254,15 +254,9 @@ describe("editIssueExperts", () => {
       expertsToRemove: ["  EXPERT@example.com "],
     });
 
-    const completedEvaluations = await IssueEvaluation.find({
+    const remainingEvaluations = await IssueEvaluation.find({
       issue: issue._id,
       expert: expert._id,
-      completed: true,
-    }).lean();
-    const incompleteEvaluations = await IssueEvaluation.find({
-      issue: issue._id,
-      expert: expert._id,
-      completed: false,
     }).lean();
     const exitLog = await ExitUserIssue.findOne({
       issue: issue._id,
@@ -271,14 +265,109 @@ describe("editIssueExperts", () => {
 
     expect(result.issueName).toBe(issue.name);
     expect(await Participation.findOne({ issue: issue._id, expert: expert._id })).toBeNull();
-    expect(incompleteEvaluations).toHaveLength(0);
-    expect(completedEvaluations).toHaveLength(1);
+    expect(remainingEvaluations).toHaveLength(1);
+    expect(remainingEvaluations[0]).toMatchObject({
+      stage: "criteriaWeighting",
+      consensusPhase: 3,
+      completed: false,
+    });
     expect(exitLog).toMatchObject({
       hidden: true,
       reason: "Expelled by owner",
       phase: 3,
       stage: "alternativeEvaluation",
     });
+  });
+
+  it("owner removal from a simulated-consensus issue preserves only completed previous-phase alternative evaluations", async () => {
+    const owner = await createConfirmedUser({
+      email: "owner@example.com",
+    });
+    const expert = await createConfirmedUser({
+      email: "expert@example.com",
+    });
+    const issue = await createIssueFixture({
+      ownerId: owner._id,
+      currentStage: "alternativeEvaluation",
+      consensusPhase: 2,
+      simulateConsensus: true,
+    });
+
+    await createIssueCriteriaFixture({
+      issueId: issue._id,
+      leafNames: ["Leaf criterion", "Second criterion"],
+    });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      invitationStatus: "accepted",
+      evaluationCompleted: false,
+      weightsCompleted: false,
+      entryPhase: 2,
+      entryStage: "alternativeEvaluation",
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "criteriaWeighting",
+      consensusPhase: 2,
+      completed: true,
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 1,
+      completed: true,
+      payload: { kept: true },
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 2,
+      completed: true,
+      payload: { removedCurrentPhase: true },
+    });
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      completed: false,
+      payload: { removedIncomplete: true },
+    });
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [expert.email],
+    });
+
+    const remainingEvaluations = await IssueEvaluation.find({
+      issue: issue._id,
+      expert: expert._id,
+    })
+      .sort({ stage: 1, consensusPhase: 1 })
+      .lean();
+
+    expect(remainingEvaluations).toHaveLength(2);
+    expect(remainingEvaluations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "criteriaWeighting",
+          consensusPhase: 2,
+          completed: true,
+        }),
+        expect.objectContaining({
+          stage: "alternativeEvaluation",
+          consensusPhase: 1,
+          completed: true,
+          payload: { kept: true },
+        }),
+      ])
+    );
   });
 
   it("owner cannot remove themself from their own issue", async () => {

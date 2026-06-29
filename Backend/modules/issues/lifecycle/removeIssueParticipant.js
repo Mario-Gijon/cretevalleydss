@@ -1,10 +1,10 @@
-import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
 import { mapIssueStageToExitStage } from "./mapIssueStageToExitStage.js";
 import { registerUserExit } from "./leaveActiveIssue.js";
 import { deleteIssueCascade } from "./deleteIssueCascade.js";
+import { cleanupIssueEvaluationsForExpertExit } from "./cleanupIssueEvaluationsForExpertExit.js";
 import { resolveIssueExitPhase } from "./resolveIssueExitPhase.js";
 import { applyOptionalSession } from "../../../utils/common/mongoose.js";
 import { createInternalError } from "../../../utils/common/errors.js";
@@ -47,14 +47,12 @@ export const removeIssueParticipantFromActiveIssue = async ({
   reason,
   session = null,
 }) => {
-  const [deleteIssueEvaluationsResult] = await Promise.all([
-    applyOptionalSession(
-      IssueEvaluation.deleteMany({
-        issue: issue._id,
-        expert: userId,
-      }),
-      session
-    ),
+  const [evaluationCleanupResult] = await Promise.all([
+    cleanupIssueEvaluationsForExpertExit({
+      issue,
+      expertId: userId,
+      session,
+    }),
     applyOptionalSession(
       Notification.deleteMany({
         issue: issue._id,
@@ -68,7 +66,7 @@ export const removeIssueParticipantFromActiveIssue = async ({
     ),
   ]);
 
-  const { deletedCount } = deleteIssueEvaluationsResult;
+  const deletedCount = evaluationCleanupResult?.deletedCount;
 
   if (typeof deletedCount !== "number") {
     throw createInternalError(

@@ -2,7 +2,7 @@ import { Notification } from "../../../models/Notifications.js";
 import { Participation } from "../../../models/Participations.js";
 
 import {
-  cleanupExpertDraftsOnExit,
+  cleanupIssueEvaluationsForExpertExit,
   registerUserExit,
 } from "../lifecycle/index.js";
 import { isSingleLeafCriterionCount } from "../shared/participantEntry.js";
@@ -91,8 +91,8 @@ export const removeExpertsFromActiveIssue = async ({
 
     if (!participation) continue;
 
-    await cleanupExpertDraftsOnExit({
-      issueId: issue._id,
+    await cleanupIssueEvaluationsForExpertExit({
+      issue,
       expertId: expertUser._id,
       session,
     });
