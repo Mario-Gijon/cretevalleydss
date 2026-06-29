@@ -5,7 +5,10 @@
   "devDependencies": {
     "@redocly/cli": "^2.24.1",
     "@types/bun": "latest",
-    "jsdoc": "^4.0.5"
+    "jsdoc": "^4.0.5",
+    "mongodb-memory-server": "^11.2.0",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.9"
   },
   "peerDependencies": {
     "typescript": "^5.7.2"
@@ -34,6 +37,8 @@
   "scripts": {
     "dev": "NODE_ENV=development nodemon server.js",
     "start": "NODE_ENV=production node server.js",
+    "test": "vitest run --maxWorkers=1",
+    "test:watch": "vitest --watch --maxWorkers=1",
     "docs:openapi": "node scripts/generate-openapi.mjs",
     "docs:openapi:lint": "redocly lint openapi/openapi.json",
     "docs:openapi:bundle": "redocly bundle openapi/openapi.json -o openapi/bundled-openapi.json",
