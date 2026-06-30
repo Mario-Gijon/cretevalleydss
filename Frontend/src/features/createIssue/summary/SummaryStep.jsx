@@ -33,16 +33,14 @@ import "dayjs/locale/en-gb";
 
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriterionAccordion } from "./components/CriterionAccordion";
-import {
-  getRenderableNormalModelParameters,
-  ModelParameters,
-} from "./components/ModelParameters";
+import { ModelParameters } from "./components/ModelParameters";
 import { useCreateIssueContext } from "../context/createIssue.context";
 
 import { getRemainingTime } from "../logic/createIssueDates";
 import { setDefaults } from "../logic/createIssueModelParameters";
 import { buildDefaultCriteriaWeightingConfig } from "../logic/createIssueCriteriaWeighting";
 import { modelUsesExpertWeights } from "../logic/createIssueExpertWeights";
+import { getRenderableNormalModelParameters } from "./logic/getRenderableNormalModelParameters";
 import {
   getExpressionDomainAssignmentsByCriterion,
 } from "../../../utils/domainAssignments.utils";

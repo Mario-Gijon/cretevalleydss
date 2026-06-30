@@ -54,6 +54,16 @@ Admin/model catalog coverage includes:
 - model manifest sync panel tab/search-param handling, session success messages, detail dialog, sync confirm, and visibility confirm flows
 - admin service route contracts for model catalog and manifest endpoints
 
+Final frontend hardening coverage includes:
+
+- login and signup form rendering, validation, success, error, and navigation behavior
+- snackbar provider/context rendering, show/close behavior, and provider-usage guard
+- pending backend change utility expiration/update/clear handling
+- applying-backend-changes system page missing/stale state coverage
+- private layout shell smoke plus dashboard navbar admin visibility and logout flow
+- build validation coverage via `bun run build`
+- Fast Refresh warning cleanup for create-issue summary model parameters by moving non-component exports out of component files
+
 Deferred coverage:
 
 - create issue wizard full UI interaction
@@ -63,3 +73,4 @@ Deferred coverage:
 - Playwright/E2E
 - Python/DecisionModelsService model correctness
 - real model sync/backend integration
+- deep visual/chart testing
