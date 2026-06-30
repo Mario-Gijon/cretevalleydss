@@ -41,6 +41,7 @@ import {
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
 import {
+  buildCreateIssueEqualManualWeights,
   isFuzzyCriteriaWeightModel,
   modelUsesCriteriaWeights,
   resolveFuzzyCriteriaWeightValueCount,
@@ -54,29 +55,7 @@ import { resolveAssignedDomainIds } from "../logic/createIssueAssignedDomains";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { CriteriaWeightingPanel } from "./components/CriteriaWeightingPanel";
 
-const WEIGHT_DECIMALS = 3;
 const WEIGHT_SUM_TOLERANCE = 0.01;
-
-const roundCriterionWeight = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed)
-    ? Number(parsed.toFixed(WEIGHT_DECIMALS))
-    : "";
-};
-
-const buildRoundedEqualWeights = (criteria) => {
-  const criterionIds = (Array.isArray(criteria) ? criteria : [])
-    .map((criterion) => criterion?.id)
-    .filter(Boolean);
-  if (criterionIds.length === 0) return {};
-
-  const equalWeight = roundCriterionWeight(1 / criterionIds.length);
-
-  return criterionIds.reduce((acc, criterionId) => {
-    acc[criterionId] = equalWeight;
-    return acc;
-  }, {});
-};
 
 const applyTypeToBranch = (criterion, type) => ({
   ...criterion,
@@ -243,7 +222,7 @@ export const CriteriaStep = () => {
     if (creatorWeightMode !== "manual") return false;
     if (criterionNames.length === 0) return false;
 
-    const equalWeights = buildRoundedEqualWeights(leafCriterionItems);
+    const equalWeights = buildCreateIssueEqualManualWeights(leafCriterionItems);
 
     return leafCriterionItems.every((criterion) => {
       const current = Number(weightsByCriterion?.[criterion.id]);
@@ -252,7 +231,7 @@ export const CriteriaStep = () => {
       return (
         Number.isFinite(current) &&
         Number.isFinite(expected) &&
-        Math.abs(current - expected) <= 0.0005
+        Math.abs(current - expected) <= 0.000001
       );
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,7 +251,7 @@ export const CriteriaStep = () => {
         ...(criteriaWeightingConfig?.payload || {}),
         weightsByCriterion: {
           ...(criteriaWeightingConfig?.payload?.weightsByCriterion || {}),
-          [criterionId]: value === "" ? "" : roundCriterionWeight(value),
+          [criterionId]: value === "" ? "" : value,
         },
       },
     });
@@ -282,8 +261,8 @@ export const CriteriaStep = () => {
     updateWeightsConfigFromUser({
       ...(criteriaWeightingConfig || {}),
       payload: {
-        ...(criteriaWeightingConfig?.payload || {}),
-        weightsByCriterion: buildRoundedEqualWeights(leafCriterionItems),
+      ...(criteriaWeightingConfig?.payload || {}),
+        weightsByCriterion: buildCreateIssueEqualManualWeights(leafCriterionItems),
       },
     });
   };

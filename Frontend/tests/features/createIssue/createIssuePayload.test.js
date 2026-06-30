@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { buildCreateIssueRequestPayload } from "../../../src/features/createIssue/logic/createIssuePayload.js";
 import {
+  buildCreateIssueEqualManualWeights,
+} from "../../../src/features/createIssue/logic/createIssueCriteriaWeighting.js";
+import {
   createIssueAlternativesFixture,
   createIssueCriteriaTreeFixture,
   createIssueExpertWeightsFixture,
@@ -64,6 +67,19 @@ const buildPayloadInput = (overrides = {}) => {
 };
 
 describe("createIssuePayload", () => {
+  const sixLeafCriteria = Array.from({ length: 6 }, (_, index) => ({
+    id: `criterion-${index + 1}`,
+    name: `Criterion ${index + 1}`,
+    children: [],
+  }));
+  const sixCriteriaTree = [
+    {
+      id: "criterion-root",
+      name: "Impact",
+      children: sixLeafCriteria,
+    },
+  ];
+
   it("builds the expected payload for a valid create-issue request", () => {
     const result = buildCreateIssueRequestPayload(buildPayloadInput());
 
@@ -256,5 +272,39 @@ describe("createIssuePayload", () => {
       ok: false,
       errorMessage: "This model does not support multiple criteria.",
     });
+  });
+
+  it("accepts a payload with six equally weighted manual criteria", () => {
+    const weightsByCriterion = buildCreateIssueEqualManualWeights(sixLeafCriteria);
+
+    const result = buildCreateIssueRequestPayload(
+      buildPayloadInput({
+        selectedModel: criteriaWeightModelFixture,
+        allData: {
+          selectedModel: criteriaWeightModelFixture,
+          criteria: sixCriteriaTree,
+          expertWeights: null,
+          criteriaWeightingConfig: {
+            ...createIssueManualCriteriaWeightingConfigFixture,
+            payload: {
+              weightsByCriterion,
+            },
+          },
+        },
+        criteria: sixCriteriaTree,
+        criteriaWeightingConfig: {
+          ...createIssueManualCriteriaWeightingConfigFixture,
+          payload: {
+            weightsByCriterion,
+          },
+        },
+        expertWeights: null,
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.criteriaWeightingConfig.payload.weightsByCriterion).toEqual(
+      weightsByCriterion
+    );
   });
 });

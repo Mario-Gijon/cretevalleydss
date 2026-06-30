@@ -62,7 +62,7 @@ export const buildEqualWeightsByCriterion = (leafCriteria) => {
 export const formatDisplayNumber = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return "";
-  return parsed.toFixed(2);
+  return parsed.toFixed(3);
 };
 
 export const buildEqualValues = ({ count, total }) => {

@@ -5,6 +5,7 @@ import {
   isDeepEqual,
   isPlainObject,
   buildDefaultFuzzyWeightVector,
+  buildEqualWeightsByCriterion,
 } from "./createIssueCriteriaWeightValues";
 import { resolveAssignedDomainIds } from "./createIssueAssignedDomains";
 
@@ -15,6 +16,9 @@ export const modelUsesCriteriaWeights = (model) =>
 
 export const isFuzzyCriteriaWeightModel = (model) =>
   modelUsesCriteriaWeights(model) && model?.usesFuzzyCriteriaWeights === true;
+
+export const buildCreateIssueEqualManualWeights = (leafCriteria) =>
+  buildEqualWeightsByCriterion(leafCriteria);
 
 export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
   if (!modelUsesCriteriaWeights(selectedModel)) {

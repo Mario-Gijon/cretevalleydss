@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildCreateIssueEqualManualWeights,
   buildDefaultCriteriaWeightingConfig,
   isCreateIssueCriteriaWeightingConfigOnDefault,
   resolveAssignedFuzzyValueCount,
+  validateCreateIssueManualCriteriaWeighting,
 } from "../../../src/features/createIssue/logic/createIssueCriteriaWeighting.js";
 import {
   createIssueByCriterionExpressionDomainConfigFixture,
@@ -19,6 +21,12 @@ import {
 } from "../../mocks/fixtures/createIssue.fixtures.js";
 
 describe("createIssueCriteriaWeighting", () => {
+  const sixLeafCriteria = Array.from({ length: 6 }, (_, index) => ({
+    id: `criterion-${index + 1}`,
+    name: `Criterion ${index + 1}`,
+    children: [],
+  }));
+
   it("builds the default config for the selected model type", () => {
     expect(buildDefaultCriteriaWeightingConfig(null)).toBeNull();
     expect(buildDefaultCriteriaWeightingConfig(criteriaWeightModelFixture)).toEqual({
@@ -142,5 +150,77 @@ describe("createIssueCriteriaWeighting", () => {
       "criterion-cost": 0.6,
       "criterion-speed": 0.4,
     });
+  });
+
+  it("builds equal manual weights for six criteria that validate successfully", () => {
+    const weightsByCriterion = buildCreateIssueEqualManualWeights(sixLeafCriteria);
+    const total = Object.values(weightsByCriterion).reduce(
+      (sum, value) => sum + Number(value),
+      0
+    );
+
+    expect(weightsByCriterion).toEqual({
+      "criterion-1": 0.166667,
+      "criterion-2": 0.166667,
+      "criterion-3": 0.166667,
+      "criterion-4": 0.166667,
+      "criterion-5": 0.166667,
+      "criterion-6": 0.166665,
+    });
+    expect(total).toBe(1);
+    expect(
+      validateCreateIssueManualCriteriaWeighting({
+        criteriaWeightingConfig: {
+          mode: "creatorManual",
+          payload: { weightsByCriterion },
+        },
+        leafCriteria: sixLeafCriteria,
+      })
+    ).toBeNull();
+  });
+
+  it("builds equal manual weights for three criteria that still validate", () => {
+    const weightsByCriterion = buildCreateIssueEqualManualWeights(
+      createIssueLeafCriteriaFixture.concat({
+        id: "criterion-quality",
+        name: "Quality",
+        children: [],
+      })
+    );
+
+    expect(
+      validateCreateIssueManualCriteriaWeighting({
+        criteriaWeightingConfig: {
+          mode: "creatorManual",
+          payload: { weightsByCriterion },
+        },
+        leafCriteria: createIssueLeafCriteriaFixture.concat({
+          id: "criterion-quality",
+          name: "Quality",
+          children: [],
+        }),
+      })
+    ).toBeNull();
+  });
+
+  it("still rejects invalid rounded manual weights when the stored total exceeds tolerance", () => {
+    expect(
+      validateCreateIssueManualCriteriaWeighting({
+        criteriaWeightingConfig: {
+          mode: "creatorManual",
+          payload: {
+            weightsByCriterion: {
+              "criterion-1": 0.167,
+              "criterion-2": 0.167,
+              "criterion-3": 0.167,
+              "criterion-4": 0.167,
+              "criterion-5": 0.167,
+              "criterion-6": 0.167,
+            },
+          },
+        },
+        leafCriteria: sixLeafCriteria,
+      })
+    ).toBe("Manual weights must sum to 1.");
   });
 });

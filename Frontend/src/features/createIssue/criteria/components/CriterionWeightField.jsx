@@ -39,7 +39,7 @@ export const CriterionWeightField = ({
           type="number"
           color="info"
           size="small"
-          value={isSingleLeaf ? 1 : (manualValue ?? "")}
+          value={isSingleLeaf ? "1.000" : (manualValue === "" ? "" : formatDisplayNumber(manualValue))}
           disabled={isSingleLeaf}
           onChange={(event) => {
             if (isSingleLeaf) return;
@@ -49,10 +49,10 @@ export const CriterionWeightField = ({
             onManualChange?.(
               parsed === "" || Number.isNaN(parsed)
                 ? ""
-                : Number(Math.max(0, Math.min(1, parsed)).toFixed(3))
+                : Math.max(0, Math.min(1, parsed))
             );
           }}
-          inputProps={{ min: 0, max: 1, step: 0.1 }}
+          inputProps={{ min: 0, max: 1, step: 0.001 }}
           sx={weightInputSx}
         />
       </Stack>
