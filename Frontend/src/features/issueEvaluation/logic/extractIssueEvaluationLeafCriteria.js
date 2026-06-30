@@ -8,17 +8,23 @@
 export const extractLeafCriteria = (criteria = [], parentPath = []) => {
   let leafCriteria = [];
 
-  criteria.forEach((criterion) => {
-    const currentPath = [...parentPath, criterion.name];
+  (Array.isArray(criteria) ? criteria : []).forEach((criterion) => {
+    const criterionName = String(criterion?.name || "").trim();
+    if (!criterionName) {
+      return;
+    }
 
-    if (criterion.isLeaf) {
+    const currentPath = [...parentPath, criterionName];
+    const children = Array.isArray(criterion?.children) ? criterion.children : [];
+
+    if (criterion?.isLeaf === true || children.length === 0) {
       leafCriteria.push({ ...criterion, path: currentPath });
       return;
     }
 
     leafCriteria = [
       ...leafCriteria,
-      ...extractLeafCriteria(criterion.children || [], currentPath),
+      ...extractLeafCriteria(children, currentPath),
     ];
   });
 

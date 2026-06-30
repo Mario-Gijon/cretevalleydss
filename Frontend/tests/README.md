@@ -7,6 +7,7 @@ Current coverage layers:
 - app routing guards
 - dashboard/listing/action coverage for active issues and finished issues
 - create issue logic and hook coverage
+- evaluation UI flow coverage
 
 Dashboard/listing/action coverage includes:
 
@@ -27,10 +28,19 @@ Create issue coverage includes:
 - create-issue payload validation and serialization
 - `useCreateIssue` initialization, persistence, derived state, and completion flows
 
+Evaluation UI flow coverage includes:
+
+- evaluation context building and defensive leaf extraction
+- evaluation service wrapper contracts
+- evaluation dialog host unsupported/supported structure routing
+- evaluation structure dialog load, fallback, draft save, submit, clear-all, dirty-close, and collective visibility flows
+- lightweight shell/save/submit dialog actions
+- active-issue overlay evaluation host smoke coverage
+
 Deferred coverage:
 
 - create issue wizard full UI interaction
-- evaluation UI flows
+- structure-specific complex rating matrix tests
 - finished issue dialog deep charts and tables
 - Playwright/E2E
 - Python/DecisionModelsService model correctness

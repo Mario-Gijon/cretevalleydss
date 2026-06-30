@@ -6,23 +6,46 @@ const toNonEmptyStringOrNull = (value) => {
   return normalized ? normalized : null;
 };
 
+const resolveObjectOrNull = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : null;
+
 export const buildEvaluationContext = ({
   issue = null,
   stage = null,
   structure = null,
-  model = null,
-  parameters = null,
-  alternatives = null,
-  criteriaTree = null,
+  model = undefined,
+  parameters = undefined,
+  alternatives = undefined,
+  criteriaTree = undefined,
   leafCriteria = null,
 }) => {
+  const issueModel = resolveObjectOrNull(issue?.model);
+  const explicitParameters = resolveObjectOrNull(parameters);
+  const issueParameters =
+    resolveObjectOrNull(issue?.parameters) ||
+    resolveObjectOrNull(issue?.modelParameters) ||
+    resolveObjectOrNull(issue?.modelParams?.base?.paramsSaved) ||
+    resolveObjectOrNull(issue?.modelParams?.base?.paramsResolved);
+  const resolvedAlternatives = Array.isArray(alternatives)
+    ? alternatives
+    : Array.isArray(issue?.alternatives)
+      ? issue.alternatives
+      : [];
+  const resolvedCriteriaTree = Array.isArray(criteriaTree)
+    ? criteriaTree
+    : Array.isArray(issue?.criteriaTree)
+      ? issue.criteriaTree
+      : Array.isArray(issue?.criteria)
+        ? issue.criteria
+        : [];
+  const resolvedLeafCriteria = Array.isArray(leafCriteria)
+    ? leafCriteria
+    : extractLeafCriteria(resolvedCriteriaTree);
   const parameterContext = buildParameterContext({
-    model,
-    alternatives: Array.isArray(alternatives) ? alternatives : [],
-    criteriaTree: Array.isArray(criteriaTree) ? criteriaTree : [],
-    leafCriteria: Array.isArray(leafCriteria)
-      ? leafCriteria
-      : extractLeafCriteria(Array.isArray(criteriaTree) ? criteriaTree : []),
+    model: resolveObjectOrNull(model) || issueModel,
+    alternatives: resolvedAlternatives,
+    criteriaTree: resolvedCriteriaTree,
+    leafCriteria: resolvedLeafCriteria,
   });
   const consensusPhase = Number.isInteger(issue?.consensusPhase)
     ? issue.consensusPhase
@@ -50,15 +73,10 @@ export const buildEvaluationContext = ({
       stage: toNonEmptyStringOrNull(stage ?? structure?.stage),
     },
     model: parameterContext.model,
-    modelParameters:
-      parameters?.modelParameters && typeof parameters.modelParameters === "object"
-        ? parameters.modelParameters
-        : {},
-    criteriaWeightingParameters:
-      parameters?.criteriaWeightingParameters &&
-      typeof parameters.criteriaWeightingParameters === "object"
-        ? parameters.criteriaWeightingParameters
-        : {},
+    modelParameters: resolveObjectOrNull(explicitParameters?.modelParameters) || issueParameters || {},
+    criteriaWeightingParameters: resolveObjectOrNull(
+      explicitParameters?.criteriaWeightingParameters
+    ) || {},
     alternatives: parameterContext.alternatives,
     criteriaTree: parameterContext.criteriaTree,
     leafCriteria: parameterContext.leafCriteria,

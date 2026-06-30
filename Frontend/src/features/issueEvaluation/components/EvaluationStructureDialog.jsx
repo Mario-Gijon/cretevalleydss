@@ -62,20 +62,21 @@ const EvaluationStructureDialog = ({
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const viewRef = useRef(null);
   const evaluationPayloadRef = useRef(evaluationPayload);
+  const issueId = String(issue?.id ?? issue?._id ?? "").trim() || null;
 
   useEffect(() => {
     evaluationPayloadRef.current = evaluationPayload;
   }, [evaluationPayload]);
 
   useEffect(() => {
-    if (!isOpen || !issue?.id) return;
+    if (!isOpen || !issueId) return;
 
     const loadEvaluation = async () => {
       setLoading(true);
       setEvaluationContext(fallbackEvaluationContext);
       setEvaluationPayload({});
       try {
-        const response = await fetchIssueEvaluation(issue.id, stage);
+        const response = await fetchIssueEvaluation(issueId, stage);
         const responseEvaluationContext = response?.data?.evaluationContext;
 
         if (!responseEvaluationContext) {
@@ -107,7 +108,7 @@ const EvaluationStructureDialog = ({
     };
 
     loadEvaluation();
-  }, [isOpen, issue?.id, stage, fallbackEvaluationContext, showSnackbarAlert]);
+  }, [fallbackEvaluationContext, isOpen, issueId, showSnackbarAlert, stage]);
 
   const preparePayloadRead = async () => {
     if (typeof viewRef.current?.preparePayloadRead === "function") {
@@ -127,8 +128,10 @@ const EvaluationStructureDialog = ({
     return evaluationPayloadRef.current;
   };
 
-  const handleCloseRequest = () => {
-    if (JSON.stringify(evaluationPayload) !== initialSnapshot) {
+  const handleCloseRequest = async () => {
+    const nextEvaluationPayload = await preparePayloadRead();
+
+    if (JSON.stringify(nextEvaluationPayload) !== initialSnapshot) {
       setOpenSaveDialog(true);
       return;
     }
@@ -146,7 +149,7 @@ const EvaluationStructureDialog = ({
     setLoading(true);
     setOpenSaveDialog(false);
 
-    const response = await saveIssueEvaluation(issue.id, stage, nextEvaluationPayload);
+    const response = await saveIssueEvaluation(issueId, stage, nextEvaluationPayload);
 
     setLoading(false);
 
@@ -173,7 +176,7 @@ const EvaluationStructureDialog = ({
     setLoading(true);
 
     const response = await submitIssueEvaluationPayload(
-      issue.id,
+      issueId,
       stage,
       nextEvaluationPayload
     );
