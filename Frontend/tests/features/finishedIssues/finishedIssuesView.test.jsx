@@ -79,7 +79,9 @@ describe("useFinishedIssuesView", () => {
   it("handleRefresh calls fetchFinishedIssues and resets refreshing", async () => {
     const { result } = renderHook(() => useFinishedIssuesView());
 
-    await result.current.handleRefresh();
+    await act(async () => {
+      await result.current.handleRefresh();
+    });
 
     expect(fetchFinishedIssues).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(result.current.refreshing).toBe(false));

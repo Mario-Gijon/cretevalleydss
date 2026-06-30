@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { screen } from "@testing-library/react";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
@@ -38,10 +38,12 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleRemoveIssue();
-    await result.current.handleLeaveIssue();
-    await result.current.handleComputeWeights();
-    await result.current.handleResolveIssue();
+    await act(async () => {
+      await result.current.handleRemoveIssue();
+      await result.current.handleLeaveIssue();
+      await result.current.handleComputeWeights();
+      await result.current.handleResolveIssue();
+    });
 
     expect(removeIssue).not.toHaveBeenCalled();
     expect(leaveIssue).not.toHaveBeenCalled();
@@ -61,16 +63,20 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleRemoveIssue();
+    await act(async () => {
+      await result.current.handleRemoveIssue();
+    });
 
     expect(removeIssue).toHaveBeenCalledWith("issue-1");
     expect(deps.showSnackbarAlert).toHaveBeenCalledWith(
       "Issue removed successfully",
       "success"
     );
-    expect(deps.refresh).toHaveBeenCalledTimes(1);
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.remove).toBe(false));
+    await waitFor(() => {
+      expect(deps.refresh).toHaveBeenCalledTimes(1);
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.remove).toBe(false);
+    });
   });
 
   it("keeps the drawer open on remove error and resets busy state", async () => {
@@ -86,14 +92,18 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleRemoveIssue();
+    await act(async () => {
+      await result.current.handleRemoveIssue();
+    });
 
     expect(deps.showSnackbarAlert).toHaveBeenCalledWith(
       "Error removing issue",
       "error"
     );
-    expect(deps.closeDrawer).not.toHaveBeenCalled();
-    await waitFor(() => expect(result.current.busy.remove).toBe(false));
+    await waitFor(() => {
+      expect(deps.closeDrawer).not.toHaveBeenCalled();
+      expect(result.current.busy.remove).toBe(false);
+    });
   });
 
   it("leaves the selected issue on success", async () => {
@@ -109,16 +119,20 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleLeaveIssue();
+    await act(async () => {
+      await result.current.handleLeaveIssue();
+    });
 
     expect(leaveIssue).toHaveBeenCalledWith("issue-2");
     expect(deps.showSnackbarAlert).toHaveBeenCalledWith(
       "Issue left successfully",
       "success"
     );
-    expect(deps.refresh).toHaveBeenCalledTimes(1);
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.leave).toBe(false));
+    await waitFor(() => {
+      expect(deps.refresh).toHaveBeenCalledTimes(1);
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.leave).toBe(false);
+    });
   });
 
   it("computes weights and refreshes finished issues when the stage finishes the issue", async () => {
@@ -135,7 +149,9 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleComputeWeights();
+    await act(async () => {
+      await result.current.handleComputeWeights();
+    });
 
     expect(computeEvaluationStage).toHaveBeenCalledWith(
       "issue-3",
@@ -145,9 +161,11 @@ describe("useActiveIssueActions", () => {
       "Weights computed successfully",
       "success"
     );
-    expect(deps.refresh).toHaveBeenCalledWith({ alsoFinished: true });
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.compute).toBe(false));
+    await waitFor(() => {
+      expect(deps.refresh).toHaveBeenCalledWith({ alsoFinished: true });
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.compute).toBe(false);
+    });
   });
 
   it("resolves the selected issue and refreshes finished issues when the backend marks it finished", async () => {
@@ -164,15 +182,19 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleResolveIssue();
+    await act(async () => {
+      await result.current.handleResolveIssue();
+    });
 
     expect(computeEvaluationStage).toHaveBeenCalledWith(
       "issue-4",
       "alternativeEvaluation"
     );
-    expect(deps.refresh).toHaveBeenCalledWith({ alsoFinished: true });
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.resolve).toBe(false));
+    await waitFor(() => {
+      expect(deps.refresh).toHaveBeenCalledWith({ alsoFinished: true });
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.resolve).toBe(false);
+    });
   });
 
   it("handles compute errors with the current UX behavior", async () => {
@@ -188,15 +210,19 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleComputeWeights();
+    await act(async () => {
+      await result.current.handleComputeWeights();
+    });
 
     expect(deps.showSnackbarAlert).toHaveBeenCalledWith(
       "Error computing weights",
       "error"
     );
-    expect(deps.setLoading).toHaveBeenCalledWith(false);
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.compute).toBe(false));
+    await waitFor(() => {
+      expect(deps.setLoading).toHaveBeenCalledWith(false);
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.compute).toBe(false);
+    });
   });
 
   it("handles resolve errors with the current UX behavior", async () => {
@@ -212,15 +238,19 @@ describe("useActiveIssueActions", () => {
       })
     );
 
-    await result.current.handleResolveIssue();
+    await act(async () => {
+      await result.current.handleResolveIssue();
+    });
 
     expect(deps.showSnackbarAlert).toHaveBeenCalledWith(
       "Error resolving issue",
       "error"
     );
-    expect(deps.setLoading).toHaveBeenCalledWith(false);
-    expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.busy.resolve).toBe(false));
+    await waitFor(() => {
+      expect(deps.setLoading).toHaveBeenCalledWith(false);
+      expect(deps.closeDrawer).toHaveBeenCalledTimes(1);
+      expect(result.current.busy.resolve).toBe(false);
+    });
   });
 });
 
