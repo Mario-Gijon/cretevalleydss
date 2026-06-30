@@ -52,6 +52,21 @@ const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
 dayjs.extend(utc);
 
+const criteriaTreeHasMissingIds = (items) => {
+  if (!Array.isArray(items)) {
+    return false;
+  }
+
+  return items.some((criterion) => {
+    const criterionId = String(criterion?.id || "").trim();
+    if (!criterionId) {
+      return true;
+    }
+
+    return criteriaTreeHasMissingIds(criterion?.children);
+  });
+};
+
 /**
  * Gestiona el estado y reglas del flujo createIssue.
  *
@@ -179,6 +194,14 @@ export const useCreateIssue = () => {
   useEffect(() => {
     setCriteria((previous) => ensureCriteriaTreeIds(previous));
   }, []);
+
+  useEffect(() => {
+    if (!criteriaTreeHasMissingIds(criteria)) {
+      return;
+    }
+
+    setCriteria((previous) => ensureCriteriaTreeIds(previous));
+  }, [criteria]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -340,8 +363,10 @@ export const useCreateIssue = () => {
   const handleClosureDateError = (selectedDate) => {
     if (!selectedDate) {
       setClosureDateError(false);
-      if (closureDate) handleClosureDateError(closureDate);
-      return;
+      if (closureDate) {
+        return handleClosureDateError(closureDate);
+      }
+      return false;
     }
 
     const closureDateObj = dayjs(selectedDate);
@@ -351,11 +376,12 @@ export const useCreateIssue = () => {
       if (closureDateObj.isBefore(today.add(2, "day"), "day")) {
         setClosureDateError(true);
         showSnackbarAlert("Closure date is not valid", "error");
-        return;
+        return true;
       }
     }
 
     setClosureDateError(false);
+    return false;
   };
 
   const allData = useMemo(() => {
@@ -400,9 +426,9 @@ export const useCreateIssue = () => {
    * @returns {Promise<void>}
    */
   const handleComplete = async () => {
-    handleClosureDateError();
+    const hasClosureDateError = handleClosureDateError();
 
-    if (closureDateError) return;
+    if (hasClosureDateError || closureDateError) return;
     if (issueNameError) return;
 
     validateIssueName(issueName, setIssueNameError);

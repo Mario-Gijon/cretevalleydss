@@ -96,6 +96,15 @@ export const validateExpertWeights = ({
       };
     }
 
+    if (weight < 0 || weight > 1) {
+      return {
+        valid: false,
+        total: null,
+        tone: "error",
+        message: "Expert weights must be between 0 and 1.",
+      };
+    }
+
     total += weight;
   }
 

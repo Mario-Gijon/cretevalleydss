@@ -43,6 +43,33 @@ export const buildCreateIssueRequestPayload = ({
   expertWeights,
   paramValues,
 }) => {
+  if (!selectedModel || typeof selectedModel !== "object") {
+    return {
+      ok: false,
+      errorMessage: "You must select a model before creating the issue.",
+    };
+  }
+
+  const normalizedAlternatives = Array.isArray(allData?.alternatives)
+    ? allData.alternatives
+    : [];
+  if (normalizedAlternatives.length === 0) {
+    return {
+      ok: false,
+      errorMessage: "You must add at least one alternative before creating the issue.",
+    };
+  }
+
+  const normalizedExperts = Array.isArray(allData?.addedExperts)
+    ? allData.addedExperts
+    : [];
+  if (normalizedExperts.length === 0) {
+    return {
+      ok: false,
+      errorMessage: "You must select at least one expert before creating the issue.",
+    };
+  }
+
   const modelRequiresConsensus = selectedModel?.supportsConsensus === true;
 
   const { validDomainIdSet } = resolveExpressionDomainOptions(
@@ -52,6 +79,13 @@ export const buildCreateIssueRequestPayload = ({
   );
 
   const leafCriteria = getLeafCriteria(criteria);
+  if (leafCriteria.length === 0) {
+    return {
+      ok: false,
+      errorMessage: "You must define at least one criterion before creating the issue.",
+    };
+  }
+
   if (
     !validateExpressionDomainConfig({
       expressionDomainConfig,
@@ -194,11 +228,11 @@ export const buildCreateIssueRequestPayload = ({
     criteriaWeightingConfig
   );
   issueInfoPayload.addedExperts = modelNeedsExpertWeights
-    ? allData.addedExperts.map((email) => ({
+    ? normalizedExperts.map((email) => ({
         email,
         weight: expertWeights[email],
       }))
-    : allData.addedExperts;
+    : normalizedExperts;
 
   return {
     ok: true,

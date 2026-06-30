@@ -4,6 +4,31 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 import { server } from "../mocks/server.js";
 
+const createStorageMock = () => {
+  const storage = new Map();
+
+  return {
+    getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+    setItem: (key, value) => {
+      storage.set(String(key), String(value));
+    },
+    removeItem: (key) => {
+      storage.delete(String(key));
+    },
+    clear: () => {
+      storage.clear();
+    },
+  };
+};
+
+if (!globalThis.localStorage) {
+  const localStorageMock = createStorageMock();
+  globalThis.localStorage = localStorageMock;
+  if (typeof window !== "undefined") {
+    window.localStorage = localStorageMock;
+  }
+}
+
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
