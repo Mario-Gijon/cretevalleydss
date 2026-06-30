@@ -107,7 +107,7 @@ export const getRoundsCount = (issueInfo) => {
   const rankings = issueInfo?.alternativesRankings;
   if (Array.isArray(rankings) && rankings.length) return rankings.length;
 
-  return 0;
+  return 1;
 };
 
 export const getLeafCriteriaNamesFallback = (summaryCriteria) => {

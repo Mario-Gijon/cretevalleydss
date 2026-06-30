@@ -42,6 +42,9 @@ const unwrap = (response) =>
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const getSelectedIssueId = (selectedIssue) =>
+  selectedIssue?.id || selectedIssue?._id || null;
+
 const safeJsonStringify = (value) => {
   try {
     if (value === null || value === undefined) return "";
@@ -113,6 +116,7 @@ export const useFinishedIssueDialogView = ({
   const [modelsCatalog, setModelsCatalog] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [paramsJson, setParamsJson] = useState("{}");
+  const selectedIssueId = getSelectedIssueId(selectedIssue);
 
   useEffect(() => {
     baseIssueRef.current = issue;
@@ -130,7 +134,7 @@ export const useFinishedIssueDialogView = ({
   };
 
   useEffect(() => {
-    const issueId = selectedIssue?.id;
+    const issueId = selectedIssueId;
     if (!issueId || !openFinishedIssueDialog) return;
 
     let cancelled = false;
@@ -197,7 +201,7 @@ export const useFinishedIssueDialogView = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedIssue?.id, openFinishedIssueDialog]);
+  }, [selectedIssueId, openFinishedIssueDialog]);
 
   const ensureRunLoaded = async (runKey) => {
     if (!runKey || runKey === "base") return null;
@@ -343,7 +347,13 @@ export const useFinishedIssueDialogView = ({
     }).format(number);
 
   const handleChangePhase = (index) => {
-    setCurrentPhaseIndex(index);
+    const parsedIndex = Number(index);
+    const maxPhaseIndex = Math.max(0, roundsCount - 1);
+    const nextPhaseIndex = Number.isFinite(parsedIndex)
+      ? Math.min(maxPhaseIndex, Math.max(0, Math.trunc(parsedIndex)))
+      : 0;
+
+    setCurrentPhaseIndex(nextPhaseIndex);
     setActiveStep(0);
   };
 
@@ -428,7 +438,7 @@ export const useFinishedIssueDialogView = ({
   };
 
   const handleAddModelRun = async () => {
-    if (!selectedIssue?.id) return;
+    if (!selectedIssueId) return;
 
     if (!selectedModelId) {
       showSnackbarAlert("Please select a model.", "warning");
@@ -504,7 +514,7 @@ export const useFinishedIssueDialogView = ({
       setAddLoading(true);
 
       const response = await createIssueScenario({
-        issueId: selectedIssue.id,
+        issueId: selectedIssueId,
         scenarioName: scenarioName?.trim() || undefined,
         targetModelId: selectedModelId,
         paramOverrides: modelParameters,
@@ -518,7 +528,7 @@ export const useFinishedIssueDialogView = ({
 
       const scenarioId = response?.data?.scenarioId || null;
 
-      await refreshRuns(selectedIssue.id);
+      await refreshRuns(selectedIssueId);
 
       if (scenarioId) {
         setSelectedRunKey(scenarioId);
@@ -559,7 +569,7 @@ export const useFinishedIssueDialogView = ({
         return next;
       });
 
-      await refreshRuns(selectedIssue.id);
+      await refreshRuns(selectedIssueId);
     } catch {
       showSnackbarAlert("Unexpected error removing model.", "error");
     } finally {

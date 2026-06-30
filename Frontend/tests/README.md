@@ -37,6 +37,14 @@ Evaluation UI flow coverage includes:
 - lightweight shell/save/submit dialog actions
 - active-issue overlay evaluation host smoke coverage
 
+Finished issue dialog coverage includes:
+
+- phase/round selection helpers and malformed payload fallback handling
+- scenario compatibility and scenario payload transformation helpers
+- model output derivation across consensus phases and scenario views
+- finished issue ratings hook phase switching, collective fallback, and anonymized/deleted expert handling
+- finished issue dialog hook loading, round navigation, scenario selection caching, and add/remove model run flows
+
 Deferred coverage:
 
 - create issue wizard full UI interaction
