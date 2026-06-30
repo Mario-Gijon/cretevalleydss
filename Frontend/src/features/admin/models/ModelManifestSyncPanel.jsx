@@ -22,6 +22,7 @@ import {
   normalizeModelManifestDryRunRows,
   sortModelManifestRowsByName,
 } from "./logic/buildModelManifestRows";
+import { isModelActiveInCatalog } from "./logic/formatModelManifestDisplay";
 
 const MODEL_MANIFEST_TABS = {
   CATALOG: 0,
@@ -119,6 +120,8 @@ export default function ModelManifestSyncPanel() {
     const rows = mergeModelCatalogRowsWithDryRun(catalogRows, dryRunRows);
     return sortModelManifestRowsByName(rows);
   }, [catalogRows, dryRunRows]);
+  const pendingVisibilityActive = isModelActiveInCatalog(pendingVisibilityRow || {});
+  const pendingVisibilityEnabling = Boolean(pendingVisibilityRow) && !pendingVisibilityActive;
 
   const handleConfirmSync = async () => {
     const success = await syncManifest();
@@ -232,19 +235,17 @@ export default function ModelManifestSyncPanel() {
           if (!visibilityBusyId) setPendingVisibilityRow(null);
         }}
         title={
-          pendingVisibilityRow?.visibleInIssueCreation !== false
-            ? "Disable model?"
-            : "Enable model?"
+          pendingVisibilityActive ? "Disable model?" : "Enable model?"
         }
         subtitle={
           pendingVisibilityRow?.implementationStatus === "scaffold" &&
-          pendingVisibilityRow?.visibleInIssueCreation === false
+          pendingVisibilityEnabling
             ? "This model is marked as scaffold. It may return MODEL_UNDER_DEVELOPMENT until implemented."
             : "This updates the admin-controlled publication flag for issue creation."
         }
         tone={
           pendingVisibilityRow?.implementationStatus === "scaffold" &&
-          pendingVisibilityRow?.visibleInIssueCreation === false
+          pendingVisibilityEnabling
             ? "warning"
             : "info"
         }
@@ -258,13 +259,9 @@ export default function ModelManifestSyncPanel() {
           {
             id: "confirm-visibility",
             label:
-              pendingVisibilityRow?.visibleInIssueCreation !== false
-                ? "Disable"
-                : "Enable",
+              pendingVisibilityActive ? "Disable" : "Enable",
             color:
-              pendingVisibilityRow?.visibleInIssueCreation !== false
-                ? "warning"
-                : "success",
+              pendingVisibilityActive ? "warning" : "success",
             variant: "contained",
             loading: visibilityBusyId === pendingVisibilityRow?.mongoId,
             onClick: async () => {
@@ -276,7 +273,7 @@ export default function ModelManifestSyncPanel() {
         ]}
       >
         {pendingVisibilityRow?.implementationStatus === "scaffold" &&
-        pendingVisibilityRow?.visibleInIssueCreation === false ? (
+        pendingVisibilityEnabling ? (
           <Alert severity="warning" variant="outlined" sx={{ mt: 1.25 }}>
             This model is marked as scaffold. It may return MODEL_UNDER_DEVELOPMENT until implemented.
           </Alert>

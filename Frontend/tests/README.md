@@ -45,10 +45,21 @@ Finished issue dialog coverage includes:
 - finished issue ratings hook phase switching, collective fallback, and anonymized/deleted expert handling
 - finished issue dialog hook loading, round navigation, scenario selection caching, and add/remove model run flows
 
+Admin/model catalog coverage includes:
+
+- admin route guard and internal admin routing behavior
+- model manifest row normalization, merge, sorting, flattening, and display helper coverage
+- admin model catalog hook loading/error handling and quiet refresh behavior
+- model manifest dry-run, sync, and catalog visibility action hook flows
+- model manifest sync panel tab/search-param handling, session success messages, detail dialog, sync confirm, and visibility confirm flows
+- admin service route contracts for model catalog and manifest endpoints
+
 Deferred coverage:
 
 - create issue wizard full UI interaction
 - structure-specific complex rating matrix tests
 - finished issue dialog deep charts and tables
+- full admin experts/issues/reports/logs UI
 - Playwright/E2E
 - Python/DecisionModelsService model correctness
+- real model sync/backend integration
