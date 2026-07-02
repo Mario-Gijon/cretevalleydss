@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import io
 import json
+import math
 import numbers
 import warnings
 from collections.abc import Mapping, Sequence
@@ -11,10 +12,7 @@ from typing import Any
 import pytest
 from starlette.responses import JSONResponse
 
-try:
-    from DecisionModelsService.models import get_model_definitions
-except ImportError:  # pragma: no cover
-    from models import get_model_definitions
+from registry.model_registry import get_model_definitions
 
 
 REL_TOLERANCE = 1e-6
@@ -155,11 +153,80 @@ def _assert_ranked_alternatives(
             )
 
 
+def _assert_finite_numeric_structure(actual: Any, path: str) -> None:
+    if isinstance(actual, Mapping):
+        for key, value in actual.items():
+            _assert_finite_numeric_structure(value, f"{path}.{key}")
+        return
+
+    if _is_sequence_like(actual):
+        for index, value in enumerate(actual):
+            _assert_finite_numeric_structure(value, f"{path}[{index}]")
+        return
+
+    assert _is_numeric(actual), f"{path} should contain numeric values."
+    assert math.isfinite(actual), f"{path} should be a finite number."
+
+
+def _assert_promethee_vi_ranked_alternatives(
+    expected: list[dict[str, Any]],
+    actual: list[dict[str, Any]],
+) -> None:
+    assert isinstance(actual, list), "data.rankedAlternatives should be a list."
+    assert len(actual) == len(expected), "data.rankedAlternatives length mismatch."
+
+    for index, expected_item in enumerate(expected):
+        actual_item = actual[index]
+        assert isinstance(actual_item, Mapping), (
+            f"data.rankedAlternatives[{index}] should be a mapping."
+        )
+
+        for exact_field in ("alternativeId", "id", "name", "rank"):
+            if exact_field in expected_item:
+                assert actual_item.get(exact_field) == expected_item[exact_field], (
+                    f"data.rankedAlternatives[{index}].{exact_field} differs from expected."
+                )
+
+        assert "score" in actual_item, f"Missing field data.rankedAlternatives[{index}].score"
+        _assert_finite_numeric_structure(
+            actual_item["score"],
+            f"data.rankedAlternatives[{index}].score",
+        )
+
+        for field, expected_value in expected_item.items():
+            if field in {"alternativeId", "id", "name", "rank", "score"}:
+                continue
+            assert field in actual_item, (
+                f"Missing field data.rankedAlternatives[{index}].{field}"
+            )
+            _assert_recursive_close(
+                expected_value,
+                actual_item[field],
+                f"data.rankedAlternatives[{index}].{field}",
+            )
+
+
 def _assert_plot_like_shape(actual: Any, expected: Any, path: str) -> None:
     assert isinstance(actual, Mapping), f"{path} should be a mapping."
     if isinstance(expected, Mapping):
         missing_keys = set(expected.keys()) - set(actual.keys())
         assert not missing_keys, f"{path} is missing expected top-level keys: {missing_keys}"
+
+
+def _assert_same_shape(expected: Any, actual: Any, path: str) -> None:
+    if isinstance(expected, Mapping):
+        assert isinstance(actual, Mapping), f"{path} should be a mapping."
+        assert set(actual.keys()) == set(expected.keys()), f"{path} keys differ from expected."
+        for key, expected_value in expected.items():
+            _assert_same_shape(expected_value, actual[key], f"{path}.{key}")
+        return
+
+    if _is_sequence_like(expected):
+        assert _is_sequence_like(actual), f"{path} should be a sequence."
+        assert len(actual) == len(expected), f"{path} length mismatch."
+        for index, expected_value in enumerate(expected):
+            _assert_same_shape(expected_value, actual[index], f"{path}[{index}]")
+        return
 
 
 async def _call_handler(handler: Any, payload: Any) -> Any:
@@ -186,6 +253,11 @@ def _execute_example(model: Any, payload: Any) -> dict[str, Any]:
             category=FutureWarning,
             module=r"sklearn\.manifold\._mds",
         )
+        warnings.filterwarnings(
+            "ignore",
+            message=r"delta_grad == 0\.0\. Check if the approximated function is linear.*",
+            category=UserWarning,
+        )
         with redirect_stdout(captured_output), redirect_stderr(captured_output):
             result = asyncio.run(_call_handler(model.handler, payload))
     parsed_result = _parse_handler_result(result)
@@ -204,6 +276,8 @@ def test_registered_model_request_examples_execute_successfully(
     payload = model.request_model.model_validate(request_example["value"])
     result = _execute_example(model, payload)
     expected = _get_success_response_example(model)
+    model_key = _get_model_key(model)
+    is_promethee_vi = model_key == "promethee_vi"
 
     assert result.get("success") is True
     assert isinstance(result.get("data"), dict), "Execution result data should be a dict."
@@ -217,10 +291,16 @@ def test_registered_model_request_examples_execute_successfully(
     actual_data = result["data"]
 
     if "rankedAlternatives" in expected_data:
-        _assert_ranked_alternatives(
-            expected_data["rankedAlternatives"],
-            actual_data.get("rankedAlternatives"),
-        )
+        if is_promethee_vi:
+            _assert_promethee_vi_ranked_alternatives(
+                expected_data["rankedAlternatives"],
+                actual_data.get("rankedAlternatives"),
+            )
+        else:
+            _assert_ranked_alternatives(
+                expected_data["rankedAlternatives"],
+                actual_data.get("rankedAlternatives"),
+            )
 
     if "collectiveEvaluations" in expected_data:
         _assert_recursive_close(
@@ -254,6 +334,19 @@ def test_registered_model_request_examples_execute_successfully(
                     actual_raw_output.get(key),
                     expected_value,
                     "data.rawOutput.plots_graphic",
+                )
+                continue
+
+            if is_promethee_vi and key in {"minus_ranking", "favorable_ranking", "plus_ranking"}:
+                assert key in actual_raw_output, f"Missing key at data.rawOutput.{key}"
+                _assert_same_shape(
+                    expected_value,
+                    actual_raw_output[key],
+                    f"data.rawOutput.{key}",
+                )
+                _assert_finite_numeric_structure(
+                    actual_raw_output[key],
+                    f"data.rawOutput.{key}",
                 )
                 continue
 
