@@ -1,7 +1,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_bwm
-from .examples import BWM_RESPONSE_EXAMPLES
+from .examples import BWM_REQUEST_EXAMPLES, BWM_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
     api_model_key="bwm",
@@ -18,6 +18,7 @@ MODEL_DEFINITION = ModelDefinition(
         "criterion, and the remaining criteria. In this system it supports the "
         "weighting workflow rather than acting as a final issue resolution model."
     ),
+    request_examples=BWM_REQUEST_EXAMPLES,
     response_examples=BWM_RESPONSE_EXAMPLES,
     display_name="BWM",
     more_info_url=None,
