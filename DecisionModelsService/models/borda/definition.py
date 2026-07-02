@@ -30,6 +30,6 @@ MODEL_DEFINITION = ModelDefinition(
         uses_criteria_weights=False,
         uses_expert_weights=False,
         uses_fuzzy_criteria_weights=False,
-        uses_criterion_types=False,
+        uses_criterion_types=True,
         supported_domains=["numericContinuous", "numericDiscrete"],
     )
