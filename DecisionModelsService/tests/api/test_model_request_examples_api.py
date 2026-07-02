@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from registry.model_registry import get_model_definitions
