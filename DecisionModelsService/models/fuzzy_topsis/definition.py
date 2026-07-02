@@ -1,7 +1,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_fuzzy_topsis
-from .examples import FUZZY_TOPSIS_RESPONSE_EXAMPLES
+from .examples import FUZZY_TOPSIS_REQUEST_EXAMPLES, FUZZY_TOPSIS_RESPONSE_EXAMPLES
 
 MODEL_DEFINITION = ModelDefinition(
     api_model_key="fuzzy_topsis",
@@ -17,6 +17,7 @@ MODEL_DEFINITION = ModelDefinition(
         "evaluations. It is useful when expert assessments are uncertain, qualitative, "
         "or expressed through linguistic labels instead of precise numeric values."
     ),
+    request_examples=FUZZY_TOPSIS_REQUEST_EXAMPLES,
     response_examples=FUZZY_TOPSIS_RESPONSE_EXAMPLES,
     display_name="Fuzzy TOPSIS",
     more_info_url=None,
