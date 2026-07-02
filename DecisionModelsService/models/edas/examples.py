@@ -1,33 +1,194 @@
 from typing import Any
 
+EDAS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
+    "basic_numeric_matrix": {
+        "summary": "Basic numeric matrix request",
+        "description": (
+            "Executes EDAS with three alternatives, three criteria, two experts, "
+            "numeric ratings, criterion weights, and benefit/cost criterion types."
+        ),
+        "value": {
+            "context": {
+                "issue": {
+                    "id": "issue-edas-001",
+                    "name": "Supplier selection with EDAS",
+                    "consensusThreshold": None,
+                    "consensusMaxPhases": None,
+                },
+                "alternatives": [
+                    {"id": "alt-supplier-a", "name": "Supplier A"},
+                    {"id": "alt-supplier-b", "name": "Supplier B"},
+                    {"id": "alt-supplier-c", "name": "Supplier C"},
+                ],
+                "criteria": [
+                    {
+                        "id": "crit-quality",
+                        "name": "Quality",
+                        "type": "benefit",
+                    },
+                    {
+                        "id": "crit-cost",
+                        "name": "Cost",
+                        "type": "cost",
+                    },
+                    {
+                        "id": "crit-delivery",
+                        "name": "Delivery reliability",
+                        "type": "benefit",
+                    },
+                ],
+                "consensusPhase": 0,
+                "previousStageResult": None,
+                "structure": {
+                    "key": "alternativeCriteriaMatrix",
+                    "stage": "alternativeEvaluation",
+                },
+            },
+            "modelParameters": {
+                "weights": {
+                    "crit-quality": 0.45,
+                    "crit-cost": 0.35,
+                    "crit-delivery": 0.20,
+                }
+            },
+            "evaluations": [
+                {
+                    "expert": {
+                        "id": "expert-ana",
+                        "name": "Ana Torres",
+                        "email": "ana.torres@example.com",
+                    },
+                    "payload": {
+                        "alt-supplier-a": {
+                            "crit-quality": {"value": 8.0},
+                            "crit-cost": {"value": 6.0},
+                            "crit-delivery": {"value": 7.0},
+                        },
+                        "alt-supplier-b": {
+                            "crit-quality": {"value": 7.0},
+                            "crit-cost": {"value": 5.0},
+                            "crit-delivery": {"value": 8.0},
+                        },
+                        "alt-supplier-c": {
+                            "crit-quality": {"value": 9.0},
+                            "crit-cost": {"value": 8.0},
+                            "crit-delivery": {"value": 6.0},
+                        },
+                    },
+                },
+                {
+                    "expert": {
+                        "id": "expert-luis",
+                        "name": "Luis Romero",
+                        "email": "luis.romero@example.com",
+                    },
+                    "payload": {
+                        "alt-supplier-a": {
+                            "crit-quality": {"value": 7.0},
+                            "crit-cost": {"value": 6.0},
+                            "crit-delivery": {"value": 8.0},
+                        },
+                        "alt-supplier-b": {
+                            "crit-quality": {"value": 8.0},
+                            "crit-cost": {"value": 4.0},
+                            "crit-delivery": {"value": 9.0},
+                        },
+                        "alt-supplier-c": {
+                            "crit-quality": {"value": 9.0},
+                            "crit-cost": {"value": 7.0},
+                            "crit-delivery": {"value": 7.0},
+                        },
+                    },
+                },
+            ],
+        },
+    }
+}
+
 
 EDAS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     "success": {
         "summary": "Successful execution",
+        "description": "Successful EDAS execution for the basic numeric matrix request.",
         "value": {
             "success": True,
             "message": "EDAS executed successfully",
             "data": {
                 "rankedAlternatives": [
-                    {"alternativeId": "alt-2", "name": "A2", "score": 0.8812, "rank": 1},
-                    {"alternativeId": "alt-3", "name": "A3", "score": 0.7465, "rank": 2},
-                    {"alternativeId": "alt-1", "name": "A1", "score": 0.5381, "rank": 3},
+                    {
+                        "alternativeId": "alt-supplier-b",
+                        "name": "Supplier B",
+                        "score": 0.8768248175182481,
+                        "rank": 1,
+                    },
+                    {
+                        "alternativeId": "alt-supplier-a",
+                        "name": "Supplier A",
+                        "score": 0.37682481751824815,
+                        "rank": 2,
+                    },
+                    {
+                        "alternativeId": "alt-supplier-c",
+                        "name": "Supplier C",
+                        "score": 0.24635036496350365,
+                        "rank": 3,
+                    },
                 ],
                 "collectiveEvaluations": {
-                    "alt-1": {"crit-cost": 0.45, "crit-benefit": 0.62},
-                    "alt-2": {"crit-cost": 0.31, "crit-benefit": 0.84},
-                    "alt-3": {"crit-cost": 0.38, "crit-benefit": 0.78},
+                    "alt-supplier-a": {
+                        "crit-quality": 7.5,
+                        "crit-cost": 6.0,
+                        "crit-delivery": 7.5,
+                    },
+                    "alt-supplier-b": {
+                        "crit-quality": 7.5,
+                        "crit-cost": 4.5,
+                        "crit-delivery": 8.5,
+                    },
+                    "alt-supplier-c": {
+                        "crit-quality": 9.0,
+                        "crit-cost": 7.5,
+                        "crit-delivery": 6.5,
+                    },
                 },
                 "plotsGraphic": {
-                    "expert_points": [[-0.1187, 0.0492], [0.1187, -0.0492]],
-                    "collective_point": [0.0074, -0.0031],
+                    "expert_points": [
+                        [1.3331, 0.001],
+                        [-1.2713, -0.4013],
+                    ],
+                    "collective_point": [-0.0206, 0.1334],
                 },
                 "consensusMeasure": None,
                 "rawOutput": {
-                    "collective_ranking": [1, 2, 0],
-                    "collective_scores": [0.5381, 0.8812, 0.7465],
-                    "a_s": [0.5381, 0.8812, 0.7465],
-                    "weights_used": [0.5, 0.5],
+                    "collective_matrix": [
+                        [7.5, 6.0, 7.5],
+                        [7.5, 4.5, 8.5],
+                        [9.0, 7.5, 6.5],
+                    ],
+                    "matrix_used": [
+                        [7.5, 6.0, 7.5],
+                        [7.5, 4.5, 8.5],
+                        [9.0, 7.5, 6.5],
+                    ],
+                    "collective_scores": [
+                        0.37682481751824815,
+                        0.8768248175182481,
+                        0.24635036496350365,
+                    ],
+                    "collective_ranking": [1, 0, 2],
+                    "a_s": [
+                        0.37682481751824815,
+                        0.8768248175182481,
+                        0.24635036496350365,
+                    ],
+                    "weights_used": [0.45, 0.35, 0.2],
+                    "plots_graphic": {
+                        "expert_points": [
+                            [1.3331, 0.001],
+                            [-1.2713, -0.4013],
+                        ],
+                        "collective_point": [-0.0206, 0.1334],
+                    },
                 },
             },
         },
@@ -43,4 +204,4 @@ EDAS_RESPONSE_EXAMPLES: dict[str, dict[str, Any]] = {
     },
 }
 
-__all__ = ["EDAS_RESPONSE_EXAMPLES"]
+__all__ = ["EDAS_REQUEST_EXAMPLES", "EDAS_RESPONSE_EXAMPLES"]
