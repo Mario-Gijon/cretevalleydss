@@ -51,7 +51,8 @@ def _get_request_example(model: ModelDefinition) -> dict[str, Any] | None:
 def _get_response_example(model: ModelDefinition) -> dict[str, Any] | None:
     """Extrae el ejemplo principal de éxito del modelo."""
 
-    success_value = model.response_examples.get("success", {}).get("value")
+    success_example = model.response_examples.get("success")
+    success_value = success_example.get("value") if isinstance(success_example, dict) else None
 
     return success_value if isinstance(success_value, dict) else None
 
