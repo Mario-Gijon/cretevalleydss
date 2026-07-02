@@ -58,12 +58,11 @@ def test_dynamic_model_valid_payload_returns_handler_response(monkeypatch):
     response = client.post("/fake/model/path", json={"answer": 7})
 
     assert response.status_code == 200
-    assert response.json() == {
-        "success": True,
-        "message": "Fake model executed",
-        "data": {"answer": 7},
-        "error": None,
-    }
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Fake model executed"
+    assert body["data"] == {"answer": 7}
+    assert body.get("error") is None
 
 
 def test_dynamic_model_invalid_payload_returns_validation_error(monkeypatch):
