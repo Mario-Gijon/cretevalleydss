@@ -112,69 +112,6 @@ def _load_fastapi_app() -> FastAPI:
     )
 
 
-def _normalise_path(path: str) -> str:
-    return path.rstrip("/") or "/"
-
-
-def _get_candidate_model_paths(model: Any) -> list[str]:
-    model_key = _get_model_key(model)
-    candidates = []
-    for attr_name in (
-        "api_path",
-        "path",
-        "route_path",
-        "endpoint_path",
-        "api_endpoint",
-        "url_path",
-    ):
-        value = getattr(model, attr_name, None)
-        if isinstance(value, str) and value.strip():
-            candidates.append(_normalise_path(value))
-
-    candidates.extend(
-        [
-            _normalise_path(f"/{model_key}"),
-            _normalise_path(f"/models/{model_key}"),
-            _normalise_path(f"/api/{model_key}"),
-            _normalise_path(f"/api/models/{model_key}"),
-            _normalise_path(f"/decision-models/{model_key}"),
-            _normalise_path(f"/decision-models/models/{model_key}"),
-        ]
-    )
-
-    unique_candidates = []
-    seen = set()
-    for candidate in candidates:
-        if candidate not in seen:
-            seen.add(candidate)
-            unique_candidates.append(candidate)
-    return unique_candidates
-
-
-def _resolve_model_endpoint_path(app: FastAPI, model: Any) -> str:
-    model_key = _get_model_key(model)
-    candidate_paths = set(_get_candidate_model_paths(model))
-
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        if "POST" not in route.methods:
-            continue
-
-        route_path = _normalise_path(route.path)
-        route_name = getattr(route, "name", "") or ""
-        endpoint_name = getattr(getattr(route, "endpoint", None), "__name__", "") or ""
-
-        if route_path in candidate_paths:
-            return route.path
-        if model_key == route_name or model_key == endpoint_name:
-            return route.path
-        if route_path.endswith(f"/{model_key}"):
-            return route.path
-
-    raise AssertionError(f"Unable to resolve a POST API endpoint for model '{model_key}'.")
-
-
 def _post_example(client: TestClient, path: str, payload: dict[str, Any]) -> Any:
     captured_output = io.StringIO()
     with warnings.catch_warnings():
@@ -193,7 +130,7 @@ def _post_example(client: TestClient, path: str, payload: dict[str, Any]) -> Any
 
 
 @pytest.fixture(scope="module")
-def api_client() -> TestClient:
+def api_client() -> TestClient: # type: ignore
     with TestClient(_load_fastapi_app()) as client:
         yield client
 
@@ -208,7 +145,7 @@ def test_registered_model_request_examples_execute_via_api(
         pytest.skip("No request example provided for this model.")
 
     endpoint_path = model.api_endpoint_path
-    response = api_client.post(endpoint_path, json=request_example["value"])
+    response = _post_example(api_client, endpoint_path, request_example["value"])
     expected = _get_success_response_example(model)
 
     assert 200 <= response.status_code < 300, (
