@@ -1,7 +1,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_aras
-from .examples import ARAS_RESPONSE_EXAMPLES
+from .examples import ARAS_REQUEST_EXAMPLES, ARAS_RESPONSE_EXAMPLES
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -19,6 +19,7 @@ MODEL_DEFINITION = ModelDefinition(
             "each alternative with an optimal reference alternative to produce a final "
             "ranking."
         ),
+        request_examples=ARAS_REQUEST_EXAMPLES,
         response_examples=ARAS_RESPONSE_EXAMPLES,
         display_name="ARAS",
         more_info_url=None,
