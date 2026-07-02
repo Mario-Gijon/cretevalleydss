@@ -1,7 +1,7 @@
 from registry.model_definition import ModelDefinition
 from schemas.model_requests import GenericModelExecutionRequest
 from .executor import execute_borda
-from .examples import BORDA_RESPONSE_EXAMPLES
+from .examples import BORDA_REQUEST_EXAMPLES, BORDA_RESPONSE_EXAMPLES
 
 
 MODEL_DEFINITION = ModelDefinition(
@@ -19,6 +19,7 @@ MODEL_DEFINITION = ModelDefinition(
             "clear and interpretable group ranking is needed without requiring criterion "
             "weights."
         ),
+        request_examples=BORDA_REQUEST_EXAMPLES,
         response_examples=BORDA_RESPONSE_EXAMPLES,
         display_name="BORDA",
         more_info_url=None,
