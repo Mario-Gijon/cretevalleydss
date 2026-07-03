@@ -22,6 +22,12 @@ import {
   getSupportedDomainPools,
 } from "../../../utils/domainAssignments.utils";
 import { getLinguisticMembershipDefinition } from "../../../utils/linguisticMembershipFunctions";
+import {
+  formatExpressionDomainDisplayLabel,
+  getExpressionDomainNumericRange,
+  isNumericContinuousExpressionDomain,
+  isNumericDiscreteExpressionDomain,
+} from "../../../utils/expressionDomains";
 
 const rowSx = {
   width: "100%",
@@ -99,14 +105,14 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
     numericDomains.forEach((domain) =>
       opts.push({
         value: String(domain._id),
-        label: domain.name,
+        label: formatExpressionDomainDisplayLabel(domain),
       })
     );
 
     linguisticDomains.forEach((domain) =>
       opts.push({
         value: String(domain._id),
-        label: domain.name,
+        label: formatExpressionDomainDisplayLabel(domain),
       })
     );
 
@@ -170,18 +176,16 @@ export const DomainAssignments = ({ allData, expressionDomains, domainAssignment
 
 
     const numericContinuousDefault = numericDomains.find(
-      (domain) =>
-        (domain?.numericRange?.step === null || domain?.numericRange?.step === undefined) &&
-        domain?.numericRange?.min === 0 &&
-        domain?.numericRange?.max === 1
+      (domain) => {
+        const { min, max } = getExpressionDomainNumericRange(domain);
+        return isNumericContinuousExpressionDomain(domain) && min === 0 && max === 1;
+      }
     );
     const numericDiscreteDefault = numericDomains.find(
-      (domain) =>
-        Number.isFinite(domain?.numericRange?.step) &&
-        domain.numericRange.step > 0 &&
-        domain?.numericRange?.min === 0 &&
-        domain?.numericRange?.max === 9 &&
-        domain?.numericRange?.step === 1
+      (domain) => {
+        const { min, max, step } = getExpressionDomainNumericRange(domain);
+        return isNumericDiscreteExpressionDomain(domain) && min === 0 && max === 9 && step === 1;
+      }
     );
 
     const fallback = supportsNumeric

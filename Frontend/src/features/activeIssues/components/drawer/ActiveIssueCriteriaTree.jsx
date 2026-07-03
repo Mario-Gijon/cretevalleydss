@@ -9,6 +9,12 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { getIssueDetailsDrawerPanelSx } from "../../styles/ActiveIssueDrawer.styles";
+import {
+  getExpressionDomainDisplayMeta,
+  getExpressionDomainLabelCount,
+  isLinguisticFuzzyExpressionDomain,
+  isLinguisticOrdinalExpressionDomain,
+} from "../../../../utils/expressionDomains";
 
 /**
  * Badge visual para el tipo de criterio.
@@ -51,31 +57,17 @@ const ActiveIssueCriteriaTypeBadge = ({ type }) => {
   );
 };
 
-const getExpressionDomainTypeLabel = (type) => {
-  const normalized = String(type || "").trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized === "numericContinuous" || normalized === "numericDiscrete") {
-    return "numeric";
-  }
-
-  return normalized;
-};
-
 const ActiveIssueCriteriaExpressionDomain = ({ expressionDomain }) => {
   const theme = useTheme();
-  const domainName = String(
-    expressionDomain?.name || expressionDomain?.label || ""
-  ).trim();
-  const domainType = getExpressionDomainTypeLabel(expressionDomain?.type);
-  const linguisticLabelCount = Array.isArray(expressionDomain?.linguisticLabels)
-    ? expressionDomain.linguisticLabels.length
-    : 0;
+  const displayMeta = getExpressionDomainDisplayMeta(expressionDomain);
+  const linguisticLabelCount = getExpressionDomainLabelCount(expressionDomain);
+  const showLabelCount =
+    (isLinguisticOrdinalExpressionDomain(expressionDomain) ||
+      isLinguisticFuzzyExpressionDomain(expressionDomain)) &&
+    Number.isInteger(linguisticLabelCount) &&
+    linguisticLabelCount > 0;
 
-  if (!domainName && !domainType) {
+  if (!displayMeta.name && !displayMeta.typeKey) {
     return null;
   }
 
@@ -89,10 +81,10 @@ const ActiveIssueCriteriaExpressionDomain = ({ expressionDomain }) => {
         variant="caption"
         sx={{ color: "text.secondary", fontWeight: 800 }}
       >
-        {[domainName, domainType].filter(Boolean).join(" · ")}
+        {displayMeta.label}
       </Typography>
 
-      {domainType === "linguistic" && linguisticLabelCount > 0 ? (
+      {showLabelCount ? (
         <Box
           sx={{
             px: 0.75,

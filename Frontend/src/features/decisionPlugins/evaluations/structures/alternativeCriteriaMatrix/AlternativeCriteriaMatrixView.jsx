@@ -1,42 +1,11 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { DataGrid, useGridApiRef } from "@mui/x-data-grid";
-import { Box, Chip, MenuItem, Select, Stack, useTheme } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import { Box, Chip, Stack, Typography, useTheme } from "@mui/material";
+
+import { getExpressionDomainTypeEntry } from "../../../expressionDomains";
 import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
-
-const getNumericRange = (domain) => {
-  const min = Number(domain?.numericRange?.min ?? domain?.range?.min);
-  const max = Number(domain?.numericRange?.max ?? domain?.range?.max);
-  const step = Number(domain?.numericRange?.step ?? domain?.range?.step);
-
-  return {
-    min: Number.isFinite(min) ? min : 0,
-    max: Number.isFinite(max) ? max : 1,
-    step: Number.isFinite(step) && step > 0 ? step : null,
-  };
-};
-
-const getDomainType = (domain) => String(domain?.type || "").trim().toLowerCase();
-
-const alignToStep = ({ value, min, max, step }) => {
-  if (!Number.isFinite(step) || step <= 0) {
-    return Math.round(value * 100) / 100;
-  }
-
-  const snapped = min + Math.round((value - min) / step) * step;
-  const bounded = Math.min(max, Math.max(min, snapped));
-
-  return Math.round(bounded * 100) / 100;
-};
-
-const isStepAligned = ({ value, min, max, step }) => {
-  if (!Number.isFinite(step) || step <= 0) {
-    return true;
-  }
-
-  const aligned = alignToStep({ value, min, max, step });
-  return Math.abs(aligned - value) < 1e-9;
-};
+import { getExpressionDomainTypeKey } from "../../../../../utils/expressionDomains";
 
 const normalizeCell = (cell, fallbackDomain) => {
   if (cell === null || cell === undefined) {
@@ -71,14 +40,6 @@ const getCollectiveDisplayValue = (cell) => {
   return null;
 };
 
-const formatDisplayValue = (value) => {
-  if (Array.isArray(value)) {
-    return `[${value.join(", ")}]`;
-  }
-
-  return value;
-};
-
 const hasCollectiveValue = (value) =>
   value !== null && value !== undefined && value !== "";
 
@@ -94,7 +55,6 @@ const AlternativeCriteriaMatrixView = (
   ref
 ) => {
   const theme = useTheme();
-  const apiRef = useGridApiRef();
   const alternativeItems = Array.isArray(evaluationContext?.alternatives)
     ? evaluationContext.alternatives
         .map((alternative) => ({
@@ -112,7 +72,6 @@ const AlternativeCriteriaMatrixView = (
         }))
         .filter((criterion) => criterion.id && criterion.name)
     : [];
-  const criterionById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
   const resolvedPayload =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload
@@ -156,13 +115,9 @@ const AlternativeCriteriaMatrixView = (
       }}
     >
       <Box
-        component="span"
         sx={{
           flex: 1,
           minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
           display: "flex",
           alignItems: "center",
         }}
@@ -185,6 +140,19 @@ const AlternativeCriteriaMatrixView = (
     </Stack>
   );
 
+  const updateCellValue = ({ rowId, criterionId, expressionDomain, nextValue }) => {
+    setEvaluationPayload((previous) => ({
+      ...(previous && typeof previous === "object" ? previous : {}),
+      [rowId]: {
+        ...((previous && previous[rowId]) || {}),
+        [criterionId]: {
+          value: nextValue,
+          expressionDomain,
+        },
+      },
+    }));
+  };
+
   const columns = [
     {
       field: "alternativeLabel",
@@ -195,8 +163,6 @@ const AlternativeCriteriaMatrixView = (
     ...criteria.map((criterion) => ({
       field: criterion.id,
       headerName: criterion.name,
-      editable:
-        permitEdit && getDomainType(criterion.expressionDomain) === "numeric",
       flex: 1,
       minWidth: 120,
       valueGetter: (params) => {
@@ -212,165 +178,64 @@ const AlternativeCriteriaMatrixView = (
         const collectiveValue = getCollectiveDisplayValue(
           resolvedCollectivePayload?.[rowId]?.[criterion.id]
         );
-        const domain = cell.domain;
-        const domainType = getDomainType(domain);
-        const value = cell.value;
+        const expressionDomain = cell.domain;
+        const typeKey = getExpressionDomainTypeKey(expressionDomain);
+        const typeEntry = getExpressionDomainTypeEntry(typeKey);
+        const EvaluationInput = typeEntry?.EvaluationInput || null;
 
-        if (domainType === "numeric") {
-          return renderCellWithCollective({
-            leftContent: value !== null && value !== "" ? value : "",
-            collectiveValue,
-          });
-        }
-
-        if (domainType === "linguistic") {
-          const labels = domain?.linguisticLabels || domain?.labels || [];
-
-          if (!permitEdit) {
-            return renderCellWithCollective({
-              leftContent: formatDisplayValue(value ?? ""),
-              collectiveValue,
-            });
-          }
-
+        if (!typeKey || !EvaluationInput) {
           return renderCellWithCollective({
             leftContent: (
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Select
-                  size="small"
-                  fullWidth
-                  color="secondary"
-                  value={value || ""}
-                  onMouseDown={(event) => {
-                    event.stopPropagation();
-                  }}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                  }}
-                  onChange={(event) => {
-                    const newValue = event.target.value;
-
-                    setEvaluationPayload((previous) => ({
-                      ...(previous && typeof previous === "object" ? previous : {}),
-                      [rowId]: {
-                        ...((previous && previous[rowId]) || {}),
-                        [criterion.id]: {
-                          value: newValue,
-                          expressionDomain: domain,
-                        },
-                      },
-                    }));
-                  }}
-                  sx={{ minWidth: 120 }}
-                >
-                  <MenuItem value="">
-                    <em>Select label</em>
-                  </MenuItem>
-                  {labels.map((label, index) => (
-                    <MenuItem key={index} value={label.label}>
-                      {label.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </Box>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.disabled", fontWeight: 700 }}
+              >
+                {typeKey
+                  ? `Unsupported domain: ${typeKey}`
+                  : "Missing domain type"}
+              </Typography>
             ),
             collectiveValue,
           });
         }
 
-        if (domainType) {
-          return renderCellWithCollective({
-            leftContent: `Unsupported domain type: ${domain.type}`,
-            collectiveValue,
-          });
-        }
-
         return renderCellWithCollective({
-          leftContent: formatDisplayValue(value ?? ""),
+          leftContent: (
+            <Box
+              sx={{ width: "100%", minWidth: 0 }}
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <EvaluationInput
+                expressionDomain={expressionDomain}
+                value={cell.value}
+                onChange={(nextValue) => {
+                  if (!permitEdit) {
+                    return;
+                  }
+
+                  updateCellValue({
+                    rowId,
+                    criterionId: criterion.id,
+                    expressionDomain,
+                    nextValue,
+                  });
+                }}
+                disabled={!permitEdit}
+                error={false}
+                helperText=""
+              />
+            </Box>
+          ),
           collectiveValue,
         });
       },
     })),
   ];
-
-  const handleProcessRowUpdate = (newRow, oldRow) => {
-    if (!permitEdit) {
-      return oldRow;
-    }
-
-    const changedField = Object.keys(newRow).find(
-      (key) =>
-        key !== "id" &&
-        key !== "alternativeLabel" &&
-        JSON.stringify(newRow[key]) !== JSON.stringify(oldRow[key])
-    );
-
-    if (!changedField) {
-      return newRow;
-    }
-
-    const criterion = criterionById.get(changedField) || null;
-    const previousCell = normalizeCell(
-      oldRow[changedField],
-      criterion?.expressionDomain || null
-    );
-    const domain = previousCell.domain;
-    const domainType = getDomainType(domain);
-    const raw = newRow[changedField];
-    const rawValue =
-      raw && typeof raw === "object" && !Array.isArray(raw) ? raw?.value : raw;
-
-    let nextCell;
-
-    if (domainType === "numeric") {
-      if (rawValue === "" || rawValue === null || rawValue === undefined) {
-        nextCell = { value: "", expressionDomain: domain };
-      } else {
-        const numericValue = parseFloat(rawValue);
-        const { min, max, step } = getNumericRange(domain);
-
-        if (
-          Number.isNaN(numericValue) ||
-          numericValue < min ||
-          numericValue > max ||
-          !isStepAligned({
-            value: numericValue,
-            min,
-            max,
-            step,
-          })
-        ) {
-          nextCell = { value: "", expressionDomain: domain };
-        } else {
-          nextCell = {
-            value: alignToStep({
-              value: numericValue,
-              min,
-              max,
-              step,
-            }),
-            expressionDomain: domain,
-          };
-        }
-      }
-    } else if (domainType === "linguistic") {
-      nextCell = { value: rawValue ?? "", expressionDomain: domain };
-    } else {
-      nextCell = raw;
-    }
-
-    const resultRow = { ...newRow, [changedField]: nextCell };
-
-    setEvaluationPayload((previous) => ({
-      ...(previous && typeof previous === "object" ? previous : {}),
-      [resultRow.id]: {
-        ...((previous && previous[resultRow.id]) || {}),
-        [changedField]: nextCell,
-      },
-    }));
-
-    return resultRow;
-  };
 
   const rows = alternativeItems.map((alternative) => {
     const row = { id: alternative.id, alternativeLabel: alternative.name };
@@ -386,54 +251,13 @@ const AlternativeCriteriaMatrixView = (
   });
 
   const flushPendingEdits = async () => {
-    const cellModesModel = apiRef.current?.state?.cellModesModel || {};
-    const editCells = [];
-
-    for (const [rowId, fields] of Object.entries(cellModesModel)) {
-      for (const [field, config] of Object.entries(fields || {})) {
-        if (config?.mode === "edit") {
-          editCells.push({ id: rowId, field });
-        }
-      }
-    }
-
-    editCells.forEach(({ id, field }) => {
-      apiRef.current.stopCellEditMode({ id, field });
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await Promise.resolve();
   };
 
   useImperativeHandle(ref, () => ({
     flushPendingEdits,
     preparePayloadRead: flushPendingEdits,
   }));
-
-  const handleCellClick = (params) => {
-    if (!permitEdit) {
-      return;
-    }
-
-    if (params.field === "alternativeLabel") {
-      return;
-    }
-
-    const criterion = criterionById.get(params.field) || null;
-    const criterionDomainType = getDomainType(criterion?.expressionDomain);
-
-    if (criterionDomainType === "linguistic") {
-      return;
-    }
-
-    if (!params.isEditable) {
-      return;
-    }
-
-    apiRef.current.startCellEditMode({
-      id: params.id,
-      field: params.field,
-    });
-  };
 
   return (
     <Box
@@ -446,7 +270,6 @@ const AlternativeCriteriaMatrixView = (
       }}
     >
       <DataGrid
-        apiRef={apiRef}
         autoHeight
         disableColumnMenu
         disableColumnFilter
@@ -454,11 +277,9 @@ const AlternativeCriteriaMatrixView = (
         disableColumnSelector
         disableRowSelectionOnClick
         hideFooter
-        onCellClick={handleCellClick}
         density="compact"
         rows={rows}
         columns={columns}
-        processRowUpdate={handleProcessRowUpdate}
         sx={{
           ...buildEvaluationMatrixDataGridSx(theme),
         }}
@@ -468,3 +289,4 @@ const AlternativeCriteriaMatrixView = (
 };
 
 export default forwardRef(AlternativeCriteriaMatrixView);
+
