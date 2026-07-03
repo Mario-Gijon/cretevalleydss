@@ -1,0 +1,225 @@
+from pathlib import Path
+
+from schemas.scaffold_model_package import (
+    ModelPackagePreviewItem,
+    ModelPackagePreviewResponse,
+    ScaffoldValidationResult,
+)
+
+from services import model_package_apply as model_package_apply_service
+
+
+def test_model_package_preview_returns_stable_contract_without_writing_files(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    before_paths = sorted(
+        str(path.relative_to(project_root))
+        for path in project_root.rglob("*")
+    )
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/preview",
+            json=valid_model_package_payload,
+        )
+
+    after_paths = sorted(
+        str(path.relative_to(project_root))
+        for path in project_root.rglob("*")
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service"] == "model-forge"
+    assert payload["kind"] == "model-package"
+    assert payload["mode"] == "preview"
+    assert [item["kind"] for item in payload["items"]] == [
+        "model",
+        "evaluation-structure",
+    ]
+    assert all(item["status"] == "toGenerate" for item in payload["items"])
+    assert payload["validation"]["status"] == "passed"
+    assert before_paths == after_paths
+
+
+def test_model_package_preview_rejects_malformed_payload(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    payload = {
+        **valid_model_package_payload,
+        "model": {
+            **valid_model_package_payload["model"],
+            "modelKind": "unsupported-kind",
+        },
+    }
+
+    with client_factory(project_root) as client:
+        response = client.post("/scaffold/model-package/preview", json=payload)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail[0]["loc"][-1] == "modelKind"
+    assert "issue or criteriaWeighting" in detail[0]["msg"]
+
+
+def test_model_package_apply_writes_expected_files_inside_temp_project_root(
+    client_factory,
+    monkeypatch,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    monkeypatch.setattr(
+        model_package_apply_service,
+        "validate_written_scaffold_files",
+        lambda **kwargs: ScaffoldValidationResult(status="skipped", checks=[]),
+    )
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/apply",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service"] == "model-forge"
+    assert payload["kind"] == "model-package"
+    assert payload["mode"] == "apply"
+    assert any(item["status"] == "written" for item in payload["items"])
+
+    expected_files = [
+        project_root / "DecisionModelsService/models/demo_model/definition.py",
+        project_root / "DecisionModelsService/models/demo_model/executor.py",
+        project_root / "DecisionModelsService/models/demo_model/run.py",
+        project_root / "DecisionModelsService/models/demo_model/examples.py",
+        project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
+        project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/index.js",
+        project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/alternativeMatrix/AlternativeMatrixView.jsx",
+    ]
+
+    for path in expected_files:
+        assert path.exists(), f"Expected scaffold file was not written: {path}"
+        path.resolve().relative_to(project_root.resolve())
+
+
+def test_model_package_apply_rejects_partial_existing_assets_as_unsupported_operation(
+    client_factory,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    partial_model_dir = project_root / "DecisionModelsService/models/demo_model"
+    partial_model_dir.mkdir(parents=True)
+    (partial_model_dir / "definition.py").write_text("# partial\n", encoding="utf-8")
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/apply",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["message"] == "Cannot apply scaffold while partial items exist."
+    assert detail["items"][0]["kind"] == "model"
+    assert detail["items"][0]["status"] == "partial"
+
+
+def test_model_package_apply_rejects_prewrite_malformed_package(
+    client_factory,
+    monkeypatch,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    def fake_preview(*args, **kwargs):
+        return ModelPackagePreviewResponse(
+            items=[
+                ModelPackagePreviewItem(
+                    kind="model",
+                    key="demo_model",
+                    status="toGenerate",
+                    reason=None,
+                    targetBasePath="DecisionModelsService/models/demo_model",
+                    files=[
+                        {
+                            "path": "DecisionModelsService/models/demo_model/bad.py",
+                            "content": "def broken(:\n",
+                        }
+                    ],
+                )
+            ],
+            validation=ScaffoldValidationResult(status="passed", checks=[]),
+        )
+
+    monkeypatch.setattr(
+        model_package_apply_service,
+        "build_model_package_preview",
+        fake_preview,
+    )
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/apply",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["message"] == "Scaffold validation failed before files were written."
+    assert detail["validation"]["status"] == "failed"
+
+
+def test_model_package_apply_rejects_parent_traversal_paths(
+    client_factory,
+    monkeypatch,
+    project_root: Path,
+    valid_model_package_payload: dict[str, object],
+) -> None:
+    def fake_preview(*args, **kwargs):
+        return ModelPackagePreviewResponse(
+            items=[
+                ModelPackagePreviewItem(
+                    kind="model",
+                    key="demo_model",
+                    status="toGenerate",
+                    reason=None,
+                    targetBasePath="DecisionModelsService/models/demo_model",
+                    files=[
+                        {
+                            "path": "../../escape.py",
+                            "content": "print('escape')\n",
+                        }
+                    ],
+                )
+            ],
+            validation=ScaffoldValidationResult(status="passed", checks=[]),
+        )
+
+    monkeypatch.setattr(
+        model_package_apply_service,
+        "build_model_package_preview",
+        fake_preview,
+    )
+    monkeypatch.setattr(
+        model_package_apply_service,
+        "validate_written_scaffold_files",
+        lambda **kwargs: ScaffoldValidationResult(status="skipped", checks=[]),
+    )
+
+    with client_factory(project_root) as client:
+        response = client.post(
+            "/scaffold/model-package/apply",
+            json=valid_model_package_payload,
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {
+        "message": "Scaffold file path must not contain parent traversal.",
+        "path": "../../escape.py",
+    }

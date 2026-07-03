@@ -1,0 +1,125 @@
+from pathlib import Path
+
+
+def test_scaffold_assets_lists_generated_entries(
+    client_factory,
+    project_root: Path,
+) -> None:
+    model_dir = project_root / "DecisionModelsService/models/demo_model"
+    evaluation_backend = (
+        project_root
+        / "Backend/modules/decisionPlugins/evaluations/structures/benefitMatrix"
+    )
+    evaluation_frontend = (
+        project_root
+        / "Frontend/src/features/decisionPlugins/evaluations/structures/benefitMatrix"
+    )
+    parameter_backend = (
+        project_root
+        / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange"
+    )
+
+    model_dir.mkdir(parents=True)
+    evaluation_backend.mkdir(parents=True)
+    evaluation_frontend.mkdir(parents=True)
+    parameter_backend.mkdir(parents=True)
+
+    (model_dir / "definition.py").write_text("# generated\n", encoding="utf-8")
+    (evaluation_backend / "index.js").write_text(
+        "stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION\n",
+        encoding="utf-8",
+    )
+
+    with client_factory(project_root) as client:
+        response = client.get("/scaffold/assets")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service"] == "model-forge"
+    assert payload["kind"] == "scaffold-assets"
+
+    model_item = next(item for item in payload["models"] if item["key"] == "demo_model")
+    assert model_item["locations"] == ["DecisionModelsService/models/demo_model"]
+    assert model_item["missingLocations"] == []
+
+    evaluation_item = next(
+        item for item in payload["evaluationStructures"] if item["key"] == "benefitMatrix"
+    )
+    assert sorted(evaluation_item["locations"]) == [
+        "Backend/modules/decisionPlugins/evaluations/structures/benefitMatrix",
+        "Frontend/src/features/decisionPlugins/evaluations/structures/benefitMatrix",
+    ]
+    assert evaluation_item["stage"] == "alternativeEvaluation"
+
+    parameter_item = next(
+        item for item in payload["parameterStructures"] if item["key"] == "scoreRange"
+    )
+    assert parameter_item["locations"] == [
+        "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange"
+    ]
+    assert parameter_item["missingLocations"] == [
+        "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange"
+    ]
+
+
+def test_delete_scaffold_asset_removes_generated_model_directory(
+    client_factory,
+    project_root: Path,
+) -> None:
+    model_dir = project_root / "DecisionModelsService/models/demo_model"
+    model_dir.mkdir(parents=True)
+    (model_dir / "definition.py").write_text("# generated\n", encoding="utf-8")
+
+    with client_factory(project_root) as client:
+        response = client.delete("/scaffold/assets/model/demo_model")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "model-forge",
+        "kind": "scaffold-asset-delete",
+        "assetKind": "model",
+        "key": "demo_model",
+        "deletedLocations": ["DecisionModelsService/models/demo_model"],
+        "missingLocations": [],
+    }
+    assert not model_dir.exists()
+
+
+def test_delete_scaffold_asset_returns_controlled_not_found(
+    client_factory,
+    project_root: Path,
+) -> None:
+    with client_factory(project_root) as client:
+        response = client.delete("/scaffold/assets/model/missing_model")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == {
+        "message": "Asset not found.",
+        "kind": "model",
+        "key": "missing_model",
+    }
+
+
+def test_delete_scaffold_asset_rejects_invalid_kind(
+    client_factory,
+    project_root: Path,
+) -> None:
+    with client_factory(project_root) as client:
+        response = client.delete("/scaffold/assets/not-a-kind/demo_model")
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"][-1] == "kind"
+
+
+def test_delete_scaffold_asset_rejects_invalid_key_format(
+    client_factory,
+    project_root: Path,
+) -> None:
+    with client_factory(project_root) as client:
+        response = client.delete("/scaffold/assets/model/bad.key")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {
+        "message": "Asset key format is invalid.",
+        "field": "key",
+    }
