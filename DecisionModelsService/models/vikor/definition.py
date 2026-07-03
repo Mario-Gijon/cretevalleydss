@@ -30,7 +30,10 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights=False,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=True,
-    supported_domains=["numericContinuous", "numericDiscrete"],
+    supported_expression_domains=[
+        {"typeKey": "numericContinuous"},
+        {"typeKey": "numericDiscrete"},
+    ],
     parameters=[
         {
             "key": "v",

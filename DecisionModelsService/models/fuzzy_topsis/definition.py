@@ -29,5 +29,12 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights=False,
     uses_fuzzy_criteria_weights=True,
     uses_criterion_types=True,
-    supported_domains=["linguistic"],
+    supported_expression_domains=[
+        {
+            "typeKey": "linguisticFuzzy",
+            "constraints": {
+                "membershipFunction": ["triangular"],
+            },
+        }
+    ],
 )

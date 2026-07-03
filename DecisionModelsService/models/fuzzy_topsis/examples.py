@@ -2,29 +2,45 @@ from typing import Any
 
 
 FUZZY_LINGUISTIC_DOMAIN: dict[str, Any] = {
-    "type": "linguistic",
-    "linguisticLabels": [
-        {
-            "label": "Very Low",
-            "values": [0.0, 0.1, 0.3],
-        },
-        {
-            "label": "Low",
-            "values": [0.1, 0.3, 0.5],
-        },
-        {
-            "label": "Medium",
-            "values": [0.3, 0.5, 0.7],
-        },
-        {
-            "label": "High",
-            "values": [0.5, 0.7, 0.9],
-        },
-        {
-            "label": "Very High",
-            "values": [0.7, 0.9, 1.0],
-        },
-    ],
+    "name": "Triangular fuzzy linguistic",
+    "typeKey": "linguisticFuzzy",
+    "family": "linguistic",
+    "definition": {
+        "membershipFunction": "triangular",
+        "labelCount": 5,
+        "labels": [
+            {
+                "key": "very_low",
+                "label": "Very Low",
+                "index": 0,
+                "values": [0.0, 0.1, 0.3],
+            },
+            {
+                "key": "low",
+                "label": "Low",
+                "index": 1,
+                "values": [0.1, 0.3, 0.5],
+            },
+            {
+                "key": "medium",
+                "label": "Medium",
+                "index": 2,
+                "values": [0.3, 0.5, 0.7],
+            },
+            {
+                "key": "high",
+                "label": "High",
+                "index": 3,
+                "values": [0.5, 0.7, 0.9],
+            },
+            {
+                "key": "very_high",
+                "label": "Very High",
+                "index": 4,
+                "values": [0.7, 0.9, 1.0],
+            },
+        ],
+    },
 }
 
 

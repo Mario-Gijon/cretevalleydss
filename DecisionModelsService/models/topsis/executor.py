@@ -9,6 +9,10 @@ from models.shared_alternative_matrix import (
     extract_id_keyed_alternative_criteria_input,
     normalize_collective_evaluations_by_ids,
 )
+from models.shared_expression_domains import (
+    expression_domain_type_key,
+    resolve_linguistic_label_definition,
+)
 from .run import run_topsis
 
 
@@ -55,33 +59,19 @@ def _linguistic_values(
     expression_domain: dict[str, Any],
     field: str,
 ) -> list[float]:
-    normalized_label = str(label or "").strip()
-    labels = expression_domain.get("linguisticLabels")
+    label_definition = resolve_linguistic_label_definition(
+        value=label,
+        expression_domain=expression_domain,
+        field=field,
+    )
+    values = label_definition.get("values")
+    if not isinstance(values, list) or len(values) == 0:
+        raise ValueError(f"{field}.expressionDomain label values are required")
 
-    if not normalized_label:
-        raise ValueError(f"{field}.value is required")
-
-    if not isinstance(labels, list):
-        raise ValueError(f"{field}.expressionDomain.linguisticLabels is required")
-
-    for label_definition in labels:
-        if not isinstance(label_definition, dict):
-            continue
-
-        current_label = str(label_definition.get("label") or "").strip()
-        if current_label != normalized_label:
-            continue
-
-        values = label_definition.get("values")
-        if not isinstance(values, list) or len(values) == 0:
-            raise ValueError(f"{field}.expressionDomain label values are required")
-
-        return [
-            _finite_number(item, f"{field}.expressionDomain.linguisticLabels.values[{index}]")
-            for index, item in enumerate(values)
-        ]
-
-    raise ValueError(f"Unknown linguistic label '{normalized_label}'")
+    return [
+        _finite_number(item, f"{field}.expressionDomain.definition.labels[{index}].values")
+        for index, item in enumerate(values)
+    ]
 
 
 def _cell_value(cell: dict[str, Any], field: str) -> float:
@@ -90,11 +80,9 @@ def _cell_value(cell: dict[str, Any], field: str) -> float:
         raise ValueError(f"{field}.value is required")
 
     expression_domain = cell.get("expressionDomain")
-    domain_type = ""
-    if isinstance(expression_domain, dict):
-        domain_type = str(expression_domain.get("type") or "").strip().lower()
+    domain_type = expression_domain_type_key(expression_domain).lower()
 
-    if domain_type == "linguistic":
+    if domain_type.startswith("linguistic"):
         return _average(
             _linguistic_values(
                 label=value,

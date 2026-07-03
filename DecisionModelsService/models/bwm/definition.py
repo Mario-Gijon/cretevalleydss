@@ -31,6 +31,6 @@ MODEL_DEFINITION = ModelDefinition(
     uses_criteria_weights=False,
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
-    supported_domains=[],
+    supported_expression_domains=[],
     parameters=[],
 )

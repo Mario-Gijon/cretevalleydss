@@ -9,6 +9,10 @@ from models.shared_alternative_matrix import (
     extract_id_keyed_alternative_criteria_input,
     normalize_collective_evaluations_by_ids,
 )
+from models.shared_expression_domains import (
+    expression_domain_type_key,
+    resolve_linguistic_label_definition,
+)
 from .run import run_fuzzy_topsis
 
 
@@ -71,29 +75,16 @@ def _linguistic_values(
     expression_domain: dict[str, Any],
     field: str,
 ) -> list[float]:
-    normalized_label = str(label or "").strip()
-    labels = expression_domain.get("linguisticLabels")
+    label_definition = resolve_linguistic_label_definition(
+        value=label,
+        expression_domain=expression_domain,
+        field=field,
+    )
 
-    if not normalized_label:
-        raise ValueError(f"{field}.value is required")
-
-    if not isinstance(labels, list) or len(labels) == 0:
-        raise ValueError(f"{field}.expressionDomain.linguisticLabels is required")
-
-    for label_definition in labels:
-        if not isinstance(label_definition, dict):
-            continue
-
-        current_label = str(label_definition.get("label") or "").strip()
-        if current_label != normalized_label:
-            continue
-
-        return _numeric_sequence(
-            label_definition.get("values"),
-            f"{field}.expressionDomain.linguisticLabels.values",
-        )
-
-    raise ValueError(f"Unknown linguistic label '{normalized_label}'")
+    return _numeric_sequence(
+        label_definition.get("values"),
+        f"{field}.expressionDomain.definition.labels.values",
+    )
 
 
 def _cell_value(cell: dict[str, Any], field: str) -> list[float]:
@@ -102,16 +93,14 @@ def _cell_value(cell: dict[str, Any], field: str) -> list[float]:
         raise ValueError(f"{field}.value is required")
 
     expression_domain = cell.get("expressionDomain")
-    domain_type = ""
-    if isinstance(expression_domain, dict):
-        domain_type = str(expression_domain.get("type") or "").strip().lower()
+    domain_type = expression_domain_type_key(expression_domain).lower()
 
-    if domain_type == "numeric":
+    if domain_type in {"numericcontinuous", "numericdiscrete"}:
         raise ValueError(
-            f"{field}.expressionDomain.type 'numeric' is not supported for Fuzzy TOPSIS"
+            f"{field}.expressionDomain.typeKey '{domain_type}' is not supported for Fuzzy TOPSIS"
         )
 
-    if domain_type == "linguistic":
+    if domain_type.startswith("linguistic"):
         values = _linguistic_values(
             label=value,
             expression_domain=expression_domain,

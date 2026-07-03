@@ -15,22 +15,29 @@ def _normalize_parameter_definition(parameter: dict[str, Any]) -> dict[str, Any]
     return normalized
 
 
-def _build_supported_domains(domain_types: list[str]) -> dict[str, Any]:
-    """Construye dominios soportados en forma canónica con subtipos numéricos."""
+def _build_supported_expression_domains(model: ModelDefinition) -> list[dict[str, Any]]:
+    """Normaliza el contrato público de dominios de expresión soportados."""
 
-    normalized_domain_types = {
-        domain_type.strip().lower()
-        for domain_type in domain_types
-        if domain_type.strip()
-    }
+    supported_expression_domains: list[dict[str, Any]] = []
 
-    return {
-        "numeric": {
-            "continuous": "numericcontinuous" in normalized_domain_types,
-            "discrete": "numericdiscrete" in normalized_domain_types,
-        },
-        "linguistic": ["triangular"] if "linguistic" in normalized_domain_types else [],
-    }
+    for entry in model.supported_expression_domains:
+        type_key = str(entry.get("typeKey") or "").strip()
+        constraints = entry.get("constraints") or {}
+
+        if not isinstance(constraints, dict):
+            raise ValueError(
+                f"Model '{model.api_model_key}' has invalid supported expression domain constraints "
+                f"for typeKey '{type_key}'."
+            )
+
+        supported_expression_domains.append(
+            {
+                "typeKey": type_key,
+                "constraints": dict(constraints),
+            }
+        )
+
+    return supported_expression_domains
 
 
 def _build_parameters(model: ModelDefinition) -> list[dict[str, Any]]:
@@ -83,7 +90,7 @@ def _build_manifest_entry(model: ModelDefinition) -> dict[str, Any]:
         "usesExpertWeights": model.uses_expert_weights,
         "usesFuzzyCriteriaWeights": model.uses_fuzzy_criteria_weights,
         "usesCriterionTypes": model.uses_criterion_types,
-        "supportedDomains": _build_supported_domains(model.supported_domains),
+        "supportedExpressionDomains": _build_supported_expression_domains(model),
         "parameters": _build_parameters(model),
         "request": {
             "contentType": "application/json",

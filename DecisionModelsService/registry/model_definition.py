@@ -35,7 +35,7 @@ class ModelDefinition:
     uses_fuzzy_criteria_weights: bool = False
     uses_criterion_types: bool = False
 
-    supported_domains: list[str] = field(default_factory=list)
+    supported_expression_domains: list[dict[str, Any]] = field(default_factory=list)
     parameters: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -78,3 +78,30 @@ class ModelDefinition:
                 f"ModelDefinition '{self.api_model_key}' must support creator-side "
                 "or expert-side criteria weighting."
             )
+
+        if not isinstance(self.supported_expression_domains, list):
+            raise ValueError(
+                f"ModelDefinition '{self.api_model_key}' requires "
+                "supported_expression_domains to be a list."
+            )
+
+        for index, entry in enumerate(self.supported_expression_domains):
+            if not isinstance(entry, dict):
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' has invalid "
+                    f"supported_expression_domains[{index}]: expected dict."
+                )
+
+            type_key = str(entry.get("typeKey") or "").strip()
+            if not type_key:
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' requires "
+                    f"supported_expression_domains[{index}].typeKey."
+                )
+
+            constraints = entry.get("constraints", {})
+            if constraints is not None and not isinstance(constraints, dict):
+                raise ValueError(
+                    f"ModelDefinition '{self.api_model_key}' requires "
+                    f"supported_expression_domains[{index}].constraints to be a dict."
+                )
