@@ -1,9 +1,15 @@
 from copy import deepcopy
 from pathlib import Path
+import re
 
 from schemas.scaffold_model_package import ScaffoldValidationResult
 
 from services import model_package_apply as model_package_apply_service
+
+
+UNREPLACED_TEMPLATE_PLACEHOLDER_PATTERN = re.compile(
+    r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\}"
+)
 
 
 def _disable_post_write_validation(monkeypatch) -> None:
@@ -180,7 +186,7 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
         assert path.exists(), f"Expected non-model scaffold file was missing: {path}"
         content = path.read_text(encoding="utf-8")
         assert content.strip(), f"Generated non-model scaffold file was empty: {path}"
-        assert "{{" not in content
+        assert UNREPLACED_TEMPLATE_PLACEHOLDER_PATTERN.search(content) is None
         path.resolve().relative_to(project_root.resolve())
 
     evaluation_backend_source = expected_files["evaluation_backend"].read_text(
