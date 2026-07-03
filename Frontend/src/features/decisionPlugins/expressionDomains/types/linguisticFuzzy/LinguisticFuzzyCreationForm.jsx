@@ -92,19 +92,26 @@ const buildNextValue = ({
   labels,
   name = value?.name,
   membershipFunction = value?.definition?.membershipFunction,
-}) => ({
-  ...value,
-  name: normalizeDraftName(name),
-  typeKey: "linguisticFuzzy",
-  definition: {
-    membershipFunction:
-      membershipFunction || DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
-    labels: buildDraftLabels(labels).map((labelItem) => ({
-      ...labelItem,
-      values: Array.isArray(labelItem.values) ? labelItem.values : [],
-    })),
-  },
-});
+}) => {
+  const definition = value?.definition && typeof value.definition === "object"
+    ? value.definition
+    : {};
+
+  return {
+    ...value,
+    name: normalizeDraftName(name),
+    typeKey: "linguisticFuzzy",
+    definition: {
+      ...definition,
+      membershipFunction:
+        membershipFunction || DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
+      labels: buildDraftLabels(labels).map((labelItem) => ({
+        ...labelItem,
+        values: Array.isArray(labelItem.values) ? labelItem.values : [],
+      })),
+    },
+  };
+};
 
 export const LinguisticFuzzyCreationForm = ({
   value,
@@ -126,6 +133,7 @@ export const LinguisticFuzzyCreationForm = ({
     <Stack spacing={2}>
       <TextField
         label="Name"
+        color="info"
         value={normalizeDraftName(value?.name)}
         onChange={(event) =>
           updateValue({
@@ -141,6 +149,7 @@ export const LinguisticFuzzyCreationForm = ({
       <TextField
         select
         label="Membership function"
+        color="info"
         value={membershipFunction}
         onChange={(event) => {
           const nextMembershipFunction = event.target.value;
@@ -173,6 +182,7 @@ export const LinguisticFuzzyCreationForm = ({
         <Stack key={`${labelItem.key}-${index}`} direction="row" spacing={1}>
           <TextField
             label={`Label ${index + 1}`}
+            color="info"
             value={labelItem.label}
             onChange={(event) => {
               const nextLabels = labels.map((item, itemIndex) =>
@@ -193,6 +203,7 @@ export const LinguisticFuzzyCreationForm = ({
 
           <TextField
             label={`Values (${expectedValueCount})`}
+            color="info"
             value={formatValues(labelItem.values)}
             onChange={(event) => {
               const nextLabels = labels.map((item, itemIndex) =>
@@ -234,6 +245,7 @@ export const LinguisticFuzzyCreationForm = ({
 
       <Button
         variant="outlined"
+        color="info"
         startIcon={<AddOutlined />}
         onClick={() =>
           updateValue({
@@ -256,4 +268,3 @@ export const LinguisticFuzzyCreationForm = ({
 };
 
 export default LinguisticFuzzyCreationForm;
-

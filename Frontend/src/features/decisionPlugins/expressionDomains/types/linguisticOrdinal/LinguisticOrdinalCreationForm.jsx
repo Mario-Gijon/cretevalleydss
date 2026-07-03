@@ -32,14 +32,21 @@ const ensureDraftLabels = (value) => {
     : buildDraftLabels([{ label: "Low" }, { label: "High" }]);
 };
 
-const buildNextValue = (value, labels, name = value?.name) => ({
-  ...value,
-  name: normalizeDraftName(name),
-  typeKey: "linguisticOrdinal",
-  definition: {
-    labels: buildDraftLabels(labels),
-  },
-});
+const buildNextValue = (value, labels, name = value?.name) => {
+  const definition = value?.definition && typeof value.definition === "object"
+    ? value.definition
+    : {};
+
+  return {
+    ...value,
+    name: normalizeDraftName(name),
+    typeKey: "linguisticOrdinal",
+    definition: {
+      ...definition,
+      labels: buildDraftLabels(labels),
+    },
+  };
+};
 
 export const LinguisticOrdinalCreationForm = ({
   value,
@@ -56,6 +63,7 @@ export const LinguisticOrdinalCreationForm = ({
     <Stack spacing={2}>
       <TextField
         label="Name"
+        color="info"
         value={normalizeDraftName(value?.name)}
         onChange={(event) => updateLabels(labels, event.target.value)}
         disabled={disabled}
@@ -66,6 +74,7 @@ export const LinguisticOrdinalCreationForm = ({
         <Stack key={`${labelItem.key}-${index}`} direction="row" spacing={1}>
           <TextField
             label={`Label ${index + 1}`}
+            color="info"
             value={labelItem.label}
             onChange={(event) => {
               const nextLabels = labels.map((item, itemIndex) =>
@@ -91,6 +100,7 @@ export const LinguisticOrdinalCreationForm = ({
 
       <Button
         variant="outlined"
+        color="info"
         startIcon={<AddOutlined />}
         onClick={() =>
           updateLabels([...labels, { label: `Label ${labels.length + 1}` }])
@@ -104,4 +114,3 @@ export const LinguisticOrdinalCreationForm = ({
 };
 
 export default LinguisticOrdinalCreationForm;
-

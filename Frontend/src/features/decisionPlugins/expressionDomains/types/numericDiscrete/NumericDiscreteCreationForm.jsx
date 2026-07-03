@@ -8,18 +8,22 @@ const buildNextValue = (value, patch) => {
   const definition = value?.definition && typeof value.definition === "object"
     ? value.definition
     : {};
+  const patchDefinition =
+    patch?.definition && typeof patch.definition === "object"
+      ? patch.definition
+      : {};
 
   return {
     ...value,
-    name: normalizeDraftName(value?.name),
+    ...patch,
+    name: normalizeDraftName(patch?.name ?? value?.name),
     typeKey: "numericDiscrete",
     definition: {
       min: normalizeDraftNumber(definition.min),
       max: normalizeDraftNumber(definition.max),
       step: normalizeDraftNumber(definition.step),
-      ...patch.definition,
+      ...patchDefinition,
     },
-    ...patch,
   };
 };
 
@@ -40,6 +44,7 @@ export const NumericDiscreteCreationForm = ({
     <Stack spacing={2}>
       <TextField
         label="Name"
+        color="info"
         value={normalizeDraftName(value?.name)}
         onChange={(event) => updateValue({ name: event.target.value })}
         disabled={disabled}
@@ -48,6 +53,7 @@ export const NumericDiscreteCreationForm = ({
 
       <TextField
         label="Min"
+        color="info"
         type="number"
         value={definition.min ?? ""}
         onChange={(event) =>
@@ -62,6 +68,7 @@ export const NumericDiscreteCreationForm = ({
 
       <TextField
         label="Max"
+        color="info"
         type="number"
         value={definition.max ?? ""}
         onChange={(event) =>
@@ -76,6 +83,7 @@ export const NumericDiscreteCreationForm = ({
 
       <TextField
         label="Step"
+        color="info"
         type="number"
         value={definition.step ?? ""}
         onChange={(event) =>
@@ -92,4 +100,3 @@ export const NumericDiscreteCreationForm = ({
 };
 
 export default NumericDiscreteCreationForm;
-
