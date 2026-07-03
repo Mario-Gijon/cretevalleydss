@@ -218,8 +218,11 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_backend_source
     assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" in evaluation_backend_source
+    assert "pairwiseMatrixStructure" in evaluation_frontend_index_source
+    assert 'key: "pairwiseMatrix"' in evaluation_frontend_index_source
+    assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_frontend_index_source
     assert "PairwiseMatrixView" in evaluation_frontend_index_source
-    assert "pairwiseMatrixStructure" not in evaluation_frontend_index_source
+    assert 'implementationStatus: "scaffold"' in evaluation_frontend_index_source
     assert "pairwiseMatrix is under development." in evaluation_view_source
 
     assert 'key: "scoreRange"' in parameter_backend_index_source
