@@ -1,10 +1,10 @@
 import {
+  expressionDomainMatchesSupportedEntry,
   getExpressionDomainFamily,
-  getExpressionDomainMembershipFunction,
   getExpressionDomainNumericRange,
-  isLinguisticFuzzyExpressionDomain,
   isNumericContinuousExpressionDomain,
   isNumericDiscreteExpressionDomain,
+  normalizeSupportedExpressionDomains,
 } from "./expressionDomains";
 
 /**
@@ -46,15 +46,24 @@ export const getMixedOrValue = (values) => {
 
 const toDomainId = (value) => (value === null || value === undefined ? null : String(value));
 
-const getModelDomainSupport = (selectedModel) => ({
-  numericContinuous: selectedModel?.supportedDomains?.numeric?.continuous === true,
-  numericDiscrete: selectedModel?.supportedDomains?.numeric?.discrete === true,
-  linguisticMembershipFunctions: Array.isArray(selectedModel?.supportedDomains?.linguistic)
-    ? selectedModel.supportedDomains.linguistic
-      .map((item) => String(item || "").trim().toLowerCase())
-      .filter(Boolean)
-    : [],
-});
+const getModelDomainSupport = (selectedModel) => {
+  const supportedExpressionDomains = normalizeSupportedExpressionDomains(
+    selectedModel?.supportedExpressionDomains
+  );
+
+  return {
+    supportedExpressionDomains,
+    numericContinuous: supportedExpressionDomains.some(
+      (entry) => entry.typeKey === "numericContinuous"
+    ),
+    numericDiscrete: supportedExpressionDomains.some(
+      (entry) => entry.typeKey === "numericDiscrete"
+    ),
+    linguistic: supportedExpressionDomains.some(
+      (entry) => entry.typeKey.startsWith("linguistic")
+    ),
+  };
+};
 
 const isNumericContinuousDomain = (domain) =>
   isNumericContinuousExpressionDomain(domain);
@@ -69,25 +78,19 @@ export const getSupportedDomainPools = (
 ) => {
   const support = getModelDomainSupport(selectedModel);
   const visibleDomains = [...globalDomains, ...expressionDomains];
-  const numericCandidates = visibleDomains.filter(
+  const compatibleDomains = visibleDomains.filter((domain) =>
+    support.supportedExpressionDomains.some((supportedEntry) =>
+      expressionDomainMatchesSupportedEntry(domain, supportedEntry)
+    )
+  );
+
+  const numericDomains = compatibleDomains.filter(
     (domain) => getExpressionDomainFamily(domain) === "numeric"
   );
 
-  const numericDomains = numericCandidates.filter(
-    (domain) =>
-      (support.numericContinuous && isNumericContinuousDomain(domain)) ||
-      (support.numericDiscrete && isNumericDiscreteDomain(domain))
+  const linguisticDomains = compatibleDomains.filter(
+    (domain) => getExpressionDomainFamily(domain) === "linguistic"
   );
-
-  const linguisticDomains = support.linguisticMembershipFunctions.length
-    ? visibleDomains.filter(
-      (domain) =>
-        isLinguisticFuzzyExpressionDomain(domain) &&
-        support.linguisticMembershipFunctions.includes(
-          getExpressionDomainMembershipFunction(domain).toLowerCase()
-        )
-    )
-    : [];
 
   return {
     support,

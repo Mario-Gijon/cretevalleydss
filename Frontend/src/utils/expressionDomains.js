@@ -23,6 +23,73 @@ export const getExpressionDomainDefinition = (domain) => {
     : {};
 };
 
+export const getExpressionDomainConstraintValue = (domain, constraintKey) => {
+  const definition = getExpressionDomainDefinition(domain);
+
+  if (constraintKey === "labelCount") {
+    const directCount = Number(definition.labelCount);
+
+    if (Number.isInteger(directCount) && directCount > 0) {
+      return directCount;
+    }
+
+    const labels = Array.isArray(definition.labels) ? definition.labels : [];
+    return labels.length > 0 ? labels.length : null;
+  }
+
+  return definition[constraintKey];
+};
+
+export const normalizeSupportedExpressionDomains = (
+  supportedExpressionDomains
+) =>
+  (Array.isArray(supportedExpressionDomains) ? supportedExpressionDomains : [])
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        typeof entry.typeKey === "string" &&
+        entry.typeKey.trim()
+    )
+    .map((entry) => ({
+      typeKey: entry.typeKey.trim(),
+      constraints:
+        entry.constraints &&
+        typeof entry.constraints === "object" &&
+        !Array.isArray(entry.constraints)
+          ? entry.constraints
+          : {},
+    }));
+
+export const expressionDomainMatchesSupportedEntry = (
+  domain,
+  supportedEntry
+) => {
+  const domainTypeKey = getExpressionDomainTypeKey(domain);
+  const supportedTypeKey = String(supportedEntry?.typeKey || "").trim();
+
+  if (!domainTypeKey || !supportedTypeKey || domainTypeKey !== supportedTypeKey) {
+    return false;
+  }
+
+  const constraints =
+    supportedEntry?.constraints &&
+    typeof supportedEntry.constraints === "object" &&
+    !Array.isArray(supportedEntry.constraints)
+      ? supportedEntry.constraints
+      : {};
+
+  return Object.entries(constraints).every(([constraintKey, expectedValue]) => {
+    const actualValue = getExpressionDomainConstraintValue(domain, constraintKey);
+
+    if (Array.isArray(expectedValue)) {
+      return expectedValue.includes(actualValue);
+    }
+
+    return actualValue === expectedValue;
+  });
+};
+
 export const getExpressionDomainLabels = (domain) => {
   const labels = getExpressionDomainDefinition(domain).labels;
   return Array.isArray(labels) ? labels : [];
@@ -139,4 +206,3 @@ export const getExpressionDomainDisplayMeta = (domain) => {
 
 export const formatExpressionDomainDisplayLabel = (domain) =>
   getExpressionDomainDisplayMeta(domain).label;
-

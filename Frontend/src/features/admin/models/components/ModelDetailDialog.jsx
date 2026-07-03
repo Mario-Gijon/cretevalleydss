@@ -147,8 +147,10 @@ export default function ModelDetailDialog({ row, open, onClose }) {
                 { label: "Input format", value: row.apiInputFormat },
                 { label: "Output format", value: row.apiOutputFormat },
                 {
-                  label: "Supported domains",
-                  value: modelManifestValueToText(row.supportedDomains),
+                  label: "Supported expression domains",
+                  value: modelManifestValueToText(
+                    row.supportedExpressionDomains
+                  ),
                 },
               ]}
             />
