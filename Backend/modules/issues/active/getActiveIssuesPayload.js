@@ -42,7 +42,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
       Criterion.find({ issue: { $in: issueIds } })
         .populate(
           "expressionDomain",
-          "name type numericRange valueCount linguisticLabels"
+          "name typeKey family definition"
         )
         .lean(),
       IssueStageResult.find({

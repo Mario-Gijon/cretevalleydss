@@ -165,7 +165,7 @@ export const buildScenarioExecutionContext = async ({
   const issueDomainSnapshots = await IssueExpressionDomain.find({
     _id: { $in: issueDomainSnapshotIds },
   })
-    .select("_id name type numericRange membershipFunction valueCount")
+    .select("_id name typeKey family definition")
     .lean();
 
   const existingSnapshotIds = new Set(
@@ -186,12 +186,15 @@ export const buildScenarioExecutionContext = async ({
   }
 
   const invalidTypeSnapshotIds = issueDomainSnapshots
-    .filter((snapshot) => typeof snapshot.type !== "string" || snapshot.type.trim() === "")
+    .filter(
+      (snapshot) =>
+        typeof snapshot.typeKey !== "string" || snapshot.typeKey.trim() === ""
+    )
     .map((snapshot) => toIdString(snapshot._id));
 
   if (invalidTypeSnapshotIds.length > 0) {
-    throw createInternalError("Issue expression domain snapshots have invalid type", {
-      field: "expressionDomain.type",
+    throw createInternalError("Issue expression domain snapshots have invalid typeKey", {
+      field: "expressionDomain.typeKey",
       details: {
         issueId: toIdString(issue._id),
         snapshotIds: invalidTypeSnapshotIds,
@@ -322,7 +325,7 @@ export const buildScenarioExecutionContext = async ({
   };
 
   const usedDomainTypes = new Set(
-    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot.type)
+    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot.family)
   );
   const domainType =
     usedDomainTypes.size === 1 ? Array.from(usedDomainTypes)[0] : null;

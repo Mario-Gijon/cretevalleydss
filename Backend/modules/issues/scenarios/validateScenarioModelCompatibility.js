@@ -185,8 +185,9 @@ export const buildScenarioCompatibilityMetadata = ({
     unsupportedDomains: unsupportedDomains.map((domainSnapshot) => ({
       id: toIdString(domainSnapshot._id),
       name: domainSnapshot.name,
-      type: domainSnapshot.type,
-      membershipFunction: domainSnapshot.membershipFunction,
+      typeKey: domainSnapshot.typeKey,
+      family: domainSnapshot.family,
+      membershipFunction: domainSnapshot.definition?.membershipFunction ?? null,
     })),
   };
 };

@@ -71,7 +71,7 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     const snapshot = snapshotById.get(snapshotId);
     const serialized = serializeIssueExpressionDomainSnapshot(snapshot);
 
-    if (!serialized || !serialized.type) {
+    if (!serialized || !serialized.typeKey) {
       throw createBadRequestError(
         `Expression domain snapshot is missing or invalid for criterion '${String(criterion?.name || "")}'`,
         {
@@ -108,30 +108,21 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
   };
 };
 
-const cloneNumericRange = (numericRange) => ({
-  min:
-    typeof numericRange?.min === "number" && Number.isFinite(numericRange.min)
-      ? numericRange.min
-      : null,
-  max:
-    typeof numericRange?.max === "number" && Number.isFinite(numericRange.max)
-      ? numericRange.max
-      : null,
-  step:
-    typeof numericRange?.step === "number" && Number.isFinite(numericRange.step)
-      ? numericRange.step
-      : null,
-});
+const cloneSerializable = (value, fallback) => {
+  if (value === undefined) {
+    return fallback;
+  }
 
-const cloneLinguisticLabels = (linguisticLabels) =>
-  Array.isArray(linguisticLabels)
-    ? linguisticLabels
-        .map((entry) => ({
-          label: typeof entry?.label === "string" ? entry.label : null,
-          values: Array.isArray(entry?.values) ? [...entry.values] : [],
-        }))
-        .filter((entry) => entry.label)
-    : [];
+  if (value === null) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return fallback;
+  }
+};
 
 export const serializeIssueExpressionDomainSnapshot = (snapshot) => {
   if (!snapshot || typeof snapshot !== "object") {
@@ -142,18 +133,10 @@ export const serializeIssueExpressionDomainSnapshot = (snapshot) => {
     id: String(snapshot?._id || ""),
     _id: snapshot?._id || null,
     name: typeof snapshot?.name === "string" ? snapshot.name : null,
-    type: typeof snapshot?.type === "string" ? snapshot.type : null,
-    numericRange: cloneNumericRange(snapshot?.numericRange),
-    linguisticLabels: cloneLinguisticLabels(snapshot?.linguisticLabels),
-    membershipFunction:
-      typeof snapshot?.membershipFunction === "string"
-        ? snapshot.membershipFunction
-        : null,
-    valueCount:
-      typeof snapshot?.valueCount === "number" && Number.isFinite(snapshot.valueCount)
-        ? snapshot.valueCount
-        : null,
-    valuesMode:
-      typeof snapshot?.valuesMode === "string" ? snapshot.valuesMode : null,
+    typeKey:
+      typeof snapshot?.typeKey === "string" ? snapshot.typeKey : null,
+    family:
+      typeof snapshot?.family === "string" ? snapshot.family : null,
+    definition: cloneSerializable(snapshot?.definition, {}),
   };
 };

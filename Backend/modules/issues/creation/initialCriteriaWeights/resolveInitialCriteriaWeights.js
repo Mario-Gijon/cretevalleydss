@@ -351,7 +351,7 @@ export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
   }
 
   const linguisticDomains = domainDocs.filter(
-    (domain) => domain.type === "linguistic"
+    (domain) => domain.family === "linguistic"
   );
 
   if (linguisticDomains.length === 0) {
@@ -366,7 +366,15 @@ export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
   const valueCounts = new Set();
 
   for (const domain of linguisticDomains) {
-    const valueCount = domain.valueCount;
+    const labels = domain?.definition?.labels;
+    const firstValues = Array.isArray(labels) && labels.length > 0
+      ? labels[0]?.values
+      : null;
+    const valueCount =
+      Array.isArray(firstValues) && firstValues.length >= 2
+        ? firstValues.length
+        : null;
+
     if (!Number.isInteger(valueCount) || valueCount < 2) {
       throw createBadRequestError(
         "Fuzzy criteria weights require a valid linguistic valueCount",

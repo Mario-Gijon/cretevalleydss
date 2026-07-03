@@ -22,8 +22,8 @@ const hasUsableSerializedExpressionDomain = (expressionDomain) =>
     expressionDomain &&
       typeof expressionDomain === "object" &&
       !Array.isArray(expressionDomain) &&
-      typeof expressionDomain.type === "string" &&
-      expressionDomain.type.trim()
+      typeof expressionDomain.typeKey === "string" &&
+      expressionDomain.typeKey.trim()
   );
 
 const isObjectCriterion = (criterion) =>
@@ -194,7 +194,7 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
           _id: { $in: snapshotIds },
         })
           .select(
-            "_id name type numericRange linguisticLabels membershipFunction valueCount valuesMode"
+            "_id name typeKey family definition"
           )
           .lean()
       : [];
@@ -231,7 +231,7 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
     const snapshot = snapshotById.get(snapshotId);
     const serialized = serializeIssueExpressionDomainSnapshot(snapshot);
 
-    if (!serialized || !serialized.type) {
+    if (!serialized || !serialized.typeKey) {
       throw createBadRequestError(
         `Expression domain snapshot is missing or invalid for criterion '${String(criterion?.name || "")}'`,
         {

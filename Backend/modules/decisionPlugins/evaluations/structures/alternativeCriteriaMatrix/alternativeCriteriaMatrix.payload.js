@@ -1,4 +1,5 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
+import { validateExpressionDomainEvaluationOrThrow } from "../../../../expressionDomains/validateExpressionDomainEvaluation.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.context.js";
 
@@ -6,9 +7,6 @@ export const buildEmptyCell = (expressionDomain = null) => ({
   value: "",
   expressionDomain,
 });
-
-export const normalizeText = (value) =>
-  typeof value === "string" ? value.trim() : "";
 
 const EVALUATION_SAVE_MODES = Object.freeze({
   DRAFT: "draft",
@@ -34,63 +32,11 @@ export const validateCellValueByDomainOrThrow = ({
   expressionDomain,
   field,
 }) => {
-  const domainType = expressionDomain?.type;
-
-  if (domainType === "numeric") {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
-      throw createBadRequestError("Numeric cell value must be finite", { field });
-    }
-
-    const min = expressionDomain?.numericRange?.min;
-    const max = expressionDomain?.numericRange?.max;
-
-    if (Number.isFinite(min) && numericValue < min) {
-      throw createBadRequestError(
-        `Numeric cell value must be greater than or equal to ${min}`,
-        { field }
-      );
-    }
-
-    if (Number.isFinite(max) && numericValue > max) {
-      throw createBadRequestError(
-        `Numeric cell value must be lower than or equal to ${max}`,
-        { field }
-      );
-    }
-
-    return numericValue;
-  }
-
-  if (domainType === "linguistic") {
-    const labelValue = normalizeText(value);
-    const allowedLabels = Array.isArray(expressionDomain?.linguisticLabels)
-      ? expressionDomain.linguisticLabels
-          .map((entry) => normalizeText(entry?.label))
-          .filter(Boolean)
-      : [];
-
-    if (allowedLabels.length === 0) {
-      throw createBadRequestError(
-        "Linguistic expression domain does not define labels",
-        { field }
-      );
-    }
-
-    if (!allowedLabels.includes(labelValue)) {
-      throw createBadRequestError(
-        "Linguistic cell value must match one of the configured labels",
-        { field }
-      );
-    }
-
-    return labelValue;
-  }
-
-  throw createBadRequestError(
-    `Unsupported expression domain type: ${String(domainType || "unknown")}`,
-    { field }
-  );
+  return validateExpressionDomainEvaluationOrThrow({
+    value,
+    expressionDomain,
+    field,
+  });
 };
 
 const normalizeCellOrThrow = ({
