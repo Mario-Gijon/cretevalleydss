@@ -37,6 +37,31 @@ def test_unknown_model_path_returns_stable_not_found_contract():
     assert payload["error"]["details"]["endpointPath"] == "/unknown/model/path"
 
 
+def test_openapi_exposes_explicit_registered_model_paths_with_request_examples():
+    client = TestClient(create_application())
+
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    openapi = response.json()
+    assert "/topsis" in openapi["paths"]
+    assert "/bwm" in openapi["paths"]
+
+    topsis_examples = (
+        openapi["paths"]["/topsis"]["post"]["requestBody"]["content"]["application/json"][
+            "examples"
+        ]
+    )
+    bwm_examples = (
+        openapi["paths"]["/bwm"]["post"]["requestBody"]["content"]["application/json"][
+            "examples"
+        ]
+    )
+
+    assert "basic_numeric_matrix" in topsis_examples
+    assert "basic_criteria_weighting" in bwm_examples
+
+
 def test_dynamic_model_valid_payload_returns_handler_response(monkeypatch):
     def handler(payload):
         return {

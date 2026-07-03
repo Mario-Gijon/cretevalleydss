@@ -1,4 +1,4 @@
-from inspect import isawaitable
+from inspect import Parameter, Signature, isawaitable
 
 from fastapi import APIRouter, Body
 from fastapi.exceptions import RequestValidationError
@@ -6,7 +6,10 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from registry.model_definition import ModelDefinition
-from registry.model_registry import get_model_definition_by_endpoint_path
+from registry.model_registry import (
+    get_model_definition_by_endpoint_path,
+    get_model_definitions,
+)
 from schemas.common import ModelExecutionResponse
 
 router = APIRouter(tags=["Decision Models"])
@@ -43,6 +46,20 @@ def _build_responses() -> dict[int, dict[str, object]]:
     }
 
 
+def _build_model_responses(model: ModelDefinition) -> dict[int, dict[str, object]]:
+    responses = _build_responses()
+    if model.response_examples:
+        responses[200] = {
+            **responses[200],
+            "content": {
+                "application/json": {
+                    "examples": model.response_examples,
+                }
+            },
+        }
+    return responses
+
+
 async def _execute_model_definition(
     model: ModelDefinition, raw_payload: dict
 ) -> dict | JSONResponse:
@@ -56,6 +73,45 @@ async def _execute_model_definition(
         result = await result
 
     return result
+
+
+def _create_explicit_model_endpoint(model: ModelDefinition):
+    async def execute_registered_model(raw_payload):
+        return await _execute_model_definition(model, raw_payload)
+
+    execute_registered_model.__name__ = f"execute_{model.api_model_key.replace('-', '_')}"
+    execute_registered_model.__doc__ = model.extended_description or model.small_description
+    execute_registered_model.__signature__ = Signature(
+        parameters=[
+            Parameter(
+                "raw_payload",
+                kind=Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=model.request_model,
+                default=Body(..., openapi_examples=model.request_examples or None),
+            )
+        ],
+        return_annotation=ModelExecutionResponse,
+    )
+    return execute_registered_model
+
+
+def _register_explicit_model_routes() -> None:
+    for model in get_model_definitions(strict=False):
+        router.add_api_route(
+            model.api_endpoint_path,
+            _create_explicit_model_endpoint(model),
+            methods=["POST"],
+            response_model=ModelExecutionResponse,
+            response_model_exclude_none=True,
+            tags=["Decision Models"],
+            summary=f"Execute {model.display_name}",
+            description=model.extended_description or model.small_description,
+            responses=_build_model_responses(model),
+            name=f"execute_{model.api_model_key}",
+        )
+
+
+_register_explicit_model_routes()
 
 
 @router.post(
