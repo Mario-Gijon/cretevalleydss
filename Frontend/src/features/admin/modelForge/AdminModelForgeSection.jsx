@@ -50,9 +50,27 @@ const MODEL_KIND_OPTIONS = [
 ];
 
 const DOMAIN_OPTIONS = [
-  "numericContinuous",
-  "numericDiscrete",
-  "linguistic",
+  {
+    typeKey: "numericContinuous",
+    label: "numericContinuous",
+    description: "Continuous numeric values with optional min/max constraints.",
+  },
+  {
+    typeKey: "numericDiscrete",
+    label: "numericDiscrete",
+    description: "Discrete numeric values with optional min/max/step constraints.",
+  },
+  {
+    typeKey: "linguisticOrdinal",
+    label: "linguisticOrdinal",
+    description: "Ordered linguistic labels with optional label count constraints.",
+  },
+  {
+    typeKey: "linguisticFuzzy",
+    label: "linguisticFuzzy",
+    description:
+      "Fuzzy linguistic labels with optional membershipFunction or labelCount constraints.",
+  },
 ];
 
 const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
@@ -306,6 +324,54 @@ const buildEmptyParameterRow = () => ({
   advancedExpanded: false,
 });
 
+const buildSupportedExpressionDomainEntry = (
+  typeKey,
+  constraintsJsonText = "{}"
+) => ({
+  typeKey,
+  constraintsJsonText,
+});
+
+const buildSupportedExpressionDomainsPayloadOrThrow = (
+  supportedExpressionDomains
+) => {
+  if (!Array.isArray(supportedExpressionDomains)) {
+    throw new Error("supportedExpressionDomains must be a list");
+  }
+
+  return supportedExpressionDomains.map((entry) => {
+    const typeKey = String(entry?.typeKey || "").trim();
+
+    if (!typeKey) {
+      throw new Error("Each supported expression domain must include typeKey");
+    }
+
+    const rawConstraints = String(entry?.constraintsJsonText || "").trim() || "{}";
+    const parsedConstraints = parseJsonOrThrow(
+      rawConstraints,
+      `${typeKey} constraints`
+    );
+
+    if (!isPlainObject(parsedConstraints)) {
+      throw new Error(`${typeKey} constraints must be a JSON object`);
+    }
+
+    return {
+      typeKey,
+      constraints: parsedConstraints,
+    };
+  });
+};
+
+const getSupportedExpressionDomainValidationError = (entry) => {
+  try {
+    buildSupportedExpressionDomainsPayloadOrThrow([entry]);
+    return "";
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid constraints";
+  }
+};
+
 const buildInitialFormState = () => ({
   apiModelKey: "",
   displayName: "",
@@ -324,7 +390,10 @@ const buildInitialFormState = () => ({
   usesCriterionTypes: true,
   supportsCreatorCriteriaWeighting: false,
   supportsExpertCriteriaWeighting: false,
-  supportedDomains: ["numericContinuous", "numericDiscrete"],
+  supportedExpressionDomains: [
+    buildSupportedExpressionDomainEntry("numericContinuous"),
+    buildSupportedExpressionDomainEntry("numericDiscrete"),
+  ],
   parameters: [],
 });
 
@@ -347,7 +416,10 @@ const buildExampleFormState = () => ({
   usesCriterionTypes: true,
   supportsCreatorCriteriaWeighting: false,
   supportsExpertCriteriaWeighting: false,
-  supportedDomains: ["numericContinuous", "numericDiscrete"],
+  supportedExpressionDomains: [
+    buildSupportedExpressionDomainEntry("numericContinuous"),
+    buildSupportedExpressionDomainEntry("numericDiscrete"),
+  ],
   parameters: [
     {
       id: "sample-param",
@@ -1356,6 +1428,44 @@ export default function AdminModelForgeSection() {
     showSnackbarAlert("Sample scaffold form loaded", "success");
   }, [showSnackbarAlert]);
 
+  const setSupportedExpressionDomainConstraints = useCallback(
+    (typeKey, constraintsJsonText) => {
+      setFormState((current) => ({
+        ...current,
+        supportedExpressionDomains: current.supportedExpressionDomains.map((entry) =>
+          entry.typeKey === typeKey
+            ? { ...entry, constraintsJsonText }
+            : entry
+        ),
+      }));
+      resetActionState();
+    },
+    [resetActionState]
+  );
+
+  const toggleSupportedExpressionDomain = useCallback(
+    (typeKey, checked) => {
+      setFormState((current) => {
+        const currentEntries = Array.isArray(current.supportedExpressionDomains)
+          ? current.supportedExpressionDomains
+          : [];
+
+        const nextEntries = checked
+          ? currentEntries.some((entry) => entry.typeKey === typeKey)
+            ? currentEntries
+            : [...currentEntries, buildSupportedExpressionDomainEntry(typeKey)]
+          : currentEntries.filter((entry) => entry.typeKey !== typeKey);
+
+        return {
+          ...current,
+          supportedExpressionDomains: nextEntries,
+        };
+      });
+      resetActionState();
+    },
+    [resetActionState]
+  );
+
   const buildRequestPayload = useCallback(() => {
     const apiModelKey = formState.apiModelKey.trim();
     const displayName = formState.displayName.trim();
@@ -1378,6 +1488,10 @@ export default function AdminModelForgeSection() {
     const parsedParameters = formState.parameters.map((parameter, index) =>
       buildParameterRowPayloadOrThrow(parameter, index)
     );
+    const supportedExpressionDomains =
+      buildSupportedExpressionDomainsPayloadOrThrow(
+        formState.supportedExpressionDomains
+      );
 
     const evaluationStructureCatalogItem =
       evaluationStructureMap.get(evaluationStructureKey) || null;
@@ -1410,7 +1524,7 @@ export default function AdminModelForgeSection() {
           formState.modelKind === "criteriaWeighting"
             ? formState.supportsExpertCriteriaWeighting
             : false,
-        supportedDomains: formState.supportedDomains,
+        supportedExpressionDomains,
         parameters: parsedParameters,
         includeExamples: formState.includeExamples,
       },
@@ -1946,30 +2060,86 @@ export default function AdminModelForgeSection() {
 
               <Stack direction="row" alignItems="center" flexWrap="wrap" useFlexGap spacing={0.8}>
                 <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 900, mr: 0.5 }}>
-                  Domains
+                  Supported expression domains
                 </Typography>
+              </Stack>
+
+              <Stack spacing={1.15}>
                 {DOMAIN_OPTIONS.map((domain) => {
-                  const checked = formState.supportedDomains.includes(domain);
+                  const checked = formState.supportedExpressionDomains.some(
+                    (entry) => entry.typeKey === domain.typeKey
+                  );
+                  const selectedEntry =
+                    formState.supportedExpressionDomains.find(
+                      (entry) => entry.typeKey === domain.typeKey
+                    ) || null;
+                  const validationError = selectedEntry
+                    ? getSupportedExpressionDomainValidationError(selectedEntry)
+                    : "";
 
                   return (
-                    <FormControlLabel
-                      key={domain}
-                      sx={{ m: 0, mr: 1 }}
-                      control={(
-                        <Checkbox
-                          color="info"
-                          size="small"
-                          checked={checked}
-                          onChange={(event) => {
-                            const nextDomains = event.target.checked
-                              ? [...formState.supportedDomains, domain]
-                              : formState.supportedDomains.filter((item) => item !== domain);
-                            setField("supportedDomains", Array.from(new Set(nextDomains)));
-                          }}
+                    <Box
+                      key={domain.typeKey}
+                      sx={{
+                        p: 1.15,
+                        borderRadius: 2,
+                        border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+                        bgcolor: alpha(theme.palette.common.white, 0.018),
+                      }}
+                    >
+                      <Stack spacing={0.9}>
+                        <FormControlLabel
+                          sx={{ m: 0 }}
+                          control={(
+                            <Checkbox
+                              color="info"
+                              size="small"
+                              checked={checked}
+                              onChange={(event) =>
+                                toggleSupportedExpressionDomain(
+                                  domain.typeKey,
+                                  event.target.checked
+                                )
+                              }
+                            />
+                          )}
+                          label={domain.label}
                         />
-                      )}
-                      label={domain}
-                    />
+
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary", fontWeight: 800 }}
+                        >
+                          {domain.description}
+                        </Typography>
+
+                        {checked && (
+                          <TextField
+                            color="info"
+                            label="Constraints JSON"
+                            value={selectedEntry?.constraintsJsonText || "{}"}
+                            onChange={(event) =>
+                              setSupportedExpressionDomainConstraints(
+                                domain.typeKey,
+                                event.target.value
+                              )
+                            }
+                            minRows={3}
+                            multiline
+                            fullWidth
+                            error={Boolean(validationError)}
+                            helperText={
+                              validationError ||
+                              `Optional. Example: ${
+                                domain.typeKey === "linguisticFuzzy"
+                                  ? '{"membershipFunction":["triangular"]}'
+                                  : "{}"
+                              }`
+                            }
+                          />
+                        )}
+                      </Stack>
+                    </Box>
                   );
                 })}
               </Stack>

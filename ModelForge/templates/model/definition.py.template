@@ -29,6 +29,6 @@ MODEL_DEFINITION = ModelDefinition(
     uses_expert_weights={{ uses_expert_weights }},
     uses_fuzzy_criteria_weights={{ uses_fuzzy_criteria_weights }},
     uses_criterion_types={{ uses_criterion_types }},
-    supported_domains={{ supported_domains }},
+    supported_expression_domains={{ supported_expression_domains }},
     parameters={{ parameters }},
 )

@@ -89,7 +89,9 @@ def _build_placeholder_values(request: ModelScaffoldPreviewRequest) -> dict[str,
         "uses_expert_weights": repr(request.usesExpertWeights),
         "uses_fuzzy_criteria_weights": repr(request.usesFuzzyCriteriaWeights),
         "uses_criterion_types": repr(request.usesCriterionTypes),
-        "supported_domains": _format_python_value(request.supportedDomains),
+        "supported_expression_domains": _format_python_value(
+            request.supportedExpressionDomains
+        ),
         "parameters": _format_python_value(request.parameters),
         "examples_import_block": _build_examples_import_block(
             include_examples,

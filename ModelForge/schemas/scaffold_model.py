@@ -27,7 +27,7 @@ class ModelScaffoldPreviewRequest(BaseModel):
     usesExpertWeights: bool = False
     usesFuzzyCriteriaWeights: bool = False
     usesCriterionTypes: bool = False
-    supportedDomains: list[str] = Field(default_factory=list)
+    supportedExpressionDomains: list[dict] = Field(default_factory=list)
     parameters: list[dict] = Field(default_factory=list)
     includeExamples: bool = True
 
@@ -71,16 +71,38 @@ class ModelScaffoldPreviewRequest(BaseModel):
         stripped = value.strip()
         return stripped or None
 
-    @field_validator("supportedDomains")
+    @field_validator("supportedExpressionDomains")
     @classmethod
-    def validate_supported_domains(cls, value: list[str]) -> list[str]:
+    def validate_supported_expression_domains(cls, value: list[dict]) -> list[dict]:
         if not isinstance(value, list):
-            raise ValueError("supportedDomains must be a list of strings")
+            raise ValueError("supportedExpressionDomains must be a list of objects")
+
         normalized = []
         for item in value:
-            if not _is_non_empty_string(item):
-                raise ValueError("supportedDomains must be a list of strings")
-            normalized.append(item.strip())
+            if not isinstance(item, dict):
+                raise ValueError("supportedExpressionDomains must be a list of objects")
+
+            type_key = item.get("typeKey")
+            if not _is_non_empty_string(type_key):
+                raise ValueError(
+                    "supportedExpressionDomains entries must include non-empty typeKey"
+                )
+
+            constraints = item.get("constraints", {})
+            if constraints is None:
+                constraints = {}
+            if not isinstance(constraints, dict):
+                raise ValueError(
+                    "supportedExpressionDomains.constraints must be an object"
+                )
+
+            normalized.append(
+                {
+                    "typeKey": type_key.strip(),
+                    "constraints": constraints,
+                }
+            )
+
         return normalized
 
     @field_validator("parameters")
