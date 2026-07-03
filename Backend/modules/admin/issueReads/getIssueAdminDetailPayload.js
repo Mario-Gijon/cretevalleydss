@@ -384,7 +384,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           supportsConsensusSimulation:
             issue.model.supportsConsensusSimulation === true,
           isMultiCriteria: issue.model.isMultiCriteria,
-          supportedDomains: issue.model.supportedDomains,
+          supportedExpressionDomains:
+            issue.model.supportedExpressionDomains,
           parameters: issue.model.parameters,
         }
         : null,

@@ -86,7 +86,7 @@ export const resolveExpressionDomainConfigByLeafCriteriaOrThrow = ({
 export const loadAccessibleExpressionDomains = async ({
   domainIdList,
   userId,
-  modelSupportedDomains,
+  modelSupportedExpressionDomains,
   session,
 }) => {
   const domainDocs = await ExpressionDomain.find({
@@ -122,7 +122,7 @@ export const loadAccessibleExpressionDomains = async ({
     (domain) =>
       !isSupportedDomainForModel({
         domain,
-        modelSupportedDomains,
+        modelSupportedExpressionDomains,
         userId,
       })
   );

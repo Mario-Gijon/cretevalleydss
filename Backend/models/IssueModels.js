@@ -210,21 +210,24 @@ const issueModelSchema = new Schema({
     type: Boolean,
     default: false,
   },
-  supportedDomains: {
-    numeric: {
-      continuous: {
-        type: Boolean,
-        default: false,
-      },
-      discrete: {
-        type: Boolean,
-        default: false,
-      },
-    },
-    linguistic: {
-      type: [String],
-      default: [],
-    },
+  supportedExpressionDomains: {
+    type: [
+      new Schema(
+        {
+          typeKey: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          constraints: {
+            type: Schema.Types.Mixed,
+            default: {},
+          },
+        },
+        { _id: false }
+      ),
+    ],
+    default: [],
   },
   request: {
     type: Schema.Types.Mixed,

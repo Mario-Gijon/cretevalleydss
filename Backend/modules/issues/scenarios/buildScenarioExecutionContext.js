@@ -207,7 +207,8 @@ export const buildScenarioExecutionContext = async ({
     targetRuntimeSnapshot,
     issueDomainSnapshots,
     targetModel,
-    targetModelSupportedDomains: targetModel.supportedDomains,
+    targetModelSupportedExpressionDomains:
+      targetModel.supportedExpressionDomains,
   });
 
   validateEvaluationCoverageOrThrow({

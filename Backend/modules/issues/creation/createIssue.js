@@ -142,7 +142,7 @@ export const prepareIssueCreation = async ({
   const domainDocs = await loadAccessibleExpressionDomains({
     domainIdList: usedDomainIds,
     userId: ownerUserId,
-    modelSupportedDomains: model.supportedDomains,
+    modelSupportedExpressionDomains: model.supportedExpressionDomains,
   });
 
   const fuzzyCriteriaWeightValueCount = resolveFuzzyCriteriaWeightValueCountOrThrow({

@@ -134,7 +134,7 @@ const mapIssueModelCatalogItem = (model) => {
     modelOutputFields: model.modelOutputFields,
     request: model.request,
     response: model.response,
-    supportedDomains: model.supportedDomains,
+    supportedExpressionDomains: model.supportedExpressionDomains,
     smallDescription: model.smallDescription,
     extendDescription: model.extendDescription,
     moreInfoUrl: model.moreInfoUrl,

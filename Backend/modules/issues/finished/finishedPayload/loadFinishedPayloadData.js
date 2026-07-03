@@ -15,7 +15,7 @@ import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 
 const ISSUE_MODELS_SELECT =
-  "_id name evaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedDomains implementationStatus publicUsable";
+  "_id name evaluationStructureKey supportsConsensus isMultiCriteria usesCriteriaWeights usesFuzzyCriteriaWeights usesCriterionTypes smallDescription moreInfoUrl parameters supportedExpressionDomains implementationStatus publicUsable";
 
 const loadAvailableIssueModels = async () => {
   return IssueModel.find({

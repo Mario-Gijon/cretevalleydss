@@ -5,7 +5,6 @@ import {
 import { toIdString } from "../../../utils/common/ids.js";
 import {
   isDomainSnapshotSupportedByModel,
-  resolveSupportedDomainFlags,
 } from "../../expressionDomains/domainCompatibility.js";
 
 const normalizeEndpointPath = (value) => {
@@ -117,15 +116,13 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
 
 export const getUnsupportedIssueDomainsForModel = ({
   issueDomainSnapshots,
-  modelSupportedDomains,
+  supportedExpressionDomains,
 }) => {
-  const supportedDomainFlags = resolveSupportedDomainFlags(modelSupportedDomains);
-
   return issueDomainSnapshots.filter(
     (domainSnapshot) =>
       !isDomainSnapshotSupportedByModel({
         domainSnapshot,
-        supportedDomainFlags,
+        supportedExpressionDomains,
       })
   );
 };
@@ -157,7 +154,7 @@ export const buildScenarioCompatibilityMetadata = ({
   });
   const unsupportedDomains = getUnsupportedIssueDomainsForModel({
     issueDomainSnapshots,
-    modelSupportedDomains: targetModel.supportedDomains,
+    supportedExpressionDomains: targetModel.supportedExpressionDomains,
   });
   const domainsMatch = unsupportedDomains.length === 0;
   const targetModelId = toIdString(targetModel._id);
@@ -197,7 +194,7 @@ export const validateScenarioModelCompatibilityOrThrow = ({
   targetRuntimeSnapshot,
   issueDomainSnapshots,
   targetModel,
-  targetModelSupportedDomains,
+  targetModelSupportedExpressionDomains,
 }) => {
   if (issue.currentStage !== "finished") {
     throw createBadRequestError(
@@ -224,7 +221,7 @@ export const validateScenarioModelCompatibilityOrThrow = ({
       evaluationStructureKey:
         targetRuntimeSnapshot.targetEvaluationStructureKey,
       supportsConsensus: targetRuntimeSnapshot.targetSupportsConsensus,
-      supportedDomains: targetModelSupportedDomains,
+      supportedExpressionDomains: targetModelSupportedExpressionDomains,
     },
     issueDomainSnapshots,
   });

@@ -1,94 +1,117 @@
 import { toIdString } from "../../utils/common/ids.js";
 
-const normalizeMembershipFunctions = (value) =>
-  value
-    .map((item) => item.trim().toLowerCase())
-    .filter((item) => item.length > 0);
-
-export const resolveSupportedDomainFlags = (
-  modelSupportedDomains
+const normalizeSupportedExpressionDomains = (
+  supportedExpressionDomains
 ) => {
-  return {
-    numericContinuous: modelSupportedDomains.numeric.continuous,
-    numericDiscrete: modelSupportedDomains.numeric.discrete,
-    linguisticMembershipFunctions: normalizeMembershipFunctions(
-      modelSupportedDomains.linguistic
-    ),
-  };
+  if (!Array.isArray(supportedExpressionDomains)) {
+    return [];
+  }
+
+  return supportedExpressionDomains.filter(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      typeof entry.typeKey === "string" &&
+      entry.typeKey.trim()
+  );
+};
+
+const getDefinitionConstraintValue = (domain, constraintKey) => {
+  if (constraintKey === "labelCount") {
+    const directLabelCount = Number(domain?.definition?.labelCount);
+
+    if (Number.isInteger(directLabelCount) && directLabelCount > 0) {
+      return directLabelCount;
+    }
+
+    const labels = domain?.definition?.labels;
+    return Array.isArray(labels) ? labels.length : undefined;
+  }
+
+  return domain?.definition?.[constraintKey];
+};
+
+const matchesConstraint = ({ domain, constraintKey, expectedValue }) => {
+  const actualValue = getDefinitionConstraintValue(domain, constraintKey);
+
+  if (Array.isArray(expectedValue)) {
+    return expectedValue.includes(actualValue);
+  }
+
+  return actualValue === expectedValue;
+};
+
+const supportedEntryMatchesDomain = ({ domain, supportedEntry }) => {
+  const domainTypeKey = String(domain?.typeKey || "").trim();
+  const supportedTypeKey = String(supportedEntry?.typeKey || "").trim();
+
+  if (!domainTypeKey || !supportedTypeKey || domainTypeKey !== supportedTypeKey) {
+    return false;
+  }
+
+  const constraints =
+    supportedEntry?.constraints &&
+    typeof supportedEntry.constraints === "object" &&
+    !Array.isArray(supportedEntry.constraints)
+      ? supportedEntry.constraints
+      : {};
+
+  return Object.entries(constraints).every(([constraintKey, expectedValue]) =>
+    matchesConstraint({
+      domain,
+      constraintKey,
+      expectedValue,
+    })
+  );
 };
 
 export const isNumericDiscreteDomain = (domain) =>
   domain?.typeKey === "numericDiscrete";
 
-const isNumericContinuousDomain = (domain) =>
-  domain?.typeKey === "numericContinuous";
-
-const isLinguisticDomain = (domain) => domain?.family === "linguistic";
-
-const getMembershipFunctionOrNull = (domain) => {
-  const membershipFunction = domain?.definition?.membershipFunction;
-
-  if (typeof membershipFunction !== "string") {
-    return null;
-  }
-
-  const normalizedMembershipFunction = membershipFunction.trim().toLowerCase();
-  return normalizedMembershipFunction || null;
-};
-
 export const isSupportedDomainForModel = ({
   domain,
-  modelSupportedDomains,
+  modelSupportedExpressionDomains,
   userId,
 }) => {
-  const supported = resolveSupportedDomainFlags(modelSupportedDomains);
+  const supportedEntries = normalizeSupportedExpressionDomains(
+    modelSupportedExpressionDomains
+  );
 
-  if (isNumericDiscreteDomain(domain)) {
-    return supported.numericDiscrete;
+  if (supportedEntries.length === 0) {
+    return false;
   }
 
-  if (isNumericContinuousDomain(domain)) {
-    return supported.numericContinuous;
+  const normalizedDomainUserId = toIdString(domain?.user);
+  const isCreatorOwnedDomain =
+    domain?.isGlobal !== true &&
+    normalizedDomainUserId &&
+    normalizedDomainUserId === toIdString(userId);
+  const isAccessibleDomain = domain?.isGlobal === true || isCreatorOwnedDomain;
+
+  if (!isAccessibleDomain) {
+    return false;
   }
 
-  if (isLinguisticDomain(domain)) {
-    const normalizedDomainUserId = toIdString(domain.user);
-    const isCreatorOwnedDomain =
-      domain.isGlobal !== true &&
-      normalizedDomainUserId &&
-      normalizedDomainUserId === toIdString(userId);
-    const membershipFunction = getMembershipFunctionOrNull(domain);
-    const supportsMembershipFunction =
-      typeof membershipFunction === "string" &&
-      supported.linguisticMembershipFunctions.includes(membershipFunction);
-
-    return supportsMembershipFunction && isCreatorOwnedDomain;
-  }
-
-  return false;
+  return supportedEntries.some((supportedEntry) =>
+    supportedEntryMatchesDomain({
+      domain,
+      supportedEntry,
+    })
+  );
 };
 
 export const isDomainSnapshotSupportedByModel = ({
   domainSnapshot,
-  supportedDomainFlags,
+  supportedExpressionDomains,
 }) => {
-  if (isNumericDiscreteDomain(domainSnapshot)) {
-    return supportedDomainFlags.numericDiscrete;
-  }
+  const supportedEntries = normalizeSupportedExpressionDomains(
+    supportedExpressionDomains
+  );
 
-  if (isNumericContinuousDomain(domainSnapshot)) {
-    return supportedDomainFlags.numericContinuous;
-  }
-
-  if (isLinguisticDomain(domainSnapshot)) {
-    const membershipFunction = getMembershipFunctionOrNull(domainSnapshot);
-    return (
-      typeof membershipFunction === "string" &&
-      supportedDomainFlags.linguisticMembershipFunctions.includes(
-        membershipFunction
-      )
-    );
-  }
-
-  return false;
+  return supportedEntries.some((supportedEntry) =>
+    supportedEntryMatchesDomain({
+      domain: domainSnapshot,
+      supportedEntry,
+    })
+  );
 };

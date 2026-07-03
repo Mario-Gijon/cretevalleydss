@@ -61,6 +61,25 @@ const normalizeStringList = (value) => {
   return [...uniqueValues];
 };
 
+const normalizeConstraintValue = (value) => {
+  const plainValue = toPlainValue(value);
+
+  if (Array.isArray(plainValue)) {
+    return plainValue.map((item) => normalizeConstraintValue(item));
+  }
+
+  if (plainValue && typeof plainValue === "object") {
+    return Object.keys(plainValue)
+      .filter((key) => plainValue[key] !== undefined)
+      .reduce((normalized, key) => {
+        normalized[key] = normalizeConstraintValue(plainValue[key]);
+        return normalized;
+      }, {});
+  }
+
+  return plainValue;
+};
+
 export const normalizeEndpoint = (apiEndpoint, { emptyValue = null } = {}) => {
   if (!apiEndpoint || typeof apiEndpoint !== "object") {
     return emptyValue;
@@ -106,26 +125,49 @@ export const normalizeParameters = (parameters) => {
     .sort((left, right) => String(left.key).localeCompare(String(right.key)));
 };
 
-export const normalizeSupportedDomains = (supportedDomains) => {
-  if (!supportedDomains || typeof supportedDomains !== "object") {
-    return {
-      numeric: {
-        continuous: false,
-        discrete: false,
-      },
-      linguistic: [],
-    };
+export const normalizeSupportedExpressionDomains = (
+  supportedExpressionDomains
+) => {
+  if (!Array.isArray(supportedExpressionDomains)) {
+    return [];
   }
 
-  return {
-    numeric: {
-      continuous: supportedDomains?.numeric?.continuous === true,
-      discrete: supportedDomains?.numeric?.discrete === true,
-    },
-    linguistic: normalizeStringList(supportedDomains?.linguistic).map((item) =>
-      item.toLowerCase()
-    ),
-  };
+  const seenKeys = new Set();
+
+  return supportedExpressionDomains
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const typeKey = normalizeNonEmptyString(entry.typeKey);
+      if (!typeKey) {
+        return null;
+      }
+
+      const normalizedKey = JSON.stringify([
+        typeKey,
+        normalizeForStableStringify(entry.constraints || {}),
+      ]);
+
+      if (seenKeys.has(normalizedKey)) {
+        return null;
+      }
+
+      seenKeys.add(normalizedKey);
+
+      return {
+        typeKey,
+        constraints:
+          entry.constraints && typeof entry.constraints === "object"
+            ? normalizeConstraintValue(entry.constraints)
+            : {},
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) =>
+      String(left.typeKey).localeCompare(String(right.typeKey))
+    );
 };
 
 export const normalizeModelKind = (value) => {
@@ -302,7 +344,9 @@ export const buildManifestTechnicalProjection = (manifestModel) => {
     usesExpertWeights: manifestModel?.usesExpertWeights === true,
     usesFuzzyCriteriaWeights: manifestModel?.usesFuzzyCriteriaWeights === true,
     usesCriterionTypes: manifestModel?.usesCriterionTypes === true,
-    supportedDomains: normalizeSupportedDomains(manifestModel?.supportedDomains),
+    supportedExpressionDomains: normalizeSupportedExpressionDomains(
+      manifestModel?.supportedExpressionDomains
+    ),
     parameters: normalizeParameters(manifestModel?.parameters),
     request: normalizeDynamicObject(manifestModel?.request),
     response: normalizeDynamicObject(manifestModel?.response),
@@ -368,8 +412,8 @@ export const normalizeComparableFieldValue = (field, value) => {
     return normalizeParameters(plainValue);
   }
 
-  if (field === "supportedDomains") {
-    return normalizeSupportedDomains(plainValue);
+  if (field === "supportedExpressionDomains") {
+    return normalizeSupportedExpressionDomains(plainValue);
   }
 
   return normalizeForStableStringify(plainValue);

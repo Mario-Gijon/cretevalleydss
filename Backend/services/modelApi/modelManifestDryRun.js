@@ -9,7 +9,7 @@ import {
   normalizeComparableFieldValue,
   normalizeEndpoint,
   normalizeParameters,
-  normalizeSupportedDomains,
+  normalizeSupportedExpressionDomains,
   toIdString,
   validateSyncableManifestModel,
 } from "./modelManifest.mapper.js";
@@ -240,9 +240,13 @@ const buildModelRow = ({
       manifestProjection?.usesCriterionTypes ??
       mongoModel?.usesCriterionTypes ??
       null,
-    supportedDomains: manifestProjection
-      ? normalizeSupportedDomains(manifestProjection.supportedDomains)
-      : normalizeSupportedDomains(mongoModel?.supportedDomains),
+    supportedExpressionDomains: manifestProjection
+      ? normalizeSupportedExpressionDomains(
+        manifestProjection.supportedExpressionDomains
+      )
+      : normalizeSupportedExpressionDomains(
+        mongoModel?.supportedExpressionDomains
+      ),
     apiEndpoint:
       normalizeEndpoint(manifestProjection?.apiEndpoint, { emptyValue: null }) ??
       normalizeEndpoint(mongoModel?.apiEndpoint, { emptyValue: null }),
