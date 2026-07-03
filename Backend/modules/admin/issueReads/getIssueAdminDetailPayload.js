@@ -317,8 +317,8 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
 
   const snapshotsSummary = {
     total: snapshots.length,
-    numeric: snapshots.filter((domain) => domain.type === "numeric").length,
-    linguistic: snapshots.filter((domain) => domain.type === "linguistic")
+    numeric: snapshots.filter((domain) => domain.family === "numeric").length,
+    linguistic: snapshots.filter((domain) => domain.family === "linguistic")
       .length,
   };
 

@@ -166,16 +166,12 @@ export const formatIssueSnapshotDomain = (domain) => {
   return {
     id: toIdString(domain._id),
     name: domain.name,
-    type: domain.type,
-    ...(domain.type === "numeric" && {
-      range: {
-        min: domain.numericRange?.min ?? null,
-        max: domain.numericRange?.max ?? null,
-      },
-    }),
-    ...(domain.type === "linguistic" && {
-      labels: domain.linguisticLabels,
-    }),
+    typeKey: typeof domain.typeKey === "string" ? domain.typeKey : null,
+    family: typeof domain.family === "string" ? domain.family : null,
+    definition:
+      domain.definition && typeof domain.definition === "object"
+        ? domain.definition
+        : {},
   };
 };
 
