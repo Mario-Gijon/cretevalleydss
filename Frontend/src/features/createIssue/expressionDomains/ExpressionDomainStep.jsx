@@ -17,7 +17,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { CreateLinguisticExpressionDialog } from "./components/CreateLinguisticExpressionDialog";
+import { CreateExpressionDomainDialog } from "./components/CreateExpressionDomainDialog";
 import { ViewExpressionsDomainDialog } from "./components/ViewExpressionsDomainDialog";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
 import { removeExpressionDomain } from "../../../services/issue.service";
@@ -32,28 +32,9 @@ import {
   resolveExpressionDomainOptions,
 } from "../../../utils/domainAssignments.utils";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
+import { formatExpressionDomainDisplayLabel } from "../../../utils/expressionDomains";
 
 const normalizeDomainId = (value) => String(value || "").trim();
-
-const resolveNumericDomainKind = (domain) =>
-  domain?.numericRange?.step === 1 ? "discrete" : "continuous";
-
-const buildDomainLabel = (domain) => {
-  const name = domain?.name || "Unnamed";
-
-  if (domain?.type === "numeric") {
-    return `${name} ${resolveNumericDomainKind(domain)}`;
-  }
-
-  if (domain?.type === "linguistic") {
-    const labelCount = domain?.linguisticLabels?.length || domain?.valueCount || null;
-    return labelCount
-      ? `${name} linguistic ${labelCount} labels`
-      : `${name} linguistic`;
-  }
-
-  return `${name} ${domain?.type || "unknown"}`;
-};
 
 const AssignmentModeCard = ({ selected, title, description, onClick }) => {
   const theme = useTheme();
@@ -129,7 +110,7 @@ const DomainSelect = ({ label, value, allDomains, onChange, sx = {} }) => (
 
       return (
         <MenuItem key={domainId} value={domainId}>
-          {buildDomainLabel(domain)}
+          {formatExpressionDomainDisplayLabel(domain)}
         </MenuItem>
       );
     })}
@@ -274,7 +255,7 @@ export const ExpressionDomainStep = () => {
               color="info"
               sx={getCreateIssueExpressionActionBtnSx(theme)}
             >
-              Create linguistic expression
+              Create expression domain
             </Button>
 
             <Button
@@ -295,7 +276,7 @@ export const ExpressionDomainStep = () => {
         {!hasCompatibleDomains ? (
           <Alert severity="warning">
             No compatible expression domains were found for the selected model. Create a compatible
-            linguistic domain or adjust the model selection.
+            expression domain or adjust the model selection.
           </Alert>
         ) : (
           <Stack spacing={1.45}>
@@ -395,11 +376,10 @@ export const ExpressionDomainStep = () => {
         )}
       </Stack>
 
-      <CreateLinguisticExpressionDialog
+      <CreateExpressionDomainDialog
         open={openCreateDomainExpressionDialog}
         editingDomain={editingDomain}
         onClose={() => setOpenCreateDomainExpressionDialog(false)}
-        showSnackbarAlert={showSnackbarAlert}
       />
 
       <ViewExpressionsDomainDialog

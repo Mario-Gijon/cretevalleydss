@@ -1,3 +1,12 @@
+import {
+  getExpressionDomainFamily,
+  getExpressionDomainMembershipFunction,
+  getExpressionDomainNumericRange,
+  isLinguisticFuzzyExpressionDomain,
+  isNumericContinuousExpressionDomain,
+  isNumericDiscreteExpressionDomain,
+} from "./expressionDomains";
+
 /**
  * Valida que todas las asignaciones de dominio tengan un dominio seleccionado.
  *
@@ -48,13 +57,10 @@ const getModelDomainSupport = (selectedModel) => ({
 });
 
 const isNumericContinuousDomain = (domain) =>
-  domain?.type === "numeric" &&
-  (domain?.numericRange?.step === null || domain?.numericRange?.step === undefined);
+  isNumericContinuousExpressionDomain(domain);
 
 const isNumericDiscreteDomain = (domain) =>
-  domain?.type === "numeric" &&
-  Number.isFinite(domain?.numericRange?.step) &&
-  domain.numericRange.step > 0;
+  isNumericDiscreteExpressionDomain(domain);
 
 export const getSupportedDomainPools = (
   selectedModel,
@@ -62,8 +68,9 @@ export const getSupportedDomainPools = (
   expressionDomains = []
 ) => {
   const support = getModelDomainSupport(selectedModel);
-  const numericCandidates = [...globalDomains, ...expressionDomains].filter(
-    (domain) => domain?.type === "numeric"
+  const visibleDomains = [...globalDomains, ...expressionDomains];
+  const numericCandidates = visibleDomains.filter(
+    (domain) => getExpressionDomainFamily(domain) === "numeric"
   );
 
   const numericDomains = numericCandidates.filter(
@@ -73,12 +80,11 @@ export const getSupportedDomainPools = (
   );
 
   const linguisticDomains = support.linguisticMembershipFunctions.length
-    ? expressionDomains.filter(
+    ? visibleDomains.filter(
       (domain) =>
-        domain?.type === "linguistic" &&
-        typeof domain?.membershipFunction === "string" &&
+        isLinguisticFuzzyExpressionDomain(domain) &&
         support.linguisticMembershipFunctions.includes(
-          domain.membershipFunction.trim().toLowerCase()
+          getExpressionDomainMembershipFunction(domain).toLowerCase()
         )
     )
     : [];
@@ -124,19 +130,18 @@ export const buildInitialAssignments = (
 
   const continuousDefaultDomainId =
     numericDomains.find(
-      (domain) =>
-        isNumericContinuousDomain(domain) &&
-        domain?.numericRange?.min === 0 &&
-        domain?.numericRange?.max === 1
+      (domain) => {
+        const { min, max } = getExpressionDomainNumericRange(domain);
+        return isNumericContinuousDomain(domain) && min === 0 && max === 1;
+      }
     )?._id || null;
 
   const discreteDefaultDomainId =
     numericDomains.find(
-      (domain) =>
-        isNumericDiscreteDomain(domain) &&
-        domain?.numericRange?.min === 0 &&
-        domain?.numericRange?.max === 9 &&
-        domain?.numericRange?.step === 1
+      (domain) => {
+        const { min, max, step } = getExpressionDomainNumericRange(domain);
+        return isNumericDiscreteDomain(domain) && min === 0 && max === 9 && step === 1;
+      }
     )?._id || null;
 
   const defaultDomainId =
@@ -229,19 +234,18 @@ export const resolveExpressionDomainOptions = (
   const defaultDomainId =
     normalizeDomainId(
       numericDomains.find(
-        (domain) =>
-          isNumericContinuousDomain(domain) &&
-          domain?.numericRange?.min === 0 &&
-          domain?.numericRange?.max === 1
+        (domain) => {
+          const { min, max } = getExpressionDomainNumericRange(domain);
+          return isNumericContinuousDomain(domain) && min === 0 && max === 1;
+        }
       )?._id
     ) ||
     normalizeDomainId(
       numericDomains.find(
-        (domain) =>
-          isNumericDiscreteDomain(domain) &&
-          domain?.numericRange?.min === 0 &&
-          domain?.numericRange?.max === 9 &&
-          domain?.numericRange?.step === 1
+        (domain) => {
+          const { min, max, step } = getExpressionDomainNumericRange(domain);
+          return isNumericDiscreteDomain(domain) && min === 0 && max === 9 && step === 1;
+        }
       )?._id
     ) ||
     normalizeDomainId(allDomains[0]?._id);

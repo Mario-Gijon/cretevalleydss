@@ -8,6 +8,10 @@ import {
   buildEqualWeightsByCriterion,
 } from "./createIssueCriteriaWeightValues";
 import { resolveAssignedDomainIds } from "./createIssueAssignedDomains";
+import {
+  getExpressionDomainFuzzyValueCount,
+  isLinguisticFuzzyExpressionDomain,
+} from "../../../utils/expressionDomains";
 
 export const CREATE_ISSUE_CRITERIA_WEIGHTING_MODES = CRITERIA_WEIGHTING_MODES;
 export const isCreateIssueDeepEqual = isDeepEqual;
@@ -46,12 +50,12 @@ export const buildDefaultCriteriaWeightingConfig = (selectedModel) => {
 
 export const resolveFuzzyCriteriaWeightValueCount = (domains = []) => {
   const linguisticDomains = (Array.isArray(domains) ? domains : []).filter(
-    (domain) => domain?.type === "linguistic"
+    (domain) => isLinguisticFuzzyExpressionDomain(domain)
   );
   const valueCounts = Array.from(
     new Set(
       linguisticDomains
-        .map((domain) => Number(domain?.valueCount))
+        .map((domain) => getExpressionDomainFuzzyValueCount(domain))
         .filter((valueCount) => Number.isInteger(valueCount) && valueCount >= 2)
     )
   );
@@ -180,9 +184,9 @@ export const resolveAssignedFuzzyValueCount = ({
   const valueCounts = new Set();
   for (const domainId of assignedDomainIds) {
     const domain = domainById.get(domainId);
-    if (domain?.type !== "linguistic") continue;
+    if (!isLinguisticFuzzyExpressionDomain(domain)) continue;
 
-    const valueCount = Number(domain?.valueCount);
+    const valueCount = getExpressionDomainFuzzyValueCount(domain);
     if (!Number.isInteger(valueCount) || valueCount < 2) {
       return null;
     }

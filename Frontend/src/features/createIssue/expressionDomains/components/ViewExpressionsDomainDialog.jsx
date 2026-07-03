@@ -24,7 +24,14 @@ import {
   getCreateIssueCompactDialogContentSx,
   getCreateIssueCompactDialogTitleSx,
 } from "../../styles/createIssueStep.styles";
-import { getLinguisticMembershipDefinition } from "../../../../utils/linguisticMembershipFunctions";
+import {
+  getExpressionDomainDisplayMeta,
+  getExpressionDomainFamily,
+  getExpressionDomainLabels,
+  getExpressionDomainMembershipFunction,
+  isLinguisticFuzzyExpressionDomain,
+  isLinguisticOrdinalExpressionDomain,
+} from "../../../../utils/expressionDomains";
 
 export const ViewExpressionsDomainDialog = ({
   open,
@@ -91,97 +98,100 @@ export const ViewExpressionsDomainDialog = ({
 
         <DialogContent sx={getCreateIssueCompactDialogContentSx(theme)}>
           <Grid2 container spacing={1.5} sx={{ mt: 1 }}>
-            {expressionDomains.map((domain) => (
-              <Grid2 key={domain._id} size={getGridProps()} alignItems="stretch">
-                <GlassPaper
-                  sx={{
-                    p: 1.6,
-                    borderRadius: 3,
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-                    bgcolor: alpha(theme.palette.common.white, 0.012),
-                    height: "100%",
-                  }}
-                >
-                  <Stack spacing={1.5} width="100%">
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      spacing={1}
-                      width="100%"
-                    >
-                      <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                          {domain.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                          {domain.type === "numeric"
-                            ? "Numeric (0-1)"
-                            : `Linguistic (${domain.linguisticLabels.length} labels)`}
-                        </Typography>
-                        {domain.type === "linguistic" ? (
-                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                            Function: {getLinguisticMembershipDefinition(domain.membershipFunction)?.label || domain.membershipFunction || "Unknown"} • Values: {domain.valueCount ?? "?"}
+            {expressionDomains.map((domain) => {
+              const displayMeta = getExpressionDomainDisplayMeta(domain);
+
+              return (
+                <Grid2 key={domain._id} size={getGridProps()} alignItems="stretch">
+                  <GlassPaper
+                    sx={{
+                      p: 1.6,
+                      borderRadius: 3,
+                      border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+                      bgcolor: alpha(theme.palette.common.white, 0.012),
+                      height: "100%",
+                    }}
+                  >
+                    <Stack spacing={1.5} width="100%">
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        spacing={1}
+                        width="100%"
+                      >
+                        <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                            {displayMeta.name}
                           </Typography>
-                        ) : null}
-                      </Stack>
-
-                      <Stack direction="row" spacing={0.8}>
-                        <Button
-                          size="small"
-                          color="warning"
-                          onClick={() => handleOpenEdit(domain)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => handleAskDelete(domain)}
-                        >
-                          Delete
-                        </Button>
-                      </Stack>
-                    </Stack>
-
-                    <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
-
-                    {domain.type === "linguistic" ? (
-                      <Stack spacing={1.4} width="100%">
-                        <Stack direction="row" flexWrap="wrap" alignItems="center" gap={0.8} width="100%">
-                          {domain.linguisticLabels.map((lbl, i) => (
-                            <Chip
-                              variant="outlined"
-                              color="info"
-                              key={i}
-                              label={lbl.label}
-                              size="small"
-                            />
-                          ))}
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                            {displayMeta.descriptor}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
+                            Family: {getExpressionDomainFamily(domain) || "unknown"}
+                          </Typography>
                         </Stack>
 
-                        <Box
-                          sx={{
-                            borderRadius: 2.5,
-                            p: 1,
-                            bgcolor: alpha(theme.palette.common.white, 0.015),
-                          }}
-                        >
-                          <FuzzyPreviewChart
-                            labels={domain.linguisticLabels}
-                            membershipFunction={domain.membershipFunction}
-                          />
-                        </Box>
+                        <Stack direction="row" spacing={0.8}>
+                          <Button
+                            size="small"
+                            color="warning"
+                            onClick={() => handleOpenEdit(domain)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleAskDelete(domain)}
+                          >
+                            Delete
+                          </Button>
+                        </Stack>
                       </Stack>
-                    ) : (
-                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                        Numeric domain preview is not available.
-                      </Typography>
-                    )}
-                  </Stack>
-                </GlassPaper>
-              </Grid2>
-            ))}
+
+                      <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+
+                      {isLinguisticFuzzyExpressionDomain(domain) ||
+                      isLinguisticOrdinalExpressionDomain(domain) ? (
+                        <Stack spacing={1.4} width="100%">
+                          <Stack direction="row" flexWrap="wrap" alignItems="center" gap={0.8} width="100%">
+                            {getExpressionDomainLabels(domain).map((lbl, i) => (
+                              <Chip
+                                variant="outlined"
+                                color="info"
+                                key={i}
+                                label={lbl.label}
+                                size="small"
+                              />
+                            ))}
+                          </Stack>
+
+                          {isLinguisticFuzzyExpressionDomain(domain) ? (
+                            <Box
+                              sx={{
+                                borderRadius: 2.5,
+                                p: 1,
+                                bgcolor: alpha(theme.palette.common.white, 0.015),
+                              }}
+                            >
+                              <FuzzyPreviewChart
+                                labels={getExpressionDomainLabels(domain)}
+                                membershipFunction={getExpressionDomainMembershipFunction(domain)}
+                              />
+                            </Box>
+                          ) : null}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                          A preview is not available for this domain type.
+                        </Typography>
+                      )}
+                    </Stack>
+                  </GlassPaper>
+                </Grid2>
+              );
+            })}
           </Grid2>
         </DialogContent>
 
