@@ -117,13 +117,12 @@ def build_model_scaffold_preview(
     placeholders = _build_placeholder_values(request)
 
     template_map = [
+        ("__init__.py.template", "__init__.py"),
         ("definition.py.template", "definition.py"),
         ("executor.py.template", "executor.py"),
         ("run.py.template", "run.py"),
+        ("examples.py.template", "examples.py"),
     ]
-
-    if request.includeExamples:
-        template_map.append(("examples.py.template", "examples.py"))
 
     files = []
     for template_name, output_name in template_map:

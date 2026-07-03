@@ -92,6 +92,7 @@ def test_model_package_apply_writes_expected_files_inside_temp_project_root(
     assert any(item["status"] == "written" for item in payload["items"])
 
     expected_files = [
+        project_root / "DecisionModelsService/models/demo_model/__init__.py",
         project_root / "DecisionModelsService/models/demo_model/definition.py",
         project_root / "DecisionModelsService/models/demo_model/executor.py",
         project_root / "DecisionModelsService/models/demo_model/run.py",
