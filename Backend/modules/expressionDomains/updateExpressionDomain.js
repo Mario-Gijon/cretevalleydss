@@ -23,28 +23,16 @@ export const updateUserExpressionDomain = async ({
 
   const normalizedDomain = normalizeNewExpressionDomainPayload({
     name: updatedDomain.name ?? domain.name,
-    type: updatedDomain.type ?? domain.type,
-    numericRange: updatedDomain.numericRange ?? domain.numericRange,
-    membershipFunction:
-      updatedDomain.membershipFunction ?? domain.membershipFunction,
-    valuesMode: updatedDomain.valuesMode ?? domain.valuesMode,
-    linguisticLabels: updatedDomain.linguisticLabels ?? domain.linguisticLabels,
+    typeKey: updatedDomain.typeKey ?? domain.typeKey,
+    family: updatedDomain.family ?? domain.family,
+    definition: updatedDomain.definition ?? domain.definition,
     isGlobal: domain.isGlobal,
   });
 
   domain.name = normalizedDomain.name;
-  domain.type = normalizedDomain.type;
-  domain.numericRange =
-    normalizedDomain.type === "numeric" ? normalizedDomain.numericRange : null;
-  domain.membershipFunction =
-    normalizedDomain.type === "linguistic"
-      ? normalizedDomain.membershipFunction
-      : null;
-  domain.valueCount =
-    normalizedDomain.type === "linguistic" ? normalizedDomain.valueCount : null;
-  domain.valuesMode =
-    normalizedDomain.type === "linguistic" ? normalizedDomain.valuesMode : null;
-  domain.linguisticLabels = normalizedDomain.linguisticLabels;
+  domain.typeKey = normalizedDomain.typeKey;
+  domain.family = normalizedDomain.family;
+  domain.definition = normalizedDomain.definition;
 
   await domain.save(session ? { session } : undefined);
 

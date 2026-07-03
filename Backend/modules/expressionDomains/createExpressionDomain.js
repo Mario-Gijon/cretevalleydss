@@ -7,20 +7,11 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
 
   const newDomain = new ExpressionDomain({
     name: normalizedDomain.name,
-    type: normalizedDomain.type,
+    typeKey: normalizedDomain.typeKey,
+    family: normalizedDomain.family,
+    definition: normalizedDomain.definition,
     isGlobal: false,
     user: toIdString(userId),
-    ...(normalizedDomain.type === "numeric"
-      ? { numericRange: normalizedDomain.numericRange }
-      : {}),
-    ...(normalizedDomain.type === "linguistic"
-      ? {
-          membershipFunction: normalizedDomain.membershipFunction,
-          valueCount: normalizedDomain.valueCount,
-          valuesMode: normalizedDomain.valuesMode,
-          linguisticLabels: normalizedDomain.linguisticLabels,
-        }
-      : {}),
   });
 
   await newDomain.save();

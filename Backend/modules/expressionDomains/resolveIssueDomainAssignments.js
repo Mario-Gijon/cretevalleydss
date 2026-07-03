@@ -97,7 +97,7 @@ export const loadAccessibleExpressionDomains = async ({
     ],
   })
     .select(
-      "_id name type numericRange linguisticLabels membershipFunction valueCount valuesMode isGlobal user"
+      "_id name typeKey family definition isGlobal user"
     )
     .session(session);
 

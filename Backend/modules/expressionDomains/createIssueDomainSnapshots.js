@@ -39,14 +39,9 @@ export const createIssueDomainSnapshots = async ({
     issue: issueId,
     sourceDomain: domain._id,
     name: domain.name,
-    type: domain.type,
-    numericRange: domain.type === "numeric" ? domain.numericRange : undefined,
-    membershipFunction:
-      domain.type === "linguistic" ? domain.membershipFunction : null,
-    valueCount: domain.type === "linguistic" ? domain.valueCount : null,
-    valuesMode: domain.type === "linguistic" ? domain.valuesMode : null,
-    linguisticLabels:
-      domain.type === "linguistic" ? domain.linguisticLabels : [],
+    typeKey: domain.typeKey,
+    family: domain.family,
+    definition: domain.definition,
   }));
 
   const createdSnapshots = await IssueExpressionDomain.insertMany(
