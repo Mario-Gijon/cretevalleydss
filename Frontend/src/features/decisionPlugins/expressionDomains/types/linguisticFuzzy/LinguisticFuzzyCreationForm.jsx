@@ -1,101 +1,174 @@
-import { AddOutlined, DeleteOutline } from "@mui/icons-material";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button,
-  IconButton,
+  Alert,
+  Box,
+  Divider,
+  FormControlLabel,
   MenuItem,
   Stack,
+  Switch,
   TextField,
+  Typography,
 } from "@mui/material";
+
+import { FuzzyPreviewChart } from "../../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
+import { ConfirmationDialog } from "../../../../../components/StyledComponents/ConfirmationDialog";
 import {
+  buildAutomaticLinguisticLabels,
   DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
-  LINGUISTIC_MEMBERSHIP_FUNCTIONS,
   getLinguisticMembershipDefinitionOrDefault,
+  LINGUISTIC_MEMBERSHIP_FUNCTIONS,
+  validateLinguisticLabelValues,
 } from "../../../../../utils/linguisticMembershipFunctions";
-import {
-  buildUniqueLabelKey,
-  normalizeDraftName,
-} from "../../helpers";
+import { normalizeDraftName } from "../../helpers";
+
+const DEFAULT_LABEL_COUNT = 5;
 
 const MEMBERSHIP_FUNCTION_OPTIONS = Object.values(LINGUISTIC_MEMBERSHIP_FUNCTIONS);
 
-const parseCommaSeparatedValues = (value) =>
-  String(value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item !== "")
-    .map((item) => Number(item));
+const normalizeDefinition = (value) =>
+  value?.definition && typeof value.definition === "object" && !Array.isArray(value.definition)
+    ? value.definition
+    : {};
 
-const formatValues = (values = []) =>
-  (Array.isArray(values) ? values : []).join(", ");
+const parseLabelCount = (value) => {
+  const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+  return Number.isInteger(parsed) ? parsed : null;
+};
 
-const buildDraftLabels = (labels = []) => {
-  const usedKeys = new Set();
+const isValidLabelCount = (value) =>
+  Number.isInteger(value) && value >= 3 && value % 2 === 1;
 
-  return (Array.isArray(labels) ? labels : []).map((labelItem, index) => {
-    const label = String(labelItem?.label || "").trim();
+const resolveInitialLabelCount = (value) => {
+  const definition = normalizeDefinition(value);
+  const directCount = parseLabelCount(definition.labelCount);
+
+  if (isValidLabelCount(directCount)) {
+    return directCount;
+  }
+
+  const labelsLength = Array.isArray(definition.labels) ? definition.labels.length : null;
+  if (isValidLabelCount(labelsLength)) {
+    return labelsLength;
+  }
+
+  return DEFAULT_LABEL_COUNT;
+};
+
+const ensureValuesLength = (values = [], targetLength) => {
+  const numericValues = (Array.isArray(values) ? values : []).map((item) =>
+    Number(item)
+  );
+  const safeValues = numericValues.map((item) =>
+    Number.isFinite(item) ? item : 0
+  );
+
+  if (safeValues.length >= targetLength) {
+    return safeValues.slice(0, targetLength);
+  }
+
+  const padValue = safeValues.length ? safeValues[safeValues.length - 1] : 0;
+  const missing = Array.from(
+    { length: targetLength - safeValues.length },
+    () => padValue
+  );
+
+  return safeValues.concat(missing);
+};
+
+const buildDraftLabelsFromExisting = ({
+  labels = [],
+  labelCount,
+  membershipFunction,
+  fallbackLabels = [],
+}) => {
+  const expectedValueCount =
+    getLinguisticMembershipDefinitionOrDefault(membershipFunction).valueCount;
+
+  return Array.from({ length: labelCount }, (_, index) => {
+    const sourceLabel = labels[index];
+    const fallbackLabel = fallbackLabels[index];
+    const label = String(
+      sourceLabel?.label ??
+        fallbackLabel?.label ??
+        `Label ${index + 1}`
+    ).trim();
 
     return {
-      key: buildUniqueLabelKey({
-        label,
-        index,
-        usedKeys,
-      }),
+      key:
+        sourceLabel?.key ||
+        fallbackLabel?.key ||
+        `linguistic_fuzzy_label_${index + 1}`,
       label: label || `Label ${index + 1}`,
-      values: Array.isArray(labelItem?.values) ? labelItem.values : [],
+      values: ensureValuesLength(
+        sourceLabel?.values ?? fallbackLabel?.values,
+        expectedValueCount
+      ),
       index,
     };
   });
 };
 
-const ensureValueCount = (values = [], count) => {
-  const normalized = (Array.isArray(values) ? values : []).slice(0, count);
-
-  while (normalized.length < count) {
-    normalized.push(0);
-  }
-
-  return normalized;
-};
-
-const ensureDraftLabels = (value) => {
-  const membershipFunction =
-    value?.definition?.membershipFunction ||
-    DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION;
-  const expectedCount =
-    getLinguisticMembershipDefinitionOrDefault(membershipFunction).valueCount;
-  const rawLabels = value?.definition?.labels;
-  const labels = buildDraftLabels(rawLabels).map((labelItem) => ({
-    ...labelItem,
-    values: ensureValueCount(labelItem.values, expectedCount),
-  }));
-
-  return labels.length > 0
-    ? labels
-    : [
-        {
-          key: "low",
-          label: "Low",
-          values: ensureValueCount([], expectedCount),
-          index: 0,
-        },
-        {
-          key: "high",
-          label: "High",
-          values: ensureValueCount([], expectedCount),
-          index: 1,
-        },
-      ];
-};
-
-const buildNextValue = ({
-  value,
-  labels,
-  name = value?.name,
-  membershipFunction = value?.definition?.membershipFunction,
+const buildAutomaticDraftLabels = ({
+  labelCount,
+  membershipFunction,
+  previousLabels = [],
 }) => {
-  const definition = value?.definition && typeof value.definition === "object"
-    ? value.definition
-    : {};
+  const generatedLabels = buildAutomaticLinguisticLabels({
+    labelCount,
+    membershipFunction,
+    previousLabels,
+  });
+
+  return generatedLabels.map((labelItem, index) => ({
+    key: previousLabels[index]?.key || `linguistic_fuzzy_label_${index + 1}`,
+    label: String(labelItem?.label || "").trim() || `Label ${index + 1}`,
+    values: Array.isArray(labelItem?.values) ? labelItem.values.map(Number) : [],
+    index,
+  }));
+};
+
+const normalizePayloadLabels = (labels = [], membershipFunction) => {
+  const expectedValueCount =
+    getLinguisticMembershipDefinitionOrDefault(membershipFunction).valueCount;
+
+  return (Array.isArray(labels) ? labels : []).map((labelItem, index) => ({
+    key:
+      typeof labelItem?.key === "string" && labelItem.key.trim()
+        ? labelItem.key.trim()
+        : `linguistic_fuzzy_label_${index + 1}`,
+    label: String(labelItem?.label || "").trim() || `Label ${index + 1}`,
+    values: ensureValuesLength(labelItem?.values, expectedValueCount).map(Number),
+    index,
+  }));
+};
+
+const labelsUseManualValues = ({
+  labels,
+  labelCount,
+  membershipFunction,
+}) => {
+  const normalizedLabels = normalizePayloadLabels(labels, membershipFunction);
+  const automaticLabels = buildAutomaticDraftLabels({
+    labelCount,
+    membershipFunction,
+    previousLabels: normalizedLabels,
+  });
+
+  return normalizedLabels.some((labelItem, index) => {
+    const automaticValues = automaticLabels[index]?.values || [];
+    return JSON.stringify(labelItem.values) !== JSON.stringify(automaticValues);
+  });
+};
+
+const buildDraftPayload = ({
+  value,
+  name,
+  membershipFunction,
+  labelCount,
+  labels,
+}) => {
+  const definition = normalizeDefinition(value);
 
   return {
     ...value,
@@ -103,167 +176,420 @@ const buildNextValue = ({
     typeKey: "linguisticFuzzy",
     definition: {
       ...definition,
-      membershipFunction:
-        membershipFunction || DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
-      labels: buildDraftLabels(labels).map((labelItem) => ({
-        ...labelItem,
-        values: Array.isArray(labelItem.values) ? labelItem.values : [],
-      })),
+      membershipFunction,
+      labelCount,
+      labels: normalizePayloadLabels(labels, membershipFunction),
     },
   };
 };
+
+const buildStateFromValue = (value) => {
+  const definition = normalizeDefinition(value);
+  const membershipFunction =
+    String(definition.membershipFunction || "").trim() ||
+    DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION;
+  const labelCount = resolveInitialLabelCount(value);
+  const incomingLabels = buildDraftLabelsFromExisting({
+    labels: Array.isArray(definition.labels) ? definition.labels : [],
+    labelCount,
+    membershipFunction,
+  });
+  const manualMode = labelsUseManualValues({
+    labels: incomingLabels,
+    labelCount,
+    membershipFunction,
+  });
+
+  return {
+    name: normalizeDraftName(value?.name),
+    labelCountInput: String(labelCount),
+    membershipFunction,
+    manualMode,
+    labels: manualMode
+      ? incomingLabels
+      : buildAutomaticDraftLabels({
+          labelCount,
+          membershipFunction,
+          previousLabels: incomingLabels,
+        }),
+  };
+};
+
+const buildComparablePayloadSignature = (value) =>
+  JSON.stringify({
+    name: normalizeDraftName(value?.name),
+    typeKey: String(value?.typeKey || "").trim(),
+    definition: {
+      ...normalizeDefinition(value),
+      labels: normalizePayloadLabels(
+        normalizeDefinition(value).labels,
+        normalizeDefinition(value).membershipFunction ||
+          DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION
+      ),
+    },
+  });
 
 export const LinguisticFuzzyCreationForm = ({
   value,
   onChange,
   disabled = false,
 }) => {
-  const membershipFunction =
-    value?.definition?.membershipFunction ||
-    DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION;
-  const expectedValueCount =
-    getLinguisticMembershipDefinitionOrDefault(membershipFunction).valueCount;
-  const labels = ensureDraftLabels(value);
+  const initialState = useMemo(() => buildStateFromValue(value), [value]);
+  const [name, setName] = useState(initialState.name);
+  const [labelCountInput, setLabelCountInput] = useState(initialState.labelCountInput);
+  const [membershipFunction, setMembershipFunction] = useState(
+    initialState.membershipFunction
+  );
+  const [manualMode, setManualMode] = useState(initialState.manualMode);
+  const [labels, setLabels] = useState(initialState.labels);
+  const [confirmManualModeOpen, setConfirmManualModeOpen] = useState(false);
+  const lastEmittedSignatureRef = useRef("");
 
-  const updateValue = (next) => {
-    onChange?.(buildNextValue(next));
+  useEffect(() => {
+    const incomingSignature = buildComparablePayloadSignature(value);
+
+    if (incomingSignature === lastEmittedSignatureRef.current) {
+      return;
+    }
+
+    const nextState = buildStateFromValue(value);
+    setName(nextState.name);
+    setLabelCountInput(nextState.labelCountInput);
+    setMembershipFunction(nextState.membershipFunction);
+    setManualMode(nextState.manualMode);
+    setLabels(nextState.labels);
+  }, [value]);
+
+  const parsedLabelCount = parseLabelCount(labelCountInput);
+  const hasInvalidLabelCount = !isValidLabelCount(parsedLabelCount);
+  const effectiveLabelCount = isValidLabelCount(parsedLabelCount)
+    ? parsedLabelCount
+    : labels.length || DEFAULT_LABEL_COUNT;
+  const membershipDefinition = useMemo(
+    () => getLinguisticMembershipDefinitionOrDefault(membershipFunction),
+    [membershipFunction]
+  );
+
+  const normalizedLabels = useMemo(
+    () => normalizePayloadLabels(labels, membershipFunction),
+    [labels, membershipFunction]
+  );
+
+  const emittedDraft = useMemo(
+    () =>
+      buildDraftPayload({
+        value,
+        name,
+        membershipFunction,
+        labelCount: effectiveLabelCount,
+        labels: normalizedLabels,
+      }),
+    [effectiveLabelCount, labels, membershipFunction, name, normalizedLabels, value]
+  );
+
+  useEffect(() => {
+    const nextSignature = buildComparablePayloadSignature(emittedDraft);
+
+    if (nextSignature === lastEmittedSignatureRef.current) {
+      return;
+    }
+
+    lastEmittedSignatureRef.current = nextSignature;
+    onChange?.(emittedDraft);
+  }, [emittedDraft, onChange]);
+
+  const regenerateAutomaticLabels = ({
+    nextLabelCount = effectiveLabelCount,
+    nextMembershipFunction = membershipFunction,
+    previousLabels = labels,
+  } = {}) => {
+    setLabels(
+      buildAutomaticDraftLabels({
+        labelCount: nextLabelCount,
+        membershipFunction: nextMembershipFunction,
+        previousLabels,
+      })
+    );
   };
 
+  const handleLabelCountChange = (event) => {
+    const nextInput = event.target.value;
+    const nextParsed = parseLabelCount(nextInput);
+
+    setLabelCountInput(nextInput);
+
+    if (!isValidLabelCount(nextParsed)) {
+      return;
+    }
+
+    if (!manualMode) {
+      regenerateAutomaticLabels({
+        nextLabelCount: nextParsed,
+      });
+      return;
+    }
+
+    setLabels((previous) =>
+      buildDraftLabelsFromExisting({
+        labels: previous,
+        labelCount: nextParsed,
+        membershipFunction,
+        fallbackLabels: previous,
+      })
+    );
+  };
+
+  const handleMembershipFunctionChange = (event) => {
+    const nextMembershipFunction = event.target.value;
+    setMembershipFunction(nextMembershipFunction);
+
+    if (!manualMode) {
+      regenerateAutomaticLabels({
+        nextLabelCount: effectiveLabelCount,
+        nextMembershipFunction,
+      });
+      return;
+    }
+
+    setLabels((previous) =>
+      buildDraftLabelsFromExisting({
+        labels: previous,
+        labelCount: effectiveLabelCount,
+        membershipFunction: nextMembershipFunction,
+        fallbackLabels: previous,
+      })
+    );
+  };
+
+  const handleLabelChange = (labelIndex, nextLabel) => {
+    setLabels((previous) =>
+      previous.map((labelItem, index) =>
+        index === labelIndex
+          ? { ...labelItem, label: nextLabel }
+          : labelItem
+      )
+    );
+  };
+
+  const handleManualValueChange = (labelIndex, valueIndex, inputValue) => {
+    const parsed = Number(inputValue);
+
+    setLabels((previous) =>
+      previous.map((labelItem, index) => {
+        if (index !== labelIndex) {
+          return labelItem;
+        }
+
+        const nextValues = Array.isArray(labelItem.values)
+          ? [...labelItem.values]
+          : Array.from({ length: membershipDefinition.valueCount }, () => 0);
+
+        nextValues[valueIndex] = Number.isFinite(parsed) ? parsed : inputValue;
+
+        return {
+          ...labelItem,
+          values: nextValues,
+        };
+      })
+    );
+  };
+
+  const handleManualModeToggle = (checked) => {
+    if (checked) {
+      setConfirmManualModeOpen(true);
+      return;
+    }
+
+    setManualMode(false);
+    regenerateAutomaticLabels();
+  };
+
+  const handleConfirmEnableManualMode = () => {
+    setConfirmManualModeOpen(false);
+    setManualMode(true);
+    setLabels((previous) =>
+      buildDraftLabelsFromExisting({
+        labels: previous,
+        labelCount: effectiveLabelCount,
+        membershipFunction,
+        fallbackLabels: previous,
+      })
+    );
+  };
+
+  const previewLabels = normalizedLabels.map((labelItem) => ({
+    label: labelItem.label,
+    values: labelItem.values,
+  }));
+
   return (
-    <Stack spacing={2}>
-      <TextField
-        label="Name"
-        color="info"
-        value={normalizeDraftName(value?.name)}
-        onChange={(event) =>
-          updateValue({
-            value,
-            labels,
-            name: event.target.value,
-            membershipFunction,
+    <>
+      <Stack spacing={2.2}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+          <TextField
+            label="Name"
+            color="info"
+            autoComplete="off"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={disabled}
+            fullWidth
+          />
+
+          <TextField
+            label="NºLabels"
+            color="info"
+            type="number"
+            value={labelCountInput}
+            onChange={handleLabelCountChange}
+            inputProps={{ min: 3, step: 2 }}
+            error={hasInvalidLabelCount}
+            helperText={hasInvalidLabelCount ? "Must be odd and ≥ 3" : ""}
+            disabled={disabled}
+            sx={{ width: { xs: "100%", sm: 130 } }}
+          />
+        </Stack>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+          <TextField
+            select
+            label="Membership function"
+            color="info"
+            value={membershipFunction}
+            onChange={handleMembershipFunctionChange}
+            disabled={disabled}
+            sx={{ minWidth: { xs: "100%", sm: 220 } }}
+          >
+            {MEMBERSHIP_FUNCTION_OPTIONS.map((option) => (
+              <MenuItem key={option.key} value={option.key}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <FormControlLabel
+            control={(
+              <Switch
+                color="info"
+                checked={manualMode}
+                onChange={(event) => handleManualModeToggle(event.target.checked)}
+                disabled={disabled || hasInvalidLabelCount}
+              />
+            )}
+            label="Edit membership values manually"
+          />
+        </Stack>
+
+        {manualMode ? (
+          <Alert severity="warning" variant="outlined">
+            Editing membership values is an advanced option. Incorrect values may make this
+            domain incompatible with some models or produce invalid fuzzy computations. If you
+            are not sure, keep the automatically generated values.
+          </Alert>
+        ) : null}
+
+        <Divider />
+
+        <Stack spacing={2}>
+          {labels.map((labelItem, labelIndex) => {
+            const labelValuesAreValid = validateLinguisticLabelValues(
+              labelItem.values,
+              membershipDefinition.valueCount
+            );
+
+            return (
+              <Stack key={labelIndex} spacing={0.9}>
+                <TextField
+                  label={`L${labelIndex + 1}`}
+                  color="info"
+                  value={labelItem.label}
+                  onChange={(event) =>
+                    handleLabelChange(labelIndex, event.target.value)
+                  }
+                  disabled={disabled}
+                  size="small"
+                />
+
+                {manualMode ? (
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8}>
+                    {Array.from(
+                      { length: membershipDefinition.valueCount },
+                      (_, valueIndex) => (
+                        <TextField
+                          key={`${labelIndex}-${valueIndex}`}
+                          color="info"
+                          type="number"
+                          size="small"
+                          label={`v${valueIndex + 1}`}
+                          inputProps={{ min: 0, max: 1, step: 0.01 }}
+                          value={labelItem?.values?.[valueIndex] ?? ""}
+                          onChange={(event) =>
+                            handleManualValueChange(
+                              labelIndex,
+                              valueIndex,
+                              event.target.value
+                            )
+                          }
+                          disabled={disabled}
+                          error={!labelValuesAreValid}
+                          helperText={
+                            !labelValuesAreValid && valueIndex === 0
+                              ? "Values must be non-decreasing numbers between 0 and 1."
+                              : ""
+                          }
+                        />
+                      )
+                    )}
+                  </Stack>
+                ) : null}
+              </Stack>
+            );
           })}
-        disabled={disabled}
+        </Stack>
+
+        <Divider sx={{ my: 0.6 }} />
+
+        <Typography variant="subtitle1" sx={{ color: "text.secondary" }}>
+          Preview
+        </Typography>
+        <Box
+          sx={{
+            borderRadius: 2.5,
+            p: 1,
+          }}
+        >
+          <FuzzyPreviewChart
+            labels={previewLabels}
+            membershipFunction={membershipFunction}
+          />
+        </Box>
+      </Stack>
+
+      <ConfirmationDialog
+        open={confirmManualModeOpen}
+        onClose={() => setConfirmManualModeOpen(false)}
+        tone="warning"
+        title="Enable manual values?"
+        subtitle="Editing membership values is an advanced option. Incorrect values may make this domain incompatible with some models or produce invalid fuzzy computations. If you are not sure, keep the automatically generated values."
+        actions={[
+          {
+            id: "cancel-enable-manual-fuzzy-values",
+            label: "Keep automatic",
+            color: "secondary",
+            onClick: () => setConfirmManualModeOpen(false),
+          },
+          {
+            id: "confirm-enable-manual-fuzzy-values",
+            label: "Enable manual",
+            color: "warning",
+            autoFocus: true,
+            onClick: handleConfirmEnableManualMode,
+          },
+        ]}
+        maxWidth="xs"
         fullWidth
       />
-
-      <TextField
-        select
-        label="Membership function"
-        color="info"
-        value={membershipFunction}
-        onChange={(event) => {
-          const nextMembershipFunction = event.target.value;
-          const nextValueCount =
-            getLinguisticMembershipDefinitionOrDefault(
-              nextMembershipFunction
-            ).valueCount;
-          const nextLabels = labels.map((labelItem) => ({
-            ...labelItem,
-            values: ensureValueCount(labelItem.values, nextValueCount),
-          }));
-
-          updateValue({
-            value,
-            labels: nextLabels,
-            membershipFunction: nextMembershipFunction,
-          });
-        }}
-        disabled={disabled}
-        fullWidth
-      >
-        {MEMBERSHIP_FUNCTION_OPTIONS.map((option) => (
-          <MenuItem key={option.key} value={option.key}>
-            {option.label}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {labels.map((labelItem, index) => (
-        <Stack key={`${labelItem.key}-${index}`} direction="row" spacing={1}>
-          <TextField
-            label={`Label ${index + 1}`}
-            color="info"
-            value={labelItem.label}
-            onChange={(event) => {
-              const nextLabels = labels.map((item, itemIndex) =>
-                itemIndex === index
-                  ? { ...item, label: event.target.value }
-                  : item
-              );
-
-              updateValue({
-                value,
-                labels: nextLabels,
-                membershipFunction,
-              });
-            }}
-            disabled={disabled}
-            fullWidth
-          />
-
-          <TextField
-            label={`Values (${expectedValueCount})`}
-            color="info"
-            value={formatValues(labelItem.values)}
-            onChange={(event) => {
-              const nextLabels = labels.map((item, itemIndex) =>
-                itemIndex === index
-                  ? {
-                      ...item,
-                      values: ensureValueCount(
-                        parseCommaSeparatedValues(event.target.value),
-                        expectedValueCount
-                      ),
-                    }
-                  : item
-              );
-
-              updateValue({
-                value,
-                labels: nextLabels,
-                membershipFunction,
-              });
-            }}
-            disabled={disabled}
-            fullWidth
-          />
-
-          <IconButton
-            onClick={() =>
-              updateValue({
-                value,
-                labels: labels.filter((_, itemIndex) => itemIndex !== index),
-                membershipFunction,
-              })}
-            disabled={disabled || labels.length <= 1}
-            color="error"
-          >
-            <DeleteOutline />
-          </IconButton>
-        </Stack>
-      ))}
-
-      <Button
-        variant="outlined"
-        color="info"
-        startIcon={<AddOutlined />}
-        onClick={() =>
-          updateValue({
-            value,
-            labels: [
-              ...labels,
-              {
-                label: `Label ${labels.length + 1}`,
-                values: ensureValueCount([], expectedValueCount),
-              },
-            ],
-            membershipFunction,
-          })}
-        disabled={disabled}
-      >
-        Add label
-      </Button>
-    </Stack>
+    </>
   );
 };
 

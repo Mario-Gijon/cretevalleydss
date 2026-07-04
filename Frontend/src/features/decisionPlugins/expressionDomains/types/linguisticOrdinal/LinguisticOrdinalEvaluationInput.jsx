@@ -17,6 +17,7 @@ export const LinguisticOrdinalEvaluationInput = ({
   return (
     <TextField
       select
+      color="info"
       value={labelKey}
       onChange={(event) => onChange?.({ labelKey: event.target.value })}
       disabled={disabled}
@@ -34,4 +35,3 @@ export const LinguisticOrdinalEvaluationInput = ({
 };
 
 export default LinguisticOrdinalEvaluationInput;
-

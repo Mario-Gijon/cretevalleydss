@@ -17,6 +17,7 @@ export const LinguisticFuzzyEvaluationInput = ({
   return (
     <TextField
       select
+      color="info"
       value={labelKey}
       onChange={(event) => onChange?.({ labelKey: event.target.value })}
       disabled={disabled}
@@ -34,4 +35,3 @@ export const LinguisticFuzzyEvaluationInput = ({
 };
 
 export default LinguisticFuzzyEvaluationInput;
-

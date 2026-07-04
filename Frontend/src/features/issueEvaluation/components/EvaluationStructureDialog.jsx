@@ -128,6 +128,16 @@ const EvaluationStructureDialog = ({
     return evaluationPayloadRef.current;
   };
 
+  const validatePreparedPayloadRead = async () => {
+    await preparePayloadRead();
+
+    if (typeof viewRef.current?.validatePayloadRead !== "function") {
+      return { valid: true, errors: [] };
+    }
+
+    return viewRef.current.validatePayloadRead();
+  };
+
   const handleCloseRequest = async () => {
     const nextEvaluationPayload = await preparePayloadRead();
 
@@ -145,7 +155,21 @@ const EvaluationStructureDialog = ({
   };
 
   const handleSave = async () => {
-    const nextEvaluationPayload = await preparePayloadRead();
+    const validation = await validatePreparedPayloadRead();
+
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      setOpenSaveDialog(false);
+      showSnackbarAlert(
+        firstError
+          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
+          : "Evaluation contains invalid values.",
+        "error"
+      );
+      return;
+    }
+
+    const nextEvaluationPayload = evaluationPayloadRef.current;
     setLoading(true);
     setOpenSaveDialog(false);
 
@@ -166,12 +190,38 @@ const EvaluationStructureDialog = ({
   };
 
   const handleOpenSubmit = async () => {
-    await preparePayloadRead();
+    const validation = await validatePreparedPayloadRead();
+
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      showSnackbarAlert(
+        firstError
+          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
+          : "Evaluation contains invalid values.",
+        "error"
+      );
+      return;
+    }
+
     setOpenSubmitDialog(true);
   };
 
   const handleSubmit = async () => {
-    const nextEvaluationPayload = await preparePayloadRead();
+    const validation = await validatePreparedPayloadRead();
+
+    if (!validation.valid) {
+      const firstError = validation.errors[0];
+      setOpenSubmitDialog(false);
+      showSnackbarAlert(
+        firstError
+          ? `${firstError.alternativeName} / ${firstError.criterionName}: ${firstError.message}`
+          : "Evaluation contains invalid values.",
+        "error"
+      );
+      return;
+    }
+
+    const nextEvaluationPayload = evaluationPayloadRef.current;
     setOpenSubmitDialog(false);
     setLoading(true);
 
