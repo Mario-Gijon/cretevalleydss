@@ -8,7 +8,7 @@ export const linguisticFuzzyExpressionDomainType = Object.freeze({
   family: "linguistic",
   constraintExample: {
     membershipFunction: ["triangular"],
-    labelCount: [5, 7],a
+    labelCount: [5, 7],
   },
   CreationForm: LinguisticFuzzyCreationForm,
   EvaluationInput: LinguisticFuzzyEvaluationInput,
