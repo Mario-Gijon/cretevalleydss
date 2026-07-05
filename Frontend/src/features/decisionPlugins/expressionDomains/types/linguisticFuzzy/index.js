@@ -6,7 +6,10 @@ export const linguisticFuzzyExpressionDomainType = Object.freeze({
   label: "Fuzzy linguistic",
   description: "Linguistic labels represented with membership function values.",
   family: "linguistic",
+  constraintExample: {
+    membershipFunction: ["triangular"],
+    labelCount: [5, 7],a
+  },
   CreationForm: LinguisticFuzzyCreationForm,
   EvaluationInput: LinguisticFuzzyEvaluationInput,
 });
-

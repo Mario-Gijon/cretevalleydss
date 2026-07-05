@@ -6,7 +6,10 @@ export const numericContinuousExpressionDomainType = Object.freeze({
   label: "Numeric continuous",
   description: "Numeric values within a continuous range.",
   family: "numeric",
+  constraintExample: {
+    min: 0,
+    max: 1,
+  },
   CreationForm: NumericContinuousCreationForm,
   EvaluationInput: NumericContinuousEvaluationInput,
 });
-

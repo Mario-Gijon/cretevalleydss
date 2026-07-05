@@ -284,6 +284,7 @@ export const LinguisticFuzzyCreationForm = ({
         labelCount: effectiveLabelCount,
         labels: normalizedLabels,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveLabelCount, labels, membershipFunction, name, normalizedLabels, value]
   );
 

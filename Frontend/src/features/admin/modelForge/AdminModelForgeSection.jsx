@@ -32,6 +32,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { listExpressionDomainTypeEntries } from "../../decisionPlugins/expressionDomains";
 import {
   deleteModelForgeAssetAdmin,
   getBackendHealth,
@@ -49,29 +50,31 @@ const MODEL_KIND_OPTIONS = [
   { value: "criteriaWeighting", label: "Criteria weighting" },
 ];
 
-const DOMAIN_OPTIONS = [
-  {
-    typeKey: "numericContinuous",
-    label: "numericContinuous",
-    description: "Continuous numeric values with optional min/max constraints.",
-  },
-  {
-    typeKey: "numericDiscrete",
-    label: "numericDiscrete",
-    description: "Discrete numeric values with optional min/max/step constraints.",
-  },
-  {
-    typeKey: "linguisticOrdinal",
-    label: "linguisticOrdinal",
-    description: "Ordered linguistic labels with optional label count constraints.",
-  },
-  {
-    typeKey: "linguisticFuzzy",
-    label: "linguisticFuzzy",
-    description:
-      "Fuzzy linguistic labels with optional membershipFunction or labelCount constraints.",
-  },
+const SUPPORTED_EXISTING_EXPRESSION_DOMAIN_TYPE_KEYS = [
+  "numericContinuous",
+  "numericDiscrete",
+  "linguisticOrdinal",
+  "linguisticFuzzy",
 ];
+
+const DOMAIN_OPTIONS = SUPPORTED_EXISTING_EXPRESSION_DOMAIN_TYPE_KEYS.map((typeKey) => {
+  const entry = listExpressionDomainTypeEntries().find(
+    (candidate) => candidate.key === typeKey
+  );
+
+  if (!entry) {
+    throw new Error(
+      `[modelForge] Missing expression domain plugin metadata for "${typeKey}".`
+    );
+  }
+
+  return {
+    typeKey: entry.key,
+    label: entry.key,
+    description: entry.description,
+    constraintExample: entry.constraintExample ?? {},
+  };
+});
 
 const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
@@ -459,6 +462,9 @@ const formatJsonPreview = (value) => {
     return String(value);
   }
 };
+
+const formatConstraintExample = (value) => JSON.stringify(value ?? {}, null, 2);
+const formatConstraintExampleInline = (value) => JSON.stringify(value ?? {});
 
 const codeBlockSx = (theme) => ({
   m: 0,
@@ -1443,6 +1449,13 @@ export default function AdminModelForgeSection() {
     [resetActionState]
   );
 
+  const applySupportedExpressionDomainExample = useCallback((typeKey, example) => {
+    setSupportedExpressionDomainConstraints(
+      typeKey,
+      formatConstraintExample(example)
+    );
+  }, [setSupportedExpressionDomainConstraints]);
+
   const toggleSupportedExpressionDomain = useCallback(
     (typeKey, checked) => {
       setFormState((current) => {
@@ -2114,29 +2127,75 @@ export default function AdminModelForgeSection() {
                         </Typography>
 
                         {checked && (
-                          <TextField
-                            color="info"
-                            label="Constraints JSON"
-                            value={selectedEntry?.constraintsJsonText || "{}"}
-                            onChange={(event) =>
-                              setSupportedExpressionDomainConstraints(
-                                domain.typeKey,
-                                event.target.value
-                              )
-                            }
-                            minRows={3}
-                            multiline
-                            fullWidth
-                            error={Boolean(validationError)}
-                            helperText={
-                              validationError ||
-                              `Optional. Example: ${
-                                domain.typeKey === "linguisticFuzzy"
-                                  ? '{"membershipFunction":["triangular"]}'
-                                  : "{}"
-                              }`
-                            }
-                          />
+                          <Box
+                            sx={{
+                              display: "grid",
+                              gap: 1,
+                              gridTemplateColumns: {
+                                xs: "1fr",
+                                md: "minmax(0, 1fr) minmax(0, 1fr)",
+                              },
+                            }}
+                          >
+                            <Stack spacing={0.65}>
+                              <Stack
+                                direction="row"
+                                spacing={0.8}
+                                alignItems="center"
+                                justifyContent="space-between"
+                              >
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "text.secondary", fontWeight: 900 }}
+                                >
+                                  Example constraints
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                  onClick={() =>
+                                    applySupportedExpressionDomainExample(
+                                      domain.typeKey,
+                                      domain.constraintExample
+                                    )
+                                  }
+                                  sx={{ textTransform: "none", fontWeight: 900 }}
+                                >
+                                  Use example
+                                </Button>
+                              </Stack>
+
+                              <TextField
+                                color="info"
+                                value={formatConstraintExample(domain.constraintExample)}
+                                multiline
+                                minRows={5}
+                                fullWidth
+                                InputProps={{ readOnly: true }}
+                              />
+                            </Stack>
+
+                            <TextField
+                              color="info"
+                              label="Constraints JSON"
+                              value={selectedEntry?.constraintsJsonText ?? "{}"}
+                              onChange={(event) =>
+                                setSupportedExpressionDomainConstraints(
+                                  domain.typeKey,
+                                  event.target.value
+                                )
+                              }
+                              minRows={5}
+                              multiline
+                              fullWidth
+                              error={Boolean(validationError)}
+                              helperText={
+                                validationError ||
+                                `Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintExampleInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
+                              }
+                            />
+                          </Box>
                         )}
                       </Stack>
                     </Box>
