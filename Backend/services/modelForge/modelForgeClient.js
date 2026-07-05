@@ -176,6 +176,19 @@ const validateAssetsPayload = (payload) => {
     );
   }
 
+  if (!Object.prototype.hasOwnProperty.call(payload, "expressionDomainTypes")) {
+    payload.expressionDomainTypes = [];
+  } else if (!Array.isArray(payload.expressionDomainTypes)) {
+    throw new AppError(
+      "ModelForge scaffold assets expressionDomainTypes is invalid",
+      {
+        statusCode: 502,
+        code: "MODEL_FORGE_INVALID_RESPONSE",
+        field: "expressionDomainTypes",
+      }
+    );
+  }
+
   return payload;
 };
 

@@ -70,7 +70,7 @@ const DOMAIN_OPTIONS = SUPPORTED_EXISTING_EXPRESSION_DOMAIN_TYPE_KEYS.map((typeK
 
   return {
     typeKey: entry.key,
-    label: entry.key,
+    label: entry.label,
     description: entry.description,
     constraintExample: entry.constraintExample ?? {},
   };

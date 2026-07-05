@@ -1,4 +1,10 @@
 const TYPE_MODULES = import.meta.glob("./types/*/index.js", { eager: true });
+const EXPRESSION_DOMAIN_TYPE_ORDER = Object.freeze([
+  "numericContinuous",
+  "numericDiscrete",
+  "linguisticOrdinal",
+  "linguisticFuzzy",
+]);
 
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
@@ -55,9 +61,7 @@ const extractTypeEntryFromModule = ({ moduleExports, modulePath }) => {
 
 const buildExpressionDomainTypeRegistry = () => {
   const registry = {};
-  const modulePaths = Object.keys(TYPE_MODULES).sort((left, right) =>
-    left.localeCompare(right)
-  );
+  const modulePaths = Object.keys(TYPE_MODULES);
 
   for (const modulePath of modulePaths) {
     const entry = extractTypeEntryFromModule({
@@ -84,8 +88,28 @@ const buildExpressionDomainTypeRegistry = () => {
   return Object.freeze(registry);
 };
 
+const sortExpressionDomainTypeEntries = (entries) =>
+  [...entries].sort((left, right) => {
+    const leftIndex = EXPRESSION_DOMAIN_TYPE_ORDER.indexOf(left.key);
+    const rightIndex = EXPRESSION_DOMAIN_TYPE_ORDER.indexOf(right.key);
+    const safeLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+    const safeRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+
+    if (safeLeftIndex !== safeRightIndex) {
+      return safeLeftIndex - safeRightIndex;
+    }
+
+    return left.key.localeCompare(right.key);
+  });
+
 export const EXPRESSION_DOMAIN_TYPE_REGISTRY =
   buildExpressionDomainTypeRegistry();
+
+const ORDERED_EXPRESSION_DOMAIN_TYPE_ENTRIES = Object.freeze(
+  sortExpressionDomainTypeEntries(
+    Object.values(EXPRESSION_DOMAIN_TYPE_REGISTRY)
+  )
+);
 
 export const getExpressionDomainTypeEntry = (typeKey) =>
   EXPRESSION_DOMAIN_TYPE_REGISTRY[typeKey] ?? null;
@@ -103,5 +127,4 @@ export const getExpressionDomainTypeEntryOrThrow = (typeKey) => {
 };
 
 export const listExpressionDomainTypeEntries = () =>
-  Object.values(EXPRESSION_DOMAIN_TYPE_REGISTRY);
-
+  ORDERED_EXPRESSION_DOMAIN_TYPE_ENTRIES;

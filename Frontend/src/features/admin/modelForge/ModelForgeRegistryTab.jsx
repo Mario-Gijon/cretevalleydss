@@ -24,8 +24,33 @@ import {
   getModelCatalogTableHeadCellSx,
 } from "../models/styles/modelManifest.styles";
 
-const DELETE_DISABLED_MESSAGE =
-  "This asset is used by existing issues and cannot be deleted.";
+const getAssetUsageCount = (row) => {
+  const usageCount = Number(row?.usageCount);
+  if (Number.isFinite(usageCount)) return usageCount;
+
+  const usedByIssuesCount = Number(row?.usedByIssuesCount);
+  if (Number.isFinite(usedByIssuesCount)) return usedByIssuesCount;
+
+  return 0;
+};
+
+const getDeleteDisabledReason = (row) => {
+  if (typeof row?.deleteBlockedReason === "string" && row.deleteBlockedReason.trim()) {
+    return row.deleteBlockedReason;
+  }
+
+  if (row?.protected === true) {
+    return "Core expression domain types cannot be deleted.";
+  }
+
+  if (getAssetUsageCount(row) > 0) {
+    return row?.kind === "expressionDomainType"
+      ? "This expression domain type is in use and cannot be deleted."
+      : "This asset is used by existing issues and cannot be deleted.";
+  }
+
+  return "";
+};
 
 function AssetLocationCell({ locations = [], missingLocations = [] }) {
   const lines = [
@@ -119,7 +144,9 @@ function AssetTable({
               ) : (
                 rows.map((row) => {
                   const rowId = `${row.kind}:${row.key}`;
-                  const deleteDisabled = row.usedByIssuesCount > 0;
+                  const deleteDisabledReason = getDeleteDisabledReason(row);
+                  const deleteDisabled =
+                    row.deletable === false || Boolean(deleteDisabledReason);
 
                   return (
                     <TableRow key={rowId}>
@@ -132,7 +159,7 @@ function AssetTable({
                               sx={(theme) => getModelCatalogTableBodyCellSx(theme)}
                             >
                               <Tooltip
-                                title={deleteDisabled ? DELETE_DISABLED_MESSAGE : ""}
+                                title={deleteDisabled ? deleteDisabledReason : ""}
                                 disableHoverListener={!deleteDisabled}
                               >
                                 <span>
@@ -230,6 +257,13 @@ const PARAMETER_COLUMNS = [
   { key: "actions", label: "Actions", align: "right" },
 ];
 
+const EXPRESSION_DOMAIN_TYPE_COLUMNS = [
+  { key: "key", label: "Key" },
+  { key: "location", label: "Location" },
+  { key: "usageCount", label: "Usage count" },
+  { key: "actions", label: "Actions", align: "right" },
+];
+
 export default function ModelForgeRegistryTab({
   assets,
   loading,
@@ -245,6 +279,9 @@ export default function ModelForgeRegistryTab({
     : [];
   const parameterStructures = Array.isArray(assets?.parameterStructures)
     ? assets.parameterStructures
+    : [];
+  const expressionDomainTypes = Array.isArray(assets?.expressionDomainTypes)
+    ? assets.expressionDomainTypes
     : [];
 
   return (
@@ -279,7 +316,7 @@ export default function ModelForgeRegistryTab({
           {!error && !loading && (
             <Box sx={{ py: 0.25 }}>
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                Only unused assets can be deleted from this registry.
+                Only unused and non-protected assets can be deleted from this registry.
               </Typography>
             </Box>
           )}
@@ -314,6 +351,17 @@ export default function ModelForgeRegistryTab({
         columns={PARAMETER_COLUMNS}
         rows={parameterStructures}
         emptyMessage="No parameter structures found."
+        loading={loading}
+        onAskDelete={onAskDelete}
+        deleteBusyId={deleteBusyId}
+      />
+
+      <AssetTable
+        title="Expression domain types"
+        subtitle="Global expression-domain plugin assets used by domain creation, evaluation and validation."
+        columns={EXPRESSION_DOMAIN_TYPE_COLUMNS}
+        rows={expressionDomainTypes}
+        emptyMessage="No expression domain types found."
         loading={loading}
         onAskDelete={onAskDelete}
         deleteBusyId={deleteBusyId}

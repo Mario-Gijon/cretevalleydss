@@ -25,6 +25,20 @@ PARAMETER_BACKEND_ROOT = Path(
 PARAMETER_FRONTEND_FIELDS_ROOT = Path(
     "Frontend/src/features/decisionPlugins/modelParameters/fields"
 )
+EXPRESSION_DOMAIN_BACKEND_ROOT = Path(
+    "Backend/modules/decisionPlugins/expressionDomains/types"
+)
+EXPRESSION_DOMAIN_FRONTEND_ROOT = Path(
+    "Frontend/src/features/decisionPlugins/expressionDomains/types"
+)
+CORE_EXPRESSION_DOMAIN_TYPE_KEYS = frozenset(
+    {
+        "numericContinuous",
+        "numericDiscrete",
+        "linguisticOrdinal",
+        "linguisticFuzzy",
+    }
+)
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -39,6 +53,7 @@ def build_scaffold_assets(project_root: Path) -> ScaffoldAssetsResponse:
         models=_build_model_assets(resolved_root),
         evaluationStructures=_build_evaluation_structure_assets(resolved_root),
         parameterStructures=_build_parameter_structure_assets(resolved_root),
+        expressionDomainTypes=_build_expression_domain_type_assets(resolved_root),
     )
 
 
@@ -173,6 +188,36 @@ def _build_parameter_structure_assets(project_root: Path) -> list[ScaffoldAssetI
     return items
 
 
+def _build_expression_domain_type_assets(project_root: Path) -> list[ScaffoldAssetItem]:
+    keys = _collect_union_keys(
+        project_root / EXPRESSION_DOMAIN_BACKEND_ROOT,
+        project_root / EXPRESSION_DOMAIN_FRONTEND_ROOT,
+    )
+
+    items: list[ScaffoldAssetItem] = []
+    for key in keys:
+        if key in CORE_EXPRESSION_DOMAIN_TYPE_KEYS:
+            continue
+
+        backend_path = project_root / EXPRESSION_DOMAIN_BACKEND_ROOT / key
+        frontend_path = project_root / EXPRESSION_DOMAIN_FRONTEND_ROOT / key
+        existing_locations, missing_locations = _split_existing_locations(
+            project_root,
+            [backend_path, frontend_path],
+        )
+        items.append(
+            ScaffoldAssetItem(
+                kind="expressionDomainType",
+                key=key,
+                locations=sorted(set(existing_locations)),
+                missingLocations=sorted(set(missing_locations)),
+                deletable=True,
+            )
+        )
+
+    return items
+
+
 def _collect_union_keys(*roots: Path) -> list[str]:
     keys: set[str] = set()
 
@@ -230,6 +275,7 @@ def _find_asset_by_kind_and_key(
         "model": assets.models,
         "evaluationStructure": assets.evaluationStructures,
         "parameterStructure": assets.parameterStructures,
+        "expressionDomainType": assets.expressionDomainTypes,
     }
 
     return next(

@@ -3,7 +3,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-ScaffoldAssetKind = Literal["model", "evaluationStructure", "parameterStructure"]
+ScaffoldAssetKind = Literal[
+    "model",
+    "evaluationStructure",
+    "parameterStructure",
+    "expressionDomainType",
+]
 
 
 class ScaffoldAssetItem(BaseModel):
@@ -21,6 +26,7 @@ class ScaffoldAssetsResponse(BaseModel):
     models: list[ScaffoldAssetItem] = Field(default_factory=list)
     evaluationStructures: list[ScaffoldAssetItem] = Field(default_factory=list)
     parameterStructures: list[ScaffoldAssetItem] = Field(default_factory=list)
+    expressionDomainTypes: list[ScaffoldAssetItem] = Field(default_factory=list)
 
 
 class DeleteScaffoldAssetResponse(BaseModel):

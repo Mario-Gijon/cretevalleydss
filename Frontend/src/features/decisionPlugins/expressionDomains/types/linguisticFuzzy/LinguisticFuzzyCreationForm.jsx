@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Box,
   Divider,
   FormControlLabel,
@@ -189,16 +188,20 @@ const buildStateFromValue = (value) => {
     String(definition.membershipFunction || "").trim() ||
     DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION;
   const labelCount = resolveInitialLabelCount(value);
+  const existingLabels = Array.isArray(definition.labels) ? definition.labels : [];
+  const hasExistingLabels = existingLabels.length > 0;
   const incomingLabels = buildDraftLabelsFromExisting({
-    labels: Array.isArray(definition.labels) ? definition.labels : [],
+    labels: existingLabels,
     labelCount,
     membershipFunction,
   });
-  const manualMode = labelsUseManualValues({
-    labels: incomingLabels,
-    labelCount,
-    membershipFunction,
-  });
+  const manualMode = hasExistingLabels
+    ? labelsUseManualValues({
+        labels: incomingLabels,
+        labelCount,
+        membershipFunction,
+      })
+    : false;
 
   return {
     name: normalizeDraftName(value?.name),
@@ -481,14 +484,6 @@ export const LinguisticFuzzyCreationForm = ({
           />
         </Stack>
 
-        {manualMode ? (
-          <Alert severity="warning" variant="outlined">
-            Editing membership values is an advanced option. Incorrect values may make this
-            domain incompatible with some models or produce invalid fuzzy computations. If you
-            are not sure, keep the automatically generated values.
-          </Alert>
-        ) : null}
-
         <Divider />
 
         <Stack spacing={2}>
@@ -556,7 +551,11 @@ export const LinguisticFuzzyCreationForm = ({
         <Box
           sx={{
             borderRadius: 2.5,
-            p: 1,
+            maxWidth: 520,
+            mx: "auto",
+            px: { xs: 0.25, sm: 0.5 },
+            py: 0.35,
+            width: "100%",
           }}
         >
           <FuzzyPreviewChart

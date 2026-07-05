@@ -17,8 +17,9 @@ router = APIRouter(tags=["Scaffold Assets"])
     response_model_exclude_none=False,
     summary="Get generated scaffold assets",
     description=(
-        "Lists generated ModelForge model, evaluation structure, and parameter "
-        "structure assets from the current project filesystem."
+        "Lists generated ModelForge model, evaluation structure, parameter "
+        "structure, and expression domain type assets from the current project "
+        "filesystem."
     ),
 )
 async def get_scaffold_assets() -> ScaffoldAssetsResponse:

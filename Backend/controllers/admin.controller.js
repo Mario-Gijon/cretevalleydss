@@ -5,6 +5,8 @@ import axios from "axios";
 import mongoose from "mongoose";
 
 import { Issue } from "../models/Issues.js";
+import { ExpressionDomain } from "../models/ExpressionDomain.js";
+import { IssueExpressionDomain } from "../models/IssueExpressionDomains.js";
 import { IssueModel } from "../models/IssueModels.js";
 
 import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
@@ -69,8 +71,19 @@ const MODEL_FORGE_ASSET_KIND_SET = new Set([
   "model",
   "evaluationStructure",
   "parameterStructure",
+  "expressionDomainType",
 ]);
 const MODEL_FORGE_ASSET_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const CORE_EXPRESSION_DOMAIN_TYPE_KEYS = new Set([
+  "numericContinuous",
+  "numericDiscrete",
+  "linguisticOrdinal",
+  "linguisticFuzzy",
+]);
+const EXPRESSION_DOMAIN_TYPE_IN_USE_MESSAGE =
+  "This expression domain type is in use and cannot be deleted.";
+const CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE =
+  "Core expression domain types cannot be deleted.";
 
 const getAdminIssueExecutionContextOrThrow = async ({
   issueId,
@@ -211,6 +224,17 @@ const countIssuesUsingModelForgeAsset = async ({ kind, key }) => {
     return countIssuesUsingIssueModelIds(models.map((model) => model._id));
   }
 
+  if (kind === "expressionDomainType") {
+    const [expressionDomainsCount, issueSnapshotsCount, issueModelsCount] =
+      await Promise.all([
+        ExpressionDomain.countDocuments({ typeKey: key }),
+        IssueExpressionDomain.countDocuments({ typeKey: key }),
+        IssueModel.countDocuments({ "supportedExpressionDomains.typeKey": key }),
+      ]);
+
+    return expressionDomainsCount + issueSnapshotsCount + issueModelsCount;
+  }
+
   throw createBadRequestError("Valid asset kind is required", {
     field: "kind",
   });
@@ -221,18 +245,32 @@ const enrichModelForgeAssetsWithUsage = async (items = []) =>
     items.map(async (item) => {
       const kind = String(item?.kind || "").trim();
       const key = String(item?.key || "").trim();
+      const protectedAsset =
+        kind === "expressionDomainType" &&
+        CORE_EXPRESSION_DOMAIN_TYPE_KEYS.has(key);
       const resolvedUsageCount = await countIssuesUsingModelForgeAsset({
         kind,
         key,
       });
-      const usedByIssuesCount = Number.isFinite(resolvedUsageCount)
+      const usageCount = Number.isFinite(resolvedUsageCount)
         ? resolvedUsageCount
         : 0;
+      const usedByIssuesCount = usageCount;
+      const deleteBlockedReason = protectedAsset
+        ? CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE
+        : usageCount > 0
+          ? kind === "expressionDomainType"
+            ? EXPRESSION_DOMAIN_TYPE_IN_USE_MESSAGE
+            : "This asset is used by existing issues and cannot be deleted."
+          : "";
 
       return {
         ...item,
+        usageCount,
         usedByIssuesCount,
-        deletable: usedByIssuesCount === 0,
+        protected: protectedAsset,
+        deleteBlockedReason,
+        deletable: !protectedAsset && usageCount === 0,
       };
     })
   );
@@ -385,10 +423,16 @@ export const getModelForgeCatalogAdmin = async (_req, res) => {
 
 export const getModelForgeAssetsAdmin = async (_req, res) => {
   const assets = await fetchModelForgeAssets();
-  const [models, evaluationStructures, parameterStructures] = await Promise.all([
+  const [
+    models,
+    evaluationStructures,
+    parameterStructures,
+    expressionDomainTypes,
+  ] = await Promise.all([
     enrichModelForgeAssetsWithUsage(assets?.models || []),
     enrichModelForgeAssetsWithUsage(assets?.evaluationStructures || []),
     enrichModelForgeAssetsWithUsage(assets?.parameterStructures || []),
+    enrichModelForgeAssetsWithUsage(assets?.expressionDomainTypes || []),
   ]);
 
   return sendSuccess(
@@ -399,6 +443,7 @@ export const getModelForgeAssetsAdmin = async (_req, res) => {
       models,
       evaluationStructures,
       parameterStructures,
+      expressionDomainTypes,
     }
   );
 };
@@ -426,17 +471,37 @@ export const applyModelForgeModelPackageAdmin = async (req, res) => {
 export const deleteModelForgeAssetAdmin = async (req, res) => {
   const kind = normalizeModelForgeAssetKindOrThrow(req.params?.kind);
   const key = normalizeModelForgeAssetKeyOrThrow(req.params?.key);
-  const usedByIssuesCount = await countIssuesUsingModelForgeAsset({ kind, key });
+  const protectedAsset =
+    kind === "expressionDomainType" &&
+    CORE_EXPRESSION_DOMAIN_TYPE_KEYS.has(key);
 
-  if (usedByIssuesCount > 0) {
+  if (protectedAsset) {
+    throw createForbiddenError(CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE, {
+      code: "MODEL_FORGE_CORE_EXPRESSION_DOMAIN_TYPE",
+      field: "key",
+      details: {
+        kind,
+        key,
+        protected: true,
+      },
+    });
+  }
+
+  const usageCount = await countIssuesUsingModelForgeAsset({ kind, key });
+  const usedByIssuesCount = usageCount;
+
+  if (usageCount > 0) {
     throw createConflictError(
-      "This asset is used by existing issues and cannot be deleted.",
+      kind === "expressionDomainType"
+        ? EXPRESSION_DOMAIN_TYPE_IN_USE_MESSAGE
+        : "This asset is used by existing issues and cannot be deleted.",
       {
         code: "MODEL_FORGE_ASSET_IN_USE",
         field: "key",
         details: {
           kind,
           key,
+          usageCount,
           usedByIssuesCount,
         },
       }
@@ -450,6 +515,7 @@ export const deleteModelForgeAssetAdmin = async (req, res) => {
     "Model Forge generated asset deleted successfully",
     {
       ...result,
+      usageCount,
       usedByIssuesCount,
       deletable: true,
     }
