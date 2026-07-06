@@ -6,6 +6,10 @@ const SCAFFOLD_CATALOG_PATH = "/scaffold/catalog";
 const SCAFFOLD_ASSETS_PATH = "/scaffold/assets";
 const MODEL_PACKAGE_PREVIEW_PATH = "/scaffold/model-package/preview";
 const MODEL_PACKAGE_APPLY_PATH = "/scaffold/model-package/apply";
+const EXPRESSION_DOMAIN_TYPE_PREVIEW_PATH =
+  "/scaffold/expression-domain-type/preview";
+const EXPRESSION_DOMAIN_TYPE_APPLY_PATH =
+  "/scaffold/expression-domain-type/apply";
 
 const joinUrl = (baseUrl, path) => {
   const cleanBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -256,6 +260,30 @@ export const applyModelForgeModelPackage = async (payload, options = {}) =>
     path: MODEL_PACKAGE_APPLY_PATH,
     payload,
     fallbackMessage: "Unable to apply scaffold package in ModelForge",
+  });
+
+export const previewModelForgeExpressionDomainType = async (
+  payload,
+  options = {}
+) =>
+  requestModelForgeJson({
+    ...options,
+    method: "POST",
+    path: EXPRESSION_DOMAIN_TYPE_PREVIEW_PATH,
+    payload,
+    fallbackMessage: "Unable to preview expression domain type scaffold in ModelForge",
+  });
+
+export const applyModelForgeExpressionDomainType = async (
+  payload,
+  options = {}
+) =>
+  requestModelForgeJson({
+    ...options,
+    method: "POST",
+    path: EXPRESSION_DOMAIN_TYPE_APPLY_PATH,
+    payload,
+    fallbackMessage: "Unable to apply expression domain type scaffold in ModelForge",
   });
 
 export const deleteModelForgeAsset = (kind, key, options = {}) =>

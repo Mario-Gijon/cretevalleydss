@@ -21,6 +21,8 @@ import {
   getModelForgeAssetsAdmin,
   previewModelForgeModelPackageAdmin,
   applyModelForgeModelPackageAdmin,
+  previewModelForgeExpressionDomainTypeAdmin,
+  applyModelForgeExpressionDomainTypeAdmin,
   deleteModelForgeAssetAdmin,
   restartBackendAdmin,
   getDecisionModelsServiceHealthAdmin,
@@ -74,6 +76,20 @@ router.post(
   requireToken,
   requireAdmin,
   asyncHandler(applyModelForgeModelPackageAdmin)
+);
+
+router.post(
+  "/model-forge/expression-domain-type/preview",
+  requireToken,
+  requireAdmin,
+  asyncHandler(previewModelForgeExpressionDomainTypeAdmin)
+);
+
+router.post(
+  "/model-forge/expression-domain-type/apply",
+  requireToken,
+  requireAdmin,
+  asyncHandler(applyModelForgeExpressionDomainTypeAdmin)
 );
 
 router.delete(

@@ -18,6 +18,9 @@ class ScaffoldAssetItem(BaseModel):
     missingLocations: list[str] = Field(default_factory=list)
     stage: str | None = None
     deletable: bool = True
+    protected: bool = False
+    origin: str | None = None
+    deleteDisabledReason: str | None = None
 
 
 class ScaffoldAssetsResponse(BaseModel):

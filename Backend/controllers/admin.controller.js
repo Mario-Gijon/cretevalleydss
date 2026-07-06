@@ -40,10 +40,12 @@ import {
 import { fetchModelManifest } from "../services/modelApi/modelManifestClient.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 import {
+  applyModelForgeExpressionDomainType,
   applyModelForgeModelPackage,
   deleteModelForgeAsset,
   fetchModelForgeAssets,
   fetchModelForgeCatalog,
+  previewModelForgeExpressionDomainType,
   previewModelForgeModelPackage,
 } from "../services/modelForge/modelForgeClient.js";
 
@@ -464,6 +466,26 @@ export const applyModelForgeModelPackageAdmin = async (req, res) => {
   return sendSuccess(
     res,
     "Model Forge scaffold apply completed successfully",
+    result
+  );
+};
+
+export const previewModelForgeExpressionDomainTypeAdmin = async (req, res) => {
+  const preview = await previewModelForgeExpressionDomainType(req.body || {});
+
+  return sendSuccess(
+    res,
+    "Model Forge expression domain type scaffold preview completed successfully",
+    preview
+  );
+};
+
+export const applyModelForgeExpressionDomainTypeAdmin = async (req, res) => {
+  const result = await applyModelForgeExpressionDomainType(req.body || {});
+
+  return sendSuccess(
+    res,
+    "Model Forge expression domain type scaffold apply completed successfully",
     result
   );
 };

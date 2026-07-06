@@ -30,6 +30,10 @@ def test_scaffold_assets_lists_generated_entries(
         project_root
         / "Frontend/src/features/decisionPlugins/expressionDomains/types/numericContinuous"
     )
+    core_expression_domain_backend = (
+        project_root
+        / "Backend/modules/decisionPlugins/expressionDomains/types/numericContinuous"
+    )
 
     model_dir.mkdir(parents=True)
     evaluation_backend.mkdir(parents=True)
@@ -38,6 +42,7 @@ def test_scaffold_assets_lists_generated_entries(
     expression_domain_backend.mkdir(parents=True)
     expression_domain_frontend.mkdir(parents=True)
     core_expression_domain_frontend.mkdir(parents=True)
+    core_expression_domain_backend.mkdir(parents=True)
 
     (model_dir / "definition.py").write_text("# generated\n", encoding="utf-8")
     (evaluation_backend / "index.js").write_text(
@@ -86,9 +91,21 @@ def test_scaffold_assets_lists_generated_entries(
         "Frontend/src/features/decisionPlugins/expressionDomains/types/customFuzzyScale",
     ]
     assert expression_domain_item["missingLocations"] == []
-    assert all(
-        item["key"] != "numericContinuous"
+    core_expression_domain_item = next(
+        item
         for item in payload["expressionDomainTypes"]
+        if item["key"] == "numericContinuous"
+    )
+    assert sorted(core_expression_domain_item["locations"]) == [
+        "Backend/modules/decisionPlugins/expressionDomains/types/numericContinuous",
+        "Frontend/src/features/decisionPlugins/expressionDomains/types/numericContinuous",
+    ]
+    assert core_expression_domain_item["deletable"] is False
+    assert core_expression_domain_item["protected"] is True
+    assert core_expression_domain_item["origin"] == "core"
+    assert (
+        core_expression_domain_item["deleteDisabledReason"]
+        == "Core expression domain types cannot be deleted."
     )
 
 

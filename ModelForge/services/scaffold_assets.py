@@ -39,6 +39,9 @@ CORE_EXPRESSION_DOMAIN_TYPE_KEYS = frozenset(
         "linguisticFuzzy",
     }
 )
+CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE = (
+    "Core expression domain types cannot be deleted."
+)
 
 STAGE_MAP = {
     "ALTERNATIVE_EVALUATION": "alternativeEvaluation",
@@ -196,22 +199,26 @@ def _build_expression_domain_type_assets(project_root: Path) -> list[ScaffoldAss
 
     items: list[ScaffoldAssetItem] = []
     for key in keys:
-        if key in CORE_EXPRESSION_DOMAIN_TYPE_KEYS:
-            continue
-
         backend_path = project_root / EXPRESSION_DOMAIN_BACKEND_ROOT / key
         frontend_path = project_root / EXPRESSION_DOMAIN_FRONTEND_ROOT / key
         existing_locations, missing_locations = _split_existing_locations(
             project_root,
             [backend_path, frontend_path],
         )
+        is_core_type = key in CORE_EXPRESSION_DOMAIN_TYPE_KEYS
         items.append(
             ScaffoldAssetItem(
                 kind="expressionDomainType",
                 key=key,
                 locations=sorted(set(existing_locations)),
                 missingLocations=sorted(set(missing_locations)),
-                deletable=True,
+                deletable=not is_core_type,
+                protected=is_core_type,
+                origin="core" if is_core_type else "generated",
+                deleteDisabledReason=
+                    CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE
+                    if is_core_type
+                    else None,
             )
         )
 

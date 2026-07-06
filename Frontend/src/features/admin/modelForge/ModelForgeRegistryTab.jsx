@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   IconButton,
   Stack,
   Table,
@@ -204,6 +205,26 @@ function AssetTable({
                           );
                         }
 
+                        if (column.key === "origin") {
+                          const chipColor = row.origin === "core" ? "info" : "default";
+
+                          return (
+                            <TableCell
+                              key={column.key}
+                              align={column.align || "left"}
+                              sx={(theme) => getModelCatalogTableBodyCellSx(theme)}
+                            >
+                              <Chip
+                                size="small"
+                                color={chipColor}
+                                variant={row.origin === "core" ? "filled" : "outlined"}
+                                label={row.origin === "core" ? "Core" : "Generated"}
+                                sx={{ fontWeight: 900 }}
+                              />
+                            </TableCell>
+                          );
+                        }
+
                         return (
                           <TableCell
                             key={column.key}
@@ -259,6 +280,7 @@ const PARAMETER_COLUMNS = [
 
 const EXPRESSION_DOMAIN_TYPE_COLUMNS = [
   { key: "key", label: "Key" },
+  { key: "origin", label: "Origin" },
   { key: "location", label: "Location" },
   { key: "usageCount", label: "Usage count" },
   { key: "actions", label: "Actions", align: "right" },

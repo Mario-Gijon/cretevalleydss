@@ -19,6 +19,7 @@ import {
   fetchProtectedDataForBootstrap,
 } from "../../services/auth.service";
 import {
+  applyModelForgeExpressionDomainType,
   applyModelForgeModelPackage,
   getBackendHealth,
   getCurrentModelManifestAdmin,
@@ -68,6 +69,12 @@ const DEFAULT_STEP_LABELS = {
 const DELETE_STEP_LABELS = {
   [STEP_KEYS.backend]: "Restarting Backend",
   [STEP_KEYS.manifest]: "Waiting for generated model manifest",
+  [STEP_KEYS.redirect]: "Redirecting to Registry",
+};
+const EXPRESSION_DOMAIN_TYPE_STEP_LABELS = {
+  [STEP_KEYS.apply]: "Writing scaffold files",
+  [STEP_KEYS.backend]: "Restarting Backend",
+  [STEP_KEYS.manifest]: "Refreshing expression domain type registry",
   [STEP_KEYS.redirect]: "Redirecting to Registry",
 };
 
@@ -154,12 +161,15 @@ export default function ApplyingBackendChangesPage() {
     () =>
       pendingChange?.type === "modelForgeAssetDelete"
         ? DELETE_STEP_LABELS
-        : DEFAULT_STEP_LABELS,
+        : pendingChange?.type === "modelForgeExpressionDomainTypeScaffoldApply"
+          ? EXPRESSION_DOMAIN_TYPE_STEP_LABELS
+          : DEFAULT_STEP_LABELS,
     [pendingChange]
   );
   const destinationActionLabel = useMemo(
     () =>
-      pendingChange?.type === "modelForgeAssetDelete"
+      pendingChange?.type === "modelForgeAssetDelete" ||
+      pendingChange?.type === "modelForgeExpressionDomainTypeScaffoldApply"
         ? "Go to Model Forge anyway"
         : "Go to Admin Models anyway",
     [pendingChange]
@@ -465,9 +475,14 @@ export default function ApplyingBackendChangesPage() {
             applyRequested: true,
           };
 
-          const applyResponse = await applyModelForgeModelPackage(
-            nextPendingChange.applyRequestPayload || {}
-          );
+          const applyResponse =
+            nextPendingChange.type === "modelForgeExpressionDomainTypeScaffoldApply"
+              ? await applyModelForgeExpressionDomainType(
+                nextPendingChange.applyRequestPayload || {}
+              )
+              : await applyModelForgeModelPackage(
+                nextPendingChange.applyRequestPayload || {}
+              );
 
           if (applyResponse?.success) {
             nextPendingChange = updatePendingBackendChange({

@@ -98,6 +98,31 @@ def get_evaluation_structure_existence(
     return _build_structure_existence(backend_path, frontend_path)
 
 
+def get_expression_domain_type_existence(
+    project_root: Path, type_key: str
+) -> StructureExistence:
+    backend_path = (
+        project_root
+        / "Backend"
+        / "modules"
+        / "decisionPlugins"
+        / "expressionDomains"
+        / "types"
+        / type_key
+    )
+    frontend_path = (
+        project_root
+        / "Frontend"
+        / "src"
+        / "features"
+        / "decisionPlugins"
+        / "expressionDomains"
+        / "types"
+        / type_key
+    )
+    return _build_structure_existence(backend_path, frontend_path)
+
+
 def _build_structure_existence(
     backend_path: Path, frontend_path: Path
 ) -> StructureExistence:
