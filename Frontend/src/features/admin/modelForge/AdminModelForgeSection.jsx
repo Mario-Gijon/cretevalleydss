@@ -74,6 +74,7 @@ const DOMAIN_OPTIONS = listExpressionDomainTypeEntries().map((entry) => ({
   typeKey: entry.key,
   label: entry.label,
   description: entry.description,
+  // `constraintExample` is the registry/API field name; the UI treats it as a template.
   constraintExample: entry.constraintExample ?? {},
 }));
 
@@ -474,8 +475,8 @@ const formatJsonPreview = (value) => {
   }
 };
 
-const formatConstraintExample = (value) => JSON.stringify(value ?? {}, null, 2);
-const formatConstraintExampleInline = (value) => JSON.stringify(value ?? {});
+const formatConstraintTemplate = (value) => JSON.stringify(value ?? {}, null, 2);
+const formatConstraintTemplateInline = (value) => JSON.stringify(value ?? {});
 const createConstraintTemplateFieldId = () =>
   `constraint-template-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -1862,10 +1863,10 @@ export default function AdminModelForgeSection() {
     [resetActionState]
   );
 
-  const applySupportedExpressionDomainTemplate = useCallback((typeKey, example) => {
+  const applySupportedExpressionDomainTemplate = useCallback((typeKey, template) => {
     setSupportedExpressionDomainConstraints(
       typeKey,
-      formatConstraintExample(example)
+      formatConstraintTemplate(template)
     );
   }, [setSupportedExpressionDomainConstraints]);
 
@@ -2655,7 +2656,7 @@ export default function AdminModelForgeSection() {
 
                               <TextField
                                 color="info"
-                                value={formatConstraintExample(domain.constraintExample)}
+                                value={formatConstraintTemplate(domain.constraintExample)}
                                 multiline
                                 minRows={5}
                                 fullWidth
@@ -2679,7 +2680,7 @@ export default function AdminModelForgeSection() {
                               error={Boolean(validationError)}
                               helperText={
                                 validationError ||
-                                `Use template copies available constraint keys. Fill the values you want to restrict; null placeholders are ignored before saving. Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintExampleInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
+                                `Use template copies available constraint keys. Fill the values you want to restrict; null placeholders are ignored before saving. Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintTemplateInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
                               }
                             />
                           </Box>
