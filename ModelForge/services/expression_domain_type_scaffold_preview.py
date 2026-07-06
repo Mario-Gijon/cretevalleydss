@@ -132,6 +132,12 @@ def _build_placeholder_values(
         "creation_form_component_name": names.creation_form_component_name,
         "evaluation_input_component_name": names.evaluation_input_component_name,
         "backend_export_name": names.backend_export_name,
+        "backend_creation_definition_function_name": (
+            names.backend_creation_definition_function_name
+        ),
+        "backend_evaluation_value_function_name": (
+            names.backend_evaluation_value_function_name
+        ),
         "frontend_export_name": names.frontend_export_name,
     }
 
@@ -180,6 +186,8 @@ def build_expression_domain_type_scaffold_preview(
 
     template_map = [
         ("backend-index.js.template", f"{backend_target_base_path}/index.js"),
+        ("backend-creation.js.template", f"{backend_target_base_path}/creation.js"),
+        ("backend-evaluation.js.template", f"{backend_target_base_path}/evaluation.js"),
         ("frontend-index.js.template", f"{frontend_target_base_path}/index.js"),
         (
             "frontend-creation-form.jsx.template",

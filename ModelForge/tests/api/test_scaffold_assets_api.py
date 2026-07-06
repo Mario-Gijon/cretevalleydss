@@ -186,6 +186,10 @@ def test_delete_scaffold_asset_removes_generated_expression_domain_type_director
     )
     backend_dir.mkdir(parents=True)
     frontend_dir.mkdir(parents=True)
+    (backend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
+    (backend_dir / "creation.js").write_text("// generated\n", encoding="utf-8")
+    (backend_dir / "evaluation.js").write_text("// generated\n", encoding="utf-8")
+    (frontend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
 
     with client_factory(project_root) as client:
         response = client.delete(

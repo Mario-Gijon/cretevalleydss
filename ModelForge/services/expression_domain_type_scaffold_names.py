@@ -12,6 +12,8 @@ class ExpressionDomainTypeScaffoldNames:
     creation_form_component_name: str
     evaluation_input_component_name: str
     backend_export_name: str
+    backend_creation_definition_function_name: str
+    backend_evaluation_value_function_name: str
     frontend_export_name: str
 
 
@@ -41,5 +43,11 @@ def build_expression_domain_type_scaffold_names(
         creation_form_component_name=f"{pascal_case_type_key}CreationForm",
         evaluation_input_component_name=f"{pascal_case_type_key}EvaluationInput",
         backend_export_name=definition.typeKey,
+        backend_creation_definition_function_name=(
+            f"normalize{pascal_case_type_key}CreationDefinition"
+        ),
+        backend_evaluation_value_function_name=(
+            f"normalize{pascal_case_type_key}EvaluationValue"
+        ),
         frontend_export_name=f"{definition.typeKey}ExpressionDomainType",
     )
