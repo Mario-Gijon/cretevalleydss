@@ -40,6 +40,27 @@ export const getExpressionDomainConstraintValue = (domain, constraintKey) => {
   return definition[constraintKey];
 };
 
+export const isPlainObject = (value) =>
+  value != null && typeof value === "object" && !Array.isArray(value);
+
+export const valuesMatchConstraint = (actualValue, expectedValue) => {
+  if (Array.isArray(expectedValue)) {
+    return expectedValue.includes(actualValue);
+  }
+
+  if (isPlainObject(expectedValue)) {
+    if (!isPlainObject(actualValue)) {
+      return false;
+    }
+
+    return Object.entries(expectedValue).every(([childKey, childExpectedValue]) =>
+      valuesMatchConstraint(actualValue[childKey], childExpectedValue)
+    );
+  }
+
+  return actualValue === expectedValue;
+};
+
 export const normalizeSupportedExpressionDomains = (
   supportedExpressionDomains
 ) =>
@@ -81,12 +102,7 @@ export const expressionDomainMatchesSupportedEntry = (
 
   return Object.entries(constraints).every(([constraintKey, expectedValue]) => {
     const actualValue = getExpressionDomainConstraintValue(domain, constraintKey);
-
-    if (Array.isArray(expectedValue)) {
-      return expectedValue.includes(actualValue);
-    }
-
-    return actualValue === expectedValue;
+    return valuesMatchConstraint(actualValue, expectedValue);
   });
 };
 

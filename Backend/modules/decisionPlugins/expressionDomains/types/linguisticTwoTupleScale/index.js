@@ -55,39 +55,190 @@
 // }
 
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
+import {
+  assertPlainDefinitionOrThrow,
+  getExpressionDomainDefinitionOrThrow,
+  isNonEmptyString,
+  normalizeExpressionDomainNameOrThrow,
+  normalizeFiniteNumberOrThrow,
+} from "../../shared/validation.js";
+
+const normalizeLabelKeyFromText = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const normalizeAlphaRange = (alphaRange) => {
+  const safeAlphaRange = assertPlainDefinitionOrThrow(alphaRange, {
+    message: "definition.alphaRange must be an object.",
+    field: "definition.alphaRange",
+  });
+
+  const min = normalizeFiniteNumberOrThrow(safeAlphaRange.min, {
+    message: "definition.alphaRange.min must be a finite number.",
+    field: "definition.alphaRange.min",
+  });
+
+  const max = normalizeFiniteNumberOrThrow(safeAlphaRange.max, {
+    message: "definition.alphaRange.max must be a finite number.",
+    field: "definition.alphaRange.max",
+  });
+
+  if (min >= max) {
+    throw createBadRequestError(
+      "definition.alphaRange.min must be lower than definition.alphaRange.max.",
+      { field: "definition.alphaRange" }
+    );
+  }
+
+  return { min, max };
+};
+
+const normalizeLabels = (labels) => {
+  if (!Array.isArray(labels) || labels.length < 2) {
+    throw createBadRequestError(
+      "definition.labels must contain at least two labels.",
+      { field: "definition.labels" }
+    );
+  }
+
+  const seenKeys = new Set();
+
+  return labels.map((item, index) => {
+    let label;
+    let key;
+
+    if (typeof item === "string") {
+      label = item.trim();
+      key = normalizeLabelKeyFromText(item);
+    } else if (item !== null && typeof item === "object" && !Array.isArray(item)) {
+      label = typeof item.label === "string" ? item.label.trim() : "";
+      key = isNonEmptyString(item.key)
+        ? item.key.trim()
+        : normalizeLabelKeyFromText(label);
+    } else {
+      throw createBadRequestError(
+        "Each definition.labels item must be a string or an object.",
+        { field: `definition.labels[${index}]` }
+      );
+    }
+
+    if (!isNonEmptyString(label)) {
+      throw createBadRequestError("Each label must be non-empty.", {
+        field: `definition.labels[${index}].label`,
+      });
+    }
+
+    if (!isNonEmptyString(key)) {
+      throw createBadRequestError("Each label key must be non-empty.", {
+        field: `definition.labels[${index}].key`,
+      });
+    }
+
+    if (seenKeys.has(key)) {
+      throw createBadRequestError("Label keys must be unique.", {
+        field: `definition.labels[${index}].key`,
+      });
+    }
+
+    seenKeys.add(key);
+
+    return {
+      key,
+      label,
+      index,
+    };
+  });
+};
+
+const normalizeCreationDefinition = (definition) => {
+  const safeDefinition = assertPlainDefinitionOrThrow(definition);
+  const labels = normalizeLabels(safeDefinition.labels);
+  const alphaRange = normalizeAlphaRange(
+    safeDefinition.alphaRange ?? { min: -0.5, max: 0.5 }
+  );
+
+  if (
+    safeDefinition.labelCount !== undefined &&
+    safeDefinition.labelCount !== labels.length
+  ) {
+    throw createBadRequestError(
+      "definition.labelCount must match definition.labels length.",
+      { field: "definition.labelCount" }
+    );
+  }
+
+  return {
+    labelCount: labels.length,
+    alphaRange,
+    labels,
+  };
+};
+
+const getEvaluationLabels = (expressionDomain) => {
+  const definition = getExpressionDomainDefinitionOrThrow(expressionDomain);
+  const labels = Array.isArray(definition.labels) ? definition.labels : null;
+
+  if (!labels || labels.length < 2) {
+    throw createBadRequestError("Expression domain definition is invalid.", {
+      field: "definition",
+    });
+  }
+
+  return labels;
+};
+
+const normalizeEvaluationValue = ({ value, labels }) => {
+  let labelKey = null;
+
+  if (typeof value === "string") {
+    labelKey = value.trim();
+  } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    labelKey = typeof value.labelKey === "string" ? value.labelKey.trim() : "";
+  }
+
+  if (!labelKey) {
+    throw createBadRequestError("Value is required.", {
+      field: "value",
+    });
+  }
+
+  if (!labels.some((item) => item.key === labelKey)) {
+    throw createBadRequestError("Value must match one of the configured labels.", {
+      field: "value",
+    });
+  }
+
+  return { labelKey };
+};
 
 export const linguisticTwoTupleScale = Object.freeze({
   key: "linguisticTwoTupleScale",
   label: "Linguistic 2-tuple scale",
-  description: "Generated scaffold for a linguistic 2-tuple-inspired expression domain type.",
+  description:
+    "Linguistic scale inspired by 2-tuples. Users evaluate by selecting a label; alpha is produced later by model outputs.",
   family: "linguistic",
 
   validateCreation(payload = {}) {
-    void payload;
+    const name = normalizeExpressionDomainNameOrThrow(payload?.name);
+    const definition = normalizeCreationDefinition(payload?.definition);
 
-    throw createBadRequestError(
-      "linguisticTwoTupleScale is a generated scaffold. Implement validateCreation before using it.",
-      {
-        code: "EXPRESSION_DOMAIN_TYPE_UNDER_DEVELOPMENT",
-        details: {
-          typeKey: "linguisticTwoTupleScale",
-        },
-      }
-    );
+    return {
+      name,
+      typeKey: "linguisticTwoTupleScale",
+      family: "linguistic",
+      definition,
+    };
   },
 
   validateEvaluation({ value, expressionDomain } = {}) {
-    void value;
-    void expressionDomain;
+    const labels = getEvaluationLabels(expressionDomain);
 
-    throw createBadRequestError(
-      "linguisticTwoTupleScale is a generated scaffold. Implement validateEvaluation before using it.",
-      {
-        code: "EXPRESSION_DOMAIN_TYPE_UNDER_DEVELOPMENT",
-        details: {
-          typeKey: "linguisticTwoTupleScale",
-        },
-      }
-    );
+    return normalizeEvaluationValue({
+      value,
+      labels,
+    });
   },
 });

@@ -69,31 +69,12 @@ const CORE_EXPRESSION_DOMAIN_TYPE_KEYS = new Set([
   "linguisticFuzzy",
 ]);
 
-const SUPPORTED_EXISTING_EXPRESSION_DOMAIN_TYPE_KEYS = [
-  "numericContinuous",
-  "numericDiscrete",
-  "linguisticOrdinal",
-  "linguisticFuzzy",
-];
-
-const DOMAIN_OPTIONS = SUPPORTED_EXISTING_EXPRESSION_DOMAIN_TYPE_KEYS.map((typeKey) => {
-  const entry = listExpressionDomainTypeEntries().find(
-    (candidate) => candidate.key === typeKey
-  );
-
-  if (!entry) {
-    throw new Error(
-      `[modelForge] Missing expression domain plugin metadata for "${typeKey}".`
-    );
-  }
-
-  return {
-    typeKey: entry.key,
-    label: entry.label,
-    description: entry.description,
-    constraintExample: entry.constraintExample ?? {},
-  };
-});
+const DOMAIN_OPTIONS = listExpressionDomainTypeEntries().map((entry) => ({
+  typeKey: entry.key,
+  label: entry.label,
+  description: entry.description,
+  constraintExample: entry.constraintExample ?? {},
+}));
 
 const PARAMETER_STRUCTURE_KEY_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 

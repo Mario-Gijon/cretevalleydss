@@ -31,14 +31,30 @@ const getDefinitionConstraintValue = (domain, constraintKey) => {
   return domain?.definition?.[constraintKey];
 };
 
-const matchesConstraint = ({ domain, constraintKey, expectedValue }) => {
-  const actualValue = getDefinitionConstraintValue(domain, constraintKey);
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
+const valuesMatchConstraint = (actualValue, expectedValue) => {
   if (Array.isArray(expectedValue)) {
     return expectedValue.includes(actualValue);
   }
 
+  if (isPlainObject(expectedValue)) {
+    if (!isPlainObject(actualValue)) {
+      return false;
+    }
+
+    return Object.entries(expectedValue).every(([childKey, childExpectedValue]) =>
+      valuesMatchConstraint(actualValue[childKey], childExpectedValue)
+    );
+  }
+
   return actualValue === expectedValue;
+};
+
+const matchesConstraint = ({ domain, constraintKey, expectedValue }) => {
+  const actualValue = getDefinitionConstraintValue(domain, constraintKey);
+  return valuesMatchConstraint(actualValue, expectedValue);
 };
 
 const supportedEntryMatchesDomain = ({ domain, supportedEntry }) => {

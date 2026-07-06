@@ -36,49 +36,96 @@
 //   ]
 // }
 
-import { Alert, Stack, TextField } from "@mui/material";
+import { AddOutlined, DeleteOutline } from "@mui/icons-material";
+import { Button, IconButton, Stack, TextField, Typography } from "@mui/material";
 
-import { normalizeDraftName } from "../../helpers";
+import {
+  normalizeDraftName,
+  normalizeDraftNumber,
+  normalizeLabelsForDraft,
+} from "../../helpers";
 
-const DEFAULT_DEFINITION = {
-  labelCount: 3,
-  alphaRange: {
-    min: -0.5,
-    max: 0.5,
-  },
-  labels: [
-    {
-      key: "light",
-      label: "Light",
-      index: 0,
-    },
-    {
-      key: "medium",
-      label: "Medium",
-      index: 1,
-    },
-    {
-      key: "high",
-      label: "High",
-      index: 2,
-    },
-  ],
+const DEFAULT_LABELS = [
+  { label: "Light" },
+  { label: "Medium" },
+  { label: "High" },
+];
+
+const DEFAULT_ALPHA_RANGE = {
+  min: -0.5,
+  max: 0.5,
 };
 
-const buildDraft = (value, name) => ({
-  ...value,
-  name: normalizeDraftName(name),
-  typeKey: "linguisticTwoTupleScale",
-  definition: value?.definition ?? DEFAULT_DEFINITION,
-});
+const getDraftDefinition = (value) =>
+  value?.definition && typeof value.definition === "object"
+    ? value.definition
+    : {};
+
+const getDraftLabels = (value) => {
+  const definition = getDraftDefinition(value);
+  const labels = Array.isArray(definition.labels)
+    ? definition.labels
+    : DEFAULT_LABELS;
+
+  return normalizeLabelsForDraft({
+    labels,
+    fallbackPrefix: "label",
+  });
+};
+
+const getDraftAlphaRange = (value) => {
+  const definition = getDraftDefinition(value);
+  const alphaRange =
+    definition.alphaRange && typeof definition.alphaRange === "object"
+      ? definition.alphaRange
+      : DEFAULT_ALPHA_RANGE;
+
+  return {
+    min: normalizeDraftNumber(alphaRange.min),
+    max: normalizeDraftNumber(alphaRange.max),
+  };
+};
+
+const buildNextValue = ({
+  value,
+  name = value?.name,
+  labels = getDraftLabels(value),
+  alphaRange = getDraftAlphaRange(value),
+}) => {
+  const normalizedLabels = normalizeLabelsForDraft({
+    labels,
+    fallbackPrefix: "label",
+  });
+
+  return {
+    ...value,
+    name: normalizeDraftName(name),
+    typeKey: "linguisticTwoTupleScale",
+    definition: {
+      labelCount: normalizedLabels.length,
+      alphaRange,
+      labels: normalizedLabels,
+    },
+  };
+};
 
 export const LinguisticTwoTupleScaleCreationForm = ({
   value,
   onChange,
   disabled = false,
 }) => {
-  const handleNameChange = (event) => {
-    onChange?.(buildDraft(value, event.target.value));
+  const labels = getDraftLabels(value);
+  const alphaRange = getDraftAlphaRange(value);
+
+  const updateDraft = (patch) => {
+    onChange?.(
+      buildNextValue({
+        value,
+        labels,
+        alphaRange,
+        ...patch,
+      })
+    );
   };
 
   return (
@@ -87,14 +134,108 @@ export const LinguisticTwoTupleScaleCreationForm = ({
         label="Name"
         color="info"
         value={normalizeDraftName(value?.name)}
-        onChange={handleNameChange}
+        onChange={(event) => updateDraft({ name: event.target.value })}
         disabled={disabled}
         fullWidth
       />
 
-      <Alert severity="info" variant="outlined">
-        Generated scaffold. Implement domain-specific definition fields here.
-      </Alert>
+      <Stack spacing={0.75}>
+        <Typography variant="body2" sx={{ fontWeight: 900 }}>
+          Alpha range
+        </Typography>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <TextField
+            label="Min alpha"
+            color="info"
+            type="number"
+            value={alphaRange.min}
+            onChange={(event) =>
+              updateDraft({
+                alphaRange: {
+                  ...alphaRange,
+                  min: normalizeDraftNumber(event.target.value),
+                },
+              })
+            }
+            disabled={disabled}
+            inputProps={{ step: 0.1 }}
+            fullWidth
+          />
+
+          <TextField
+            label="Max alpha"
+            color="info"
+            type="number"
+            value={alphaRange.max}
+            onChange={(event) =>
+              updateDraft({
+                alphaRange: {
+                  ...alphaRange,
+                  max: normalizeDraftNumber(event.target.value),
+                },
+              })
+            }
+            disabled={disabled}
+            inputProps={{ step: 0.1 }}
+            fullWidth
+          />
+        </Stack>
+      </Stack>
+
+      <Stack spacing={1}>
+        <Typography variant="body2" sx={{ fontWeight: 900 }}>
+          Labels
+        </Typography>
+
+        {labels.map((labelItem, index) => (
+          <Stack key={`${labelItem.key}-${index}`} direction="row" spacing={1}>
+            <TextField
+              label={`Label ${index + 1}`}
+              color="info"
+              value={labelItem.label}
+              onChange={(event) => {
+                const nextLabels = labels.map((item, itemIndex) =>
+                  itemIndex === index
+                    ? { ...item, label: event.target.value }
+                    : item
+                );
+
+                updateDraft({ labels: nextLabels });
+              }}
+              disabled={disabled}
+              fullWidth
+            />
+
+            <IconButton
+              onClick={() =>
+                updateDraft({
+                  labels: labels.filter((_, itemIndex) => itemIndex !== index),
+                })
+              }
+              disabled={disabled || labels.length <= 2}
+              color="error"
+            >
+              <DeleteOutline />
+            </IconButton>
+          </Stack>
+        ))}
+
+        <Button
+          variant="outlined"
+          color="info"
+          startIcon={<AddOutlined />}
+          onClick={() =>
+            updateDraft({
+              labels: [...labels, { label: `Label ${labels.length + 1}` }],
+            })
+          }
+          disabled={disabled}
+          sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 900 }}
+        >
+          Add label
+        </Button>
+      </Stack>
     </Stack>
   );
 };

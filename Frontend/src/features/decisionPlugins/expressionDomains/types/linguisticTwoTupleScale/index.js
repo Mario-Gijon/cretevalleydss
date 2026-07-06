@@ -16,7 +16,8 @@ import LinguisticTwoTupleScaleEvaluationInput from "./LinguisticTwoTupleScaleEva
 export const linguisticTwoTupleScaleExpressionDomainType = Object.freeze({
   key: "linguisticTwoTupleScale",
   label: "Linguistic 2-tuple scale",
-  description: "Generated scaffold for a linguistic 2-tuple-inspired expression domain type.",
+  description:
+    "Linguistic scale inspired by 2-tuples. Users evaluate by selecting a label; alpha is produced later by model outputs.",
   family: "linguistic",
   constraintExample: {
     labelCount: null,

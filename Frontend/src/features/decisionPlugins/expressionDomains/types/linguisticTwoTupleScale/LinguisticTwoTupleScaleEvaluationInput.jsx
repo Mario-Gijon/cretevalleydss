@@ -9,25 +9,46 @@
 //   "labelKey": "high"
 // }
 
-import { Alert, Stack } from "@mui/material";
+import { MenuItem, TextField } from "@mui/material";
+
+import { normalizeLabelKeyValue } from "../../helpers";
 
 export const LinguisticTwoTupleScaleEvaluationInput = ({
+  expressionDomain,
   value,
   onChange,
   disabled = false,
   error = false,
   helperText = "",
 }) => {
-  void value;
-  void onChange;
-  void disabled;
+  const labels = Array.isArray(expressionDomain?.definition?.labels)
+    ? expressionDomain.definition.labels
+    : [];
+  const labelKey = normalizeLabelKeyValue(value);
 
   return (
-    <Stack spacing={1}>
-      <Alert severity={error ? "error" : "info"} variant="outlined">
-        {helperText || "Generated scaffold. Implement the domain-specific evaluation input here."}
-      </Alert>
-    </Stack>
+    <TextField
+      select
+      label="Label"
+      color="info"
+      value={labelKey}
+      onChange={(event) => onChange?.({ labelKey: event.target.value })}
+      disabled={disabled || labels.length === 0}
+      error={Boolean(error)}
+      helperText={
+        helperText ||
+        (labels.length === 0
+          ? "This domain has no labels configured."
+          : "Select the linguistic label for this evaluation.")
+      }
+      fullWidth
+    >
+      {labels.map((labelItem) => (
+        <MenuItem key={labelItem.key} value={labelItem.key}>
+          {labelItem.label}
+        </MenuItem>
+      ))}
+    </TextField>
   );
 };
 
