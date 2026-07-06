@@ -4,12 +4,12 @@ import { createBadRequestError } from "../../utils/common/errors.js";
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const requireTypeKeyOrThrow = (expressionDomain, field) => {
+const requireTypeKeyOrThrow = (expressionDomain) => {
   const typeKey = expressionDomain?.typeKey;
 
   if (typeof typeKey !== "string" || typeKey.trim() === "") {
     throw createBadRequestError("expressionDomain.typeKey is required.", {
-      field,
+      field: "expressionDomain",
     });
   }
 
@@ -19,20 +19,18 @@ const requireTypeKeyOrThrow = (expressionDomain, field) => {
 export const validateExpressionDomainEvaluationOrThrow = ({
   value,
   expressionDomain,
-  field = "value",
 }) => {
   if (!isPlainObject(expressionDomain)) {
     throw createBadRequestError("expressionDomain must be an object.", {
-      field,
+      field: "expressionDomain",
     });
   }
 
-  const typeKey = requireTypeKeyOrThrow(expressionDomain, field);
+  const typeKey = requireTypeKeyOrThrow(expressionDomain);
   const domainType = getExpressionDomainTypeOrThrow(typeKey);
 
   return domainType.validateEvaluation({
     value,
     expressionDomain,
-    field,
   });
 };

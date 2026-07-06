@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
 import { User } from "../../models/Users.js";
+import { validateExpressionDomainEvaluationOrThrow } from "../../modules/expressionDomains/validateExpressionDomainEvaluation.js";
+import { linguisticFuzzy } from "../../modules/decisionPlugins/expressionDomains/types/linguisticFuzzy/index.js";
+import { linguisticOrdinal } from "../../modules/decisionPlugins/expressionDomains/types/linguisticOrdinal/index.js";
+import { numericContinuous } from "../../modules/decisionPlugins/expressionDomains/types/numericContinuous/index.js";
+import { numericDiscrete } from "../../modules/decisionPlugins/expressionDomains/types/numericDiscrete/index.js";
 import { createUserExpressionDomain } from "../../modules/expressionDomains/createExpressionDomain.js";
 import { normalizeNewExpressionDomainPayload } from "../../modules/expressionDomains/normalizeExpressionDomainPayload.js";
 import { removeUserExpressionDomain } from "../../modules/expressionDomains/removeExpressionDomain.js";
@@ -222,5 +227,101 @@ describe("expression domains", () => {
       statusCode: 403,
       message: "Not authorized",
     });
+  });
+
+  it("core expression domain validateEvaluation signatures no longer include field", () => {
+    expect(numericContinuous.validateEvaluation.toString()).toContain(
+      "validateEvaluation({ value, expressionDomain } = {})"
+    );
+    expect(numericDiscrete.validateEvaluation.toString()).toContain(
+      "validateEvaluation({ value, expressionDomain } = {})"
+    );
+    expect(linguisticOrdinal.validateEvaluation.toString()).toContain(
+      "validateEvaluation({ value, expressionDomain } = {})"
+    );
+    expect(linguisticFuzzy.validateEvaluation.toString()).toContain(
+      "validateEvaluation({ value, expressionDomain } = {})"
+    );
+  });
+
+  it("numeric expression domains still reject invalid evaluation values", () => {
+    expect(() =>
+      numericContinuous.validateEvaluation({
+        value: "bad",
+        expressionDomain: {
+          definition: { min: 0, max: 1 },
+        },
+      })
+    ).toThrow("Value must be a finite number.");
+
+    expect(() =>
+      numericContinuous.validateEvaluation({
+        value: 2,
+        expressionDomain: {
+          definition: { min: 0, max: 1 },
+        },
+      })
+    ).toThrow("Value must be between 0 and 1.");
+
+    expect(() =>
+      numericDiscrete.validateEvaluation({
+        value: 2,
+        expressionDomain: {
+          definition: { min: 0, max: 10, step: 0 },
+        },
+      })
+    ).toThrow("Expression domain step must be greater than 0.");
+
+    expect(() =>
+      numericDiscrete.validateEvaluation({
+        value: 2.5,
+        expressionDomain: {
+          definition: { min: 0, max: 10, step: 2 },
+        },
+      })
+    ).toThrow("Value must align with the configured discrete step.");
+  });
+
+  it("linguistic expression domains still reject values outside configured labels", () => {
+    expect(() =>
+      linguisticOrdinal.validateEvaluation({
+        value: { labelKey: "missing" },
+        expressionDomain: {
+          definition: {
+            labels: [
+              { key: "low", label: "Low" },
+              { key: "high", label: "High" },
+            ],
+          },
+        },
+      })
+    ).toThrow("Value must match one of the configured labels.");
+
+    expect(() =>
+      linguisticFuzzy.validateEvaluation({
+        value: { labelKey: "missing" },
+        expressionDomain: {
+          definition: {
+            labels: [
+              { key: "low", label: "Low", values: [0, 0, 1] },
+              { key: "high", label: "High", values: [0, 1, 1] },
+            ],
+          },
+        },
+      })
+    ).toThrow("Value must match one of the configured fuzzy labels.");
+  });
+
+  it("validateExpressionDomainEvaluationOrThrow ignores caller field context", () => {
+    expect(() =>
+      validateExpressionDomainEvaluationOrThrow({
+        value: 3,
+        expressionDomain: {
+          typeKey: "numericContinuous",
+          definition: { min: 0, max: 1 },
+        },
+        field: "payload.cells[0][0].value",
+      })
+    ).toThrow("Value must be between 0 and 1.");
   });
 });

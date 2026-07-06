@@ -126,7 +126,7 @@ const normalizeFuzzyLabelsOrThrow = ({ labels, membershipFunction }) => {
   });
 };
 
-const normalizeEvaluationLabelKeyOrThrow = ({ value, labels, field }) => {
+const normalizeEvaluationLabelKeyOrThrow = ({ value, labels }) => {
   let labelKey = null;
 
   if (typeof value === "string") {
@@ -136,14 +136,14 @@ const normalizeEvaluationLabelKeyOrThrow = ({ value, labels, field }) => {
   }
 
   if (!isNonEmptyString(labelKey)) {
-    throw createBadRequestError(`${field} must reference a valid label key.`, {
-      field,
+    throw createBadRequestError("Value is required.", {
+      field: "value",
     });
   }
 
   if (!labels.some((item) => item.key === labelKey)) {
-    throw createBadRequestError(`${field}.labelKey is not supported by this expression domain.`, {
-      field,
+    throw createBadRequestError("Value must match one of the configured fuzzy labels.", {
+      field: "value",
     });
   }
 
@@ -186,21 +186,20 @@ export const linguisticFuzzy = Object.freeze({
     };
   },
 
-  validateEvaluation({ value, expressionDomain, field = "value" } = {}) {
+  validateEvaluation({ value, expressionDomain } = {}) {
     const labels = Array.isArray(expressionDomain?.definition?.labels)
       ? expressionDomain.definition.labels
       : null;
 
     if (!labels) {
-      throw createBadRequestError("expressionDomain.definition.labels is required.", {
-        field,
+      throw createBadRequestError("Expression domain definition is invalid.", {
+        field: "definition",
       });
     }
 
     return normalizeEvaluationLabelKeyOrThrow({
       value,
       labels,
-      field,
     });
   },
 });

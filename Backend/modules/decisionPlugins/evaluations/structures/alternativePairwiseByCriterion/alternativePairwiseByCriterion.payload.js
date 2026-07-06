@@ -33,12 +33,10 @@ export const resolveRequireValueFromModeOrThrow = (mode) => {
 export const validateCellValueByDomainOrThrow = ({
   value,
   expressionDomain,
-  field,
 }) => {
   return validateExpressionDomainEvaluationOrThrow({
     value,
     expressionDomain,
-    field,
   });
 };
 
@@ -71,7 +69,6 @@ const normalizeCellOrThrow = ({
   const normalizedValue = validateCellValueByDomainOrThrow({
     value: rawValue,
     expressionDomain: expectedExpressionDomain,
-    field,
   });
 
   return {
