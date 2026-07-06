@@ -47,6 +47,7 @@ import {
 } from "../../../services/admin.service";
 import { setPendingBackendChange } from "../../../utils/pendingBackendChange.js";
 import ModelForgeRegistryTab from "./ModelForgeRegistryTab";
+import { stripNullConstraintPlaceholders } from "./constraintTemplates.js";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 
@@ -363,9 +364,15 @@ const buildSupportedExpressionDomainsPayloadOrThrow = (
       throw new Error(`${typeKey} constraints must be a JSON object`);
     }
 
+    const normalizedConstraints = stripNullConstraintPlaceholders(parsedConstraints);
+
     return {
       typeKey,
-      constraints: parsedConstraints,
+      constraints:
+        isPlainObject(normalizedConstraints) &&
+        Object.keys(normalizedConstraints).length === 0
+          ? {}
+          : normalizedConstraints,
     };
   });
 };
@@ -1855,7 +1862,7 @@ export default function AdminModelForgeSection() {
     [resetActionState]
   );
 
-  const applySupportedExpressionDomainExample = useCallback((typeKey, example) => {
+  const applySupportedExpressionDomainTemplate = useCallback((typeKey, example) => {
     setSupportedExpressionDomainConstraints(
       typeKey,
       formatConstraintExample(example)
@@ -2628,21 +2635,21 @@ export default function AdminModelForgeSection() {
                                   variant="caption"
                                   sx={{ color: "text.secondary", fontWeight: 900 }}
                                 >
-                                  Example constraints
+                                  Constraint template
                                 </Typography>
                                 <Button
                                   size="small"
                                   variant="outlined"
                                   color="info"
                                   onClick={() =>
-                                    applySupportedExpressionDomainExample(
+                                    applySupportedExpressionDomainTemplate(
                                       domain.typeKey,
                                       domain.constraintExample
                                     )
                                   }
                                   sx={{ textTransform: "none", fontWeight: 900 }}
                                 >
-                                  Use example
+                                  Use template
                                 </Button>
                               </Stack>
 
@@ -2672,7 +2679,7 @@ export default function AdminModelForgeSection() {
                               error={Boolean(validationError)}
                               helperText={
                                 validationError ||
-                                `Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintExampleInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
+                                `Use template copies available constraint keys. Fill the values you want to restrict; null placeholders are ignored before saving. Leave constraints empty ({}) to allow any domain variant of this type. For example, ${domain.typeKey} with {} means any ${domain.typeKey} domain is accepted. ${domain.typeKey} with ${formatConstraintExampleInline(domain.constraintExample)} means only compatible domains with those constraints are accepted.`
                               }
                             />
                           </Box>
