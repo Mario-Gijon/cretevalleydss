@@ -164,7 +164,11 @@ export const ExpressionDomainStep = () => {
     const result = await removeExpressionDomain(id);
 
     if (result && result.success) {
-      setExpressionDomains((previous) => previous.filter((domain) => domain._id !== id));
+      setExpressionDomains((previous) =>
+        previous.filter(
+          (domain) => String(domain?._id || domain?.id) !== String(id)
+        )
+      );
       showSnackbarAlert(result?.message || "Domain deleted", "success");
     } else {
       showSnackbarAlert(result?.message || "Error deleting domain", "error");
@@ -263,7 +267,10 @@ export const ExpressionDomainStep = () => {
               startIcon={<Inventory2OutlinedIcon />}
               onClick={() => setOpenViewDomainExpressions(true)}
               color="info"
-              disabled={!expressionDomains || expressionDomains.length === 0}
+              disabled={
+                (!Array.isArray(globalDomains) || globalDomains.length === 0) &&
+                (!Array.isArray(expressionDomains) || expressionDomains.length === 0)
+              }
               sx={getCreateIssueExpressionActionBtnSx(theme)}
             >
               Manage domains

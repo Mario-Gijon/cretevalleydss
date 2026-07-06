@@ -204,6 +204,21 @@ const countIssuesUsingIssueModelIds = async (modelIds) => {
   });
 };
 
+const getExpressionDomainTypeUsageBreakdown = async (key) => {
+  const [expressionDomains, issueExpressionDomainSnapshots, issueModels] =
+    await Promise.all([
+      ExpressionDomain.countDocuments({ typeKey: key }),
+      IssueExpressionDomain.countDocuments({ typeKey: key }),
+      IssueModel.countDocuments({ "supportedExpressionDomains.typeKey": key }),
+    ]);
+
+  return {
+    expressionDomains,
+    issueExpressionDomainSnapshots,
+    issueModels,
+  };
+};
+
 const countIssuesUsingModelForgeAsset = async ({ kind, key }) => {
   if (kind === "model") {
     const models = await IssueModel.find({ apiModelKey: key }).select("_id").lean();
@@ -227,14 +242,13 @@ const countIssuesUsingModelForgeAsset = async ({ kind, key }) => {
   }
 
   if (kind === "expressionDomainType") {
-    const [expressionDomainsCount, issueSnapshotsCount, issueModelsCount] =
-      await Promise.all([
-        ExpressionDomain.countDocuments({ typeKey: key }),
-        IssueExpressionDomain.countDocuments({ typeKey: key }),
-        IssueModel.countDocuments({ "supportedExpressionDomains.typeKey": key }),
-      ]);
+    const usageBreakdown = await getExpressionDomainTypeUsageBreakdown(key);
 
-    return expressionDomainsCount + issueSnapshotsCount + issueModelsCount;
+    return (
+      usageBreakdown.expressionDomains +
+      usageBreakdown.issueExpressionDomainSnapshots +
+      usageBreakdown.issueModels
+    );
   }
 
   throw createBadRequestError("Valid asset kind is required", {
@@ -250,10 +264,19 @@ const enrichModelForgeAssetsWithUsage = async (items = []) =>
       const protectedAsset =
         kind === "expressionDomainType" &&
         CORE_EXPRESSION_DOMAIN_TYPE_KEYS.has(key);
-      const resolvedUsageCount = await countIssuesUsingModelForgeAsset({
-        kind,
-        key,
-      });
+      const usageBreakdown =
+        kind === "expressionDomainType"
+          ? await getExpressionDomainTypeUsageBreakdown(key)
+          : null;
+      const resolvedUsageCount =
+        kind === "expressionDomainType"
+          ? usageBreakdown.expressionDomains +
+            usageBreakdown.issueExpressionDomainSnapshots +
+            usageBreakdown.issueModels
+          : await countIssuesUsingModelForgeAsset({
+            kind,
+            key,
+          });
       const usageCount = Number.isFinite(resolvedUsageCount)
         ? resolvedUsageCount
         : 0;
@@ -269,6 +292,7 @@ const enrichModelForgeAssetsWithUsage = async (items = []) =>
       return {
         ...item,
         usageCount,
+        usageBreakdown,
         usedByIssuesCount,
         protected: protectedAsset,
         deleteBlockedReason,

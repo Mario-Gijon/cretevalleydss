@@ -35,6 +35,24 @@ const getAssetUsageCount = (row) => {
   return 0;
 };
 
+const getExpressionDomainTypeUsageBreakdown = (row) => {
+  const breakdown = row?.usageBreakdown;
+
+  return {
+    expressionDomains: Number.isFinite(Number(breakdown?.expressionDomains))
+      ? Number(breakdown.expressionDomains)
+      : 0,
+    issueExpressionDomainSnapshots: Number.isFinite(
+      Number(breakdown?.issueExpressionDomainSnapshots)
+    )
+      ? Number(breakdown.issueExpressionDomainSnapshots)
+      : 0,
+    issueModels: Number.isFinite(Number(breakdown?.issueModels))
+      ? Number(breakdown.issueModels)
+      : 0,
+  };
+};
+
 const getDeleteDisabledReason = (row) => {
   if (typeof row?.deleteBlockedReason === "string" && row.deleteBlockedReason.trim()) {
     return row.deleteBlockedReason;
@@ -46,11 +64,28 @@ const getDeleteDisabledReason = (row) => {
 
   if (getAssetUsageCount(row) > 0) {
     return row?.kind === "expressionDomainType"
-      ? "This expression domain type is in use and cannot be deleted."
+      ? "This expression domain type is in use by live domains, issue snapshots, or models and cannot be deleted."
       : "This asset is used by existing issues and cannot be deleted.";
   }
 
   return "";
+};
+
+const renderExpressionDomainTypeUsage = (row) => {
+  const usageCount = getAssetUsageCount(row);
+  const breakdown = getExpressionDomainTypeUsageBreakdown(row);
+
+  return (
+    <Stack spacing={0.25}>
+      <Typography variant="body2" sx={{ fontWeight: 900 }}>
+        {usageCount}
+      </Typography>
+      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+        Domains: {breakdown.expressionDomains} · Snapshots:{" "}
+        {breakdown.issueExpressionDomainSnapshots} · Models: {breakdown.issueModels}
+      </Typography>
+    </Stack>
+  );
 };
 
 function AssetLocationCell({ locations = [], missingLocations = [] }) {
@@ -282,7 +317,11 @@ const EXPRESSION_DOMAIN_TYPE_COLUMNS = [
   { key: "key", label: "Key" },
   { key: "origin", label: "Origin" },
   { key: "location", label: "Location" },
-  { key: "usageCount", label: "Usage count" },
+  {
+    key: "usageCount",
+    label: "Usage count",
+    render: (row) => renderExpressionDomainTypeUsage(row),
+  },
   { key: "actions", label: "Actions", align: "right" },
 ];
 
@@ -380,7 +419,7 @@ export default function ModelForgeRegistryTab({
 
       <AssetTable
         title="Expression domain types"
-        subtitle="Global expression-domain plugin assets used by domain creation, evaluation and validation."
+        subtitle="Global expression-domain plugin assets used by domain creation, evaluation and validation. Deletion is blocked by live domains, snapshots, or models."
         columns={EXPRESSION_DOMAIN_TYPE_COLUMNS}
         rows={expressionDomainTypes}
         emptyMessage="No expression domain types found."

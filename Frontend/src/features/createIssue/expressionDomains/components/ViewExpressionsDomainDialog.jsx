@@ -40,26 +40,35 @@ export const ViewExpressionsDomainDialog = ({
   handleDelete,
 }) => {
   const theme = useTheme();
-  const { expressionDomains } = useIssuesDataContext();
+  const { globalDomains, expressionDomains } = useIssuesDataContext();
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState(null);
   const [removeLoading, setRemoveLoading] = useState(false);
 
+  const allManagedDomains = [
+    ...(Array.isArray(globalDomains)
+      ? globalDomains.map((domain) => ({ ...domain, __domainScope: "global" }))
+      : []),
+    ...(Array.isArray(expressionDomains)
+      ? expressionDomains.map((domain) => ({ ...domain, __domainScope: "user" }))
+      : []),
+  ];
+
   useEffect(() => {
-    if (open && expressionDomains.length === 0) {
+    if (open && allManagedDomains.length === 0) {
       onClose();
     }
-  }, [expressionDomains, open, onClose]);
+  }, [allManagedDomains.length, open, onClose]);
 
   const getGridProps = () => {
-    const count = expressionDomains.length;
+    const count = allManagedDomains.length;
 
     if (count === 1) return { xs: 12 };
     if (count === 2) return { xs: 12, md: 6 };
     return { xs: 12, md: 6, xl: 4 };
   };
 
-  if (expressionDomains.length === 0) {
+  if (allManagedDomains.length === 0) {
     return null;
   }
 
@@ -75,10 +84,12 @@ export const ViewExpressionsDomainDialog = ({
   };
 
   const handleConfirmDelete = async () => {
-    if (!selectedDomain?._id || removeLoading) return;
+    const selectedDomainId = selectedDomain?._id || selectedDomain?.id;
+
+    if (!selectedDomainId || removeLoading) return;
 
     setRemoveLoading(true);
-    await handleDelete(selectedDomain._id);
+    await handleDelete(selectedDomainId);
     setRemoveLoading(false);
     setOpenDeleteDialog(false);
     setSelectedDomain(null);
@@ -89,7 +100,7 @@ export const ViewExpressionsDomainDialog = ({
       <GlassDialog
         open={open}
         onClose={onClose}
-        maxWidth={expressionDomains.length === 1 ? "sm" : "xl"}
+        maxWidth={allManagedDomains.length === 1 ? "sm" : "xl"}
         fullWidth
       >
         <DialogTitle sx={getCreateIssueCompactDialogTitleSx(theme)}>
@@ -97,12 +108,19 @@ export const ViewExpressionsDomainDialog = ({
         </DialogTitle>
 
         <DialogContent sx={getCreateIssueCompactDialogContentSx(theme)}>
+          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700, mt: 0.5 }}>
+            Global domains are predefined and cannot be edited or deleted.
+          </Typography>
+
           <Grid2 container spacing={1.5} sx={{ mt: 1 }}>
-            {expressionDomains.map((domain) => {
+            {allManagedDomains.map((domain) => {
               const displayMeta = getExpressionDomainDisplayMeta(domain);
+              const isGlobalDomain =
+                domain.__domainScope === "global" || domain.isGlobal === true;
+              const domainId = domain._id || domain.id || displayMeta.name;
 
               return (
-                <Grid2 key={domain._id} size={getGridProps()} alignItems="stretch">
+                <Grid2 key={domainId} size={getGridProps()} alignItems="stretch">
                   <GlassPaper
                     sx={{
                       p: 1.6,
@@ -121,9 +139,17 @@ export const ViewExpressionsDomainDialog = ({
                         width="100%"
                       >
                         <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                            {displayMeta.name}
-                          </Typography>
+                          <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
+                            <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                              {displayMeta.name}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={isGlobalDomain ? "Global" : "Mine"}
+                              color={isGlobalDomain ? "default" : "info"}
+                              variant="outlined"
+                            />
+                          </Stack>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                             {displayMeta.descriptor}
                           </Typography>
@@ -132,22 +158,24 @@ export const ViewExpressionsDomainDialog = ({
                           </Typography>
                         </Stack>
 
-                        <Stack direction="row" spacing={0.8}>
-                          <Button
-                            size="small"
-                            color="warning"
-                            onClick={() => handleOpenEdit(domain)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => handleAskDelete(domain)}
-                          >
-                            Delete
-                          </Button>
-                        </Stack>
+                        {!isGlobalDomain ? (
+                          <Stack direction="row" spacing={0.8}>
+                            <Button
+                              size="small"
+                              color="warning"
+                              onClick={() => handleOpenEdit(domain)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() => handleAskDelete(domain)}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
+                        ) : null}
                       </Stack>
 
                       <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
