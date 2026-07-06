@@ -9,8 +9,12 @@ import {
   Button,
   Checkbox,
   Chip,
+  Collapse,
   Divider,
   FormControlLabel,
+  IconButton,
+  List,
+  ListItem,
   Paper,
   Stack,
   Switch,
@@ -24,6 +28,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -56,7 +61,6 @@ const SCAFFOLD_TYPE_OPTIONS = [
 const EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS = [
   { value: "numeric", label: "numeric" },
   { value: "linguistic", label: "linguistic" },
-  { value: "custom", label: "custom" },
 ];
 const CORE_EXPRESSION_DOMAIN_TYPE_KEYS = new Set([
   "numericContinuous",
@@ -484,34 +488,174 @@ const formatJsonPreview = (value) => {
 
 const formatConstraintExample = (value) => JSON.stringify(value ?? {}, null, 2);
 const formatConstraintExampleInline = (value) => JSON.stringify(value ?? {});
+const createConstraintTemplateFieldId = () =>
+  `constraint-template-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildConstraintTemplateFieldRow = (key = "") => ({
+  id: createConstraintTemplateFieldId(),
+  key,
+  children: [],
+});
+
+const updateConstraintTemplateFieldTree = (fields, fieldId, updater) =>
+  (Array.isArray(fields) ? fields : []).map((field) => {
+    if (field.id === fieldId) {
+      return updater(field);
+    }
+
+    if (Array.isArray(field.children) && field.children.length > 0) {
+      return {
+        ...field,
+        children: updateConstraintTemplateFieldTree(field.children, fieldId, updater),
+      };
+    }
+
+    return field;
+  });
+
+const removeConstraintTemplateFieldRecursively = (fields, fieldId) =>
+  (Array.isArray(fields) ? fields : [])
+    .filter((field) => field.id !== fieldId)
+    .map((field) => ({
+      ...field,
+      children: removeConstraintTemplateFieldRecursively(field.children, fieldId),
+    }));
+
+const validateConstraintTemplateFieldsOrThrow = (fields, path = "constraintTemplate") => {
+  const siblingKeys = new Set();
+
+  for (const field of Array.isArray(fields) ? fields : []) {
+    const key = String(field?.key || "").trim();
+    if (!key) {
+      throw new Error(`${path} contains a field with an empty key`);
+    }
+    if (!lowerCamelCasePattern.test(key)) {
+      throw new Error(`${path}.${key} must use lower camelCase`);
+    }
+    if (siblingKeys.has(key)) {
+      throw new Error(`${path} contains duplicate field key "${key}"`);
+    }
+    siblingKeys.add(key);
+
+    validateConstraintTemplateFieldsOrThrow(field.children, `${path}.${key}`);
+  }
+};
+
+const buildConstraintTemplateObjectOrThrow = (fields) => {
+  validateConstraintTemplateFieldsOrThrow(fields);
+
+  const visit = (items) => {
+    const result = {};
+
+    for (const field of Array.isArray(items) ? items : []) {
+      const key = String(field?.key || "").trim();
+      const children = Array.isArray(field?.children) ? field.children : [];
+      result[key] = children.length > 0 ? visit(children) : null;
+    }
+
+    return result;
+  };
+
+  return visit(fields);
+};
+
+const formatGeneratedConstraintTemplate = (fields) => {
+  try {
+    return JSON.stringify(buildConstraintTemplateObjectOrThrow(fields), null, 2);
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid constraint template";
+  }
+};
+
 const buildInitialExpressionDomainTypeFormState = () => ({
   typeKey: "",
   label: "",
   description: "",
-  family: "custom",
-  constraintExampleJson: "{}",
+  family: "numeric",
+  constraintTemplateFields: [],
   definitionExampleJson: "{}",
   evaluationExampleJson: "null",
 });
 
-const buildExampleExpressionDomainTypeFormState = () => ({
-  typeKey: "customPreferenceScale",
-  label: "Custom preference scale",
-  description: "Generated scaffold for a custom preference scale expression domain type.",
-  family: "custom",
-  constraintExampleJson: "{}",
-  definitionExampleJson: JSON.stringify(
-    {
-      levels: [
-        { key: "low", label: "Low" },
-        { key: "high", label: "High" },
+const buildExampleExpressionDomainTypeFormState = (family = "numeric") => {
+  if (family === "linguistic") {
+    return {
+      typeKey: "linguisticTwoTupleScale",
+      label: "Linguistic 2-tuple scale",
+      description:
+        "Generated scaffold for a linguistic 2-tuple-inspired expression domain type.",
+      family: "linguistic",
+      constraintTemplateFields: [
+        buildConstraintTemplateFieldRow("labelCount"),
+        {
+          ...buildConstraintTemplateFieldRow("alphaRange"),
+          children: [
+            buildConstraintTemplateFieldRow("min"),
+            buildConstraintTemplateFieldRow("max"),
+          ],
+        },
       ],
-    },
-    null,
-    2
-  ),
-  evaluationExampleJson: JSON.stringify({ levelKey: "low" }, null, 2),
-});
+      definitionExampleJson: JSON.stringify(
+        {
+          labelCount: 3,
+          alphaRange: {
+            min: -0.5,
+            max: 0.5,
+          },
+          labels: [
+            {
+              key: "low",
+              label: "Low",
+              index: 0,
+            },
+            {
+              key: "medium",
+              label: "Medium",
+              index: 1,
+            },
+            {
+              key: "high",
+              label: "High",
+              index: 2,
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      evaluationExampleJson: JSON.stringify(
+        {
+          labelKey: "high",
+        },
+        null,
+        2
+      ),
+    };
+  }
+
+  return {
+    typeKey: "boundedStepNumericScale",
+    label: "Bounded step numeric scale",
+    description:
+      "Generated scaffold for a bounded numeric scale with a discrete step.",
+    family: "numeric",
+    constraintTemplateFields: [
+      buildConstraintTemplateFieldRow("min"),
+      buildConstraintTemplateFieldRow("max"),
+      buildConstraintTemplateFieldRow("step"),
+    ],
+    definitionExampleJson: JSON.stringify(
+      {
+        min: 0,
+        max: 10,
+        step: 1,
+      },
+      null,
+      2
+    ),
+    evaluationExampleJson: JSON.stringify(7, null, 2),
+  };
+};
 
 const buildExpressionDomainTypeRequestPayloadOrThrow = (formState) => {
   const typeKey = String(formState?.typeKey || "").trim();
@@ -528,19 +672,13 @@ const buildExpressionDomainTypeRequestPayloadOrThrow = (formState) => {
   }
   if (!label) throw new Error("label is required");
   if (!description) throw new Error("description is required");
-  if (!["numeric", "linguistic", "custom"].includes(family)) {
-    throw new Error("family must be numeric, linguistic, or custom");
+  if (!["numeric", "linguistic"].includes(family)) {
+    throw new Error("family must be numeric or linguistic");
   }
 
-  const rawConstraintExample =
-    String(formState?.constraintExampleJson || "").trim() || "{}";
-  const constraintExample = parseJsonOrThrow(
-    rawConstraintExample,
-    "constraintExample"
+  const constraintExample = buildConstraintTemplateObjectOrThrow(
+    formState?.constraintTemplateFields
   );
-  if (!isPlainObject(constraintExample)) {
-    throw new Error("constraintExample must be a JSON object");
-  }
 
   const rawDefinitionExample =
     String(formState?.definitionExampleJson || "").trim() || "{}";
@@ -1284,6 +1422,82 @@ const SectionDivider = ({ theme }) => (
   />
 );
 
+const ConstraintTemplateFieldItem = ({
+  field,
+  level = 0,
+  openItems,
+  onToggle,
+  onChangeKey,
+  onAddChild,
+  onRemove,
+}) => {
+  const hasChildren = Array.isArray(field?.children) && field.children.length > 0;
+  const isOpen = openItems[field.id] !== false;
+
+  return (
+    <>
+      <ListItem
+        sx={{
+          px: 1,
+          py: 0.7,
+          pl: 1 + level * 2,
+          alignItems: "center",
+          gap: 1,
+        }}
+      >
+        {hasChildren ? (
+          <IconButton size="small" onClick={() => onToggle(field.id)}>
+            {isOpen ? (
+              <ExpandLessIcon fontSize="small" />
+            ) : (
+              <ExpandMoreIcon fontSize="small" />
+            )}
+          </IconButton>
+        ) : (
+          <Box sx={{ width: 32, flexShrink: 0 }} />
+        )}
+
+        <TextField
+          size="small"
+          color="info"
+          label="Field key"
+          value={field.key}
+          onChange={(event) => onChangeKey(field.id, event.target.value)}
+          fullWidth
+        />
+
+        <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
+          <IconButton size="small" onClick={() => onAddChild(field.id)}>
+            <AddCircleOutlineIcon color="info" fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={() => onRemove(field.id)}>
+            <DeleteOutlineIcon color="error" fontSize="small" />
+          </IconButton>
+        </Stack>
+      </ListItem>
+
+      {hasChildren ? (
+        <Collapse in={isOpen} timeout="auto" unmountOnExit>
+          <List disablePadding>
+            {field.children.map((child) => (
+              <ConstraintTemplateFieldItem
+                key={child.id}
+                field={child}
+                level={level + 1}
+                openItems={openItems}
+                onToggle={onToggle}
+                onChangeKey={onChangeKey}
+                onAddChild={onAddChild}
+                onRemove={onRemove}
+              />
+            ))}
+          </List>
+        </Collapse>
+      ) : null}
+    </>
+  );
+};
+
 export default function AdminModelForgeSection() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -1307,6 +1521,7 @@ export default function AdminModelForgeSection() {
   const [expressionDomainTypeFormState, setExpressionDomainTypeFormState] = useState(
     buildInitialExpressionDomainTypeFormState
   );
+  const [constraintTemplateOpenItems, setConstraintTemplateOpenItems] = useState({});
   const [requestPayloadPreview, setRequestPayloadPreview] = useState(null);
   const [previewResult, setPreviewResult] = useState(null);
   const [applyResult, setApplyResult] = useState(null);
@@ -1549,7 +1764,13 @@ export default function AdminModelForgeSection() {
 
   const loadExample = useCallback(() => {
     if (scaffoldType === "expressionDomainType") {
-      setExpressionDomainTypeFormState(buildExampleExpressionDomainTypeFormState());
+      setExpressionDomainTypeFormState(
+        buildExampleExpressionDomainTypeFormState(
+          ["numeric", "linguistic"].includes(expressionDomainTypeFormState.family)
+            ? expressionDomainTypeFormState.family
+            : "numeric"
+        )
+      );
       resetActionState();
       showSnackbarAlert("Sample expression domain type scaffold form loaded", "success");
       return;
@@ -1558,7 +1779,12 @@ export default function AdminModelForgeSection() {
     setFormState(buildExampleFormState());
     resetActionState();
     showSnackbarAlert("Sample scaffold form loaded", "success");
-  }, [resetActionState, scaffoldType, showSnackbarAlert]);
+  }, [
+    expressionDomainTypeFormState.family,
+    resetActionState,
+    scaffoldType,
+    showSnackbarAlert,
+  ]);
 
   const setExpressionDomainTypeField = useCallback((field, value) => {
     setExpressionDomainTypeFormState((current) => ({
@@ -1567,6 +1793,71 @@ export default function AdminModelForgeSection() {
     }));
     resetActionState();
   }, [resetActionState]);
+
+  const addConstraintTemplateRootField = useCallback(() => {
+    setExpressionDomainTypeFormState((current) => ({
+      ...current,
+      constraintTemplateFields: [
+        ...(Array.isArray(current.constraintTemplateFields)
+          ? current.constraintTemplateFields
+          : []),
+        buildConstraintTemplateFieldRow(),
+      ],
+    }));
+    resetActionState();
+  }, [resetActionState]);
+
+  const updateConstraintTemplateFieldKey = useCallback((fieldId, key) => {
+    setExpressionDomainTypeFormState((current) => ({
+      ...current,
+      constraintTemplateFields: updateConstraintTemplateFieldTree(
+        current.constraintTemplateFields,
+        fieldId,
+        (field) => ({ ...field, key })
+      ),
+    }));
+    resetActionState();
+  }, [resetActionState]);
+
+  const addConstraintTemplateChildField = useCallback((fieldId) => {
+    setExpressionDomainTypeFormState((current) => ({
+      ...current,
+      constraintTemplateFields: updateConstraintTemplateFieldTree(
+        current.constraintTemplateFields,
+        fieldId,
+        (field) => ({
+          ...field,
+          children: [
+            ...(Array.isArray(field.children) ? field.children : []),
+            buildConstraintTemplateFieldRow(),
+          ],
+        })
+      ),
+    }));
+    setConstraintTemplateOpenItems((current) => ({
+      ...current,
+      [fieldId]: true,
+    }));
+    resetActionState();
+  }, [resetActionState]);
+
+  const removeConstraintTemplateField = useCallback((fieldId) => {
+    setExpressionDomainTypeFormState((current) => ({
+      ...current,
+      constraintTemplateFields: removeConstraintTemplateFieldRecursively(
+        current.constraintTemplateFields,
+        fieldId
+      ),
+    }));
+    resetActionState();
+  }, [resetActionState]);
+
+  const toggleConstraintTemplateField = useCallback((fieldId) => {
+    setConstraintTemplateOpenItems((current) => ({
+      ...current,
+      [fieldId]: current[fieldId] === false,
+    }));
+  }, []);
 
   const setSupportedExpressionDomainConstraints = useCallback(
     (typeKey, constraintsJsonText) => {
@@ -2510,7 +2801,7 @@ export default function AdminModelForgeSection() {
                       ) || EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS[0]
                     }
                     onChange={(_event, value) =>
-                      setExpressionDomainTypeField("family", value?.value || "custom")
+                      setExpressionDomainTypeField("family", value?.value || "numeric")
                     }
                     getOptionLabel={(option) => option?.label || ""}
                     isOptionEqualToValue={(option, value) => option.value === value.value}
@@ -2546,21 +2837,80 @@ export default function AdminModelForgeSection() {
 
                   <AccordionDetails sx={flatAccordionDetailsSx}>
                     <Stack spacing={1.1}>
-                      <TextField
-                        color="info"
-                        label="constraintExampleJson"
-                        value={expressionDomainTypeFormState.constraintExampleJson}
-                        onChange={(event) =>
-                          setExpressionDomainTypeField(
-                            "constraintExampleJson",
-                            event.target.value
-                          )
-                        }
-                        minRows={5}
-                        multiline
-                        fullWidth
-                        helperText="Optional. Must be a JSON object. Defaults to {}."
-                      />
+                      <Box
+                        sx={{
+                          border: `1px solid ${alpha(theme.palette.info.main, 0.14)}`,
+                          borderRadius: 2,
+                          bgcolor: alpha(theme.palette.common.white, 0.015),
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          justifyContent="space-between"
+                          sx={{ px: 1.1, py: 1 }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                              Constraint template
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "text.secondary", fontWeight: 800 }}
+                            >
+                              Define which constraint fields a model can configure for this
+                              expression domain type. Leaves are generated as null placeholders.
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={addConstraintTemplateRootField}
+                            sx={{ textTransform: "none", fontWeight: 900 }}
+                          >
+                            Add root field
+                          </Button>
+                        </Stack>
+
+                        {Array.isArray(expressionDomainTypeFormState.constraintTemplateFields) &&
+                        expressionDomainTypeFormState.constraintTemplateFields.length > 0 ? (
+                          <List disablePadding sx={{ pb: 0.6 }}>
+                            {expressionDomainTypeFormState.constraintTemplateFields.map((field) => (
+                              <ConstraintTemplateFieldItem
+                                key={field.id}
+                                field={field}
+                                openItems={constraintTemplateOpenItems}
+                                onToggle={toggleConstraintTemplateField}
+                                onChangeKey={updateConstraintTemplateFieldKey}
+                                onAddChild={addConstraintTemplateChildField}
+                                onRemove={removeConstraintTemplateField}
+                              />
+                            ))}
+                          </List>
+                        ) : (
+                          <Box sx={{ px: 1.1, pb: 1.1 }}>
+                            <EmptyState>No constraint fields added yet.</EmptyState>
+                          </Box>
+                        )}
+                      </Box>
+
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{ display: "block", mb: 0.6, color: "text.secondary", fontWeight: 850 }}
+                        >
+                          Generated constraint template
+                        </Typography>
+                        <Box component="pre" sx={codeBlockSx(theme)}>
+                          {formatGeneratedConstraintTemplate(
+                            expressionDomainTypeFormState.constraintTemplateFields
+                          )}
+                        </Box>
+                      </Box>
                       <TextField
                         color="info"
                         label="definitionExampleJson"

@@ -11,7 +11,7 @@ from schemas.scaffold_model_package import (
 
 
 TYPE_KEY_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$")
-FAMILY_OPTIONS = {"numeric", "linguistic", "custom"}
+FAMILY_OPTIONS = {"numeric", "linguistic"}
 CORE_EXPRESSION_DOMAIN_TYPE_KEYS = {
     "numericContinuous",
     "numericDiscrete",
@@ -28,7 +28,7 @@ class ExpressionDomainTypeScaffoldDefinition(BaseModel):
     typeKey: str
     label: str
     description: str
-    family: Literal["numeric", "linguistic", "custom"]
+    family: Literal["numeric", "linguistic"]
     constraintExample: dict = Field(default_factory=dict)
     definitionExample: dict = Field(default_factory=dict)
     evaluationExample: Any = None
@@ -58,7 +58,7 @@ class ExpressionDomainTypeScaffoldDefinition(BaseModel):
     def validate_family(cls, value: str) -> str:
         stripped = value.strip()
         if stripped not in FAMILY_OPTIONS:
-            raise ValueError("family must be numeric, linguistic, or custom")
+            raise ValueError("family must be numeric or linguistic")
         return stripped
 
     @field_validator("constraintExample", "definitionExample")
