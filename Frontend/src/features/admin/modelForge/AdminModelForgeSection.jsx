@@ -2860,8 +2860,8 @@ export default function AdminModelForgeSection() {
                               variant="caption"
                               sx={{ color: "text.secondary", fontWeight: 800 }}
                             >
-                              Define which constraint fields a model can configure for this
-                              expression domain type. Leaves are generated as null placeholders.
+                              Fields that a model can later restrict for compatibility. This
+                              defines available constraint keys, not concrete values.
                             </Typography>
                           </Box>
                           <Button
@@ -2924,7 +2924,7 @@ export default function AdminModelForgeSection() {
                         minRows={5}
                         multiline
                         fullWidth
-                        helperText="Optional. Must be a JSON object. Defaults to {}."
+                        helperText="Example shape of the definition saved in the database for a concrete expression domain. This definition is later used to validate evaluations."
                       />
                       <TextField
                         color="info"
@@ -2939,7 +2939,7 @@ export default function AdminModelForgeSection() {
                         minRows={5}
                         multiline
                         fullWidth
-                        helperText="Optional. Can be any JSON value. Defaults to null."
+                        helperText="Example value saved for each evaluation. At runtime, this value is validated against the concrete domain definition."
                       />
                     </Stack>
                   </AccordionDetails>
