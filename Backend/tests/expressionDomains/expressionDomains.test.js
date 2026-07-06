@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 
 import { ExpressionDomain } from "../../models/ExpressionDomain.js";
+import { IssueExpressionDomain } from "../../models/IssueExpressionDomains.js";
+import { Issue } from "../../models/Issues.js";
 import { User } from "../../models/Users.js";
 import { validateExpressionDomainEvaluationOrThrow } from "../../modules/expressionDomains/validateExpressionDomainEvaluation.js";
 import { linguisticFuzzy } from "../../modules/decisionPlugins/expressionDomains/types/linguisticFuzzy/index.js";
@@ -32,26 +34,22 @@ describe("expression domains", () => {
   it("normalizeNewExpressionDomainPayload accepts a valid numeric domain", () => {
     const result = normalizeNewExpressionDomainPayload({
       name: " Numeric domain ",
-      type: "numeric",
-      numericRange: {
+      typeKey: "numericContinuous",
+      definition: {
         min: 0,
         max: 10,
-        step: 0.5,
       },
     });
 
     expect(result).toEqual({
       name: "Numeric domain",
-      type: "numeric",
-      numericRange: {
+      typeKey: "numericContinuous",
+      family: "numeric",
+      definition: {
         min: 0,
         max: 10,
-        step: 0.5,
+        step: null,
       },
-      membershipFunction: null,
-      valueCount: null,
-      valuesMode: null,
-      linguisticLabels: [],
     });
   });
 
@@ -59,40 +57,42 @@ describe("expression domains", () => {
     expect(() =>
       normalizeNewExpressionDomainPayload({
         name: "Broken numeric domain",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericContinuous",
+        definition: {
           min: 5,
           max: 5,
         },
       })
-    ).toThrow(/min must be < max/);
+    ).toThrow(/definition\.min must be less than definition\.max/i);
   });
 
   it("normalizeNewExpressionDomainPayload accepts a valid linguistic domain", () => {
     const result = normalizeNewExpressionDomainPayload({
       name: " Linguistic domain ",
-      type: "linguistic",
-      membershipFunction: "triangular",
-      valuesMode: "custom",
-      linguisticLabels: [
-        { label: "Low", values: [0, 0, 0.4] },
-        { label: "Medium", values: [0.2, 0.5, 0.8] },
-        { label: "High", values: [0.6, 1, 1] },
-      ],
+      typeKey: "linguisticFuzzy",
+      definition: {
+        membershipFunction: "triangular",
+        labels: [
+          { label: "Low", values: [0, 0, 0.4] },
+          { label: "Medium", values: [0.2, 0.5, 0.8] },
+          { label: "High", values: [0.6, 1, 1] },
+        ],
+      },
     });
 
     expect(result).toEqual({
       name: "Linguistic domain",
-      type: "linguistic",
-      numericRange: null,
-      membershipFunction: "triangular",
-      valueCount: 3,
-      valuesMode: "custom",
-      linguisticLabels: [
-        { label: "Low", values: [0, 0, 0.4] },
-        { label: "Medium", values: [0.2, 0.5, 0.8] },
-        { label: "High", values: [0.6, 1, 1] },
-      ],
+      typeKey: "linguisticFuzzy",
+      family: "linguistic",
+      definition: {
+        membershipFunction: "triangular",
+        labelCount: 3,
+        labels: [
+          { key: "low", label: "Low", values: [0, 0, 0.4], index: 0 },
+          { key: "medium", label: "Medium", values: [0.2, 0.5, 0.8], index: 1 },
+          { key: "high", label: "High", values: [0.6, 1, 1], index: 2 },
+        ],
+      },
     });
   });
 
@@ -100,27 +100,31 @@ describe("expression domains", () => {
     expect(() =>
       normalizeNewExpressionDomainPayload({
         name: "Duplicated labels",
-        type: "linguistic",
-        membershipFunction: "triangular",
-        linguisticLabels: [
-          { label: "Low", values: [0, 0, 0.4] },
-          { label: "Low", values: [0.2, 0.5, 0.8] },
-        ],
+        typeKey: "linguisticFuzzy",
+        definition: {
+          membershipFunction: "triangular",
+          labels: [
+            { label: "Low", values: [0, 0, 0.4] },
+            { label: "Low", values: [0.2, 0.5, 0.8] },
+          ],
+        },
       })
-    ).toThrow(/Duplicated label/);
+    ).toThrow(/Fuzzy label keys must be unique/i);
   });
 
   it("normalizeNewExpressionDomainPayload rejects linguistic values outside [0, 1]", () => {
     expect(() =>
       normalizeNewExpressionDomainPayload({
         name: "Invalid values",
-        type: "linguistic",
-        membershipFunction: "triangular",
-        linguisticLabels: [
-          { label: "Low", values: [0, 0, 1.2] },
-        ],
+        typeKey: "linguisticFuzzy",
+        definition: {
+          membershipFunction: "triangular",
+          labels: [
+            { label: "Low", values: [0, 0, 1.2] },
+          ],
+        },
       })
-    ).toThrow(/values must be in range \[0, 1\]/);
+    ).toThrow(/must be between 0 and 1/i);
   });
 
   it("createUserExpressionDomain persists a user-owned domain", async () => {
@@ -130,8 +134,8 @@ describe("expression domains", () => {
       userId: user._id,
       payload: {
         name: "Personal numeric",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericDiscrete",
+        definition: {
           min: 1,
           max: 9,
           step: 1,
@@ -143,10 +147,11 @@ describe("expression domains", () => {
 
     expect(storedDomain).toMatchObject({
       name: "Personal numeric",
-      type: "numeric",
+      typeKey: "numericDiscrete",
+      family: "numeric",
       isGlobal: false,
       user: user._id,
-      numericRange: {
+      definition: {
         min: 1,
         max: 9,
         step: 1,
@@ -160,8 +165,8 @@ describe("expression domains", () => {
       userId: user._id,
       payload: {
         name: "Delete me",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericContinuous",
+        definition: {
           min: 0,
           max: 1,
         },
@@ -179,14 +184,67 @@ describe("expression domains", () => {
     expect(await ExpressionDomain.findById(domain._id)).toBeNull();
   });
 
+  it("removeUserExpressionDomain does not delete issue expression domain snapshots", async () => {
+    const user = await createUser();
+    const domain = await createUserExpressionDomain({
+      userId: user._id,
+      payload: {
+        name: "Snapshot source",
+        typeKey: "numericDiscrete",
+        definition: {
+          min: 0,
+          max: 5,
+          step: 1,
+        },
+      },
+    });
+    const issue = await Issue.create({
+      ownerId: user._id,
+      createdBy: user._id,
+      model: new mongoose.Types.ObjectId(),
+      apiModelKey: "test-model",
+      apiEndpoint: {
+        method: "POST",
+        path: "/execute",
+      },
+      name: "Snapshot retention issue",
+      evaluationStructureKey: "alternativeCriteriaMatrix",
+      description: "Expression domain snapshot retention",
+      active: false,
+      currentStage: "finished",
+    });
+    const snapshot = await IssueExpressionDomain.create({
+      issue: issue._id,
+      sourceDomain: domain._id,
+      name: domain.name,
+      typeKey: domain.typeKey,
+      family: domain.family,
+      definition: domain.definition,
+    });
+
+    await removeUserExpressionDomain({
+      domainId: domain._id,
+      userId: user._id,
+    });
+
+    expect(await ExpressionDomain.findById(domain._id)).toBeNull();
+    expect(await IssueExpressionDomain.findById(snapshot._id).lean()).toMatchObject({
+      _id: snapshot._id,
+      sourceDomain: domain._id,
+      issue: issue._id,
+      typeKey: domain.typeKey,
+    });
+  });
+
   it("removeUserExpressionDomain rejects deleting a global domain", async () => {
     const user = await createUser();
     const domain = await ExpressionDomain.create({
       name: "Global numeric",
-      type: "numeric",
       isGlobal: true,
       user: null,
-      numericRange: {
+      typeKey: "numericContinuous",
+      family: "numeric",
+      definition: {
         min: 0,
         max: 10,
       },
@@ -210,8 +268,8 @@ describe("expression domains", () => {
       userId: owner._id,
       payload: {
         name: "Owner only",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericContinuous",
+        definition: {
           min: 2,
           max: 8,
         },
