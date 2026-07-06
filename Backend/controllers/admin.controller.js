@@ -83,7 +83,7 @@ const CORE_EXPRESSION_DOMAIN_TYPE_KEYS = new Set([
   "linguisticFuzzy",
 ]);
 const EXPRESSION_DOMAIN_TYPE_IN_USE_MESSAGE =
-  "This expression domain type is in use and cannot be deleted.";
+  "This expression domain type is used by live domains, issue snapshots, or models and cannot be deleted.";
 const CORE_EXPRESSION_DOMAIN_TYPE_DELETE_MESSAGE =
   "Core expression domain types cannot be deleted.";
 
