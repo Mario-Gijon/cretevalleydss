@@ -34,7 +34,6 @@ import { ConfirmationDialog } from "../../../components/StyledComponents/Confirm
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { listExpressionDomainTypeEntries } from "../../decisionPlugins/expressionDomains";
 import {
-  deleteModelForgeAssetAdmin,
   getBackendHealth,
   getModelForgeAssetsAdmin,
   getModelForgeCatalog,
@@ -1847,24 +1846,11 @@ export default function AdminModelForgeSection() {
     }
 
     try {
-      const response = await deleteModelForgeAssetAdmin(
-        pendingDeleteAsset.kind,
-        pendingDeleteAsset.key
-      );
-
-      if (!response?.success) {
-        const message =
-          response?.message || "Error deleting Model Forge asset.";
-        setRegistryActionError(message);
-        showSnackbarAlert(message, "error");
-        return false;
-      }
-
       const pendingChange = {
         type: "modelForgeAssetDelete",
         createdAt: Date.now(),
         applyRequested: false,
-        applyCompleted: true,
+        applyCompleted: false,
         backendRestartRequested: false,
         backendStartedAtBefore,
         expectedApiModelKey:

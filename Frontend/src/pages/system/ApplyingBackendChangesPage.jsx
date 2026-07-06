@@ -21,6 +21,7 @@ import {
 import {
   applyModelForgeExpressionDomainType,
   applyModelForgeModelPackage,
+  deleteModelForgeAssetAdmin,
   getBackendHealth,
   getCurrentModelManifestAdmin,
   restartBackendAdmin,
@@ -41,6 +42,8 @@ const MANIFEST_POLL_TIMEOUT_MS = 45 * 1000;
 const DEFAULT_DESTINATION_PATH = "/dashboard/admin/models?tab=manifest-sync";
 const BACKEND_RESTART_DISABLED_MESSAGE =
   "Backend restart is disabled in this environment.";
+const EXPRESSION_DOMAIN_TYPE_RESTART_DISABLED_MESSAGE =
+  "Backend restart is disabled in this environment. Restart the backend and rebuild or reload the frontend to use the updated expression domain type registry.";
 const BACKEND_RESTART_TIMEOUT_MESSAGE =
   "Backend restart was requested, but the development server did not come back. Check that nodemon is running with the project nodemon.json configuration.";
 const MANIFEST_WARNING_MESSAGE =
@@ -67,6 +70,7 @@ const DEFAULT_STEP_LABELS = {
 };
 
 const DELETE_STEP_LABELS = {
+  [STEP_KEYS.apply]: "Deleting generated files",
   [STEP_KEYS.backend]: "Restarting Backend",
   [STEP_KEYS.manifest]: "Waiting for generated model manifest",
   [STEP_KEYS.redirect]: "Redirecting to Registry",
@@ -75,7 +79,7 @@ const EXPRESSION_DOMAIN_TYPE_STEP_LABELS = {
   [STEP_KEYS.apply]: "Writing scaffold files",
   [STEP_KEYS.backend]: "Restarting Backend",
   [STEP_KEYS.manifest]: "Refreshing expression domain type registry",
-  [STEP_KEYS.redirect]: "Redirecting to Registry",
+  [STEP_KEYS.redirect]: "Reloading frontend",
 };
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -126,6 +130,8 @@ const normalizePendingBackendChange = (value) => {
       typeof value.deletedAssetKey === "string" && value.deletedAssetKey.trim()
         ? value.deletedAssetKey.trim()
         : null,
+    frontendReloadRequested: value.frontendReloadRequested === true,
+    frontendReloadCompleted: value.frontendReloadCompleted === true,
     successMessage:
       typeof value.successMessage === "string" && value.successMessage.trim()
         ? value.successMessage
@@ -174,6 +180,13 @@ export default function ApplyingBackendChangesPage() {
         : "Go to Admin Models anyway",
     [pendingChange]
   );
+  const requiresFrontendReload = useMemo(
+    () =>
+      pendingChange?.type === "modelForgeExpressionDomainTypeScaffoldApply" ||
+      (pendingChange?.type === "modelForgeAssetDelete" &&
+        pendingChange?.deletedAssetKind === "expressionDomainType"),
+    [pendingChange]
+  );
 
   const setSingleStepStatus = useCallback((stepKey, nextStatus) => {
     setSteps((current) => ({
@@ -182,9 +195,7 @@ export default function ApplyingBackendChangesPage() {
     }));
   }, []);
 
-  const resetStepsForMode = useCallback((mode, resolvedPendingChange = null) => {
-    const isDeleteFlow = resolvedPendingChange?.type === "modelForgeAssetDelete";
-
+  const resetStepsForMode = useCallback((mode) => {
     if (mode === "manifestOnly") {
       setSteps(
         buildStepState({
@@ -198,7 +209,7 @@ export default function ApplyingBackendChangesPage() {
 
     setSteps(
       buildStepState({
-        apply: isDeleteFlow ? "completed" : "active",
+        apply: "active",
       })
     );
   }, []);
@@ -287,6 +298,18 @@ export default function ApplyingBackendChangesPage() {
         PENDING_SUCCESS_MESSAGE_KEY,
         resolvedPendingChange.successMessage
       );
+
+      if (
+        resolvedPendingChange?.type === "modelForgeExpressionDomainTypeScaffoldApply" ||
+        (resolvedPendingChange?.type === "modelForgeAssetDelete" &&
+          resolvedPendingChange?.deletedAssetKind === "expressionDomainType")
+      ) {
+        setSingleStepStatus(STEP_KEYS.redirect, "completed");
+        window.location.replace(
+          resolvedPendingChange.destinationPath || DEFAULT_DESTINATION_PATH
+        );
+        return;
+      }
 
       const authRecovery = await restoreAuthIfPossible();
       if (authRecovery?.unauthorized) return;
@@ -464,7 +487,7 @@ export default function ApplyingBackendChangesPage() {
       const isAssetDeleteFlow =
         nextPendingChange.type === "modelForgeAssetDelete";
 
-      if (mode === "full" && !isAssetDeleteFlow) {
+      if (mode === "full") {
         setSingleStepStatus(STEP_KEYS.apply, "active");
 
         if (nextPendingChange.applyRequested !== true) {
@@ -475,14 +498,25 @@ export default function ApplyingBackendChangesPage() {
             applyRequested: true,
           };
 
-          const applyResponse =
-            nextPendingChange.type === "modelForgeExpressionDomainTypeScaffoldApply"
+          const applyResponse = isAssetDeleteFlow
+            ? await callAdminWithRecovery(() =>
+              deleteModelForgeAssetAdmin(
+                nextPendingChange.deletedAssetKind,
+                nextPendingChange.deletedAssetKey
+              )
+            )
+            : nextPendingChange.type ===
+                "modelForgeExpressionDomainTypeScaffoldApply"
               ? await applyModelForgeExpressionDomainType(
                 nextPendingChange.applyRequestPayload || {}
               )
               : await applyModelForgeModelPackage(
                 nextPendingChange.applyRequestPayload || {}
               );
+
+          if (applyResponse === null) {
+            return;
+          }
 
           if (applyResponse?.success) {
             nextPendingChange = updatePendingBackendChange({
@@ -510,7 +544,9 @@ export default function ApplyingBackendChangesPage() {
               setStatus("apply-error");
               setMessage(
                 applyResponse?.message ||
-                  "Error applying Model Forge scaffold package."
+                  (isAssetDeleteFlow
+                    ? "Error deleting Model Forge asset."
+                    : "Error applying Model Forge scaffold package.")
               );
               setRetryMode(null);
             }
@@ -567,7 +603,11 @@ export default function ApplyingBackendChangesPage() {
               if (isMountedRef.current) {
                 setSingleStepStatus(STEP_KEYS.backend, "failed");
                 setStatus("disabled");
-                setMessage(BACKEND_RESTART_DISABLED_MESSAGE);
+                setMessage(
+                  requiresFrontendReload
+                    ? EXPRESSION_DOMAIN_TYPE_RESTART_DISABLED_MESSAGE
+                    : BACKEND_RESTART_DISABLED_MESSAGE
+                );
               }
               return;
             }
@@ -595,7 +635,7 @@ export default function ApplyingBackendChangesPage() {
       const manifestReady = await pollForManifestModel(nextPendingChange);
       if (!manifestReady) return;
 
-      if (!isAssetDeleteFlow && nextPendingChange.applyCompleted !== true) {
+      if (nextPendingChange.applyCompleted !== true) {
         nextPendingChange = updatePendingBackendChange({
           applyCompleted: true,
           applyNetworkInterrupted: false,
@@ -606,12 +646,22 @@ export default function ApplyingBackendChangesPage() {
         };
       }
 
-      if (!isAssetDeleteFlow) {
-        setSingleStepStatus(STEP_KEYS.apply, "completed");
-      }
+      setSingleStepStatus(STEP_KEYS.apply, "completed");
       setSingleStepStatus(STEP_KEYS.backend, "completed");
       setSingleStepStatus(STEP_KEYS.manifest, "completed");
       setSingleStepStatus(STEP_KEYS.redirect, "active");
+
+      if (requiresFrontendReload) {
+        nextPendingChange = updatePendingBackendChange({
+          frontendReloadRequested: true,
+          frontendReloadCompleted: true,
+        }) || {
+          ...nextPendingChange,
+          frontendReloadRequested: true,
+          frontendReloadCompleted: true,
+        };
+      }
+
       await completeFlow(nextPendingChange);
     },
     [
@@ -619,6 +669,7 @@ export default function ApplyingBackendChangesPage() {
       completeFlow,
       pollForHealthyBackend,
       pollForManifestModel,
+      requiresFrontendReload,
       resetStepsForMode,
       setSingleStepStatus,
     ]
