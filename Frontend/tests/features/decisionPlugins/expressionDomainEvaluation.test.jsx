@@ -94,4 +94,20 @@ describe("ExpressionDomainEvaluationInput", () => {
 
     expect(screen.getByRole("spinbutton")).toBeInTheDocument();
   });
+
+  it("supports compact numeric rendering without helper text while keeping error state", () => {
+    renderWithProviders(
+      <ExpressionDomainEvaluationInput
+        expressionDomain={numericContinuousDomain}
+        value={12}
+        onChange={vi.fn()}
+        showHelperText={false}
+      />
+    );
+
+    const input = screen.getByRole("spinbutton");
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
+  });
 });

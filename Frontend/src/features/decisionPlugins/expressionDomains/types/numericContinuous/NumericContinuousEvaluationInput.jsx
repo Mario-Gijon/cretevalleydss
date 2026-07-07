@@ -38,6 +38,7 @@ export const NumericContinuousEvaluationInput = ({
   disabled = false,
   error = false,
   helperText = "",
+  showHelperText = true,
 }) => {
   const definition = normalizeDefinition(expressionDomain);
   const [rawValue, setRawValue] = useState(value === "" ? "" : String(value ?? ""));
@@ -68,6 +69,7 @@ export const NumericContinuousEvaluationInput = ({
       return validationError instanceof Error ? validationError.message : "Enter a valid number.";
     }
   }, [expressionDomain, parsedState]);
+  const resolvedHelperText = showHelperText ? localHelperText || helperText : "";
 
   return (
     <TextField
@@ -86,7 +88,7 @@ export const NumericContinuousEvaluationInput = ({
       }}
       disabled={disabled}
       error={Boolean(error) || Boolean(localHelperText)}
-      helperText={localHelperText || helperText}
+      helperText={resolvedHelperText}
       fullWidth
       inputProps={{
         min,

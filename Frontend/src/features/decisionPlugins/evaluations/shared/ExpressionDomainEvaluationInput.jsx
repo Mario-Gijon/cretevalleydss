@@ -30,6 +30,7 @@ const ExpressionDomainEvaluationInput = ({
   disabled = false,
   error = false,
   helperText = "",
+  showHelperText = true,
   fallback = null,
 }) => {
   const typeKey =
@@ -60,6 +61,7 @@ const ExpressionDomainEvaluationInput = ({
       disabled={disabled}
       error={error}
       helperText={helperText}
+      showHelperText={showHelperText}
     />
   );
 };

@@ -8,6 +8,7 @@ export const LinguisticFuzzyEvaluationInput = ({
   disabled = false,
   error = false,
   helperText = "",
+  showHelperText = true,
 }) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
     ? expressionDomain.definition.labels
@@ -22,7 +23,7 @@ export const LinguisticFuzzyEvaluationInput = ({
       onChange={(event) => onChange?.({ labelKey: event.target.value })}
       disabled={disabled}
       error={Boolean(error)}
-      helperText={helperText}
+      helperText={showHelperText ? helperText : ""}
       fullWidth
     >
       {labels.map((labelItem) => (
