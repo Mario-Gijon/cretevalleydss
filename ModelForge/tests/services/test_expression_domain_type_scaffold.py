@@ -81,10 +81,20 @@ def test_expression_domain_type_preview_generates_split_backend_files(
     assert 'from "../../shared/validation.js";' in backend_index
     assert 'from "./creation.js";' in backend_index
     assert 'from "./evaluation.js";' in backend_index
+    assert "Implementation guide" in backend_index
     assert "normalizeLinguisticTwoTupleScaleCreationDefinition" in backend_index
     assert "normalizeLinguisticTwoTupleScaleEvaluationValue" in backend_index
     assert "EXPRESSION_DOMAIN_TYPE_UNDER_DEVELOPMENT" in backend_creation
     assert "EXPRESSION_DOMAIN_TYPE_UNDER_DEVELOPMENT" in backend_evaluation
+    assert "Implementation guide" in backend_creation
+    assert "Implementation guide" in backend_evaluation
+    assert "constraintExample is the API/registry field name" in backend_creation
+    assert "Material UI reference:" in files_by_path[
+        "Frontend/src/features/decisionPlugins/expressionDomains/types/linguisticTwoTupleScale/LinguisticTwoTupleScaleCreationForm.jsx"
+    ]
+    assert "Material UI reference:" in files_by_path[
+        "Frontend/src/features/decisionPlugins/expressionDomains/types/linguisticTwoTupleScale/LinguisticTwoTupleScaleEvaluationInput.jsx"
+    ]
 
 
 def test_expression_domain_type_apply_writes_split_backend_files(
