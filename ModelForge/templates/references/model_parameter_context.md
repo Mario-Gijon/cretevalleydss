@@ -3,6 +3,7 @@
 This reference describes the frontend `parameterContext` object passed to model parameter components.
 
 Treat `parameterContext` as read-only. Do not access MongoDB. Do not depend on raw issue documents.
+Expression-domain `definition` depends on `typeKey`. Do not assume `numericRange` or `linguisticLabels`.
 
 Representative example:
 
@@ -37,16 +38,13 @@ const parameterContextExample = {
           expressionDomain: {
             id: "D1",
             name: "Cost scale",
-            type: "numeric",
-            numericRange: {
+            typeKey: "numericContinuous",
+            family: "numeric",
+            definition: {
               min: 0,
               max: 1,
-              step: 0.1
-            },
-            linguisticLabels: [],
-            membershipFunction: null,
-            valueCount: null,
-            valuesMode: null
+              step: null
+            }
           },
           children: []
         }
@@ -61,16 +59,13 @@ const parameterContextExample = {
       expressionDomain: {
         id: "D1",
         name: "Cost scale",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericContinuous",
+        family: "numeric",
+        definition: {
           min: 0,
           max: 1,
-          step: 0.1
-        },
-        linguisticLabels: [],
-        membershipFunction: null,
-        valueCount: null,
-        valuesMode: null
+          step: null
+        }
       }
     }
   ]

@@ -8,6 +8,8 @@
 // with the backend/frontend parameter value shape used elsewhere.
 // Material UI reference for available building blocks: https://mui.com/material-ui/
 // This scaffold currently imports: Stack and Typography.
+// expressionDomain.definition depends on typeKey. Do not assume numericRange or
+// linguisticLabels.
 //
 // Example parameterContext:
 // {
@@ -35,12 +37,9 @@
 //             id: "665f0b8f6f1e9c12a34b5701",
 //             _id: "665f0b8f6f1e9c12a34b5701",
 //             name: "Numeric 0-10",
-//             type: "numeric",
-//             numericRange: { min: 0, max: 10, step: 0.5 },
-//             linguisticLabels: [],
-//             membershipFunction: null,
-//             valueCount: null,
-//             valuesMode: null,
+//             typeKey: "numericContinuous",
+//             family: "numeric",
+//             definition: { min: 0, max: 10, step: null },
 //           },
 //           children: [],
 //         },
@@ -56,12 +55,9 @@
 //         id: "665f0b8f6f1e9c12a34b5701",
 //         _id: "665f0b8f6f1e9c12a34b5701",
 //         name: "Numeric 0-10",
-//         type: "numeric",
-//         numericRange: { min: 0, max: 10, step: 0.5 },
-//         linguisticLabels: [],
-//         membershipFunction: null,
-//         valueCount: null,
-//         valuesMode: null,
+//         typeKey: "numericContinuous",
+//         family: "numeric",
+//         definition: { min: 0, max: 10, step: null },
 //       },
 //     },
 //   ],

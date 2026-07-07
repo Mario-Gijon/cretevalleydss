@@ -219,6 +219,10 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "pairwiseMatrixStructure" in evaluation_backend_source
     assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" in evaluation_backend_source
     assert "Implementation guide" in evaluation_backend_source
+    assert "typeKey" in evaluation_backend_source
+    assert "definition depends on typeKey" in evaluation_backend_source
+    assert "numericRange" not in evaluation_backend_source
+    assert "linguisticLabels" not in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_frontend_index_source
     assert 'key: "pairwiseMatrix"' in evaluation_frontend_index_source
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_frontend_index_source
@@ -235,15 +239,27 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "validateScoreRangeParameter" in parameter_backend_validate_source
     assert 'parameterStructureKey: "scoreRange"' in parameter_backend_validate_source
     assert "Implementation guide" in parameter_backend_validate_source
+    assert "typeKey" in parameter_backend_validate_source
+    assert "definition depends on typeKey" in parameter_backend_validate_source
+    assert "numericRange" not in parameter_backend_validate_source
+    assert "linguisticLabels" not in parameter_backend_validate_source
     assert "scoreRangeParameterField" in parameter_frontend_index_source
     assert "Implementation guide" in parameter_frontend_index_source
     assert "ScoreRangeParameterField" in parameter_field_source
     assert "parameter.label" in parameter_field_source
     assert "Implementation guide" in parameter_field_source
     assert "https://mui.com/material-ui/" in parameter_field_source
+    assert "typeKey" in parameter_field_source
+    assert "definition depends on typeKey" in parameter_field_source
+    assert "numericRange" not in parameter_field_source
+    assert "linguisticLabels" not in parameter_field_source
     assert "ScoreRangeParameterReadOnly" in parameter_readonly_source
     assert "Implementation guide" in parameter_readonly_source
     assert "https://mui.com/material-ui/" in parameter_readonly_source
+    assert "typeKey" in parameter_readonly_source
+    assert "definition depends on typeKey" in parameter_readonly_source
+    assert "numericRange" not in parameter_readonly_source
+    assert "linguisticLabels" not in parameter_readonly_source
 
 
 def test_model_package_apply_rejects_partial_existing_evaluation_structure(

@@ -3,6 +3,7 @@
 This reference describes the frontend `evaluationContext` contract used by evaluation adapters and views.
 
 Treat `evaluationContext` as read-only. IDs are canonical. Names are display labels only.
+Expression-domain `definition` depends on `typeKey`. Do not assume `numericRange` or `linguisticLabels`.
 
 Representative example:
 
@@ -54,16 +55,13 @@ const evaluationContextExample = {
           expressionDomain: {
             id: "DOMAIN_1",
             name: "Cost scale",
-            type: "numeric",
-            numericRange: {
+            typeKey: "numericContinuous",
+            family: "numeric",
+            definition: {
               min: 0,
               max: 1,
-              step: 0.1
-            },
-            linguisticLabels: [],
-            membershipFunction: null,
-            valueCount: null,
-            valuesMode: null
+              step: null
+            }
           },
           children: []
         }
@@ -78,16 +76,13 @@ const evaluationContextExample = {
       expressionDomain: {
         id: "DOMAIN_1",
         name: "Cost scale",
-        type: "numeric",
-        numericRange: {
+        typeKey: "numericContinuous",
+        family: "numeric",
+        definition: {
           min: 0,
           max: 1,
-          step: 0.1
-        },
-        linguisticLabels: [],
-        membershipFunction: null,
-        valueCount: null,
-        valuesMode: null
+          step: null
+        }
       }
     }
   ],

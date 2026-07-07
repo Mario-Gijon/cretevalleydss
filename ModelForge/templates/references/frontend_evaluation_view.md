@@ -3,6 +3,7 @@
 This reference describes the props contract used by frontend evaluation views.
 
 The example is representative and may vary by structure. Views should stay focused on UI state, local edits, and adapter-driven payload logic.
+Expression-domain `definition` depends on `typeKey`. Do not assume `numericRange` or `linguisticLabels`.
 
 Frontend evaluation views receive:
 
@@ -59,16 +60,13 @@ const evaluationViewPropsExample = {
         expressionDomain: {
           id: "DOMAIN_1",
           name: "Cost scale",
-          type: "numeric",
-          numericRange: {
+          typeKey: "numericContinuous",
+          family: "numeric",
+          definition: {
             min: 0,
             max: 1,
-            step: 0.1
-          },
-          linguisticLabels: [],
-          membershipFunction: null,
-          valueCount: null,
-          valuesMode: null
+            step: null
+          }
         }
       },
       {
@@ -77,22 +75,21 @@ const evaluationViewPropsExample = {
         type: "benefit",
         expressionDomain: {
           id: "DOMAIN_2",
-          name: "Impact labels",
-          type: "linguistic",
-          linguisticLabels: [
-            {
-              label: "Low",
-              value: 0.2
+          name: "Linguistic 2-tuple scale",
+          typeKey: "linguisticTwoTupleScale",
+          family: "linguistic",
+          definition: {
+            labelCount: 3,
+            alphaRange: {
+              min: -0.5,
+              max: 0.5
             },
-            {
-              label: "Medium",
-              value: 0.5
-            },
-            {
-              label: "High",
-              value: 0.8
-            }
-          ]
+            labels: [
+              { key: "low", label: "Low", index: 0 },
+              { key: "medium", label: "Medium", index: 1 },
+              { key: "high", label: "High", index: 2 }
+            ]
+          }
         }
       }
     ],
@@ -109,32 +106,32 @@ const evaluationViewPropsExample = {
       Cost: {
         value: 0.7,
         domain: {
-          type: "numeric",
-          numericRange: {
+          typeKey: "numericContinuous",
+          family: "numeric",
+          definition: {
             min: 0,
             max: 1,
-            step: 0.1
+            step: null
           }
         }
       },
       "Environmental impact": {
         value: "Medium",
         domain: {
-          type: "linguistic",
-          linguisticLabels: [
-            {
-              label: "Low",
-              value: 0.2
+          typeKey: "linguisticTwoTupleScale",
+          family: "linguistic",
+          definition: {
+            labelCount: 3,
+            alphaRange: {
+              min: -0.5,
+              max: 0.5
             },
-            {
-              label: "Medium",
-              value: 0.5
-            },
-            {
-              label: "High",
-              value: 0.8
-            }
-          ]
+            labels: [
+              { key: "low", label: "Low", index: 0 },
+              { key: "medium", label: "Medium", index: 1 },
+              { key: "high", label: "High", index: 2 }
+            ]
+          }
         }
       }
     },
@@ -142,32 +139,32 @@ const evaluationViewPropsExample = {
       Cost: {
         value: 0.4,
         domain: {
-          type: "numeric",
-          numericRange: {
+          typeKey: "numericContinuous",
+          family: "numeric",
+          definition: {
             min: 0,
             max: 1,
-            step: 0.1
+            step: null
           }
         }
       },
       "Environmental impact": {
         value: "High",
         domain: {
-          type: "linguistic",
-          linguisticLabels: [
-            {
-              label: "Low",
-              value: 0.2
+          typeKey: "linguisticTwoTupleScale",
+          family: "linguistic",
+          definition: {
+            labelCount: 3,
+            alphaRange: {
+              min: -0.5,
+              max: 0.5
             },
-            {
-              label: "Medium",
-              value: 0.5
-            },
-            {
-              label: "High",
-              value: 0.8
-            }
-          ]
+            labels: [
+              { key: "low", label: "Low", index: 0 },
+              { key: "medium", label: "Medium", index: 1 },
+              { key: "high", label: "High", index: 2 }
+            ]
+          }
         }
       }
     }
