@@ -1,4 +1,8 @@
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from schemas.scaffold_expression_domain_type import (
     ExpressionDomainTypeScaffoldApplyRequest,
@@ -107,6 +111,45 @@ def test_expression_domain_type_apply_writes_split_backend_files(
 
     for relative_path in written_paths:
         assert (project_root / relative_path).exists()
+
+
+def test_expression_domain_type_generated_backend_files_pass_node_syntax_check(
+    project_root: Path,
+) -> None:
+    node_binary = shutil.which("node")
+    if not node_binary:
+        pytest.skip("node is required for generated JS syntax checks")
+
+    request = ExpressionDomainTypeScaffoldApplyRequest.model_validate(
+        _build_payload() | {"runFullFrontendBuild": False}
+    )
+
+    apply_expression_domain_type_scaffold(
+        request,
+        project_root=project_root,
+    )
+
+    backend_files = [
+        project_root
+        / "Backend/modules/decisionPlugins/expressionDomains/types/linguisticTwoTupleScale/index.js",
+        project_root
+        / "Backend/modules/decisionPlugins/expressionDomains/types/linguisticTwoTupleScale/creation.js",
+        project_root
+        / "Backend/modules/decisionPlugins/expressionDomains/types/linguisticTwoTupleScale/evaluation.js",
+    ]
+
+    for file_path in backend_files:
+        completed = subprocess.run(
+            [node_binary, "--check", str(file_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, (
+            f"node --check failed for {file_path}:\n"
+            f"stdout:\n{completed.stdout}\n"
+            f"stderr:\n{completed.stderr}"
+        )
 
 
 def test_expression_domain_type_asset_delete_removes_backend_and_frontend_folders(
