@@ -156,17 +156,22 @@ def test_applied_model_scaffold_files_are_non_empty_compile_and_can_be_imported(
     run_source = expected_files["run.py"].read_text(encoding="utf-8")
 
     assert "from .definition import MODEL_DEFINITION" in init_source
+    assert "Implementation guide" in init_source
     assert 'api_model_key="demo_model"' in definition_source
     assert 'api_endpoint_path="/demo_model"' in definition_source
     assert 'display_name="Demo Model"' in definition_source
     assert "MODEL_DEFINITION = ModelDefinition(" in definition_source
+    assert "Implementation guide" in definition_source
     assert "DEMO_MODEL_REQUEST_EXAMPLES" in examples_source
     assert "DEMO_MODEL_RESPONSE_EXAMPLES" in examples_source
     assert "Supplier selection 2026" in examples_source
+    assert "Implementation guide" in examples_source
     assert "def execute_demo_model(" in executor_source
     assert "MODEL_UNDER_DEVELOPMENT" in executor_source
+    assert "Implementation guide" in executor_source
     assert "def run_demo_model(" in run_source
     assert "NotImplementedError" in run_source
+    assert "Implementation guide" in run_source
 
     examples_module = _load_module_from_file(
         "generated_demo_model_examples",

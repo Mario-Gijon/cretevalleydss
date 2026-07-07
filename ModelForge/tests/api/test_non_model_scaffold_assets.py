@@ -218,21 +218,32 @@ def test_model_package_apply_writes_evaluation_and_parameter_assets_only_under_t
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_backend_source
     assert "EVALUATION_STRUCTURE_UNDER_DEVELOPMENT" in evaluation_backend_source
+    assert "Implementation guide" in evaluation_backend_source
     assert "pairwiseMatrixStructure" in evaluation_frontend_index_source
     assert 'key: "pairwiseMatrix"' in evaluation_frontend_index_source
     assert "EVALUATION_STAGES.ALTERNATIVE_EVALUATION" in evaluation_frontend_index_source
     assert "PairwiseMatrixView" in evaluation_frontend_index_source
     assert 'implementationStatus: "scaffold"' in evaluation_frontend_index_source
+    assert "Implementation guide" in evaluation_frontend_index_source
     assert "pairwiseMatrix is under development." in evaluation_view_source
+    assert "Implementation guide" in evaluation_view_source
+    assert "https://mui.com/material-ui/" in evaluation_view_source
 
     assert 'key: "scoreRange"' in parameter_backend_index_source
     assert "scoreRangeParameterStructure" in parameter_backend_index_source
+    assert "Implementation guide" in parameter_backend_index_source
     assert "validateScoreRangeParameter" in parameter_backend_validate_source
     assert 'parameterStructureKey: "scoreRange"' in parameter_backend_validate_source
+    assert "Implementation guide" in parameter_backend_validate_source
     assert "scoreRangeParameterField" in parameter_frontend_index_source
+    assert "Implementation guide" in parameter_frontend_index_source
     assert "ScoreRangeParameterField" in parameter_field_source
     assert "parameter.label" in parameter_field_source
+    assert "Implementation guide" in parameter_field_source
+    assert "https://mui.com/material-ui/" in parameter_field_source
     assert "ScoreRangeParameterReadOnly" in parameter_readonly_source
+    assert "Implementation guide" in parameter_readonly_source
+    assert "https://mui.com/material-ui/" in parameter_readonly_source
 
 
 def test_model_package_apply_rejects_partial_existing_evaluation_structure(
