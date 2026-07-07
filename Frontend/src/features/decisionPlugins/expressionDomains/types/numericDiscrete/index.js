@@ -1,5 +1,6 @@
 import NumericDiscreteCreationForm from "./NumericDiscreteCreationForm";
 import NumericDiscreteEvaluationInput from "./NumericDiscreteEvaluationInput";
+import { validateNumericDiscreteEvaluation } from "./evaluation";
 
 export const numericDiscreteExpressionDomainType = Object.freeze({
   key: "numericDiscrete",
@@ -13,4 +14,5 @@ export const numericDiscreteExpressionDomainType = Object.freeze({
   },
   CreationForm: NumericDiscreteCreationForm,
   EvaluationInput: NumericDiscreteEvaluationInput,
+  validateEvaluation: validateNumericDiscreteEvaluation,
 });

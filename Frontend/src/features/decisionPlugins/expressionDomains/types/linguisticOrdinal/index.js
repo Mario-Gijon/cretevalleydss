@@ -1,5 +1,6 @@
 import LinguisticOrdinalCreationForm from "./LinguisticOrdinalCreationForm";
 import LinguisticOrdinalEvaluationInput from "./LinguisticOrdinalEvaluationInput";
+import { validateLinguisticOrdinalEvaluation } from "./evaluation";
 
 export const linguisticOrdinalExpressionDomainType = Object.freeze({
   key: "linguisticOrdinal",
@@ -11,4 +12,5 @@ export const linguisticOrdinalExpressionDomainType = Object.freeze({
   },
   CreationForm: LinguisticOrdinalCreationForm,
   EvaluationInput: LinguisticOrdinalEvaluationInput,
+  validateEvaluation: validateLinguisticOrdinalEvaluation,
 });

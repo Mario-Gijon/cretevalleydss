@@ -1,5 +1,6 @@
 import LinguisticFuzzyCreationForm from "./LinguisticFuzzyCreationForm";
 import LinguisticFuzzyEvaluationInput from "./LinguisticFuzzyEvaluationInput";
+import { validateLinguisticFuzzyEvaluation } from "./evaluation";
 
 export const linguisticFuzzyExpressionDomainType = Object.freeze({
   key: "linguisticFuzzy",
@@ -12,4 +13,5 @@ export const linguisticFuzzyExpressionDomainType = Object.freeze({
   },
   CreationForm: LinguisticFuzzyCreationForm,
   EvaluationInput: LinguisticFuzzyEvaluationInput,
+  validateEvaluation: validateLinguisticFuzzyEvaluation,
 });

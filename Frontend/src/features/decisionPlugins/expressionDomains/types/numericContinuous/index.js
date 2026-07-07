@@ -1,5 +1,6 @@
 import NumericContinuousCreationForm from "./NumericContinuousCreationForm";
 import NumericContinuousEvaluationInput from "./NumericContinuousEvaluationInput";
+import { validateNumericContinuousEvaluation } from "./evaluation";
 
 export const numericContinuousExpressionDomainType = Object.freeze({
   key: "numericContinuous",
@@ -12,4 +13,5 @@ export const numericContinuousExpressionDomainType = Object.freeze({
   },
   CreationForm: NumericContinuousCreationForm,
   EvaluationInput: NumericContinuousEvaluationInput,
+  validateEvaluation: validateNumericContinuousEvaluation,
 });

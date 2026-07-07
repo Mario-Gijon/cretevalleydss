@@ -25,7 +25,9 @@ const isValidExpressionDomainTypeEntry = (value) =>
   isNonEmptyString(value.description) &&
   isNonEmptyString(value.family) &&
   isReactComponentCandidate(value.CreationForm) &&
-  isReactComponentCandidate(value.EvaluationInput);
+  isReactComponentCandidate(value.EvaluationInput) &&
+  (value.validateEvaluation === undefined ||
+    typeof value.validateEvaluation === "function");
 
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/types\/([^/]+)\/index\.js$/);
@@ -46,7 +48,7 @@ const extractTypeEntryFromModule = ({ moduleExports, modulePath }) => {
 
   if (entries.length === 0) {
     throw new Error(
-      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm and EvaluationInput.`
+      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm, EvaluationInput, and optional validateEvaluation.`
     );
   }
 

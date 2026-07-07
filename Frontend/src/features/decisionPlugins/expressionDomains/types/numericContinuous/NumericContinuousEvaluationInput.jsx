@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { TextField } from "@mui/material";
 
+import { validateNumericContinuousEvaluation } from "./evaluation";
+
 const normalizeDefinition = (expressionDomain) =>
   expressionDomain?.definition && typeof expressionDomain.definition === "object"
     ? expressionDomain.definition
@@ -29,22 +31,6 @@ const parseNumericInput = (rawValue) => {
   return { kind: "invalid", value: text };
 };
 
-const buildRangeHelperText = ({ min, max }) => {
-  if (Number.isFinite(min) && Number.isFinite(max)) {
-    return `Value must be between ${min} and ${max}.`;
-  }
-
-  if (Number.isFinite(min)) {
-    return `Value must be at least ${min}.`;
-  }
-
-  if (Number.isFinite(max)) {
-    return `Value must be at most ${max}.`;
-  }
-
-  return "";
-};
-
 export const NumericContinuousEvaluationInput = ({
   expressionDomain,
   value,
@@ -63,18 +49,25 @@ export const NumericContinuousEvaluationInput = ({
   const parsedState = useMemo(() => parseNumericInput(rawValue), [rawValue]);
   const min = Number.isFinite(definition.min) ? definition.min : undefined;
   const max = Number.isFinite(definition.max) ? definition.max : undefined;
-  const numericValue =
-    parsedState.kind === "number" ? parsedState.value : null;
-  const isOutOfRange =
-    numericValue !== null &&
-    ((min !== undefined && numericValue < min) ||
-      (max !== undefined && numericValue > max));
-  const localHelperText =
-    isOutOfRange
-      ? buildRangeHelperText({ min, max })
-      : parsedState.kind === "invalid"
-        ? "Enter a valid number."
-        : "";
+  const localHelperText = useMemo(() => {
+    if (parsedState.kind === "invalid") {
+      return "Enter a valid number.";
+    }
+
+    if (parsedState.kind !== "number") {
+      return "";
+    }
+
+    try {
+      validateNumericContinuousEvaluation({
+        value: parsedState.value,
+        expressionDomain,
+      });
+      return "";
+    } catch (validationError) {
+      return validationError instanceof Error ? validationError.message : "Enter a valid number.";
+    }
+  }, [expressionDomain, parsedState]);
 
   return (
     <TextField

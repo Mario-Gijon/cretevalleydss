@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { TextField } from "@mui/material";
 
+import { validateNumericDiscreteEvaluation } from "./evaluation";
+
 const normalizeDefinition = (expressionDomain) =>
   expressionDomain?.definition && typeof expressionDomain.definition === "object"
     ? expressionDomain.definition
@@ -29,33 +31,6 @@ const parseNumericInput = (rawValue) => {
   return { kind: "invalid", value: text };
 };
 
-const buildRangeHelperText = ({ min, max }) => {
-  if (Number.isFinite(min) && Number.isFinite(max)) {
-    return `Value must be between ${min} and ${max}.`;
-  }
-
-  if (Number.isFinite(min)) {
-    return `Value must be at least ${min}.`;
-  }
-
-  if (Number.isFinite(max)) {
-    return `Value must be at most ${max}.`;
-  }
-
-  return "";
-};
-
-const isAlignedToStep = ({ value, min = 0, step }) => {
-  if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) {
-    return true;
-  }
-
-  const offset = value - min;
-  const ratio = offset / step;
-  const nearest = Math.round(ratio);
-  return Math.abs(ratio - nearest) < 1e-9;
-};
-
 export const NumericDiscreteEvaluationInput = ({
   expressionDomain,
   value,
@@ -75,29 +50,25 @@ export const NumericDiscreteEvaluationInput = ({
   const min = Number.isFinite(definition.min) ? definition.min : undefined;
   const max = Number.isFinite(definition.max) ? definition.max : undefined;
   const step = Number.isFinite(definition.step) ? definition.step : undefined;
-  const numericValue =
-    parsedState.kind === "number" ? parsedState.value : null;
-  const isOutOfRange =
-    numericValue !== null &&
-    ((min !== undefined && numericValue < min) ||
-      (max !== undefined && numericValue > max));
-  const hasStepMismatch =
-    numericValue !== null &&
-    !isOutOfRange &&
-    step !== undefined &&
-    !isAlignedToStep({
-      value: numericValue,
-      min: min ?? 0,
-      step,
-    });
-  const localHelperText =
-    isOutOfRange
-      ? buildRangeHelperText({ min, max })
-      : hasStepMismatch
-        ? `Value must follow step ${step}.`
-        : parsedState.kind === "invalid"
-          ? "Enter a valid number."
-          : "";
+  const localHelperText = useMemo(() => {
+    if (parsedState.kind === "invalid") {
+      return "Enter a valid number.";
+    }
+
+    if (parsedState.kind !== "number") {
+      return "";
+    }
+
+    try {
+      validateNumericDiscreteEvaluation({
+        value: parsedState.value,
+        expressionDomain,
+      });
+      return "";
+    } catch (validationError) {
+      return validationError instanceof Error ? validationError.message : "Enter a valid number.";
+    }
+  }, [expressionDomain, parsedState]);
 
   return (
     <TextField

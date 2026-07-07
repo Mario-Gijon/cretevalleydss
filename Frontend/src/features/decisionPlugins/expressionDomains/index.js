@@ -4,4 +4,4 @@ export {
   getExpressionDomainTypeEntryOrThrow,
   listExpressionDomainTypeEntries,
 } from "./expressionDomainTypeRegistry";
-
+export { validateExpressionDomainEvaluation } from "./validateExpressionDomainEvaluation";
