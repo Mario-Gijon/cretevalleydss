@@ -1,81 +1,19 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { validateExpressionDomainEvaluationOrThrow } from "../../../../expressionDomains/validateExpressionDomainEvaluation.js";
 import { isPlainObject } from "../../../../../utils/common/objects.js";
+import {
+  buildEmptyExpressionDomainEvaluationValue,
+  normalizeExpressionDomainEvaluationValueOrThrow,
+  resolveRequireValueFromModeOrThrow,
+  validateExpressionDomainEvaluationValueOrThrow,
+} from "../../shared/expressionDomainEvaluationPayload.js";
 import {
   buildExpectedPairsByCriterion,
   resolveAlternativesAndCriteria,
 } from "./alternativePairwiseByCriterion.context.js";
 
-export const buildEmptyCell = (expressionDomain = null) => ({
-  value: "",
-  expressionDomain,
-});
-
-const EVALUATION_SAVE_MODES = Object.freeze({
-  DRAFT: "draft",
-  SUBMIT: "submit",
-});
-
-export const resolveRequireValueFromModeOrThrow = (mode) => {
-  if (mode === EVALUATION_SAVE_MODES.DRAFT) {
-    return false;
-  }
-
-  if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
-    return true;
-  }
-
-  throw createBadRequestError("Unsupported evaluation save mode", {
-    field: "mode",
-  });
-};
-
-export const validateCellValueByDomainOrThrow = ({
-  value,
-  expressionDomain,
-}) => {
-  return validateExpressionDomainEvaluationOrThrow({
-    value,
-    expressionDomain,
-  });
-};
-
-const normalizeCellOrThrow = ({
-  cell,
-  requireValue,
-  field,
-  expectedExpressionDomain,
-}) => {
-  if (!isPlainObject(cell)) {
-    throw createBadRequestError("Comparison cell must be an object", { field });
-  }
-
-  const rawValue = cell.value;
-  const hasValue = !(rawValue === "" || rawValue === null || rawValue === undefined);
-
-  if (requireValue && !hasValue) {
-    throw createBadRequestError(
-      "All comparisons must include a value for submit",
-      {
-        field,
-      }
-    );
-  }
-
-  if (!hasValue) {
-    return buildEmptyCell(expectedExpressionDomain);
-  }
-
-  const normalizedValue = validateCellValueByDomainOrThrow({
-    value: rawValue,
-    expressionDomain: expectedExpressionDomain,
-  });
-
-  return {
-    value: normalizedValue,
-    expressionDomain: expectedExpressionDomain,
-  };
-};
+export const buildEmptyCell = buildEmptyExpressionDomainEvaluationValue;
+export const validateCellValueByDomainOrThrow =
+  validateExpressionDomainEvaluationValueOrThrow;
 
 export const normalizePayloadOrThrow = async ({
   payload,
@@ -203,11 +141,13 @@ export const normalizePayloadOrThrow = async ({
         comparisonsByCriterion[criterionId][rowAlternative.id][colAlternative.id] =
           cell === undefined
             ? buildEmptyCell(expectedExpressionDomain)
-            : normalizeCellOrThrow({
+            : normalizeExpressionDomainEvaluationValueOrThrow({
                 cell,
                 requireValue,
                 field: "payload",
                 expectedExpressionDomain,
+                emptyValueMessage: "All comparisons must include a value for submit",
+                invalidValueMessage: "Comparison cell must be an object",
               });
       }
     }
