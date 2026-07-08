@@ -19,7 +19,7 @@ import {
   LINGUISTIC_MEMBERSHIP_FUNCTIONS,
   validateLinguisticLabelValues,
 } from "../../../../../utils/linguisticMembershipFunctions";
-import { normalizeDraftName } from "../../helpers";
+import { normalizeDraftName } from "../../expressionDomainDraftFields";
 
 const DEFAULT_LABEL_COUNT = 5;
 

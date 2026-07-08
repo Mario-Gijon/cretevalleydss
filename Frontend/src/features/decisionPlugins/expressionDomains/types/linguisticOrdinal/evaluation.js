@@ -1,4 +1,4 @@
-import { normalizeLabelKeyValue } from "../../helpers";
+import { normalizeLabelKeyValue } from "../../expressionDomainDraftFields";
 
 const getEvaluationLabels = (expressionDomain) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
@@ -25,4 +25,3 @@ export const validateLinguisticOrdinalEvaluation = ({
 
   return { labelKey };
 };
-

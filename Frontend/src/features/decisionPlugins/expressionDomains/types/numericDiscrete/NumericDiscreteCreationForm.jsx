@@ -2,7 +2,7 @@ import { Stack, TextField } from "@mui/material";
 import {
   normalizeDraftName,
   normalizeDraftNumber,
-} from "../../helpers";
+} from "../../expressionDomainDraftFields";
 
 const buildNextValue = (value, patch) => {
   const definition = value?.definition && typeof value.definition === "object"

@@ -1,5 +1,5 @@
 import { MenuItem, TextField } from "@mui/material";
-import { normalizeLabelKeyValue } from "../../helpers";
+import { normalizeLabelKeyValue } from "../../expressionDomainDraftFields";
 
 export const LinguisticOrdinalEvaluationInput = ({
   expressionDomain,

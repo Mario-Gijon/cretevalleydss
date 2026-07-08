@@ -3,7 +3,7 @@ import { Button, IconButton, Stack, TextField } from "@mui/material";
 import {
   buildUniqueLabelKey,
   normalizeDraftName,
-} from "../../helpers";
+} from "../../expressionDomainDraftFields";
 
 const buildDraftLabels = (labels = []) => {
   const usedKeys = new Set();
