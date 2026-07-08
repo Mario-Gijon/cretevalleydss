@@ -5,6 +5,12 @@ import {
   normalizeExpressionDomainEvaluationValueOrThrow,
   resolveRequireValueFromModeOrThrow,
 } from "../../../modules/decisionPlugins/evaluations/shared/expressionDomainEvaluationPayload.js";
+import {
+  resolveRequireValueFromModeOrThrow as resolveMatrixRequireValueFromModeOrThrow,
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/alternativeCriteriaMatrix.payload.js";
+import {
+  resolveRequireValueFromModeOrThrow as resolvePairwiseRequireValueFromModeOrThrow,
+} from "../../../modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/alternativePairwiseByCriterion.payload.js";
 
 describe("expressionDomainEvaluationPayload", () => {
   const numericContinuousDomain = {
@@ -115,6 +121,20 @@ describe("expressionDomainEvaluationPayload", () => {
     expect(resolveRequireValueFromModeOrThrow("draft")).toBe(false);
     expect(resolveRequireValueFromModeOrThrow("submit")).toBe(true);
     expect(() => resolveRequireValueFromModeOrThrow("other")).toThrow(
+      /Unsupported evaluation save mode/
+    );
+  });
+
+  it("re-exports save mode policy resolution from matrix and pairwise payload modules", () => {
+    expect(resolveMatrixRequireValueFromModeOrThrow("draft")).toBe(false);
+    expect(resolveMatrixRequireValueFromModeOrThrow("submit")).toBe(true);
+    expect(() => resolveMatrixRequireValueFromModeOrThrow("other")).toThrow(
+      /Unsupported evaluation save mode/
+    );
+
+    expect(resolvePairwiseRequireValueFromModeOrThrow("draft")).toBe(false);
+    expect(resolvePairwiseRequireValueFromModeOrThrow("submit")).toBe(true);
+    expect(() => resolvePairwiseRequireValueFromModeOrThrow("other")).toThrow(
       /Unsupported evaluation save mode/
     );
   });

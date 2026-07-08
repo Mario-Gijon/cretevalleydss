@@ -11,6 +11,7 @@ import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.cont
 export const buildEmptyCell = buildEmptyExpressionDomainEvaluationValue;
 export const validateCellValueByDomainOrThrow =
   validateExpressionDomainEvaluationValueOrThrow;
+export { resolveRequireValueFromModeOrThrow };
 
 export const normalizePayloadOrThrow = async ({
   payload,
