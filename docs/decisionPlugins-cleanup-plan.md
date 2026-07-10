@@ -23,7 +23,7 @@ It does not propose refactors in other folders. A few out-of-scope imports are m
 - The two complex evaluation structures mix rendering, payload resolution, validation, compatibility fallbacks, and grid configuration in the same file.
 - Pairwise logic mixes reciprocal math and grid interaction details, which makes the component read like a domain algorithm module.
 - Some compatibility handling is centralized well on the backend, but the frontend still repeats old/new cell-shape resolution inside views.
-- `Frontend/src/features/decisionPlugins/expressionDomains/helpers.js` is a vague shared file name even though the contents are fairly specific.
+- `Frontend/src/features/decisionPlugins/expressionDomains/expressionDomainDraftFields.js` is now clearer than the old `helpers.js` name, but pairwise and model-parameter work still carry most of the remaining readability cost.
 - The linguistic fuzzy creation form is long because it contains both draft-state orchestration and UI rendering.
 - Backend evaluation payload modules for matrix and pairwise are readable individually, but they duplicate several boundary concepts with near-identical naming.
 - Backend model-parameter default resolution mixes generic parameter defaults with criteria-weight-specific legacy behavior.
@@ -102,11 +102,9 @@ Hard to read or mixed-responsibility files:
 
 Naming issues:
 
-- `Frontend/src/features/decisionPlugins/expressionDomains/helpers.js`
-  - The contents are useful, but the name is too vague.
-  - It currently holds draft-name and label-key behavior shared by multiple domain types.
-  - Best cleanup class: rename unclear file.
-  - Better names: `expressionDomainDraftFields.js`, `expressionDomainLabelDrafts.js`, or `expressionDomainDraftLabels.js`.
+- `Frontend/src/features/decisionPlugins/expressionDomains/expressionDomainDraftFields.js`
+  - The earlier vague `helpers.js` name has already been corrected.
+  - The current name is specific enough and no longer needs cleanup.
 
 Low-priority duplication:
 
@@ -303,8 +301,8 @@ Notes:
 
 ### Concrete Renames Worth Considering
 
-- `Frontend/src/features/decisionPlugins/expressionDomains/helpers.js`
-  - Prefer `expressionDomainDraftLabels.js` or `expressionDomainDraftFields.js`.
+- `Frontend/src/features/decisionPlugins/expressionDomains/expressionDomainDraftFields.js`
+  - This rename is already complete and should stay as-is.
 
 - `normalizeCell` in `AlternativeCriteriaMatrixView.jsx`
   - Prefer `resolveMatrixCell`.
@@ -324,28 +322,311 @@ Notes:
 - Generic `buildGetPayload` exports in structure folders
   - Acceptable because the file names provide context, but if these functions become shared or imported more broadly, prefer structure-specific names.
 
+## Phase 4 Design Audit: Pairwise Reciprocity
+
+### Current Pairwise Contract
+
+Input context:
+
+- Frontend pairwise rendering reads `evaluationContext.alternatives` and `evaluationContext.leafCriteria`.
+- Each criterion is treated as owning one expression domain through `criterion.expressionDomain`.
+- Backend pairwise read payload also treats the criterion expression domain as the expected domain for every off-diagonal cell in that criterion.
+
+Payload shape:
+
+```json
+{
+  "criterionId": {
+    "alternativeA": {
+      "alternativeB": {
+        "value": 0.7,
+        "expressionDomain": {
+          "typeKey": "numericContinuous",
+          "definition": { "min": 0, "max": 1 }
+        }
+      }
+    }
+  }
+}
+```
+
+Actual backend read-model behavior:
+
+- `alternativePairwiseByCriterion.getPayload.js` emits all off-diagonal directed cells.
+- The diagonal is not stored in payload.
+- Every emitted cell is normalized to `{ value, expressionDomain: expectedCriterionExpressionDomain }`.
+- Stored per-cell domain metadata is not trusted on read; the criterion domain is reapplied.
+
+Actual frontend grid behavior:
+
+- `PairwiseAlternativesGrid.jsx` injects the diagonal locally as `{ value: "Neutral", expressionDomain: null }`.
+- The diagonal is displayed as non-editable `Neutral`.
+- Non-diagonal cells are normalized on read:
+  - primitive value -> `{ value: primitive }`
+  - empty or missing -> `{ value: "", expressionDomain: null }`
+  - object -> kept as-is
+- Any edit writes the payload back as plain object cells, so primitive-cell compatibility is read-only legacy handling.
+
+Current edit behavior:
+
+- The edited field is detected by comparing `getCellNumericValue(newRow[field])` against `getCellNumericValue(oldRow[field])`.
+- Numeric parsing is always `Number(...)`.
+- If the parsed value is `null`, out of range, or step-misaligned, the edited cell and its reciprocal cell are both cleared to `""`.
+- If the parsed value is valid, the grid updates both `A -> B` and `B -> A`.
+- The grid never calls the expression-domain plugin `EvaluationInput`; editing is a plain DataGrid numeric flow.
+
+Current inverse calculation:
+
+- The grid resolves the source and target ranges from `cell.domain || cell.expressionDomain`.
+- It reads only `domain.range.min`, `domain.range.max`, and `domain.range.step`.
+- If that lookup does not produce a valid range, it silently falls back to `{ min: 0, max: 1, step: null }`.
+- Reciprocity is then computed by range reflection:
+  - `normalized = (value - min) / (max - min)`
+  - `inverseNormalized = 1 - normalized`
+  - `inverse = targetMin + inverseNormalized * (targetMax - targetMin)`
+- The inverse is rounded to two decimals and then snapped to the target step if a target step exists.
+
+Current collective-value display:
+
+- Collective cells are rendered as a chip next to the user value.
+- The display priority is `localizedLabel`, then `localizedValue`, then `value`.
+- The diagonal never shows a collective chip.
+
+Current backend normalization and validation:
+
+- `alternativePairwiseByCriterion.payload.js` rejects old wrapper shapes such as `comparisonsByCriterion`, `evaluations`, `rows`, `matrix`, `direct`, and `pairwiseAlternatives`.
+- Unknown criterion keys, row keys, diagonal keys, and unknown column keys are rejected.
+- Missing off-diagonal cells are materialized as empty cells with the expected criterion expression domain.
+- Submitted cells must be objects.
+- Non-empty submitted values are validated against the expected criterion expression domain, not against any per-cell domain metadata.
+- There is no reciprocal consistency check between `A -> B` and `B -> A`.
+- There is no backend inverse regeneration.
+
+Concrete examples of current behavior:
+
+- Current expression-domain definitions use `expressionDomain.definition`, not `domain.range`.
+- For a normal current numeric domain `{ typeKey: "numericContinuous", definition: { min: 0, max: 10 } }`, the frontend grid does not read `min` and `max`.
+- Because `domain.range` is absent, the grid falls back to `0..1`.
+- Result: entering `2` is treated as invalid and clears both directions instead of generating `8`.
+- Result: a stored value `2` still displays as `2`, but editing that cell uses `0..1` validation.
+- For a normal current discrete domain `{ min: 0, max: 10, step: 2 }`, the grid also ignores `definition.step`.
+- Result: step enforcement does not happen unless legacy `domain.range.step` is present in the cell object.
+- If a legacy cell shape does include `domain.range = { min: 0, max: 10 }`, then entering `2` generates inverse `8`.
+- If the source legacy range is `0..10 step 2` and the target legacy range is `0..10 step 3`, then entering `2` stores `2` in `A -> B` and `9` in `B -> A` because the target inverse is snapped independently.
+- If source and target cells expose different legacy ranges, the reciprocal is computed across those different ranges even though the criterion is supposed to own a single expression domain.
+
+### Hidden Assumptions and Compatibility Leaks
+
+| Issue | What the current code does | Classification | Audit note |
+| --- | --- | --- | --- |
+| `cell.domain` before `cell.expressionDomain` | The grid prefers the legacy field if both are present. | Legacy compatibility | Current backend read payload emits `expressionDomain`, not `domain`. |
+| `domain.range` instead of `expressionDomain.definition` | The grid ignores the current expression-domain schema. | Likely bug | Normal numeric domains use `definition.min`, `definition.max`, and discrete domains use `definition.step`. |
+| Primitive cell vs object cell | The grid accepts primitive cells on read, but any edit rewrites them as object cells. | Legacy compatibility | This is a boundary concern, not view logic. |
+| Silent `0..1` fallback | Missing or invalid range silently becomes `0..1`. | Likely bug | This masks unsupported domains and misconfigured payloads. |
+| `Number(...)` conversion everywhere | Every editable pairwise value is coerced to a number. | Architectural assumption | The current grid is numeric-only regardless of expression-domain type. |
+| Numeric-only reciprocity | The grid assumes inverse math exists for every editable pairwise value. | Design decision still required | The expression-domain registry does not currently declare pairwise support. |
+| Per-cell source and target ranges | Reciprocity can be computed from different source and target ranges. | Likely bug | The criterion should own one domain for both directions. |
+| Criterion domain reapplied on backend read/write | Backend normalization uses the expected criterion expression domain for every cell. | Valid current behavior | This is the correct boundary owner for domain metadata. |
+| Stored values vs generated values | The client generates and stores both directions; the backend trusts them. | Architectural assumption | No server-side reciprocity contract exists yet. |
+| Frontend-only reciprocity enforcement | Reciprocal updates happen only in the grid. | Likely bug | Direct API writes can bypass reciprocity. |
+| Missing backend reciprocity validation | `A -> B` and `B -> A` are validated independently only. | Likely bug | Pairwise consistency is not enforced at the persistence boundary. |
+| Invalid edit clears both cells | A bad edit deletes both directions instead of rejecting the edit. | Likely bug | This is destructive and silent. |
+| Duplicated empty-cell handling | Frontend and backend each rebuild empty pairwise cells separately. | Valid current behavior | The duplication is acceptable, but the frontend version is mixed into rendering code. |
+
+### Which Domains Should Support Pairwise
+
+Option A: keep pairwise explicitly numeric-only inside the evaluation structure.
+
+- This is the smallest short-term restriction.
+- It keeps reciprocity logic out of the expression-domain registry.
+- It also hardcodes domain-family knowledge into the pairwise structure and makes new domain opt-in clumsy.
+- It does not solve the real problem that discrete numeric support depends on the actual domain definition, not just on being numeric.
+
+Option B: add an optional pairwise capability to expression-domain plugins.
+
+- This is the simplest correct long-term design.
+- The pairwise structure can remain generic while still rejecting unsupported domains explicitly.
+- Opt-in stays self-contained inside each expression-domain type.
+- `validateEvaluation` remains the general value validator for all ordinary evaluation values.
+- `pairwiseComparison` owns only pairwise support checks and inverse calculation.
+- Numeric continuous and numeric discrete domains are the initial supported pairwise domains.
+- Linguistic domains can simply omit the capability and fail explicitly.
+
+Option C: introduce a separate pairwise algebra plugin layer.
+
+- This is unnecessary for the current codebase.
+- It duplicates the role already played by expression-domain plugins.
+- It adds another registry and another abstraction boundary without reducing complexity in `PairwiseAlternativesGrid`.
+
+Recommendation: choose Option B.
+
+Recommended capability shape:
+
+```js
+pairwiseComparison: {
+  assertSupported({ expressionDomain }),
+  getInverseValue({ value, expressionDomain })
+}
+```
+
+Why this is the simplest correct design:
+
+- `validateEvaluation` already exists and should remain the only general value validator.
+- `pairwiseComparison` adds only the missing pairwise-specific behavior instead of duplicating general validation.
+- The diagonal is a UI concept today, so `getNeutralValue` is not required to preserve the current payload shape.
+- `assertSupported` gives discrete numeric domains a place to reject definitions that are not closed under reciprocity.
+- `getInverseValue` keeps domain-specific algebra inside the owning plugin.
+- Unsupported domains fail by capability absence or by `assertSupported` throwing an explicit error.
+- No separate pairwise registry is required.
+
+How a new domain type opts in:
+
+- Frontend type entry adds `pairwiseComparison`.
+- Backend type entry adds the equivalent `pairwiseComparison`.
+- If that capability is absent, the pairwise evaluation structure rejects that criterion expression domain explicitly.
+
+Frontend and backend capability needs:
+
+- Frontend needs it to validate edits, calculate the reciprocal, and decide whether the grid is editable for that criterion.
+- Backend needs the equivalent capability to verify reciprocal consistency on save and submit.
+- The capability should be implemented separately in frontend and backend registries just like `validateEvaluation` is today.
+
+How this avoids domain branches inside `PairwiseAlternativesGrid`:
+
+- The grid delegates reciprocity math to one local pure-logic module.
+- That local module resolves the active expression-domain type entry and calls `pairwiseComparison`.
+- The grid remains responsible only for DataGrid behavior and rendering.
+
+### Canonical Reciprocity Contract
+
+- The diagonal should remain a UI-only concept and stay out of the payload.
+- Both `A -> B` and `B -> A` should remain stored for now to preserve the current payload shape.
+- Changing the payload shape to store only one direction is not justified in this phase.
+- The criterion expression domain should be the only canonical domain for both directions.
+- Source and inverse cells should never use different expression domains.
+- For `numericContinuous`, the entered value should be validated with `validateEvaluation`, the inverse should be calculated as `min + max - value`, and the generated inverse should then be validated with `validateEvaluation`.
+- For `numericDiscrete`, the same inverse formula should be used: `min + max - value`.
+- `numericDiscrete` pairwise support should be allowed only when `(max - min) / step` is an integer within a reasonable floating-point tolerance, so the discrete domain is closed under reflection.
+- Unsupported discrete definitions should be rejected explicitly by `pairwiseComparison.assertSupported`.
+- Approximate inverse snapping should not be used for canonical pairwise reciprocity.
+- This restriction belongs only to pairwise support; a `numericDiscrete` domain may still be valid for ordinary non-pairwise evaluations.
+- Backend save logic should verify reciprocal consistency.
+- Backend save logic should not silently regenerate the inverse from the client payload.
+- Backend should compute the expected inverse and reject inconsistent pairs with an explicit validation error.
+- Unsupported domains should fail explicitly before editing on the frontend and during normalization on the backend.
+- Invalid frontend edits should be rejected and the previous pair should be retained.
+- Invalid frontend edits should not clear both directions.
+- Draft mode should allow both directions empty.
+- Draft mode should reject one-sided pairs where one direction is empty and the other is filled.
+- Submit mode should continue requiring complete off-diagonal coverage, but reciprocal consistency should be checked pairwise rather than trusting the client.
+
+Implications for discrete numeric domains:
+
+- Reciprocal support should be exact, not snap-based.
+- Pairwise support should require exact closure under the `min + max - value` reflection rule.
+- If a discrete domain definition cannot produce exact reflected inverses inside its own step system, that definition should be rejected for pairwise use by `pairwiseComparison.assertSupported`, not by the generic creation validator.
+- This is another reason Option B is preferable to a structure-owned numeric shortcut.
+
+### Readability-Focused Target Structure
+
+Recommended frontend structure:
+
+```text
+alternativePairwiseByCriterion/
+  AlternativePairwiseByCriterionView.jsx
+  pairwiseReciprocity.js
+  components/
+    PairwiseAlternativesGrid.jsx
+```
+
+Recommended local file name:
+
+- Prefer `pairwiseReciprocity.js`.
+- `pairwiseComparisonValues.js` is less precise.
+- `alternativePairwisePayload.js` sounds too backend-oriented for the frontend logic that also handles edit-time reciprocity.
+
+What should remain in `PairwiseAlternativesGrid.jsx`:
+
+- DataGrid column configuration.
+- Cell rendering, including the collective-value chip.
+- Click-to-edit behavior.
+- Read-only and diagonal edit guards.
+
+What should move to `pairwiseReciprocity.js`:
+
+- Pairwise cell resolution from payload.
+- Diagonal injection for grid rows.
+- Pairwise row-to-payload conversion.
+- Edited-field resolution.
+- Pairwise edit application.
+- Reciprocal validation and inverse calculation orchestration through the expression-domain registry.
+
+What should move to the expression-domain plugin contract:
+
+- Domain-level pairwise support checks.
+- Domain-specific inverse calculation.
+
+What should be enforced by backend:
+
+- Expected criterion expression-domain ownership.
+- General value validation through `validateEvaluation`.
+- Reciprocal consistency between both stored directions.
+- Explicit rejection of unsupported pairwise domains.
+
+What should remain structure-specific:
+
+- Payload shape keyed by criterion, row alternative, and column alternative.
+- Omitted diagonal storage.
+- Storing both directed cells.
+- Pairwise-specific completeness rules.
+
+### Incremental Phase 4 Roadmap
+
+Phase 4A:
+
+- Extend frontend expression-domain registry entry validation to allow optional `pairwiseComparison`.
+- Extend backend expression-domain registry validation to allow optional `pairwiseComparison`.
+- Implement `pairwiseComparison` for `numericContinuous`.
+- Implement `pairwiseComparison` for `numericDiscrete` with exact closure validation.
+- Leave linguistic domains without the capability.
+- Add focused pure frontend and backend tests.
+- Do not change `PairwiseAlternativesGrid.jsx` yet.
+- Do not change backend pairwise payload normalization yet.
+
+Phase 4B:
+
+- Add at most one clearly named local file: `pairwiseReciprocity.js`.
+- Centralize primitive/object cell compatibility there.
+- Use `cell.expressionDomain` as canonical and `cell.domain` only as legacy fallback.
+- Use the criterion expression domain as the canonical domain for both directions.
+- Remove `domain.range` access.
+- Remove the silent `0..1` fallback.
+- Delegate validation and inverse calculation to the expression-domain pairwise capability.
+- Retain previous values when an edit is invalid.
+- Do not clear both cells on invalid input.
+- Simplify `PairwiseAlternativesGrid.jsx` so it focuses on DataGrid rendering and interaction.
+- Preserve the current payload shape.
+
+Phase 4C:
+
+- Preserve both directed cells in the payload.
+- Keep the diagonal omitted.
+- Validate each non-empty value with `validateEvaluation`.
+- Use the expected criterion expression domain.
+- Compute the expected inverse through the backend pairwise capability.
+- Reject inconsistent reciprocal pairs.
+- Reject one-sided draft pairs.
+- Require complete reciprocal pairs on submit.
+- Do not silently rewrite client values.
+
 ## Incremental Roadmap
 
 ### Phase 1: Frontend Evaluation Structure Readability Cleanup
 
-Start with `Frontend/src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx`.
+Status: completed.
 
-Goals:
-
-- Keep behavior unchanged.
-- Keep file count low.
-- Move cell-shape and domain-field fallback out of the render path.
-- Make the component read in this order: context resolution, payload resolution, validation, update handlers, grid columns, render.
-
-Recommended scope:
-
-- Extract only one nearby file if needed, ideally `resolveMatrixCell.js`.
-- Keep validation helpers local unless they still clutter the component after cell resolution is extracted.
-- Do not touch pairwise in this phase.
-
-Stop condition:
-
-- The component reads as a UI file, not a mixed UI-plus-normalization module.
+- `AlternativeCriteriaMatrixView.jsx` cleanup is no longer the next recommended step.
+- Keep this phase as completed background context only.
 
 ### Phase 2: Backend Evaluation Payload Readability Cleanup
 
@@ -354,28 +635,17 @@ Focus on:
 - `Backend/modules/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/**`
 - `Backend/modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/**`
 
-Goals:
+Status: completed.
 
-- Deduplicate only the obvious boundary logic shared by both structures.
-- Keep API behavior unchanged.
-- Avoid a generic evaluation helper bucket.
-
-Recommended scope:
-
-- Consider one small shared boundary helper for save-mode policy and one for expression-domain cell validation only if both files become clearer.
-- Keep structure-specific loops local to each structure.
+- Backend matrix/pairwise shared payload boundary cleanup is no longer pending roadmap work.
+- Keep this phase as completed background context only.
 
 ### Phase 3: Shared Folder Cleanup Inside `decisionPlugins`
 
-Goals:
+Status: completed.
 
-- Rename vague shared files.
-- Move shared logic only when it is used by multiple plugins.
-- Move one-plugin-only logic back into the owning plugin folder.
-
-Priority candidates:
-
-- `Frontend/src/features/decisionPlugins/expressionDomains/helpers.js`
+- The old `expressionDomains/helpers.js` rename is complete as `expressionDomainDraftFields.js`.
+- Do not continue treating that rename as pending work.
 
 ### Phase 4: Pairwise Structures
 
@@ -386,12 +656,15 @@ Focus on:
 
 Goals:
 
-- Separate reciprocal/inverse logic from grid rendering only after the intended pairwise behavior is explicit.
-- Keep pairwise-specific domain assumptions local.
+- Follow the Phase 4 design audit above.
+- Separate reciprocal/inverse logic from grid rendering.
+- Move pairwise support decisions into expression-domain plugins through an explicit optional capability.
+- Add backend reciprocal consistency validation without changing the stored payload shape.
 
 Constraint:
 
-- Do not force flexible expression-domain rendering here until inverse behavior is designed.
+- Do not add generic helper buckets or a second pairwise registry.
+- Do not silently fall back to `0..1` or silently regenerate inverse values on the backend.
 
 ### Phase 5: Model Parameter Plugin Cleanup
 
@@ -420,44 +693,39 @@ Priority candidate:
 
 ```md
 Work only in:
-- Frontend/src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/**
+- Frontend/src/features/decisionPlugins/expressionDomains/**
+- Backend/modules/decisionPlugins/expressionDomains/**
 
 Goal:
-- Improve readability of AlternativeCriteriaMatrix without changing behavior.
+- Implement Phase 4A: expression-domain pairwise capability.
 
 Constraints:
-- Do not touch backend code.
-- Do not touch pairwise code.
-- Do not create many files.
-- Keep payload shape unchanged.
-- Keep validation behavior unchanged.
+- Do not touch `Frontend/src/features/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/**`.
+- Do not touch `Backend/modules/decisionPlugins/evaluations/structures/alternativePairwiseByCriterion/**`.
+- Do not add a new registry or generic helper bucket.
+- Preserve existing registry behavior.
 
-Required cleanup:
-- Move cell compatibility logic out of the render path into one clearly named plugin-local helper such as resolveMatrixCell.
-- Reorder AlternativeCriteriaMatrixView.jsx so it reads in this order:
-  1. context resolution
-  2. payload resolution
-  3. validation
-  4. update handlers
-  5. grid column definition
-  6. render
-- Keep validation helpers local unless one tiny extraction is clearly better.
-- Add only minimal section comments if they improve scanability.
+Required work:
+- Extend frontend expression-domain registry entry validation to allow optional `pairwiseComparison`.
+- Extend backend expression-domain registry validation to allow optional `pairwiseComparison`.
+- Implement `pairwiseComparison` for `numericContinuous`.
+- Implement `pairwiseComparison` for `numericDiscrete`, including exact closure validation in `assertSupported`.
+- Leave linguistic domains without the capability.
+- Add focused pure tests on both frontend and backend sides.
 
 Checks:
 - Run git diff --check
-- No tests required unless code behavior changes
+- Run the focused tests you added
 ```
 
 ## Recommended Order of Work
 
-1. Alternative criteria matrix frontend readability
-2. Backend matrix/pairwise boundary cleanup
-3. Shared naming cleanup
-4. Pairwise-specific refactor after inverse behavior review
-5. Model-parameter readability cleanup
-6. Linguistic fuzzy draft-state cleanup
+1. Phase 4A: expression-domain pairwise capability
+2. Phase 4B: frontend pairwise cleanup
+3. Phase 4C: backend reciprocity enforcement
+4. Model-parameter readability cleanup
+5. Linguistic fuzzy draft-state cleanup
 
 ## Summary
 
-The highest-value near-term cleanup is not a broad architecture change. It is a small boundary cleanup in `AlternativeCriteriaMatrixView.jsx`, followed by a narrow backend pass over matrix and pairwise payload normalization. Most registries and small validators are already readable enough and should be left alone.
+The highest-value near-term cleanup is Phase 4A: add explicit pairwise capability to the expression-domain plugins, then use that capability to simplify the frontend pairwise grid and enforce reciprocity on the backend. Most registries and small validators are already readable enough and should be left alone outside that targeted work.
