@@ -13,11 +13,6 @@ const isNonEmptyString = (value) =>
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const isValidPairwiseComparisonCapability = (value) =>
-  isPlainObject(value) &&
-  typeof value.assertSupported === "function" &&
-  typeof value.getInverseValue === "function";
-
 const isValidExpressionDomainType = (value) =>
   isPlainObject(value) &&
   isNonEmptyString(value.key) &&
@@ -25,9 +20,7 @@ const isValidExpressionDomainType = (value) =>
   isNonEmptyString(value.description) &&
   isNonEmptyString(value.family) &&
   typeof value.validateCreation === "function" &&
-  typeof value.validateEvaluation === "function" &&
-  (value.pairwiseComparison === undefined ||
-    isValidPairwiseComparisonCapability(value.pairwiseComparison));
+  typeof value.validateEvaluation === "function";
 
 const extractExpressionDomainTypeFromModule = ({ moduleExports, modulePath }) => {
   const domainTypes = Object.entries(moduleExports).filter(([, value]) =>

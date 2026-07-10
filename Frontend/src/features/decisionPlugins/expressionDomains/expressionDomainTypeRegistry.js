@@ -20,11 +20,6 @@ const isReactComponentCandidate = (component) =>
     Object.hasOwn(component, "$$typeof")
   );
 
-const isValidPairwiseComparisonCapability = (value) =>
-  isPlainObject(value) &&
-  typeof value.assertSupported === "function" &&
-  typeof value.getInverseValue === "function";
-
 const isValidExpressionDomainTypeEntry = (value) =>
   isPlainObject(value) &&
   isNonEmptyString(value.key) &&
@@ -34,9 +29,7 @@ const isValidExpressionDomainTypeEntry = (value) =>
   isReactComponentCandidate(value.CreationForm) &&
   isReactComponentCandidate(value.EvaluationInput) &&
   (value.validateEvaluation === undefined ||
-    typeof value.validateEvaluation === "function") &&
-  (value.pairwiseComparison === undefined ||
-    isValidPairwiseComparisonCapability(value.pairwiseComparison));
+    typeof value.validateEvaluation === "function");
 
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/types\/([^/]+)\/index\.js$/);
@@ -57,7 +50,7 @@ const extractTypeEntryFromModule = ({ moduleExports, modulePath }) => {
 
   if (entries.length === 0) {
     throw new Error(
-      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm, EvaluationInput, optional validateEvaluation, and optional pairwiseComparison.`
+      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm, EvaluationInput, and optional validateEvaluation.`
     );
   }
 
