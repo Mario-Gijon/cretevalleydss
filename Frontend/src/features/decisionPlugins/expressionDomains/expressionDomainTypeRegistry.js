@@ -9,6 +9,9 @@ const EXPRESSION_DOMAIN_TYPE_ORDER = Object.freeze([
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
 const isReactComponentCandidate = (component) =>
   typeof component === "function" ||
   (
@@ -17,9 +20,13 @@ const isReactComponentCandidate = (component) =>
     Object.hasOwn(component, "$$typeof")
   );
 
+const isValidPairwiseComparisonCapability = (value) =>
+  isPlainObject(value) &&
+  typeof value.assertSupported === "function" &&
+  typeof value.getInverseValue === "function";
+
 const isValidExpressionDomainTypeEntry = (value) =>
-  value !== null &&
-  typeof value === "object" &&
+  isPlainObject(value) &&
   isNonEmptyString(value.key) &&
   isNonEmptyString(value.label) &&
   isNonEmptyString(value.description) &&
@@ -27,7 +34,9 @@ const isValidExpressionDomainTypeEntry = (value) =>
   isReactComponentCandidate(value.CreationForm) &&
   isReactComponentCandidate(value.EvaluationInput) &&
   (value.validateEvaluation === undefined ||
-    typeof value.validateEvaluation === "function");
+    typeof value.validateEvaluation === "function") &&
+  (value.pairwiseComparison === undefined ||
+    isValidPairwiseComparisonCapability(value.pairwiseComparison));
 
 const extractFolderName = (modulePath) => {
   const match = modulePath.match(/\.\/types\/([^/]+)\/index\.js$/);
@@ -48,7 +57,7 @@ const extractTypeEntryFromModule = ({ moduleExports, modulePath }) => {
 
   if (entries.length === 0) {
     throw new Error(
-      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm, EvaluationInput, and optional validateEvaluation.`
+      `[expressionDomains] ${modulePath} must export exactly one valid expression domain type entry with key, label, description, family, CreationForm, EvaluationInput, optional validateEvaluation, and optional pairwiseComparison.`
     );
   }
 

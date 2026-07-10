@@ -10,15 +10,24 @@ const TYPES_ROOT = path.join(__dirname, "types");
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim() !== "";
 
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const isValidPairwiseComparisonCapability = (value) =>
+  isPlainObject(value) &&
+  typeof value.assertSupported === "function" &&
+  typeof value.getInverseValue === "function";
+
 const isValidExpressionDomainType = (value) =>
-  value !== null &&
-  typeof value === "object" &&
+  isPlainObject(value) &&
   isNonEmptyString(value.key) &&
   isNonEmptyString(value.label) &&
   isNonEmptyString(value.description) &&
   isNonEmptyString(value.family) &&
   typeof value.validateCreation === "function" &&
-  typeof value.validateEvaluation === "function";
+  typeof value.validateEvaluation === "function" &&
+  (value.pairwiseComparison === undefined ||
+    isValidPairwiseComparisonCapability(value.pairwiseComparison));
 
 const extractExpressionDomainTypeFromModule = ({ moduleExports, modulePath }) => {
   const domainTypes = Object.entries(moduleExports).filter(([, value]) =>

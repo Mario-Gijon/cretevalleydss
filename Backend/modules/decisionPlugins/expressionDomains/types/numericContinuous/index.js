@@ -1,3 +1,4 @@
+import { createBadRequestError } from "../../../../../utils/common/errors.js";
 import { normalizeExpressionDomainNameOrThrow } from "../../shared/validation.js";
 import { normalizeNumericContinuousCreationDefinition } from "./creation.js";
 import {
@@ -5,6 +6,53 @@ import {
   getNumericContinuousEvaluationDefinition,
   normalizeNumericContinuousEvaluationValue,
 } from "./evaluation.js";
+
+const assertNumericContinuousPairwiseSupport = ({ expressionDomain } = {}) => {
+  const definition = getNumericContinuousEvaluationDefinition(expressionDomain);
+
+  if (
+    !Number.isFinite(definition.min) ||
+    !Number.isFinite(definition.max) ||
+    definition.min >= definition.max
+  ) {
+    throw createBadRequestError(
+      "Numeric continuous expression domain does not support pairwise comparison.",
+      {
+        field: "definition",
+      }
+    );
+  }
+
+  return definition;
+};
+
+const getValidatedNumericContinuousValue = ({ value, expressionDomain } = {}) => {
+  const normalizedValue = normalizeNumericContinuousEvaluationValue(value);
+  const definition = getNumericContinuousEvaluationDefinition(expressionDomain);
+
+  assertNumericContinuousValueInRange({
+    value: normalizedValue,
+    definition,
+  });
+
+  return normalizedValue;
+};
+
+const getNumericContinuousInverseValue = ({ value, expressionDomain } = {}) => {
+  const normalizedValue = getValidatedNumericContinuousValue({
+    value,
+    expressionDomain,
+  });
+  const definition = assertNumericContinuousPairwiseSupport({
+    expressionDomain,
+  });
+  const inverseValue = definition.min + definition.max - normalizedValue;
+
+  return getValidatedNumericContinuousValue({
+    value: inverseValue,
+    expressionDomain,
+  });
+};
 
 export const numericContinuous = Object.freeze({
   key: "numericContinuous",
@@ -27,14 +75,14 @@ export const numericContinuous = Object.freeze({
   },
 
   validateEvaluation({ value, expressionDomain } = {}) {
-    const normalizedValue = normalizeNumericContinuousEvaluationValue(value);
-    const definition = getNumericContinuousEvaluationDefinition(expressionDomain);
-
-    assertNumericContinuousValueInRange({
-      value: normalizedValue,
-      definition,
+    return getValidatedNumericContinuousValue({
+      value,
+      expressionDomain,
     });
-
-    return normalizedValue;
   },
+
+  pairwiseComparison: Object.freeze({
+    assertSupported: assertNumericContinuousPairwiseSupport,
+    getInverseValue: getNumericContinuousInverseValue,
+  }),
 });
