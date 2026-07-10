@@ -3,6 +3,7 @@ import { normalizeNumericDiscreteCreationDefinition } from "./creation.js";
 import {
   assertNumericDiscreteValueInRange,
   assertNumericDiscreteValueStepAligned,
+  getNumericDiscreteEvaluationDefinition,
   normalizeNumericDiscreteEvaluationValue,
 } from "./evaluation.js";
 

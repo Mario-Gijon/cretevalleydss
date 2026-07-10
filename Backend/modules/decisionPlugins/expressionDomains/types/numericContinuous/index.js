@@ -2,6 +2,7 @@ import { normalizeExpressionDomainNameOrThrow } from "../../shared/validation.js
 import { normalizeNumericContinuousCreationDefinition } from "./creation.js";
 import {
   assertNumericContinuousValueInRange,
+  getNumericContinuousEvaluationDefinition,
   normalizeNumericContinuousEvaluationValue,
 } from "./evaluation.js";
 
