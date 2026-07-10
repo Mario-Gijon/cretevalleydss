@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  EXPRESSION_DOMAIN_TYPE_REGISTRY,
+  EXPRESSION_DOMAIN_TYPE_CATALOG,
   getExpressionDomainTypeOrThrow,
-} from "../../modules/decisionPlugins/expressionDomains/index.js";
+} from "../../modules/expressionDomains/expressionDomainTypeCatalog.js";
 
 const EXPECTED_TYPE_KEYS = [
   "numericContinuous",
@@ -14,7 +14,7 @@ const EXPECTED_TYPE_KEYS = [
 
 describe("expression domain type catalog", () => {
   it("registers exactly the four supported keys", () => {
-    expect(Object.keys(EXPRESSION_DOMAIN_TYPE_REGISTRY)).toEqual(
+    expect(Object.keys(EXPRESSION_DOMAIN_TYPE_CATALOG)).toEqual(
       EXPECTED_TYPE_KEYS
     );
   });
@@ -23,7 +23,7 @@ describe("expression domain type catalog", () => {
     for (const typeKey of EXPECTED_TYPE_KEYS) {
       const entry = getExpressionDomainTypeOrThrow(typeKey);
 
-      expect(entry).toBe(EXPRESSION_DOMAIN_TYPE_REGISTRY[typeKey]);
+      expect(entry).toBe(EXPRESSION_DOMAIN_TYPE_CATALOG[typeKey]);
       expect(entry).toMatchObject({ key: typeKey });
     }
   });

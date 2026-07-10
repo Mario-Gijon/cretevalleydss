@@ -37,7 +37,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import { listExpressionDomainTypeEntries } from "../../decisionPlugins/expressionDomains";
+import { listExpressionDomainTypes } from "../../expressionDomains";
 import {
   getBackendHealth,
   getModelForgeAssetsAdmin,
@@ -87,11 +87,11 @@ const EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS = [
   { value: "linguistic", label: "linguistic" },
 ];
 
-const DOMAIN_OPTIONS = listExpressionDomainTypeEntries().map((entry) => ({
+const DOMAIN_OPTIONS = listExpressionDomainTypes().map((entry) => ({
   typeKey: entry.key,
   label: entry.label,
   description: entry.description,
-  // `constraintExample` is the registry/API field name; the UI treats it as a template.
+  // `constraintExample` is the catalog/API field name; the UI treats it as a template.
   constraintExample: entry.constraintExample ?? {},
 }));
 

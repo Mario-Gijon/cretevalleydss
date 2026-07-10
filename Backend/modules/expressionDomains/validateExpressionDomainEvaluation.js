@@ -1,4 +1,4 @@
-import { getExpressionDomainTypeOrThrow } from "../decisionPlugins/expressionDomains/index.js";
+import { getExpressionDomainTypeOrThrow } from "./expressionDomainTypeCatalog.js";
 import { createBadRequestError } from "../../utils/common/errors.js";
 
 const isPlainObject = (value) =>

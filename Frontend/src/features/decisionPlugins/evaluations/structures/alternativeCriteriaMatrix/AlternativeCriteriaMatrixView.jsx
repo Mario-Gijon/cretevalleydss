@@ -8,10 +8,10 @@ import {
   useTheme,
 } from "@mui/material";
 
+import ExpressionDomainEvaluationInput from "../../../../expressionDomains/ExpressionDomainEvaluationInput.jsx";
+import { validateExpressionDomainEvaluation } from "../../../../expressionDomains";
 import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
-import ExpressionDomainEvaluationInput from "../../shared/ExpressionDomainEvaluationInput.jsx";
-import { validateExpressionDomainEvaluation } from "../../../expressionDomains";
 import {
   resolveMatrixCell,
   resolveMatrixPayload,

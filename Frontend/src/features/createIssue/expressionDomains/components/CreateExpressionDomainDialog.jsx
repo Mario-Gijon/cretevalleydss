@@ -25,9 +25,9 @@ import {
   getCreateIssueCompactDialogTitleSx,
 } from "../../styles/createIssueStep.styles";
 import {
-  getExpressionDomainTypeEntry,
-  listExpressionDomainTypeEntries,
-} from "../../../decisionPlugins/expressionDomains";
+  getExpressionDomainType,
+  listExpressionDomainTypes,
+} from "../../../expressionDomains";
 
 const normalizeDefinition = (definition) =>
   definition && typeof definition === "object" && !Array.isArray(definition)
@@ -55,7 +55,7 @@ export const CreateExpressionDomainDialog = ({
   const theme = useTheme();
   const { setExpressionDomains } = useIssuesDataContext();
   const { showSnackbarAlert } = useSnackbarAlertContext();
-  const typeEntries = useMemo(() => listExpressionDomainTypeEntries(), []);
+  const typeEntries = useMemo(() => listExpressionDomainTypes(), []);
   const defaultTypeKey = typeEntries[0]?.key || "";
 
   const [selectedTypeKey, setSelectedTypeKey] = useState(defaultTypeKey);
@@ -78,7 +78,7 @@ export const CreateExpressionDomainDialog = ({
     setDraft(buildCreateDraft(defaultTypeKey));
   }, [defaultTypeKey, editingDomain, open]);
 
-  const selectedTypeEntry = getExpressionDomainTypeEntry(selectedTypeKey);
+  const selectedTypeEntry = getExpressionDomainType(selectedTypeKey);
   const SelectedCreationForm = selectedTypeEntry?.CreationForm || null;
 
   const payload = {
@@ -164,7 +164,7 @@ export const CreateExpressionDomainDialog = ({
         <Stack spacing={2.2} sx={{ mt: 2.5, mb: 1.5 }}>
           {!hasTypeEntries ? (
             <Alert severity="error">
-              No expression domain types are available in the frontend registry.
+              No expression domain types are available in the frontend catalog.
             </Alert>
           ) : null}
 
@@ -282,4 +282,3 @@ export const CreateExpressionDomainDialog = ({
 };
 
 export default CreateExpressionDomainDialog;
-

@@ -14,7 +14,7 @@ describe("ModelForgeRegistryTab", () => {
               kind: "expressionDomainType",
               key: "linguisticTwoTupleScale",
               origin: "generated",
-              locations: ["Frontend/src/features/decisionPlugins/expressionDomains/types"],
+              locations: ["Frontend/src/features/expressionDomains/types"],
               missingLocations: [],
               usageCount: 6,
               usageBreakdown: {
