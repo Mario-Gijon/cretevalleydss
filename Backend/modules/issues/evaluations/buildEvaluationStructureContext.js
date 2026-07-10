@@ -194,7 +194,7 @@ const normalizeProvidedLeafCriteriaOrThrow = async ({ leafCriteria }) => {
           _id: { $in: snapshotIds },
         })
           .select(
-            "_id name typeKey family definition"
+            "_id name typeKey definition"
           )
           .lean()
       : [];

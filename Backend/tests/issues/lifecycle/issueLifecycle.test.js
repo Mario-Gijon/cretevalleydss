@@ -90,8 +90,8 @@ const createCascadeFixture = async () => {
   await IssueExpressionDomain.create({
     issue: issue._id,
     name: "Issue numeric domain",
-    type: "numeric",
-    numericRange: {
+    typeKey: "numericDiscrete",
+    definition: {
       min: 0,
       max: 10,
       step: 1,

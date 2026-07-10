@@ -1,7 +1,7 @@
 import {
   expressionDomainMatchesSupportedEntry,
-  getExpressionDomainFamily,
   getExpressionDomainNumericRange,
+  getRequiredExpressionDomainFamily,
   isNumericContinuousExpressionDomain,
   isNumericDiscreteExpressionDomain,
   normalizeSupportedExpressionDomains,
@@ -85,11 +85,11 @@ export const getSupportedDomainPools = (
   );
 
   const numericDomains = compatibleDomains.filter(
-    (domain) => getExpressionDomainFamily(domain) === "numeric"
+    (domain) => getRequiredExpressionDomainFamily(domain) === "numeric"
   );
 
   const linguisticDomains = compatibleDomains.filter(
-    (domain) => getExpressionDomainFamily(domain) === "linguistic"
+    (domain) => getRequiredExpressionDomainFamily(domain) === "linguistic"
   );
 
   return {

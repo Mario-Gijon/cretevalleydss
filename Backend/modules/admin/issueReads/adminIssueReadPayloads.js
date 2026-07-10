@@ -167,7 +167,6 @@ export const formatIssueSnapshotDomain = (domain) => {
     id: toIdString(domain._id),
     name: domain.name,
     typeKey: typeof domain.typeKey === "string" ? domain.typeKey : null,
-    family: typeof domain.family === "string" ? domain.family : null,
     definition:
       domain.definition && typeof domain.definition === "object"
         ? domain.definition

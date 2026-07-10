@@ -42,7 +42,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
       Criterion.find({ issue: { $in: issueIds } })
         .populate(
           "expressionDomain",
-          "name typeKey family definition"
+          "name typeKey definition"
         )
         .lean(),
       IssueStageResult.find({

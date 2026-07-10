@@ -135,8 +135,6 @@ export const serializeIssueExpressionDomainSnapshot = (snapshot) => {
     name: typeof snapshot?.name === "string" ? snapshot.name : null,
     typeKey:
       typeof snapshot?.typeKey === "string" ? snapshot.typeKey : null,
-    family:
-      typeof snapshot?.family === "string" ? snapshot.family : null,
     definition: cloneSerializable(snapshot?.definition, {}),
   };
 };

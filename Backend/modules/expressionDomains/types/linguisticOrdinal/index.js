@@ -20,7 +20,6 @@ export const linguisticOrdinal = Object.freeze({
     return {
       name,
       typeKey: "linguisticOrdinal",
-      family: "linguistic",
       definition,
     };
   },

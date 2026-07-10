@@ -38,7 +38,6 @@ export const numericDiscrete = Object.freeze({
     return {
       name,
       typeKey: "numericDiscrete",
-      family: "numeric",
       definition,
     };
   },

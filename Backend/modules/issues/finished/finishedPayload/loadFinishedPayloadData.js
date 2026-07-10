@@ -125,7 +125,7 @@ export const loadFinishedSinglePhaseData = async ({
       .lean(),
     loadAvailableIssueModels(),
     IssueExpressionDomain.find({ issue: issue._id })
-      .select("_id name typeKey family definition")
+      .select("_id name typeKey definition")
       .lean(),
   ]);
 
@@ -191,7 +191,7 @@ export const loadFinishedConsensusData = async ({
       : Promise.resolve([]),
     loadAvailableIssueModels(),
     IssueExpressionDomain.find({ issue: issue._id })
-      .select("_id name typeKey family definition")
+      .select("_id name typeKey definition")
       .lean(),
   ]);
 

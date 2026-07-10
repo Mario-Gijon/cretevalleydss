@@ -8,7 +8,6 @@ export const createUserExpressionDomain = async ({ userId, payload }) => {
   const newDomain = new ExpressionDomain({
     name: normalizedDomain.name,
     typeKey: normalizedDomain.typeKey,
-    family: normalizedDomain.family,
     definition: normalizedDomain.definition,
     isGlobal: false,
     user: toIdString(userId),

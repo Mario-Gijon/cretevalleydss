@@ -40,7 +40,6 @@ export const createIssueDomainSnapshots = async ({
     sourceDomain: domain._id,
     name: domain.name,
     typeKey: domain.typeKey,
-    family: domain.family,
     definition: domain.definition,
   }));
 

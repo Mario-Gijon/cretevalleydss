@@ -14,6 +14,7 @@ import { sameId, toIdString } from "../../../utils/common/ids.js";
 import {
   buildExpressionDomainAssignmentsByCriterionOrThrow,
 } from "../../expressionDomains/buildIssueDomainConfig.js";
+import { getExpressionDomainFamilyOrThrow } from "../../expressionDomains/expressionDomainTypeCatalog.js";
 import {
   buildTargetModelRuntimeSnapshotOrThrow,
   validateScenarioModelCompatibilityOrThrow,
@@ -165,7 +166,7 @@ export const buildScenarioExecutionContext = async ({
   const issueDomainSnapshots = await IssueExpressionDomain.find({
     _id: { $in: issueDomainSnapshotIds },
   })
-    .select("_id name typeKey family definition")
+    .select("_id name typeKey definition")
     .lean();
 
   const existingSnapshotIds = new Set(
@@ -326,7 +327,9 @@ export const buildScenarioExecutionContext = async ({
   };
 
   const usedDomainTypes = new Set(
-    issueDomainSnapshots.map((domainSnapshot) => domainSnapshot.family)
+    issueDomainSnapshots.map((domainSnapshot) =>
+      getExpressionDomainFamilyOrThrow(domainSnapshot.typeKey)
+    )
   );
   const domainType =
     usedDomainTypes.size === 1 ? Array.from(usedDomainTypes)[0] : null;

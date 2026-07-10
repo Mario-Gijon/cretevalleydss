@@ -32,7 +32,6 @@ export const numericContinuous = Object.freeze({
     return {
       name,
       typeKey: "numericContinuous",
-      family: "numeric",
       definition,
     };
   },

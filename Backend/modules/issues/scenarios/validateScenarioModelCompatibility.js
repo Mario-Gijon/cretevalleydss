@@ -183,7 +183,6 @@ export const buildScenarioCompatibilityMetadata = ({
       id: toIdString(domainSnapshot._id),
       name: domainSnapshot.name,
       typeKey: domainSnapshot.typeKey,
-      family: domainSnapshot.family,
       membershipFunction: domainSnapshot.definition?.membershipFunction ?? null,
     })),
   };

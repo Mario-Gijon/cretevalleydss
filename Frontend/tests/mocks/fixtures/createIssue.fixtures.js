@@ -38,8 +38,8 @@ export const globalContinuousDomainFixture = {
   _id: "global-numeric-continuous",
   id: "global-numeric-continuous",
   name: "Continuous 0-1",
-  type: "numeric",
-  numericRange: {
+  typeKey: "numericContinuous",
+  definition: {
     min: 0,
     max: 1,
     step: null,
@@ -50,8 +50,8 @@ export const globalDiscreteDomainFixture = {
   _id: "global-numeric-discrete",
   id: "global-numeric-discrete",
   name: "Discrete 0-9",
-  type: "numeric",
-  numericRange: {
+  typeKey: "numericDiscrete",
+  definition: {
     min: 0,
     max: 9,
     step: 1,
@@ -62,18 +62,38 @@ export const expressionLinguisticDomainFixture = {
   _id: "expression-linguistic-5",
   id: "expression-linguistic-5",
   name: "Linguistic 5",
-  type: "linguistic",
-  membershipFunction: "triangular",
-  valueCount: 5,
+  typeKey: "linguisticFuzzy",
+  definition: {
+    membershipFunction: "triangular",
+    labelCount: 5,
+    labels: [
+      { key: "very_low", label: "Very Low", index: 0, values: [0, 0.125, 0.25] },
+      { key: "low", label: "Low", index: 1, values: [0, 0.25, 0.5] },
+      { key: "medium", label: "Medium", index: 2, values: [0.25, 0.5, 0.75] },
+      { key: "high", label: "High", index: 3, values: [0.5, 0.75, 1] },
+      { key: "very_high", label: "Very High", index: 4, values: [0.75, 0.875, 1] },
+    ],
+  },
 };
 
 export const expressionLinguisticDomainSevenFixture = {
   _id: "expression-linguistic-7",
   id: "expression-linguistic-7",
   name: "Linguistic 7",
-  type: "linguistic",
-  membershipFunction: "triangular",
-  valueCount: 7,
+  typeKey: "linguisticFuzzy",
+  definition: {
+    membershipFunction: "triangular",
+    labelCount: 7,
+    labels: [
+      { key: "very_low", label: "Very Low", index: 0, values: [0, 0.08, 0.16] },
+      { key: "low", label: "Low", index: 1, values: [0.08, 0.16, 0.32] },
+      { key: "rather_low", label: "Rather Low", index: 2, values: [0.16, 0.32, 0.48] },
+      { key: "medium", label: "Medium", index: 3, values: [0.32, 0.5, 0.68] },
+      { key: "rather_high", label: "Rather High", index: 4, values: [0.52, 0.68, 0.84] },
+      { key: "high", label: "High", index: 5, values: [0.68, 0.84, 0.92] },
+      { key: "very_high", label: "Very High", index: 6, values: [0.84, 0.92, 1] },
+    ],
+  },
 };
 
 const baseCreateIssueModel = {
@@ -85,13 +105,22 @@ const baseCreateIssueModel = {
   usesExpertWeights: false,
   supportsConsensus: false,
   supportsConsensusSimulation: false,
-  supportedDomains: {
-    numeric: {
-      continuous: true,
-      discrete: true,
+  supportedExpressionDomains: [
+    {
+      typeKey: "numericContinuous",
+      constraints: {},
     },
-    linguistic: ["triangular"],
-  },
+    {
+      typeKey: "numericDiscrete",
+      constraints: {},
+    },
+    {
+      typeKey: "linguisticFuzzy",
+      constraints: {
+        membershipFunction: ["triangular"],
+      },
+    },
+  ],
   parameters: [
     {
       key: "threshold",
@@ -134,13 +163,14 @@ export const fuzzyCriteriaWeightModelFixture = {
   name: "Fuzzy criteria weighted model",
   usesCriteriaWeights: true,
   usesFuzzyCriteriaWeights: true,
-  supportedDomains: {
-    numeric: {
-      continuous: false,
-      discrete: false,
+  supportedExpressionDomains: [
+    {
+      typeKey: "linguisticFuzzy",
+      constraints: {
+        membershipFunction: ["triangular"],
+      },
     },
-    linguistic: ["triangular"],
-  },
+  ],
 };
 
 export const consensusModelFixture = {

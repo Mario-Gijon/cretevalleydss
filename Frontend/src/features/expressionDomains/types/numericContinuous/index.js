@@ -1,16 +1,10 @@
 import NumericContinuousCreationForm from "./NumericContinuousCreationForm";
 import NumericContinuousEvaluationInput from "./NumericContinuousEvaluationInput";
 import { validateNumericContinuousEvaluation } from "./evaluation";
+import { getExpressionDomainTypeMetadataOrThrow } from "../../expressionDomainTypeMetadataCatalog";
 
 export const numericContinuousExpressionDomainType = Object.freeze({
-  key: "numericContinuous",
-  label: "Numeric continuous",
-  description: "Numeric values within a continuous range.",
-  family: "numeric",
-  constraintExample: {
-    min: 0,
-    max: 1,
-  },
+  ...getExpressionDomainTypeMetadataOrThrow("numericContinuous"),
   CreationForm: NumericContinuousCreationForm,
   EvaluationInput: NumericContinuousEvaluationInput,
   validateEvaluation: validateNumericContinuousEvaluation,

@@ -33,8 +33,12 @@ export const evaluationIssueFixture = {
           expressionDomain: {
             id: "domain-cost",
             name: "0-10",
-            type: "numeric",
-            numericRange: { min: 0, max: 10, step: 1 },
+            typeKey: "numericDiscrete",
+            definition: {
+              min: 0,
+              max: 10,
+              step: 1,
+            },
           },
           children: [],
         },
@@ -45,7 +49,14 @@ export const evaluationIssueFixture = {
           expressionDomain: {
             id: "domain-quality",
             name: "Low/Medium/High",
-            type: "linguistic",
+            typeKey: "linguisticOrdinal",
+            definition: {
+              labels: [
+                { key: "low", label: "Low", index: 0 },
+                { key: "medium", label: "Medium", index: 1 },
+                { key: "high", label: "High", index: 2 },
+              ],
+            },
           },
           children: [],
         },

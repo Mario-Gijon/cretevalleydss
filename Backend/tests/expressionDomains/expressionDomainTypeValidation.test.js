@@ -18,7 +18,6 @@ describe("expression domain type validation", () => {
     expect(expressionDomain).toEqual({
       name: "Numeric continuous",
       typeKey: "numericContinuous",
-      family: "numeric",
       definition: {
         min: 0,
         max: 10,
@@ -46,7 +45,6 @@ describe("expression domain type validation", () => {
     expect(expressionDomain).toEqual({
       name: "Numeric discrete",
       typeKey: "numericDiscrete",
-      family: "numeric",
       definition: {
         min: 1,
         max: 5,
@@ -72,7 +70,6 @@ describe("expression domain type validation", () => {
     expect(expressionDomain).toEqual({
       name: "Ordinal domain",
       typeKey: "linguisticOrdinal",
-      family: "linguistic",
       definition: {
         labelCount: 3,
         labels: [
@@ -106,7 +103,6 @@ describe("expression domain type validation", () => {
     expect(expressionDomain).toEqual({
       name: "Fuzzy domain",
       typeKey: "linguisticFuzzy",
-      family: "linguistic",
       definition: {
         membershipFunction: "triangular",
         labelCount: 3,

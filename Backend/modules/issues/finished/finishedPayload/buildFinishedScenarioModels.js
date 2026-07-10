@@ -1,6 +1,7 @@
 import { createInternalError } from "../../../../utils/common/errors.js";
 import { toIdString } from "../../../../utils/common/ids.js";
 import { buildDefaultsResolved } from "../../../decisionPlugins/modelParameters/resolveModelParameterValues.js";
+import { getExpressionDomainTypeOrThrow } from "../../../expressionDomains/expressionDomainTypeCatalog.js";
 import { buildScenarioCompatibilityMetadata } from "../../scenarios/validateScenarioModelCompatibility.js";
 
 const getLinguisticValueCountOrNull = (domain) => {
@@ -32,16 +33,17 @@ export const buildAvailableModelsPayload = ({
     });
   }
 
-  const linguisticDomains = issueDomainSnapshots.filter(
-    (domain) => domain.family === "linguistic"
+  const fuzzyDomains = issueDomainSnapshots.filter(
+    (domain) =>
+      getExpressionDomainTypeOrThrow(domain?.typeKey).key === "linguisticFuzzy"
   );
 
-  for (const domain of linguisticDomains) {
+  for (const domain of fuzzyDomains) {
     const valueCount = getLinguisticValueCountOrNull(domain);
 
     if (!Number.isInteger(valueCount) || valueCount < 2) {
       throw createInternalError(
-        "Finished linguistic issue domain snapshot valueCount is invalid",
+        "Finished fuzzy linguistic issue domain snapshot valueCount is invalid",
         {
           field: "issueDomainSnapshots.valueCount",
           details: {
@@ -56,7 +58,7 @@ export const buildAvailableModelsPayload = ({
 
   const linguisticValueCounts = Array.from(
     new Set(
-      linguisticDomains.map((domain) => getLinguisticValueCountOrNull(domain))
+      fuzzyDomains.map((domain) => getLinguisticValueCountOrNull(domain))
     )
   );
   const fuzzyWeightsValueCount =

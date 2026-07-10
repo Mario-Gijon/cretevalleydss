@@ -24,14 +24,12 @@ export const updateUserExpressionDomain = async ({
   const normalizedDomain = normalizeNewExpressionDomainPayload({
     name: updatedDomain.name ?? domain.name,
     typeKey: updatedDomain.typeKey ?? domain.typeKey,
-    family: updatedDomain.family ?? domain.family,
     definition: updatedDomain.definition ?? domain.definition,
     isGlobal: domain.isGlobal,
   });
 
   domain.name = normalizedDomain.name;
   domain.typeKey = normalizedDomain.typeKey;
-  domain.family = normalizedDomain.family;
   domain.definition = normalizedDomain.definition;
 
   await domain.save(session ? { session } : undefined);

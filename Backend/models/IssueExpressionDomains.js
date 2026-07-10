@@ -23,11 +23,6 @@ const issueExpressionDomainSchema = new Schema(
       required: true,
       trim: true,
     },
-    family: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     definition: {
       type: Schema.Types.Mixed,
       default: {},

@@ -91,18 +91,36 @@ export const createExpressionDomainFixture = async ({
   ...overrides
 } = {}) => {
   const suffix = uniqueSuffix();
+  const typeKey =
+    type === "linguistic" ? "linguisticFuzzy" : "numericDiscrete";
+  const definition =
+    type === "linguistic"
+      ? {
+        membershipFunction,
+        labelCount: valueCount,
+        labels: linguisticLabels.map((item, index) => ({
+          key: String(item.label || `label_${index + 1}`)
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_"),
+          label: item.label,
+          values: item.values,
+          index,
+        })),
+      }
+      : {
+        min: numericRange.min,
+        max: numericRange.max,
+        step: numericRange.step,
+      };
 
   return ExpressionDomain.create({
     user: isGlobal ? null : userId,
     name: `Domain ${suffix}`,
     isGlobal,
     locked: false,
-    type,
-    numericRange: type === "numeric" ? numericRange : undefined,
-    membershipFunction: type === "linguistic" ? membershipFunction : null,
-    valueCount: type === "linguistic" ? valueCount : null,
-    valuesMode: type === "linguistic" ? valuesMode : null,
-    linguisticLabels: type === "linguistic" ? linguisticLabels : [],
+    typeKey,
+    definition,
     ...overrides,
   });
 };
@@ -212,16 +230,35 @@ export const createIssueExpressionDomainSnapshotFixture = async ({
   valuesMode = null,
   linguisticLabels = [],
 } = {}) => {
+  const typeKey =
+    type === "linguistic" ? "linguisticFuzzy" : "numericDiscrete";
+  const definition =
+    type === "linguistic"
+      ? {
+        membershipFunction,
+        labelCount: valueCount,
+        labels: linguisticLabels.map((item, index) => ({
+          key: String(item.label || `label_${index + 1}`)
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_"),
+          label: item.label,
+          values: item.values,
+          index,
+        })),
+      }
+      : {
+        min: numericRange.min,
+        max: numericRange.max,
+        step: numericRange.step,
+      };
+
   return IssueExpressionDomain.create({
     issue: issueId,
     sourceDomain,
     name,
-    type,
-    numericRange: type === "numeric" ? numericRange : undefined,
-    membershipFunction: type === "linguistic" ? membershipFunction : null,
-    valueCount: type === "linguistic" ? valueCount : null,
-    valuesMode: type === "linguistic" ? valuesMode : null,
-    linguisticLabels: type === "linguistic" ? linguisticLabels : [],
+    typeKey,
+    definition,
   });
 };
 

@@ -44,7 +44,6 @@ describe("expression domains", () => {
     expect(result).toEqual({
       name: "Numeric domain",
       typeKey: "numericContinuous",
-      family: "numeric",
       definition: {
         min: 0,
         max: 10,
@@ -83,7 +82,6 @@ describe("expression domains", () => {
     expect(result).toEqual({
       name: "Linguistic domain",
       typeKey: "linguisticFuzzy",
-      family: "linguistic",
       definition: {
         membershipFunction: "triangular",
         labelCount: 3,
@@ -94,6 +92,29 @@ describe("expression domains", () => {
         ],
       },
     });
+  });
+
+  it("normalizeNewExpressionDomainPayload ignores a payload family field", () => {
+    const result = normalizeNewExpressionDomainPayload({
+      name: " Numeric domain ",
+      typeKey: "numericContinuous",
+      family: "linguistic",
+      definition: {
+        min: 0,
+        max: 10,
+      },
+    });
+
+    expect(result).toEqual({
+      name: "Numeric domain",
+      typeKey: "numericContinuous",
+      definition: {
+        min: 0,
+        max: 10,
+        step: null,
+      },
+    });
+    expect(result).not.toHaveProperty("family");
   });
 
   it("normalizeNewExpressionDomainPayload rejects duplicated linguistic labels", () => {
@@ -148,7 +169,6 @@ describe("expression domains", () => {
     expect(storedDomain).toMatchObject({
       name: "Personal numeric",
       typeKey: "numericDiscrete",
-      family: "numeric",
       isGlobal: false,
       user: user._id,
       definition: {
@@ -218,7 +238,6 @@ describe("expression domains", () => {
       sourceDomain: domain._id,
       name: domain.name,
       typeKey: domain.typeKey,
-      family: domain.family,
       definition: domain.definition,
     });
 
@@ -243,7 +262,6 @@ describe("expression domains", () => {
       isGlobal: true,
       user: null,
       typeKey: "numericContinuous",
-      family: "numeric",
       definition: {
         min: 0,
         max: 10,

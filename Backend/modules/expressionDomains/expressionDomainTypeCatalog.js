@@ -26,3 +26,6 @@ export const getExpressionDomainTypeOrThrow = (typeKey) => {
 
   return domainType;
 };
+
+export const getExpressionDomainFamilyOrThrow = (typeKey) =>
+  getExpressionDomainTypeOrThrow(typeKey).family;

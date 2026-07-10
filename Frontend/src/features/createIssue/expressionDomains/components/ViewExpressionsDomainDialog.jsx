@@ -26,7 +26,6 @@ import {
 } from "../../styles/createIssueStep.styles";
 import {
   getExpressionDomainDisplayMeta,
-  getExpressionDomainFamily,
   getExpressionDomainLabels,
   getExpressionDomainMembershipFunction,
   isLinguisticFuzzyExpressionDomain,
@@ -152,9 +151,6 @@ export const ViewExpressionsDomainDialog = ({
                           </Stack>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                             {displayMeta.descriptor}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                            Family: {getExpressionDomainFamily(domain) || "unknown"}
                           </Typography>
                         </Stack>
 

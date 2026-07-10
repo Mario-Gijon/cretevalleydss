@@ -12,6 +12,7 @@ import {
 } from "../../issues/shared/ordering.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "../../expressionDomains/buildIssueDomainConfig.js";
+import { getExpressionDomainFamilyOrThrow } from "../../expressionDomains/expressionDomainTypeCatalog.js";
 
 import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";
@@ -317,9 +318,12 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
 
   const snapshotsSummary = {
     total: snapshots.length,
-    numeric: snapshots.filter((domain) => domain.family === "numeric").length,
-    linguistic: snapshots.filter((domain) => domain.family === "linguistic")
-      .length,
+    numeric: snapshots.filter(
+      (domain) => getExpressionDomainFamilyOrThrow(domain.typeKey) === "numeric"
+    ).length,
+    linguistic: snapshots.filter(
+      (domain) => getExpressionDomainFamilyOrThrow(domain.typeKey) === "linguistic"
+    ).length,
   };
 
   const totalSubmittedEvaluationDocs = Array.from(

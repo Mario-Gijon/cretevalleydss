@@ -2,6 +2,7 @@ import {
   EVALUATION_STAGES,
   getEvaluationStructureOrThrow,
 } from "../../../decisionPlugins/evaluations/index.js";
+import { getExpressionDomainTypeOrThrow } from "../../../expressionDomains/expressionDomainTypeCatalog.js";
 import {
   createBadRequestError,
   createInternalError,
@@ -350,13 +351,14 @@ export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
     return null;
   }
 
-  const linguisticDomains = domainDocs.filter(
-    (domain) => domain.family === "linguistic"
+  const fuzzyDomains = domainDocs.filter(
+    (domain) =>
+      getExpressionDomainTypeOrThrow(domain?.typeKey).key === "linguisticFuzzy"
   );
 
-  if (linguisticDomains.length === 0) {
+  if (fuzzyDomains.length === 0) {
     throw createBadRequestError(
-      "Fuzzy criteria weights require linguistic expression domains",
+      "Fuzzy criteria weights require fuzzy linguistic expression domains",
       {
         field: "expressionDomainConfig",
       }
@@ -365,7 +367,7 @@ export const resolveFuzzyCriteriaWeightValueCountOrThrow = ({
 
   const valueCounts = new Set();
 
-  for (const domain of linguisticDomains) {
+  for (const domain of fuzzyDomains) {
     const labels = domain?.definition?.labels;
     const firstValues = Array.isArray(labels) && labels.length > 0
       ? labels[0]?.values

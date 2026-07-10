@@ -12,7 +12,6 @@ const numericContinuousDomain = {
   id: "domain-nc-1",
   name: "Numeric 0-10",
   typeKey: "numericContinuous",
-  family: "numeric",
   definition: {
     min: 0,
     max: 10,
@@ -25,7 +24,6 @@ const linguisticOrdinalDomain = {
   id: "domain-lo-1",
   name: "Ordinal labels",
   typeKey: "linguisticOrdinal",
-  family: "linguistic",
   definition: {
     labels: [
       { key: "low", label: "Low", index: 0 },

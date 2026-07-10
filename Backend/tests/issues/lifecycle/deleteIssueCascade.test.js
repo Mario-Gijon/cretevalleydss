@@ -41,7 +41,6 @@ describe("deleteIssueCascade", () => {
       sourceDomain: liveDomain._id,
       name: liveDomain.name,
       typeKey: liveDomain.typeKey,
-      family: liveDomain.family,
       definition: liveDomain.definition,
     });
 

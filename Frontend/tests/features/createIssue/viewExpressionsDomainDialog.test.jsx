@@ -10,7 +10,6 @@ const globalDomainFixture = {
   isGlobal: true,
   user: null,
   typeKey: "numericContinuous",
-  family: "numeric",
   definition: {
     min: 0,
     max: 10,
@@ -23,7 +22,6 @@ const userDomainFixture = {
   isGlobal: false,
   user: "user-1",
   typeKey: "numericDiscrete",
-  family: "numeric",
   definition: {
     min: 1,
     max: 5,
@@ -54,6 +52,7 @@ describe("ViewExpressionsDomainDialog", () => {
     expect(await screen.findByText("Manage domain expressions")).toBeInTheDocument();
     expect(screen.getByText("Global numeric domain")).toBeInTheDocument();
     expect(screen.getByText("My discrete domain")).toBeInTheDocument();
+    expect(screen.queryByText(/Family:/)).not.toBeInTheDocument();
     expect(screen.getByText("Global")).toBeInTheDocument();
     expect(screen.getByText("Mine")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);

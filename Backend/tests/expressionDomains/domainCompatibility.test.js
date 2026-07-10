@@ -9,14 +9,14 @@ describe("domainCompatibility", () => {
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           definition: {
             labelCount: 3,
           },
         },
         supportedExpressionDomains: [
           {
-            typeKey: "linguisticTwoTupleScale",
+            typeKey: "linguisticFuzzy",
             constraints: {
               labelCount: 3,
             },
@@ -30,14 +30,14 @@ describe("domainCompatibility", () => {
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           definition: {
             labelCount: 3,
           },
         },
         supportedExpressionDomains: [
           {
-            typeKey: "linguisticTwoTupleScale",
+            typeKey: "linguisticFuzzy",
             constraints: {
               labelCount: [2, 3, 4],
             },
@@ -51,7 +51,7 @@ describe("domainCompatibility", () => {
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           definition: {
             labelCount: 3,
             alphaRange: {
@@ -63,7 +63,7 @@ describe("domainCompatibility", () => {
         },
         supportedExpressionDomains: [
           {
-            typeKey: "linguisticTwoTupleScale",
+            typeKey: "linguisticFuzzy",
             constraints: {
               labelCount: 3,
               alphaRange: {
@@ -81,7 +81,7 @@ describe("domainCompatibility", () => {
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           definition: {
             labelCount: 3,
             alphaRange: {
@@ -92,7 +92,7 @@ describe("domainCompatibility", () => {
         },
         supportedExpressionDomains: [
           {
-            typeKey: "linguisticTwoTupleScale",
+            typeKey: "linguisticFuzzy",
             constraints: {
               alphaRange: {
                 min: -0.5,
@@ -109,14 +109,14 @@ describe("domainCompatibility", () => {
     expect(
       isDomainSnapshotSupportedByModel({
         domainSnapshot: {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           definition: {
             labels: ["Low", "Medium", "High"],
           },
         },
         supportedExpressionDomains: [
           {
-            typeKey: "linguisticTwoTupleScale",
+            typeKey: "linguisticFuzzy",
             constraints: {
               labelCount: 3,
             },

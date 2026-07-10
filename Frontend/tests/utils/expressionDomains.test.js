@@ -2,14 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import {
   expressionDomainMatchesSupportedEntry,
+  getExpressionDomainFamily,
 } from "../../src/utils/expressionDomains.js";
 
 describe("expressionDomainMatchesSupportedEntry", () => {
   const buildDomain = (definition) => ({
     _id: "domain-1",
     name: "Test domain",
-    typeKey: "linguisticTwoTupleScale",
+    typeKey: "linguisticFuzzy",
     definition,
+  });
+
+  it("derives family from the frontend catalog instead of trusting the payload", () => {
+    expect(
+      getExpressionDomainFamily({
+        typeKey: "linguisticFuzzy",
+        family: "numeric",
+      })
+    ).toBe("linguistic");
   });
 
   it("matches scalar constraints", () => {
@@ -17,7 +27,7 @@ describe("expressionDomainMatchesSupportedEntry", () => {
       expressionDomainMatchesSupportedEntry(
         buildDomain({ labelCount: 3 }),
         {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           constraints: { labelCount: 3 },
         }
       )
@@ -29,7 +39,7 @@ describe("expressionDomainMatchesSupportedEntry", () => {
       expressionDomainMatchesSupportedEntry(
         buildDomain({ labelCount: 3 }),
         {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           constraints: { labelCount: [2, 3, 4] },
         }
       )
@@ -48,7 +58,7 @@ describe("expressionDomainMatchesSupportedEntry", () => {
           labels: ["Low", "Medium", "High"],
         }),
         {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           constraints: {
             labelCount: 3,
             alphaRange: {
@@ -72,7 +82,7 @@ describe("expressionDomainMatchesSupportedEntry", () => {
           },
         }),
         {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           constraints: {
             alphaRange: {
               min: -0.5,
@@ -91,7 +101,7 @@ describe("expressionDomainMatchesSupportedEntry", () => {
           labels: ["Low", "Medium", "High"],
         }),
         {
-          typeKey: "linguisticTwoTupleScale",
+          typeKey: "linguisticFuzzy",
           constraints: { labelCount: 3 },
         }
       )

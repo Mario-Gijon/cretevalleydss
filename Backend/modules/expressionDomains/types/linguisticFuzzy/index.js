@@ -20,7 +20,6 @@ export const linguisticFuzzy = Object.freeze({
     return {
       name,
       typeKey: "linguisticFuzzy",
-      family: "linguistic",
       definition,
     };
   },

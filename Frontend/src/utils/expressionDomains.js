@@ -1,4 +1,8 @@
 import { getLinguisticMembershipDefinition } from "./linguisticMembershipFunctions";
+import {
+  getExpressionDomainTypeMetadata,
+  getExpressionDomainTypeMetadataOrThrow,
+} from "../features/expressionDomains/expressionDomainTypeMetadataCatalog";
 
 export const getExpressionDomainName = (domain) => {
   const name = String(domain?.name || "").trim();
@@ -11,9 +15,12 @@ export const getExpressionDomainTypeKey = (domain) => {
 };
 
 export const getExpressionDomainFamily = (domain) => {
-  const family = String(domain?.family || "").trim();
-  return family || "";
+  const typeKey = getExpressionDomainTypeKey(domain);
+  return getExpressionDomainTypeMetadata(typeKey)?.family ?? "";
 };
+
+export const getRequiredExpressionDomainFamily = (domain) =>
+  getExpressionDomainTypeMetadataOrThrow(getExpressionDomainTypeKey(domain)).family;
 
 export const getExpressionDomainDefinition = (domain) => {
   const definition = domain?.definition;
