@@ -5,24 +5,18 @@ import ModelForgeRegistryTab from "../../../src/features/admin/modelForge/ModelF
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 describe("ModelForgeRegistryTab", () => {
-  it("renders the expression-domain type usage breakdown", async () => {
+  it("renders remaining generated asset categories without an expression-domain section", async () => {
     renderWithProviders(
       <ModelForgeRegistryTab
         assets={{
-          expressionDomainTypes: [
+          models: [
             {
-              kind: "expressionDomainType",
-              key: "linguisticTwoTupleScale",
-              origin: "generated",
-              locations: ["Frontend/src/features/expressionDomains/types"],
+              kind: "model",
+              key: "demo_model",
+              locations: ["DecisionModelsService/models/demo_model"],
               missingLocations: [],
-              usageCount: 6,
-              usageBreakdown: {
-                expressionDomains: 1,
-                issueExpressionDomainSnapshots: 2,
-                issueModels: 3,
-              },
-              deletable: false,
+              usedByIssuesCount: 0,
+              deletable: true,
             },
           ],
         }}
@@ -35,11 +29,8 @@ describe("ModelForgeRegistryTab", () => {
       />
     );
 
-    expect(await screen.findByText("Expression domain types")).toBeInTheDocument();
-    expect(screen.getByText("linguisticTwoTupleScale")).toBeInTheDocument();
-    expect(screen.getByText("6")).toBeInTheDocument();
-    expect(screen.getByText(/Domains: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Snapshots: 2/)).toBeInTheDocument();
-    expect(screen.getByText(/Models: 3/)).toBeInTheDocument();
+    expect(await screen.findByText("Models")).toBeInTheDocument();
+    expect(screen.getByText("demo_model")).toBeInTheDocument();
+    expect(screen.queryByText("Expression domain types")).not.toBeInTheDocument();
   });
 });

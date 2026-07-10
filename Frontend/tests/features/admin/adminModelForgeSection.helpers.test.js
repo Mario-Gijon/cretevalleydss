@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { stripNullConstraintPlaceholders } from "../../../src/features/admin/modelForge/constraintTemplates.js";
 import {
   buildConstraintTemplateObjectOrThrow,
-  buildExpressionDomainTypeRequestPayloadOrThrow,
   buildSupportedExpressionDomainsPayloadOrThrow,
 } from "../../../src/features/admin/modelForge/scaffoldPayloadHelpers.js";
 
@@ -155,48 +154,6 @@ describe("buildConstraintTemplateObjectOrThrow", () => {
       alphaRange: {
         min: null,
         max: null,
-      },
-    });
-  });
-});
-
-describe("buildExpressionDomainTypeRequestPayloadOrThrow", () => {
-  it("preserves constraintExample in the API payload", () => {
-    expect(
-      buildExpressionDomainTypeRequestPayloadOrThrow({
-        typeKey: "linguisticTwoTupleScale",
-        label: "Linguistic 2-tuple scale",
-        description: "Generated scaffold",
-        family: "linguistic",
-        constraintTemplateFields: [
-          {
-            id: "label-count",
-            key: "labelCount",
-            children: [],
-          },
-        ],
-        definitionExampleJson: JSON.stringify({
-          labelCount: 3,
-        }),
-        evaluationExampleJson: JSON.stringify({
-          labelKey: "high",
-        }),
-      })
-    ).toEqual({
-      expressionDomainType: {
-        typeKey: "linguisticTwoTupleScale",
-        label: "Linguistic 2-tuple scale",
-        description: "Generated scaffold",
-        family: "linguistic",
-        constraintExample: {
-          labelCount: null,
-        },
-        definitionExample: {
-          labelCount: 3,
-        },
-        evaluationExample: {
-          labelKey: "high",
-        },
       },
     });
   });

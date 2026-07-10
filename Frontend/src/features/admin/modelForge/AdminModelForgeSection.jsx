@@ -9,12 +9,8 @@ import {
   Button,
   Checkbox,
   Chip,
-  Collapse,
   Divider,
   FormControlLabel,
-  IconButton,
-  List,
-  ListItem,
   Paper,
   Stack,
   Switch,
@@ -28,7 +24,6 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -42,18 +37,13 @@ import {
   getBackendHealth,
   getModelForgeAssetsAdmin,
   getModelForgeCatalog,
-  previewModelForgeExpressionDomainType,
   previewModelForgeModelPackage,
 } from "../../../services/admin.service";
 import { setPendingBackendChange } from "../../../utils/pendingBackendChange.js";
 import ModelForgeRegistryTab from "./ModelForgeRegistryTab";
 import {
-  buildConstraintTemplateFieldRow,
   buildEmptyParameterRow,
-  buildExampleExpressionDomainTypeFormState,
   buildExampleFormState,
-  buildExpressionDomainTypeRequestPayloadOrThrow,
-  buildInitialExpressionDomainTypeFormState,
   buildInitialFormState,
   buildParameterRowPayloadOrThrow,
   buildSupportedExpressionDomainEntry,
@@ -61,15 +51,12 @@ import {
   DEFAULT_MODE_OPTIONS,
   formatConstraintTemplate,
   formatConstraintTemplateInline,
-  formatGeneratedConstraintTemplate,
   formatJsonPreview,
   getParameterRowValidation,
   getSupportedExpressionDomainValidationError,
   lowerCamelCasePattern,
   modelKeyPattern,
   RESTRICTIONS_MODE_OPTIONS,
-  removeConstraintTemplateFieldRecursively,
-  updateConstraintTemplateFieldTree,
 } from "./scaffoldPayloadHelpers.js";
 import EmptyState from "../models/components/EmptyState";
 import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
@@ -77,14 +64,6 @@ import { getAdminIssueDetailCardSx } from "../issues/styles/adminIssues.styles";
 const MODEL_KIND_OPTIONS = [
   { value: "issue", label: "Issue model" },
   { value: "criteriaWeighting", label: "Criteria weighting" },
-];
-const SCAFFOLD_TYPE_OPTIONS = [
-  { value: "modelPackage", label: "Model" },
-  { value: "expressionDomainType", label: "Expression domain type" },
-];
-const EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS = [
-  { value: "numeric", label: "numeric" },
-  { value: "linguistic", label: "linguistic" },
 ];
 
 const DOMAIN_OPTIONS = listExpressionDomainTypes().map((entry) => ({
@@ -97,12 +76,8 @@ const DOMAIN_OPTIONS = listExpressionDomainTypes().map((entry) => ({
 
 const BACKEND_CHANGE_SUCCESS_MESSAGE =
   "Scaffold package created and generated services refreshed successfully.";
-const EXPRESSION_DOMAIN_TYPE_BACKEND_CHANGE_SUCCESS_MESSAGE =
-  "Expression domain type scaffold created and generated services refreshed successfully.";
 const BACKEND_CHANGE_DESTINATION_PATH =
   "/dashboard/admin/models?tab=manifest-sync";
-const EXPRESSION_DOMAIN_TYPE_DESTINATION_PATH =
-  "/dashboard/admin/model-forge?tab=registry";
 const ASSET_DELETE_SUCCESS_MESSAGE = "Asset deleted successfully.";
 const ASSET_DELETE_DESTINATION_PATH =
   "/dashboard/admin/model-forge?tab=registry";
@@ -841,82 +816,6 @@ const SectionDivider = ({ theme }) => (
   />
 );
 
-const ConstraintTemplateFieldItem = ({
-  field,
-  level = 0,
-  openItems,
-  onToggle,
-  onChangeKey,
-  onAddChild,
-  onRemove,
-}) => {
-  const hasChildren = Array.isArray(field?.children) && field.children.length > 0;
-  const isOpen = openItems[field.id] !== false;
-
-  return (
-    <>
-      <ListItem
-        sx={{
-          px: 1,
-          py: 0.7,
-          pl: 1 + level * 2,
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
-        {hasChildren ? (
-          <IconButton size="small" onClick={() => onToggle(field.id)}>
-            {isOpen ? (
-              <ExpandLessIcon fontSize="small" />
-            ) : (
-              <ExpandMoreIcon fontSize="small" />
-            )}
-          </IconButton>
-        ) : (
-          <Box sx={{ width: 32, flexShrink: 0 }} />
-        )}
-
-        <TextField
-          size="small"
-          color="info"
-          label="Field key"
-          value={field.key}
-          onChange={(event) => onChangeKey(field.id, event.target.value)}
-          fullWidth
-        />
-
-        <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-          <IconButton size="small" onClick={() => onAddChild(field.id)}>
-            <AddCircleOutlineIcon color="info" fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={() => onRemove(field.id)}>
-            <DeleteOutlineIcon color="error" fontSize="small" />
-          </IconButton>
-        </Stack>
-      </ListItem>
-
-      {hasChildren ? (
-        <Collapse in={isOpen} timeout="auto" unmountOnExit>
-          <List disablePadding>
-            {field.children.map((child) => (
-              <ConstraintTemplateFieldItem
-                key={child.id}
-                field={child}
-                level={level + 1}
-                openItems={openItems}
-                onToggle={onToggle}
-                onChangeKey={onChangeKey}
-                onAddChild={onAddChild}
-                onRemove={onRemove}
-              />
-            ))}
-          </List>
-        </Collapse>
-      ) : null}
-    </>
-  );
-};
-
 export default function AdminModelForgeSection() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -935,12 +834,7 @@ export default function AdminModelForgeSection() {
   const [pendingDeleteAsset, setPendingDeleteAsset] = useState(null);
   const [deleteBusyId, setDeleteBusyId] = useState("");
 
-  const [scaffoldType, setScaffoldType] = useState("modelPackage");
   const [formState, setFormState] = useState(buildInitialFormState);
-  const [expressionDomainTypeFormState, setExpressionDomainTypeFormState] = useState(
-    buildInitialExpressionDomainTypeFormState
-  );
-  const [constraintTemplateOpenItems, setConstraintTemplateOpenItems] = useState({});
   const [requestPayloadPreview, setRequestPayloadPreview] = useState(null);
   const [previewResult, setPreviewResult] = useState(null);
   const [applyResult, setApplyResult] = useState(null);
@@ -1133,18 +1027,6 @@ export default function AdminModelForgeSection() {
     setActionError("");
   }, []);
 
-  const updateScaffoldType = useCallback((nextType) => {
-    if (!nextType) return;
-    setScaffoldType(nextType);
-    setRunFullFrontendBuild(false);
-    setApplyDialogOpen(false);
-    setRequestPayloadPreview(null);
-    setPreviewResult(null);
-    setApplyResult(null);
-    setApplyValidationResult(null);
-    setActionError("");
-  }, []);
-
   const setParameterField = useCallback((id, field, value) => {
     setFormState((current) => ({
       ...current,
@@ -1182,101 +1064,10 @@ export default function AdminModelForgeSection() {
   }, [resetActionState]);
 
   const loadExample = useCallback(() => {
-    if (scaffoldType === "expressionDomainType") {
-      setExpressionDomainTypeFormState(
-        buildExampleExpressionDomainTypeFormState(
-          ["numeric", "linguistic"].includes(expressionDomainTypeFormState.family)
-            ? expressionDomainTypeFormState.family
-            : "numeric"
-        )
-      );
-      resetActionState();
-      showSnackbarAlert("Sample expression domain type scaffold form loaded", "success");
-      return;
-    }
-
     setFormState(buildExampleFormState());
     resetActionState();
     showSnackbarAlert("Sample scaffold form loaded", "success");
-  }, [
-    expressionDomainTypeFormState.family,
-    resetActionState,
-    scaffoldType,
-    showSnackbarAlert,
-  ]);
-
-  const setExpressionDomainTypeField = useCallback((field, value) => {
-    setExpressionDomainTypeFormState((current) => ({
-      ...current,
-      [field]: value,
-    }));
-    resetActionState();
-  }, [resetActionState]);
-
-  const addConstraintTemplateRootField = useCallback(() => {
-    setExpressionDomainTypeFormState((current) => ({
-      ...current,
-      constraintTemplateFields: [
-        ...(Array.isArray(current.constraintTemplateFields)
-          ? current.constraintTemplateFields
-          : []),
-        buildConstraintTemplateFieldRow(),
-      ],
-    }));
-    resetActionState();
-  }, [resetActionState]);
-
-  const updateConstraintTemplateFieldKey = useCallback((fieldId, key) => {
-    setExpressionDomainTypeFormState((current) => ({
-      ...current,
-      constraintTemplateFields: updateConstraintTemplateFieldTree(
-        current.constraintTemplateFields,
-        fieldId,
-        (field) => ({ ...field, key })
-      ),
-    }));
-    resetActionState();
-  }, [resetActionState]);
-
-  const addConstraintTemplateChildField = useCallback((fieldId) => {
-    setExpressionDomainTypeFormState((current) => ({
-      ...current,
-      constraintTemplateFields: updateConstraintTemplateFieldTree(
-        current.constraintTemplateFields,
-        fieldId,
-        (field) => ({
-          ...field,
-          children: [
-            ...(Array.isArray(field.children) ? field.children : []),
-            buildConstraintTemplateFieldRow(),
-          ],
-        })
-      ),
-    }));
-    setConstraintTemplateOpenItems((current) => ({
-      ...current,
-      [fieldId]: true,
-    }));
-    resetActionState();
-  }, [resetActionState]);
-
-  const removeConstraintTemplateField = useCallback((fieldId) => {
-    setExpressionDomainTypeFormState((current) => ({
-      ...current,
-      constraintTemplateFields: removeConstraintTemplateFieldRecursively(
-        current.constraintTemplateFields,
-        fieldId
-      ),
-    }));
-    resetActionState();
-  }, [resetActionState]);
-
-  const toggleConstraintTemplateField = useCallback((fieldId) => {
-    setConstraintTemplateOpenItems((current) => ({
-      ...current,
-      [fieldId]: current[fieldId] === false,
-    }));
-  }, []);
+  }, [resetActionState, showSnackbarAlert]);
 
   const setSupportedExpressionDomainConstraints = useCallback(
     (typeKey, constraintsJsonText) => {
@@ -1403,12 +1194,7 @@ export default function AdminModelForgeSection() {
     let payload = null;
 
     try {
-      payload =
-        scaffoldType === "expressionDomainType"
-          ? buildExpressionDomainTypeRequestPayloadOrThrow(
-            expressionDomainTypeFormState
-          )
-          : buildModelPackageRequestPayload();
+      payload = buildModelPackageRequestPayload();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid form data";
       setActionError(message);
@@ -1422,19 +1208,11 @@ export default function AdminModelForgeSection() {
     setApplyValidationResult(null);
 
     try {
-      const response =
-        scaffoldType === "expressionDomainType"
-          ? await previewModelForgeExpressionDomainType(payload)
-          : await previewModelForgeModelPackage(payload);
+      const response = await previewModelForgeModelPackage(payload);
 
       if (!response?.success) {
         const message =
-          response?.message ||
-          (
-            scaffoldType === "expressionDomainType"
-              ? "Error previewing Model Forge expression domain type scaffold."
-              : "Error previewing Model Forge scaffold package."
-          );
+          response?.message || "Error previewing Model Forge scaffold package.";
         setActionError(message);
         showSnackbarAlert(message, "error");
         return false;
@@ -1443,21 +1221,13 @@ export default function AdminModelForgeSection() {
       setRequestPayloadPreview(payload);
       setPreviewResult(response.data || null);
       showSnackbarAlert(
-        response.message ||
-          (
-            scaffoldType === "expressionDomainType"
-              ? "Expression domain type scaffold preview completed"
-              : "Scaffold preview completed"
-          ),
+        response.message || "Scaffold preview completed",
         "success"
       );
       return true;
     } catch (error) {
       console.error(error);
-      const message =
-        scaffoldType === "expressionDomainType"
-          ? "Unexpected error previewing Model Forge expression domain type scaffold."
-          : "Unexpected error previewing Model Forge scaffold package.";
+      const message = "Unexpected error previewing Model Forge scaffold package.";
       setActionError(message);
       showSnackbarAlert(message, "error");
       return false;
@@ -1466,8 +1236,6 @@ export default function AdminModelForgeSection() {
     }
   }, [
     buildModelPackageRequestPayload,
-    expressionDomainTypeFormState,
-    scaffoldType,
     showSnackbarAlert,
   ]);
 
@@ -1489,32 +1257,20 @@ export default function AdminModelForgeSection() {
       }
 
       const pendingChange = {
-        type:
-          scaffoldType === "expressionDomainType"
-            ? "modelForgeExpressionDomainTypeScaffoldApply"
-            : "modelForgeScaffoldApply",
+        type: "modelForgeScaffoldApply",
         createdAt: Date.now(),
         applyRequested: false,
         applyCompleted: false,
         backendRestartRequested: false,
         runFullFrontendBuild,
         backendStartedAtBefore: healthResponse?.data?.startedAt || null,
-        expectedApiModelKey:
-          scaffoldType === "expressionDomainType"
-            ? null
-            : String(formState.apiModelKey || "").trim() || null,
+        expectedApiModelKey: String(formState.apiModelKey || "").trim() || null,
         applyRequestPayload: {
           ...requestPayloadPreview,
           runFullFrontendBuild,
         },
-        successMessage:
-          scaffoldType === "expressionDomainType"
-            ? EXPRESSION_DOMAIN_TYPE_BACKEND_CHANGE_SUCCESS_MESSAGE
-            : BACKEND_CHANGE_SUCCESS_MESSAGE,
-        destinationPath:
-          scaffoldType === "expressionDomainType"
-            ? EXPRESSION_DOMAIN_TYPE_DESTINATION_PATH
-            : BACKEND_CHANGE_DESTINATION_PATH,
+        successMessage: BACKEND_CHANGE_SUCCESS_MESSAGE,
+        destinationPath: BACKEND_CHANGE_DESTINATION_PATH,
       };
 
       setPendingBackendChange(pendingChange);
@@ -1533,7 +1289,6 @@ export default function AdminModelForgeSection() {
     navigate,
     requestPayloadPreview,
     runFullFrontendBuild,
-    scaffoldType,
     showSnackbarAlert,
   ]);
 
@@ -1706,54 +1461,11 @@ export default function AdminModelForgeSection() {
                   {actionError}
                 </Alert>
               )}
-
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "text.secondary", fontWeight: 900, display: "block", mb: 0.8 }}
-                >
-                  Scaffold type
-                </Typography>
-                <ToggleButtonGroup
-                  exclusive
-                  color="info"
-                  value={scaffoldType}
-                  onChange={(_event, value) => updateScaffoldType(value)}
-                  size="small"
-                  sx={{
-                    width: "100%",
-                    p: 0.25,
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.common.white, 0.025),
-                    border: `1px solid ${alpha(theme.palette.common.white, 0.07)}`,
-                    "& .MuiToggleButton-root": {
-                      flex: 1,
-                      border: 0,
-                      borderRadius: 1.6,
-                      color: "text.secondary",
-                      textTransform: "none",
-                      fontWeight: 900,
-                      px: 1,
-                    },
-                    "& .Mui-selected": {
-                      color: "info.main",
-                      bgcolor: `${alpha(theme.palette.info.main, 0.13)} !important`,
-                    },
-                  }}
-                >
-                  {SCAFFOLD_TYPE_OPTIONS.map((option) => (
-                    <ToggleButton key={option.value} value={option.value}>
-                      {option.label}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </Box>
             </Stack>
           </InlineSection>
 
           <SectionDivider theme={theme} />
 
-          {scaffoldType === "modelPackage" && (
           <InlineSection title="Model">
             <Stack spacing={1.65}>
               <Box sx={modelFieldsGridSx}>
@@ -1917,11 +1629,9 @@ export default function AdminModelForgeSection() {
               )}
             </Stack>
           </InlineSection>
-          )}
 
-          {scaffoldType === "modelPackage" && <SectionDivider theme={theme} />}
+          <SectionDivider theme={theme} />
 
-          {scaffoldType === "modelPackage" && (
           <InlineSection title="Capabilities">
             <Stack spacing={1.55}>
               <Box
@@ -2122,11 +1832,9 @@ export default function AdminModelForgeSection() {
               </Stack>
             </Stack>
           </InlineSection>
-          )}
 
-          {scaffoldType === "modelPackage" && <SectionDivider theme={theme} />}
+          <SectionDivider theme={theme} />
 
-          {scaffoldType === "modelPackage" && (
           <InlineSection
             title="Parameters"
             action={(
@@ -2162,210 +1870,6 @@ export default function AdminModelForgeSection() {
               </Stack>
             )}
           </InlineSection>
-          )}
-
-          {scaffoldType === "expressionDomainType" && (
-            <InlineSection
-              title="Expression domain type"
-              subtitle="Create a new global expression-domain plugin scaffold. This does not create any concrete expression domain documents."
-            >
-              <Stack spacing={1.4}>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gap: { xs: 1.2, md: 1.4 },
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "repeat(2, minmax(0, 1fr))",
-                    },
-                  }}
-                >
-                  <TextField
-                    label="typeKey"
-                    value={expressionDomainTypeFormState.typeKey}
-                    onChange={(event) =>
-                      setExpressionDomainTypeField("typeKey", event.target.value)
-                    }
-                    helperText="lower camelCase"
-                    color="info"
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Label"
-                    value={expressionDomainTypeFormState.label}
-                    onChange={(event) =>
-                      setExpressionDomainTypeField("label", event.target.value)
-                    }
-                    color="info"
-                    size="small"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Description"
-                    value={expressionDomainTypeFormState.description}
-                    onChange={(event) =>
-                      setExpressionDomainTypeField("description", event.target.value)
-                    }
-                    color="info"
-                    size="small"
-                    fullWidth
-                    sx={{ gridColumn: { xs: "auto", md: "1 / -1" } }}
-                  />
-                  <Autocomplete
-                    options={EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS}
-                    value={
-                      EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS.find(
-                        (item) => item.value === expressionDomainTypeFormState.family
-                      ) || EXPRESSION_DOMAIN_TYPE_FAMILY_OPTIONS[0]
-                    }
-                    onChange={(_event, value) =>
-                      setExpressionDomainTypeField("family", value?.value || "numeric")
-                    }
-                    getOptionLabel={(option) => option?.label || ""}
-                    isOptionEqualToValue={(option, value) => option.value === value.value}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        color="info"
-                        label="Family"
-                        size="small"
-                        fullWidth
-                      />
-                    )}
-                  />
-                </Box>
-
-                <Accordion disableGutters defaultExpanded={false} sx={flatAccordionSx(theme)}>
-                  <AccordionSummary
-                    expandIcon={<ExpandMoreIcon />}
-                    sx={flatAccordionSummarySx}
-                  >
-                    <Stack spacing={0.2}>
-                      <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                        Optional scaffold examples
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ color: "text.secondary", fontWeight: 800 }}
-                      >
-                        These examples only seed the generated scaffold files. They can be edited later in code.
-                      </Typography>
-                    </Stack>
-                  </AccordionSummary>
-
-                  <AccordionDetails sx={flatAccordionDetailsSx}>
-                    <Stack spacing={1.1}>
-                      <Box
-                        sx={{
-                          border: `1px solid ${alpha(theme.palette.info.main, 0.14)}`,
-                          borderRadius: 2,
-                          bgcolor: alpha(theme.palette.common.white, 0.015),
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1}
-                          alignItems={{ xs: "stretch", sm: "center" }}
-                          justifyContent="space-between"
-                          sx={{ px: 1.1, py: 1 }}
-                        >
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                              Constraint template
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              sx={{ color: "text.secondary", fontWeight: 800 }}
-                            >
-                              Fields that a model can later restrict for compatibility. This
-                              defines available constraint keys, not concrete values.
-                            </Typography>
-                          </Box>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="info"
-                            startIcon={<AddCircleOutlineIcon />}
-                            onClick={addConstraintTemplateRootField}
-                            sx={{ textTransform: "none", fontWeight: 900 }}
-                          >
-                            Add root field
-                          </Button>
-                        </Stack>
-
-                        {Array.isArray(expressionDomainTypeFormState.constraintTemplateFields) &&
-                        expressionDomainTypeFormState.constraintTemplateFields.length > 0 ? (
-                          <List disablePadding sx={{ pb: 0.6 }}>
-                            {expressionDomainTypeFormState.constraintTemplateFields.map((field) => (
-                              <ConstraintTemplateFieldItem
-                                key={field.id}
-                                field={field}
-                                openItems={constraintTemplateOpenItems}
-                                onToggle={toggleConstraintTemplateField}
-                                onChangeKey={updateConstraintTemplateFieldKey}
-                                onAddChild={addConstraintTemplateChildField}
-                                onRemove={removeConstraintTemplateField}
-                              />
-                            ))}
-                          </List>
-                        ) : (
-                          <Box sx={{ px: 1.1, pb: 1.1 }}>
-                            <EmptyState>No constraint fields added yet.</EmptyState>
-                          </Box>
-                        )}
-                      </Box>
-
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{ display: "block", mb: 0.6, color: "text.secondary", fontWeight: 850 }}
-                        >
-                          Generated constraint template
-                        </Typography>
-                        <Box component="pre" sx={codeBlockSx(theme)}>
-                          {formatGeneratedConstraintTemplate(
-                            expressionDomainTypeFormState.constraintTemplateFields
-                          )}
-                        </Box>
-                      </Box>
-                      <TextField
-                        color="info"
-                        label="definitionExampleJson"
-                        value={expressionDomainTypeFormState.definitionExampleJson}
-                        onChange={(event) =>
-                          setExpressionDomainTypeField(
-                            "definitionExampleJson",
-                            event.target.value
-                          )
-                        }
-                        minRows={5}
-                        multiline
-                        fullWidth
-                        helperText="Example shape of the definition saved in the database for a concrete expression domain. This definition is later used to validate evaluations."
-                      />
-                      <TextField
-                        color="info"
-                        label="evaluationExampleJson"
-                        value={expressionDomainTypeFormState.evaluationExampleJson}
-                        onChange={(event) =>
-                          setExpressionDomainTypeField(
-                            "evaluationExampleJson",
-                            event.target.value
-                          )
-                        }
-                        minRows={5}
-                        multiline
-                        fullWidth
-                        helperText="Example value saved for each evaluation. At runtime, this value is validated against the concrete domain definition."
-                      />
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
-              </Stack>
-            </InlineSection>
-          )}
 
           <SectionDivider theme={theme} />
 
@@ -2484,20 +1988,14 @@ export default function AdminModelForgeSection() {
 
                 {!applyResult ? (
                   <Box sx={{ py: 0.4 }}>
-                    <EmptyState>
-                      {scaffoldType === "expressionDomainType"
-                        ? "No expression domain type scaffold has been applied yet."
-                        : "No scaffold package has been applied yet."}
-                    </EmptyState>
+                    <EmptyState>No scaffold package has been applied yet.</EmptyState>
                   </Box>
                 ) : (
                   <Stack spacing={1.25}>
-                    {scaffoldType === "modelPackage" && (
-                      <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
-                        Run Manifest Sync manually if you want newly generated models to appear in
-                        the admin catalog.
-                      </Alert>
-                    )}
+                    <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
+                      Run Manifest Sync manually if you want newly generated models to appear in
+                      the admin catalog.
+                    </Alert>
 
                     <Stack
                       spacing={0}
@@ -2587,16 +2085,8 @@ export default function AdminModelForgeSection() {
         onClose={() => {
           setApplyDialogOpen(false);
         }}
-        title={
-          scaffoldType === "expressionDomainType"
-            ? "Apply expression domain type scaffold?"
-            : "Apply scaffold package?"
-        }
-        subtitle={
-          scaffoldType === "expressionDomainType"
-            ? "This will write a new global expression domain type plugin scaffold to the project. Existing items are not overwritten."
-            : "This will write missing scaffold files to the project. Existing items are skipped."
-        }
+        title="Apply scaffold package?"
+        subtitle="This will write missing scaffold files to the project. Existing items are skipped."
         tone="warning"
         actions={[
           {
@@ -2606,10 +2096,7 @@ export default function AdminModelForgeSection() {
           },
           {
             id: "confirm-apply-model-forge",
-            label:
-              scaffoldType === "expressionDomainType"
-                ? "Apply scaffold"
-                : "Apply scaffold",
+            label: "Apply scaffold",
             color: "warning",
             variant: "contained",
             onClick: handleApplyScaffold,

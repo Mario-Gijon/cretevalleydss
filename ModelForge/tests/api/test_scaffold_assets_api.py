@@ -18,31 +18,11 @@ def test_scaffold_assets_lists_generated_entries(
         project_root
         / "Backend/modules/decisionPlugins/modelParameters/structures/scoreRange"
     )
-    expression_domain_backend = (
-        project_root
-        / "Backend/modules/decisionPlugins/expressionDomains/types/customFuzzyScale"
-    )
-    expression_domain_frontend = (
-        project_root
-        / "Frontend/src/features/decisionPlugins/expressionDomains/types/customFuzzyScale"
-    )
-    core_expression_domain_frontend = (
-        project_root
-        / "Frontend/src/features/decisionPlugins/expressionDomains/types/numericContinuous"
-    )
-    core_expression_domain_backend = (
-        project_root
-        / "Backend/modules/decisionPlugins/expressionDomains/types/numericContinuous"
-    )
 
     model_dir.mkdir(parents=True)
     evaluation_backend.mkdir(parents=True)
     evaluation_frontend.mkdir(parents=True)
     parameter_backend.mkdir(parents=True)
-    expression_domain_backend.mkdir(parents=True)
-    expression_domain_frontend.mkdir(parents=True)
-    core_expression_domain_frontend.mkdir(parents=True)
-    core_expression_domain_backend.mkdir(parents=True)
 
     (model_dir / "definition.py").write_text("# generated\n", encoding="utf-8")
     (evaluation_backend / "index.js").write_text(
@@ -80,33 +60,6 @@ def test_scaffold_assets_lists_generated_entries(
     assert parameter_item["missingLocations"] == [
         "Frontend/src/features/decisionPlugins/modelParameters/fields/scoreRange"
     ]
-
-    expression_domain_item = next(
-        item
-        for item in payload["expressionDomainTypes"]
-        if item["key"] == "customFuzzyScale"
-    )
-    assert sorted(expression_domain_item["locations"]) == [
-        "Backend/modules/decisionPlugins/expressionDomains/types/customFuzzyScale",
-        "Frontend/src/features/decisionPlugins/expressionDomains/types/customFuzzyScale",
-    ]
-    assert expression_domain_item["missingLocations"] == []
-    core_expression_domain_item = next(
-        item
-        for item in payload["expressionDomainTypes"]
-        if item["key"] == "numericContinuous"
-    )
-    assert sorted(core_expression_domain_item["locations"]) == [
-        "Backend/modules/decisionPlugins/expressionDomains/types/numericContinuous",
-        "Frontend/src/features/decisionPlugins/expressionDomains/types/numericContinuous",
-    ]
-    assert core_expression_domain_item["deletable"] is False
-    assert core_expression_domain_item["protected"] is True
-    assert core_expression_domain_item["origin"] == "core"
-    assert (
-        core_expression_domain_item["deleteDisabledReason"]
-        == "Core expression domain types cannot be deleted."
-    )
 
 
 def test_delete_scaffold_asset_removes_generated_model_directory(
@@ -170,43 +123,3 @@ def test_delete_scaffold_asset_rejects_invalid_key_format(
         "message": "Asset key format is invalid.",
         "field": "key",
     }
-
-
-def test_delete_scaffold_asset_removes_generated_expression_domain_type_directories(
-    client_factory,
-    project_root: Path,
-) -> None:
-    backend_dir = (
-        project_root
-        / "Backend/modules/decisionPlugins/expressionDomains/types/customFuzzyScale"
-    )
-    frontend_dir = (
-        project_root
-        / "Frontend/src/features/decisionPlugins/expressionDomains/types/customFuzzyScale"
-    )
-    backend_dir.mkdir(parents=True)
-    frontend_dir.mkdir(parents=True)
-    (backend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
-    (backend_dir / "creation.js").write_text("// generated\n", encoding="utf-8")
-    (backend_dir / "evaluation.js").write_text("// generated\n", encoding="utf-8")
-    (frontend_dir / "index.js").write_text("// generated\n", encoding="utf-8")
-
-    with client_factory(project_root) as client:
-        response = client.delete(
-            "/scaffold/assets/expressionDomainType/customFuzzyScale"
-        )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "service": "model-forge",
-        "kind": "scaffold-asset-delete",
-        "assetKind": "expressionDomainType",
-        "key": "customFuzzyScale",
-        "deletedLocations": [
-            "Backend/modules/decisionPlugins/expressionDomains/types/customFuzzyScale",
-            "Frontend/src/features/decisionPlugins/expressionDomains/types/customFuzzyScale",
-        ],
-        "missingLocations": [],
-    }
-    assert not backend_dir.exists()
-    assert not frontend_dir.exists()

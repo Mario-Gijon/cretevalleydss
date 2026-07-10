@@ -7,9 +7,6 @@ from api.routers.scaffold_catalog import router as scaffold_catalog_router
 from api.routers.scaffold_evaluation_structure import (
     router as scaffold_evaluation_structure_router,
 )
-from api.routers.scaffold_expression_domain_type import (
-    router as scaffold_expression_domain_type_router,
-)
 from api.routers.scaffold_model import router as scaffold_model_router
 from api.routers.scaffold_model_package import (
     router as scaffold_model_package_router,
@@ -32,7 +29,6 @@ def create_application() -> FastAPI:
     app.include_router(scaffold_assets_router)
     app.include_router(scaffold_catalog_router)
     app.include_router(scaffold_evaluation_structure_router)
-    app.include_router(scaffold_expression_domain_type_router)
     app.include_router(scaffold_model_router)
     app.include_router(scaffold_model_package_router)
     app.include_router(scaffold_parameter_router)

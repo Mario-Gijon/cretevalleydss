@@ -368,26 +368,6 @@ export const applyModelForgeModelPackage = async (payload) =>
     }
   );
 
-export const previewModelForgeExpressionDomainType = async (payload) =>
-  requestJson(
-    `${API}/admin/model-forge/expression-domain-type/preview`,
-    jsonRequest("POST", payload),
-    {
-      fetcher: authFetch,
-      fallbackMessage: "Error previewing Model Forge expression domain type scaffold.",
-    }
-  );
-
-export const applyModelForgeExpressionDomainType = async (payload) =>
-  requestJson(
-    `${API}/admin/model-forge/expression-domain-type/apply`,
-    jsonRequest("POST", payload),
-    {
-      fetcher: authFetch,
-      fallbackMessage: "Error applying Model Forge expression domain type scaffold.",
-    }
-  );
-
 export const deleteModelForgeAssetAdmin = async (kind, key) =>
   requestJson(
     `${API}/admin/model-forge/assets/${encodeURIComponent(kind)}/${encodeURIComponent(

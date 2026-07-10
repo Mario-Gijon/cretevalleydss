@@ -7,7 +7,6 @@ ScaffoldAssetKind = Literal[
     "model",
     "evaluationStructure",
     "parameterStructure",
-    "expressionDomainType",
 ]
 
 
@@ -29,7 +28,6 @@ class ScaffoldAssetsResponse(BaseModel):
     models: list[ScaffoldAssetItem] = Field(default_factory=list)
     evaluationStructures: list[ScaffoldAssetItem] = Field(default_factory=list)
     parameterStructures: list[ScaffoldAssetItem] = Field(default_factory=list)
-    expressionDomainTypes: list[ScaffoldAssetItem] = Field(default_factory=list)
 
 
 class DeleteScaffoldAssetResponse(BaseModel):
