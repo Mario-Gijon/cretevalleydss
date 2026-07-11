@@ -1,5 +1,13 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
+import {
+  getLinguisticFuzzyEvaluationLabels,
+  normalizeLinguisticFuzzyEvaluationValue,
+} from "../types/linguisticFuzzy/evaluation.js";
+import {
+  getLinguisticOrdinalEvaluationLabels,
+  normalizeLinguisticOrdinalEvaluationValue,
+} from "../types/linguisticOrdinal/evaluation.js";
 import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
 
 const isPlainObject = (value) =>
@@ -50,15 +58,43 @@ export const areExpressionDomainValuesEqual = ({
       );
 
     case "linguisticOrdinal":
-      return (
-        hasOnlyLabelKey(left) &&
-        hasOnlyLabelKey(right) &&
-        left.labelKey === right.labelKey
-      );
+      if (!hasOnlyLabelKey(left) || !hasOnlyLabelKey(right)) {
+        return false;
+      }
+
+      try {
+        const labels = getLinguisticOrdinalEvaluationLabels(expressionDomain);
+        const normalizedLeft = normalizeLinguisticOrdinalEvaluationValue({
+          value: left,
+          labels,
+        });
+        const normalizedRight = normalizeLinguisticOrdinalEvaluationValue({
+          value: right,
+          labels,
+        });
+
+        return normalizedLeft.labelKey === normalizedRight.labelKey;
+      } catch {
+        return false;
+      }
 
     case "linguisticFuzzy":
       if (hasOnlyLabelKey(left) && hasOnlyLabelKey(right)) {
-        return left.labelKey === right.labelKey;
+        try {
+          const labels = getLinguisticFuzzyEvaluationLabels(expressionDomain);
+          const normalizedLeft = normalizeLinguisticFuzzyEvaluationValue({
+            value: left,
+            labels,
+          });
+          const normalizedRight = normalizeLinguisticFuzzyEvaluationValue({
+            value: right,
+            labels,
+          });
+
+          return normalizedLeft.labelKey === normalizedRight.labelKey;
+        } catch {
+          return false;
+        }
       }
 
       if (hasOnlyValues(left) && hasOnlyValues(right)) {
@@ -83,4 +119,3 @@ export const areExpressionDomainValuesEqual = ({
       });
   }
 };
-

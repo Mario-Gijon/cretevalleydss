@@ -9,32 +9,85 @@ export const buildEmptyPairwiseCell = () => ({
   value: "",
 });
 
-const readCanonicalCellValue = (cell) =>
-  isPlainObject(cell) && Object.prototype.hasOwnProperty.call(cell, "value")
-    ? cell.value
-    : "";
+const requireCanonicalPairwiseCell = ({ cell, field }) => {
+  if (!isPlainObject(cell)) {
+    throw new Error(`${field} must be a canonical pairwise cell object.`);
+  }
 
-export const buildCanonicalPairwiseEvaluations = ({
+  const keys = Object.keys(cell);
+
+  if (keys.length !== 1 || !Object.prototype.hasOwnProperty.call(cell, "value")) {
+    throw new Error(`${field} must contain exactly the key "value".`);
+  }
+
+  if (cell.value === null || cell.value === undefined) {
+    throw new Error(`${field}.value is invalid.`);
+  }
+
+  return cell;
+};
+
+export const requireCanonicalPairwiseEvaluations = ({
   alternatives,
   evaluations,
-}) =>
-  Object.fromEntries(
-    alternatives.map((rowAlternative) => [
-      rowAlternative.id,
-      Object.fromEntries(
-        alternatives
-          .filter((columnAlternative) => columnAlternative.id !== rowAlternative.id)
-          .map((columnAlternative) => [
-            columnAlternative.id,
-            {
-              value: readCanonicalCellValue(
-                evaluations?.[rowAlternative.id]?.[columnAlternative.id]
-              ),
-            },
-          ])
-      ),
-    ])
-  );
+}) => {
+  if (!isPlainObject(evaluations)) {
+    throw new Error("Pairwise evaluations must be an object.");
+  }
+
+  const alternativeIds = alternatives.map((alternative) => alternative.id);
+  const rowKeys = Object.keys(evaluations);
+  const unknownRows = rowKeys.filter((rowId) => !alternativeIds.includes(rowId));
+
+  if (unknownRows.length > 0) {
+    throw new Error("Pairwise evaluations contain unknown rows.");
+  }
+
+  for (const rowAlternative of alternatives) {
+    if (!Object.prototype.hasOwnProperty.call(evaluations, rowAlternative.id)) {
+      throw new Error(`Pairwise evaluations are missing row "${rowAlternative.id}".`);
+    }
+
+    const row = evaluations[rowAlternative.id];
+
+    if (!isPlainObject(row)) {
+      throw new Error(`Pairwise row "${rowAlternative.id}" must be an object.`);
+    }
+
+    const columnKeys = Object.keys(row);
+    const allowedColumnIds = alternativeIds.filter((alternativeId) => alternativeId !== rowAlternative.id);
+    const unknownColumns = columnKeys.filter(
+      (columnId) => !allowedColumnIds.includes(columnId)
+    );
+
+    if (unknownColumns.length > 0) {
+      if (unknownColumns.includes(rowAlternative.id)) {
+        throw new Error(`Pairwise row "${rowAlternative.id}" must not contain a diagonal cell.`);
+      }
+
+      throw new Error(`Pairwise row "${rowAlternative.id}" contains unknown columns.`);
+    }
+
+    for (const columnAlternative of alternatives) {
+      if (columnAlternative.id === rowAlternative.id) {
+        continue;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(row, columnAlternative.id)) {
+        throw new Error(
+          `Pairwise row "${rowAlternative.id}" is missing column "${columnAlternative.id}".`
+        );
+      }
+
+      requireCanonicalPairwiseCell({
+        cell: row[columnAlternative.id],
+        field: `evaluations.${rowAlternative.id}.${columnAlternative.id}`,
+      });
+    }
+  }
+
+  return evaluations;
+};
 
 export const updatePairwiseEvaluations = ({
   alternatives,
@@ -44,10 +97,27 @@ export const updatePairwiseEvaluations = ({
   nextValue,
   expressionDomain,
 }) => {
-  const canonicalEvaluations = buildCanonicalPairwiseEvaluations({
+  const canonicalEvaluations = requireCanonicalPairwiseEvaluations({
     alternatives,
     evaluations,
   });
+  const rowIndex = alternatives.findIndex((alternative) => alternative.id === rowAlternativeId);
+  const columnIndex = alternatives.findIndex(
+    (alternative) => alternative.id === columnAlternativeId
+  );
+
+  if (rowIndex < 0 || columnIndex < 0) {
+    throw new Error("Pairwise update references an unknown alternative.");
+  }
+
+  if (rowIndex === columnIndex) {
+    throw new Error("Pairwise updates cannot target diagonal cells.");
+  }
+
+  if (rowIndex > columnIndex) {
+    throw new Error("Pairwise updates can only target upper-triangle cells.");
+  }
+
   const nextEvaluations = structuredClone(canonicalEvaluations);
 
   if (nextValue === "") {
@@ -101,7 +171,10 @@ const resolveLabelTextOrThrow = ({ labelKey, expressionDomain }) => {
 };
 
 export const describePairwiseCellValue = ({ cell, expressionDomain }) => {
-  const value = readCanonicalCellValue(cell);
+  const value = requireCanonicalPairwiseCell({
+    cell,
+    field: "cell",
+  }).value;
 
   if (value === "") {
     return {
@@ -167,4 +240,3 @@ export const describePairwiseCellValue = ({ cell, expressionDomain }) => {
 };
 
 export const getUnmatchedFuzzyTooltipText = () => UNMATCHED_FUZZY_TOOLTIP;
-

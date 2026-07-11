@@ -4,7 +4,7 @@ import ExpressionDomainEvaluationInput from "../../../../../expressionDomains/Ex
 import { assertPairwiseReflectionCompatible } from "../../../../../expressionDomains/operations/index.js";
 import PairwiseDerivedValueDisplay from "./PairwiseDerivedValueDisplay.jsx";
 import {
-  buildCanonicalPairwiseEvaluations,
+  requireCanonicalPairwiseEvaluations,
   updatePairwiseEvaluations,
 } from "./pairwiseGrid.helpers.js";
 
@@ -29,10 +29,20 @@ const PairwiseAlternativesGrid = ({
     );
   }
 
-  const canonicalEvaluations = buildCanonicalPairwiseEvaluations({
-    alternatives: orderedAlternatives,
-    evaluations,
-  });
+  let canonicalEvaluations = null;
+
+  try {
+    canonicalEvaluations = requireCanonicalPairwiseEvaluations({
+      alternatives: orderedAlternatives,
+      evaluations,
+    });
+  } catch (error) {
+    return (
+      <Alert severity="error">
+        {error instanceof Error ? error.message : "Pairwise evaluations are invalid."}
+      </Alert>
+    );
+  }
 
   return (
     <Box sx={{ overflowX: "auto" }}>

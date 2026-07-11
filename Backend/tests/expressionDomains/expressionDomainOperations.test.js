@@ -355,6 +355,26 @@ describe("expression domain operations", () => {
     ).toBe(false);
   });
 
+  it("treats two valid identical ordinal label keys as equal", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "low" },
+        right: { labelKey: "low" },
+        expressionDomain: buildOrdinalDomain(),
+      })
+    ).toBe(true);
+  });
+
+  it("does not accept an unknown ordinal label key as equal", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "missing" },
+        right: { labelKey: "missing" },
+        expressionDomain: buildOrdinalDomain(),
+      })
+    ).toBe(false);
+  });
+
   it("returns false for mixed fuzzy labelKey and values equality operands", () => {
     expect(
       areExpressionDomainValuesEqual({
@@ -363,6 +383,36 @@ describe("expression domain operations", () => {
         expressionDomain: buildTriangularFuzzyDomain(),
       })
     ).toBe(false);
+  });
+
+  it("treats two valid identical fuzzy label keys as equal", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "high" },
+        right: { labelKey: "high" },
+        expressionDomain: buildTriangularFuzzyDomain(),
+      })
+    ).toBe(true);
+  });
+
+  it("does not accept an unknown fuzzy label key as equal", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "missing" },
+        right: { labelKey: "missing" },
+        expressionDomain: buildTriangularFuzzyDomain(),
+      })
+    ).toBe(false);
+  });
+
+  it("compares fuzzy values with epsilon", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { values: [0.7, 1, 1] },
+        right: { values: [0.7000000001, 1, 1] },
+        expressionDomain: buildTriangularFuzzyDomain(),
+      })
+    ).toBe(true);
   });
 
   it("throws for unknown type keys in equality checks", () => {

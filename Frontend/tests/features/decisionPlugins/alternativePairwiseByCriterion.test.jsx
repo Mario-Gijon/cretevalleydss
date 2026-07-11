@@ -58,9 +58,18 @@ const numericDiscreteDomain = {
   },
 };
 
+const canonicalEmptyEvaluations = {
+  "alt-a": {
+    "alt-b": { value: "" },
+  },
+  "alt-b": {
+    "alt-a": { value: "" },
+  },
+};
+
 const GridHarness = ({
   expressionDomain,
-  initialEvaluations = {},
+  initialEvaluations = canonicalEmptyEvaluations,
   permitEdit = true,
 }) => {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
@@ -131,5 +140,22 @@ describe("PairwiseAlternativesGrid", () => {
     fireEvent.change(input, { target: { value: "0.125" } });
 
     expect(screen.getByText("0.875")).toBeInTheDocument();
+  });
+
+  it("renders an error for a malformed matrix", () => {
+    renderWithProviders(
+      <GridHarness
+        expressionDomain={numericContinuousDomain}
+        initialEvaluations={{
+          "alt-a": {
+            "alt-b": { value: "" },
+          },
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText('Pairwise evaluations are missing row "alt-b".')
+    ).toBeInTheDocument();
   });
 });

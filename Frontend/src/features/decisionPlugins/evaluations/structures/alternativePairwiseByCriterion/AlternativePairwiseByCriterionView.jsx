@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import PairwiseAlternativesGrid from "./components/PairwiseAlternativesGrid";
 import CriterionCompactSelector from "./components/CriterionCompactSelector";
@@ -34,10 +34,6 @@ const AlternativePairwiseByCriterionView = (
         }))
         .filter((criterion) => criterion.id && criterion.name)
     : [];
-  const evaluationsByCriterion =
-    evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
-      ? evaluationPayload
-      : {};
   const permitEdit = readOnly !== true && loading !== true;
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
 
@@ -68,6 +64,22 @@ const AlternativePairwiseByCriterionView = (
     Math.min(currentCriterionIndex, Math.max(criteriaItems.length - 1, 0))
   );
   const currentCriterion = criteriaItems[safeCurrentCriterionIndex] || null;
+
+  if (loading && !isPlainObject(evaluationPayload)) {
+    return null;
+  }
+
+  if (!loading && !isPlainObject(evaluationPayload)) {
+    return <Alert severity="error">Pairwise evaluation payload is unavailable.</Alert>;
+  }
+
+  if (
+    !loading &&
+    currentCriterion &&
+    !Object.prototype.hasOwnProperty.call(evaluationPayload, currentCriterion.id)
+  ) {
+    return <Alert severity="error">Pairwise criterion payload is unavailable.</Alert>;
+  }
 
   return (
     <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
@@ -105,16 +117,22 @@ const AlternativePairwiseByCriterionView = (
 
               <PairwiseAlternativesGrid
                 alternatives={alternativeItems}
-                evaluations={evaluationsByCriterion?.[currentCriterion.id] || {}}
+                evaluations={evaluationPayload[currentCriterion.id]}
                 setEvaluations={(nextComparisons) => {
                   if (!permitEdit) {
                     return;
                   }
 
-                  setEvaluationPayload((previous) => ({
-                    ...(isPlainObject(previous) ? previous : {}),
-                    [currentCriterion.id]: nextComparisons,
-                  }));
+                  setEvaluationPayload((previous) => {
+                    if (!isPlainObject(previous)) {
+                      throw new Error("Pairwise evaluation payload state is invalid.");
+                    }
+
+                    return {
+                      ...previous,
+                      [currentCriterion.id]: nextComparisons,
+                    };
+                  });
                 }}
                 expressionDomain={currentCriterion.expressionDomain}
                 permitEdit={permitEdit}
