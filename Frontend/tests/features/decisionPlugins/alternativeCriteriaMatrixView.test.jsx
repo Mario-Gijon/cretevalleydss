@@ -78,7 +78,7 @@ describe("AlternativeCriteriaMatrixView", () => {
 
     expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
     expect(screen.getByText("7.2")).toBeInTheDocument();
-    expect(screen.getByText("[0.6, 0.8, 1]")).toBeInTheDocument();
+    expect(screen.getByTitle("High — [0.6, 0.8, 1]")).toBeInTheDocument();
   });
 
   it("does not show a chip for a missing collective cell and does not show an error for null collectivePayload", () => {
@@ -292,5 +292,86 @@ describe("AlternativeCriteriaMatrixView", () => {
       "Collective alternative row contains unknown criterion cells."
     );
     expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+  });
+
+  it("displays non-matching fuzzy vectors completely and does not nearest-match outside epsilon", () => {
+    const criteria = [
+      { id: "criterion-1", name: "Fuzzy", expressionDomain: fuzzyDomain },
+    ];
+
+    const { unmount } = renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        evaluationContext={buildEvaluationContext(criteria)}
+        evaluationPayload={{
+          "alt-a": {
+            "criterion-1": { value: { labelKey: "low" } },
+          },
+          "alt-b": {
+            "criterion-1": { value: { labelKey: "high" } },
+          },
+        }}
+        setEvaluationPayload={vi.fn()}
+        collectivePayload={{
+          "alt-a": {
+            "criterion-1": [0.61, 0.8, 1],
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(screen.getByText("[0.61, 0.8, 1]")).toBeInTheDocument();
+    expect(screen.getByTitle("[0.61, 0.8, 1]")).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        evaluationContext={buildEvaluationContext([
+          {
+            id: "criterion-1",
+            name: "Five-point fuzzy",
+            expressionDomain: {
+              typeKey: "linguisticFuzzy",
+              definition: {
+                membershipFunction: "hexagonal",
+                labels: [
+                  {
+                    key: "left",
+                    label: "Left",
+                    index: 0,
+                    values: [0, 0.1, 0.2, 0.3, 0.4],
+                  },
+                  {
+                    key: "right",
+                    label: "Right",
+                    index: 1,
+                    values: [0.6, 0.7, 0.8, 0.9, 1],
+                  },
+                ],
+              },
+            },
+          },
+        ])}
+        evaluationPayload={{
+          "alt-a": {
+            "criterion-1": { value: { labelKey: "left" } },
+          },
+          "alt-b": {
+            "criterion-1": { value: { labelKey: "right" } },
+          },
+        }}
+        setEvaluationPayload={vi.fn()}
+        collectivePayload={{
+          "alt-a": {
+            "criterion-1": [0.11, 0.22, 0.33, 0.44, 0.55],
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(screen.getByText("[0.11, 0.22, 0.33, 0.44, 0.55]")).toBeInTheDocument();
   });
 });

@@ -3,10 +3,10 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Grid2,
   Stack,
   Typography,
 } from "@mui/material";
@@ -80,6 +80,12 @@ export const CreateExpressionDomainDialog = ({
 
   const selectedTypeEntry = getExpressionDomainType(selectedTypeKey);
   const SelectedCreationForm = selectedTypeEntry?.CreationForm || null;
+  const numericTypeEntries = typeEntries.filter((entry) =>
+    ["numericContinuous", "numericDiscrete"].includes(entry.key)
+  );
+  const linguisticTypeEntries = typeEntries.filter((entry) =>
+    ["linguisticOrdinal", "linguisticFuzzy"].includes(entry.key)
+  );
 
   const payload = {
     name: String(draft?.name || "").trim(),
@@ -119,6 +125,63 @@ export const CreateExpressionDomainDialog = ({
     });
   };
 
+  const renderTypeSelector = (entry) => {
+    const selected = entry.key === selectedTypeKey;
+
+    return (
+      <Box
+        key={entry.key}
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected}
+        onClick={() => handleTypeSelect(entry.key)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleTypeSelect(entry.key);
+          }
+        }}
+        sx={{
+          p: 1,
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: selected
+            ? alpha(theme.palette.info.main, 0.72)
+            : alpha(theme.palette.common.white, 0.12),
+          background: selected
+            ? alpha(theme.palette.info.main, 0.09)
+            : alpha(theme.palette.common.white, 0.02),
+          cursor: "pointer",
+          transition: "border-color 140ms ease, background 140ms ease, box-shadow 140ms ease",
+          "&:hover": {
+            borderColor: alpha(theme.palette.info.main, 0.48),
+            background: alpha(
+              theme.palette.info.main,
+              selected ? 0.11 : 0.045
+            ),
+          },
+          "&:focus-visible": {
+            outline: "none",
+            borderColor: alpha(theme.palette.info.main, 0.72),
+            boxShadow: `0 0 0 2px ${alpha(theme.palette.info.main, 0.22)}`,
+          },
+        }}
+      >
+        <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 900 }}>
+            {entry.label}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", fontWeight: 750 }}
+          >
+            {entry.description}
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  };
+
   const handleSave = async () => {
     if (!canSubmit) {
       showSnackbarAlert("Expression domain name and type are required.", "error");
@@ -154,7 +217,7 @@ export const CreateExpressionDomainDialog = ({
       open={open}
       onClose={saveLoading ? undefined : onClose}
       fullWidth
-      maxWidth="md"
+      maxWidth="lg"
     >
       <DialogTitle sx={getCreateIssueCompactDialogTitleSx(theme)}>
         {editingDomain ? "Edit expression domain" : "Create expression domain"}
@@ -178,83 +241,45 @@ export const CreateExpressionDomainDialog = ({
           ) : null}
 
           {hasTypeEntries ? (
-            <Stack spacing={1}>
+            <Stack spacing={1.5}>
               <Typography variant="body2" sx={{ fontWeight: 900 }}>
                 Select domain type
               </Typography>
 
-              <Stack spacing={1}>
-                {typeEntries.map((entry) => {
-                  const selected = entry.key === selectedTypeKey;
+              <Grid2 container spacing={1.1} data-testid="expression-domain-type-selector">
+                <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <Stack spacing={0.8}>
+                    <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary" }}>
+                      Numeric domains
+                    </Typography>
+                    <Stack spacing={0.8}>
+                      {numericTypeEntries.map(renderTypeSelector)}
+                    </Stack>
+                  </Stack>
+                </Grid2>
 
-                  return (
-                    <Box
-                      key={entry.key}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleTypeSelect(entry.key)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleTypeSelect(entry.key);
-                        }
-                      }}
-                      sx={{
-                        p: 1.35,
-                        borderRadius: 2,
-                        border: "1px solid",
-                        borderColor: selected
-                          ? alpha(theme.palette.info.main, 0.72)
-                          : alpha(theme.palette.common.white, 0.12),
-                        background: selected
-                          ? alpha(theme.palette.info.main, 0.09)
-                          : alpha(theme.palette.common.white, 0.02),
-                        cursor: "pointer",
-                        transition: "border-color 140ms ease, background 140ms ease",
-                        "&:hover": {
-                          borderColor: alpha(theme.palette.info.main, 0.48),
-                          background: alpha(theme.palette.info.main, selected ? 0.11 : 0.045),
-                        },
-                      }}
-                    >
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                      >
-                        <Stack spacing={0.3} sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                            {entry.label}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "text.secondary", fontWeight: 750 }}
-                          >
-                            {entry.description}
-                          </Typography>
-                        </Stack>
+                <Grid2 size={{ xs: 12, sm: 6 }}>
+                  <Stack spacing={0.8}>
+                    <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary" }}>
+                      Linguistic domains
+                    </Typography>
+                    <Stack spacing={0.8}>
+                      {linguisticTypeEntries.map(renderTypeSelector)}
+                    </Stack>
+                  </Stack>
+                </Grid2>
+              </Grid2>
 
-                        <Chip
-                          size="small"
-                          label={entry.family}
-                          color={selected ? "info" : "default"}
-                          variant={selected ? "filled" : "outlined"}
-                        />
-                      </Stack>
-                    </Box>
-                  );
-                })}
-              </Stack>
+              {SelectedCreationForm ? (
+                <Box data-testid="expression-domain-selected-form">
+                  <SelectedCreationForm
+                    value={draft}
+                    onChange={handleDraftChange}
+                    disabled={saveLoading}
+                  />
+                </Box>
+              ) : null}
             </Stack>
-          ) : null}
-
-          {SelectedCreationForm ? (
-            <SelectedCreationForm
-              key={`${selectedTypeKey}-${editingDomain?._id || "new"}`}
-              value={draft}
-              onChange={handleDraftChange}
-              disabled={saveLoading}
-            />
           ) : null}
         </Stack>
       </DialogContent>

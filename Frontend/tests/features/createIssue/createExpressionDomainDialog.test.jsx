@@ -1,0 +1,77 @@
+import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock(
+  "../../../src/components/FuzzyPreviewChart/FuzzyPreviewChart.jsx",
+  () => ({
+    FuzzyPreviewChart: ({ height }) => (
+      <div data-testid="fuzzy-preview-chart" data-height={JSON.stringify(height)} />
+    ),
+  })
+);
+
+import { CreateExpressionDomainDialog } from "../../../src/features/createIssue/expressionDomains/components/CreateExpressionDomainDialog.jsx";
+import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
+
+describe("CreateExpressionDomainDialog", () => {
+  it("renders grouped type selection above the form without a Selected chip", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <CreateExpressionDomainDialog open onClose={vi.fn()} onCreated={vi.fn()} />
+    );
+
+    expect(screen.getByText("Select domain type")).toBeInTheDocument();
+    expect(screen.getByText("Numeric domains")).toBeInTheDocument();
+    expect(screen.getByText("Linguistic domains")).toBeInTheDocument();
+    expect(screen.queryByText("Selected")).not.toBeInTheDocument();
+
+    const numericGroup = screen.getByText("Numeric domains").closest("div");
+    const linguisticGroup = screen.getByText("Linguistic domains").closest("div");
+
+    expect(within(numericGroup).getByText("Numeric continuous")).toBeInTheDocument();
+    expect(within(numericGroup).getByText("Numeric discrete")).toBeInTheDocument();
+    expect(within(linguisticGroup).getByText("Ordered linguistic")).toBeInTheDocument();
+    expect(within(linguisticGroup).getByText("Fuzzy linguistic")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /ordered linguistic/i }));
+
+    expect(screen.getByText("1st label")).toBeInTheDocument();
+    expect(screen.getByTestId("expression-domain-type-selector").compareDocumentPosition(
+      screen.getByTestId("expression-domain-selected-form")
+    ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("does not remount the selected form or lose focus while typing", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <CreateExpressionDomainDialog open onClose={vi.fn()} onCreated={vi.fn()} />
+    );
+
+    await user.click(screen.getByRole("button", { name: /ordered linguistic/i }));
+
+    const firstLabelInput = screen.getAllByLabelText("Label")[0];
+    await user.clear(firstLabelInput);
+    await user.type(firstLabelInput, "Preference");
+
+    expect(firstLabelInput).toHaveFocus();
+    expect(firstLabelInput).toHaveValue("Preference");
+  });
+
+  it("keeps the selected numeric form below the selector when changing types", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <CreateExpressionDomainDialog open onClose={vi.fn()} onCreated={vi.fn()} />
+    );
+
+    await user.click(screen.getByRole("button", { name: /numeric discrete/i }));
+
+    expect(screen.getByLabelText("Step")).toBeInTheDocument();
+    expect(screen.getByTestId("expression-domain-type-selector").compareDocumentPosition(
+      screen.getByTestId("expression-domain-selected-form")
+    ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

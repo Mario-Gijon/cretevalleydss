@@ -1,23 +1,43 @@
 import { AddOutlined, DeleteOutline } from "@mui/icons-material";
-import { Button, IconButton, Stack, TextField } from "@mui/material";
+import { Box, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
 import {
   buildUniqueLabelKey,
   normalizeDraftName,
 } from "../../expressionDomainFormFields";
 
+const DEFAULT_ORDINAL_LABELS = Object.freeze([
+  { label: "Low" },
+  { label: "Medium" },
+  { label: "High" },
+]);
+
 const buildDraftLabels = (labels = []) => {
   const usedKeys = new Set();
 
   return (Array.isArray(labels) ? labels : []).map((labelItem, index) => {
-    const label = String(labelItem?.label || "").trim();
+    const hasExplicitLabel = typeof labelItem?.label === "string";
+    const rawLabel = hasExplicitLabel
+      ? labelItem.label
+      : String(labelItem?.label || "");
+    const label = rawLabel.trim();
+    const fallbackLabel = labelItem == null ? `Label ${index + 1}` : "";
+    const preservedKey =
+      typeof labelItem?.key === "string" && labelItem.key.trim()
+        ? labelItem.key.trim()
+        : null;
+    if (preservedKey) {
+      usedKeys.add(preservedKey);
+    }
 
     return {
-      key: buildUniqueLabelKey({
-        label,
-        index,
-        usedKeys,
-      }),
-      label: label || `Label ${index + 1}`,
+      key:
+        preservedKey ||
+        buildUniqueLabelKey({
+          label,
+          index,
+          usedKeys,
+        }),
+      label: hasExplicitLabel ? rawLabel : label || fallbackLabel,
       index,
     };
   });
@@ -29,7 +49,7 @@ const ensureDraftLabels = (value) => {
 
   return draftLabels.length > 0
     ? draftLabels
-    : buildDraftLabels([{ label: "Low" }, { label: "High" }]);
+    : buildDraftLabels(DEFAULT_ORDINAL_LABELS);
 };
 
 const buildNextValue = (value, labels, name = value?.name) => {
@@ -48,6 +68,25 @@ const buildNextValue = (value, labels, name = value?.name) => {
   };
 };
 
+const formatOrdinalPosition = (position) => {
+  const mod100 = position % 100;
+
+  if (mod100 >= 11 && mod100 <= 13) {
+    return `${position}th`;
+  }
+
+  switch (position % 10) {
+    case 1:
+      return `${position}st`;
+    case 2:
+      return `${position}nd`;
+    case 3:
+      return `${position}rd`;
+    default:
+      return `${position}th`;
+  }
+};
+
 export const LinguisticOrdinalCreationForm = ({
   value,
   onChange,
@@ -64,39 +103,68 @@ export const LinguisticOrdinalCreationForm = ({
       <TextField
         label="Name"
         color="info"
+        size="small"
         value={normalizeDraftName(value?.name)}
         onChange={(event) => updateLabels(labels, event.target.value)}
         disabled={disabled}
         fullWidth
       />
 
-      {labels.map((labelItem, index) => (
-        <Stack key={`${labelItem.key}-${index}`} direction="row" spacing={1}>
-          <TextField
-            label={`Label ${index + 1}`}
-            color="info"
-            value={labelItem.label}
-            onChange={(event) => {
-              const nextLabels = labels.map((item, itemIndex) =>
-                itemIndex === index
-                  ? { ...item, label: event.target.value }
-                  : item
-              );
-              updateLabels(nextLabels);
-            }}
-            disabled={disabled}
-            fullWidth
-          />
-
-          <IconButton
-            onClick={() => updateLabels(labels.filter((_, itemIndex) => itemIndex !== index))}
-            disabled={disabled || labels.length <= 2}
-            color="error"
+      <Stack spacing={1}>
+        {labels.map((labelItem, index) => (
+          <Stack
+            key={labelItem.key}
+            spacing={0.75}
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <DeleteOutline />
-          </IconButton>
-        </Stack>
-      ))}
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                fontWeight: 800,
+                minWidth: { sm: 78 },
+                flexShrink: 0,
+              }}
+            >
+              {formatOrdinalPosition(index + 1)} label
+            </Typography>
+
+            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <TextField
+                  label="Label"
+                  color="info"
+                  size="small"
+                  value={labelItem.label}
+                  onChange={(event) => {
+                    const nextLabels = labels.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, label: event.target.value }
+                        : item
+                    );
+                    updateLabels(nextLabels);
+                  }}
+                  disabled={disabled}
+                  fullWidth
+                />
+              </Box>
+
+              <IconButton
+                onClick={() =>
+                  updateLabels(labels.filter((_, itemIndex) => itemIndex !== index))
+                }
+                disabled={disabled || labels.length <= 2}
+                color="error"
+                size="small"
+                sx={{ flexShrink: 0 }}
+              >
+                <DeleteOutline fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Stack>
+        ))}
+      </Stack>
 
       <Button
         variant="outlined"
@@ -106,6 +174,8 @@ export const LinguisticOrdinalCreationForm = ({
           updateLabels([...labels, { label: `Label ${labels.length + 1}` }])
         }
         disabled={disabled}
+        size="small"
+        sx={{ alignSelf: "flex-start" }}
       >
         Add label
       </Button>

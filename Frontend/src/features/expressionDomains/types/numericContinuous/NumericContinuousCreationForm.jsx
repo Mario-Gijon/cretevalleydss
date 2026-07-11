@@ -1,4 +1,4 @@
-import { Stack, TextField } from "@mui/material";
+import { Grid2, TextField } from "@mui/material";
 import {
   normalizeDraftName,
   normalizeDraftNumber,
@@ -40,46 +40,55 @@ export const NumericContinuousCreationForm = ({
   };
 
   return (
-    <Stack spacing={2}>
-      <TextField
-        label="Name"
-        color="info"
-        value={normalizeDraftName(value?.name)}
-        onChange={(event) => updateValue({ name: event.target.value })}
-        disabled={disabled}
-        fullWidth
-      />
+    <Grid2 container spacing={1.25}>
+      <Grid2 size={{ xs: 12, md: 8 }}>
+        <TextField
+          label="Name"
+          color="info"
+          size="small"
+          value={normalizeDraftName(value?.name)}
+          onChange={(event) => updateValue({ name: event.target.value })}
+          disabled={disabled}
+          fullWidth
+        />
+      </Grid2>
 
-      <TextField
-        label="Min"
-        color="info"
-        type="number"
-        value={definition.min ?? ""}
-        onChange={(event) =>
-          updateValue({
-            definition: {
-              min: normalizeDraftNumber(event.target.value),
-            },
-          })}
-        disabled={disabled}
-        fullWidth
-      />
+      <Grid2 size={{ xs: 12, sm: 6, md: 2 }}>
+        <TextField
+          label="Min"
+          color="info"
+          size="small"
+          type="number"
+          value={definition.min ?? ""}
+          onChange={(event) =>
+            updateValue({
+              definition: {
+                min: normalizeDraftNumber(event.target.value),
+              },
+            })}
+          disabled={disabled}
+          fullWidth
+        />
+      </Grid2>
 
-      <TextField
-        label="Max"
-        color="info"
-        type="number"
-        value={definition.max ?? ""}
-        onChange={(event) =>
-          updateValue({
-            definition: {
-              max: normalizeDraftNumber(event.target.value),
-            },
-          })}
-        disabled={disabled}
-        fullWidth
-      />
-    </Stack>
+      <Grid2 size={{ xs: 12, sm: 6, md: 2 }}>
+        <TextField
+          label="Max"
+          color="info"
+          size="small"
+          type="number"
+          value={definition.max ?? ""}
+          onChange={(event) =>
+            updateValue({
+              definition: {
+                max: normalizeDraftNumber(event.target.value),
+              },
+            })}
+          disabled={disabled}
+          fullWidth
+        />
+      </Grid2>
+    </Grid2>
   );
 };
 

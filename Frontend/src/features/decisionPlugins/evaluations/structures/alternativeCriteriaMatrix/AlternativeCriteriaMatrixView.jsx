@@ -10,6 +10,7 @@ import {
 
 import ExpressionDomainEvaluationInput from "../../../../expressionDomains/ExpressionDomainEvaluationInput.jsx";
 import { validateExpressionDomainEvaluation } from "../../../../expressionDomains";
+import { findMatchingFuzzyLabel } from "../../../../expressionDomains/operations/index.js";
 import { getExpressionDomainTypeMetadataOrThrow } from "../../../../expressionDomains/expressionDomainTypeMetadataCatalog.js";
 import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
@@ -128,6 +129,37 @@ const buildValidationErrorMap = (errors) =>
       errorItem.message;
     return errorMap;
   }, {});
+
+const formatCollectiveChipPresentation = ({ collectiveValue, expressionDomain }) => {
+  const formattedVector = formatCollectiveDisplayValue(collectiveValue);
+
+  if (
+    expressionDomain?.typeKey === "linguisticFuzzy" &&
+    Array.isArray(collectiveValue)
+  ) {
+    const matchingLabel = findMatchingFuzzyLabel({
+      values: collectiveValue,
+      expressionDomain,
+    });
+
+    if (matchingLabel?.label) {
+      return {
+        label: matchingLabel.label,
+        title: `${matchingLabel.label} — ${formattedVector}`,
+      };
+    }
+
+    return {
+      label: formattedVector,
+      title: formattedVector,
+    };
+  }
+
+  return {
+    label: formatCollectiveDisplayValue(collectiveValue),
+    title: undefined,
+  };
+};
 
 const AlternativeCriteriaMatrixView = (
   {
@@ -338,14 +370,20 @@ const AlternativeCriteriaMatrixView = (
     );
   };
 
-  const renderCollectiveChip = (collectiveValue) => {
+  const renderCollectiveChip = ({ collectiveValue, expressionDomain }) => {
     if (!hasCollectiveValue(collectiveValue)) {
       return null;
     }
 
+    const presentation = formatCollectiveChipPresentation({
+      collectiveValue,
+      expressionDomain,
+    });
+
     return (
       <Chip
-        label={formatCollectiveDisplayValue(collectiveValue)}
+        label={presentation.label}
+        title={presentation.title}
         variant="outlined"
         size="small"
         sx={{
@@ -360,7 +398,11 @@ const AlternativeCriteriaMatrixView = (
     );
   };
 
-  const renderCellWithCollective = ({ input, collectiveValue }) => (
+  const renderCellWithCollective = ({
+    input,
+    collectiveValue,
+    collectiveExpressionDomain,
+  }) => (
     <Stack
       direction="row"
       alignItems="center"
@@ -390,7 +432,10 @@ const AlternativeCriteriaMatrixView = (
             justifyContent: "flex-end",
           }}
         >
-          {renderCollectiveChip(collectiveValue)}
+          {renderCollectiveChip({
+            collectiveValue,
+            expressionDomain: collectiveExpressionDomain,
+          })}
         </Box>
       ) : null}
     </Stack>
@@ -404,6 +449,7 @@ const AlternativeCriteriaMatrixView = (
 
     return renderCellWithCollective({
       collectiveValue,
+      collectiveExpressionDomain: expressionDomain,
       input: (
         <Box
           sx={{ width: "100%", minWidth: 0 }}

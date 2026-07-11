@@ -8,6 +8,7 @@ import {
   Legend,
   PointElement,
 } from "chart.js";
+import { Box } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import {
   DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
@@ -93,33 +94,42 @@ const buildChartData = ({
 export const FuzzyPreviewChart = ({
   labels = [],
   membershipFunction = DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
+  height,
 }) => {
   return (
-    <Line
-      data={buildChartData({ labels, membershipFunction })}
-      options={{
-        responsive: true,
-        plugins: {
-          legend: { position: "bottom" },
-        },
-        scales: {
-          x: {
-            title: { display: true, text: "Domain [0,1]" },
-            min: 0,
-            max: 1,
-          },
-          y: {
-            title: { display: true, text: "Degree of belonging" },
-            min: 0,
-            max: 1,
-          },
-        },
-        elements: {
-          line: {
-            fill: false,
-          },
-        },
+    <Box
+      sx={{
+        width: "100%",
+        ...(height !== undefined ? { height } : {}),
       }}
-    />
+    >
+      <Line
+        data={buildChartData({ labels, membershipFunction })}
+        options={{
+          responsive: true,
+          maintainAspectRatio: height === undefined,
+          plugins: {
+            legend: { position: "bottom" },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: "Domain [0,1]" },
+              min: 0,
+              max: 1,
+            },
+            y: {
+              title: { display: true, text: "Degree of belonging" },
+              min: 0,
+              max: 1,
+            },
+          },
+          elements: {
+            line: {
+              fill: false,
+            },
+          },
+        }}
+      />
+    </Box>
   );
 };

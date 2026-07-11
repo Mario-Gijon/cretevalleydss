@@ -20,6 +20,11 @@ export const LINGUISTIC_MEMBERSHIP_FUNCTIONS = {
 };
 
 export const DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION = "triangular";
+export const DEFAULT_SEMANTIC_LINGUISTIC_LABELS = Object.freeze([
+  "Low",
+  "Medium",
+  "High",
+]);
 
 export const getLinguisticMembershipDefinition = (membershipFunction) => {
   const key = String(membershipFunction || "")
@@ -74,10 +79,14 @@ export const buildAutomaticLinguisticLabels = ({
 
   return Array.from({ length: safeCount }, (_, index) => {
     const previousLabel = previousLabels[index];
+    const semanticLabel =
+      safeCount === DEFAULT_SEMANTIC_LINGUISTIC_LABELS.length
+        ? DEFAULT_SEMANTIC_LINGUISTIC_LABELS[index]
+        : null;
     const labelText =
       typeof previousLabel?.label === "string" && previousLabel.label.trim()
         ? previousLabel.label
-        : `Label ${index + 1}`;
+        : semanticLabel || `Label ${index + 1}`;
     const center = index * step;
 
     return {

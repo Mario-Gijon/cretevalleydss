@@ -17,7 +17,6 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { GlassPaper } from "../../../../components/StyledComponents/GlassPaper";
 import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
-import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import {
   getCreateIssueCompactDialogActionsSx,
@@ -26,11 +25,9 @@ import {
 } from "../../styles/createIssueStep.styles";
 import {
   getExpressionDomainDisplayMeta,
-  getExpressionDomainLabels,
-  getExpressionDomainMembershipFunction,
   isLinguisticFuzzyExpressionDomain,
-  isLinguisticOrdinalExpressionDomain,
 } from "../../../../utils/expressionDomains";
+import { ExpressionDomainPreview } from "./ExpressionDomainPreview";
 
 export const ViewExpressionsDomainDialog = ({
   open,
@@ -58,14 +55,6 @@ export const ViewExpressionsDomainDialog = ({
       onClose();
     }
   }, [allManagedDomains.length, open, onClose]);
-
-  const getGridProps = () => {
-    const count = allManagedDomains.length;
-
-    if (count === 1) return { xs: 12 };
-    if (count === 2) return { xs: 12, md: 6 };
-    return { xs: 12, md: 6, xl: 4 };
-  };
 
   if (allManagedDomains.length === 0) {
     return null;
@@ -117,12 +106,18 @@ export const ViewExpressionsDomainDialog = ({
               const isGlobalDomain =
                 domain.__domainScope === "global" || domain.isGlobal === true;
               const domainId = domain._id || domain.id || displayMeta.name;
+              const isFuzzyDomain = isLinguisticFuzzyExpressionDomain(domain);
 
               return (
-                <Grid2 key={domainId} size={getGridProps()} alignItems="stretch">
+                <Grid2
+                  key={domainId}
+                  size={{ xs: 12, md: isFuzzyDomain ? 12 : 6 }}
+                  alignItems="stretch"
+                >
                   <GlassPaper
+                    data-testid={isFuzzyDomain ? "expression-domain-card-fuzzy" : "expression-domain-card"}
                     sx={{
-                      p: 1.6,
+                      p: 1.35,
                       borderRadius: 3,
                       border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
                       bgcolor: alpha(theme.palette.common.white, 0.012),
@@ -142,12 +137,14 @@ export const ViewExpressionsDomainDialog = ({
                             <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
                               {displayMeta.name}
                             </Typography>
-                            <Chip
-                              size="small"
-                              label={isGlobalDomain ? "Global" : "Mine"}
-                              color={isGlobalDomain ? "default" : "info"}
-                              variant="outlined"
-                            />
+                            {isGlobalDomain ? (
+                              <Chip
+                                size="small"
+                                label="Global"
+                                color="default"
+                                variant="outlined"
+                              />
+                            ) : null}
                           </Stack>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
                             {displayMeta.descriptor}
@@ -176,41 +173,9 @@ export const ViewExpressionsDomainDialog = ({
 
                       <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
 
-                      {isLinguisticFuzzyExpressionDomain(domain) ||
-                      isLinguisticOrdinalExpressionDomain(domain) ? (
-                        <Stack spacing={1.4} width="100%">
-                          <Stack direction="row" flexWrap="wrap" alignItems="center" gap={0.8} width="100%">
-                            {getExpressionDomainLabels(domain).map((lbl, i) => (
-                              <Chip
-                                variant="outlined"
-                                color="info"
-                                key={i}
-                                label={lbl.label}
-                                size="small"
-                              />
-                            ))}
-                          </Stack>
-
-                          {isLinguisticFuzzyExpressionDomain(domain) ? (
-                            <Box
-                              sx={{
-                                borderRadius: 2.5,
-                                p: 1,
-                                bgcolor: alpha(theme.palette.common.white, 0.015),
-                              }}
-                            >
-                              <FuzzyPreviewChart
-                                labels={getExpressionDomainLabels(domain)}
-                                membershipFunction={getExpressionDomainMembershipFunction(domain)}
-                              />
-                            </Box>
-                          ) : null}
-                        </Stack>
-                      ) : (
-                        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                          A preview is not available for this domain type.
-                        </Typography>
-                      )}
+                      <Box sx={{ width: "100%" }}>
+                        <ExpressionDomainPreview domain={domain} />
+                      </Box>
                     </Stack>
                   </GlassPaper>
                 </Grid2>

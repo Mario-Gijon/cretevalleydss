@@ -3,6 +3,7 @@ import {
   Box,
   Divider,
   FormControlLabel,
+  Grid2,
   MenuItem,
   Stack,
   Switch,
@@ -14,6 +15,7 @@ import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/Fuzz
 import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
 import {
   buildAutomaticLinguisticLabels,
+  DEFAULT_SEMANTIC_LINGUISTIC_LABELS,
   DEFAULT_LINGUISTIC_MEMBERSHIP_FUNCTION,
   getLinguisticMembershipDefinitionOrDefault,
   LINGUISTIC_MEMBERSHIP_FUNCTIONS,
@@ -21,7 +23,7 @@ import {
 } from "../../../../utils/linguisticMembershipFunctions";
 import { normalizeDraftName } from "../../expressionDomainFormFields";
 
-const DEFAULT_LABEL_COUNT = 5;
+const DEFAULT_LABEL_COUNT = 3;
 
 const MEMBERSHIP_FUNCTION_OPTIONS = Object.values(LINGUISTIC_MEMBERSHIP_FUNCTIONS);
 
@@ -90,6 +92,9 @@ const buildDraftLabelsFromExisting = ({
     const label = String(
       sourceLabel?.label ??
         fallbackLabel?.label ??
+        (labelCount === DEFAULT_SEMANTIC_LINGUISTIC_LABELS.length
+          ? DEFAULT_SEMANTIC_LINGUISTIC_LABELS[index]
+          : null) ??
         `Label ${index + 1}`
     ).trim();
 
@@ -429,48 +434,53 @@ export const LinguisticFuzzyCreationForm = ({
   return (
     <>
       <Stack spacing={2.2}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-          <TextField
-            label="Name"
-            color="info"
-            autoComplete="off"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            disabled={disabled}
-            fullWidth
-          />
-
-          <TextField
-            label="NºLabels"
-            color="info"
-            type="number"
-            value={labelCountInput}
-            onChange={handleLabelCountChange}
-            inputProps={{ min: 3, step: 2 }}
-            error={hasInvalidLabelCount}
-            helperText={hasInvalidLabelCount ? "Must be odd and ≥ 3" : ""}
-            disabled={disabled}
-            sx={{ width: { xs: "100%", sm: 130 } }}
-          />
-        </Stack>
-
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-          <TextField
-            select
-            label="Membership function"
-            color="info"
-            value={membershipFunction}
-            onChange={handleMembershipFunctionChange}
-            disabled={disabled}
-            sx={{ minWidth: { xs: "100%", sm: 220 } }}
-          >
-            {MEMBERSHIP_FUNCTION_OPTIONS.map((option) => (
-              <MenuItem key={option.key} value={option.key}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
+        <Grid2 container spacing={1.25}>
+          <Grid2 size={{ xs: 12, md: 5 }}>
+            <TextField
+              label="Name"
+              color="info"
+              size="small"
+              autoComplete="off"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              disabled={disabled}
+              fullWidth
+            />
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              label="Number of labels"
+              color="info"
+              size="small"
+              type="number"
+              value={labelCountInput}
+              onChange={handleLabelCountChange}
+              inputProps={{ min: 3, step: 2 }}
+              error={hasInvalidLabelCount}
+              helperText={hasInvalidLabelCount ? "Must be odd and ≥ 3" : ""}
+              disabled={disabled}
+              fullWidth
+            />
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+            <TextField
+              select
+              label="Membership function"
+              color="info"
+              size="small"
+              value={membershipFunction}
+              onChange={handleMembershipFunctionChange}
+              disabled={disabled}
+              fullWidth
+            >
+              {MEMBERSHIP_FUNCTION_OPTIONS.map((option) => (
+                <MenuItem key={option.key} value={option.key}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid2>
+          <Grid2 size={{ xs: 12 }}>
           <FormControlLabel
             control={(
               <Switch
@@ -482,11 +492,12 @@ export const LinguisticFuzzyCreationForm = ({
             )}
             label="Edit membership values manually"
           />
-        </Stack>
+          </Grid2>
+        </Grid2>
 
         <Divider />
 
-        <Stack spacing={2}>
+        <Grid2 container spacing={1.25}>
           {labels.map((labelItem, labelIndex) => {
             const labelValuesAreValid = validateLinguisticLabelValues(
               labelItem.values,
@@ -494,54 +505,62 @@ export const LinguisticFuzzyCreationForm = ({
             );
 
             return (
-              <Stack key={labelIndex} spacing={0.9}>
-                <TextField
-                  label={`L${labelIndex + 1}`}
-                  color="info"
-                  value={labelItem.label}
-                  onChange={(event) =>
-                    handleLabelChange(labelIndex, event.target.value)
-                  }
-                  disabled={disabled}
-                  size="small"
-                />
+              <Grid2 key={labelItem.key} size={{ xs: 12, md: manualMode ? 12 : 4 }}>
+                <Stack spacing={0.9}>
+                  <TextField
+                    label={`Label ${labelIndex + 1}`}
+                    color="info"
+                    size="small"
+                    value={labelItem.label}
+                    onChange={(event) =>
+                      handleLabelChange(labelIndex, event.target.value)
+                    }
+                    disabled={disabled}
+                    fullWidth
+                  />
 
-                {manualMode ? (
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={0.8}>
-                    {Array.from(
-                      { length: membershipDefinition.valueCount },
-                      (_, valueIndex) => (
-                        <TextField
-                          key={`${labelIndex}-${valueIndex}`}
-                          color="info"
-                          type="number"
-                          size="small"
-                          label={`v${valueIndex + 1}`}
-                          inputProps={{ min: 0, max: 1, step: 0.01 }}
-                          value={labelItem?.values?.[valueIndex] ?? ""}
-                          onChange={(event) =>
-                            handleManualValueChange(
-                              labelIndex,
-                              valueIndex,
-                              event.target.value
-                            )
-                          }
-                          disabled={disabled}
-                          error={!labelValuesAreValid}
-                          helperText={
-                            !labelValuesAreValid && valueIndex === 0
-                              ? "Values must be non-decreasing numbers between 0 and 1."
-                              : ""
-                          }
-                        />
-                      )
-                    )}
-                  </Stack>
-                ) : null}
-              </Stack>
+                  {manualMode ? (
+                    <Grid2 container spacing={0.8}>
+                      {Array.from(
+                        { length: membershipDefinition.valueCount },
+                        (_, valueIndex) => (
+                          <Grid2
+                            key={`${labelIndex}-${valueIndex}`}
+                            size={{ xs: 12, sm: 6, md: 3 }}
+                          >
+                            <TextField
+                              color="info"
+                              type="number"
+                              size="small"
+                              label={`v${valueIndex + 1}`}
+                              inputProps={{ min: 0, max: 1, step: 0.01 }}
+                              value={labelItem?.values?.[valueIndex] ?? ""}
+                              onChange={(event) =>
+                                handleManualValueChange(
+                                  labelIndex,
+                                  valueIndex,
+                                  event.target.value
+                                )
+                              }
+                              disabled={disabled}
+                              error={!labelValuesAreValid}
+                              helperText={
+                                !labelValuesAreValid && valueIndex === 0
+                                  ? "Values must be non-decreasing numbers between 0 and 1."
+                                  : ""
+                              }
+                              fullWidth
+                            />
+                          </Grid2>
+                        )
+                      )}
+                    </Grid2>
+                  ) : null}
+                </Stack>
+              </Grid2>
             );
           })}
-        </Stack>
+        </Grid2>
 
         <Divider sx={{ my: 0.6 }} />
 
@@ -549,10 +568,9 @@ export const LinguisticFuzzyCreationForm = ({
           Preview
         </Typography>
         <Box
+          data-testid="fuzzy-preview-container"
           sx={{
             borderRadius: 2.5,
-            maxWidth: 520,
-            mx: "auto",
             px: { xs: 0.25, sm: 0.5 },
             py: 0.35,
             width: "100%",
@@ -561,6 +579,7 @@ export const LinguisticFuzzyCreationForm = ({
           <FuzzyPreviewChart
             labels={previewLabels}
             membershipFunction={membershipFunction}
+            height={{ xs: 210, sm: 230, md: 260, lg: 280 }}
           />
         </Box>
       </Stack>
