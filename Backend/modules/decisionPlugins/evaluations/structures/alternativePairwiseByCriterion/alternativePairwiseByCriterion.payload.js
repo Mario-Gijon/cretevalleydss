@@ -1,20 +1,183 @@
 import { createBadRequestError } from "../../../../../utils/common/errors.js";
-import { isPlainObject } from "../../../../../utils/common/objects.js";
+import { hasOwnKey, isPlainObject } from "../../../../../utils/common/objects.js";
+import { validateExpressionDomainEvaluationOrThrow } from "../../../../expressionDomains/validateExpressionDomainEvaluation.js";
 import {
-  buildEmptyExpressionDomainEvaluationValue,
-  normalizeExpressionDomainEvaluationValueOrThrow,
-  resolveRequireValueFromModeOrThrow,
-  validateExpressionDomainEvaluationValueOrThrow,
-} from "../../shared/expressionDomainEvaluationPayload.js";
+  areExpressionDomainValuesEqual,
+  reflectExpressionDomainValue,
+} from "../../../../expressionDomains/index.js";
 import {
   buildExpectedPairsByCriterion,
   resolveAlternativesAndCriteria,
 } from "./alternativePairwiseByCriterion.context.js";
 
-export const buildEmptyCell = buildEmptyExpressionDomainEvaluationValue;
-export const validateCellValueByDomainOrThrow =
-  validateExpressionDomainEvaluationValueOrThrow;
-export { resolveRequireValueFromModeOrThrow };
+const EVALUATION_SAVE_MODES = Object.freeze({
+  DRAFT: "draft",
+  SUBMIT: "submit",
+});
+
+export const buildEmptyCell = () => ({
+  value: "",
+});
+
+export const resolveRequireValueFromModeOrThrow = (mode) => {
+  if (mode === EVALUATION_SAVE_MODES.DRAFT) {
+    return false;
+  }
+
+  if (mode === EVALUATION_SAVE_MODES.SUBMIT) {
+    return true;
+  }
+
+  throw createBadRequestError("Unsupported evaluation save mode", {
+    field: "mode",
+  });
+};
+
+const isEmptyCellValue = (value) => value === "";
+
+const rejectUnsupportedTopLevelShapesOrThrow = (payload) => {
+  if (
+    Object.prototype.hasOwnProperty.call(payload, "comparisonsByCriterion") ||
+    Object.prototype.hasOwnProperty.call(payload, "evaluations") ||
+    Object.prototype.hasOwnProperty.call(payload, "rows") ||
+    Object.prototype.hasOwnProperty.call(payload, "matrix") ||
+    Object.prototype.hasOwnProperty.call(payload, "direct") ||
+    Object.prototype.hasOwnProperty.call(payload, "pairwiseAlternatives")
+  ) {
+    throw createBadRequestError("Unsupported alternative pairwise payload shape", {
+      field: "payload",
+    });
+  }
+};
+
+const requireCanonicalCellOrThrow = ({ cell, field, requireValue }) => {
+  if (!isPlainObject(cell)) {
+    throw createBadRequestError("Pairwise cell must be an object.", { field });
+  }
+
+  const keys = Object.keys(cell);
+
+  if (keys.length !== 1 || !hasOwnKey(cell, "value")) {
+    throw createBadRequestError("Pairwise cell must contain exactly the key 'value'.", {
+      field,
+    });
+  }
+
+  if (cell.value === undefined || cell.value === null) {
+    throw createBadRequestError("Pairwise cell value is invalid.", {
+      field: `${field}.value`,
+    });
+  }
+
+  if (requireValue && isEmptyCellValue(cell.value)) {
+    throw createBadRequestError("All pairwise comparisons must include a value for submit.", {
+      field: `${field}.value`,
+    });
+  }
+
+  return cell;
+};
+
+const buildEmptyMatrixForCriterion = ({ alternatives }) =>
+  Object.fromEntries(
+    alternatives.map((rowAlternative) => [
+      rowAlternative.id,
+      Object.fromEntries(
+        alternatives
+          .filter((columnAlternative) => columnAlternative.id !== rowAlternative.id)
+          .map((columnAlternative) => [columnAlternative.id, buildEmptyCell()])
+      ),
+    ])
+  );
+
+const requireCanonicalShapeOrThrow = ({
+  payload,
+  alternatives,
+  criterionIds,
+}) => {
+  const topLevelKeys = Object.keys(payload);
+  const unknownCriterionKeys = topLevelKeys.filter((criterionId) => !criterionIds.includes(criterionId));
+
+  if (unknownCriterionKeys.length > 0) {
+    throw createBadRequestError("payload contains unknown criterion keys", {
+      field: "payload",
+    });
+  }
+
+  for (const criterionId of criterionIds) {
+    if (!hasOwnKey(payload, criterionId)) {
+      throw createBadRequestError("payload is missing a criterion matrix.", {
+        field: `payload.${criterionId}`,
+      });
+    }
+
+    const criterionPayload = payload[criterionId];
+
+    if (!isPlainObject(criterionPayload)) {
+      throw createBadRequestError("Criterion matrix must be an object.", {
+        field: `payload.${criterionId}`,
+      });
+    }
+
+    const rowKeys = Object.keys(criterionPayload);
+    const expectedRowKeys = alternatives.map((alternative) => alternative.id);
+    const unknownRowKeys = rowKeys.filter((rowId) => !expectedRowKeys.includes(rowId));
+
+    if (unknownRowKeys.length > 0) {
+      throw createBadRequestError("Criterion matrix contains unknown row alternatives.", {
+        field: `payload.${criterionId}`,
+      });
+    }
+
+    for (const rowAlternative of alternatives) {
+      if (!hasOwnKey(criterionPayload, rowAlternative.id)) {
+        throw createBadRequestError("Criterion matrix is missing a row alternative.", {
+          field: `payload.${criterionId}.${rowAlternative.id}`,
+        });
+      }
+
+      const rowPayload = criterionPayload[rowAlternative.id];
+
+      if (!isPlainObject(rowPayload)) {
+        throw createBadRequestError("Pairwise row must be an object.", {
+          field: `payload.${criterionId}.${rowAlternative.id}`,
+        });
+      }
+
+      const columnKeys = Object.keys(rowPayload);
+      const expectedColumnKeys = alternatives
+        .filter((alternative) => alternative.id !== rowAlternative.id)
+        .map((alternative) => alternative.id);
+      const unknownColumnKeys = columnKeys.filter(
+        (columnId) =>
+          !expectedColumnKeys.includes(columnId) || columnId === rowAlternative.id
+      );
+
+      if (unknownColumnKeys.length > 0) {
+        throw createBadRequestError(
+          columnKeys.includes(rowAlternative.id)
+            ? "Diagonal pairwise cells are not allowed."
+            : "Pairwise row contains unknown column alternatives.",
+          {
+            field: `payload.${criterionId}.${rowAlternative.id}`,
+          }
+        );
+      }
+
+      for (const columnAlternative of alternatives) {
+        if (columnAlternative.id === rowAlternative.id) {
+          continue;
+        }
+
+        if (!hasOwnKey(rowPayload, columnAlternative.id)) {
+          throw createBadRequestError("Pairwise row is missing a directed comparison.", {
+            field: `payload.${criterionId}.${rowAlternative.id}.${columnAlternative.id}`,
+          });
+        }
+      }
+    }
+  }
+};
 
 export const normalizePayloadOrThrow = async ({
   payload,
@@ -27,27 +190,9 @@ export const normalizePayloadOrThrow = async ({
     });
   }
 
-  if (
-    Object.prototype.hasOwnProperty.call(payload, "comparisonsByCriterion") ||
-    Object.prototype.hasOwnProperty.call(payload, "evaluations") ||
-    Object.prototype.hasOwnProperty.call(payload, "rows") ||
-    Object.prototype.hasOwnProperty.call(payload, "matrix") ||
-    Object.prototype.hasOwnProperty.call(payload, "direct") ||
-    Object.prototype.hasOwnProperty.call(payload, "pairwiseAlternatives")
-  ) {
-    throw createBadRequestError(
-      "Unsupported alternative pairwise payload shape",
-      {
-        field: "payload",
-      }
-    );
-  }
+  rejectUnsupportedTopLevelShapesOrThrow(payload);
 
-  const {
-    alternatives,
-    criteria,
-    criterionIds,
-  } = await resolveAlternativesAndCriteria({
+  const { alternatives, criteria, criterionIds } = await resolveAlternativesAndCriteria({
     evaluationContext,
   });
   const expectedPairsByCriterion = buildExpectedPairsByCriterion({
@@ -55,104 +200,85 @@ export const normalizePayloadOrThrow = async ({
     alternatives,
   });
 
-  const unknownCriteriaKeys = Object.keys(payload).filter(
-    (criterionId) => !criterionIds.includes(criterionId)
-  );
+  requireCanonicalShapeOrThrow({
+    payload,
+    alternatives,
+    criterionIds,
+  });
 
-  if (unknownCriteriaKeys.length > 0) {
-    throw createBadRequestError(
-      "payload contains unknown criterion keys",
-      {
-        field: "payload",
-      }
-    );
-  }
-
-  const alternativeIdSet = new Set(alternatives.map((alternative) => alternative.id));
-  const comparisonsByCriterion = {};
+  const normalizedPayload = {};
 
   for (const criterionId of criterionIds) {
-    const expectedPairsMeta = expectedPairsByCriterion[criterionId];
-    const expectedExpressionDomain = expectedPairsMeta.expressionDomain;
-    const incomingCriterionPayload = payload[criterionId];
+    const criterionMeta = expectedPairsByCriterion[criterionId];
+    const criterionPayload = payload[criterionId];
+    const canonicalMatrix = buildEmptyMatrixForCriterion({ alternatives });
 
-    if (incomingCriterionPayload !== undefined && !isPlainObject(incomingCriterionPayload)) {
-      throw createBadRequestError(
-        `payload['${criterionId}'] must be an object`,
-        {
-          field: "payload",
+    for (const pair of criterionMeta.editablePairs) {
+      const upperField = `payload.${criterionId}.${pair.rowAlternativeId}.${pair.columnAlternativeId}`;
+      const lowerField = `payload.${criterionId}.${pair.columnAlternativeId}.${pair.rowAlternativeId}`;
+      const upperCell = requireCanonicalCellOrThrow({
+        cell: criterionPayload[pair.rowAlternativeId][pair.columnAlternativeId],
+        field: upperField,
+        requireValue,
+      });
+      const lowerCell = requireCanonicalCellOrThrow({
+        cell: criterionPayload[pair.columnAlternativeId][pair.rowAlternativeId],
+        field: lowerField,
+        requireValue,
+      });
+      const upperEmpty = isEmptyCellValue(upperCell.value);
+      const lowerEmpty = isEmptyCellValue(lowerCell.value);
+
+      if (upperEmpty || lowerEmpty) {
+        if (upperEmpty !== lowerEmpty) {
+          throw createBadRequestError(
+            "Draft pairwise comparisons must leave both directions empty or both filled.",
+            {
+              field: upperEmpty ? `${upperField}.value` : `${lowerField}.value`,
+            }
+          );
         }
-      );
-    }
 
-    const safeCriterionPayload = isPlainObject(incomingCriterionPayload)
-      ? incomingCriterionPayload
-      : {};
-    const unknownRowKeys = Object.keys(safeCriterionPayload).filter(
-      (alternativeId) => !alternativeIdSet.has(alternativeId)
-    );
+        canonicalMatrix[pair.rowAlternativeId][pair.columnAlternativeId] = buildEmptyCell();
+        canonicalMatrix[pair.columnAlternativeId][pair.rowAlternativeId] = buildEmptyCell();
+        continue;
+      }
 
-    if (unknownRowKeys.length > 0) {
-      throw createBadRequestError(
-        `payload['${criterionId}'] contains unknown alternative row keys`,
-        {
-          field: "payload",
-        }
-      );
-    }
+      const normalizedUpperValue = validateExpressionDomainEvaluationOrThrow({
+        value: upperCell.value,
+        expressionDomain: criterionMeta.expressionDomain,
+      });
+      const expectedLowerValue = reflectExpressionDomainValue({
+        value: normalizedUpperValue,
+        expressionDomain: criterionMeta.expressionDomain,
+      });
 
-    comparisonsByCriterion[criterionId] = {};
-
-    for (const rowAlternative of alternatives) {
-      const rowPayload = safeCriterionPayload[rowAlternative.id];
-
-      if (rowPayload !== undefined && !isPlainObject(rowPayload)) {
+      if (
+        !areExpressionDomainValuesEqual({
+          left: lowerCell.value,
+          right: expectedLowerValue,
+          expressionDomain: criterionMeta.expressionDomain,
+        })
+      ) {
         throw createBadRequestError(
-          `payload['${criterionId}']['${rowAlternative.id}'] must be an object`,
+          "The lower pairwise value must equal the reflected inverse of its upper value.",
           {
-            field: "payload",
+            code: "PAIRWISE_REFLECTION_MISMATCH",
+            field: `${lowerField}.value`,
           }
         );
       }
 
-      const safeRowPayload = isPlainObject(rowPayload) ? rowPayload : {};
-      const unknownColKeys = Object.keys(safeRowPayload).filter(
-        (alternativeId) =>
-          !alternativeIdSet.has(alternativeId) || alternativeId === rowAlternative.id
-      );
-
-      if (unknownColKeys.length > 0) {
-        throw createBadRequestError(
-          `payload['${criterionId}']['${rowAlternative.id}'] contains unknown alternative column keys`,
-          {
-            field: "payload",
-          }
-        );
-      }
-
-      comparisonsByCriterion[criterionId][rowAlternative.id] = {};
-
-      for (const colAlternative of alternatives) {
-        if (rowAlternative.id === colAlternative.id) {
-          continue;
-        }
-
-        const cell = safeRowPayload[colAlternative.id];
-
-        comparisonsByCriterion[criterionId][rowAlternative.id][colAlternative.id] =
-          cell === undefined
-            ? buildEmptyCell(expectedExpressionDomain)
-            : normalizeExpressionDomainEvaluationValueOrThrow({
-                cell,
-                requireValue,
-                field: "payload",
-                expectedExpressionDomain,
-                emptyValueMessage: "All comparisons must include a value for submit",
-                invalidValueMessage: "Comparison cell must be an object",
-              });
-      }
+      canonicalMatrix[pair.rowAlternativeId][pair.columnAlternativeId] = {
+        value: normalizedUpperValue,
+      };
+      canonicalMatrix[pair.columnAlternativeId][pair.rowAlternativeId] = {
+        value: expectedLowerValue,
+      };
     }
+
+    normalizedPayload[criterionId] = canonicalMatrix;
   }
 
-  return comparisonsByCriterion;
+  return normalizedPayload;
 };

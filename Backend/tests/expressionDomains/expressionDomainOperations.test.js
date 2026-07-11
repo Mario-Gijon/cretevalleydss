@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  areExpressionDomainValuesEqual,
   assertPairwiseReflectionCompatible,
   findMatchingFuzzyLabel,
   reflectExpressionDomainValue,
@@ -332,5 +333,48 @@ describe("expression domain operations", () => {
     });
 
     expect(domain.definition).toEqual(originalDefinition);
+  });
+
+  it("compares numeric expression-domain values with epsilon", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: 1,
+        right: 1.0000000001,
+        expressionDomain: buildNumericContinuousDomain(),
+      })
+    ).toBe(true);
+  });
+
+  it("returns false for malformed ordinal equality operands", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "low" },
+        right: "low",
+        expressionDomain: buildOrdinalDomain(),
+      })
+    ).toBe(false);
+  });
+
+  it("returns false for mixed fuzzy labelKey and values equality operands", () => {
+    expect(
+      areExpressionDomainValuesEqual({
+        left: { labelKey: "high" },
+        right: { values: [0.7, 1, 1] },
+        expressionDomain: buildTriangularFuzzyDomain(),
+      })
+    ).toBe(false);
+  });
+
+  it("throws for unknown type keys in equality checks", () => {
+    expect(() =>
+      areExpressionDomainValuesEqual({
+        left: 1,
+        right: 1,
+        expressionDomain: {
+          typeKey: "unknownType",
+          definition: {},
+        },
+      })
+    ).toThrow("Unsupported expression domain type: unknownType");
   });
 });

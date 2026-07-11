@@ -12,7 +12,6 @@ const AlternativePairwiseByCriterionView = (
     evaluationContext,
     evaluationPayload,
     setEvaluationPayload,
-    collectivePayload,
     readOnly,
     loading,
   },
@@ -38,10 +37,6 @@ const AlternativePairwiseByCriterionView = (
   const evaluationsByCriterion =
     evaluationPayload && typeof evaluationPayload === "object" && !Array.isArray(evaluationPayload)
       ? evaluationPayload
-      : {};
-  const collectiveEvaluationsByCriterion =
-    collectivePayload && typeof collectivePayload === "object" && !Array.isArray(collectivePayload)
-      ? collectivePayload
       : {};
   const permitEdit = readOnly !== true && loading !== true;
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
@@ -121,9 +116,7 @@ const AlternativePairwiseByCriterionView = (
                     [currentCriterion.id]: nextComparisons,
                   }));
                 }}
-                collectiveEvaluations={
-                  collectiveEvaluationsByCriterion?.[currentCriterion.id] || null
-                }
+                expressionDomain={currentCriterion.expressionDomain}
                 permitEdit={permitEdit}
               />
             </Stack>

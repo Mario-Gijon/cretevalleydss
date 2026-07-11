@@ -1,5 +1,7 @@
 import { createInternalError } from "../../../../../utils/common/errors.js";
 import { toIdString } from "../../../../../utils/common/ids.js";
+import { assertPairwiseReflectionCompatible } from "../../../../expressionDomains/operations/assertPairwiseReflectionCompatible.js";
+import { isPlainObject } from "../../../../../utils/common/objects.js";
 
 export const buildComparisonKey = (alternativeAId, alternativeBId) =>
   `${alternativeAId}::${alternativeBId}`;
@@ -42,7 +44,7 @@ const requireEvaluationAlternativesOrThrow = (evaluationContext) => {
       });
     }
 
-    return { id, name };
+    return { id, name, index };
   });
 };
 
@@ -68,10 +70,19 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
       });
     }
 
+    if (!isPlainObject(criterion?.expressionDomain)) {
+      throw createInternalError("Evaluation structure criterion expressionDomain is invalid", {
+        field: `evaluationContext.leafCriteria[${index}].expressionDomain`,
+      });
+    }
+
+    assertPairwiseReflectionCompatible(criterion.expressionDomain);
+
     return {
       id,
       name,
       expressionDomain: criterion.expressionDomain,
+      index,
     };
   });
 };
@@ -83,19 +94,41 @@ export const buildExpectedPairsByCriterion = ({ criteria, alternatives }) => {
     expectedPairsByCriterion[criterion.id] = {
       criterionId: criterion.id,
       criterionName: criterion.name,
-      pairs: [],
       expressionDomain: criterion.expressionDomain,
+      editablePairs: [],
+      directedPairs: [],
+      rowAlternativeIds: alternatives.map((alternative) => alternative.id),
+      columnAlternativeIds: alternatives.map((alternative) => alternative.id),
     };
 
-    for (const alternativeA of alternatives) {
-      for (const alternativeB of alternatives) {
-        if (alternativeA.id === alternativeB.id) {
+    for (let rowIndex = 0; rowIndex < alternatives.length; rowIndex += 1) {
+      const rowAlternative = alternatives[rowIndex];
+
+      for (let columnIndex = 0; columnIndex < alternatives.length; columnIndex += 1) {
+        const columnAlternative = alternatives[columnIndex];
+
+        if (rowAlternative.id === columnAlternative.id) {
           continue;
         }
 
-        expectedPairsByCriterion[criterion.id].pairs.push(
-          buildComparisonKey(alternativeA.id, alternativeB.id)
-        );
+        expectedPairsByCriterion[criterion.id].directedPairs.push({
+          rowAlternativeId: rowAlternative.id,
+          columnAlternativeId: columnAlternative.id,
+          rowIndex,
+          columnIndex,
+          key: buildComparisonKey(rowAlternative.id, columnAlternative.id),
+        });
+
+        if (rowIndex < columnIndex) {
+          expectedPairsByCriterion[criterion.id].editablePairs.push({
+            rowAlternativeId: rowAlternative.id,
+            columnAlternativeId: columnAlternative.id,
+            rowIndex,
+            columnIndex,
+            upperKey: buildComparisonKey(rowAlternative.id, columnAlternative.id),
+            lowerKey: buildComparisonKey(columnAlternative.id, rowAlternative.id),
+          });
+        }
       }
     }
   }

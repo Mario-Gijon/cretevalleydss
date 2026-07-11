@@ -9,6 +9,7 @@ export {
 export { assignIssueExpressionDomainSnapshotsOrThrow } from "./assignIssueDomainSnapshots.js";
 export { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "./buildIssueDomainConfig.js";
 export {
+  areExpressionDomainValuesEqual,
   assertPairwiseReflectionCompatible,
   findMatchingFuzzyLabel,
   reflectExpressionDomainValue,
