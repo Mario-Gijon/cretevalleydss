@@ -38,9 +38,7 @@ export const findMatchingFuzzyLabel = ({
   assertLinguisticFuzzyDomainOrThrow(expressionDomain);
   const normalizedValues = validateFuzzyValuesOrThrow({ values, epsilon });
   const labels = getLinguisticFuzzyLabelsOrThrow(expressionDomain);
-
-  for (let index = 0; index < labels.length; index += 1) {
-    const label = labels[index];
+  const validatedLabels = labels.map((label, index) => {
     const labelValues = Array.isArray(label?.values) ? label.values : null;
 
     if (!labelValues) {
@@ -53,6 +51,11 @@ export const findMatchingFuzzyLabel = ({
       emptyMessage: "Expression domain definition is invalid.",
     });
 
+    return label;
+  });
+
+  for (const label of validatedLabels) {
+    const labelValues = label.values;
     if (labelValues.length !== normalizedValues.length) {
       continue;
     }

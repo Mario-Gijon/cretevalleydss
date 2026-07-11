@@ -47,13 +47,15 @@ export const getNumericContinuousEvaluationDefinition = (expressionDomain) => {
     throw new Error("Expression domain definition is invalid.");
   }
 
-  const min = Number.isFinite(definition.min) ? definition.min : null;
-  const max = Number.isFinite(definition.max) ? definition.max : null;
+  const min = definition.min;
+  const max = definition.max;
 
   if (
-    Number.isFinite(min) &&
-    Number.isFinite(max) &&
-    min > max
+    typeof min !== "number" ||
+    !Number.isFinite(min) ||
+    typeof max !== "number" ||
+    !Number.isFinite(max) ||
+    min >= max
   ) {
     throw new Error("Expression domain definition is invalid.");
   }
@@ -77,4 +79,3 @@ export const validateNumericContinuousEvaluation = ({
 
   return normalizedValue;
 };
-

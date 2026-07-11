@@ -140,10 +140,13 @@ describe("expression domain operations", () => {
   it("does not snap or round reflected results", () => {
     expect(
       reflectExpressionDomainValue({
-        value: 1.2,
-        expressionDomain: buildNumericContinuousDomain(),
+        value: 0.125,
+        expressionDomain: {
+          typeKey: "numericDiscrete",
+          definition: { min: 0, max: 1, step: 0.125 },
+        },
       })
-    ).toBe(4.8);
+    ).toBe(0.875);
   });
 
   it("reflects five-label ordinals first to last and back", () => {
@@ -250,6 +253,24 @@ describe("expression domain operations", () => {
     ).toMatchObject({
       key: "high",
     });
+  });
+
+  it("rejects a malformed configured fuzzy label even when an earlier label matches", () => {
+    expect(() =>
+      findMatchingFuzzyLabel({
+        values: [0, 0.5, 1],
+        expressionDomain: {
+          typeKey: "linguisticFuzzy",
+          definition: {
+            membershipFunction: "triangular",
+            labels: [
+              { key: "matching", label: "Matching", values: [0, 0.5, 1], index: 0 },
+              { key: "broken", label: "Broken", values: [0.8, 0.2, 1], index: 1 },
+            ],
+          },
+        },
+      })
+    ).toThrow("definition.labels[1].values must be non-decreasing.");
   });
 
   it("rejects input fuzzy vectors outside [0, 1]", () => {

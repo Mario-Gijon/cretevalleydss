@@ -58,14 +58,21 @@ export const getNumericDiscreteEvaluationDefinition = (expressionDomain) => {
     throw new Error("Expression domain definition is invalid.");
   }
 
-  const min = Number.isFinite(definition.min) ? definition.min : null;
-  const max = Number.isFinite(definition.max) ? definition.max : null;
-  const step = Number.isFinite(definition.step) ? definition.step : null;
+  const min = definition.min;
+  const max = definition.max;
+  const step = definition.step;
 
   if (
-    (Number.isFinite(min) && Number.isFinite(max) && min > max) ||
-    (step !== null && step <= 0)
+    typeof min !== "number" ||
+    !Number.isFinite(min) ||
+    typeof max !== "number" ||
+    !Number.isFinite(max) ||
+    min >= max
   ) {
+    throw new Error("Expression domain definition is invalid.");
+  }
+
+  if (typeof step !== "number" || !Number.isFinite(step) || step <= 0) {
     throw new Error("Expression domain definition is invalid.");
   }
 
@@ -87,10 +94,9 @@ export const validateNumericDiscreteEvaluation = ({
   }
 
   if (
-    Number.isFinite(definition.step) &&
     !isStepAligned({
       value: normalizedValue,
-      min: definition.min ?? 0,
+      min: definition.min,
       step: definition.step,
     })
   ) {
@@ -104,7 +110,7 @@ export const assertNumericDiscreteValueStepAligned = ({ value, definition }) => 
   if (
     !isStepAligned({
       value,
-      min: definition?.min ?? 0,
+      min: definition?.min,
       step: definition?.step,
     })
   ) {

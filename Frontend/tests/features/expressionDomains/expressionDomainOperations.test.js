@@ -134,13 +134,13 @@ describe("expressionDomain operations", () => {
   it("does not snap or round numericDiscrete reflected results", () => {
     expect(
       reflectExpressionDomainValue({
-        value: 1.2,
+        value: 0.125,
         expressionDomain: {
-          typeKey: "numericContinuous",
-          definition: { min: 1, max: 5 },
+          typeKey: "numericDiscrete",
+          definition: { min: 0, max: 1, step: 0.125 },
         },
       })
-    ).toBe(4.8);
+    ).toBe(0.875);
   });
 
   it("reflects five-label ordinals first to last and back", () => {
@@ -247,6 +247,72 @@ describe("expressionDomain operations", () => {
     ).toMatchObject({
       key: "high",
     });
+  });
+
+  it("rejects numericContinuous without min", () => {
+    expect(() =>
+      reflectExpressionDomainValue({
+        value: 1,
+        expressionDomain: {
+          typeKey: "numericContinuous",
+          definition: { max: 5 },
+        },
+      })
+    ).toThrow("Expression domain definition is invalid.");
+  });
+
+  it("rejects numericContinuous with min === max", () => {
+    expect(() =>
+      reflectExpressionDomainValue({
+        value: 1,
+        expressionDomain: {
+          typeKey: "numericContinuous",
+          definition: { min: 2, max: 2 },
+        },
+      })
+    ).toThrow("Expression domain definition is invalid.");
+  });
+
+  it("rejects numericDiscrete without step", () => {
+    expect(() =>
+      reflectExpressionDomainValue({
+        value: 0.5,
+        expressionDomain: {
+          typeKey: "numericDiscrete",
+          definition: { min: 0, max: 1 },
+        },
+      })
+    ).toThrow("Expression domain definition is invalid.");
+  });
+
+  it("rejects numericDiscrete with min === max", () => {
+    expect(() =>
+      reflectExpressionDomainValue({
+        value: 0.5,
+        expressionDomain: {
+          typeKey: "numericDiscrete",
+          definition: { min: 1, max: 1, step: 0.5 },
+        },
+      })
+    ).toThrow("Expression domain definition is invalid.");
+  });
+
+  it("rejects a malformed configured fuzzy label even when an earlier label matches", () => {
+    expect(() =>
+      findMatchingFuzzyLabel({
+        values: [0, 0.5, 1],
+        expressionDomain: {
+          typeKey: "linguisticFuzzy",
+          definition: {
+            membershipFunction: "triangular",
+            labels: [
+              { key: "matching", label: "Matching", values: [0, 0.5, 1], index: 0 },
+              { key: "broken", label: "Broken", values: [0.8, 0.2, 1], index: 1 },
+            ],
+          },
+        },
+      })
+    ).toThrow("definition.labels[1].values must be non-decreasing.");
   });
 
   it("rejects input fuzzy vectors outside [0, 1]", () => {
