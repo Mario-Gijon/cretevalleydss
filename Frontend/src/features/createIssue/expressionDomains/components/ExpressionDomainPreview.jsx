@@ -91,17 +91,16 @@ const renderNumericContinuousPreview = (domain) => {
 
   return (
     <PreviewRail>
-      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-        Continuous interval
-      </Typography>
-      <RangeTrack />
-      <Stack direction="row" justifyContent="space-between" spacing={1}>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-          Min {formatNumber(definition.min)}
-        </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-          Max {formatNumber(definition.max)}
-        </Typography>
+      <Stack spacing={0.55}>
+        <RangeTrack />
+        <Stack direction="row" justifyContent="space-between" spacing={1}>
+          <Typography variant="body2" sx={{ fontWeight: 800 }}>
+            {formatNumber(definition.min)}
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 800 }}>
+            {formatNumber(definition.max)}
+          </Typography>
+        </Stack>
       </Stack>
     </PreviewRail>
   );
@@ -165,22 +164,11 @@ const renderNumericDiscretePreview = (domain) => {
 
   return (
     <PreviewRail>
-      <Stack direction="row" justifyContent="space-between" spacing={1} flexWrap="wrap">
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-          Min {formatNumber(definition.min)}
-        </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-          Max {formatNumber(definition.max)}
-        </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-          Step {formatNumber(definition.step)}
-        </Typography>
-      </Stack>
       <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.45 }}>
         {formatDiscreteSequenceSummary(values)}
       </Typography>
       <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-        {`${values.length} values · Step ${formatNumber(definition.step)}`}
+        {`${values.length} values`}
       </Typography>
     </PreviewRail>
   );
@@ -262,7 +250,7 @@ const renderLinguisticFuzzyPreview = (domain) => {
             values: label.values,
           }))}
           membershipFunction={membershipFunction}
-          height={{ xs: 216, sm: 248, md: 260 }}
+          height={{ xs: 192, sm: 204, lg: 216 }}
         />
       </Box>
     </PreviewRail>

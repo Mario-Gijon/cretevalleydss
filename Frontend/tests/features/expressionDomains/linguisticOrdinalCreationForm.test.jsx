@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -19,6 +19,21 @@ const OrdinalFormHarness = () => {
       <pre data-testid="ordinal-draft">{JSON.stringify(value)}</pre>
     </>
   );
+};
+
+const TwoLabelOrdinalFormHarness = () => {
+  const [value, setValue] = useState({
+    name: "",
+    typeKey: "linguisticOrdinal",
+    definition: {
+      labels: [
+        { key: "low", label: "Low", index: 0 },
+        { key: "high", label: "High", index: 1 },
+      ],
+    },
+  });
+
+  return <LinguisticOrdinalCreationForm value={value} onChange={setValue} />;
 };
 
 describe("LinguisticOrdinalCreationForm", () => {
@@ -47,7 +62,44 @@ describe("LinguisticOrdinalCreationForm", () => {
     expect(screen.getAllByRole("button").some((button) => button.getAttribute("aria-label"))).toBe(false);
   });
 
-  it("allows uninterrupted typing of long labels without losing focus and keeps canonical zero-based indexes", async () => {
+  it("uses list semantics and transition wrappers for animated row changes", () => {
+    renderWithProviders(<OrdinalFormHarness />);
+
+    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(document.querySelectorAll(".MuiCollapse-root").length).toBe(3);
+  });
+
+  it("appends a new label after High and deletes the correct row while preserving minimum-two rule", async () => {
+    const user = userEvent.setup();
+
+    const { unmount } = renderWithProviders(<OrdinalFormHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+
+    expect(screen.getByText("4th label")).toBeInTheDocument();
+    const draftAfterAdd = JSON.parse(screen.getByTestId("ordinal-draft").textContent);
+    expect(draftAfterAdd.definition.labels.map((label) => label.index)).toEqual([0, 1, 2, 3]);
+    expect(draftAfterAdd.definition.labels[3].label).toBe("Label 4");
+
+    const listItems = screen.getAllByRole("listitem");
+    await user.click(within(listItems[1]).getByRole("button"));
+
+    const draftAfterDelete = JSON.parse(screen.getByTestId("ordinal-draft").textContent);
+    expect(draftAfterDelete.definition.labels).toEqual([
+      { key: "low", label: "Low", index: 0 },
+      { key: "high", label: "High", index: 1 },
+      { key: "label_4", label: "Label 4", index: 2 },
+    ]);
+
+    unmount();
+    renderWithProviders(<TwoLabelOrdinalFormHarness />);
+    screen.getAllByRole("listitem").forEach((item) => {
+      expect(within(item).getByRole("button")).toBeDisabled();
+    });
+  });
+
+  it("allows uninterrupted typing of long labels with spaces and keeps canonical zero-based indexes", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<OrdinalFormHarness />);

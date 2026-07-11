@@ -1,5 +1,15 @@
 import { AddOutlined, DeleteOutline } from "@mui/icons-material";
-import { Box, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Collapse,
+  IconButton,
+  List,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { TransitionGroup } from "react-transition-group";
 import {
   buildUniqueLabelKey,
   normalizeDraftName,
@@ -110,61 +120,63 @@ export const LinguisticOrdinalCreationForm = ({
         fullWidth
       />
 
-      <Stack spacing={1}>
+      <TransitionGroup component={List} disablePadding>
         {labels.map((labelItem, index) => (
-          <Stack
-            key={labelItem.key}
-            spacing={0.75}
-            direction={{ xs: "column", sm: "row" }}
-            alignItems={{ xs: "stretch", sm: "center" }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                color: "text.secondary",
-                fontWeight: 800,
-                minWidth: { sm: 78 },
-                flexShrink: 0,
-              }}
+          <Collapse key={labelItem.key} component="li" sx={{ listStyle: "none" }}>
+            <Stack
+              spacing={0.75}
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ py: 0.5 }}
             >
-              {formatOrdinalPosition(index + 1)} label
-            </Typography>
-
-            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <TextField
-                  label="Label"
-                  color="info"
-                  size="small"
-                  value={labelItem.label}
-                  onChange={(event) => {
-                    const nextLabels = labels.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, label: event.target.value }
-                        : item
-                    );
-                    updateLabels(nextLabels);
-                  }}
-                  disabled={disabled}
-                  fullWidth
-                />
-              </Box>
-
-              <IconButton
-                onClick={() =>
-                  updateLabels(labels.filter((_, itemIndex) => itemIndex !== index))
-                }
-                disabled={disabled || labels.length <= 2}
-                color="error"
-                size="small"
-                sx={{ flexShrink: 0 }}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 800,
+                  minWidth: { sm: 78 },
+                  flexShrink: 0,
+                }}
               >
-                <DeleteOutline fontSize="small" />
-              </IconButton>
+                {formatOrdinalPosition(index + 1)} label
+              </Typography>
+
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <TextField
+                    label="Label"
+                    color="info"
+                    size="small"
+                    value={labelItem.label}
+                    onChange={(event) => {
+                      const nextLabels = labels.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, label: event.target.value }
+                          : item
+                      );
+                      updateLabels(nextLabels);
+                    }}
+                    disabled={disabled}
+                    fullWidth
+                  />
+                </Box>
+
+                <IconButton
+                  onClick={() =>
+                    updateLabels(labels.filter((_, itemIndex) => itemIndex !== index))
+                  }
+                  disabled={disabled || labels.length <= 2}
+                  color="error"
+                  size="small"
+                  sx={{ flexShrink: 0 }}
+                >
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
+              </Stack>
             </Stack>
-          </Stack>
+          </Collapse>
         ))}
-      </Stack>
+      </TransitionGroup>
 
       <Button
         variant="outlined"

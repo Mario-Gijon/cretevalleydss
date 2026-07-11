@@ -7,13 +7,16 @@ import {
   Stack,
   Divider,
   Chip,
-  Grid2,
   Box,
+  InputAdornment,
+  MenuItem,
+  TextField,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import SearchIcon from "@mui/icons-material/Search";
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { GlassPaper } from "../../../../components/StyledComponents/GlassPaper";
 import { ConfirmationDialog } from "../../../../components/StyledComponents/ConfirmationDialog";
@@ -25,9 +28,16 @@ import {
 } from "../../styles/createIssueStep.styles";
 import {
   getExpressionDomainDisplayMeta,
-  isLinguisticFuzzyExpressionDomain,
+  getExpressionDomainTypeKey,
 } from "../../../../utils/expressionDomains";
 import { ExpressionDomainPreview } from "./ExpressionDomainPreview";
+import {
+  filterManagedExpressionDomains,
+  getManageExpressionDomainFamily,
+  getResetSubtypeFilter,
+  MANAGE_DOMAIN_FAMILY_FILTERS,
+  MANAGE_DOMAIN_SUBTYPE_FILTERS,
+} from "./manageExpressionDomains.helpers.js";
 
 export const ViewExpressionsDomainDialog = ({
   open,
@@ -40,21 +50,69 @@ export const ViewExpressionsDomainDialog = ({
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState(null);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [familyFilter, setFamilyFilter] = useState(MANAGE_DOMAIN_FAMILY_FILTERS.all);
+  const [subtypeFilter, setSubtypeFilter] = useState("");
 
-  const allManagedDomains = [
-    ...(Array.isArray(globalDomains)
-      ? globalDomains.map((domain) => ({ ...domain, __domainScope: "global" }))
-      : []),
-    ...(Array.isArray(expressionDomains)
-      ? expressionDomains.map((domain) => ({ ...domain, __domainScope: "user" }))
-      : []),
-  ];
+  const allManagedDomains = useMemo(
+    () => [
+      ...(Array.isArray(globalDomains)
+        ? globalDomains.map((domain) => ({ ...domain, __domainScope: "global" }))
+        : []),
+      ...(Array.isArray(expressionDomains)
+        ? expressionDomains.map((domain) => ({ ...domain, __domainScope: "user" }))
+        : []),
+    ],
+    [expressionDomains, globalDomains]
+  );
 
   useEffect(() => {
     if (open && allManagedDomains.length === 0) {
       onClose();
     }
   }, [allManagedDomains.length, open, onClose]);
+
+  const visibleDomains = useMemo(
+    () =>
+      filterManagedExpressionDomains({
+        domains: allManagedDomains,
+        searchQuery,
+        familyFilter,
+        subtypeFilter,
+      }),
+    [allManagedDomains, familyFilter, searchQuery, subtypeFilter]
+  );
+
+  const visibleDomainCount = visibleDomains.length;
+  const dialogMaxWidth = visibleDomainCount <= 1 ? "md" : "xl";
+  const numericDomains = useMemo(
+    () =>
+      visibleDomains.filter(
+        (domain) =>
+          getManageExpressionDomainFamily(domain) === MANAGE_DOMAIN_FAMILY_FILTERS.numeric
+      ),
+    [visibleDomains]
+  );
+  const linguisticDomains = useMemo(
+    () =>
+      visibleDomains.filter(
+        (domain) =>
+          getManageExpressionDomainFamily(domain) === MANAGE_DOMAIN_FAMILY_FILTERS.linguistic
+      ),
+    [visibleDomains]
+  );
+  const hasNumericDomains = numericDomains.length > 0;
+  const hasLinguisticDomains = linguisticDomains.length > 0;
+  const showTwoFamilyLayout = hasNumericDomains && hasLinguisticDomains;
+
+  const handleFamilyFilterChange = (nextFamilyFilter) => {
+    setFamilyFilter(nextFamilyFilter);
+    setSubtypeFilter(getResetSubtypeFilter(nextFamilyFilter));
+  };
+
+  const isSubtypeFilterVisible =
+    familyFilter === MANAGE_DOMAIN_FAMILY_FILTERS.numeric ||
+    familyFilter === MANAGE_DOMAIN_FAMILY_FILTERS.linguistic;
 
   if (allManagedDomains.length === 0) {
     return null;
@@ -83,12 +141,81 @@ export const ViewExpressionsDomainDialog = ({
     setSelectedDomain(null);
   };
 
+  const renderDomainCard = (domain) => {
+    const displayMeta = getExpressionDomainDisplayMeta(domain);
+    const isGlobalDomain =
+      domain.__domainScope === "global" || domain.isGlobal === true;
+    const domainId = domain._id || domain.id || displayMeta.name;
+    const typeKey = getExpressionDomainTypeKey(domain);
+
+    return (
+      <GlassPaper
+        key={domainId}
+        data-testid={typeKey === "linguisticFuzzy" ? "expression-domain-card-fuzzy" : "expression-domain-card"}
+        sx={{
+          p: 1.2,
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
+          bgcolor: alpha(theme.palette.common.white, 0.012),
+          minWidth: 0,
+        }}
+      >
+        <Stack spacing={1.05} width="100%" sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            spacing={1}
+            width="100%"
+          >
+            <Stack spacing={0.2} sx={{ minWidth: 0, flex: 1 }}>
+              <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 900, lineHeight: 1.1, overflowWrap: "anywhere" }}
+                >
+                  {displayMeta.name}
+                </Typography>
+                {isGlobalDomain ? (
+                  <Chip size="small" label="Global" color="default" variant="outlined" />
+                ) : null}
+              </Stack>
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 850, overflowWrap: "anywhere" }}
+              >
+                {displayMeta.descriptor}
+              </Typography>
+            </Stack>
+
+            {!isGlobalDomain ? (
+              <Stack direction="row" spacing={0.6} sx={{ flexShrink: 0 }}>
+                <Button size="small" color="warning" onClick={() => handleOpenEdit(domain)}>
+                  Edit
+                </Button>
+                <Button size="small" color="error" onClick={() => handleAskDelete(domain)}>
+                  Delete
+                </Button>
+              </Stack>
+            ) : null}
+          </Stack>
+
+          <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+
+          <Box sx={{ width: "100%", minWidth: 0 }}>
+            <ExpressionDomainPreview domain={domain} />
+          </Box>
+        </Stack>
+      </GlassPaper>
+    );
+  };
+
   return (
     <>
       <GlassDialog
         open={open}
         onClose={onClose}
-        maxWidth={allManagedDomains.length === 1 ? "sm" : "xl"}
+        maxWidth={dialogMaxWidth}
         fullWidth
       >
         <DialogTitle sx={getCreateIssueCompactDialogTitleSx(theme)}>
@@ -100,88 +227,185 @@ export const ViewExpressionsDomainDialog = ({
             Global domains are predefined and cannot be edited or deleted.
           </Typography>
 
-          <Grid2 container spacing={1.5} sx={{ mt: 1 }}>
-            {allManagedDomains.map((domain) => {
-              const displayMeta = getExpressionDomainDisplayMeta(domain);
-              const isGlobalDomain =
-                domain.__domainScope === "global" || domain.isGlobal === true;
-              const domainId = domain._id || domain.id || displayMeta.name;
-              const isFuzzyDomain = isLinguisticFuzzyExpressionDomain(domain);
+          <Stack spacing={1.25} sx={{ mt: 1 }}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <TextField
+                color="info"
+                size="small"
+                placeholder="Search domains by name"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                inputProps={{ "data-testid": "expression-domain-search-input" }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: { md: 240 }, flex: { md: 1 } }}
+              />
 
-              return (
-                <Grid2
-                  key={domainId}
-                  size={{ xs: 12, md: isFuzzyDomain ? 12 : 6 }}
+              <TextField
+                select
+                color="info"
+                size="small"
+                label="Family"
+                value={familyFilter}
+                onChange={(event) => handleFamilyFilterChange(event.target.value)}
+                sx={{ minWidth: { xs: "100%", md: 170 } }}
+              >
+                <MenuItem value={MANAGE_DOMAIN_FAMILY_FILTERS.all}>All</MenuItem>
+                <MenuItem value={MANAGE_DOMAIN_FAMILY_FILTERS.numeric}>Numeric</MenuItem>
+                <MenuItem value={MANAGE_DOMAIN_FAMILY_FILTERS.linguistic}>Linguistic</MenuItem>
+              </TextField>
+
+              {isSubtypeFilterVisible ? (
+                <TextField
+                  select
+                  color="info"
+                  size="small"
+                  label="Subtype"
+                  value={subtypeFilter}
+                  onChange={(event) => setSubtypeFilter(event.target.value)}
+                  sx={{ minWidth: { xs: "100%", md: 170 } }}
+                >
+                  {familyFilter === MANAGE_DOMAIN_FAMILY_FILTERS.numeric ? (
+                    [
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.allNumeric}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.allNumeric}
+                      >
+                        All numeric
+                      </MenuItem>,
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.continuous}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.continuous}
+                      >
+                        Continuous
+                      </MenuItem>,
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.discrete}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.discrete}
+                      >
+                        Discrete
+                      </MenuItem>,
+                    ]
+                  ) : (
+                    [
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.allLinguistic}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.allLinguistic}
+                      >
+                        All linguistic
+                      </MenuItem>,
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.ordinal}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.ordinal}
+                      >
+                        Ordinal
+                      </MenuItem>,
+                      <MenuItem
+                        key={MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy}
+                        value={MANAGE_DOMAIN_SUBTYPE_FILTERS.fuzzy}
+                      >
+                        Fuzzy
+                      </MenuItem>,
+                    ]
+                  )}
+                </TextField>
+              ) : null}
+
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                  alignSelf: { xs: "flex-start", md: "center" },
+                }}
+              >
+                {`${visibleDomainCount} of ${allManagedDomains.length} domains`}
+              </Typography>
+            </Stack>
+
+            {visibleDomains.length === 0 ? (
+              <Box sx={{ py: 3 }}>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                  No expression domains match the current filters.
+                </Typography>
+              </Box>
+            ) : null}
+
+            {showTwoFamilyLayout ? (
+              <Box
+                data-testid="expression-domain-family-layout"
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    md: "minmax(250px, 1fr) minmax(0, 2fr)",
+                  },
+                  alignItems: "start",
+                  gap: 1.5,
+                }}
+              >
+                <Stack
+                  data-testid="expression-domain-numeric-column"
+                  spacing={1}
                   alignItems="stretch"
                 >
-                  <GlassPaper
-                    data-testid={isFuzzyDomain ? "expression-domain-card-fuzzy" : "expression-domain-card"}
-                    sx={{
-                      p: 1.35,
-                      borderRadius: 3,
-                      border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-                      bgcolor: alpha(theme.palette.common.white, 0.012),
-                      height: "100%",
-                    }}
-                  >
-                    <Stack spacing={1.5} width="100%">
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        spacing={1}
-                        width="100%"
-                      >
-                        <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-                          <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
-                            <Typography variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                              {displayMeta.name}
-                            </Typography>
-                            {isGlobalDomain ? (
-                              <Chip
-                                size="small"
-                                label="Global"
-                                color="default"
-                                variant="outlined"
-                              />
-                            ) : null}
-                          </Stack>
-                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                            {displayMeta.descriptor}
-                          </Typography>
-                        </Stack>
+                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                    Numeric domains
+                  </Typography>
+                  {numericDomains.map(renderDomainCard)}
+                </Stack>
 
-                        {!isGlobalDomain ? (
-                          <Stack direction="row" spacing={0.8}>
-                            <Button
-                              size="small"
-                              color="warning"
-                              onClick={() => handleOpenEdit(domain)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={() => handleAskDelete(domain)}
-                            >
-                              Delete
-                            </Button>
-                          </Stack>
-                        ) : null}
-                      </Stack>
+                <Stack
+                  data-testid="expression-domain-linguistic-column"
+                  spacing={1}
+                  alignItems="stretch"
+                >
+                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                    Linguistic domains
+                  </Typography>
+                  {linguisticDomains.map(renderDomainCard)}
+                </Stack>
+              </Box>
+            ) : null}
 
-                      <Divider sx={{ borderColor: alpha(theme.palette.common.white, 0.08) }} />
+            {!showTwoFamilyLayout && hasNumericDomains ? (
+              <Box
+                data-testid="expression-domain-numeric-only-layout"
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
+                  },
+                  alignItems: "start",
+                  gap: 1.5,
+                }}
+              >
+                {numericDomains.map(renderDomainCard)}
+              </Box>
+            ) : null}
 
-                      <Box sx={{ width: "100%" }}>
-                        <ExpressionDomainPreview domain={domain} />
-                      </Box>
-                    </Stack>
-                  </GlassPaper>
-                </Grid2>
-              );
-            })}
-          </Grid2>
+            {!showTwoFamilyLayout && hasLinguisticDomains ? (
+              <Stack
+                data-testid="expression-domain-linguistic-only-layout"
+                spacing={1}
+                alignItems="stretch"
+              >
+                {linguisticDomains.map(renderDomainCard)}
+              </Stack>
+            ) : null}
+          </Stack>
         </DialogContent>
 
         <DialogActions sx={getCreateIssueCompactDialogActionsSx(theme)}>
