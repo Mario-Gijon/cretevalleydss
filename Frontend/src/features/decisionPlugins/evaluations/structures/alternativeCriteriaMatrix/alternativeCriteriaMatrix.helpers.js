@@ -103,3 +103,80 @@ export const updateAlternativeCriteriaMatrixCell = ({
     },
   };
 };
+
+const isFiniteNumber = (value) =>
+  typeof value === "number" && Number.isFinite(value);
+
+const isCanonicalCollectiveValue = (value) => {
+  if (isFiniteNumber(value)) {
+    return true;
+  }
+
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => isFiniteNumber(item))
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+export const resolveCanonicalCollectiveAlternativeCriteriaMatrix = ({
+  alternatives,
+  criteria,
+  collectivePayload,
+}) => {
+  if (collectivePayload === null || collectivePayload === undefined) {
+    return null;
+  }
+
+  if (!isPlainObject(collectivePayload)) {
+    throw new Error("Collective payload must be an object.");
+  }
+
+  const alternativeIds = alternatives.map((alternative) => alternative.id);
+  const criterionIds = criteria.map((criterion) => criterion.id);
+  const unknownAlternativeIds = Object.keys(collectivePayload).filter(
+    (alternativeId) => !alternativeIds.includes(alternativeId)
+  );
+
+  if (unknownAlternativeIds.length > 0) {
+    throw new Error("Collective payload contains unknown alternative rows.");
+  }
+
+  for (const alternative of alternatives) {
+    if (!hasOwnKey(collectivePayload, alternative.id)) {
+      continue;
+    }
+
+    const row = collectivePayload[alternative.id];
+
+    if (!isPlainObject(row)) {
+      throw new Error("Collective alternative row must be an object.");
+    }
+
+    const unknownCriterionIds = Object.keys(row).filter(
+      (criterionId) => !criterionIds.includes(criterionId)
+    );
+
+    if (unknownCriterionIds.length > 0) {
+      throw new Error("Collective alternative row contains unknown criterion cells.");
+    }
+
+    for (const criterion of criteria) {
+      if (!hasOwnKey(row, criterion.id)) {
+        continue;
+      }
+
+      if (!isCanonicalCollectiveValue(row[criterion.id])) {
+        throw new Error(
+          `Collective payload cell '${alternative.id}.${criterion.id}' must be a finite number or a non-empty array of finite numbers.`
+        );
+      }
+    }
+  }
+
+  return collectivePayload;
+};

@@ -15,6 +15,7 @@ import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDispl
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
 import {
   requireCanonicalAlternativeCriteriaMatrix,
+  resolveCanonicalCollectiveAlternativeCriteriaMatrix,
   updateAlternativeCriteriaMatrixCell,
 } from "./alternativeCriteriaMatrix.helpers.js";
 
@@ -85,23 +86,7 @@ const resolveEvaluationCriteria = (evaluationContext) => {
   });
 };
 
-const getCollectiveDisplayValue = (cell) => {
-  if (typeof cell === "number" && Number.isFinite(cell)) {
-    return cell;
-  }
-
-  if (
-    Array.isArray(cell) &&
-    cell.length > 0 &&
-    cell.every((item) => typeof item === "number" && Number.isFinite(item))
-  ) {
-    return cell;
-  }
-
-  return null;
-};
-
-const hasCollectiveValue = (value) => value !== null;
+const hasCollectiveValue = (value) => value !== undefined;
 
 const isEmptyMatrixValue = (value) =>
   value === "" || value === null || value === undefined;
@@ -227,6 +212,34 @@ const AlternativeCriteriaMatrixView = (
     evaluationPayload,
     shouldWithholdGrid,
   ]);
+  const collectiveResolution = useMemo(() => {
+    if (!contextResolution.valid) {
+      return {
+        valid: true,
+        payload: null,
+        message: "",
+      };
+    }
+
+    try {
+      return {
+        valid: true,
+        payload: resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+          alternatives: alternativeItems,
+          criteria,
+          collectivePayload,
+        }),
+        message: "",
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        payload: null,
+        message:
+          error instanceof Error ? error.message : "Collective payload is invalid.",
+      };
+    }
+  }, [alternativeItems, collectivePayload, contextResolution.valid, criteria]);
 
   const matrixRows = useMemo(
     () =>
@@ -384,9 +397,7 @@ const AlternativeCriteriaMatrixView = (
   );
 
   const renderMatrixCell = ({ rowId, criterion, value }) => {
-    const collectiveValue = getCollectiveDisplayValue(
-      collectivePayload?.[rowId]?.[criterion.id]
-    );
+    const collectiveValue = collectiveResolution.payload?.[rowId]?.[criterion.id];
     const expressionDomain = criterion.expressionDomain;
     const cellError =
       validationErrorsByCell[buildCellValidationKey(rowId, criterion.id)] || "";
@@ -496,6 +507,11 @@ const AlternativeCriteriaMatrixView = (
         overflow: "hidden",
       }}
     >
+      {!collectiveResolution.valid ? (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          {collectiveResolution.message}
+        </Alert>
+      ) : null}
       <DataGrid
         autoHeight
         disableColumnMenu

@@ -81,7 +81,7 @@ describe("AlternativeCriteriaMatrixView", () => {
     expect(screen.getByText("[0.6, 0.8, 1]")).toBeInTheDocument();
   });
 
-  it("does not interpret legacy collective wrappers", () => {
+  it("does not show a chip for a missing collective cell and does not show an error for null collectivePayload", () => {
     renderWithProviders(
       <AlternativeCriteriaMatrixView
         evaluationContext={buildEvaluationContext([
@@ -96,17 +96,14 @@ describe("AlternativeCriteriaMatrixView", () => {
           },
         }}
         setEvaluationPayload={vi.fn()}
-        collectivePayload={{
-          "alt-a": {
-            "criterion-1": { localizedLabel: "Legacy" },
-          },
-        }}
+        collectivePayload={null}
         readOnly={false}
         loading={false}
       />
     );
 
-    expect(screen.queryByText("Legacy")).not.toBeInTheDocument();
+    expect(screen.queryByText("7.2")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("renders an alert for malformed matrix payloads", () => {
@@ -169,5 +166,131 @@ describe("AlternativeCriteriaMatrixView", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders a collective payload alert for legacy wrapper values and keeps editable inputs rendered", () => {
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        evaluationContext={buildEvaluationContext([
+          { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
+        ])}
+        evaluationPayload={{
+          "alt-a": {
+            "criterion-1": { value: 7.5 },
+          },
+          "alt-b": {
+            "criterion-1": { value: 6.5 },
+          },
+        }}
+        setEvaluationPayload={vi.fn()}
+        collectivePayload={{
+          "alt-a": {
+            "criterion-1": { localizedLabel: "Legacy" },
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Collective payload cell");
+    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Legacy")).not.toBeInTheDocument();
+  });
+
+  it("renders a collective payload alert for object, string, empty-array, and mixed-array present values", () => {
+    const criteria = [
+      { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
+    ];
+
+    for (const collectivePayload of [
+      { "alt-a": { "criterion-1": { value: 7.2 } } },
+      { "alt-a": { "criterion-1": "7.2" } },
+      { "alt-a": { "criterion-1": [] } },
+      { "alt-a": { "criterion-1": [0.6, "bad"] } },
+    ]) {
+      const { unmount } = renderWithProviders(
+        <AlternativeCriteriaMatrixView
+          evaluationContext={buildEvaluationContext(criteria)}
+          evaluationPayload={{
+            "alt-a": {
+              "criterion-1": { value: 7.5 },
+            },
+            "alt-b": {
+              "criterion-1": { value: 6.5 },
+            },
+          }}
+          setEvaluationPayload={vi.fn()}
+          collectivePayload={collectivePayload}
+          readOnly={false}
+          loading={false}
+        />
+      );
+
+      expect(screen.getByRole("alert")).toHaveTextContent("Collective payload cell");
+      expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+      unmount();
+    }
+  });
+
+  it("renders a collective payload alert for unknown collective rows and cells", () => {
+    const criteria = [
+      { id: "criterion-1", name: "Numeric", expressionDomain: numericDomain },
+    ];
+
+    const { unmount } = renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        evaluationContext={buildEvaluationContext(criteria)}
+        evaluationPayload={{
+          "alt-a": {
+            "criterion-1": { value: 7.5 },
+          },
+          "alt-b": {
+            "criterion-1": { value: 6.5 },
+          },
+        }}
+        setEvaluationPayload={vi.fn()}
+        collectivePayload={{
+          "alt-c": {
+            "criterion-1": 7.2,
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Collective payload contains unknown alternative rows."
+    );
+    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
+    unmount();
+
+    renderWithProviders(
+      <AlternativeCriteriaMatrixView
+        evaluationContext={buildEvaluationContext(criteria)}
+        evaluationPayload={{
+          "alt-a": {
+            "criterion-1": { value: 7.5 },
+          },
+          "alt-b": {
+            "criterion-1": { value: 6.5 },
+          },
+        }}
+        setEvaluationPayload={vi.fn()}
+        collectivePayload={{
+          "alt-a": {
+            "criterion-2": 7.2,
+          },
+        }}
+        readOnly={false}
+        loading={false}
+      />
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Collective alternative row contains unknown criterion cells."
+    );
+    expect(screen.getAllByRole("spinbutton").length).toBeGreaterThan(0);
   });
 });

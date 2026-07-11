@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   requireCanonicalAlternativeCriteriaMatrix,
+  resolveCanonicalCollectiveAlternativeCriteriaMatrix,
   updateAlternativeCriteriaMatrixCell,
 } from "./alternativeCriteriaMatrix.helpers.js";
 
@@ -186,5 +187,95 @@ describe("alternativeCriteriaMatrix helpers", () => {
         nextValue: 9,
       })
     ).toThrow("Evaluation payload is missing an alternative row.");
+  });
+
+  it("accepts absent collective payloads and sparse valid collective cells", () => {
+    expect(
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: null,
+      })
+    ).toBeNull();
+
+    expect(
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-a": {
+            "criterion-1": 7.2,
+            "criterion-2": [0.6, 0.8, 1],
+          },
+        },
+      })
+    ).toEqual({
+      "alt-a": {
+        "criterion-1": 7.2,
+        "criterion-2": [0.6, 0.8, 1],
+      },
+    });
+  });
+
+  it("rejects malformed present collective values and unknown collective ids", () => {
+    expect(() =>
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-a": {
+            "criterion-1": { localizedLabel: "Legacy" },
+          },
+        },
+      })
+    ).toThrow("must be a finite number or a non-empty array of finite numbers");
+
+    expect(() =>
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-a": {
+            "criterion-1": [],
+          },
+        },
+      })
+    ).toThrow("must be a finite number or a non-empty array of finite numbers");
+
+    expect(() =>
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-a": {
+            "criterion-1": [0.6, "bad"],
+          },
+        },
+      })
+    ).toThrow("must be a finite number or a non-empty array of finite numbers");
+
+    expect(() =>
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-c": {
+            "criterion-1": 7.2,
+          },
+        },
+      })
+    ).toThrow("Collective payload contains unknown alternative rows.");
+
+    expect(() =>
+      resolveCanonicalCollectiveAlternativeCriteriaMatrix({
+        alternatives,
+        criteria,
+        collectivePayload: {
+          "alt-a": {
+            "criterion-3": 7.2,
+          },
+        },
+      })
+    ).toThrow("Collective alternative row contains unknown criterion cells.");
   });
 });
