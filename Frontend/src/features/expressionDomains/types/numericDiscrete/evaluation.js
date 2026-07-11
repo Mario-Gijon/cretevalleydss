@@ -1,4 +1,4 @@
-const EPSILON = 1e-9;
+export const NUMERIC_DISCRETE_EPSILON = 1e-9;
 
 const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -48,7 +48,7 @@ const isStepAligned = ({ value, min = 0, step }) => {
   }
 
   const ratio = (value - min) / step;
-  return Math.abs(ratio - Math.round(ratio)) < EPSILON;
+  return Math.abs(ratio - Math.round(ratio)) < NUMERIC_DISCRETE_EPSILON;
 };
 
 export const getNumericDiscreteEvaluationDefinition = (expressionDomain) => {
@@ -100,3 +100,14 @@ export const validateNumericDiscreteEvaluation = ({
   return normalizedValue;
 };
 
+export const assertNumericDiscreteValueStepAligned = ({ value, definition }) => {
+  if (
+    !isStepAligned({
+      value,
+      min: definition?.min ?? 0,
+      step: definition?.step,
+    })
+  ) {
+    throw new Error(`Value must follow step ${definition.step}.`);
+  }
+};

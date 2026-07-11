@@ -8,3 +8,8 @@ export {
 } from "./resolveIssueDomainAssignments.js";
 export { assignIssueExpressionDomainSnapshotsOrThrow } from "./assignIssueDomainSnapshots.js";
 export { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "./buildIssueDomainConfig.js";
+export {
+  assertPairwiseReflectionCompatible,
+  findMatchingFuzzyLabel,
+  reflectExpressionDomainValue,
+} from "./operations/index.js";

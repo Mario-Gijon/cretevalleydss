@@ -6,3 +6,8 @@ export {
 } from "./expressionDomainTypeCatalog";
 export { default as ExpressionDomainEvaluationInput } from "./ExpressionDomainEvaluationInput.jsx";
 export { validateExpressionDomainEvaluation } from "./validateExpressionDomainEvaluation";
+export {
+  assertPairwiseReflectionCompatible,
+  findMatchingFuzzyLabel,
+  reflectExpressionDomainValue,
+} from "./operations/index.js";
