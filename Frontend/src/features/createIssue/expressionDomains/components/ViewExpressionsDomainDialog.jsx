@@ -240,15 +240,13 @@ export const ViewExpressionsDomainDialog = ({
         </DialogTitle>
 
         <DialogContent sx={getCreateIssueCompactDialogContentSx(theme)}>
-          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700, mt: 0.5 }}>
-            Global domains are predefined and cannot be edited or deleted.
-          </Typography>
 
-          <Stack spacing={1.25} sx={{ mt: 1 }}>
+          <Stack spacing={1.25} sx={{ mt: 3 }}>
             <Stack
               direction={{ xs: "column", md: "row" }}
               spacing={1}
               alignItems={{ xs: "stretch", md: "center" }}
+              sx={{pb:1}}
             >
               <TextField
                 color="info"
@@ -336,18 +334,6 @@ export const ViewExpressionsDomainDialog = ({
                   )}
                 </TextField>
               ) : null}
-
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "text.secondary",
-                  fontWeight: 800,
-                  whiteSpace: "nowrap",
-                  alignSelf: { xs: "flex-start", md: "center" },
-                }}
-              >
-                {`${visibleDomainCount} of ${allManagedDomains.length} domains`}
-              </Typography>
             </Stack>
 
             {visibleDomains.length === 0 ? (
