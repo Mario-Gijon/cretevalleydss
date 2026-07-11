@@ -4,7 +4,7 @@ import {
   assertPairwiseReflectionCompatible,
   findMatchingFuzzyLabel,
   reflectExpressionDomainValue,
-} from "../../modules/expressionDomains/index.js";
+} from "../../../src/features/expressionDomains/operations/index.js";
 
 const buildNumericContinuousDomain = () => ({
   typeKey: "numericContinuous",
@@ -80,7 +80,7 @@ const buildHexagonalFuzzyDomain = () => ({
   },
 });
 
-describe("expression domain operations", () => {
+describe("expressionDomain operations", () => {
   it("reflects numericContinuous 1..5 so 2 becomes 4", () => {
     expect(
       reflectExpressionDomainValue({
@@ -121,27 +121,24 @@ describe("expression domain operations", () => {
   });
 
   it("rejects numericDiscrete compatibility for 0..1 step 0.3", () => {
-    try {
+    expect(() =>
       assertPairwiseReflectionCompatible({
         typeKey: "numericDiscrete",
         definition: { min: 0, max: 1, step: 0.3 },
-      });
-      throw new Error("Expected incompatibility error.");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "PAIRWISE_REFLECTION_INCOMPATIBLE_DOMAIN",
-        field: "expressionDomain.definition.step",
-        message:
-          "This discrete domain cannot be used for pairwise comparisons because some reflected values do not align with its step.",
-      });
-    }
+      })
+    ).toThrow(
+      "This discrete domain cannot be used for pairwise comparisons because some reflected values do not align with its step."
+    );
   });
 
-  it("does not snap or round reflected results", () => {
+  it("does not snap or round numericDiscrete reflected results", () => {
     expect(
       reflectExpressionDomainValue({
         value: 1.2,
-        expressionDomain: buildNumericContinuousDomain(),
+        expressionDomain: {
+          typeKey: "numericContinuous",
+          definition: { min: 1, max: 5 },
+        },
       })
     ).toBe(4.8);
   });
@@ -271,22 +268,15 @@ describe("expression domain operations", () => {
   });
 
   it("fails on unknown type keys", () => {
-    try {
+    expect(() =>
       reflectExpressionDomainValue({
         value: 1,
         expressionDomain: {
           typeKey: "unknownType",
           definition: {},
         },
-      });
-      throw new Error("Expected unsupported type error.");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "UNSUPPORTED_EXPRESSION_DOMAIN_TYPE",
-        field: "typeKey",
-        message: "Unsupported expression domain type: unknownType",
-      });
-    }
+      })
+    ).toThrow('[expressionDomains] Unsupported expression domain type key "unknownType".');
   });
 
   it("does not mutate source fuzzy arrays", () => {

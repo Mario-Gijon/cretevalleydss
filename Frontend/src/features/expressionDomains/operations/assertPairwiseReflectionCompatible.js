@@ -1,4 +1,4 @@
-import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
+import { getExpressionDomainTypeMetadataOrThrow } from "../expressionDomainTypeMetadataCatalog.js";
 import { getNumericDiscreteEvaluationDefinition } from "../types/numericDiscrete/evaluation.js";
 
 const PAIRWISE_REFLECTION_INCOMPATIBLE_MESSAGE =
@@ -12,7 +12,7 @@ export const assertPairwiseReflectionCompatible = (expressionDomain) => {
   }
 
   const normalizedTypeKey = typeKey.trim();
-  getExpressionDomainTypeOrThrow(normalizedTypeKey);
+  getExpressionDomainTypeMetadataOrThrow(normalizedTypeKey);
 
   if (normalizedTypeKey !== "numericDiscrete") {
     return expressionDomain;
@@ -28,4 +28,3 @@ export const assertPairwiseReflectionCompatible = (expressionDomain) => {
 
   return expressionDomain;
 };
-

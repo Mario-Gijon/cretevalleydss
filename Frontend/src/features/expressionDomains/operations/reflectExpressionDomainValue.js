@@ -1,11 +1,15 @@
-import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
-import { validateExpressionDomainEvaluation } from "../validateExpressionDomainEvaluation.js";
+import { getExpressionDomainTypeMetadataOrThrow } from "../expressionDomainTypeMetadataCatalog.js";
+import { validateLinguisticFuzzyEvaluation } from "../types/linguisticFuzzy/evaluation.js";
+import { validateLinguisticOrdinalEvaluation } from "../types/linguisticOrdinal/evaluation.js";
+import { validateNumericContinuousEvaluation } from "../types/numericContinuous/evaluation.js";
 import { assertPairwiseReflectionCompatible } from "./assertPairwiseReflectionCompatible.js";
 import { getNumericContinuousEvaluationDefinition } from "../types/numericContinuous/evaluation.js";
 import {
   assertNumericDiscreteValueStepAligned,
   getNumericDiscreteEvaluationDefinition,
+  validateNumericDiscreteEvaluation,
 } from "../types/numericDiscrete/evaluation.js";
+import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
 
 const getLinguisticOrdinalLabelsOrThrow = (expressionDomain) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
@@ -29,44 +33,28 @@ const normalizeExpressionDomainTypeKeyOrThrow = (expressionDomain) => {
   }
 
   const normalizedTypeKey = typeKey.trim();
-  getExpressionDomainTypeOrThrow(normalizedTypeKey);
+  getExpressionDomainTypeMetadataOrThrow(normalizedTypeKey);
   return normalizedTypeKey;
-};
-
-const assertReflectedFuzzyValuesOrThrow = (values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const item = values[index];
-
-    if (typeof item !== "number" || !Number.isFinite(item)) {
-      throw new Error(`Reflected fuzzy value at index ${index} is invalid.`);
-    }
-
-    if (item < 0 || item > 1) {
-      throw new Error(
-        `Reflected fuzzy value at index ${index} must remain between 0 and 1.`
-      );
-    }
-
-    if (index > 0 && item < values[index - 1]) {
-      throw new Error("Reflected fuzzy values must remain non-decreasing.");
-    }
-  }
 };
 
 export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
   const typeKey = normalizeExpressionDomainTypeKeyOrThrow(expressionDomain);
-  const normalizedValue = validateExpressionDomainEvaluation({
-    value,
-    expressionDomain,
-  });
 
   switch (typeKey) {
     case "numericContinuous": {
+      const normalizedValue = validateNumericContinuousEvaluation({
+        value,
+        expressionDomain,
+      });
       const definition = getNumericContinuousEvaluationDefinition(expressionDomain);
       return definition.min + definition.max - normalizedValue;
     }
 
     case "numericDiscrete": {
+      const normalizedValue = validateNumericDiscreteEvaluation({
+        value,
+        expressionDomain,
+      });
       assertPairwiseReflectionCompatible(expressionDomain);
       const definition = getNumericDiscreteEvaluationDefinition(expressionDomain);
       const reflectedValue = definition.min + definition.max - normalizedValue;
@@ -86,6 +74,10 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
     }
 
     case "linguisticOrdinal": {
+      const normalizedValue = validateLinguisticOrdinalEvaluation({
+        value,
+        expressionDomain,
+      });
       const labels = getLinguisticOrdinalLabelsOrThrow(expressionDomain);
       const selectedIndex = labels.findIndex(
         (item) => item?.key === normalizedValue.labelKey
@@ -96,16 +88,28 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
     }
 
     case "linguisticFuzzy": {
+      const normalizedValue = validateLinguisticFuzzyEvaluation({
+        value,
+        expressionDomain,
+      });
       const labels = getLinguisticFuzzyLabelsOrThrow(expressionDomain);
       const selectedLabel = labels.find(
         (item) => item?.key === normalizedValue.labelKey
       );
+      validateFuzzyValuesOrThrow({
+        values: selectedLabel?.values,
+        field: "definition.labels",
+        emptyMessage: "Expression domain definition is invalid.",
+      });
       const reflectedValues = selectedLabel.values
         .slice()
         .reverse()
         .map((item) => 1 - item);
 
-      assertReflectedFuzzyValuesOrThrow(reflectedValues);
+      validateFuzzyValuesOrThrow({
+        values: reflectedValues,
+        field: "value",
+      });
 
       return { values: reflectedValues };
     }
@@ -116,4 +120,3 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
       );
   }
 };
-

@@ -9,6 +9,7 @@ import {
 } from "../types/numericDiscrete/evaluation.js";
 import { getNumericContinuousEvaluationDefinition } from "../types/numericContinuous/evaluation.js";
 import { assertPairwiseReflectionCompatible } from "./assertPairwiseReflectionCompatible.js";
+import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
 
 const normalizeExpressionDomainTypeKeyOrThrow = (expressionDomain) => {
   const typeKey = expressionDomain?.typeKey;
@@ -22,31 +23,6 @@ const normalizeExpressionDomainTypeKeyOrThrow = (expressionDomain) => {
   const normalizedTypeKey = typeKey.trim();
   getExpressionDomainTypeOrThrow(normalizedTypeKey);
   return normalizedTypeKey;
-};
-
-const assertReflectedFuzzyValuesOrThrow = (values) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const item = values[index];
-
-    if (typeof item !== "number" || !Number.isFinite(item)) {
-      throw createBadRequestError(`Reflected fuzzy value at index ${index} is invalid.`, {
-        field: "value",
-      });
-    }
-
-    if (item < 0 || item > 1) {
-      throw createBadRequestError(
-        `Reflected fuzzy value at index ${index} must remain between 0 and 1.`,
-        { field: "value" }
-      );
-    }
-
-    if (index > 0 && item < values[index - 1]) {
-      throw createBadRequestError("Reflected fuzzy values must remain non-decreasing.", {
-        field: "value",
-      });
-    }
-  }
 };
 
 export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
@@ -101,12 +77,20 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
       const selectedLabel = labels.find(
         (item) => item?.key === normalizedValue.labelKey
       );
+      validateFuzzyValuesOrThrow({
+        values: selectedLabel?.values,
+        field: "definition.labels",
+        emptyMessage: "Expression domain definition is invalid.",
+      });
       const reflectedValues = selectedLabel.values
         .slice()
         .reverse()
         .map((item) => 1 - item);
 
-      assertReflectedFuzzyValuesOrThrow(reflectedValues);
+      validateFuzzyValuesOrThrow({
+        values: reflectedValues,
+        field: "value",
+      });
 
       return { values: reflectedValues };
     }
@@ -121,4 +105,3 @@ export const reflectExpressionDomainValue = ({ value, expressionDomain }) => {
       );
   }
 };
-

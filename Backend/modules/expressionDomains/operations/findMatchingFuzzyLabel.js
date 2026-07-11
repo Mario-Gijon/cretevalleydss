@@ -1,30 +1,7 @@
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
 import { getLinguisticFuzzyEvaluationLabels } from "../types/linguisticFuzzy/evaluation.js";
-
-const normalizeFuzzyValuesOrThrow = (values, { epsilon = 1e-9 } = {}) => {
-  if (!Array.isArray(values) || values.length === 0) {
-    throw createBadRequestError("values must be a non-empty array.", {
-      field: "values",
-    });
-  }
-
-  if (typeof epsilon !== "number" || !Number.isFinite(epsilon) || epsilon < 0) {
-    throw createBadRequestError("epsilon must be a non-negative finite number.", {
-      field: "epsilon",
-    });
-  }
-
-  return values.map((item, index) => {
-    if (typeof item !== "number" || !Number.isFinite(item)) {
-      throw createBadRequestError(`values[${index}] must be a finite number.`, {
-        field: `values[${index}]`,
-      });
-    }
-
-    return item;
-  });
-};
+import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
 
 const assertLinguisticFuzzyDomainOrThrow = (expressionDomain) => {
   const typeKey = expressionDomain?.typeKey;
@@ -54,13 +31,26 @@ export const findMatchingFuzzyLabel = ({
   epsilon = 1e-9,
 }) => {
   assertLinguisticFuzzyDomainOrThrow(expressionDomain);
-  const normalizedValues = normalizeFuzzyValuesOrThrow(values, { epsilon });
+  const normalizedValues = validateFuzzyValuesOrThrow({ values, epsilon });
   const labels = getLinguisticFuzzyEvaluationLabels(expressionDomain);
 
-  for (const label of labels) {
+  for (let index = 0; index < labels.length; index += 1) {
+    const label = labels[index];
     const labelValues = Array.isArray(label?.values) ? label.values : null;
 
-    if (!labelValues || labelValues.length !== normalizedValues.length) {
+    if (!labelValues) {
+      throw createBadRequestError("Expression domain definition is invalid.", {
+        field: `definition.labels[${index}].values`,
+      });
+    }
+
+    validateFuzzyValuesOrThrow({
+      values: labelValues,
+      field: `definition.labels[${index}].values`,
+      emptyMessage: "Expression domain definition is invalid.",
+    });
+
+    if (labelValues.length !== normalizedValues.length) {
       continue;
     }
 
@@ -75,4 +65,3 @@ export const findMatchingFuzzyLabel = ({
 
   return null;
 };
-

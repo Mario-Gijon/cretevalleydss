@@ -1,4 +1,22 @@
-import { getExpressionDomainTypeOrThrow } from "../expressionDomainTypeCatalog.js";
+import { getExpressionDomainTypeMetadataOrThrow } from "../expressionDomainTypeMetadataCatalog.js";
+import { validateFuzzyValuesOrThrow } from "./validateFuzzyValues.js";
+
+const assertLinguisticFuzzyDomainOrThrow = (expressionDomain) => {
+  const typeKey = expressionDomain?.typeKey;
+
+  if (typeof typeKey !== "string" || typeKey.trim() === "") {
+    throw new Error("expressionDomain.typeKey is required.");
+  }
+
+  const normalizedTypeKey = typeKey.trim();
+  getExpressionDomainTypeMetadataOrThrow(normalizedTypeKey);
+
+  if (normalizedTypeKey !== "linguisticFuzzy") {
+    throw new Error(
+      "findMatchingFuzzyLabel requires a linguisticFuzzy expression domain."
+    );
+  }
+};
 
 const getLinguisticFuzzyLabelsOrThrow = (expressionDomain) => {
   const labels = Array.isArray(expressionDomain?.definition?.labels)
@@ -12,54 +30,30 @@ const getLinguisticFuzzyLabelsOrThrow = (expressionDomain) => {
   return labels;
 };
 
-const normalizeFuzzyValuesOrThrow = (values, epsilon) => {
-  if (!Array.isArray(values) || values.length === 0) {
-    throw new Error("values must be a non-empty array.");
-  }
-
-  if (typeof epsilon !== "number" || !Number.isFinite(epsilon) || epsilon < 0) {
-    throw new Error("epsilon must be a non-negative finite number.");
-  }
-
-  return values.map((item, index) => {
-    if (typeof item !== "number" || !Number.isFinite(item)) {
-      throw new Error(`values[${index}] must be a finite number.`);
-    }
-
-    return item;
-  });
-};
-
-const assertLinguisticFuzzyDomainOrThrow = (expressionDomain) => {
-  const typeKey = expressionDomain?.typeKey;
-
-  if (typeof typeKey !== "string" || typeKey.trim() === "") {
-    throw new Error("expressionDomain.typeKey is required.");
-  }
-
-  const normalizedTypeKey = typeKey.trim();
-  getExpressionDomainTypeOrThrow(normalizedTypeKey);
-
-  if (normalizedTypeKey !== "linguisticFuzzy") {
-    throw new Error(
-      "findMatchingFuzzyLabel requires a linguisticFuzzy expression domain."
-    );
-  }
-};
-
 export const findMatchingFuzzyLabel = ({
   values,
   expressionDomain,
   epsilon = 1e-9,
 }) => {
   assertLinguisticFuzzyDomainOrThrow(expressionDomain);
-  const normalizedValues = normalizeFuzzyValuesOrThrow(values, epsilon);
+  const normalizedValues = validateFuzzyValuesOrThrow({ values, epsilon });
   const labels = getLinguisticFuzzyLabelsOrThrow(expressionDomain);
 
-  for (const label of labels) {
+  for (let index = 0; index < labels.length; index += 1) {
+    const label = labels[index];
     const labelValues = Array.isArray(label?.values) ? label.values : null;
 
-    if (!labelValues || labelValues.length !== normalizedValues.length) {
+    if (!labelValues) {
+      throw new Error("Expression domain definition is invalid.");
+    }
+
+    validateFuzzyValuesOrThrow({
+      values: labelValues,
+      field: `definition.labels[${index}].values`,
+      emptyMessage: "Expression domain definition is invalid.",
+    });
+
+    if (labelValues.length !== normalizedValues.length) {
       continue;
     }
 
@@ -74,4 +68,3 @@ export const findMatchingFuzzyLabel = ({
 
   return null;
 };
-
