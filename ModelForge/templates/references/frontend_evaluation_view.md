@@ -61,29 +61,21 @@ const evaluationViewPropsExample = {
           id: "DOMAIN_1",
           name: "Cost scale",
           typeKey: "numericContinuous",
-          family: "numeric",
           definition: {
             min: 0,
-            max: 1,
-            step: null
+            max: 1
           }
         }
       },
       {
         id: "CRIT_2",
-        name: "Environmental impact",
+        name: "Satisfaction",
         type: "benefit",
         expressionDomain: {
           id: "DOMAIN_2",
-          name: "Linguistic 2-tuple scale",
-          typeKey: "linguisticTwoTupleScale",
-          family: "linguistic",
+          name: "Ordered satisfaction scale",
+          typeKey: "linguisticOrdinal",
           definition: {
-            labelCount: 3,
-            alphaRange: {
-              min: -0.5,
-              max: 0.5
-            },
             labels: [
               { key: "low", label: "Low", index: 0 },
               { key: "medium", label: "Medium", index: 1 },
@@ -102,89 +94,31 @@ const evaluationViewPropsExample = {
     }
   },
   evaluationPayload: {
-    "Solar farm": {
-      Cost: {
-        value: 0.7,
-        domain: {
-          typeKey: "numericContinuous",
-          family: "numeric",
-          definition: {
-            min: 0,
-            max: 1,
-            step: null
-          }
-        }
+    ALT_1: {
+      CRIT_1: {
+        value: 0.7
       },
-      "Environmental impact": {
-        value: "Medium",
-        domain: {
-          typeKey: "linguisticTwoTupleScale",
-          family: "linguistic",
-          definition: {
-            labelCount: 3,
-            alphaRange: {
-              min: -0.5,
-              max: 0.5
-            },
-            labels: [
-              { key: "low", label: "Low", index: 0 },
-              { key: "medium", label: "Medium", index: 1 },
-              { key: "high", label: "High", index: 2 }
-            ]
-          }
-        }
+      CRIT_2: {
+        value: { labelKey: "medium" }
       }
     },
-    "Wind farm": {
-      Cost: {
-        value: 0.4,
-        domain: {
-          typeKey: "numericContinuous",
-          family: "numeric",
-          definition: {
-            min: 0,
-            max: 1,
-            step: null
-          }
-        }
+    ALT_2: {
+      CRIT_1: {
+        value: 0.4
       },
-      "Environmental impact": {
-        value: "High",
-        domain: {
-          typeKey: "linguisticTwoTupleScale",
-          family: "linguistic",
-          definition: {
-            labelCount: 3,
-            alphaRange: {
-              min: -0.5,
-              max: 0.5
-            },
-            labels: [
-              { key: "low", label: "Low", index: 0 },
-              { key: "medium", label: "Medium", index: 1 },
-              { key: "high", label: "High", index: 2 }
-            ]
-          }
-        }
+      CRIT_2: {
+        value: { labelKey: "high" }
       }
     }
   },
   collectivePayload: {
-    "Solar farm": {
-      Cost: {
-        value: 0.65
-      },
-      "Environmental impact": {
-        localizedLabel: "Medium"
-      }
+    ALT_1: {
+      CRIT_1: 0.65,
+      CRIT_2: 1
     },
-    "Wind farm": {
-      Cost: {
-        value: 0.45
-      },
-      "Environmental impact": {
-        localizedLabel: "High"
-      }
+    ALT_2: {
+      CRIT_1: 0.45,
+      CRIT_2: 2
     }
   },
   readOnly: false,
@@ -208,8 +142,8 @@ Useful access examples:
 evaluationContext.alternatives.map((alternative) => alternative.name)
 evaluationContext.leafCriteria.map((criterion) => criterion.name)
 evaluationContext.leafCriteria[0].expressionDomain
-evaluationPayload["Solar farm"]["Cost"].value
-collectivePayload["Wind farm"]["Environmental impact"].localizedLabel
+evaluationPayload.ALT_1.CRIT_1.value
+collectivePayload.ALT_2.CRIT_1
 readOnly
 loading
 ```
@@ -218,5 +152,7 @@ Practical guidance:
 
 - Derive ordered label arrays locally from `evaluationContext.alternatives` and `evaluationContext.leafCriteria`.
 - Read domain metadata from `criterion.expressionDomain`.
+- For `alternativeCriteriaMatrix`, keep editable cells exactly `{ value }` and keep domains only on criteria.
+- Collective payload values are direct numbers or numeric arrays, not wrappers.
 - Keep payload conversion and validation inside the structure adapter.
 - Do not expect `evaluationContext.alternatives.names`, `evaluationContext.criteria.leafNames`, or separate domain maps.

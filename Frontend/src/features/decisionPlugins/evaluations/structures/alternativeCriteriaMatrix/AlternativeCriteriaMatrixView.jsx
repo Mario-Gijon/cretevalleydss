@@ -1,60 +1,107 @@
 import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
+  Alert,
   Box,
   Chip,
   Stack,
-  Typography,
   useTheme,
 } from "@mui/material";
 
 import ExpressionDomainEvaluationInput from "../../../../expressionDomains/ExpressionDomainEvaluationInput.jsx";
 import { validateExpressionDomainEvaluation } from "../../../../expressionDomains";
+import { getExpressionDomainTypeMetadataOrThrow } from "../../../../expressionDomains/expressionDomainTypeMetadataCatalog.js";
 import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
 import {
-  resolveMatrixCell,
-  resolveMatrixPayload,
-} from "./resolveAlternativeCriteriaMatrixCell";
+  requireCanonicalAlternativeCriteriaMatrix,
+  updateAlternativeCriteriaMatrixCell,
+} from "./alternativeCriteriaMatrix.helpers.js";
 
-const resolveEvaluationAlternatives = (evaluationContext) =>
-  Array.isArray(evaluationContext?.alternatives)
-    ? evaluationContext.alternatives
-        .map((alternative) => ({
-          id: String(alternative?.id ?? alternative?._id ?? "").trim(),
-          name: String(alternative?.name ?? "").trim(),
-        }))
-        .filter((alternative) => alternative.id && alternative.name)
-    : [];
+const isPlainObject = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
-const resolveEvaluationCriteria = (evaluationContext) =>
-  Array.isArray(evaluationContext?.leafCriteria)
-    ? evaluationContext.leafCriteria
-        .map((criterion) => ({
-          ...criterion,
-          id: String(criterion?.id ?? criterion?._id ?? "").trim(),
-          name: String(criterion?.name ?? "").trim(),
-        }))
-        .filter((criterion) => criterion.id && criterion.name)
-    : [];
+const resolveEvaluationAlternatives = (evaluationContext) => {
+  if (!isPlainObject(evaluationContext)) {
+    throw new Error("Evaluation context is invalid.");
+  }
+
+  if (!Array.isArray(evaluationContext.alternatives)) {
+    throw new Error("Evaluation context alternatives must be an array.");
+  }
+
+  return evaluationContext.alternatives.map((alternative, index) => {
+    const id = String(alternative?.id ?? alternative?._id ?? "").trim();
+    const name = String(alternative?.name ?? "").trim();
+
+    if (!id || !name) {
+      throw new Error(`Evaluation context alternative ${index + 1} is invalid.`);
+    }
+
+    return { id, name };
+  });
+};
+
+const resolveEvaluationCriteria = (evaluationContext) => {
+  if (!isPlainObject(evaluationContext)) {
+    throw new Error("Evaluation context is invalid.");
+  }
+
+  if (!Array.isArray(evaluationContext.leafCriteria)) {
+    throw new Error("Evaluation context leafCriteria must be an array.");
+  }
+
+  return evaluationContext.leafCriteria.map((criterion, index) => {
+    const id = String(criterion?.id ?? criterion?._id ?? "").trim();
+    const name = String(criterion?.name ?? "").trim();
+    const expressionDomain = criterion?.expressionDomain;
+
+    if (!id || !name) {
+      throw new Error(`Evaluation context criterion ${index + 1} is invalid.`);
+    }
+
+    if (!isPlainObject(expressionDomain)) {
+      throw new Error(`Evaluation context criterion ${index + 1} expressionDomain is invalid.`);
+    }
+
+    const typeKey =
+      typeof expressionDomain.typeKey === "string"
+        ? expressionDomain.typeKey.trim()
+        : "";
+
+    if (!typeKey) {
+      throw new Error(
+        `Evaluation context criterion ${index + 1} expressionDomain type is invalid.`
+      );
+    }
+
+    getExpressionDomainTypeMetadataOrThrow(typeKey);
+
+    return {
+      id,
+      name,
+      expressionDomain,
+    };
+  });
+};
 
 const getCollectiveDisplayValue = (cell) => {
-  if (cell == null) return null;
-  if (typeof cell !== "object") return cell;
-  if (cell.localizedLabel != null && cell.localizedLabel !== "") {
-    return cell.localizedLabel;
+  if (typeof cell === "number" && Number.isFinite(cell)) {
+    return cell;
   }
-  if (cell.localizedValue != null && cell.localizedValue !== "") {
-    return cell.localizedValue;
+
+  if (
+    Array.isArray(cell) &&
+    cell.length > 0 &&
+    cell.every((item) => typeof item === "number" && Number.isFinite(item))
+  ) {
+    return cell;
   }
-  if (cell.value != null && cell.value !== "") {
-    return cell.value;
-  }
+
   return null;
 };
 
-const hasCollectiveValue = (value) =>
-  value !== null && value !== undefined && value !== "";
+const hasCollectiveValue = (value) => value !== null;
 
 const isEmptyMatrixValue = (value) =>
   value === "" || value === null || value === undefined;
@@ -97,23 +144,6 @@ const buildValidationErrorMap = (errors) =>
     return errorMap;
   }, {});
 
-const buildNextMatrixPayload = ({
-  previousPayload,
-  rowId,
-  criterionId,
-  expressionDomain,
-  nextValue,
-}) => ({
-  ...resolveMatrixPayload(previousPayload),
-  [rowId]: {
-    ...resolveMatrixPayload(previousPayload?.[rowId]),
-    [criterionId]: {
-      value: nextValue,
-      expressionDomain,
-    },
-  },
-});
-
 const AlternativeCriteriaMatrixView = (
   {
     evaluationContext,
@@ -127,16 +157,29 @@ const AlternativeCriteriaMatrixView = (
 ) => {
   const theme = useTheme();
   const [validationErrorsByCell, setValidationErrorsByCell] = useState({});
+  const shouldWithholdGrid = loading === true && evaluationPayload == null;
 
-  // Context data
-  const alternativeItems = useMemo(
-    () => resolveEvaluationAlternatives(evaluationContext),
-    [evaluationContext]
-  );
-  const criteria = useMemo(
-    () => resolveEvaluationCriteria(evaluationContext),
-    [evaluationContext]
-  );
+  const contextResolution = useMemo(() => {
+    try {
+      return {
+        valid: true,
+        alternatives: resolveEvaluationAlternatives(evaluationContext),
+        criteria: resolveEvaluationCriteria(evaluationContext),
+        message: "",
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        alternatives: [],
+        criteria: [],
+        message:
+          error instanceof Error ? error.message : "Evaluation context is invalid.",
+      };
+    }
+  }, [evaluationContext]);
+  const alternativeItems = contextResolution.alternatives;
+  const criteria = contextResolution.criteria;
+
   const alternativeNameById = useMemo(
     () =>
       new Map(
@@ -149,15 +192,42 @@ const AlternativeCriteriaMatrixView = (
     [criteria]
   );
 
-  // Payload data
-  const resolvedPayload = useMemo(
-    () => resolveMatrixPayload(evaluationPayload),
-    [evaluationPayload]
-  );
-  const resolvedCollectivePayload = useMemo(
-    () => resolveMatrixPayload(collectivePayload),
-    [collectivePayload]
-  );
+  const payloadResolution = useMemo(() => {
+    if (!contextResolution.valid || shouldWithholdGrid) {
+      return {
+        valid: contextResolution.valid,
+        payload: null,
+        message: contextResolution.message,
+      };
+    }
+
+    try {
+      return {
+        valid: true,
+        payload: requireCanonicalAlternativeCriteriaMatrix({
+          alternatives: alternativeItems,
+          criteria,
+          evaluations: evaluationPayload,
+        }),
+        message: "",
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        payload: null,
+        message:
+          error instanceof Error ? error.message : "Evaluation payload is invalid.",
+      };
+    }
+  }, [
+    alternativeItems,
+    contextResolution.message,
+    contextResolution.valid,
+    criteria,
+    evaluationPayload,
+    shouldWithholdGrid,
+  ]);
+
   const matrixRows = useMemo(
     () =>
       alternativeItems.map((alternative) => {
@@ -167,28 +237,31 @@ const AlternativeCriteriaMatrixView = (
         };
 
         criteria.forEach((criterion) => {
-          row[criterion.id] = resolveMatrixCell({
-            cell: resolvedPayload?.[alternative.id]?.[criterion.id],
-            fallbackExpressionDomain: criterion.expressionDomain || null,
-          });
+          row[criterion.id] =
+            payloadResolution.payload?.[alternative.id]?.[criterion.id]?.value;
         });
 
         return row;
       }),
-    [alternativeItems, criteria, resolvedPayload]
+    [alternativeItems, criteria, payloadResolution.payload]
   );
   const permitEdit = readOnly !== true && loading !== true;
 
-  // Validation
   const validationResult = useMemo(() => {
+    if (!payloadResolution.valid) {
+      return {
+        valid: false,
+        errors: [],
+      };
+    }
+
     const errors = [];
 
     matrixRows.forEach((row) => {
       criteria.forEach((criterion) => {
-        const cell = row[criterion.id];
         const validationError = validateMatrixValue({
-          value: cell.value,
-          expressionDomain: cell.expressionDomain,
+          value: row[criterion.id],
+          expressionDomain: criterion.expressionDomain,
           alternativeName: row.alternativeLabel,
           criterionName: criterion.name,
         });
@@ -209,13 +282,12 @@ const AlternativeCriteriaMatrixView = (
       valid: errors.length === 0,
       errors,
     };
-  }, [criteria, matrixRows]);
+  }, [criteria, matrixRows, payloadResolution.valid]);
   const validationErrorsMap = useMemo(
     () => buildValidationErrorMap(validationResult.errors),
     [validationResult.errors]
   );
 
-  // Update handlers
   const updateCellValue = ({ rowId, criterionId, expressionDomain, nextValue }) => {
     const validationKey = buildCellValidationKey(rowId, criterionId);
     const nextValidationError = validateMatrixValue({
@@ -242,11 +314,12 @@ const AlternativeCriteriaMatrixView = (
     });
 
     setEvaluationPayload((previousPayload) =>
-      buildNextMatrixPayload({
-        previousPayload,
-        rowId,
+      updateAlternativeCriteriaMatrixCell({
+        alternatives: alternativeItems,
+        criteria,
+        evaluations: previousPayload,
+        alternativeId: rowId,
         criterionId,
-        expressionDomain,
         nextValue,
       })
     );
@@ -310,13 +383,13 @@ const AlternativeCriteriaMatrixView = (
     </Stack>
   );
 
-  const renderMatrixCell = ({ rowId, criterionId, cell }) => {
+  const renderMatrixCell = ({ rowId, criterion, value }) => {
     const collectiveValue = getCollectiveDisplayValue(
-      resolvedCollectivePayload?.[rowId]?.[criterionId]
+      collectivePayload?.[rowId]?.[criterion.id]
     );
-    const expressionDomain = cell.expressionDomain;
+    const expressionDomain = criterion.expressionDomain;
     const cellError =
-      validationErrorsByCell[buildCellValidationKey(rowId, criterionId)] || "";
+      validationErrorsByCell[buildCellValidationKey(rowId, criterion.id)] || "";
 
     return renderCellWithCollective({
       collectiveValue,
@@ -333,7 +406,7 @@ const AlternativeCriteriaMatrixView = (
         >
           <ExpressionDomainEvaluationInput
             expressionDomain={expressionDomain}
-            value={cell.value}
+            value={value}
             onChange={(nextValue) => {
               if (!permitEdit) {
                 return;
@@ -341,7 +414,7 @@ const AlternativeCriteriaMatrixView = (
 
               updateCellValue({
                 rowId,
-                criterionId,
+                criterionId: criterion.id,
                 expressionDomain,
                 nextValue,
               });
@@ -349,26 +422,12 @@ const AlternativeCriteriaMatrixView = (
             disabled={!permitEdit}
             error={Boolean(cellError)}
             showHelperText={false}
-            fallback={(
-              <Typography
-                variant="caption"
-                sx={{
-                  color: cellError ? "error.main" : "text.disabled",
-                  fontWeight: 700,
-                }}
-              >
-                {expressionDomain?.typeKey
-                  ? `Unsupported domain: ${expressionDomain.typeKey}`
-                  : "Missing domain type"}
-              </Typography>
-            )}
           />
         </Box>
       ),
     });
   };
 
-  // Grid configuration
   const columns = [
     {
       field: "alternativeLabel",
@@ -384,8 +443,8 @@ const AlternativeCriteriaMatrixView = (
       renderCell: (params) =>
         renderMatrixCell({
           rowId: params.row.id,
-          criterionId: criterion.id,
-          cell: params.row[criterion.id],
+          criterion,
+          value: params.row[criterion.id],
         }),
     })),
   ];
@@ -399,9 +458,33 @@ const AlternativeCriteriaMatrixView = (
     preparePayloadRead: flushPendingEdits,
     validatePayloadRead: () => {
       setValidationErrorsByCell(validationErrorsMap);
+
+      if (!payloadResolution.valid) {
+        return {
+          valid: false,
+          errors: [
+            {
+              message: payloadResolution.message,
+            },
+          ],
+        };
+      }
+
       return validationResult;
     },
   }));
+
+  if (shouldWithholdGrid) {
+    return null;
+  }
+
+  if (!contextResolution.valid) {
+    return <Alert severity="error">{contextResolution.message}</Alert>;
+  }
+
+  if (!payloadResolution.valid) {
+    return <Alert severity="error">{payloadResolution.message}</Alert>;
+  }
 
   return (
     <Box

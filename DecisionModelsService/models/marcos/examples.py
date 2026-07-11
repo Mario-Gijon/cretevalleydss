@@ -1,5 +1,14 @@
 from typing import Any
 
+NUMERIC_MATRIX_DOMAIN: dict[str, Any] = {
+    "name": "Numeric 0-10",
+    "typeKey": "numericContinuous",
+    "definition": {
+        "min": 0.0,
+        "max": 10.0,
+    },
+}
+
 MARCOS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
     "basic_numeric_matrix": {
         "summary": "Basic numeric matrix request",
@@ -25,16 +34,19 @@ MARCOS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                         "id": "crit-quality",
                         "name": "Quality",
                         "type": "benefit",
+                        "expressionDomain": NUMERIC_MATRIX_DOMAIN,
                     },
                     {
                         "id": "crit-cost",
                         "name": "Cost",
                         "type": "cost",
+                        "expressionDomain": NUMERIC_MATRIX_DOMAIN,
                     },
                     {
                         "id": "crit-delivery",
                         "name": "Delivery reliability",
                         "type": "benefit",
+                        "expressionDomain": NUMERIC_MATRIX_DOMAIN,
                     },
                 ],
                 "consensusPhase": 0,

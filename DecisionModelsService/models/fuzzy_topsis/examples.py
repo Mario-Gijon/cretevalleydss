@@ -4,7 +4,6 @@ from typing import Any
 FUZZY_LINGUISTIC_DOMAIN: dict[str, Any] = {
     "name": "Triangular fuzzy linguistic",
     "typeKey": "linguisticFuzzy",
-    "family": "linguistic",
     "definition": {
         "membershipFunction": "triangular",
         "labelCount": 5,
@@ -109,44 +108,35 @@ FUZZY_TOPSIS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     "payload": {
                         "alt-supplier-a": {
                             "crit-quality": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                             "crit-cost": {
-                                "value": "Medium",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "medium"},
                             },
                             "crit-delivery": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                         },
                         "alt-supplier-b": {
                             "crit-quality": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                             "crit-cost": {
-                                "value": "Low",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "low"},
                             },
                             "crit-delivery": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                         },
                         "alt-supplier-c": {
                             "crit-quality": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                             "crit-cost": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                             "crit-delivery": {
-                                "value": "Medium",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "medium"},
                             },
                         },
                     },
@@ -160,44 +150,35 @@ FUZZY_TOPSIS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                     "payload": {
                         "alt-supplier-a": {
                             "crit-quality": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                             "crit-cost": {
-                                "value": "Medium",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "medium"},
                             },
                             "crit-delivery": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                         },
                         "alt-supplier-b": {
                             "crit-quality": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                             "crit-cost": {
-                                "value": "Low",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "low"},
                             },
                             "crit-delivery": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                         },
                         "alt-supplier-c": {
                             "crit-quality": {
-                                "value": "Very High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "very_high"},
                             },
                             "crit-cost": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                             "crit-delivery": {
-                                "value": "High",
-                                "expressionDomain": FUZZY_LINGUISTIC_DOMAIN,
+                                "value": {"labelKey": "high"},
                             },
                         },
                     },

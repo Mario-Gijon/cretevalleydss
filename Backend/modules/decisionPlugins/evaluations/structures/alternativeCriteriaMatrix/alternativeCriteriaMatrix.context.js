@@ -1,5 +1,7 @@
 import { createInternalError } from "../../../../../utils/common/errors.js";
 import { toIdString } from "../../../../../utils/common/ids.js";
+import { isPlainObject } from "../../../../../utils/common/objects.js";
+import { getExpressionDomainTypeOrThrow } from "../../../../expressionDomains/expressionDomainTypeCatalog.js";
 
 const requireEvaluationContextOrThrow = (evaluationContext) => {
   if (
@@ -64,6 +66,25 @@ const requireEvaluationCriteriaOrThrow = (evaluationContext) => {
         field: `evaluationContext.leafCriteria[${index}]`,
       });
     }
+
+    if (!isPlainObject(criterion?.expressionDomain)) {
+      throw createInternalError("Evaluation structure criterion expressionDomain is invalid", {
+        field: `evaluationContext.leafCriteria[${index}].expressionDomain`,
+      });
+    }
+
+    const typeKey =
+      typeof criterion.expressionDomain.typeKey === "string"
+        ? criterion.expressionDomain.typeKey.trim()
+        : "";
+
+    if (!typeKey) {
+      throw createInternalError("Evaluation structure criterion expressionDomain type is invalid", {
+        field: `evaluationContext.leafCriteria[${index}].expressionDomain.typeKey`,
+      });
+    }
+
+    getExpressionDomainTypeOrThrow(typeKey);
 
     return {
       id,

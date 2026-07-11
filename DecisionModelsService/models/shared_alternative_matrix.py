@@ -1,13 +1,17 @@
 from typing import Any, Callable
 
 from schemas.model_requests import GenericModelExecutionRequest
+from models.shared_expression_domains import (
+    SUPPORTED_EXPRESSION_DOMAIN_TYPE_KEYS,
+    expression_domain_type_key,
+)
 
 
 def extract_id_keyed_alternative_criteria_input(
     *,
     payload: GenericModelExecutionRequest,
     expert_key_fn: Callable[[dict[str, Any], int], str],
-    cell_value_fn: Callable[[dict[str, Any], str], Any],
+    cell_value_fn: Callable[[dict[str, Any], dict[str, Any], str], Any],
 ) -> dict[str, Any]:
     context = payload.context or {}
     alternatives = context.get("alternatives") or []
@@ -35,15 +39,27 @@ def extract_id_keyed_alternative_criteria_input(
     for item in criteria:
         criterion_id = str(item.get("id") or "").strip()
         criterion_name = str(item.get("name") or "").strip()
+        expression_domain = item.get("expressionDomain")
         if not criterion_id:
             raise ValueError("Every context.criteria item requires a non-empty id")
         if not criterion_name:
             raise ValueError("Every context.criteria item requires a non-empty name")
+        if not isinstance(expression_domain, dict):
+            raise ValueError(
+                "Every context.criteria item requires an expressionDomain object"
+            )
+
+        if expression_domain_type_key(expression_domain) not in SUPPORTED_EXPRESSION_DOMAIN_TYPE_KEYS:
+            raise ValueError(
+                "Every context.criteria item requires a supported expressionDomain.typeKey"
+            )
+
         criterion_items.append(
             {
                 "id": criterion_id,
                 "name": criterion_name,
                 "type": item.get("type"),
+                "expressionDomain": expression_domain,
             }
         )
 
@@ -68,24 +84,58 @@ def extract_id_keyed_alternative_criteria_input(
         seen_expert_keys.add(expert_key)
 
         matrix: list[list[float]] = []
+        unknown_alternative_ids = [
+            alternative_id
+            for alternative_id in evaluation_payload.keys()
+            if alternative_id not in alternative_ids
+        ]
+
+        if unknown_alternative_ids:
+            raise ValueError(
+                f"evaluations[{expert_index}].payload contains unknown alternative rows"
+            )
 
         for alternative_id in alternative_ids:
-            alternative_payload = evaluation_payload.get(alternative_id)
+            if alternative_id not in evaluation_payload:
+                raise ValueError(
+                    f"evaluations[{expert_index}].payload['{alternative_id}'] is required"
+                )
+
+            alternative_payload = evaluation_payload[alternative_id]
             if not isinstance(alternative_payload, dict):
                 raise ValueError(
                     f"evaluations[{expert_index}].payload['{alternative_id}'] is required"
                 )
 
+            unknown_criterion_ids = [
+                criterion_id
+                for criterion_id in alternative_payload.keys()
+                if criterion_id not in criterion_ids
+            ]
+
+            if unknown_criterion_ids:
+                raise ValueError(
+                    f"evaluations[{expert_index}].payload['{alternative_id}'] contains unknown criterion cells"
+                )
+
             row: list[float] = []
-            for criterion_id in criterion_ids:
-                cell = alternative_payload.get(criterion_id)
+            for criterion in criterion_items:
+                criterion_id = criterion["id"]
                 field = (
                     f"evaluations[{expert_index}].payload['{alternative_id}']['{criterion_id}']"
                 )
-                if not isinstance(cell, dict):
+                if criterion_id not in alternative_payload:
                     raise ValueError(f"{field} is required")
 
-                row.append(cell_value_fn(cell, field))
+                cell = alternative_payload[criterion_id]
+                if not isinstance(cell, dict):
+                    raise ValueError(f"{field} is required")
+                if set(cell.keys()) != {"value"}:
+                    raise ValueError(f"{field} must contain exactly the key 'value'")
+                if cell.get("value") is None:
+                    raise ValueError(f"{field}.value is required")
+
+                row.append(cell_value_fn(cell, criterion, field))
 
             matrix.append(row)
 

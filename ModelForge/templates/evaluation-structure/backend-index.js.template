@@ -14,7 +14,8 @@
 // ModelForge guidance: the example evaluationContext below is illustrative. Its
 // exact nested content can vary by stage, model, and issue configuration.
 // expressionDomain.definition depends on typeKey. Do not assume numericRange or
-// linguisticLabels.
+// linguisticLabels. For alternativeCriteriaMatrix-like structures, keep cells
+// canonical as { value } and keep domains only on criteria.
 //
 // Example evaluationContext:
 // {
@@ -62,11 +63,9 @@
 //             _id: "665f0b8f6f1e9c12a34b5701",
 //             name: "Numeric 0-10",
 //             typeKey: "numericContinuous",
-//             family: "numeric",
 //             definition: {
 //               min: 0,
 //               max: 10,
-//               step: null,
 //             },
 //           },
 //           children: [],
@@ -84,11 +83,9 @@
 //         _id: "665f0b8f6f1e9c12a34b5701",
 //         name: "Numeric 0-10",
 //         typeKey: "numericContinuous",
-//         family: "numeric",
 //         definition: {
 //           min: 0,
 //           max: 10,
-//           step: null,
 //         },
 //       },
 //     },

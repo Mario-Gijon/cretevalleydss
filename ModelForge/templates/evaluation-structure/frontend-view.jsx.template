@@ -5,6 +5,8 @@
 // collectivePayload, readOnly, and loading.
 // Emits: setEvaluationPayload(nextPayload) with the same payload shape expected
 // by backend get() and save().
+// For matrix-style structures, keep editable cells canonical as { value } and
+// read domains only from criterion.expressionDomain.
 // Must return: this component can expose flushPendingEdits() and
 // preparePayloadRead() through the forwarded ref, both returning the normalized
 // payload shape that should be saved or previewed.

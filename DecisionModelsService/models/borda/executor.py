@@ -73,12 +73,12 @@ def _linguistic_values(
     ]
 
 
-def _cell_value(cell: dict[str, Any], field: str) -> float:
+def _cell_value(cell: dict[str, Any], criterion: dict[str, Any], field: str) -> float:
     value = cell.get("value")
     if value is None or value == "":
         raise ValueError(f"{field}.value is required")
 
-    expression_domain = cell.get("expressionDomain")
+    expression_domain = criterion["expressionDomain"]
     domain_type = expression_domain_type_key(expression_domain).lower()
 
     if domain_type.startswith("linguistic"):

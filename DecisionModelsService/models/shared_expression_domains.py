@@ -1,6 +1,16 @@
 from typing import Any
 
 
+SUPPORTED_EXPRESSION_DOMAIN_TYPE_KEYS = frozenset(
+    {
+        "numericContinuous",
+        "numericDiscrete",
+        "linguisticOrdinal",
+        "linguisticFuzzy",
+    }
+)
+
+
 def expression_domain_type_key(expression_domain: Any) -> str:
     if not isinstance(expression_domain, dict):
         return ""
@@ -20,15 +30,15 @@ def expression_domain_definition(expression_domain: Any) -> dict[str, Any]:
 
 
 def resolve_linguistic_label_key(value: Any, field: str) -> str:
-    if isinstance(value, str):
-        label_key = value.strip()
-    elif isinstance(value, dict):
-        label_key = str(value.get("labelKey") or "").strip()
-    else:
-        label_key = ""
+    if not isinstance(value, dict):
+        raise ValueError(f"{field}.value must be an object with exactly the key 'labelKey'")
 
+    if set(value.keys()) != {"labelKey"}:
+        raise ValueError(f"{field}.value must be an object with exactly the key 'labelKey'")
+
+    label_key = str(value.get("labelKey") or "").strip()
     if not label_key:
-        raise ValueError(f"{field}.value is required")
+        raise ValueError(f"{field}.value.labelKey is required")
 
     return label_key
 
@@ -54,4 +64,3 @@ def resolve_linguistic_label_definition(
             return label_definition
 
     raise ValueError(f"Unknown linguistic label '{label_key}'")
-

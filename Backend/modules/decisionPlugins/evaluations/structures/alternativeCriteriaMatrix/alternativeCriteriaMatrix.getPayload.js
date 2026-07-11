@@ -1,9 +1,16 @@
-import { isPlainObject } from "../../../../../utils/common/objects.js";
 import { resolveAlternativesAndCriteria } from "./alternativeCriteriaMatrix.context.js";
 import {
   buildEmptyCell,
-  validateCellValueByDomainOrThrow,
+  normalizePayloadOrThrow,
 } from "./alternativeCriteriaMatrix.payload.js";
+
+const buildEmptyMatrix = ({ alternatives, criteria }) =>
+  Object.fromEntries(
+    alternatives.map((alternative) => [
+      alternative.id,
+      Object.fromEntries(criteria.map((criterion) => [criterion.id, buildEmptyCell()])),
+    ])
+  );
 
 export const buildGetPayload = async ({
   payload,
@@ -16,41 +23,24 @@ export const buildGetPayload = async ({
     evaluationContext,
   });
 
-  const matrixPayload = isPlainObject(payload) ? payload : {};
-  const normalizedPayload = {};
-
-  for (const alternative of alternatives) {
-    const storedAlternativeRow = isPlainObject(matrixPayload[alternative.id])
-      ? matrixPayload[alternative.id]
-      : {};
-
-    normalizedPayload[alternative.id] = {};
-
-    for (const criterion of criteria) {
-      const storedCell = storedAlternativeRow[criterion.id];
-
-      if (!isPlainObject(storedCell)) {
-        normalizedPayload[alternative.id][criterion.id] = buildEmptyCell(
-          criterion.expressionDomain
-        );
-        continue;
-      }
-
-      normalizedPayload[alternative.id][criterion.id] = {
-        value:
-          storedCell.value === "" ||
-          storedCell.value === null ||
-          storedCell.value === undefined
-            ? ""
-            : validateCellValueByDomainOrThrow({
-                value: storedCell.value,
-                expressionDomain: criterion.expressionDomain,
-                field: "payload",
-              }),
-        expressionDomain: criterion.expressionDomain,
-      };
-    }
+  if (payload === null || payload === undefined) {
+    return {
+      payload: buildEmptyMatrix({
+        alternatives,
+        criteria,
+      }),
+      context: {
+        alternatives,
+        criteria,
+      },
+    };
   }
+
+  const normalizedPayload = await normalizePayloadOrThrow({
+    payload,
+    evaluationContext,
+    requireValue: false,
+  });
 
   return {
     payload: normalizedPayload,

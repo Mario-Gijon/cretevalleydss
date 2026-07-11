@@ -37,7 +37,19 @@ Practical guidance:
 - Read ordered leaf criteria from `evaluationContext.leafCriteria`.
 - Read full hierarchy from `evaluationContext.criteriaTree`.
 - Read domain metadata from `criterion.expressionDomain`.
-- Derive label arrays locally when the payload contract still needs names.
+- For `alternativeCriteriaMatrix`, keep cells canonical as:
+
+```js
+{
+  [alternativeId]: {
+    [criterionId]: {
+      value
+    }
+  }
+}
+```
+
+- Do not read domains from cells.
 - The structure should not know about frontend internals.
 - Structure-specific persistence and read logic stays isolated here.
 

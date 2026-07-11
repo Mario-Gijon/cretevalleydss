@@ -56,11 +56,9 @@ const evaluationContextExample = {
             id: "DOMAIN_1",
             name: "Cost scale",
             typeKey: "numericContinuous",
-            family: "numeric",
             definition: {
               min: 0,
-              max: 1,
-              step: null
+              max: 1
             }
           },
           children: []
@@ -77,11 +75,9 @@ const evaluationContextExample = {
         id: "DOMAIN_1",
         name: "Cost scale",
         typeKey: "numericContinuous",
-        family: "numeric",
         definition: {
           min: 0,
-          max: 1,
-          step: null
+          max: 1
         }
       }
     }
