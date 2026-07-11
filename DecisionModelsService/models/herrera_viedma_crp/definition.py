@@ -35,8 +35,13 @@ MODEL_DEFINITION = ModelDefinition(
     uses_fuzzy_criteria_weights=False,
     uses_criterion_types=False,
     supported_expression_domains=[
-        {"typeKey": "numericContinuous"},
-        {"typeKey": "numericDiscrete"},
+        {
+            "typeKey": "numericContinuous",
+            "constraints": {
+                "min": 0,
+                "max": 1,
+            },
+        },
     ],
     parameters=[
         {

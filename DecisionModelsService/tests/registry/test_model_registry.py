@@ -3,6 +3,7 @@ import sys
 
 import pytest
 from pydantic import BaseModel
+from models.herrera_viedma_crp.definition import MODEL_DEFINITION as HERRERA_VIEDMA_DEFINITION
 
 from registry import model_registry
 from registry.model_registry import (
@@ -261,6 +262,36 @@ MODEL_DEFINITION = ModelDefinition(
     definitions = get_model_definitions(strict=False)
 
     assert [definition.api_model_key for definition in definitions] == ["valid_model"]
+
+
+def test_herrera_viedma_supported_expression_domains_are_strictly_restricted():
+    assert HERRERA_VIEDMA_DEFINITION.supported_expression_domains == [
+        {
+            "typeKey": "numericContinuous",
+            "constraints": {
+                "min": 0,
+                "max": 1,
+            },
+        }
+    ]
+
+    assert len(HERRERA_VIEDMA_DEFINITION.supported_expression_domains) == 1
+    assert (
+        HERRERA_VIEDMA_DEFINITION.supported_expression_domains[0]["typeKey"]
+        == "numericContinuous"
+    )
+    assert HERRERA_VIEDMA_DEFINITION.supported_expression_domains[0]["constraints"] == {
+        "min": 0,
+        "max": 1,
+    }
+    assert not any(
+        entry.get("typeKey") == "numericDiscrete"
+        for entry in HERRERA_VIEDMA_DEFINITION.supported_expression_domains
+    )
+    assert not any(
+        entry.get("typeKey") == "numericContinuous" and "constraints" not in entry
+        for entry in HERRERA_VIEDMA_DEFINITION.supported_expression_domains
+    )
 
 
 def test_get_model_definition_by_endpoint_path_accepts_both_prefixed_and_unprefixed_paths(

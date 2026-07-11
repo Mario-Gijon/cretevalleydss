@@ -125,4 +125,69 @@ describe("domainCompatibility", () => {
       })
     ).toBe(true);
   });
+
+  it("matches Herrera-Viedma's restricted numericContinuous metadata exactly", () => {
+    const supportedExpressionDomains = [
+      {
+        typeKey: "numericContinuous",
+        constraints: {
+          min: 0,
+          max: 1,
+        },
+      },
+    ];
+
+    expect(
+      isDomainSnapshotSupportedByModel({
+        domainSnapshot: {
+          typeKey: "numericContinuous",
+          definition: {
+            min: 0,
+            max: 1,
+          },
+        },
+        supportedExpressionDomains,
+      })
+    ).toBe(true);
+
+    expect(
+      isDomainSnapshotSupportedByModel({
+        domainSnapshot: {
+          typeKey: "numericContinuous",
+          definition: {
+            min: 1,
+            max: 5,
+          },
+        },
+        supportedExpressionDomains,
+      })
+    ).toBe(false);
+
+    expect(
+      isDomainSnapshotSupportedByModel({
+        domainSnapshot: {
+          typeKey: "numericContinuous",
+          definition: {
+            min: 0,
+            max: 5,
+          },
+        },
+        supportedExpressionDomains,
+      })
+    ).toBe(false);
+
+    expect(
+      isDomainSnapshotSupportedByModel({
+        domainSnapshot: {
+          typeKey: "numericDiscrete",
+          definition: {
+            min: 0,
+            max: 1,
+            step: 0.25,
+          },
+        },
+        supportedExpressionDomains,
+      })
+    ).toBe(false);
+  });
 });
