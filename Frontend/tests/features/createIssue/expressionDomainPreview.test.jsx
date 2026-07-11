@@ -77,7 +77,7 @@ describe("ExpressionDomainPreview", () => {
     expect(screen.getByText("Preview unavailable")).toBeInTheDocument();
   });
 
-  it("renders ordinal positions without linguistic label names", () => {
+  it("renders an ordered linguistic preview with flexible items, dividers, and canonical labels", () => {
     renderWithProviders(
       <ExpressionDomainPreview
         domain={{
@@ -93,12 +93,20 @@ describe("ExpressionDomainPreview", () => {
       />
     );
 
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.queryByText("Low")).not.toBeInTheDocument();
-    expect(screen.queryByText("Medium")).not.toBeInTheDocument();
-    expect(screen.queryByText("High")).not.toBeInTheDocument();
+    const ordinalPreview = screen.getByTestId("ordered-linguistic-preview");
+    expect(ordinalPreview).toHaveAttribute("data-mobile-direction", "column");
+    expect(ordinalPreview).toHaveAttribute("data-desktop-direction", "row");
+    expect(screen.getAllByTestId("ordered-linguistic-preview-item")).toHaveLength(3);
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.getByText("1:")).toBeInTheDocument();
+    expect(screen.getByText("2:")).toBeInTheDocument();
+    expect(screen.getByText("3:")).toBeInTheDocument();
+    expect(screen.getByText("Low").compareDocumentPosition(screen.getByText("Medium")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Medium").compareDocumentPosition(screen.getByText("High")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryAllByText("Low")).toHaveLength(1);
+    expect(document.querySelectorAll(".MuiDivider-root").length).toBeGreaterThan(0);
   });
 
   it("renders the fuzzy chart with all labels and bounded manage height", () => {
@@ -129,4 +137,3 @@ describe("ExpressionDomainPreview", () => {
     );
   });
 });
-

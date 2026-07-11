@@ -74,4 +74,18 @@ describe("CreateExpressionDomainDialog", () => {
       screen.getByTestId("expression-domain-selected-form")
     ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("uses outlined icon buttons for the primary and cancel dialog actions", () => {
+    renderWithProviders(
+      <CreateExpressionDomainDialog open onClose={vi.fn()} onCreated={vi.fn()} />
+    );
+
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    const primaryButton = screen.getByRole("button", { name: /create domain/i });
+
+    expect(cancelButton.className).toContain("MuiButton-outlined");
+    expect(primaryButton.className).toContain("MuiButton-outlined");
+    expect(cancelButton.querySelector("svg")).not.toBeNull();
+    expect(primaryButton.querySelector("svg")).not.toBeNull();
+  });
 });

@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Divider, Stack, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { FuzzyPreviewChart } from "../../../../components/FuzzyPreviewChart/FuzzyPreviewChart";
@@ -193,28 +193,86 @@ const renderLinguisticOrdinalPreview = (domain) => {
 
   return (
     <PreviewRail>
-      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+      <Box
+        data-testid="ordered-linguistic-preview"
+        data-mobile-direction="column"
+        data-desktop-direction="row"
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+        }}
+      >
         {labels.map((label, index) => (
           <Stack
             key={label.key}
-            alignItems="center"
-            spacing={0.5}
-            sx={{ minWidth: 36, flex: labels.length > 6 ? "0 0 auto" : 1 }}
+            direction={{ xs: "column", sm: "row" }}
+            divider={
+              index < labels.length - 1 ? (
+                <Divider
+                  flexItem
+                  orientation="vertical"
+                  sx={{
+                    display: { xs: "none", sm: "block" },
+                    mx: 0.9,
+                    borderColor: (theme) => alpha(theme.palette.common.white, 0.12),
+                  }}
+                />
+              ) : null
+            }
+            sx={{
+              flex: 1,
+              minWidth: 0,
+            }}
           >
-            <Box
+            <Stack
+              data-testid="ordered-linguistic-preview-item"
+              direction="row"
+              spacing={0.55}
+              alignItems="center"
               sx={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                bgcolor: "info.main",
+                minWidth: 0,
+                flex: 1,
+                py: 0.25,
               }}
-            />
-            <Typography variant="caption" sx={{ fontWeight: 800 }}>
-              {index + 1}
-            </Typography>
+            >
+              <Typography
+                variant="caption"
+                sx={{ color: "text.secondary", fontWeight: 800, flexShrink: 0 }}
+              >
+                {`${index + 1}:`}
+              </Typography>
+
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Tooltip title={label.label} arrow>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 800,
+                      lineHeight: 1.2,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {label.label}
+                  </Typography>
+                </Tooltip>
+              </Box>
+            </Stack>
+
+            {index < labels.length - 1 ? (
+              <Divider
+                sx={{
+                  display: { xs: "block", sm: "none" },
+                  my: 0.45,
+                  borderColor: (theme) => alpha(theme.palette.common.white, 0.12),
+                }}
+              />
+            ) : null}
           </Stack>
         ))}
-      </Stack>
+      </Box>
     </PreviewRail>
   );
 };

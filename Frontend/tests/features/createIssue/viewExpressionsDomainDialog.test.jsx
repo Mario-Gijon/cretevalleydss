@@ -117,8 +117,10 @@ describe("ViewExpressionsDomainDialog", () => {
     expect(screen.queryByText(/Family:/)).not.toBeInTheDocument();
     expect(screen.getByText("Global")).toBeInTheDocument();
     expect(screen.queryByText("Mine")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(4);
-    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(4);
+    expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Edit domain" })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: "Delete domain" })).toHaveLength(4);
 
     expect(screen.getByTestId("expression-domain-family-layout")).toBeInTheDocument();
     expect(screen.getByTestId("expression-domain-numeric-column")).toBeInTheDocument();
@@ -251,15 +253,19 @@ describe("ViewExpressionsDomainDialog", () => {
     expect(screen.queryByText(/^Min$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Max$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Step$/)).not.toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByTestId("ordered-linguistic-preview")).toHaveAttribute("data-mobile-direction", "column");
+    expect(screen.getByTestId("ordered-linguistic-preview")).toHaveAttribute("data-desktop-direction", "row");
+    expect(screen.getByText("1:")).toBeInTheDocument();
+    expect(screen.getByText("2:")).toBeInTheDocument();
+    expect(screen.getByText("3:")).toBeInTheDocument();
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByTestId("fuzzy-preview-chart")).toBeInTheDocument();
     expect(screen.getByTestId("fuzzy-preview-chart")).toHaveAttribute(
       "data-height",
       JSON.stringify({ xs: 192, sm: 204, lg: 216 })
     );
-    expect(screen.queryAllByText("Low")).toHaveLength(0);
     expect(screen.getByTestId("expression-domain-card-fuzzy")).toBeInTheDocument();
   });
 });

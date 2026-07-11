@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import {
   Alert,
   Box,
@@ -287,17 +289,19 @@ export const CreateExpressionDomainDialog = ({
       <DialogActions sx={getCreateIssueCompactDialogActionsSx(theme)}>
         <Button
           onClick={onClose}
-          color="secondary"
+          color="warning"
           variant="outlined"
           disabled={saveLoading}
+          startIcon={<CancelOutlinedIcon />}
         >
           Cancel
         </Button>
         <Button
           onClick={handleSave}
           color="info"
-          variant="contained"
+          variant="outlined"
           disabled={!canSubmit}
+          startIcon={<SaveOutlinedIcon />}
         >
           {editingDomain ? "Save changes" : "Create domain"}
         </Button>

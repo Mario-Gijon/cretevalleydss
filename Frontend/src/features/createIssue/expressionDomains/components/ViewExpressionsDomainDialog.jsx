@@ -9,13 +9,16 @@ import {
   Chip,
   Box,
   InputAdornment,
+  IconButton,
   MenuItem,
   TextField,
+  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useEffect, useMemo, useState } from "react";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { GlassPaper } from "../../../../components/StyledComponents/GlassPaper";
@@ -189,13 +192,27 @@ export const ViewExpressionsDomainDialog = ({
             </Stack>
 
             {!isGlobalDomain ? (
-              <Stack direction="row" spacing={0.6} sx={{ flexShrink: 0 }}>
-                <Button size="small" color="warning" onClick={() => handleOpenEdit(domain)}>
-                  Edit
-                </Button>
-                <Button size="small" color="error" onClick={() => handleAskDelete(domain)}>
-                  Delete
-                </Button>
+              <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
+                <Tooltip title="Edit domain" arrow>
+                  <IconButton
+                    size="small"
+                    color="warning"
+                    aria-label="Edit domain"
+                    onClick={() => handleOpenEdit(domain)}
+                  >
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete domain" arrow>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    aria-label="Delete domain"
+                    onClick={() => handleAskDelete(domain)}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Stack>
             ) : null}
           </Stack>
