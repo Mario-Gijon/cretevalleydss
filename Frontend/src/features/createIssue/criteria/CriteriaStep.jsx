@@ -37,7 +37,6 @@ import {
   getCreateIssueSoftTopAuroraDialogPaperSx,
   getCreateIssueRowDividerSx,
   getCreateIssueStepEmptyStateSx,
-  getCreateIssueStepInputSx,
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
 import {
@@ -531,19 +530,19 @@ export const CriteriaStep = () => {
           onKeyDown={(event) => event.key === "Enter" && handleAddCriteria()}
           error={Boolean(inputError)}
           helperText={inputError}
-          color="info"
+          color="secondary"
           inputProps={{ maxLength: 60 }}
             fullWidth
-            sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+            sx={{ flex: 1 }}
           />
 
           {showCriterionTypes ? (
-            <FormControl size="small" fullWidth sx={{ minWidth: { sm: 140, md: 140 }, flex: { sm: "0 0 140px" } }}>
-              <InputLabel color="info">Type</InputLabel>
+            <FormControl variant="outlined" size="small" color="secondary" fullWidth sx={{ minWidth: { sm: 140, md: 140 }, flex: { sm: "0 0 140px" } }}>
+              <InputLabel color="secondary">Type</InputLabel>
               <Select
                 value={selectedType}
                 onChange={(event) => setSelectedType(event.target.value)}
-                label="Type" color="info" fullWidth sx={getCreateIssueStepInputSx(theme)}
+                label="Type" color="secondary" fullWidth
               >
                 <MenuItem value="benefit">Benefit</MenuItem>
                 <MenuItem value="cost">Cost</MenuItem>
@@ -567,11 +566,10 @@ export const CriteriaStep = () => {
           maxRows={5}
           value={inputDescription}
           onChange={(event) => setInputDescription(event.target.value)}
-          color="info"
+          color="secondary"
           inputProps={{ maxLength: 500 }}
           helperText={`${inputDescription.length} / 500`}
           fullWidth
-          sx={getCreateIssueStepInputSx(theme)}
         />
       </Stack>
 
@@ -662,8 +660,9 @@ export const CriteriaStep = () => {
               </Stack>
 
               <TextField
-                color="info"
+                color="secondary"
                 variant="outlined"
+                size="small"
                 label="Child name"
                 value={childInputValue}
                 onChange={(event) => {
@@ -676,11 +675,11 @@ export const CriteriaStep = () => {
                 error={Boolean(childInputError)}
                 helperText={childInputError}
                 inputProps={{ maxLength: 60 }}
-                sx={getCreateIssueStepInputSx(theme)}
               />
               <TextField
-                color="info"
+                color="secondary"
                 variant="outlined"
+                size="small"
                 label="Optional description"
                 value={childInputDescription}
                 onChange={(event) => setChildInputDescription(event.target.value)}
@@ -690,7 +689,6 @@ export const CriteriaStep = () => {
                 fullWidth
                 inputProps={{ maxLength: 500 }}
                 helperText={`${childInputDescription.length} / 500`}
-                sx={getCreateIssueStepInputSx(theme)}
               />
             </Stack>
 

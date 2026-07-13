@@ -193,7 +193,7 @@ export const SummaryStep = () => {
                   label="Issue name"
                   variant="outlined"
                   size="small"
-                  color="info"
+                  color="secondary"
                   inputProps={{ maxLength: 80 }}
                   fullWidth
                   autoComplete="off"
@@ -209,7 +209,7 @@ export const SummaryStep = () => {
                   label="Description"
                   variant="outlined"
                   size="small"
-                  color="info"
+                  color="secondary"
                   fullWidth
                   multiline
                   minRows={3}

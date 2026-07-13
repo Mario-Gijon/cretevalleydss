@@ -44,7 +44,7 @@ export const AlternativeItem = ({
           <TextField variant="outlined" size="small" value={editValue} fullWidth
             onChange={(e) => { setEditValue(e.target.value); setEditError(null); }}
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelEdit(); } }}
-            error={!!editError} helperText={editError} color="info" inputProps={{ maxLength: 60 }} autoFocus />
+            error={!!editError} helperText={editError} color="secondary" inputProps={{ maxLength: 60 }} autoFocus />
           <Stack direction="row" spacing={0.25} sx={{ alignSelf: { xs: "flex-end", sm: "center" } }}>
             <Tooltip title="Save changes"><IconButton aria-label="Save changes" onClick={handleSaveEdit} size="medium" color="success"><CheckRoundedIcon /></IconButton></Tooltip>
             <Tooltip title="Cancel editing"><IconButton aria-label="Cancel editing" onClick={handleCancelEdit} size="medium" color="warning"><CloseRoundedIcon /></IconButton></Tooltip>
@@ -53,7 +53,7 @@ export const AlternativeItem = ({
           <TextField variant="outlined" size="small" multiline minRows={2} maxRows={5}
             value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelEdit(); } }}
-            color="info" inputProps={{ maxLength: 500 }} helperText={`${editDescription.length} / 500`} fullWidth />
+            color="secondary" inputProps={{ maxLength: 500 }} helperText={`${editDescription.length} / 500`} fullWidth />
         </Stack>
       ) : (
         <ListItemText

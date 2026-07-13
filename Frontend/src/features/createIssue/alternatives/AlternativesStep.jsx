@@ -27,7 +27,6 @@ import {
   createIssueStepContainerSx,
   getCreateIssueRowDividerSx,
   getCreateIssueStepEmptyStateSx,
-  getCreateIssueStepInputSx,
   getCreateIssueStepScrollableSx,
 } from "../styles/createIssueStep.styles";
 
@@ -129,10 +128,10 @@ export const AlternativesStep = () => {
           onKeyDown={(event) => event.key === "Enter" && handleAddAlternative()}
           error={Boolean(inputError)}
           helperText={inputError}
-          color="info"
+          color="secondary"
           inputProps={{ maxLength: 60 }}
             fullWidth
-            sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+            sx={{ flex: 1 }}
           />
           <Button
             startIcon={<AddIcon />}
@@ -151,11 +150,10 @@ export const AlternativesStep = () => {
           maxRows={5}
           value={inputDescription}
           onChange={(event) => setInputDescription(event.target.value)}
-          color="info"
+          color="secondary"
           inputProps={{ maxLength: 500 }}
           helperText={`${inputDescription.length} / 500`}
           fullWidth
-          sx={getCreateIssueStepInputSx(theme)}
         />
       </Stack>
 

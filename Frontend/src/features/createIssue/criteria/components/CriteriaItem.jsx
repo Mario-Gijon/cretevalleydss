@@ -108,7 +108,7 @@ export const CriteriaItem = ({
                       if (event.key === "Enter") handleSaveCriterionEdit();
                       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); }
                     }}
-                    autoFocus fullWidth color="info" error={Boolean(editCriterionError)}
+                    autoFocus fullWidth color="secondary" error={Boolean(editCriterionError)}
                     helperText={editCriterionError} inputProps={{ maxLength: 60 }}
                     sx={{ maxWidth: { md: 420 }, "& .MuiInputBase-input": { fontWeight: 850 } }}
                   />
@@ -117,7 +117,7 @@ export const CriteriaItem = ({
                     placeholder="Optional description" value={editCriterionDescription} fullWidth
                     onChange={(event) => setEditCriterionDescription(event.target.value)}
                     onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); } }}
-                    color="info" inputProps={{ maxLength: 500 }}
+                    color="secondary" inputProps={{ maxLength: 500 }}
                     helperText={`${editCriterionDescription.length} / 500`}
                   />
                 </Stack>
@@ -149,10 +149,11 @@ export const CriteriaItem = ({
             >
               {isEditing && isFirstLevel && showCriterionTypes ? (
                 <Select
+                  variant="outlined"
                   value={editCriterionType}
                   onChange={(event) => setEditCriterionType(event.target.value)}
                   size="small"
-                  color="info"
+                  color="secondary"
                   fullWidth
                   sx={{ minWidth: 118 }}
                 >
