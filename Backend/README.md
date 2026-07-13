@@ -107,6 +107,17 @@ npm start
 
 > Check the actual scripts in `package.json` and use the one that matches your local setup.
 
+## Reset global expression domains
+
+Run this command deliberately when the selected database needs its global expression domains replaced:
+
+```bash
+cd Backend
+bun run reset:global-expression-domains
+```
+
+Alternatively, use `npm run reset:global-expression-domains`. It replaces every global expression domain in the database selected by the loaded environment configuration, while preserving user-owned domains and issue-domain snapshots. It is not executed during application startup.
+
 ## Documentation
 
 The backend technical documentation is available in the [`docs/`](./docs) directory.
