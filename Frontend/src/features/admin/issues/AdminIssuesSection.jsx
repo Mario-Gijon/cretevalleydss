@@ -11,7 +11,6 @@ import {
   removeIssueAdminAction,
   resolveIssueAdminAction,
 } from "../../../services/admin.service";
-import AddExpertsDomainsDialog from "../../issueExperts/components/AddExpertsDomainsDialog";
 import AdminIssueActionConfirmDialog from "./components/AdminIssueActionConfirmDialog";
 import AdminIssueAddExpertsDialog from "./components/AdminIssueAddExpertsDialog";
 import AdminIssueDetailDialog from "./components/AdminIssueDetailDialog";
@@ -152,14 +151,6 @@ export default function AdminIssuesSection() {
         availableExperts={actions.availableExperts}
         expertsToAdd={actions.expertsToAdd}
         setExpertsToAdd={actions.setExpertsToAdd}
-      />
-
-      <AddExpertsDomainsDialog
-        open={actions.assignDomainsOpen}
-        onClose={() => actions.setAssignDomainsOpen(false)}
-        issue={actions.issueForDomains}
-        expertsToAdd={actions.expertsToAdd}
-        onConfirmDomains={actions.handleConfirmDomains}
       />
 
       <AdminIssueReassignDialog

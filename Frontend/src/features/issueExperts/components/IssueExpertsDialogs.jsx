@@ -1,5 +1,4 @@
 import AddExpertsPickerDialog from "./AddExpertsPickerDialog.jsx";
-import AddExpertsDomainsDialog from "./AddExpertsDomainsDialog.jsx";
 import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 
 /**
@@ -9,15 +8,11 @@ import { useIssueExpertsContext } from "../context/issueExperts.context.js";
  */
 const IssueExpertsDialogs = () => {
   const {
-    selectedIssue,
     openAddExpertsDialog,
-    openAssignDomainsDialog,
     availableExperts,
     expertsToAdd,
     setExpertsToAdd,
     setOpenAddExpertsDialog,
-    setOpenAssignDomainsDialog,
-    handleConfirmDomains,
   } = useIssueExpertsContext();
 
   return (
@@ -28,14 +23,6 @@ const IssueExpertsDialogs = () => {
         availableExperts={availableExperts}
         expertsToAdd={expertsToAdd}
         setExpertsToAdd={setExpertsToAdd}
-      />
-
-      <AddExpertsDomainsDialog
-        open={openAssignDomainsDialog}
-        onClose={() => setOpenAssignDomainsDialog(false)}
-        issue={selectedIssue}
-        expertsToAdd={expertsToAdd}
-        onConfirmDomains={handleConfirmDomains}
       />
     </>
   );

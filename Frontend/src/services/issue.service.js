@@ -270,14 +270,12 @@ export const removeFinishedIssue = async (issueOrId) => {
  * @param {*} issueOrId Id o issue completo.
  * @param {string[]} expertsToAdd Expertos a añadir.
  * @param {string[]} expertsToRemove Expertos a eliminar.
- * @param {object|null} domainAssignments Asignaciones de dominios.
  * @returns {Promise<object>}
  */
 export const editExperts = async (
   issueOrId,
   expertsToAdd,
-  expertsToRemove,
-  domainAssignments = null
+  expertsToRemove
 ) => {
   const issueId = getIssueId(issueOrId);
 
@@ -286,7 +284,6 @@ export const editExperts = async (
     jsonRequest("PATCH", {
       expertsToAdd,
       expertsToRemove,
-      domainAssignments,
     }),
     "Error editing experts."
   );

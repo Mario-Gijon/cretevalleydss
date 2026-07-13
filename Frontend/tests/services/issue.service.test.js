@@ -91,4 +91,27 @@ describe("issue.service", () => {
       })
     );
   });
+
+  it("editExperts sends only expert additions and removals", async () => {
+    authFetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), { status: 200 })
+    );
+
+    await issueService.editExperts(
+      { _id: "issue-7" },
+      ["new@example.com"],
+      ["old@example.com"]
+    );
+
+    expect(authFetch).toHaveBeenCalledWith(
+      "http://localhost:4010/issues/issue-7/experts",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          expertsToAdd: ["new@example.com"],
+          expertsToRemove: ["old@example.com"],
+        }),
+      })
+    );
+  });
 });

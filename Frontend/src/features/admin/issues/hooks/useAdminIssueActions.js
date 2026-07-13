@@ -13,13 +13,10 @@ import {
   buildAdminIssueResultingExpertsCount,
   countAdminIssueCurrentExperts,
 } from "../logic/buildAdminIssueExpertEditorState";
-import { buildAdminIssueDetailView } from "../logic/buildAdminIssueDetailView";
 
 export const useAdminIssueActions = ({
   showSnackbarAlert,
   issueDetail,
-  expertEvaluations,
-  expertWeights,
   selectedIssueRow,
   issueExpertsProgress,
   fetchIssuesData,
@@ -45,17 +42,8 @@ export const useAdminIssueActions = ({
   const [allExperts, setAllExperts] = useState([]);
   const [expertsToAdd, setExpertsToAdd] = useState([]);
   const [expertsToRemove, setExpertsToRemove] = useState([]);
-  const [assignDomainsOpen, setAssignDomainsOpen] = useState(false);
   const actionState =
     issueDetail?.adminActionsState || issueDetail?.ownerActionsState || {};
-
-  const { issueForDomains } = useMemo(() => {
-    return buildAdminIssueDetailView({
-      issueDetail,
-      expertEvaluations,
-      expertWeights,
-    });
-  }, [issueDetail, expertEvaluations, expertWeights]);
 
   const ownerCandidates = useMemo(() => {
     return buildAdminIssueOwnerCandidates(ownerCandidateUsers);
@@ -93,7 +81,6 @@ export const useAdminIssueActions = ({
     setExpertsToAdd([]);
     setExpertsToRemove([]);
     setAddExpertsOpen(false);
-    setAssignDomainsOpen(false);
   };
 
   const resetIssueActionState = () => {
@@ -247,7 +234,7 @@ export const useAdminIssueActions = ({
     setExpertsToRemove([]);
   };
 
-  const processEditExperts = async (domainAssignments = null) => {
+  const processEditExperts = async () => {
     if (!issueDetail?.id) return;
 
     setActionBusy((prev) => ({ ...prev, editExperts: true }));
@@ -257,7 +244,6 @@ export const useAdminIssueActions = ({
         issueId: issueDetail.id,
         expertsToAdd,
         expertsToRemove,
-        domainAssignments,
       });
 
       if (!res?.success) {
@@ -267,7 +253,6 @@ export const useAdminIssueActions = ({
 
       showSnackbarAlert(res?.message || "Experts updated successfully", "success");
 
-      setAssignDomainsOpen(false);
       setAddExpertsOpen(false);
       setExpertsToAdd([]);
       setExpertsToRemove([]);
@@ -298,29 +283,7 @@ export const useAdminIssueActions = ({
       return;
     }
 
-    if (expertsToAdd.length > 0) {
-      if (
-        !Array.isArray(issueForDomains?.alternatives) ||
-        issueForDomains.alternatives.length === 0 ||
-        !Array.isArray(issueForDomains?.criteria) ||
-        issueForDomains.criteria.length === 0
-      ) {
-        showSnackbarAlert(
-          "Issue detail must include alternatives and criteria to assign expression domains.",
-          "error"
-        );
-        return;
-      }
-
-      setAssignDomainsOpen(true);
-      return;
-    }
-
-    await processEditExperts(null);
-  };
-
-  const handleConfirmDomains = async (domainAssignments) => {
-    await processEditExperts(domainAssignments);
+    await processEditExperts();
   };
 
   return {
@@ -334,12 +297,10 @@ export const useAdminIssueActions = ({
     addExpertsLoading,
     expertsToAdd,
     expertsToRemove,
-    assignDomainsOpen,
     ownerCandidates,
     availableExperts,
     pendingAddExpertsInfo,
     resultingExpertsCount,
-    issueForDomains,
     openReassignDialog,
     handleReassignOwner,
     openConfirmAction,
@@ -349,13 +310,11 @@ export const useAdminIssueActions = ({
     toggleRemoveExpert,
     handleResetExpertChanges,
     handleSaveExpertsChanges,
-    handleConfirmDomains,
     resetExpertEditionState,
     resetIssueActionState,
     setAddExpertsOpen,
     setExpertsToAdd,
     setExpertsToRemove,
-    setAssignDomainsOpen,
     setReassignOpen,
     setNewOwnerId,
   };

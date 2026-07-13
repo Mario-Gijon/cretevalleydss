@@ -239,21 +239,18 @@ export const reassignIssueOwner = async ({ issueId, newOwnerId }) =>
  * @param {string} params.issueId Id del issue.
  * @param {string[]} params.expertsToAdd Expertos a añadir.
  * @param {string[]} params.expertsToRemove Expertos a eliminar.
- * @param {object|null} params.domainAssignments Asignaciones de dominios.
  * @returns {Promise<object|false>}
  */
 export const editIssueExpertsAdminAction = async ({
   issueId,
   expertsToAdd = [],
   expertsToRemove = [],
-  domainAssignments = null,
 }) =>
   requestAdmin(
     `/admin/issues/${issueId}/experts`,
     jsonRequest("PATCH", {
       expertsToAdd,
       expertsToRemove,
-      domainAssignments,
     }),
     "Error editing issue experts as admin:"
   );
