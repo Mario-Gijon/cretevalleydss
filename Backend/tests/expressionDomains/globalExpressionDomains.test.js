@@ -63,12 +63,32 @@ describe("canonical global expression domains", () => {
           membershipFunction: "triangular",
           labelCount: 5,
           labels: expect.arrayContaining([
-            expect.objectContaining({ key: "very_low", index: 0, values: [0, 0.1, 0.3] }),
-            expect.objectContaining({ key: "very_high", index: 4, values: [0.7, 0.9, 1] }),
+            expect.objectContaining({ key: "very_low", index: 0, values: [0, 0, 0.25] }),
+            expect.objectContaining({ key: "low", index: 1, values: [0, 0.25, 0.5] }),
+            expect.objectContaining({ key: "medium", index: 2, values: [0.25, 0.5, 0.75] }),
+            expect.objectContaining({ key: "high", index: 3, values: [0.5, 0.75, 1] }),
+            expect.objectContaining({ key: "very_high", index: 4, values: [0.75, 1, 1] }),
           ]),
         }),
       },
     ]);
+  });
+
+  it("uses the balanced shoulder tuples in the canonical source", () => {
+    expect(CANONICAL_GLOBAL_EXPRESSION_DOMAINS[3]).toEqual({
+      name: "Fuzzy Linguistic 5",
+      typeKey: "linguisticFuzzy",
+      definition: {
+        membershipFunction: "triangular",
+        labels: [
+          { key: "very_low", label: "Very Low", values: [0, 0, 0.25] },
+          { key: "low", label: "Low", values: [0, 0.25, 0.5] },
+          { key: "medium", label: "Medium", values: [0.25, 0.5, 0.75] },
+          { key: "high", label: "High", values: [0.5, 0.75, 1] },
+          { key: "very_high", label: "Very High", values: [0.75, 1, 1] },
+        ],
+      },
+    });
   });
 
   it("creates fresh database documents for every build", () => {

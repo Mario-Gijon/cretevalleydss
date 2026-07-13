@@ -40,11 +40,11 @@ export const CANONICAL_GLOBAL_EXPRESSION_DOMAINS = freezeDeep([
     definition: {
       membershipFunction: "triangular",
       labels: [
-        { key: "very_low", label: "Very Low", values: [0.0, 0.1, 0.3] },
-        { key: "low", label: "Low", values: [0.1, 0.3, 0.5] },
-        { key: "medium", label: "Medium", values: [0.3, 0.5, 0.7] },
-        { key: "high", label: "High", values: [0.5, 0.7, 0.9] },
-        { key: "very_high", label: "Very High", values: [0.7, 0.9, 1.0] },
+        { key: "very_low", label: "Very Low", values: [0, 0, 0.25] },
+        { key: "low", label: "Low", values: [0, 0.25, 0.5] },
+        { key: "medium", label: "Medium", values: [0.25, 0.5, 0.75] },
+        { key: "high", label: "High", values: [0.5, 0.75, 1] },
+        { key: "very_high", label: "Very High", values: [0.75, 1, 1] },
       ],
     },
   },

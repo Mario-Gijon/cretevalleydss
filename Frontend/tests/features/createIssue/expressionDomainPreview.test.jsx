@@ -9,6 +9,7 @@ vi.mock(
         data-testid="fuzzy-preview-chart"
         data-height={JSON.stringify(height)}
         data-labels={labels.map((label) => label.label).join(",")}
+        data-values={JSON.stringify(labels.map((label) => label.values))}
       />
     ),
   })
@@ -109,7 +110,7 @@ describe("ExpressionDomainPreview", () => {
     expect(document.querySelectorAll(".MuiDivider-root").length).toBeGreaterThan(0);
   });
 
-  it("renders the fuzzy chart with all labels and bounded manage height", () => {
+  it("renders the canonical bounded five-label fuzzy scale without chart changes", () => {
     renderWithProviders(
       <ExpressionDomainPreview
         domain={{
@@ -117,9 +118,11 @@ describe("ExpressionDomainPreview", () => {
           definition: {
             membershipFunction: "triangular",
             labels: [
-              { key: "low", label: "Low", values: [0, 0, 0.5], index: 0 },
-              { key: "medium", label: "Medium", values: [0, 0.5, 1], index: 1 },
-              { key: "high", label: "High", values: [0.5, 1, 1], index: 2 },
+              { key: "very_low", label: "Very Low", values: [0, 0, 0.25], index: 0 },
+              { key: "low", label: "Low", values: [0, 0.25, 0.5], index: 1 },
+              { key: "medium", label: "Medium", values: [0.25, 0.5, 0.75], index: 2 },
+              { key: "high", label: "High", values: [0.5, 0.75, 1], index: 3 },
+              { key: "very_high", label: "Very High", values: [0.75, 1, 1], index: 4 },
             ],
           },
         }}
@@ -129,7 +132,17 @@ describe("ExpressionDomainPreview", () => {
     expect(screen.getByTestId("fuzzy-preview-chart")).toBeInTheDocument();
     expect(screen.getByTestId("fuzzy-preview-chart")).toHaveAttribute(
       "data-labels",
-      "Low,Medium,High"
+      "Very Low,Low,Medium,High,Very High"
+    );
+    expect(screen.getByTestId("fuzzy-preview-chart")).toHaveAttribute(
+      "data-values",
+      JSON.stringify([
+        [0, 0, 0.25],
+        [0, 0.25, 0.5],
+        [0.25, 0.5, 0.75],
+        [0.5, 0.75, 1],
+        [0.75, 1, 1],
+      ])
     );
     expect(screen.getByTestId("fuzzy-preview-chart")).toHaveAttribute(
       "data-height",

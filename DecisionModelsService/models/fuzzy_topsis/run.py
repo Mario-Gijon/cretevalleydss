@@ -1,5 +1,6 @@
 """Implementación de Fuzzy TOPSIS para ejecución desde la API."""
 
+import copy
 from typing import Any
 
 import numpy as np
@@ -53,6 +54,33 @@ def _validate_fuzzy_matrices_or_throw(
                     raise ValueError(f"{field} must contain finite numbers")
 
 
+def _prepare_bounded_cost_inputs(
+    matrix: list[list[tuple[float, float, float]]],
+    criterion_type: list[str],
+) -> tuple[list[list[tuple[float, float, float]]], list[str]]:
+    """Preserve cost semantics when a bounded shoulder has a zero lower bound."""
+
+    prepared_matrix = copy.deepcopy(matrix)
+    prepared_types = list(criterion_type)
+
+    for criterion_index, direction in enumerate(prepared_types):
+        if direction != "min":
+            continue
+
+        has_zero_lower_bound = any(
+            row[criterion_index][0] == 0 for row in prepared_matrix
+        )
+        if not has_zero_lower_bound:
+            continue
+
+        for row in prepared_matrix:
+            lower, middle, upper = row[criterion_index]
+            row[criterion_index] = (1 - upper, 1 - middle, 1 - lower)
+        prepared_types[criterion_index] = "max"
+
+    return prepared_matrix, prepared_types
+
+
 def run_fuzzy_topsis(
     matrices: dict[str, list[list[list[float]]]],
     weights: list[Any],
@@ -82,10 +110,14 @@ def run_fuzzy_topsis(
     if len(flat_weights) != len(criterion_type):
         raise ValueError(f"Mismatch: {len(flat_weights)} weights vs {len(criterion_type)} criteria")
 
+    algorithm_matrix, algorithm_criterion_type = _prepare_bounded_cost_inputs(
+        collective_matrix,
+        criterion_type,
+    )
     collective_scores = fuzzy_topsis_method(
-        dataset=collective_matrix,
+        dataset=algorithm_matrix,
         weights=[flat_weights],
-        criterion_type=criterion_type,
+        criterion_type=algorithm_criterion_type,
         graph=False,
         verbose=False,
     ).tolist()
