@@ -1,6 +1,5 @@
 """Implementación de Fuzzy TOPSIS para ejecución desde la API."""
 
-import copy
 from typing import Any
 
 import numpy as np
@@ -53,32 +52,28 @@ def _validate_fuzzy_matrices_or_throw(
                 if not all(np.isfinite(item) for item in parsed):
                     raise ValueError(f"{field} must contain finite numbers")
 
+                if parsed[0] > parsed[1] or parsed[1] > parsed[2]:
+                    raise ValueError(
+                        f"{field} must be an ordered fuzzy triplet [l, m, u]"
+                    )
 
-def _prepare_bounded_cost_inputs(
-    matrix: list[list[tuple[float, float, float]]],
+
+def _validate_cost_triplets_or_throw(
+    collective_matrix: list[list[tuple[float, float, float]]],
     criterion_type: list[str],
-) -> tuple[list[list[tuple[float, float, float]]], list[str]]:
-    """Preserve cost semantics when a bounded shoulder has a zero lower bound."""
+) -> None:
+    for alternative_index, row in enumerate(collective_matrix):
+        for criterion_index, triplet in enumerate(row):
+            if criterion_type[criterion_index] != "min":
+                continue
 
-    prepared_matrix = copy.deepcopy(matrix)
-    prepared_types = list(criterion_type)
-
-    for criterion_index, direction in enumerate(prepared_types):
-        if direction != "min":
-            continue
-
-        has_zero_lower_bound = any(
-            row[criterion_index][0] == 0 for row in prepared_matrix
-        )
-        if not has_zero_lower_bound:
-            continue
-
-        for row in prepared_matrix:
-            lower, middle, upper = row[criterion_index]
-            row[criterion_index] = (1 - upper, 1 - middle, 1 - lower)
-        prepared_types[criterion_index] = "max"
-
-    return prepared_matrix, prepared_types
+            if triplet[0] <= 0:
+                raise ValueError(
+                    "Fuzzy TOPSIS cost normalization is incompatible with a zero "
+                    "lower bound at alternative index "
+                    f"{alternative_index}, criterion index {criterion_index}: "
+                    "selected fuzzy values must have l > 0 for pyDecision."
+                )
 
 
 def run_fuzzy_topsis(
@@ -110,14 +105,14 @@ def run_fuzzy_topsis(
     if len(flat_weights) != len(criterion_type):
         raise ValueError(f"Mismatch: {len(flat_weights)} weights vs {len(criterion_type)} criteria")
 
-    algorithm_matrix, algorithm_criterion_type = _prepare_bounded_cost_inputs(
+    _validate_cost_triplets_or_throw(
         collective_matrix,
         criterion_type,
     )
     collective_scores = fuzzy_topsis_method(
-        dataset=algorithm_matrix,
+        dataset=collective_matrix,
         weights=[flat_weights],
-        criterion_type=algorithm_criterion_type,
+        criterion_type=criterion_type,
         graph=False,
         verbose=False,
     ).tolist()
