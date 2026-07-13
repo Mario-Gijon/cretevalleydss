@@ -24,6 +24,23 @@ const requireNonEmptyStringOrThrow = ({ value, field, message }) => {
   return normalizedValue;
 };
 
+export const normalizeExpressionDomainCreationPayload = (payload) => {
+  if (!isPlainObject(payload)) {
+    throw createBadRequestError("Expression domain payload must be an object", {
+      field: "payload",
+    });
+  }
+
+  const typeKey = requireNonEmptyStringOrThrow({
+    value: payload.typeKey,
+    field: "typeKey",
+    message: "typeKey is required",
+  });
+  const domainType = getExpressionDomainTypeOrThrow(typeKey);
+
+  return domainType.validateCreation(payload);
+};
+
 export const normalizeNewExpressionDomainPayload = (payload) => {
   if (!isPlainObject(payload)) {
     throw createBadRequestError("Expression domain payload must be an object", {
@@ -43,12 +60,5 @@ export const normalizeNewExpressionDomainPayload = (payload) => {
     });
   }
 
-  const typeKey = requireNonEmptyStringOrThrow({
-    value: payload.typeKey,
-    field: "typeKey",
-    message: "typeKey is required",
-  });
-  const domainType = getExpressionDomainTypeOrThrow(typeKey);
-
-  return domainType.validateCreation(payload);
+  return normalizeExpressionDomainCreationPayload(payload);
 };
