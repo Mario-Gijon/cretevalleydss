@@ -12,6 +12,7 @@ import {
   createIssueCriteriaFixture,
   createIssueEvaluationFixture,
   createIssueFixture,
+  createIssueModel,
   createParticipationFixture,
 } from "../../setup/fixtures.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
@@ -222,7 +223,7 @@ describe("editIssueExperts", () => {
     expect(exitLog.hidden).toBe(false);
   });
 
-  it("adding an unknown email does not crash and does not create participation", async () => {
+  it("rejects an unknown-only edit when the issue has no experts", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",
     });
@@ -234,14 +235,16 @@ describe("editIssueExperts", () => {
       issueId: issue._id,
     });
 
-    const result = await editIssueExperts({
+    await expect(editIssueExperts({
       issueId: issue._id,
       userId: owner._id,
       expertsToAdd: ["missing@example.com"],
       expertsToRemove: [],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "An issue must have at least one expert.",
     });
 
-    expect(result.invitationEmailsToSend).toEqual([]);
     expect(await Participation.countDocuments({ issue: issue._id })).toBe(0);
     expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
   });
@@ -343,11 +346,14 @@ describe("editIssueExperts", () => {
       payload: { done: true },
     });
 
-    const result = await editIssueExperts({
+    await expect(editIssueExperts({
       issueId: issue._id,
       userId: owner._id,
       expertsToAdd: [],
       expertsToRemove: ["  EXPERT@example.com "],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "An issue must have at least one expert.",
     });
 
     const remainingEvaluations = await IssueEvaluation.find({
@@ -359,31 +365,12 @@ describe("editIssueExperts", () => {
       user: expert._id,
     }).lean();
 
-    expect(result.issueName).toBe(issue.name);
-    expect(await Participation.findOne({ issue: issue._id, expert: expert._id })).toBeNull();
-    expect(remainingEvaluations).toHaveLength(1);
-    expect(remainingEvaluations[0]).toMatchObject({
-      stage: "criteriaWeighting",
-      consensusPhase: 3,
-      completed: false,
-    });
-    expect(exitLog).toMatchObject({
-      hidden: true,
-      reason: "Expelled by owner",
-      phase: 3,
-      stage: "alternativeEvaluation",
-    });
-    expect(exitLog.history).toEqual([
-      expect.objectContaining({
-        action: "exited",
-        reason: "Expelled by owner",
-        phase: 3,
-        stage: "alternativeEvaluation",
-      }),
-    ]);
+    expect(await Participation.findOne({ issue: issue._id, expert: expert._id })).not.toBeNull();
+    expect(remainingEvaluations).toHaveLength(2);
+    expect(exitLog).toBeNull();
   });
 
-  it("re-adding a removed expert appends entry and exit history on the same timeline record", async () => {
+  it("rejects removing the final expert without changing their timeline record", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",
     });
@@ -413,85 +400,39 @@ describe("editIssueExperts", () => {
       { $set: { consensusPhase: 2 } }
     );
 
-    await editIssueExperts({
+    await expect(editIssueExperts({
       issueId: issue._id,
       userId: owner._id,
       expertsToAdd: [],
       expertsToRemove: [expert.email],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "An issue must have at least one expert.",
     });
 
-    await Issue.updateOne(
-      { _id: issue._id },
-      { $set: { consensusPhase: 5 } }
-    );
-
-    await editIssueExperts({
-      issueId: issue._id,
-      userId: owner._id,
-      expertsToAdd: [expert.email],
-      expertsToRemove: [],
-    });
-
-    await Issue.updateOne(
-      { _id: issue._id },
-      { $set: { consensusPhase: 8 } }
-    );
-
-    await editIssueExperts({
-      issueId: issue._id,
-      userId: owner._id,
-      expertsToAdd: [],
-      expertsToRemove: [expert.email],
-    });
-
-    await Issue.updateOne(
-      { _id: issue._id },
-      { $set: { consensusPhase: 12 } }
-    );
-
-    await editIssueExperts({
-      issueId: issue._id,
-      userId: owner._id,
-      expertsToAdd: [expert.email],
-      expertsToRemove: [],
-    });
-
+    expect(await Participation.countDocuments({ issue: issue._id, expert: expert._id })).toBe(1);
+    expect(await ExitUserIssue.countDocuments({ issue: issue._id, user: expert._id })).toBe(1);
     const exitLog = await ExitUserIssue.findOne({
       issue: issue._id,
       user: expert._id,
     }).lean();
 
-    expect(await ExitUserIssue.countDocuments({ issue: issue._id, user: expert._id })).toBe(1);
-    expect(await Participation.countDocuments({ issue: issue._id, expert: expert._id })).toBe(1);
     expect(exitLog).toMatchObject({
       hidden: false,
       reason: "Invited by owner",
-      phase: 12,
+      phase: 0,
       stage: "alternativeEvaluation",
     });
-    expect(exitLog.history).toHaveLength(5);
-    expect(exitLog.history.map((entry) => entry.action)).toEqual([
-      "entered",
-      "exited",
-      "entered",
-      "exited",
-      "entered",
-    ]);
-    expect(exitLog.history.map((entry) => entry.phase)).toEqual([0, 2, 5, 8, 12]);
-    expect(exitLog.history.map((entry) => entry.reason)).toEqual([
-      "Invited by owner",
-      "Expelled by owner",
-      "Invited by owner",
-      "Expelled by owner",
-      "Invited by owner",
-    ]);
-    for (const entry of exitLog.history) {
-      expect(entry.stage).toBe("alternativeEvaluation");
-      expect(entry.timestamp).toBeTruthy();
-    }
+    expect(exitLog.history).toHaveLength(1);
+    expect(exitLog.history[0]).toMatchObject({
+      action: "entered",
+      reason: "Invited by owner",
+      phase: 0,
+      stage: "alternativeEvaluation",
+    });
   });
 
-  it("owner removal from a simulated-consensus issue preserves only completed previous-phase alternative evaluations", async () => {
+  it("rejects final expert removal from a simulated-consensus issue without partial cleanup", async () => {
     const owner = await createConfirmedUser({
       email: "owner@example.com",
     });
@@ -550,11 +491,14 @@ describe("editIssueExperts", () => {
       payload: { removedIncomplete: true },
     });
 
-    await editIssueExperts({
+    await expect(editIssueExperts({
       issueId: issue._id,
       userId: owner._id,
       expertsToAdd: [],
       expertsToRemove: [expert.email],
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "An issue must have at least one expert.",
     });
 
     const remainingEvaluations = await IssueEvaluation.find({
@@ -564,7 +508,7 @@ describe("editIssueExperts", () => {
       .sort({ stage: 1, consensusPhase: 1 })
       .lean();
 
-    expect(remainingEvaluations).toHaveLength(2);
+    expect(remainingEvaluations).toHaveLength(4);
     expect(remainingEvaluations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -578,8 +522,22 @@ describe("editIssueExperts", () => {
           completed: true,
           payload: { kept: true },
         }),
+        expect.objectContaining({
+          stage: "alternativeEvaluation",
+          consensusPhase: 2,
+          completed: true,
+          payload: { removedCurrentPhase: true },
+        }),
+        expect.objectContaining({
+          stage: "alternativeEvaluation",
+          consensusPhase: 0,
+          completed: false,
+          payload: { removedIncomplete: true },
+        }),
       ])
     );
+    expect(await Participation.countDocuments({ issue: issue._id, expert: expert._id })).toBe(1);
+    expect(await ExitUserIssue.countDocuments({ issue: issue._id, user: expert._id })).toBe(0);
   });
 
   it("owner cannot remove themself from their own issue", async () => {
@@ -606,6 +564,97 @@ describe("editIssueExperts", () => {
       field: "expertsToRemove",
       message: "Issue owner cannot be removed",
     });
+  });
+
+  it("assigns and updates weights when adding and removing experts on a weighted issue", async () => {
+    const owner = await createConfirmedUser({ email: "owner@example.com" });
+    const firstExpert = await createConfirmedUser({ email: "first@example.com" });
+    const secondExpert = await createConfirmedUser({ email: "second@example.com" });
+    const model = await createIssueModel({ usesExpertWeights: true });
+    const issue = await createIssueFixture({ ownerId: owner._id, modelId: model._id });
+
+    await createIssueCriteriaFixture({ issueId: issue._id });
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [firstExpert.email, secondExpert.email],
+      expertsToRemove: [],
+      expertWeightsByEmail: {
+        [firstExpert.email]: 0.4,
+        [secondExpert.email]: 0.6,
+      },
+    });
+
+    expect(await Participation.find({ issue: issue._id }).sort({ weight: 1 }).lean()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ expert: firstExpert._id, weight: 0.4 }),
+        expect.objectContaining({ expert: secondExpert._id, weight: 0.6 }),
+      ])
+    );
+
+    await editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [],
+      expertsToRemove: [secondExpert.email],
+      expertWeightsByEmail: { [firstExpert.email]: 1 },
+    });
+
+    expect(await Participation.find({ issue: issue._id }).lean()).toEqual([
+      expect.objectContaining({ expert: firstExpert._id, weight: 1 }),
+    ]);
+  });
+
+  it("rejects an invalid weighted edit before changing participations or invitations", async () => {
+    const owner = await createConfirmedUser({ email: "owner@example.com" });
+    const existingExpert = await createConfirmedUser({ email: "existing@example.com" });
+    const newExpert = await createConfirmedUser({ email: "new@example.com" });
+    const model = await createIssueModel({ usesExpertWeights: true });
+    const issue = await createIssueFixture({ ownerId: owner._id, modelId: model._id });
+
+    await createIssueCriteriaFixture({ issueId: issue._id });
+    await createParticipationFixture({
+      issueId: issue._id,
+      expertId: existingExpert._id,
+      invitationStatus: "accepted",
+      weight: 1,
+    });
+
+    await expect(editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [newExpert.email],
+      expertsToRemove: [],
+      expertWeightsByEmail: { [existingExpert.email]: 0.5 },
+    })).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(await Participation.countDocuments({ issue: issue._id })).toBe(1);
+    expect(await Participation.findOne({ issue: issue._id, expert: existingExpert._id }).lean()).toMatchObject({ weight: 1 });
+    expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
+  });
+
+  it("rejects expert weights on a non-weighted issue without partial changes", async () => {
+    const owner = await createConfirmedUser({ email: "owner@example.com" });
+    const expert = await createConfirmedUser({ email: "expert@example.com" });
+    const issue = await createIssueFixture({ ownerId: owner._id });
+
+    await createIssueCriteriaFixture({ issueId: issue._id });
+
+    await expect(editIssueExperts({
+      issueId: issue._id,
+      userId: owner._id,
+      expertsToAdd: [expert.email],
+      expertsToRemove: [],
+      expertWeightsByEmail: { [expert.email]: 1 },
+      hasExpertWeightsByEmail: true,
+    })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Expert weights are not supported by this model.",
+    });
+
+    expect(await Participation.countDocuments({ issue: issue._id })).toBe(0);
+    expect(await Notification.countDocuments({ issue: issue._id })).toBe(0);
   });
 
   it("non-owner cannot edit experts", async () => {

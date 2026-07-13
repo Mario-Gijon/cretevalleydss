@@ -257,9 +257,7 @@ export const useAdminIssueActions = ({
 
       showSnackbarAlert(res?.message || "Experts updated successfully", "success");
 
-      setAddExpertsOpen(false);
-      setExpertsToAdd([]);
-      setExpertsToRemove([]);
+      resetExpertEditionState();
 
       await fetchIssuesData({ keepLoading: true });
       await loadIssueDetail(issueDetail.id, selectedIssueRow);

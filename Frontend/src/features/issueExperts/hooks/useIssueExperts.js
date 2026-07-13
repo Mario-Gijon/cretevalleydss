@@ -113,24 +113,30 @@ export const useIssueExperts = ({
 
     setBusy((prev) => ({ ...prev, editExperts: true }));
 
-    const response = expertWeightsByEmail
-      ? await editExperts(
-        selectedIssue.id,
-        expertsToAdd,
-        expertsToRemove,
-        expertWeightsByEmail
-      )
-      : await editExperts(selectedIssue.id, expertsToAdd, expertsToRemove);
+    try {
+      const response = expertWeightsByEmail
+        ? await editExperts(
+          selectedIssue.id,
+          expertsToAdd,
+          expertsToRemove,
+          expertWeightsByEmail
+        )
+        : await editExperts(selectedIssue.id, expertsToAdd, expertsToRemove);
 
-    showSnackbarAlert(
-      response?.message || "Experts updated",
-      response?.success ? "success" : "error"
-    );
+      if (!response?.success) {
+        showSnackbarAlert(response?.message || "Error updating experts", "error");
+        return;
+      }
 
-    await refresh();
-
-    setBusy((prev) => ({ ...prev, editExperts: false }));
-    resetExpertsEdition();
+      showSnackbarAlert(response.message || "Experts updated", "success");
+      resetExpertsEdition();
+      await refresh();
+    } catch (error) {
+      console.error(error);
+      showSnackbarAlert("Unexpected error updating experts", "error");
+    } finally {
+      setBusy((prev) => ({ ...prev, editExperts: false }));
+    }
   };
 
   /**

@@ -122,4 +122,66 @@ describe("useIssueExperts", () => {
       { "existing@example.com": 0.6, "new@example.com": 0.4 }
     );
   });
+
+  it("resets the weighted editor after a successful submission", async () => {
+    editExperts.mockResolvedValue({ success: true, message: "Updated" });
+    const weightedIssue = {
+      ...issue,
+      usesExpertWeights: true,
+      expertParticipants: [{ email: "existing@example.com", weight: 1 }],
+    };
+    const { result, refresh, setBusy } = setup(weightedIssue, [
+      { email: "new@example.com", name: "New expert" },
+    ]);
+
+    act(() => result.current.setExpertsToAdd(["new@example.com"]));
+    await act(async () => result.current.saveExpertsChanges());
+    await act(async () =>
+      result.current.confirmExpertWeights({
+        "existing@example.com": 0.6,
+        "new@example.com": 0.4,
+      })
+    );
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(result.current.expertsToAdd).toEqual([]);
+    expect(result.current.expertsToRemove).toEqual([]);
+    expect(result.current.openExpertWeightsDialog).toBe(false);
+    expect(setBusy).toHaveBeenLastCalledWith(expect.any(Function));
+  });
+
+  it.each([
+    ["an unsuccessful response", { success: false, message: "Invalid weights" }],
+    ["a request error", new Error("network")],
+  ])("preserves pending weighted changes after %s", async (_label, outcome) => {
+    if (outcome instanceof Error) {
+      editExperts.mockRejectedValue(outcome);
+    } else {
+      editExperts.mockResolvedValue(outcome);
+    }
+
+    const weightedIssue = {
+      ...issue,
+      usesExpertWeights: true,
+      expertParticipants: [{ email: "existing@example.com", weight: 1 }],
+    };
+    const { result, refresh, showSnackbarAlert, setBusy } = setup(weightedIssue, [
+      { email: "new@example.com", name: "New expert" },
+    ]);
+
+    act(() => result.current.setExpertsToAdd(["new@example.com"]));
+    await act(async () => result.current.saveExpertsChanges());
+    await act(async () =>
+      result.current.confirmExpertWeights({
+        "existing@example.com": 0.6,
+        "new@example.com": 0.4,
+      })
+    );
+
+    expect(result.current.expertsToAdd).toEqual(["new@example.com"]);
+    expect(result.current.openExpertWeightsDialog).toBe(true);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(showSnackbarAlert).toHaveBeenCalledWith(expect.any(String), "error");
+    expect(setBusy).toHaveBeenLastCalledWith(expect.any(Function));
+  });
 });

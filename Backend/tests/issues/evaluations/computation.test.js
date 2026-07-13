@@ -198,6 +198,7 @@ const createCriteriaComputeFixture = async ({
     acceptedExperts,
     pendingExperts,
     issue,
+    domain,
     alternatives,
     leafCriteria,
   };
@@ -283,6 +284,7 @@ const createAlternativeComputeFixture = async ({
     acceptedExperts,
     pendingExperts,
     issue,
+    domain,
     alternatives,
     leafCriteria,
   };
@@ -749,6 +751,7 @@ describe("alternative compute orchestration", () => {
     const {
       owner,
       issue,
+      domain,
       acceptedExperts,
       alternatives,
       leafCriteria,
@@ -867,9 +870,13 @@ describe("alternative compute orchestration", () => {
         id: String(leafCriteria[0]._id),
         name: "Criterion A",
         type: leafCriteria[0].type,
-        expressionDomain: expect.objectContaining({
-          type: "numeric",
-        }),
+        expressionDomain: {
+          _id: domain._id,
+          id: String(domain._id),
+          name: domain.name,
+          typeKey: "numericDiscrete",
+          definition: { min: 0, max: 10, step: 1 },
+        },
       }),
     ]);
     expect(requestPayload.evaluations).toHaveLength(2);
