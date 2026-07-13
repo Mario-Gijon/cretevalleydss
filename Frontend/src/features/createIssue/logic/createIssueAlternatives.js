@@ -1,39 +1,57 @@
-const isAlternativeNameDuplicate = (name, alternatives) => {
-  return alternatives.includes(name);
-};
+import { buildCreateIssueAlternativeId } from "./createIssueAlternativeIds";
+
+export const CREATE_ISSUE_ALTERNATIVE_NAME_MAX_LENGTH = 60;
+export const CREATE_ISSUE_ALTERNATIVE_DESCRIPTION_MAX_LENGTH = 500;
+
+const isAlternativeNameDuplicate = (name, alternatives, excludedId = null) =>
+  alternatives.some((alternative) =>
+    alternative.id !== excludedId && alternative.name === name
+  );
 
 export const addAlternative = (
   inputValue,
+  inputDescription,
   alternatives,
   setAlternatives,
   setInputValue,
-  setInputError
+  setInputError,
+  setInputDescription
 ) => {
   const trimmedValue = inputValue.trim();
 
   if (!trimmedValue) return;
 
-  if (trimmedValue.length > 35) {
-    setInputError("Max 35 characters");
+  if (trimmedValue.length > CREATE_ISSUE_ALTERNATIVE_NAME_MAX_LENGTH) {
+    setInputError(`Max ${CREATE_ISSUE_ALTERNATIVE_NAME_MAX_LENGTH} characters`);
     return;
   }
 
+  if (inputDescription.length > CREATE_ISSUE_ALTERNATIVE_DESCRIPTION_MAX_LENGTH) {
+    setInputError(`Description max ${CREATE_ISSUE_ALTERNATIVE_DESCRIPTION_MAX_LENGTH} characters`);
+    return;
+  }
   if (isAlternativeNameDuplicate(trimmedValue, alternatives)) {
     setInputError("Alternative already exists");
     return;
   }
 
-  setAlternatives((prev) => [...prev, trimmedValue]);
+  setAlternatives((prev) => [...prev, {
+    id: buildCreateIssueAlternativeId(),
+    name: trimmedValue,
+    description: inputDescription,
+  }]);
   setInputValue("");
+  setInputDescription("");
   setInputError("");
 };
 
-export const removeAlternative = (item, setAlternatives) => {
-  setAlternatives((prev) => prev.filter((i) => i !== item));
+export const removeAlternative = (id, setAlternatives) => {
+  setAlternatives((prev) => prev.filter((item) => item.id !== id));
 };
 
 export const saveEditAlternative = (
   editValue,
+  editDescription,
   editingAlternative,
   alternatives,
   setAlternatives,
@@ -48,22 +66,27 @@ export const saveEditAlternative = (
     return;
   }
 
-  if (trimmedValue.length > 35) {
-    setEditError("Max 35 characters");
+  if (trimmedValue.length > CREATE_ISSUE_ALTERNATIVE_NAME_MAX_LENGTH) {
+    setEditError(`Max ${CREATE_ISSUE_ALTERNATIVE_NAME_MAX_LENGTH} characters`);
     return;
   }
 
   if (
-    isAlternativeNameDuplicate(trimmedValue, alternatives) &&
-    trimmedValue !== editingAlternative
+    isAlternativeNameDuplicate(trimmedValue, alternatives, editingAlternative.id)
   ) {
     setEditError("Alternative already exists");
     return;
   }
 
-  setAlternatives((prev) =>
-    prev.map((alt) => (alt === editingAlternative ? trimmedValue : alt))
-  );
+  if (editDescription.length > CREATE_ISSUE_ALTERNATIVE_DESCRIPTION_MAX_LENGTH) {
+    setEditError(`Description max ${CREATE_ISSUE_ALTERNATIVE_DESCRIPTION_MAX_LENGTH} characters`);
+    return;
+  }
+  setAlternatives((prev) => prev.map((alternative) =>
+    alternative.id === editingAlternative.id
+      ? { ...alternative, name: trimmedValue, description: editDescription }
+      : alternative
+  ));
 
   setEditingAlternative(null);
   setEditValue("");

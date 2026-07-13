@@ -10,6 +10,7 @@ import {
   Stack,
   TextField,
   Typography,
+  Tooltip,
 } from "@mui/material";
 import { Fragment } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -17,6 +18,8 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import { CriterionWeightField } from "./CriterionWeightField";
 
@@ -26,8 +29,11 @@ export const CriteriaItem = ({
   editingCriterion,
   editCriterionValue,
   setEditCriterionValue,
+  editCriterionDescription,
+  setEditCriterionDescription,
   editBlur,
   handleSaveCriterionEdit,
+  handleCancelCriterionEdit,
   editCriterionError,
   editCriterionType,
   setEditCriterionType,
@@ -49,7 +55,7 @@ export const CriteriaItem = ({
   const hasChildren = Array.isArray(item?.children) && item.children.length > 0;
   const isLeaf = !hasChildren;
   const isFirstLevel = level === 0;
-  const isEditing = editingCriterion?.name === item.name;
+  const isEditing = editingCriterion?.id === item.id;
 
   const weightFieldMode =
     isLeaf && (creatorWeightMode === "manual" || creatorWeightMode === "fuzzy")
@@ -82,62 +88,53 @@ export const CriteriaItem = ({
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Stack
-            direction={{ xs: "column", md: "row" }}
+            direction="column"
             alignItems={{ xs: "stretch", md: "center" }}
             spacing={1.15}
             sx={{ width: "100%" }}
           >
             <Stack
-              direction="row"
+              direction={{ xs: "column", sm: "row" }}
               alignItems="center"
               spacing={1}
               sx={{ flex: 1, minWidth: 0 }}
             >
               {isEditing ? (
-                <TextField
-                  variant="outlined"
-                  size="small"
-                  value={editCriterionValue}
-                  onChange={(event) => setEditCriterionValue(event.target.value)}
-                  onBlur={!editBlur ? handleSaveCriterionEdit : undefined}
+                <Stack spacing={0.75} sx={{ flex: 1 }}>
+                  <TextField
+                    variant="outlined" size="small" value={editCriterionValue}
+                    onChange={(event) => setEditCriterionValue(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") handleSaveCriterionEdit();
-                  }}
-                  autoFocus
-                  fullWidth
-                  color="info"
-                  error={Boolean(editCriterionError)}
-                  helperText={editCriterionError}
-                  inputProps={{ min: 0, max: 1, step: 0.1 }}
-                  sx={{
-                    maxWidth: { md: 420 },
-                    "& .MuiInputBase-input": {
-                      fontWeight: 850,
-                    },
-                  }}
-                />
+                      if (event.key === "Enter") handleSaveCriterionEdit();
+                      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); }
+                    }}
+                    autoFocus fullWidth color="info" error={Boolean(editCriterionError)}
+                    helperText={editCriterionError} inputProps={{ maxLength: 60 }}
+                    sx={{ maxWidth: { md: 420 }, "& .MuiInputBase-input": { fontWeight: 850 } }}
+                  />
+                  <TextField
+                    variant="outlined" size="small" multiline minRows={2} maxRows={5}
+                    placeholder="Optional description" value={editCriterionDescription} fullWidth
+                    onChange={(event) => setEditCriterionDescription(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); } }}
+                    color="info" inputProps={{ maxLength: 500 }}
+                    helperText={`${editCriterionDescription.length} / 500`}
+                  />
+                </Stack>
               ) : (
                 <>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 900,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {item.name}
-                  </Typography>
-
-                  {isFirstLevel && showCriterionTypes ? (
-                    <Chip
-                      variant="outlined"
-                      label={item.type === "cost" ? "Cost" : "Benefit"}
-                      color={item.type === "cost" ? "error" : "success"}
-                      size="small"
-                      sx={{ height: 22, fontWeight: 850 }}
-                    />
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.name}
+                    </Typography>
+                    {isFirstLevel && showCriterionTypes ? (
+                      <Chip variant="outlined" label={item.type === "cost" ? "Cost" : "Benefit"} color={item.type === "cost" ? "error" : "success"} size="small" sx={{ height: 22, fontWeight: 850, flexShrink: 0 }} />
+                    ) : null}
+                  </Stack>
+                  {item.description ? (
+                    <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "pre-wrap", overflowWrap: "anywhere", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", width: "100%" }}>
+                      {item.description}
+                    </Typography>
                   ) : null}
                 </>
               )}
@@ -154,10 +151,9 @@ export const CriteriaItem = ({
                 <Select
                   value={editCriterionType}
                   onChange={(event) => setEditCriterionType(event.target.value)}
-                  onBlur={handleSaveCriterionEdit}
-                  onClick={() => setEditBlur(false)}
                   size="small"
                   color="info"
+                  fullWidth
                   sx={{ minWidth: 118 }}
                 >
                   <MenuItem value="benefit">Benefit</MenuItem>
@@ -166,13 +162,19 @@ export const CriteriaItem = ({
               ) : null}
 
               {weightField}
+              {isEditing ? (
+                <>
+                  <Tooltip title="Save changes"><IconButton aria-label="Save changes" onClick={handleSaveCriterionEdit} size="medium" color="success"><CheckRoundedIcon /></IconButton></Tooltip>
+                  <Tooltip title="Cancel editing"><IconButton aria-label="Cancel editing" onClick={handleCancelCriterionEdit} size="medium" color="warning"><CloseRoundedIcon /></IconButton></Tooltip>
+                </>
+              ) : null}
             </Stack>
           </Stack>
         </Box>
 
         {hasChildren ? (
-          <IconButton onClick={() => handleToggle(item.name)} size="small">
-            {openItems[item.name] ? <ExpandLess /> : <ExpandMore />}
+          <IconButton onClick={() => handleToggle(item.id)} size="small">
+            {openItems[item.id] ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
         ) : null}
 
@@ -212,7 +214,7 @@ export const CriteriaItem = ({
       </ListItem>
 
       {hasChildren ? (
-        <Collapse in={openItems[item.name]} timeout="auto" unmountOnExit>
+        <Collapse in={openItems[item.id]} timeout="auto" unmountOnExit>
           <List disablePadding>
             {item.children.map((child, index) => (
               <Fragment key={child.id || index}>
@@ -222,8 +224,11 @@ export const CriteriaItem = ({
                   editingCriterion={editingCriterion}
                   editCriterionValue={editCriterionValue}
                   setEditCriterionValue={setEditCriterionValue}
+                  editCriterionDescription={editCriterionDescription}
+                  setEditCriterionDescription={setEditCriterionDescription}
                   editBlur={editBlur}
                   handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  handleCancelCriterionEdit={handleCancelCriterionEdit}
                   editCriterionError={editCriterionError}
                   editCriterionType={editCriterionType}
                   setEditCriterionType={setEditCriterionType}

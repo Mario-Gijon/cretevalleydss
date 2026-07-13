@@ -69,24 +69,27 @@ const updateCriterionWithInheritance = ({
   items,
   editingCriterion,
   nextName,
+  nextDescription,
   nextType,
   showCriterionTypes,
   isRootCriterion,
 }) => {
   const visit = (nodes) =>
     nodes.map((node) => {
-      if (node?.name === editingCriterion?.name) {
+      if (node?.id === editingCriterion?.id) {
         if (showCriterionTypes && isRootCriterion) {
           const typedBranch = applyTypeToBranch(node, nextType);
           return {
             ...typedBranch,
             name: nextName,
+            description: nextDescription,
           };
         }
 
         return {
           ...node,
           name: nextName,
+          description: nextDescription,
         };
       }
 
@@ -124,12 +127,14 @@ export const CriteriaStep = () => {
   const isFuzzyModel = isFuzzyCriteriaWeightModel(selectedModel);
 
   const [inputValue, setInputValue] = useState("");
+  const [inputDescription, setInputDescription] = useState("");
   const [inputError, setInputError] = useState("");
 
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
 
   const [childInputValue, setChildInputValue] = useState("");
+  const [childInputDescription, setChildInputDescription] = useState("");
   const [childInputError, setChildInputError] = useState(false);
 
   const [openItems, setOpenItems] = useState({});
@@ -138,6 +143,7 @@ export const CriteriaStep = () => {
   const [editingCriterion, setEditingCriterion] = useState(null);
   const [editCriterionValue, setEditCriterionValue] = useState("");
   const [editCriterionType, setEditCriterionType] = useState("benefit");
+  const [editCriterionDescription, setEditCriterionDescription] = useState("");
   const [editBlur, setEditBlur] = useState(true);
   const [editCriterionError, setEditCriterionError] = useState("");
   const [openRemoveCriterionDialog, setOpenRemoveCriterionDialog] = useState(false);
@@ -283,6 +289,7 @@ export const CriteriaStep = () => {
   const handleEditCriterion = (item) => {
     setEditingCriterion(item);
     setEditCriterionValue(item.name);
+    setEditCriterionDescription(item.description || "");
     setEditCriterionType(item.type || "benefit");
   };
 
@@ -295,7 +302,7 @@ export const CriteriaStep = () => {
 
     const trimmedName = editCriterionValue.trim();
     const isRootCriterion = (criteria || []).some(
-      (criterion) => criterion?.name === editingCriterion?.name
+      (criterion) => criterion?.id === editingCriterion?.id
     );
 
     setCriteria((previous) =>
@@ -303,6 +310,7 @@ export const CriteriaStep = () => {
         items: previous,
         editingCriterion,
         nextName: trimmedName,
+        nextDescription: editCriterionDescription,
         nextType: editCriterionType || "benefit",
         showCriterionTypes,
         isRootCriterion,
@@ -310,6 +318,15 @@ export const CriteriaStep = () => {
     );
 
     setEditingCriterion(null);
+    setEditCriterionError("");
+    setEditBlur(true);
+  };
+
+  const handleCancelCriterionEdit = () => {
+    setEditingCriterion(null);
+    setEditCriterionValue("");
+    setEditCriterionDescription("");
+    setEditCriterionType("benefit");
     setEditCriterionError("");
     setEditBlur(true);
   };
@@ -336,11 +353,13 @@ export const CriteriaStep = () => {
       {
         id: buildCreateIssueCriterionId(),
         name: inputValue.trim(),
+        description: inputDescription,
         type: showCriterionTypes ? selectedType : "benefit",
         children: [],
       },
     ]);
     setInputValue("");
+    setInputDescription("");
     setInputError(false);
   };
 
@@ -361,8 +380,8 @@ export const CriteriaStep = () => {
     handleCancelRemoveCriteria();
   };
 
-  const handleToggle = (itemName) => {
-    setOpenItems((previous) => ({ ...previous, [itemName]: !previous[itemName] }));
+  const handleToggle = (itemId) => {
+    setOpenItems((previous) => ({ ...previous, [itemId]: !previous[itemId] }));
   };
 
   const handleAddChild = () => {
@@ -373,7 +392,7 @@ export const CriteriaStep = () => {
 
       const addChildSim = (items) =>
         items.map((item) => {
-          if (item.name === selectedParent.name) {
+          if (item.id === selectedParent.id) {
             return {
               ...item,
               children: [
@@ -381,6 +400,7 @@ export const CriteriaStep = () => {
                 {
                   id: buildCreateIssueCriterionId(),
                   name: childInputValue.trim(),
+                  description: childInputDescription,
                   type: selectedParent?.type || "benefit",
                   children: [],
                 },
@@ -411,7 +431,7 @@ export const CriteriaStep = () => {
 
     const addChild = (items) =>
       items.map((item) => {
-        if (item.name === selectedParent.name) {
+        if (item.id === selectedParent.id) {
           return {
             ...item,
             children: [
@@ -419,6 +439,7 @@ export const CriteriaStep = () => {
               {
                 id: buildCreateIssueCriterionId(),
                 name: childInputValue.trim(),
+                description: childInputDescription,
                 type: selectedParent?.type || "benefit",
                 children: [],
               },
@@ -435,6 +456,7 @@ export const CriteriaStep = () => {
 
     setCriteria((previous) => addChild(previous));
     setChildInputValue("");
+    setChildInputDescription("");
     setChildInputError(false);
     setOpenDialog(false);
   };
@@ -494,12 +516,9 @@ export const CriteriaStep = () => {
         </Stack>
       ) : null}
 
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.25}
-        alignItems={{ xs: "stretch", sm: "flex-start" }}
-      >
-        <TextField
+      <Stack spacing={0.75}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems="stretch">
+          <TextField
           variant="outlined"
           placeholder="Criterion"
           autoComplete="off"
@@ -513,34 +532,47 @@ export const CriteriaStep = () => {
           error={Boolean(inputError)}
           helperText={inputError}
           color="info"
-          sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
-        />
+          inputProps={{ maxLength: 60 }}
+            fullWidth
+            sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+          />
 
-        {showCriterionTypes ? (
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel color="info">Type</InputLabel>
-            <Select
-              value={selectedType}
-              onChange={(event) => setSelectedType(event.target.value)}
-              label="Type"
-              color="info"
-              sx={getCreateIssueStepInputSx(theme)}
-            >
-              <MenuItem value="benefit">Benefit</MenuItem>
-              <MenuItem value="cost">Cost</MenuItem>
-            </Select>
-          </FormControl>
-        ) : null}
+          {showCriterionTypes ? (
+            <FormControl size="small" fullWidth sx={{ minWidth: { sm: 140, md: 140 }, flex: { sm: "0 0 140px" } }}>
+              <InputLabel color="info">Type</InputLabel>
+              <Select
+                value={selectedType}
+                onChange={(event) => setSelectedType(event.target.value)}
+                label="Type" color="info" fullWidth sx={getCreateIssueStepInputSx(theme)}
+              >
+                <MenuItem value="benefit">Benefit</MenuItem>
+                <MenuItem value="cost">Cost</MenuItem>
+              </Select>
+            </FormControl>
+          ) : null}
 
-        <Button
-          startIcon={<AddIcon />}
-          color="info"
+          <Button
+            startIcon={<AddIcon />} color="info" variant="outlined"
+            onClick={handleAddCriteria} disabled={!inputValue.trim()}
+            sx={{ width: { xs: "100%", sm: "auto" }, alignSelf: { sm: "flex-start" } }}
+          >Add</Button>
+        </Stack>
+
+        <TextField
           variant="outlined"
-          onClick={handleAddCriteria}
-          disabled={!inputValue.trim()}
-        >
-          Add
-        </Button>
+          placeholder="Optional description"
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={5}
+          value={inputDescription}
+          onChange={(event) => setInputDescription(event.target.value)}
+          color="info"
+          inputProps={{ maxLength: 500 }}
+          helperText={`${inputDescription.length} / 500`}
+          fullWidth
+          sx={getCreateIssueStepInputSx(theme)}
+        />
       </Stack>
 
       {criteria.length === 0 ? (
@@ -561,14 +593,17 @@ export const CriteriaStep = () => {
         >
           <TransitionGroup>
             {reversed.map((item, index) => (
-              <Collapse key={item.name}>
+              <Collapse key={item.id}>
                 <CriteriaItem
                   item={item}
                   editingCriterion={editingCriterion}
                   editCriterionValue={editCriterionValue}
                   setEditCriterionValue={setEditCriterionValue}
+                  editCriterionDescription={editCriterionDescription}
+                  setEditCriterionDescription={setEditCriterionDescription}
                   editBlur={editBlur}
                   handleSaveCriterionEdit={handleSaveCriterionEdit}
+                  handleCancelCriterionEdit={handleCancelCriterionEdit}
                   editCriterionError={editCriterionError}
                   editCriterionType={editCriterionType}
                   setEditCriterionType={setEditCriterionType}
@@ -640,6 +675,21 @@ export const CriteriaStep = () => {
                 autoFocus
                 error={Boolean(childInputError)}
                 helperText={childInputError}
+                inputProps={{ maxLength: 60 }}
+                sx={getCreateIssueStepInputSx(theme)}
+              />
+              <TextField
+                color="info"
+                variant="outlined"
+                label="Optional description"
+                value={childInputDescription}
+                onChange={(event) => setChildInputDescription(event.target.value)}
+                multiline
+                minRows={2}
+                maxRows={5}
+                fullWidth
+                inputProps={{ maxLength: 500 }}
+                helperText={`${childInputDescription.length} / 500`}
                 sx={getCreateIssueStepInputSx(theme)}
               />
             </Stack>

@@ -36,7 +36,10 @@ const buildPayloadInput = (overrides = {}) => {
       issueDescription: "Detailed issue summary",
       selectedModel,
       isConsensus: selectedModel?.supportsConsensus === true,
-      alternatives: createIssueAlternativesFixture,
+      alternatives: createIssueAlternativesFixture.map(({ name, description }) => ({
+        name,
+        description,
+      })),
       criteria: createIssueCriteriaTreeFixture,
       addedExperts: createIssueExpertsFixture,
       expertWeights: createIssueExpertWeightsFixture,
@@ -90,7 +93,10 @@ describe("createIssuePayload", () => {
       selectedModel: complexCreateIssueModelFixture,
       selectedModelId: "model-complex",
       isConsensus: true,
-      alternatives: createIssueAlternativesFixture,
+      alternatives: createIssueAlternativesFixture.map(({ name, description }) => ({
+        name,
+        description,
+      })),
       criteria: createIssueCriteriaTreeFixture,
       addedExperts: [
         { email: "expert1@example.com", weight: 0.55 },

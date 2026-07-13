@@ -36,22 +36,26 @@ export const AlternativesStep = () => {
   const { alternatives, setAlternatives } = useCreateIssueContext();
 
   const [inputValue, setInputValue] = useState("");
+  const [inputDescription, setInputDescription] = useState("");
   const [inputError, setInputError] = useState("");
   const [editingAlternative, setEditingAlternative] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [editError, setEditError] = useState(null);
   const [openRemoveAlternativeDialog, setOpenRemoveAlternativeDialog] = useState(false);
-  const [alternativeToRemove, setAlternativeToRemove] = useState("");
+  const [alternativeToRemove, setAlternativeToRemove] = useState(null);
 
   const reversed = useMemo(() => alternatives.slice().reverse(), [alternatives]);
 
   const handleAddAlternative = () => {
     addAlternative(
       inputValue,
+      inputDescription,
       alternatives,
       setAlternatives,
       setInputValue,
-      setInputError
+      setInputError,
+      setInputDescription
     );
   };
 
@@ -62,19 +66,20 @@ export const AlternativesStep = () => {
 
   const handleCancelRemoveAlternative = () => {
     setOpenRemoveAlternativeDialog(false);
-    setAlternativeToRemove("");
+    setAlternativeToRemove(null);
   };
 
   const handleConfirmRemoveAlternative = () => {
     if (!alternativeToRemove) return;
 
-    removeAlternative(alternativeToRemove, setAlternatives);
+    removeAlternative(alternativeToRemove.id, setAlternatives);
     handleCancelRemoveAlternative();
   };
 
   const handleSaveEdit = () => {
     saveEditAlternative(
       editValue,
+      editDescription,
       editingAlternative,
       alternatives,
       setAlternatives,
@@ -84,9 +89,17 @@ export const AlternativesStep = () => {
     );
   };
 
+  const handleCancelEdit = () => {
+    setEditingAlternative(null);
+    setEditValue("");
+    setEditDescription("");
+    setEditError(null);
+  };
+
   const handleEditAlternative = (item) => {
     setEditingAlternative(item);
-    setEditValue(item);
+    setEditValue(item.name);
+    setEditDescription(item.description || "");
     setEditError(null);
   };
 
@@ -101,12 +114,9 @@ export const AlternativesStep = () => {
         </Typography>
       </Stack>
 
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.25}
-        alignItems={{ xs: "stretch", sm: "flex-start" }}
-      >
-        <TextField
+      <Stack spacing={0.75}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems="stretch">
+          <TextField
           variant="outlined"
           placeholder="Alternative"
           autoComplete="off"
@@ -120,19 +130,33 @@ export const AlternativesStep = () => {
           error={Boolean(inputError)}
           helperText={inputError}
           color="info"
-          sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
-        />
-
-        <Button
-          startIcon={<AddIcon />}
-          sx={{ width: { xs: "100%", sm: "auto" } }}
-          color="info"
+          inputProps={{ maxLength: 60 }}
+            fullWidth
+            sx={{ flex: 1, ...getCreateIssueStepInputSx(theme) }}
+          />
+          <Button
+            startIcon={<AddIcon />}
+            sx={{ width: { xs: "100%", sm: "auto" }, alignSelf: { sm: "flex-start" } }}
+            color="info" variant="outlined" onClick={handleAddAlternative}
+            disabled={!inputValue.trim()}
+          >Add</Button>
+        </Stack>
+        <TextField
           variant="outlined"
-          onClick={handleAddAlternative}
-          disabled={!inputValue.trim()}
-        >
-          Add
-        </Button>
+          placeholder="Optional description"
+          autoComplete="off"
+          size="small"
+          multiline
+          minRows={2}
+          maxRows={5}
+          value={inputDescription}
+          onChange={(event) => setInputDescription(event.target.value)}
+          color="info"
+          inputProps={{ maxLength: 500 }}
+          helperText={`${inputDescription.length} / 500`}
+          fullWidth
+          sx={getCreateIssueStepInputSx(theme)}
+        />
       </Stack>
 
       {alternatives.length === 0 ? (
@@ -153,15 +177,18 @@ export const AlternativesStep = () => {
         >
           <TransitionGroup>
             {reversed.map((item, index) => (
-              <Collapse key={item}>
+              <Collapse key={item.id}>
                 <AlternativeItem
                   item={item}
                   editingAlternative={editingAlternative}
                   editValue={editValue}
                   setEditValue={setEditValue}
+                  editDescription={editDescription}
+                  setEditDescription={setEditDescription}
                   setEditError={setEditError}
                   editError={editError}
                   handleSaveEdit={handleSaveEdit}
+                  handleCancelEdit={handleCancelEdit}
                   handleEditAlternative={handleEditAlternative}
                   handleRemoveAlternative={handleAskRemoveAlternative}
                 />
@@ -181,7 +208,7 @@ export const AlternativesStep = () => {
         title="Delete alternative?"
         subtitle={
           alternativeToRemove
-            ? `Are you sure you want to delete "${alternativeToRemove}"?`
+            ? `Are you sure you want to delete "${alternativeToRemove.name}"?`
             : "Are you sure you want to delete this alternative?"
         }
         actions={[

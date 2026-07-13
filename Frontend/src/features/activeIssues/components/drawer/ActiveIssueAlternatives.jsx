@@ -37,6 +37,8 @@ const ActiveIssueAlternatives = ({ alternatives = [] }) => {
                 typeof alternative === "string"
                   ? alternative
                   : alternative?.name || alternative?.title || `Alternative ${index + 1}`;
+              const description =
+                typeof alternative === "object" ? alternative?.description : null;
 
               return (
                 <ListItem
@@ -50,6 +52,11 @@ const ActiveIssueAlternatives = ({ alternatives = [] }) => {
                 >
                   <ListItemText
                     primary={<Typography sx={{ fontWeight: 950 }}>{name}</Typography>}
+                    secondary={description ? (
+                      <Typography variant="caption" sx={{ whiteSpace: "pre-wrap" }}>
+                        {description}
+                      </Typography>
+                    ) : null}
                   />
                 </ListItem>
               );

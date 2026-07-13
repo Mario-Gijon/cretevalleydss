@@ -188,45 +188,39 @@ export const SummaryStep = () => {
           </AccordionSummary>
 
           <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={1.4}>
-              <Grid item size={{ xs: 12, md: 5 }}>
+            <Stack spacing={1.4}>
                 <TextField
                   label="Issue name"
                   variant="outlined"
                   size="small"
-                  color="secondary"
+                  color="info"
+                  inputProps={{ maxLength: 80 }}
                   fullWidth
                   autoComplete="off"
                   value={issueName}
                   onChange={(event) => handleValidateIssueName(event.target.value)}
                   error={Boolean(issueNameError)}
-                  helperText={issueNameError || " "}
+                  helperText={issueNameError || undefined}
                   onKeyDown={(event) =>
                     event.key === "Enter" && handleValidateIssueName(event.target.value)
                   }
                 />
-              </Grid>
-
-              <Grid item size={{ xs: 12, md: 7 }}>
                 <TextField
                   label="Description"
                   variant="outlined"
                   size="small"
-                  color="secondary"
+                  color="info"
                   fullWidth
+                  multiline
+                  minRows={3}
+                  maxRows={8}
+                  inputProps={{ maxLength: 500 }}
                   autoComplete="off"
                   value={issueDescription}
                   onChange={(event) => handleValidateIssueDescription(event.target.value)}
                   error={Boolean(issueDescriptionError)}
-                  helperText={issueDescriptionError ? "Invalid description" : " "}
-                  onKeyDown={(event) =>
-                    event.key === "Enter" &&
-                    handleValidateIssueDescription(event.target.value)
-                  }
+                  helperText={issueDescriptionError || `${issueDescription.length} / 500`}
                 />
-              </Grid>
-
-              <Grid item size={{ xs: 12, md: 12 }}>
                 <Stack spacing={1}>
                   <KVRow k="Model" v={selectedModel?.name} />
                   <KVRow
@@ -240,8 +234,7 @@ export const SummaryStep = () => {
                     />
                   )}
                 </Stack>
-              </Grid>
-            </Grid>
+            </Stack>
           </AccordionDetails>
         </Accordion>
 
@@ -257,14 +250,19 @@ export const SummaryStep = () => {
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Stack spacing={0.8}>
-              {alternatives.map((alternative, index) => (
+              {alternatives.map((alternative) => (
                 <Box
-                  key={`${alternative}_${index}`}
+                  key={alternative.id}
                   sx={getCreateIssueSummaryAlternativeItemSx(theme)}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 950 }}>
-                    {alternative}
+                    {alternative.name}
                   </Typography>
+                  {alternative.description ? (
+                    <Typography variant="body2" sx={{ color: "text.secondary", whiteSpace: "pre-wrap" }}>
+                      {alternative.description}
+                    </Typography>
+                  ) : null}
                 </Box>
               ))}
             </Stack>
@@ -283,8 +281,8 @@ export const SummaryStep = () => {
 
           <AccordionDetails sx={{ pt: 0 }}>
             <Stack spacing={0.8}>
-              {criteria.map((criterion, index) => (
-                <CriterionAccordion key={index} criterion={criterion} />
+              {criteria.map((criterion) => (
+                <CriterionAccordion key={criterion.id} criterion={criterion} />
               ))}
             </Stack>
           </AccordionDetails>

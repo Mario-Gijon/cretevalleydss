@@ -17,6 +17,7 @@ import {
   modelUsesExpertWeights,
   validateExpertWeights,
 } from "./createIssueExpertWeights";
+import { normalizeCreateIssueAlternatives } from "./createIssueAlternativeIds";
 
 const normalizeConsensusMaxPhases = (value) =>
   value === null || value === undefined || value === "" ? null : Number(value);
@@ -50,9 +51,9 @@ export const buildCreateIssueRequestPayload = ({
     };
   }
 
-  const normalizedAlternatives = Array.isArray(allData?.alternatives)
-    ? allData.alternatives
-    : [];
+  const normalizedAlternatives = normalizeCreateIssueAlternatives(
+    allData?.alternatives
+  );
   if (normalizedAlternatives.length === 0) {
     return {
       ok: false,
@@ -233,6 +234,10 @@ export const buildCreateIssueRequestPayload = ({
         weight: expertWeights[email],
       }))
     : normalizedExperts;
+  issueInfoPayload.alternatives = normalizedAlternatives.map((alternative) => ({
+    name: alternative?.name,
+    description: alternative?.description ?? "",
+  }));
 
   return {
     ok: true,

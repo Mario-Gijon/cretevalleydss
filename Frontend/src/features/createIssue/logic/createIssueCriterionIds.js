@@ -37,6 +37,7 @@ export const ensureCriteriaTreeIds = (criteria) => {
     return {
       ...criterion,
       id: normalizedCriterionId || buildCreateIssueCriterionId(),
+      description: typeof criterion?.description === "string" ? criterion.description : "",
       children: ensureCriteriaTreeIds(criterion?.children),
     };
   });

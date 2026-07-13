@@ -47,6 +47,7 @@ import {
   buildCreateIssueHeaderSubtitle,
 } from "../logic/createIssueSummary";
 import { ensureCriteriaTreeIds } from "../logic/createIssueCriterionIds";
+import { normalizeCreateIssueAlternatives } from "../logic/createIssueAlternativeIds";
 
 const LOCAL_STORAGE_KEY = "prevCreateIssueData";
 
@@ -92,7 +93,9 @@ export const useCreateIssue = () => {
   const [showConsensusModels, setShowConsensusModels] = useState(
     storedData.showConsensusModels === true
   );
-  const [alternatives, setAlternatives] = useState(storedData.alternatives || []);
+  const [alternatives, setAlternatives] = useState(() =>
+    normalizeCreateIssueAlternatives(storedData.alternatives)
+  );
   const [criteria, setCriteria] = useState(
     ensureCriteriaTreeIds(storedData.criteria || [])
   );

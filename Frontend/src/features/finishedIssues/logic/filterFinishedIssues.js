@@ -11,7 +11,10 @@ const criteriaContainsQuery = (nodes, query) => {
     const node = stack.pop();
     if (!node) continue;
 
-    if (normalizeFinishedIssueValue(node?.name).includes(query)) {
+    if (
+      normalizeFinishedIssueValue(node?.name).includes(query) ||
+      normalizeFinishedIssueValue(node?.description).includes(query)
+    ) {
       return true;
     }
 
@@ -53,9 +56,8 @@ const alternativesContainsQuery = (issue, query) => {
       return normalizeFinishedIssueValue(alternative).includes(query);
     }
 
-    return normalizeFinishedIssueValue(
-      alternative?.name || alternative?.title || alternative?.label
-    ).includes(query);
+    return [alternative?.name, alternative?.title, alternative?.label, alternative?.description]
+      .some((value) => normalizeFinishedIssueValue(value).includes(query));
   });
 };
 

@@ -1,6 +1,6 @@
 export const validateIssueName = (issueName, setIssueNameError) => {
-  if (issueName.length > 35) {
-    setIssueNameError("Max 35 characters");
+  if (issueName.length > 80) {
+    setIssueNameError("Max 80 characters");
     return false;
   }
 
@@ -27,8 +27,8 @@ export const validateIssueDescription = (
   issueDescription,
   setIssueDescriptionError
 ) => {
-  if (issueDescription.length > 80) {
-    setIssueDescriptionError("Max 80 characters");
+  if (issueDescription.length > 500) {
+    setIssueDescriptionError("Max 500 characters");
     return false;
   }
 

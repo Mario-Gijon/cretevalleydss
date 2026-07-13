@@ -25,7 +25,10 @@ export const criteriaContainsQuery = (nodes, query) => {
     const node = stack.pop();
     if (!node) continue;
 
-    if (normalizeActiveIssueValue(node?.name).includes(query)) {
+    if (
+      normalizeActiveIssueValue(node?.name).includes(query) ||
+      normalizeActiveIssueValue(node?.description).includes(query)
+    ) {
       return true;
     }
 
@@ -79,9 +82,8 @@ export const alternativesContainsQuery = (issue, query) => {
       return normalizeActiveIssueValue(alternative).includes(query);
     }
 
-    return normalizeActiveIssueValue(
-      alternative?.name || alternative?.title || alternative?.label
-    ).includes(query);
+    return [alternative?.name, alternative?.title, alternative?.label, alternative?.description]
+      .some((value) => normalizeActiveIssueValue(value).includes(query));
   });
 };
 

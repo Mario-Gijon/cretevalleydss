@@ -147,9 +147,11 @@ describe("useCreateIssue", () => {
       expect(result.current.issueName).toBe("Stored issue");
       expect(result.current.issueDescription).toBe("Stored issue description");
       expect(result.current.selectedModel?._id).toBe("model-basic");
-      expect(result.current.alternatives).toEqual(["Stored A"]);
+      expect(result.current.alternatives).toEqual([
+        expect.objectContaining({ name: "Stored A", description: "" }),
+      ]);
       expect(result.current.criteria).toEqual([
-        { id: "stored-criterion", name: "Cost", children: [] },
+        { id: "stored-criterion", name: "Cost", description: "", children: [] },
       ]);
       expect(result.current.addedExperts).toEqual(["stored@example.com"]);
       expect(result.current.consensusMaxPhases).toBe(9);
@@ -374,7 +376,10 @@ describe("useCreateIssue", () => {
           issueName: "Budget planning",
           issueDescription: "Detailed issue summary",
           selectedModelId: "model-complex",
-          alternatives: createIssueAlternativesFixture,
+          alternatives: createIssueAlternativesFixture.map(({ name, description }) => ({
+            name,
+            description,
+          })),
         })
       );
       expect(setIssueCreated).toHaveBeenCalledWith({

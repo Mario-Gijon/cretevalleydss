@@ -48,7 +48,10 @@ export const getLeafCriteria = (criteria) => {
 const isCriteriaNameDuplicate = (name, criteria, excludeCriterion = null) => {
   const checkDuplicates = (items) => {
     return items.some((item) => {
-      if (item.name === name && item !== excludeCriterion) return true;
+      const isExcluded = excludeCriterion?.id
+        ? item.id === excludeCriterion.id
+        : item === excludeCriterion;
+      if (item.name === name && !isExcluded) return true;
       if (item.children?.length) return checkDuplicates(item.children);
       return false;
     });
@@ -73,7 +76,7 @@ export const validateCriterion = (
   const trimmedValue = name.trim();
 
   if (!trimmedValue) return "Cannot be empty";
-  if (trimmedValue.length > 35) return "Max 35 characters";
+  if (trimmedValue.length > 60) return "Max 60 characters";
   if (isCriteriaNameDuplicate(trimmedValue, criteria, excludeCriterion)) {
     return "Criterion already exists";
   }
@@ -92,7 +95,7 @@ export const validateCriterion = (
  */
 export const updateCriterion = (items, editingCriterion, newName, newType) => {
   return items.map((item) => {
-    if (item.name === editingCriterion.name) {
+    if (item.id === editingCriterion.id) {
       return { ...item, name: newName, type: newType };
     }
 
@@ -122,7 +125,7 @@ export const updateCriterion = (items, editingCriterion, newName, newType) => {
 export const removeCriteriaItemRecursively = (items, itemToRemove) => {
   return items
     .map((i) => {
-      if (i.name === itemToRemove.name) return null;
+      if (i.id === itemToRemove.id) return null;
 
       if (i.children?.length) {
         return {

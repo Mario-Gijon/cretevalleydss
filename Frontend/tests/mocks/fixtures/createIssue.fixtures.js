@@ -1,4 +1,7 @@
-export const createIssueAlternativesFixture = ["Option A", "Option B"];
+export const createIssueAlternativesFixture = [
+  { id: "alternative-a", name: "Option A", description: "" },
+  { id: "alternative-b", name: "Option B", description: "" },
+];
 
 export const createIssueExpertsFixture = [
   "expert1@example.com",

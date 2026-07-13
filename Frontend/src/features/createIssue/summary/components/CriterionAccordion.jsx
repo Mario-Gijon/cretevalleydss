@@ -45,19 +45,26 @@ export const CriterionAccordion = ({ criterion, weightMap, elevation = 1 }) => {
           pointerEvents: isLeaf ? "none" : "auto",
         }}
       >
-        <Stack direction={"row"} spacing={2} alignItems={"center"} justifyContent={"space-between"} width={"100%"}>
-          <Stack direction={"row"} spacing={2} alignItems={"center"}>
-            <Typography variant="body1" sx={{ color: "#FFFFFF" }}>
-              {criterion.name}
-            </Typography>
-            {elevation === 1 && (
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" width="100%">
+          <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+              <Typography variant="body1" sx={{ color: "#FFFFFF", overflowWrap: "anywhere" }}>
+                {criterion.name}
+              </Typography>
+              {elevation === 1 && (
               <Chip
                 variant="outlined"
                 label={criterion.type === "cost" ? "Cost" : "Benefit"}
                 color={criterion.type === "cost" ? "error" : "success"}
                 size="small"
               />
-            )}
+              )}
+            </Stack>
+            {criterion.description ? (
+              <Typography variant="body2" sx={{ color: "text.secondary", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                {criterion.description}
+              </Typography>
+            ) : null}
           </Stack>
 
           <Stack direction={"row"} spacing={1.5} alignItems={"center"}>
@@ -78,9 +85,9 @@ export const CriterionAccordion = ({ criterion, weightMap, elevation = 1 }) => {
       {!isLeaf && (
         <AccordionDetails sx={{ pl: 2, pt: 0, pb: elevation === 1 ? 1.5 : 1 }}>
           <Stack spacing={0}>
-            {criterion.children.map((child, index) => (
+            {criterion.children.map((child) => (
               <CriterionAccordion
-                key={index}
+                key={child.id}
                 criterion={child}
                 weightMap={weightMap}
                 elevation={0}
