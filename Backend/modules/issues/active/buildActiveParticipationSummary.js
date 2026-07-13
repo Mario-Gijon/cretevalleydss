@@ -141,5 +141,12 @@ export const buildActiveParticipationSummary = ({
       )
       .map(({ expertEmail }) => expertEmail)
       .sort(),
+    expertParticipants: validatedParticipations
+      .map(({ participation, expertEmail }) => ({
+        email: expertEmail,
+        name: participation.expert?.name || "",
+        weight: participation.weight,
+      }))
+      .sort((left, right) => left.email.localeCompare(right.email)),
   };
 };

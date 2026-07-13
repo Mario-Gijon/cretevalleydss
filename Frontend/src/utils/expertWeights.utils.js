@@ -1,0 +1,120 @@
+export const EXPERT_WEIGHT_SUM_EPSILON = 0.0015;
+export const EXPERT_WEIGHT_EQUAL_DISPLAY_EPSILON = 0.0005;
+
+export const modelUsesExpertWeights = (model) =>
+  model?.usesExpertWeights === true;
+
+export const buildEqualExpertWeights = (expertEmails) => {
+  if (expertEmails.length === 0) return {};
+
+  const equalWeight = 1 / expertEmails.length;
+  return expertEmails.reduce((weights, email) => {
+    weights[email] = equalWeight;
+    return weights;
+  }, {});
+};
+
+export const syncExpertWeightsForSelection = ({
+  expertEmails,
+  previousExpertWeights,
+  preserveCustomWeights,
+}) => {
+  if (!preserveCustomWeights) return buildEqualExpertWeights(expertEmails);
+
+  return expertEmails.reduce((weights, email) => {
+    weights[email] = Number.isFinite(previousExpertWeights?.[email])
+      ? previousExpertWeights[email]
+      : 0;
+    return weights;
+  }, {});
+};
+
+export const areExpertWeightsEqual = ({ expertEmails, expertWeights }) => {
+  if (expertEmails.length === 0 || !expertWeights) return false;
+
+  const equalWeight = 1 / expertEmails.length;
+  return expertEmails.every((email) => {
+    const weight = Number(expertWeights[email]);
+    return (
+      Number.isFinite(weight) &&
+      Math.abs(weight - equalWeight) <= EXPERT_WEIGHT_EQUAL_DISPLAY_EPSILON
+    );
+  });
+};
+
+export const validateExpertWeights = ({ expertEmails, expertWeights }) => {
+  if (expertEmails.length === 0) {
+    return {
+      valid: true,
+      total: 0,
+      tone: "warning",
+      message: "Select at least one expert.",
+    };
+  }
+
+  if (!expertWeights) {
+    return {
+      valid: false,
+      total: null,
+      tone: "error",
+      message: "Expert weights are required for this model.",
+    };
+  }
+
+  let total = 0;
+  for (const email of expertEmails) {
+    const rawWeight = expertWeights[email];
+    if (rawWeight === null || rawWeight === undefined || rawWeight === "") {
+      return {
+        valid: false,
+        total: null,
+        tone: "error",
+        message: "Expert weights are required for this model.",
+      };
+    }
+    const weight = Number(rawWeight);
+    if (!Number.isFinite(weight)) {
+      return {
+        valid: false,
+        total: null,
+        tone: "error",
+        message: "Expert weights are required for this model.",
+      };
+    }
+    if (weight < 0 || weight > 1) {
+      return {
+        valid: false,
+        total: null,
+        tone: "error",
+        message: "Expert weights must be between 0 and 1.",
+      };
+    }
+    total += weight;
+  }
+
+  if (Math.abs(total - 1) > EXPERT_WEIGHT_SUM_EPSILON) {
+    return {
+      valid: false,
+      total,
+      tone: "error",
+      message: "Expert weights must sum to 1.",
+    };
+  }
+
+  return { valid: true, total, tone: "success", message: "Expert weights are valid." };
+};
+
+export const buildEditedExpertWeights = ({
+  finalExpertEmails,
+  currentExpertWeightsByEmail,
+  newExpertEmails = [],
+}) =>
+  finalExpertEmails.reduce((weights, email) => {
+    if (newExpertEmails.includes(email)) {
+      weights[email] = 0;
+      return weights;
+    }
+
+    weights[email] = currentExpertWeightsByEmail?.[email];
+    return weights;
+  }, {});

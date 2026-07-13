@@ -131,6 +131,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
         payload=payload,
         expert_key_fn=_expert_key,
         cell_value_fn=_cell_value,
+        require_expert_weights=True,
     )
 
     return {
@@ -140,6 +141,7 @@ def _input(payload: GenericModelExecutionRequest) -> dict[str, Any]:
             _criterion_type(item.get("type")) for item in extracted["criterion_items"]
         ],
         "lambda_value": _lambda_parameter(payload),
+        "expert_weights": extracted["expert_weights"],
     }
 
 
@@ -212,6 +214,7 @@ def execute_waspas(payload: GenericModelExecutionRequest) -> dict[str, Any] | JS
             weights=execution_input["weights"],
             criterion_type=execution_input["criterion_directions"],
             lambda_value=execution_input["lambda_value"],
+            expert_weights=execution_input["expert_weights"],
         )
 
         return success_response(

@@ -132,6 +132,7 @@ export const buildActiveIssueView = ({
       owner: issue.ownerId.email,
       description: issue.description,
       model: issue.model,
+      usesExpertWeights: issue.model?.usesExpertWeights === true,
       criteriaWeightsStructureKey: issue.criteriaWeightsStructureKey,
       evaluationStructureKey: issue.evaluationStructureKey,
       isConsensus: issue.isConsensus,
@@ -159,6 +160,7 @@ export const buildActiveIssueView = ({
       notAcceptedExperts: participationSummary.notAcceptedExperts,
       acceptedButNotEvaluatedExperts:
         participationSummary.acceptedButNotEvaluatedExperts,
+      expertParticipants: participationSummary.expertParticipants,
       statusFlags: permissions.statusFlags,
       progress: {
         weightsDone: participationSummary.completedWeightEvaluations,

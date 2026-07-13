@@ -1,5 +1,20 @@
 import { Schema, model } from "mongoose";
 
+const expertWeightSnapshotSchema = new Schema(
+  {
+    expert: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    weight: {
+      type: Number,
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const issueStageResultSchema = new Schema(
   {
     issue: {
@@ -44,6 +59,10 @@ const issueStageResultSchema = new Schema(
     rawOutput: {
       type: Schema.Types.Mixed,
       default: {},
+    },
+    expertWeights: {
+      type: [expertWeightSnapshotSchema],
+      default: [],
     },
   },
   {

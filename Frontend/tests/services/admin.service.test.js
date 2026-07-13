@@ -82,4 +82,35 @@ describe("admin.service", () => {
       })
     );
   });
+
+  it("editIssueExpertsAdminAction includes weights only when provided", async () => {
+    authFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true }), { status: 200 })
+    );
+
+    await adminService.editIssueExpertsAdminAction({
+      issueId: "issue-1",
+      expertsToAdd: ["new@example.com"],
+      expertsToRemove: ["old@example.com"],
+      expertWeightsByEmail: {
+        "new@example.com": 0.4,
+        "old@example.com": 0.6,
+      },
+    });
+
+    expect(authFetch).toHaveBeenCalledWith(
+      "http://localhost:4010/admin/issues/issue-1/experts",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          expertsToAdd: ["new@example.com"],
+          expertsToRemove: ["old@example.com"],
+          expertWeightsByEmail: {
+            "new@example.com": 0.4,
+            "old@example.com": 0.6,
+          },
+        }),
+      })
+    );
+  });
 });

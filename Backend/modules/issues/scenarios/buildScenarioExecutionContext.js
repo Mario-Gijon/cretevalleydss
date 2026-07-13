@@ -25,6 +25,7 @@ import { resolveLatestAlternativeResultOrThrow } from "./loadScenarioEvaluationD
 import { validateEvaluationCoverageOrThrow } from "./validateScenarioEvaluationCoverage.js";
 import { buildScenarioParametersOrThrow } from "./resolveScenarioModelParameters.js";
 import { getIssueByIdOrThrow } from "../shared/queries.js";
+import { buildExpertWeightSnapshotOrThrow } from "../shared/expertWeights.js";
 
 const requireParticipationExpertOrThrow = ({ issueId, participation }) => {
   const expert = participation.expert;
@@ -226,6 +227,10 @@ export const buildScenarioExecutionContext = async ({
       criteria,
       alternatives,
     });
+  const { weightsByExpertId } = buildExpertWeightSnapshotOrThrow({
+    model: targetModel,
+    participations,
+  });
   const normalizedIssueId = toIdString(issue._id);
 
   const evaluationsByExpertId = new Map(
@@ -291,7 +296,7 @@ export const buildScenarioExecutionContext = async ({
       );
     }
 
-    return {
+    const payload = {
       expert: {
         id: expertId,
         name: evaluationExpert.expertName,
@@ -299,6 +304,12 @@ export const buildScenarioExecutionContext = async ({
       },
       payload: evaluation.payload,
     };
+
+    if (weightsByExpertId instanceof Map) {
+      payload.weight = weightsByExpertId.get(expertId);
+    }
+
+    return payload;
   });
 
   const scenarioExecutionContext = {

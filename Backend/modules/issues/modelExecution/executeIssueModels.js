@@ -58,6 +58,7 @@ export const executeAlternativeEvaluationModel = async ({
   structureKey,
   evaluations,
   phase,
+  expertWeightsByExpertId = null,
   decisionModelsServiceBaseUrl,
   httpClient,
   message,
@@ -70,6 +71,7 @@ export const executeAlternativeEvaluationModel = async ({
     structureKey,
     evaluations,
     phase,
+    expertWeightsByExpertId,
   });
 
   const result = await executeDecisionModelRequest({
@@ -96,6 +98,7 @@ export const executeCriteriaWeightingModel = async ({
   structureKey,
   evaluations,
   phase,
+  expertWeightsByExpertId = null,
   decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
@@ -104,6 +107,7 @@ export const executeCriteriaWeightingModel = async ({
     structureKey,
     evaluations,
     phase,
+    expertWeightsByExpertId,
   });
 
   return executeCriteriaWeightingApiModel({

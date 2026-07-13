@@ -13,6 +13,7 @@ import {
   buildAdminIssueResultingExpertsCount,
   countAdminIssueCurrentExperts,
 } from "../logic/buildAdminIssueExpertEditorState";
+import { modelUsesExpertWeights } from "../../../../utils/expertWeights.utils.js";
 
 export const useAdminIssueActions = ({
   showSnackbarAlert,
@@ -42,6 +43,7 @@ export const useAdminIssueActions = ({
   const [allExperts, setAllExperts] = useState([]);
   const [expertsToAdd, setExpertsToAdd] = useState([]);
   const [expertsToRemove, setExpertsToRemove] = useState([]);
+  const [expertWeightsOpen, setExpertWeightsOpen] = useState(false);
   const actionState =
     issueDetail?.adminActionsState || issueDetail?.ownerActionsState || {};
 
@@ -81,6 +83,7 @@ export const useAdminIssueActions = ({
     setExpertsToAdd([]);
     setExpertsToRemove([]);
     setAddExpertsOpen(false);
+    setExpertWeightsOpen(false);
   };
 
   const resetIssueActionState = () => {
@@ -234,7 +237,7 @@ export const useAdminIssueActions = ({
     setExpertsToRemove([]);
   };
 
-  const processEditExperts = async () => {
+  const processEditExperts = async (expertWeightsByEmail = null) => {
     if (!issueDetail?.id) return;
 
     setActionBusy((prev) => ({ ...prev, editExperts: true }));
@@ -244,6 +247,7 @@ export const useAdminIssueActions = ({
         issueId: issueDetail.id,
         expertsToAdd,
         expertsToRemove,
+        ...(expertWeightsByEmail ? { expertWeightsByEmail } : {}),
       });
 
       if (!res?.success) {
@@ -283,7 +287,52 @@ export const useAdminIssueActions = ({
       return;
     }
 
+    if (
+      modelUsesExpertWeights(issueDetail?.model) &&
+      (expertsToAdd.length > 0 || expertsToRemove.length > 0)
+    ) {
+      setExpertWeightsOpen(true);
+      return;
+    }
+
     await processEditExperts();
+  };
+
+  const finalExpertParticipants = useMemo(() => {
+    const current = Array.isArray(issueDetail?.participants)
+      ? issueDetail.participants
+      : [];
+    const currentByEmail = new Map(
+      current.map((participant) => [participant?.expert?.email, {
+        email: participant?.expert?.email,
+        name: participant?.expert?.name || "",
+        weight: participant?.weight,
+      }])
+    );
+    const finalExperts = Array.from(currentByEmail.values()).filter(
+      (expert) => expert.email && !expertsToRemove.includes(expert.email)
+    );
+
+    expertsToAdd.forEach((email) => {
+      if (!currentByEmail.has(email)) {
+        const expert = allExperts.find((item) => item.email === email);
+        finalExperts.push({ email, name: expert?.name || "", weight: 0, isNew: true });
+      }
+    });
+
+    return finalExperts.sort((left, right) => left.email.localeCompare(right.email));
+  }, [allExperts, expertsToAdd, expertsToRemove, issueDetail?.participants]);
+
+  const currentExpertWeightsByEmail = useMemo(
+    () => finalExpertParticipants.reduce((weights, expert) => {
+      weights[expert.email] = expert.weight;
+      return weights;
+    }, {}),
+    [finalExpertParticipants]
+  );
+
+  const confirmExpertWeights = async (expertWeightsByEmail) => {
+    await processEditExperts(expertWeightsByEmail);
   };
 
   return {
@@ -297,6 +346,9 @@ export const useAdminIssueActions = ({
     addExpertsLoading,
     expertsToAdd,
     expertsToRemove,
+    expertWeightsOpen,
+    finalExpertParticipants,
+    currentExpertWeightsByEmail,
     ownerCandidates,
     availableExperts,
     pendingAddExpertsInfo,
@@ -310,11 +362,13 @@ export const useAdminIssueActions = ({
     toggleRemoveExpert,
     handleResetExpertChanges,
     handleSaveExpertsChanges,
+    confirmExpertWeights,
     resetExpertEditionState,
     resetIssueActionState,
     setAddExpertsOpen,
     setExpertsToAdd,
     setExpertsToRemove,
+    setExpertWeightsOpen,
     setReassignOpen,
     setNewOwnerId,
   };

@@ -81,6 +81,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     });
   const targetSupportsConsensus = targetModel.supportsConsensus;
   const targetUsesCriteriaWeights = targetModel.usesCriteriaWeights;
+  const targetUsesExpertWeights = targetModel.usesExpertWeights === true;
   const targetUsesFuzzyCriteriaWeights =
     targetModel.usesFuzzyCriteriaWeights;
   const targetUsesCriterionTypes = targetModel.usesCriterionTypes;
@@ -108,6 +109,7 @@ export const buildTargetModelRuntimeSnapshotOrThrow = (targetModel) => {
     targetEvaluationStructureKey,
     targetSupportsConsensus,
     targetUsesCriteriaWeights,
+    targetUsesExpertWeights,
     targetUsesFuzzyCriteriaWeights,
     targetUsesCriterionTypes,
     targetIsMultiCriteria,

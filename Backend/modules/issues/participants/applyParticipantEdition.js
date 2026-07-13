@@ -19,6 +19,7 @@ export const addExpertsToActiveIssue = async ({
   leafCriteria,
   currentPhase,
   stageForLog,
+  expertWeightsByEmail = null,
   session = null,
 }) => {
   const invitationEmailsToSend = [];
@@ -45,6 +46,9 @@ export const addExpertsToActiveIssue = async ({
         invitationStatus: isOwnerExpert ? "accepted" : "pending",
         evaluationCompleted: false,
         weightsCompleted,
+        weight: expertWeightsByEmail
+          ? expertWeightsByEmail[email]
+          : null,
         entryPhase: currentPhase,
         entryStage: stageForLog,
         joinedAt: new Date(),

@@ -8,12 +8,13 @@ export const buildCriteriaWeightingRequestPayload = async ({
   structureKey,
   evaluations,
   phase,
+  expertWeightsByExpertId = null,
 }) => {
   const { criteria } = await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
     modelParameters: issue.criteriaWeightingParameters,
-    evaluations: normalizeEvaluationsPayload(evaluations),
+    evaluations: normalizeEvaluationsPayload(evaluations, expertWeightsByExpertId),
     context: {
       issue: {
         id: toIdString(issue._id),

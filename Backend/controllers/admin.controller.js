@@ -718,12 +718,27 @@ export const editIssueExpertsAdmin = async (req, res) => {
     issueId,
   });
 
-  const result = await editIssueExpertsUseCase({
-    issueId,
-    userId: ownerUserId,
-    expertsToAdd: req.body.expertsToAdd,
-    expertsToRemove: req.body.expertsToRemove,
-  });
+  const session = await mongoose.startSession();
+  let result = null;
+
+  try {
+    await session.withTransaction(async () => {
+      result = await editIssueExpertsUseCase({
+        issueId,
+        userId: ownerUserId,
+        expertsToAdd: req.body.expertsToAdd,
+        expertsToRemove: req.body.expertsToRemove,
+        expertWeightsByEmail: req.body.expertWeightsByEmail ?? null,
+        hasExpertWeightsByEmail: Object.prototype.hasOwnProperty.call(
+          req.body,
+          "expertWeightsByEmail"
+        ),
+        session,
+      });
+    });
+  } finally {
+    await endSessionSafely(session);
+  }
 
   return sendSuccess(
     res,

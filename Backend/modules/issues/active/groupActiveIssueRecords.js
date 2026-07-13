@@ -150,6 +150,7 @@ export const buildActiveIssueCollections = ({
             feedback: stageResult.rawOutput.feedback,
             recommendations: stageResult.rawOutput.recommendations,
             modelExecution: stageResult.modelExecution,
+            expertWeights: stageResult.expertWeights || [],
           })),
       ])
     ),

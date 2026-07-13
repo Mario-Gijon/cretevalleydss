@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from models.aras.executor import execute_aras
 from models.fuzzy_topsis.executor import execute_fuzzy_topsis
+from models.waspas.executor import execute_waspas
 from schemas.model_requests import GenericModelExecutionRequest
 
 
@@ -179,3 +180,38 @@ def test_fuzzy_topsis_executor_rejects_unknown_label_key() -> None:
 
     assert result["success"] is False
     assert "Unknown linguistic label 'missing'" in result["message"]
+
+
+def test_waspas_executor_passes_ordered_expert_weights(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+    payload = _aras_request().model_dump()
+    payload["modelParameters"]["lambda"] = 0.5
+    payload["evaluations"].append(
+        {
+            "expert": {"id": "expert-2"},
+            "weight": 0.8,
+            "payload": {
+                "alt-a": {"criterion-1": {"value": 2.0}},
+                "alt-b": {"criterion-1": {"value": 9.0}},
+            },
+        }
+    )
+    payload["evaluations"][0]["weight"] = 0.2
+
+    def fake_run_waspas(matrices, weights, criterion_type, lambda_value, expert_weights):
+        captured["matrices"] = matrices
+        captured["expert_weights"] = expert_weights
+        return {
+            "collective_matrix": [[3.0], [8.5]],
+            "collective_scores": [0.3, 0.8],
+            "collective_ranking": [1, 0],
+            "plots_graphic": {},
+        }
+
+    monkeypatch.setattr("models.waspas.executor.run_waspas", fake_run_waspas)
+    result = _payload_result(
+        execute_waspas(GenericModelExecutionRequest.model_validate(payload))
+    )
+
+    assert result["success"] is True
+    assert captured["expert_weights"] == [0.2, 0.8]

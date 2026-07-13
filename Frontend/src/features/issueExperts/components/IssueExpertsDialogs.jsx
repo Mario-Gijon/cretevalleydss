@@ -1,4 +1,5 @@
 import AddExpertsPickerDialog from "./AddExpertsPickerDialog.jsx";
+import ExpertWeightsDialog from "./ExpertWeightsDialog.jsx";
 import { useIssueExpertsContext } from "../context/issueExperts.context.js";
 
 /**
@@ -13,6 +14,11 @@ const IssueExpertsDialogs = () => {
     expertsToAdd,
     setExpertsToAdd,
     setOpenAddExpertsDialog,
+    openExpertWeightsDialog,
+    setOpenExpertWeightsDialog,
+    expertParticipants,
+    currentExpertWeightsByEmail,
+    confirmExpertWeights,
   } = useIssueExpertsContext();
 
   return (
@@ -23,6 +29,14 @@ const IssueExpertsDialogs = () => {
         availableExperts={availableExperts}
         expertsToAdd={expertsToAdd}
         setExpertsToAdd={setExpertsToAdd}
+      />
+
+      <ExpertWeightsDialog
+        open={openExpertWeightsDialog}
+        onClose={() => setOpenExpertWeightsDialog(false)}
+        experts={expertParticipants}
+        currentExpertWeightsByEmail={currentExpertWeightsByEmail}
+        onConfirm={confirmExpertWeights}
       />
     </>
   );

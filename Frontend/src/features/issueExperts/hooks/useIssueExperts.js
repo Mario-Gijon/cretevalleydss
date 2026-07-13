@@ -1,6 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { editExperts } from "../../../services/issue.service.js";
+import { modelUsesExpertWeights } from "../../../utils/expertWeights.utils.js";
+
+const getCurrentExpertsFromIssue = (issue) =>
+  Array.from(
+    new Set([
+      ...(Array.isArray(issue?.participatedExperts) ? issue.participatedExperts : []),
+      ...(Array.isArray(issue?.acceptedButNotEvaluatedExperts)
+        ? issue.acceptedButNotEvaluatedExperts
+        : []),
+      ...(Array.isArray(issue?.pendingExperts) ? issue.pendingExperts : []),
+      ...(Array.isArray(issue?.notAcceptedExperts) ? issue.notAcceptedExperts : []),
+    ])
+  );
 
 /**
  * Gestiona el flujo de edición de expertos del issue seleccionado.
@@ -27,6 +40,7 @@ export const useIssueExperts = ({
   const [expertsToRemove, setExpertsToRemove] = useState([]);
   const [expertsToAdd, setExpertsToAdd] = useState([]);
   const [openAddExpertsDialog, setOpenAddExpertsDialog] = useState(false);
+  const [openExpertWeightsDialog, setOpenExpertWeightsDialog] = useState(false);
 
   const normalizedInitialExperts = useMemo(() => {
     return Array.isArray(initialExperts) ? initialExperts : [];
@@ -37,21 +51,7 @@ export const useIssueExperts = ({
       return [...expertsToAdd];
     }
 
-    return [
-      ...(Array.isArray(selectedIssue?.participatedExperts)
-        ? selectedIssue.participatedExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.acceptedButNotEvaluatedExperts)
-        ? selectedIssue.acceptedButNotEvaluatedExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.pendingExperts)
-        ? selectedIssue.pendingExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.notAcceptedExperts)
-        ? selectedIssue.notAcceptedExperts
-        : []),
-      ...expertsToAdd,
-    ];
+    return [...getCurrentExpertsFromIssue(selectedIssue), ...expertsToAdd];
   }, [selectedIssue, expertsToAdd]);
 
   const availableExperts = useMemo(() => {
@@ -70,6 +70,7 @@ export const useIssueExperts = ({
     setExpertsToAdd([]);
     setExpertsToRemove([]);
     setOpenAddExpertsDialog(false);
+    setOpenExpertWeightsDialog(false);
   }, []);
 
   /**
@@ -107,16 +108,19 @@ export const useIssueExperts = ({
    *
    * @returns {Promise<void>}
    */
-  const processEditExperts = async () => {
+  const processEditExperts = async (expertWeightsByEmail = null) => {
     if (!selectedIssue) return;
 
     setBusy((prev) => ({ ...prev, editExperts: true }));
 
-    const response = await editExperts(
-      selectedIssue.id,
-      expertsToAdd,
-      expertsToRemove
-    );
+    const response = expertWeightsByEmail
+      ? await editExperts(
+        selectedIssue.id,
+        expertsToAdd,
+        expertsToRemove,
+        expertWeightsByEmail
+      )
+      : await editExperts(selectedIssue.id, expertsToAdd, expertsToRemove);
 
     showSnackbarAlert(
       response?.message || "Experts updated",
@@ -137,20 +141,7 @@ export const useIssueExperts = ({
   const saveExpertsChanges = async () => {
     if (!selectedIssue) return;
 
-    const currentExperts = [
-      ...(Array.isArray(selectedIssue?.participatedExperts)
-        ? selectedIssue.participatedExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.acceptedButNotEvaluatedExperts)
-        ? selectedIssue.acceptedButNotEvaluatedExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.pendingExperts)
-        ? selectedIssue.pendingExperts
-        : []),
-      ...(Array.isArray(selectedIssue?.notAcceptedExperts)
-        ? selectedIssue.notAcceptedExperts
-        : []),
-    ];
+    const currentExperts = getCurrentExpertsFromIssue(selectedIssue);
 
     const remainingExperts = currentExperts.filter(
       (expert) => !expertsToRemove.includes(expert)
@@ -161,21 +152,75 @@ export const useIssueExperts = ({
       return;
     }
 
+    const issueUsesExpertWeights =
+      selectedIssue.usesExpertWeights === true ||
+      modelUsesExpertWeights(selectedIssue.model);
+
+    if (
+      issueUsesExpertWeights &&
+      (expertsToAdd.length > 0 || expertsToRemove.length > 0)
+    ) {
+      setOpenExpertWeightsDialog(true);
+      return;
+    }
+
     await processEditExperts();
   };
+
+  const confirmExpertWeights = async (expertWeightsByEmail) => {
+    await processEditExperts(expertWeightsByEmail);
+  };
+
+  const expertParticipants = useMemo(() => {
+    const currentByEmail = new Map(
+      (Array.isArray(selectedIssue?.expertParticipants)
+        ? selectedIssue.expertParticipants
+        : getCurrentExpertsFromIssue(selectedIssue)
+      ).map((expert) => [
+        typeof expert === "string" ? expert : expert.email,
+        typeof expert === "string" ? { email: expert, name: "", weight: null } : expert,
+      ])
+    );
+    const finalExperts = Array.from(currentByEmail.values()).filter(
+      (expert) => !expertsToRemove.includes(expert.email)
+    );
+
+    expertsToAdd.forEach((email) => {
+      if (!currentByEmail.has(email)) {
+        const expert = normalizedInitialExperts.find((item) => item.email === email);
+        finalExperts.push({ email, name: expert?.name || "", weight: 0, isNew: true });
+      }
+    });
+
+    return finalExperts.sort((left, right) => left.email.localeCompare(right.email));
+  }, [expertsToAdd, expertsToRemove, normalizedInitialExperts, selectedIssue]);
+
+  const currentExpertWeightsByEmail = useMemo(
+    () =>
+      expertParticipants.reduce((weights, expert) => {
+        weights[expert.email] = expert.weight;
+        return weights;
+      }, {}),
+    [expertParticipants]
+  );
 
   return {
     isEditingExperts,
     expertsToRemove,
     expertsToAdd,
     openAddExpertsDialog,
+    openExpertWeightsDialog,
+    expertParticipants,
+    currentExpertWeightsByEmail,
     availableExperts,
     setExpertsToAdd,
     setOpenAddExpertsDialog,
+    setOpenExpertWeightsDialog,
     resetExpertsEdition,
     toggleEditExperts,
     markRemoveExpert,
     saveExpertsChanges,
+    confirmExpertWeights,
   };
 };
 

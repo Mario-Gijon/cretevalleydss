@@ -366,6 +366,10 @@ export const editExperts = async (req, res) => {
   const id = req.params.id;
   const expertsToAdd = req.body.expertsToAdd;
   const expertsToRemove = req.body.expertsToRemove;
+  const hasExpertWeightsByEmail = Object.prototype.hasOwnProperty.call(
+    req.body,
+    "expertWeightsByEmail"
+  );
 
   const session = await mongoose.startSession();
 
@@ -378,6 +382,8 @@ export const editExperts = async (req, res) => {
         userId: req.uid,
         expertsToAdd,
         expertsToRemove,
+        expertWeightsByEmail: req.body.expertWeightsByEmail ?? null,
+        hasExpertWeightsByEmail,
         session,
       });
     });

@@ -275,7 +275,8 @@ export const removeFinishedIssue = async (issueOrId) => {
 export const editExperts = async (
   issueOrId,
   expertsToAdd,
-  expertsToRemove
+  expertsToRemove,
+  expertWeightsByEmail = null
 ) => {
   const issueId = getIssueId(issueOrId);
 
@@ -284,6 +285,7 @@ export const editExperts = async (
     jsonRequest("PATCH", {
       expertsToAdd,
       expertsToRemove,
+      ...(expertWeightsByEmail ? { expertWeightsByEmail } : {}),
     }),
     "Error editing experts."
   );

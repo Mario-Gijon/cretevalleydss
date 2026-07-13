@@ -152,3 +152,33 @@ def test_shared_alternative_matrix_rejects_missing_criterion_expression_domain()
             expert_key_fn=lambda expert, _: str(expert["id"]),
             cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
         )
+
+
+def test_shared_alternative_matrix_validates_and_normalizes_expert_weights() -> None:
+    payload = _base_payload()
+    payload["evaluations"].append(
+        {
+            "expert": {"id": "expert-2"},
+            "weight": 0.7,
+            "payload": payload["evaluations"][0]["payload"],
+        }
+    )
+    payload["evaluations"][0]["weight"] = 0.3
+
+    result = extract_id_keyed_alternative_criteria_input(
+        payload=_request(payload),
+        expert_key_fn=lambda expert, _: str(expert["id"]),
+        cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+        require_expert_weights=True,
+    )
+
+    assert result["expert_weights"] == [0.3, 0.7]
+
+    payload["evaluations"][1]["weight"] = 0.5
+    with pytest.raises(ValueError, match="sum to 1"):
+        extract_id_keyed_alternative_criteria_input(
+            payload=_request(payload),
+            expert_key_fn=lambda expert, _: str(expert["id"]),
+            cell_value_fn=lambda cell, criterion, field: float(cell["value"]),
+            require_expert_weights=True,
+        )

@@ -27,6 +27,7 @@ import { buildEvaluationStructureContext } from "../evaluations/buildEvaluationS
 import { getOrderedCriteriaForWeightingOrThrow } from "../evaluations/criteriaWeightingStructureData.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
 import { normalizeNonEmptyString } from "../../../utils/common/strings.js";
+import { buildExpertWeightSnapshotOrThrow } from "../shared/expertWeights.js";
 
 const isFiniteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value);
@@ -57,7 +58,10 @@ const getStructureForIssueStage = ({ issue, stage }) => {
 const loadComputeContext = async ({ issueId, userId, stage }) => {
   validateComputeStageOrThrow(stage);
 
-  const issue = await getIssueByIdOrThrow(issueId, { lean: false });
+  const issue = await getIssueByIdOrThrow(issueId, {
+    lean: false,
+    populate: "model",
+  });
 
   if (!sameId(issue.ownerId, userId)) {
     throw createForbiddenError("Only the issue owner can compute evaluation stages", {
@@ -100,7 +104,7 @@ const loadComputeContext = async ({ issueId, userId, stage }) => {
 const loadParticipationsForCompute = async ({ issueId, stage }) => {
   const participations = await Participation.find({
     issue: issueId,
-  });
+  }).populate("expert", "name email");
 
   const pendingParticipations = participations.filter(
     (participation) => participation.invitationStatus === "pending"
@@ -411,6 +415,7 @@ const saveStageResult = async ({
   computeResult,
   lifecycleMetadata = null,
   consensusPhase = issue.consensusPhase,
+  expertWeights = [],
   session = null,
 }) => {
   let stageResultPayload = null;
@@ -483,6 +488,7 @@ const saveStageResult = async ({
     },
     {
       $set: stageResultPayload,
+      $setOnInsert: { expertWeights },
     },
     {
       upsert: true,
@@ -554,6 +560,7 @@ const computeCriteriaWeightingStage = async ({
   structure,
   issue,
   evaluations,
+  expertWeightsByExpertId,
   decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
@@ -563,6 +570,7 @@ const computeCriteriaWeightingStage = async ({
     structureKey: structure.key,
     evaluations,
     phase: issue.consensusPhase,
+    expertWeightsByExpertId,
     decisionModelsServiceBaseUrl,
     httpClient,
   });
@@ -573,6 +581,7 @@ const computeAlternativeEvaluationStage = async ({
   issue,
   evaluations,
   phase = issue.consensusPhase,
+  expertWeightsByExpertId,
   decisionModelsServiceBaseUrl,
   httpClient,
 }) => {
@@ -581,6 +590,7 @@ const computeAlternativeEvaluationStage = async ({
     structureKey: structure.key,
     evaluations,
     phase,
+    expertWeightsByExpertId,
     decisionModelsServiceBaseUrl,
     httpClient,
     message:
@@ -796,6 +806,8 @@ const computeSimulatedAlternativeConsensusRounds = async ({
   issue,
   acceptedParticipations,
   evaluations,
+  expertWeights,
+  expertWeightsByExpertId,
   decisionModelsServiceBaseUrl,
   httpClient,
   session = null,
@@ -817,6 +829,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       issue,
       evaluations: currentEvaluations,
       phase: currentPhase,
+      expertWeightsByExpertId,
       decisionModelsServiceBaseUrl,
       httpClient,
     });
@@ -839,6 +852,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       computeResult: lifecycleComputeResult,
       lifecycleMetadata,
       consensusPhase: currentPhase,
+      expertWeights,
       session,
     });
 
@@ -897,6 +911,7 @@ const computeSimulatedAlternativeConsensusRounds = async ({
       consensusLifecycle: lastLifecycleMetadata,
       modelExecution: lastComputeResult.modelExecution,
       rawOutput: lastComputeResult.rawOutput,
+      expertWeights,
       simulatedConsensus: {
         enabled: true,
         initialPhase,
@@ -935,6 +950,11 @@ export const computeIssueEvaluationStage = async ({
     consensusPhase: issue.consensusPhase,
     participations,
   });
+  const { snapshot: expertWeights, weightsByExpertId } =
+    buildExpertWeightSnapshotOrThrow({
+      model: issue.model,
+      participations,
+    });
 
   ensureSimulatedConsensusIssueConfigOrThrow({ issue, stage });
 
@@ -947,6 +967,8 @@ export const computeIssueEvaluationStage = async ({
       issue,
       acceptedParticipations: participations,
       evaluations,
+      expertWeights,
+      expertWeightsByExpertId: weightsByExpertId,
       decisionModelsServiceBaseUrl,
       httpClient,
       session,
@@ -959,6 +981,7 @@ export const computeIssueEvaluationStage = async ({
         structure,
         issue,
         evaluations,
+        expertWeightsByExpertId: weightsByExpertId,
         decisionModelsServiceBaseUrl,
         httpClient,
       })
@@ -966,6 +989,7 @@ export const computeIssueEvaluationStage = async ({
         structure,
         issue,
         evaluations,
+        expertWeightsByExpertId: weightsByExpertId,
         decisionModelsServiceBaseUrl,
         httpClient,
       });
@@ -987,6 +1011,7 @@ export const computeIssueEvaluationStage = async ({
             normalizedCriteriaWeightingResult
           ),
           lifecycleMetadata: null,
+          expertWeights,
           session: persistSession,
         });
 
@@ -1010,6 +1035,7 @@ export const computeIssueEvaluationStage = async ({
         consensusMeasure: normalizedCriteriaWeightingResult.consensusMeasure,
         modelExecution: normalizedCriteriaWeightingResult.modelExecution,
         rawOutput: normalizedCriteriaWeightingResult.rawOutput,
+        expertWeights,
       },
     };
   }
@@ -1032,6 +1058,7 @@ export const computeIssueEvaluationStage = async ({
         stage,
         computeResult: lifecycleComputeResult,
         lifecycleMetadata,
+        expertWeights,
         session: persistSession,
       });
 
@@ -1061,6 +1088,7 @@ export const computeIssueEvaluationStage = async ({
       consensusLifecycle: lifecycleMetadata ?? null,
       modelExecution: lifecycleComputeResult.modelExecution,
       rawOutput: lifecycleComputeResult.rawOutput,
+      expertWeights,
     },
   };
 };

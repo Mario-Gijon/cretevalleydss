@@ -15,6 +15,7 @@ import AdminIssueActionConfirmDialog from "./components/AdminIssueActionConfirmD
 import AdminIssueAddExpertsDialog from "./components/AdminIssueAddExpertsDialog";
 import AdminIssueDetailDialog from "./components/AdminIssueDetailDialog";
 import AdminIssueReassignDialog from "./components/AdminIssueReassignDialog";
+import ExpertWeightsDialog from "../../issueExperts/components/ExpertWeightsDialog";
 import AdminIssuesStatCard from "./components/AdminIssuesStatCard";
 import AdminIssuesTable from "./components/AdminIssuesTable";
 import AdminIssuesToolbar from "./components/AdminIssuesToolbar";
@@ -151,6 +152,14 @@ export default function AdminIssuesSection() {
         availableExperts={actions.availableExperts}
         expertsToAdd={actions.expertsToAdd}
         setExpertsToAdd={actions.setExpertsToAdd}
+      />
+
+      <ExpertWeightsDialog
+        open={actions.expertWeightsOpen}
+        onClose={() => actions.setExpertWeightsOpen(false)}
+        experts={actions.finalExpertParticipants}
+        currentExpertWeightsByEmail={actions.currentExpertWeightsByEmail}
+        onConfirm={actions.confirmExpertWeights}
       />
 
       <AdminIssueReassignDialog

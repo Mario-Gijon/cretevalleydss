@@ -6,12 +6,15 @@ from models.shared_expression_domains import (
     expression_domain_type_key,
 )
 
+EXPERT_WEIGHT_SUM_EPSILON = 0.0015
+
 
 def extract_id_keyed_alternative_criteria_input(
     *,
     payload: GenericModelExecutionRequest,
     expert_key_fn: Callable[[dict[str, Any], int], str],
     cell_value_fn: Callable[[dict[str, Any], dict[str, Any], str], Any],
+    require_expert_weights: bool = False,
 ) -> dict[str, Any]:
     context = payload.context or {}
     alternatives = context.get("alternatives") or []
@@ -69,6 +72,7 @@ def extract_id_keyed_alternative_criteria_input(
     criterion_names = [item["name"] for item in criterion_items]
 
     matrices: dict[str, list[list[float]]] = {}
+    expert_weights: list[float] = []
     seen_expert_keys: set[str] = set()
 
     for expert_index, evaluation in enumerate(evaluations):
@@ -141,6 +145,26 @@ def extract_id_keyed_alternative_criteria_input(
 
         matrices[expert_key] = matrix
 
+        if require_expert_weights:
+            raw_weight = evaluation.get("weight")
+            try:
+                weight = float(raw_weight)
+            except (TypeError, ValueError):
+                raise ValueError(f"evaluations[{expert_index}].weight is required")
+
+            if weight != weight or weight in {float("inf"), float("-inf")}:
+                raise ValueError(f"evaluations[{expert_index}].weight must be finite")
+            if weight < 0 or weight > 1:
+                raise ValueError(f"evaluations[{expert_index}].weight must be between 0 and 1")
+
+            expert_weights.append(weight)
+
+    if require_expert_weights:
+        total_weight = sum(expert_weights)
+        if total_weight <= 0 or abs(total_weight - 1) > EXPERT_WEIGHT_SUM_EPSILON:
+            raise ValueError("Expert weights must sum to 1")
+        expert_weights = [weight / total_weight for weight in expert_weights]
+
     return {
         "matrices": matrices,
         "alternative_items": alternative_items,
@@ -149,6 +173,7 @@ def extract_id_keyed_alternative_criteria_input(
         "criterion_ids": criterion_ids,
         "alternative_names": alternative_names,
         "criterion_names": criterion_names,
+        "expert_weights": expert_weights if require_expert_weights else None,
     }
 
 

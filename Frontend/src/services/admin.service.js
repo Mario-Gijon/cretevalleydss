@@ -245,12 +245,14 @@ export const editIssueExpertsAdminAction = async ({
   issueId,
   expertsToAdd = [],
   expertsToRemove = [],
+  expertWeightsByEmail = null,
 }) =>
   requestAdmin(
     `/admin/issues/${issueId}/experts`,
     jsonRequest("PATCH", {
       expertsToAdd,
       expertsToRemove,
+      ...(expertWeightsByEmail ? { expertWeightsByEmail } : {}),
     }),
     "Error editing issue experts as admin:"
   );

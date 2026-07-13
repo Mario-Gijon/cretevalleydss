@@ -114,4 +114,31 @@ describe("issue.service", () => {
       })
     );
   });
+
+  it("editExperts includes weights only for the weighted editing flow", async () => {
+    authFetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), { status: 200 })
+    );
+
+    await issueService.editExperts(
+      "issue-8",
+      ["new@example.com"],
+      [],
+      { "existing@example.com": 0.6, "new@example.com": 0.4 }
+    );
+
+    expect(authFetch).toHaveBeenCalledWith(
+      "http://localhost:4010/issues/issue-8/experts",
+      expect.objectContaining({
+        body: JSON.stringify({
+          expertsToAdd: ["new@example.com"],
+          expertsToRemove: [],
+          expertWeightsByEmail: {
+            "existing@example.com": 0.6,
+            "new@example.com": 0.4,
+          },
+        }),
+      })
+    );
+  });
 });

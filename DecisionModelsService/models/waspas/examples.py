@@ -72,6 +72,7 @@ WASPAS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                         "name": "Ana Torres",
                         "email": "ana.torres@example.com",
                     },
+                    "weight": 0.5,
                     "payload": {
                         "alt-supplier-a": {
                             "crit-quality": {"value": 8.0},
@@ -96,6 +97,7 @@ WASPAS_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {
                         "name": "Luis Romero",
                         "email": "luis.romero@example.com",
                     },
+                    "weight": 0.5,
                     "payload": {
                         "alt-supplier-a": {
                             "crit-quality": {"value": 7.0},

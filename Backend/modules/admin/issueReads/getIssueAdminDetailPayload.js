@@ -254,6 +254,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       invitationStatus: participation.invitationStatus,
       weightsCompleted: participation.weightsCompleted,
       evaluationCompleted: participation.evaluationCompleted,
+      weight: participation.weight,
       joinedAt: participation.joinedAt,
       entryPhase: participation.entryPhase,
       entryStage: participation.entryStage,
@@ -388,6 +389,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           supportsConsensusSimulation:
             issue.model.supportsConsensusSimulation === true,
           isMultiCriteria: issue.model.isMultiCriteria,
+          usesExpertWeights: issue.model.usesExpertWeights === true,
           supportedExpressionDomains:
             issue.model.supportedExpressionDomains,
           parameters: issue.model.parameters,
@@ -422,6 +424,7 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
           phase: stageResult.consensusPhase,
           consensusMeasure: stageResult.consensusMeasure ?? null,
           computedAt: stageResult.updatedAt || stageResult.createdAt || null,
+          expertWeights: stageResult.expertWeights || [],
         })),
       },
       scenarios: scenarios.map((scenario) => ({

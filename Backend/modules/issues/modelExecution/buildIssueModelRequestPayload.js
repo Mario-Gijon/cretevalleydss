@@ -8,13 +8,14 @@ export const buildIssueModelRequestPayload = async ({
   structureKey,
   evaluations,
   phase,
+  expertWeightsByExpertId = null,
 }) => {
   const { alternatives, criteria } =
     await getOrderedAlternativeAndCriterionNames({ issue });
 
   return {
     modelParameters: issue.modelParameters,
-    evaluations: normalizeEvaluationsPayload(evaluations),
+    evaluations: normalizeEvaluationsPayload(evaluations, expertWeightsByExpertId),
     context: {
       issue: {
         id: toIdString(issue._id),

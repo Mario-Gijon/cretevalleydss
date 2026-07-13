@@ -36,7 +36,7 @@ export const getActiveIssuesPayload = async ({ userId }) => {
         .populate("createdBy", "email name")
         .lean(),
       Participation.find({ issue: { $in: issueIds } })
-        .populate("expert", "email")
+        .populate("expert", "name email")
         .lean(),
       Alternative.find({ issue: { $in: issueIds } }).lean(),
       Criterion.find({ issue: { $in: issueIds } })

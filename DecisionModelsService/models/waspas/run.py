@@ -33,9 +33,17 @@ def run_waspas(
     weights: list[float],
     criterion_type: list[str],
     lambda_value: float = 0.5,
+    expert_weights: list[float] | None = None,
 ) -> dict[str, Any]:
     matrices_np = [np.array(matrix, dtype=float) for matrix in matrices.values()]
-    collective_matrix = np.mean(matrices_np, axis=0)
+    if not expert_weights or len(expert_weights) != len(matrices_np):
+        raise ValueError("expert_weights must match the number of expert matrices")
+
+    collective_matrix = np.average(
+        np.stack(matrices_np),
+        axis=0,
+        weights=np.array(expert_weights, dtype=float),
+    )
 
     matrix_clean, weights_clean, criteria_clean = clean_matrix(
         collective_matrix,
@@ -81,6 +89,7 @@ def run_waspas(
         "waspas_scores": waspas_scores,
         "lambda": lambda_value,
         "weights_used": np.array(weights_clean, dtype=float).tolist(),
+        "expert_weights_used": [float(weight) for weight in expert_weights],
         "plots_graphic": get_plots_graphics_from_matrices(
             matrices_np,
             collective_matrix,
