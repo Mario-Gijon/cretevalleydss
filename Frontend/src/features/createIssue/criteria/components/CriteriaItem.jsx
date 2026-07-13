@@ -1,5 +1,4 @@
 import {
-  Box,
   Chip,
   Collapse,
   IconButton,
@@ -9,8 +8,8 @@ import {
   Select,
   Stack,
   TextField,
-  Typography,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import { Fragment } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -31,13 +30,11 @@ export const CriteriaItem = ({
   setEditCriterionValue,
   editCriterionDescription,
   setEditCriterionDescription,
-  editBlur,
   handleSaveCriterionEdit,
   handleCancelCriterionEdit,
   editCriterionError,
   editCriterionType,
   setEditCriterionType,
-  setEditBlur,
   handleEditCriterion,
   handleToggle,
   openItems,
@@ -74,78 +71,93 @@ export const CriteriaItem = ({
     />
   ) : null;
 
+  const hierarchyActions = (
+    <>
+      {hasChildren ? (
+        <IconButton onClick={() => handleToggle(item.id)} size="small" aria-label={openItems[item.id] ? "Collapse criterion" : "Expand criterion"}>
+          {openItems[item.id] ? <ExpandLess /> : <ExpandMore />}
+        </IconButton>
+      ) : null}
+      <IconButton
+        edge="end"
+        aria-label="add child"
+        size="small"
+        onClick={() => {
+          setSelectedParent(item);
+          setOpenDialog(true);
+        }}
+      >
+        <AddCircleIcon color="info" fontSize="small" />
+      </IconButton>
+      <IconButton edge="end" aria-label="edit" title="Edit" size="small" onClick={() => handleEditCriterion(item)}>
+        <EditIcon color="warning" />
+      </IconButton>
+      <IconButton edge="end" aria-label="delete" title="Delete" size="small" onClick={() => handleRemoveCriteria(item)}>
+        <DeleteIcon color="error" />
+      </IconButton>
+    </>
+  );
+
   return (
     <>
       <ListItem
-        key={item.id || item.name}
         sx={{
           px: { xs: 1, sm: 1.2 },
           py: 1,
           pl: { xs: 1, sm: level * 2 + 1.2 },
-          alignItems: "center",
-          gap: 1,
+          alignItems: "flex-start",
+          minWidth: 0,
         }}
       >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Stack spacing={0.5} sx={{ width: "100%", minWidth: 0 }}>
           <Stack
-            direction="column"
+            direction={{ xs: "column", md: "row" }}
             alignItems={{ xs: "stretch", md: "center" }}
-            spacing={1.15}
-            sx={{ width: "100%" }}
+            spacing={1}
+            sx={{ width: "100%", minWidth: 0 }}
           >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              alignItems="center"
-              spacing={1}
-              sx={{ flex: 1, minWidth: 0 }}
-            >
+            <Stack sx={{ flex: 1, minWidth: 0 }}>
               {isEditing ? (
-                <Stack spacing={0.75} sx={{ flex: 1 }}>
-                  <TextField
-                    variant="outlined" size="small" value={editCriterionValue}
-                    onChange={(event) => setEditCriterionValue(event.target.value)}
+                <TextField
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  autoFocus
+                  color="secondary"
+                  value={editCriterionValue}
+                  onChange={(event) => setEditCriterionValue(event.target.value)}
                   onKeyDown={(event) => {
-                      if (event.key === "Enter") handleSaveCriterionEdit();
-                      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); }
-                    }}
-                    autoFocus fullWidth color="secondary" error={Boolean(editCriterionError)}
-                    helperText={editCriterionError} inputProps={{ maxLength: 60 }}
-                    sx={{ maxWidth: { md: 420 }, "& .MuiInputBase-input": { fontWeight: 850 } }}
-                  />
-                  <TextField
-                    variant="outlined" size="small" multiline minRows={2} maxRows={5}
-                    placeholder="Optional description" value={editCriterionDescription} fullWidth
-                    onChange={(event) => setEditCriterionDescription(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleCancelCriterionEdit(); } }}
-                    color="secondary" inputProps={{ maxLength: 500 }}
-                    helperText={`${editCriterionDescription.length} / 500`}
-                  />
-                </Stack>
+                    if (event.key === "Enter") handleSaveCriterionEdit();
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleCancelCriterionEdit();
+                    }
+                  }}
+                  error={Boolean(editCriterionError)}
+                  helperText={editCriterionError || undefined}
+                  inputProps={{ maxLength: 60 }}
+                  sx={{ "& .MuiInputBase-input": { fontWeight: 850 } }}
+                />
               ) : (
-                <>
-                  <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {item.name}
-                    </Typography>
-                    {isFirstLevel && showCriterionTypes ? (
-                      <Chip variant="outlined" label={item.type === "cost" ? "Cost" : "Benefit"} color={item.type === "cost" ? "error" : "success"} size="small" sx={{ height: 22, fontWeight: 850, flexShrink: 0 }} />
-                    ) : null}
-                  </Stack>
-                  {item.description ? (
-                    <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "pre-wrap", overflowWrap: "anywhere", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", width: "100%" }}>
-                      {item.description}
-                    </Typography>
-                  ) : null}
-                </>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 900, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {item.name}
+                  </Typography>
+                </Stack>
               )}
             </Stack>
 
             <Stack
               direction="row"
               alignItems="center"
-              spacing={1}
+              justifyContent={{ xs: "flex-start", md: "flex-end" }}
+              spacing={0.65}
               flexWrap="wrap"
-              sx={{ flexShrink: 0 }}
+              sx={{ flexShrink: 0, minWidth: 0 }}
             >
               {isEditing && isFirstLevel && showCriterionTypes ? (
                 <Select
@@ -154,71 +166,89 @@ export const CriteriaItem = ({
                   onChange={(event) => setEditCriterionType(event.target.value)}
                   size="small"
                   color="secondary"
-                  fullWidth
-                  sx={{ minWidth: 118 }}
+                  sx={{ minWidth: 118, flexShrink: 0 }}
                 >
                   <MenuItem value="benefit">Benefit</MenuItem>
                   <MenuItem value="cost">Cost</MenuItem>
                 </Select>
+              ) : !isEditing && isFirstLevel && showCriterionTypes ? (
+                <Chip
+                  variant="outlined"
+                  label={item.type === "cost" ? "Cost" : "Benefit"}
+                  color={item.type === "cost" ? "error" : "success"}
+                  size="small"
+                  sx={{ minWidth: 72, height: 22, fontWeight: 850, flexShrink: 0 }}
+                />
               ) : null}
 
               {weightField}
+
               {isEditing ? (
                 <>
-                  <Tooltip title="Save changes"><IconButton aria-label="Save changes" onClick={handleSaveCriterionEdit} size="medium" color="success"><CheckRoundedIcon /></IconButton></Tooltip>
-                  <Tooltip title="Cancel editing"><IconButton aria-label="Cancel editing" onClick={handleCancelCriterionEdit} size="medium" color="warning"><CloseRoundedIcon /></IconButton></Tooltip>
+                  <Tooltip title="Save changes">
+                    <IconButton aria-label="Save changes" onClick={handleSaveCriterionEdit} size="medium" color="success">
+                      <CheckRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Cancel editing">
+                    <IconButton aria-label="Cancel editing" onClick={handleCancelCriterionEdit} size="medium" color="warning">
+                      <CloseRoundedIcon />
+                    </IconButton>
+                  </Tooltip>
                 </>
-              ) : null}
+              ) : (
+                hierarchyActions
+              )}
             </Stack>
           </Stack>
-        </Box>
 
-        {hasChildren ? (
-          <IconButton onClick={() => handleToggle(item.id)} size="small">
-            {openItems[item.id] ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
-        ) : null}
-
-        <Stack direction="row" spacing={0.35} sx={{ flexShrink: 0 }}>
-          <IconButton
-            edge="end"
-            aria-label="add child"
-            size="small"
-            onClick={() => {
-              setSelectedParent(item);
-              setOpenDialog(true);
-            }}
-          >
-            <AddCircleIcon color="info" fontSize="small" />
-          </IconButton>
-
-          <IconButton
-            edge="end"
-            aria-label="edit"
-            title="Edit"
-            size="small"
-            onClick={() => handleEditCriterion(item)}
-          >
-            <EditIcon color="warning" fontSize="small" />
-          </IconButton>
-
-          <IconButton
-            edge="end"
-            aria-label="delete"
-            title="Delete"
-            size="small"
-            onClick={() => handleRemoveCriteria(item)}
-          >
-            <DeleteIcon color="error" fontSize="small" />
-          </IconButton>
+          {isEditing ? (
+            <TextField
+              variant="outlined"
+              size="small"
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={5}
+              color="secondary"
+              placeholder="Optional description"
+              value={editCriterionDescription}
+              onChange={(event) => setEditCriterionDescription(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleCancelCriterionEdit();
+                }
+              }}
+              inputProps={{ maxLength: 500 }}
+              helperText={`${editCriterionDescription.length} / 500`}
+            />
+          ) : item.description ? (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 3,
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              {item.description}
+            </Typography>
+          ) : null}
         </Stack>
       </ListItem>
 
       {hasChildren ? (
         <Collapse in={openItems[item.id]} timeout="auto" unmountOnExit>
           <List disablePadding>
-            {item.children.map((child, index) => (
-              <Fragment key={child.id || index}>
+            {item.children.map((child) => (
+              <Fragment key={child.id}>
                 <CriteriaItem
                   item={child}
                   level={level + 1}
@@ -227,13 +257,11 @@ export const CriteriaItem = ({
                   setEditCriterionValue={setEditCriterionValue}
                   editCriterionDescription={editCriterionDescription}
                   setEditCriterionDescription={setEditCriterionDescription}
-                  editBlur={editBlur}
                   handleSaveCriterionEdit={handleSaveCriterionEdit}
                   handleCancelCriterionEdit={handleCancelCriterionEdit}
                   editCriterionError={editCriterionError}
                   editCriterionType={editCriterionType}
                   setEditCriterionType={setEditCriterionType}
-                  setEditBlur={setEditBlur}
                   handleEditCriterion={handleEditCriterion}
                   handleToggle={handleToggle}
                   openItems={openItems}

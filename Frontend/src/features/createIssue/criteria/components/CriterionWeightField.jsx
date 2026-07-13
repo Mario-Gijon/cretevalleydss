@@ -37,7 +37,8 @@ export const CriterionWeightField = ({
 
         <TextField
           type="number"
-          color="info"
+          variant="outlined"
+          color="secondary"
           size="small"
           value={isSingleLeaf ? "1.000" : (manualValue === "" ? "" : formatDisplayNumber(manualValue))}
           disabled={isSingleLeaf}
@@ -93,7 +94,8 @@ export const CriterionWeightField = ({
           <TextField
             key={index}
             type="number"
-            color="info"
+            variant="outlined"
+            color="secondary"
             size="small"
             value={vector?.[index] === "" ? "" : formatDisplayNumber(vector?.[index])}
             disabled={isSingleLeaf}
