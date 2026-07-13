@@ -7,7 +7,11 @@ const createValidIssueInfo = (overrides = {}) => ({
   issueName: "  New issue  ",
   issueDescription: "  Description  ",
   selectedModelId: new mongoose.Types.ObjectId().toString(),
-  alternatives: ["  Option A  ", "Option B", "Option A"],
+  alternatives: [
+    { name: "  Option A  ", description: "  First option\r\nDetails  " },
+    { name: "Option B", description: "" },
+    { name: "Option A", description: "Duplicate is ignored" },
+  ],
   addedExperts: ["  Expert1@example.com  ", "expert2@example.com"],
   criteria: [
     {
@@ -36,7 +40,10 @@ describe("normalizeCreateIssueInput", () => {
     expect(result.issueName).toBe("New issue");
     expect(result.issueDescription).toBe("Description");
     expect(result.selectedModelId).toEqual(expect.any(String));
-    expect(result.uniqueAlternativeNames).toEqual(["Option A", "Option B"]);
+    expect(result.normalizedAlternatives).toEqual([
+      { name: "Option A", description: "First option\nDetails" },
+      { name: "Option B", description: null },
+    ]);
     expect(result.uniqueExpertEmails).toEqual([
       "expert1@example.com",
       "expert2@example.com",
@@ -51,7 +58,11 @@ describe("normalizeCreateIssueInput", () => {
     const result = normalizeCreateIssueInput(
       createValidIssueInfo({
         issueName: "   Roadmap issue   ",
-        alternatives: ["  Alpha  ", "Beta", "Alpha", "   "],
+        alternatives: [
+          { name: "  Alpha  ", description: "  Alpha description  " },
+          { name: "Beta" },
+          { name: "Alpha", description: "Duplicate" },
+        ],
         addedExperts: [
           "  Expert@One.com  ",
           "expert@two.com",
@@ -74,7 +85,10 @@ describe("normalizeCreateIssueInput", () => {
     );
 
     expect(result.issueName).toBe("Roadmap issue");
-    expect(result.uniqueAlternativeNames).toEqual(["Alpha", "Beta"]);
+    expect(result.normalizedAlternatives).toEqual([
+      { name: "Alpha", description: "Alpha description" },
+      { name: "Beta", description: null },
+    ]);
     expect(result.uniqueExpertEmails).toEqual([
       "expert@one.com",
       "expert@two.com",
@@ -91,7 +105,7 @@ describe("normalizeCreateIssueInput", () => {
     expect(() =>
       normalizeCreateIssueInput(
         createValidIssueInfo({
-          alternatives: ["  Only option  ", "   "],
+          alternatives: [{ name: "  Only option  " }, { name: "Only option" }],
         })
       )
     ).toThrow(/Must be at least two valid alternatives/);
@@ -105,6 +119,25 @@ describe("normalizeCreateIssueInput", () => {
         })
       )
     ).toThrow(/Must be at least one expert/);
+  });
+
+  it("rejects legacy string alternatives and invalid metadata", () => {
+    expect(() =>
+      normalizeCreateIssueInput(
+        createValidIssueInfo({ alternatives: ["Option A", "Option B"] })
+      )
+    ).toThrow(/Each alternative must be an object/);
+
+    expect(() =>
+      normalizeCreateIssueInput(
+        createValidIssueInfo({
+          alternatives: [
+            { name: "Option A", description: "a".repeat(501) },
+            { name: "Option B" },
+          ],
+        })
+      )
+    ).toThrow(/alternatives\[0\]\.description/);
   });
 
   it("rejects invalid expressionDomainConfig", () => {

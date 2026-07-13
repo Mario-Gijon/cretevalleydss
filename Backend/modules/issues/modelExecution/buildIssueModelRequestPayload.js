@@ -33,10 +33,12 @@ export const buildIssueModelRequestPayload = async ({
       alternatives: alternatives.map((alternative) => ({
         id: toIdString(alternative._id),
         name: alternative.name,
+        description: alternative.description || null,
       })),
       criteria: criteria.map((criterion) => ({
         id: toIdString(criterion._id),
         name: criterion.name,
+        description: criterion.description || null,
         type: criterion.type,
         expressionDomain: criterion.expressionDomain,
       })),

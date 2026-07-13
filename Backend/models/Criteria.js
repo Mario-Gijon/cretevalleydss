@@ -1,5 +1,9 @@
 
 import { Schema, model } from "mongoose";
+import {
+  CRITERION_DESCRIPTION_MAX_LENGTH,
+  CRITERION_NAME_MAX_LENGTH,
+} from "../modules/issues/shared/entityLimits.js";
 
 
 
@@ -16,11 +20,17 @@ const criterionSchema = new Schema({
     ref: "Criterion",
     default: null,
   },
-  name: {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: CRITERION_NAME_MAX_LENGTH,
+    },
+  description: {
     type: String,
-    required: true,
-    trim: true,
-  },
+    default: null,
+    maxlength: CRITERION_DESCRIPTION_MAX_LENGTH,
+    },
   type: {
     type: String,
     required: true,

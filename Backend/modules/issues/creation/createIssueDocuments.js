@@ -3,13 +3,14 @@ import { Criterion } from "../../../models/Criteria.js";
 
 export const createIssueAlternatives = async ({
   issueId,
-  uniqueAlternativeNames,
+  normalizedAlternatives,
   session,
 }) => {
   return Alternative.insertMany(
-    uniqueAlternativeNames.map((name, index) => ({
+    normalizedAlternatives.map((alternative, index) => ({
       issue: issueId,
-      name,
+      name: alternative.name,
+      description: alternative.description,
       position: index,
     })),
     { session, ordered: true }
@@ -31,6 +32,7 @@ export const createCriteriaRecursively = async ({
       issue: issueId,
       parentCriterion: parentCriterionId,
       name: node.name,
+      description: node.description,
       type: node.type,
       isLeaf,
       position: index,

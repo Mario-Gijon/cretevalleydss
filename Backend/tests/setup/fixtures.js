@@ -330,7 +330,10 @@ export const buildCreateIssueInfo = ({
   selectedModelId,
   globalDomainId,
   addedExperts = ["expert@example.com"],
-  alternatives = ["  Alternative A  ", "Alternative B"],
+  alternatives = [
+    { name: "  Alternative A  ", description: "" },
+    { name: "Alternative B", description: "" },
+  ],
   criteria = [
     {
       name: " Main criterion ",

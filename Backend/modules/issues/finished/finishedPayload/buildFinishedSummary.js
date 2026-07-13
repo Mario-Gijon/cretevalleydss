@@ -22,6 +22,7 @@ const requireExpertEmail = ({ expert, field, issueId, recordId = null }) => {
 export const mapCriteriaTreeToSummaryShape = (node) => ({
   _id: node.id,
   name: node.name,
+  description: node.description || null,
   type: node.type,
   isLeaf: node.isLeaf,
   parentCriterion: node.parentId,
@@ -158,7 +159,11 @@ export const buildSummarySection = ({
     criteria: criteriaTree
       .map(mapCriteriaTreeToSummaryShape)
       .map((node) => attachWeightsToTree(node, weightMap)),
-    alternatives: alternatives.map((alternative) => alternative.name),
+    alternatives: alternatives.map((alternative) => ({
+      id: toIdString(alternative._id),
+      name: alternative.name,
+      description: alternative.description || null,
+    })),
     creationDate: issue.creationDate,
     closureDate: issue.closureDate,
     evaluationStructureKey: issue.evaluationStructureKey,

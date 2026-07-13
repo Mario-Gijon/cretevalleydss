@@ -34,12 +34,15 @@ describe("issue creation integration", () => {
         method: "POST",
         path: "//decision-models/execute//",
       },
+      supportedExpressionDomains: [
+        { typeKey: "numericDiscrete", constraints: {} },
+      ],
     });
     const domain = await createExpressionDomainFixture({
       userId: owner._id,
       isGlobal: false,
-      type: "numeric",
-      numericRange: {
+      typeKey: "numericDiscrete",
+      definition: {
         min: 1,
         max: 9,
         step: 1,
@@ -50,7 +53,10 @@ describe("issue creation integration", () => {
       selectedModelId: model._id,
       globalDomainId: domain._id,
       addedExperts: [expert.email],
-      alternatives: ["  Alpha  ", "Beta"],
+      alternatives: [
+        { name: "  Alpha  ", description: "  Alpha details\r\nline two " },
+        { name: "Beta", description: "" },
+      ],
       criteria: [
         {
           name: " Root criterion ",
@@ -109,6 +115,10 @@ describe("issue creation integration", () => {
     });
 
     expect(alternatives.map((item) => item.name)).toEqual(["Alpha", "Beta"]);
+    expect(alternatives.map((item) => item.description)).toEqual([
+      "Alpha details\nline two",
+      null,
+    ]);
     expect(alternatives.map((item) => item.position)).toEqual([0, 1]);
 
     expect(criteria).toHaveLength(2);
@@ -130,8 +140,8 @@ describe("issue creation integration", () => {
     expect(domainSnapshots[0]).toMatchObject({
       issue: issues[0]._id,
       sourceDomain: domain._id,
-      type: "numeric",
-      numericRange: {
+      typeKey: "numericDiscrete",
+      definition: {
         min: 1,
         max: 9,
         step: 1,
@@ -169,7 +179,11 @@ describe("issue creation integration", () => {
     const expert = await createConfirmedUser({
       email: "expert@example.com",
     });
-    const model = await createIssueModel();
+    const model = await createIssueModel({
+      supportedExpressionDomains: [
+        { typeKey: "numericDiscrete", constraints: {} },
+      ],
+    });
     const domain = await createExpressionDomainFixture({
       userId: owner._id,
     });

@@ -11,13 +11,13 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     getOrderedAlternativesDb({
       issueId: issue?._id,
       issueDoc: issue,
-      select: "_id name",
+      select: "_id name description",
       lean: true,
     }),
     getOrderedLeafCriteriaDb({
       issueId: issue?._id,
       issueDoc: issue,
-      select: "_id name type expressionDomain",
+      select: "_id name description type expressionDomain",
       lean: true,
     }),
   ]);
@@ -38,6 +38,7 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
     ...alternative,
     id: toIdString(alternative?._id || alternative?.id) || null,
     name: typeof alternative?.name === "string" ? alternative.name : "",
+    description: alternative?.description || null,
   }));
 
   const criteriaWithMissingSnapshot = criteria.filter(
@@ -84,6 +85,7 @@ export const getOrderedAlternativeAndCriterionNames = async ({ issue }) => {
       ...criterion,
       id: toIdString(criterion?._id || criterion?.id) || null,
       name: typeof criterion?.name === "string" ? criterion.name : "",
+      description: criterion?.description || null,
       expressionDomain: serialized,
     };
   });

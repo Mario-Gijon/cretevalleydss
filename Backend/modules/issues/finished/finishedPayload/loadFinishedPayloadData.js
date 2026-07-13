@@ -110,13 +110,13 @@ export const loadFinishedSinglePhaseData = async ({
     getOrderedAlternativesDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name",
+      select: "_id name description",
       lean: true,
     }),
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name type expressionDomain",
+      select: "_id name description type expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issue._id }).lean(),
@@ -159,13 +159,13 @@ export const loadFinishedConsensusData = async ({
     getOrderedAlternativesDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name",
+      select: "_id name description",
       lean: true,
     }),
     getOrderedLeafCriteriaDb({
       issueId: issue._id,
       issueDoc: issue,
-      select: "_id name type expressionDomain",
+      select: "_id name description type expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issue._id }).lean(),

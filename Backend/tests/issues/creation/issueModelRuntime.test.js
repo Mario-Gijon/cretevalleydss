@@ -130,7 +130,10 @@ describe("loadCreateIssueActorsAndModel", () => {
       selectedModelId: model._id,
       paramValues: issueInfo.paramValues,
       criteriaNodes: issueInfo.criteria,
-      alternatives: issueInfo.alternatives.map((name) => ({ id: null, name })),
+      alternatives: issueInfo.alternatives.map((alternative) => ({
+        id: null,
+        name: alternative.name,
+      })),
       uniqueExpertEmails: ["expert@example.com"],
     });
 

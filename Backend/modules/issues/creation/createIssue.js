@@ -86,7 +86,10 @@ export const prepareIssueCreation = async ({
     selectedModelId: input.selectedModelId,
     paramValues: input.paramValues,
     criteriaNodes: input.criteria,
-    alternatives: input.uniqueAlternativeNames.map((name) => ({ id: null, name })),
+    alternatives: input.normalizedAlternatives.map((alternative) => ({
+      id: null,
+      name: alternative.name,
+    })),
     uniqueExpertEmails: input.uniqueExpertEmails,
   });
 
@@ -255,7 +258,7 @@ export const persistPreparedIssueCreation = async ({
 
   await createIssueAlternatives({
     issueId: issue._id,
-    uniqueAlternativeNames: input.uniqueAlternativeNames,
+    normalizedAlternatives: input.normalizedAlternatives,
     session,
   });
 

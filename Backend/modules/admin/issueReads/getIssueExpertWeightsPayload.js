@@ -114,7 +114,7 @@ export const getIssueExpertWeightsPayload = async ({
       getOrderedLeafCriteriaDb({
         issueId,
         issueDoc: issue,
-        select: "_id name type expressionDomain",
+        select: "_id name description type expressionDomain",
         lean: true,
       }),
       IssueEvaluation.findOne({

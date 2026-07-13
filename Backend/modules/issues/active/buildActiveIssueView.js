@@ -50,9 +50,11 @@ export const buildActiveIssueView = ({
     issueAlternativeDocs,
     getAlternativePositionOrThrow
   );
-  const alternativeNames = orderedAlternativeDocs.map(
-    (alternative) => alternative.name
-  );
+  const alternatives = orderedAlternativeDocs.map((alternative) => ({
+    id: toIdString(alternative._id),
+    name: alternative.name,
+    description: alternative.description || null,
+  }));
 
   const participationSummary = buildActiveParticipationSummary({
     issueParticipations,
@@ -151,7 +153,7 @@ export const buildActiveIssueView = ({
       isIssueOwner,
       isExpert: participationSummary.isExpertAccepted,
       role: participationSummary.role,
-      alternatives: alternativeNames,
+      alternatives,
       criteria: criteriaTree,
       evaluated: participationSummary.evaluated,
       totalExperts: participationSummary.totalExperts,

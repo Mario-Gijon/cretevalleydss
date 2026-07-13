@@ -1,8 +1,33 @@
 import { isValidObjectIdLike } from "../../../utils/common/mongoose.js";
 import { createBadRequestError } from "../../../utils/common/errors.js";
 import { hasOwnKey, isPlainObject } from "../../../utils/common/objects.js";
+import {
+  ALTERNATIVE_DESCRIPTION_MAX_LENGTH,
+  ALTERNATIVE_NAME_MAX_LENGTH,
+  CRITERION_DESCRIPTION_MAX_LENGTH,
+  CRITERION_NAME_MAX_LENGTH,
+  ISSUE_DESCRIPTION_MAX_LENGTH,
+  ISSUE_NAME_MAX_LENGTH,
+} from "../shared/entityLimits.js";
 
 const normalizeWhitespace = (value) => value.trim().replace(/\s+/g, " ");
+
+const normalizeDescriptionOrThrow = ({ value, field, maxLength }) => {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw createBadRequestError(`${field} must be a string`, { field });
+  }
+
+  const normalizedValue = value.replace(/\r\n?/g, "\n").trim();
+  if (normalizedValue === "") return null;
+  if (normalizedValue.length > maxLength) {
+    throw createBadRequestError(`${field} must be at most ${maxLength} characters`, {
+      field,
+    });
+  }
+
+  return normalizedValue;
+};
 
 const requireNonEmptyStringOrThrow = ({ value, field, message }) => {
   if (typeof value !== "string") {
@@ -140,42 +165,55 @@ const normalizeExpertSelectionsOrThrow = (values) => {
   };
 };
 
-const normalizeCriteriaNodesOrThrow = (criteriaNodes) => {
-  return criteriaNodes.map((node) => {
+const normalizeCriteriaNodesOrThrow = (criteriaNodes, field = "criteria") => {
+  return criteriaNodes.map((node, index) => {
+    const nodeField = `${field}[${index}]`;
     if (!isPlainObject(node)) {
       throw createBadRequestError("Each criterion must be an object", {
-        field: "criteria",
+        field: nodeField,
       });
     }
 
     const name = requireNonEmptyStringOrThrow({
       value: node.name,
-      field: "criteria",
+      field: `${nodeField}.name`,
       message: "Criterion name is required",
     });
+    if (name.length > CRITERION_NAME_MAX_LENGTH) {
+      throw createBadRequestError(
+        `Criterion name must be at most ${CRITERION_NAME_MAX_LENGTH} characters`,
+        { field: `${nodeField}.name` }
+      );
+    }
     const type = requireNonEmptyStringOrThrow({
       value: node.type,
-      field: "criteria",
+      field: `${nodeField}.type`,
       message: "Criterion type is required",
     });
     const rawChildren = node.children;
 
     if (rawChildren !== undefined && !Array.isArray(rawChildren)) {
       throw createBadRequestError("Criterion children must be an array", {
-        field: "criteria",
+        field: `${nodeField}.children`,
       });
     }
 
     const children = normalizeCriteriaNodesOrThrow(
-      rawChildren === undefined ? [] : rawChildren
+      rawChildren === undefined ? [] : rawChildren,
+      `${nodeField}.children`
     );
 
     return {
       id: normalizeOptionalCriterionIdOrThrow({
         value: node.id,
-        field: "criteria",
+        field: `${nodeField}.id`,
       }),
       name,
+      description: normalizeDescriptionOrThrow({
+        value: node.description,
+        field: `${nodeField}.description`,
+        maxLength: CRITERION_DESCRIPTION_MAX_LENGTH,
+      }),
       type,
       children,
     };
@@ -202,11 +240,21 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     field: "issueName",
     message: "Issue name is required",
   });
-  const issueDescription = normalizeOptionalStringOrThrow({
+  if (issueName.length > ISSUE_NAME_MAX_LENGTH) {
+    throw createBadRequestError(`Issue name must be at most ${ISSUE_NAME_MAX_LENGTH} characters`, {
+      field: "issueName",
+    });
+  }
+  const issueDescription = normalizeDescriptionOrThrow({
     value: issueInfo.issueDescription,
     field: "issueDescription",
-    message: "issueDescription must be a string",
+    maxLength: ISSUE_DESCRIPTION_MAX_LENGTH,
   });
+  if (!issueDescription) {
+    throw createBadRequestError("issueDescription is required", {
+      field: "issueDescription",
+    });
+  }
   const selectedModelId = requireNonEmptyStringOrThrow({
     value: issueInfo.selectedModelId,
     field: "selectedModelId",
@@ -266,12 +314,36 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     });
   }
 
-  const uniqueAlternativeNames = normalizeUniqueStringArrayOrThrow({
-    values: alternatives,
-    field: "alternatives",
-    itemMessage: "Each alternative must be a string",
+  const normalizedAlternatives = [];
+  const alternativeNames = new Set();
+  alternatives.forEach((alternative, index) => {
+    const field = `alternatives[${index}]`;
+    if (!isPlainObject(alternative)) {
+      throw createBadRequestError("Each alternative must be an object", { field });
+    }
+    const name = requireNonEmptyStringOrThrow({
+      value: alternative.name,
+      field: `${field}.name`,
+      message: "Alternative name is required",
+    });
+    if (name.length > ALTERNATIVE_NAME_MAX_LENGTH) {
+      throw createBadRequestError(
+        `Alternative name must be at most ${ALTERNATIVE_NAME_MAX_LENGTH} characters`,
+        { field: `${field}.name` }
+      );
+    }
+    if (alternativeNames.has(name)) return;
+    alternativeNames.add(name);
+    normalizedAlternatives.push({
+      name,
+      description: normalizeDescriptionOrThrow({
+        value: alternative.description,
+        field: `${field}.description`,
+        maxLength: ALTERNATIVE_DESCRIPTION_MAX_LENGTH,
+      }),
+    });
   });
-  if (uniqueAlternativeNames.length <= 1) {
+  if (normalizedAlternatives.length <= 1) {
     throw createBadRequestError("Must be at least two valid alternatives", {
       field: "alternatives",
     });
@@ -370,7 +442,7 @@ export const normalizeCreateIssueInput = (rawIssueInfo) => {
     issueName,
     issueDescription,
     selectedModelId,
-    uniqueAlternativeNames,
+    normalizedAlternatives,
     isConsensus,
     simulateConsensus,
     criteria: normalizedCriteria,

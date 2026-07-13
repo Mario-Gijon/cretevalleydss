@@ -1,4 +1,8 @@
 import { Schema, model } from "mongoose";
+import {
+  ISSUE_DESCRIPTION_MAX_LENGTH,
+  ISSUE_NAME_MAX_LENGTH,
+} from "../modules/issues/shared/entityLimits.js";
 
 const issueSchema = new Schema(
   {
@@ -37,6 +41,7 @@ const issueSchema = new Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: ISSUE_NAME_MAX_LENGTH,
     },
     isConsensus: {
       type: Boolean,
@@ -97,6 +102,7 @@ const issueSchema = new Schema(
     description: {
       type: String,
       required: true,
+      maxlength: ISSUE_DESCRIPTION_MAX_LENGTH,
     },
     active: {
       type: Boolean,

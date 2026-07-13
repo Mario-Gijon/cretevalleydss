@@ -57,6 +57,7 @@ export const buildIssueCriteriaTree = (criteria) => {
   const normalizedCriteria = criteria.map((criterion) => ({
     id: toIdString(criterion._id),
     name: criterion.name,
+    description: criterion.description || null,
     type: criterion.type,
     isLeaf: criterion.isLeaf,
     expressionDomain: criterion.expressionDomain || null,
@@ -97,6 +98,7 @@ export const buildIssueCriteriaTree = (criteria) => {
   const orderedLeafCriteria = orderCriteriaDocsByTreePosition(criteria).map((criterion) => ({
     id: toIdString(criterion._id),
     name: criterion.name,
+    description: criterion.description || null,
     type: criterion.type,
     isLeaf: criterion.isLeaf,
     expressionDomain: criterion.expressionDomain || null,

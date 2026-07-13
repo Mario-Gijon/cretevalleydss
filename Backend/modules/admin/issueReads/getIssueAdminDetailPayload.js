@@ -134,13 +134,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
     getOrderedAlternativesDb({
       issueId,
       issueDoc: issue,
-      select: "_id name",
+      select: "_id name description",
       lean: true,
     }),
     getOrderedLeafCriteriaDb({
       issueId,
       issueDoc: issue,
-      select: "_id name type isLeaf parentCriterion expressionDomain",
+      select: "_id name description type isLeaf parentCriterion expressionDomain",
       lean: true,
     }),
     Criterion.find({ issue: issueId }).lean(),
@@ -398,11 +398,13 @@ export const getIssueAdminDetailPayload = async ({ issueId }) => {
       alternatives: orderedAlternatives.map((alternative) => ({
         id: toIdString(alternative._id),
         name: alternative.name,
+        description: alternative.description || null,
       })),
       criteria: criteriaTree,
       leafCriteria: orderedLeafCriteria.map((criterion) => ({
         id: toIdString(criterion._id),
         name: criterion.name,
+        description: criterion.description || null,
         type: criterion.type,
         expressionDomain: formatIssueSnapshotDomain(criterion.expressionDomain),
       })),
