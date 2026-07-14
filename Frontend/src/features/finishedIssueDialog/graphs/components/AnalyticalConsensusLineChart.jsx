@@ -11,6 +11,7 @@ import { Chart } from "chart.js/auto";
 export const AnalyticalConsensusLineChart = ({
   data,
   consensusLevelChartRef,
+  compact = false,
 }) => {
   const theme = useTheme();
   const canvasRef = useRef(null);
@@ -31,8 +32,8 @@ export const AnalyticalConsensusLineChart = ({
           backgroundColor: alpha(theme.palette.secondary.main, 0.18),
           tension: 0.2,
           fill: true,
-          pointRadius: 6,
-          pointHoverRadius: 9,
+          pointRadius: compact ? 3 : 6,
+          pointHoverRadius: compact ? 5 : 9,
         },
       ],
     };
@@ -51,7 +52,7 @@ export const AnalyticalConsensusLineChart = ({
       scales: {
         x: {
           title: {
-            display: true,
+            display: !compact,
             text: "Round",
             color: alpha("#fff", 0.85),
           },
@@ -62,7 +63,7 @@ export const AnalyticalConsensusLineChart = ({
           min: 0,
           max: 1,
           title: {
-            display: true,
+            display: !compact,
             text: "Consensus level (%)",
             color: alpha("#fff", 0.85),
           },
@@ -91,7 +92,7 @@ export const AnalyticalConsensusLineChart = ({
     }
 
     return () => newChart.destroy();
-  }, [data, theme.palette.secondary.main, consensusLevelChartRef]);
+  }, [compact, data, theme.palette.secondary.main, consensusLevelChartRef]);
 
   return <canvas ref={canvasRef} />;
 };

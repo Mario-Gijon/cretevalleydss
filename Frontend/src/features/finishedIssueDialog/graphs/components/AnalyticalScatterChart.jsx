@@ -27,7 +27,7 @@ ChartJS.register(
  * @param {Object} props Props del componente.
  * @returns {JSX.Element|null}
  */
-export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
+export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = false }) => {
   const theme = useTheme();
   const current = data?.[phase];
   if (!current) return null;
@@ -109,16 +109,16 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
         label: "Experts",
         data: expertPoints,
         backgroundColor: alpha(theme.palette.info.main, 0.85),
-        pointRadius: 8,
-        pointHoverRadius: 11,
+        pointRadius: compact ? 4 : 8,
+        pointHoverRadius: compact ? 6 : 11,
       },
       {
         label: "Collective",
         data: [collectivePoint],
         backgroundColor: alpha(theme.palette.error.main, 0.95),
-        pointRadius: 10,
+        pointRadius: compact ? 5 : 10,
         pointStyle: "rectRot",
-        pointHoverRadius: 13,
+        pointHoverRadius: compact ? 7 : 13,
       },
     ],
   };
@@ -128,7 +128,7 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
+        display: !compact,
         position: "top",
         labels: { color: alpha("#fff", 0.85) },
       },
@@ -144,8 +144,8 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
         },
       },
       zoom: {
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "xy" },
-        pan: { enabled: true, mode: "xy" },
+        zoom: { wheel: { enabled: !compact }, pinch: { enabled: !compact }, mode: "xy" },
+        pan: { enabled: !compact, mode: "xy" },
       },
     },
     scales: {
@@ -154,13 +154,13 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef }) => {
         max: maxX + xPadding,
         type: "linear",
         grid: { color: alpha("#fff", 0.14) },
-        ticks: { color: alpha("#fff", 0.85) },
+        ticks: { color: alpha("#fff", 0.85), font: { size: compact ? 9 : 12 }, maxTicksLimit: compact ? 4 : undefined },
       },
       y: {
         min: minY - yPadding,
         max: maxY + yPadding,
         grid: { color: alpha("#fff", 0.14) },
-        ticks: { color: alpha("#fff", 0.85), stepSize: 0.4 },
+        ticks: { color: alpha("#fff", 0.85), stepSize: 0.4, font: { size: compact ? 9 : 12 }, maxTicksLimit: compact ? 4 : undefined },
       },
     },
   };

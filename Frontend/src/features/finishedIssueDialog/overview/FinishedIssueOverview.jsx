@@ -5,11 +5,14 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import InsightsIcon from "@mui/icons-material/Insights";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
+import ScienceIcon from "@mui/icons-material/Science";
 
 import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { getFinishedIssueGraphAvailability } from "../logic/buildFinishedIssueGraphs";
 import { FINISHED_ISSUE_VIEWS } from "../logic/finishedIssueNavigation";
+import { AnalyticalScatterChart } from "../graphs/components/AnalyticalScatterChart";
+import { AnalyticalConsensusLineChart } from "../graphs/components/AnalyticalConsensusLineChart";
 
 const OverviewAction = ({ label, view }) => {
   const { navigation } = useFinishedIssueDialogContext();
@@ -31,7 +34,7 @@ const OverviewCard = ({ title, icon, actionLabel, actionView, children }) => (
   <SectionCard title={title} icon={icon} sx={{ height: "100%" }}>
     <Stack
       spacing={1}
-      sx={{ minHeight: { xs: 0, md: 188 }, height: "100%" }}
+      sx={{ minHeight: { xs: 0, md: 240 }, height: "100%" }}
     >
       <Box>{children}</Box>
       <Box sx={{ mt: "auto", pt: 1 }}>
@@ -57,6 +60,13 @@ const FinishedIssueOverview = () => {
   const ranking = Array.isArray(rankingSection.ranking) ? rankingSection.ranking : [];
   const consensusInfo = summary.consensusInfo || null;
   const graphAvailability = getFinishedIssueGraphAvailability(viewIssue);
+  const compactScatterData = viewIssue?.analyticalGraphs?.scatterPlot ||
+    (graphAvailability.normalizedPlots?.isValid
+      ? [{
+          expertPoints: graphAvailability.normalizedPlots.expertPoints,
+          collectivePoint: graphAvailability.normalizedPlots.collectivePoint,
+        }]
+      : null);
   const evaluationCount = Array.isArray(ratingsSection.expertList)
     ? ratingsSection.expertList.length
     : 0;
@@ -65,13 +75,14 @@ const FinishedIssueOverview = () => {
     : 0;
 
   return (
-    <Box sx={{ width: "100%", maxWidth: 1600, mx: "auto" }}>
+    <Box sx={{ width: "100%", maxWidth: "none" }}>
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
-          "@media (min-width: 2300px)": {
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))",
+            xl: "repeat(3, minmax(0, 1fr))",
           },
           gap: 2,
           alignItems: "stretch",
@@ -103,6 +114,19 @@ const FinishedIssueOverview = () => {
             <MetaText>
               {alternatives.length} alternatives · {criteria.length} criteria · {participatingExperts} participating experts
             </MetaText>
+          </Stack>
+        </OverviewCard>
+
+        <OverviewCard
+          title="Models & runs"
+          icon={<ScienceIcon fontSize="small" />}
+          actionLabel="View models"
+          actionView={FINISHED_ISSUE_VIEWS.MODELS}
+        >
+          <Stack spacing={0.5}>
+            <Typography variant="body2">Base model: {header.selectedModelNameView || "—"}</Typography>
+            <MetaText>Selected execution: {header.selectedRunKey === "base" ? "Base" : header.selectedRunLabel || "Scenario"}</MetaText>
+            <MetaText>Additional runs: {Array.isArray(header.runs) ? header.runs.length : 0}</MetaText>
           </Stack>
         </OverviewCard>
 
@@ -151,6 +175,23 @@ const FinishedIssueOverview = () => {
           actionView={FINISHED_ISSUE_VIEWS.ANALYSIS}
         >
           <Stack spacing={0.5}>
+            {graphAvailability.hasPerformanceMap && compactScatterData ? (
+              <Box sx={{ height: 165, mb: 0.5 }}>
+                <AnalyticalScatterChart
+                  data={compactScatterData}
+                  phase={compactScatterData.length === 1 ? 0 : header.currentPhaseIndex}
+                  compact
+                />
+              </Box>
+            ) : null}
+            {!graphAvailability.hasPerformanceMap && graphAvailability.hasConsensusEvolution ? (
+              <Box sx={{ height: 165, mb: 0.5 }}>
+                <AnalyticalConsensusLineChart
+                  data={viewIssue?.analyticalGraphs?.consensusLevelLineChart}
+                  compact
+                />
+              </Box>
+            ) : null}
             <Typography variant="body2" color="text.secondary">
               Results analysis is not available yet.
             </Typography>

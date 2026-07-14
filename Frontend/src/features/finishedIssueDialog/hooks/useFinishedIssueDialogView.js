@@ -94,11 +94,11 @@ export const useFinishedIssueDialogView = ({
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.OVERVIEW);
 
-  const [openDescriptionList, setOpenDescriptionList] = useState(false);
-  const [openCriteriaList, setOpenCriteriaList] = useState(false);
-  const [openAlternativeList, setOpenAlternativesList] = useState(false);
+  const [openDescriptionList, setOpenDescriptionList] = useState(true);
+  const [openCriteriaList, setOpenCriteriaList] = useState(true);
+  const [openAlternativeList, setOpenAlternativesList] = useState(true);
   const [openConsensusInfoList, setOpenConsensusInfoList] = useState(false);
-  const [openExpertsList, setOpenExpertsList] = useState(false);
+  const [openExpertsList, setOpenExpertsList] = useState(true);
   const [openParamsViewer, setOpenParamsViewer] = useState(false);
 
   const [loadingInfo, setLoadingInfo] = useState(false);
@@ -177,11 +177,11 @@ export const useFinishedIssueDialogView = ({
         setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW);
 
         setActiveStep(0);
-        setOpenDescriptionList(false);
-        setOpenCriteriaList(false);
-        setOpenAlternativesList(false);
+        setOpenDescriptionList(true);
+        setOpenCriteriaList(true);
+        setOpenAlternativesList(true);
         setOpenConsensusInfoList(false);
-        setOpenExpertsList(false);
+        setOpenExpertsList(true);
         setOpenParamsViewer(false);
 
         setSelectedModelId("");
@@ -726,6 +726,7 @@ export const useFinishedIssueDialogView = ({
       handleSelectRun,
       openAddDialog,
       currentPhaseLabel,
+      selectedRunLabel,
     },
     summarySection: {
       viewIssue,

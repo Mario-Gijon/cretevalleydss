@@ -1,4 +1,4 @@
-import { Divider, List, Stack, Typography } from "@mui/material";
+import { Box, Divider, List, Stack, Typography } from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import { CriterionItem } from "./components/CriterionItem";
@@ -37,24 +37,29 @@ const SummarySection = () => {
 
   return (
     <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>
-      <Stack spacing={1.1}>
-        <Row label="Name" value={viewIssue?.summary?.name} />
-        <Row label="Owner" value={viewIssue?.summary?.owner} />
+      <Stack spacing={1.4}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" }, gap: 1 }}>
+          <Row label="Name" value={viewIssue?.summary?.name} />
+          <Row label="Owner" value={viewIssue?.summary?.owner} />
+          <Row label="Model" value={selectedModelNameView} />
+          <Row label="Creation date" value={viewIssue?.summary?.creationDate} />
+          {viewIssue?.summary?.closureDate ? (
+            <Row label="Closure date" value={viewIssue.summary.closureDate} />
+          ) : null}
+        </Box>
 
         <SummaryAccordionRow
           label="Description"
           open={openDescriptionList}
           onToggle={() => setOpenDescriptionList((value) => !value)}
         >
-          <Typography variant="body2" sx={{ fontWeight: 850, color: "text.primary" }}>
+          <Typography variant="body2" sx={{ fontWeight: 850, color: "text.primary", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
             {viewIssue?.summary?.description || "—"}
           </Typography>
         </SummaryAccordionRow>
 
-        <Row label="Model" value={selectedModelNameView} />
-
-        {Array.isArray(viewIssue?.summary?.criteria) &&
-        viewIssue.summary.criteria.length > 1 ? (
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+        {Array.isArray(viewIssue?.summary?.criteria) ? (
           <SummaryAccordionRow
             label="Criteria"
             open={openCriteriaList}
@@ -62,13 +67,11 @@ const SummarySection = () => {
           >
             <List disablePadding sx={{ py: 0.25 }}>
               {viewIssue.summary.criteria.map((criterion, index) => (
-                <CriterionItem key={index} criterion={criterion} isChild={false} />
+                <CriterionItem key={criterion?.id || criterion?._id || index} criterion={criterion} isChild={false} />
               ))}
             </List>
           </SummaryAccordionRow>
-        ) : (
-          <Row label="Criterion" value={viewIssue?.summary?.criteria?.[0]?.name} />
-        )}
+        ) : null}
 
         <SummaryAccordionRow
           label="Alternatives"
@@ -83,8 +86,9 @@ const SummarySection = () => {
             })}
           </Stack>
         </SummaryAccordionRow>
+        </Box>
 
-        <SummaryAccordionRow
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: viewIssue?.summary?.consensusInfo ? "repeat(2, minmax(0, 1fr))" : "1fr" }, gap: 2 }}><SummaryAccordionRow
           label="Experts"
           open={openExpertsList}
           onToggle={() => setOpenExpertsList((value) => !value)}
@@ -120,13 +124,8 @@ const SummarySection = () => {
           </Stack>
         </SummaryAccordionRow>
 
-        <Row label="Creation date" value={viewIssue?.summary?.creationDate} />
-        {viewIssue?.summary?.closureDate ? (
-          <Row label="Closure date" value={viewIssue.summary.closureDate} />
-        ) : null}
-
         {viewIssue?.summary?.consensusInfo ? (
-          <>
+          <Box>
             <Divider sx={{ opacity: 0.14 }} />
             <Row
               label="Consensus threshold"
@@ -154,8 +153,9 @@ const SummarySection = () => {
               label="Final consensus"
               value={viewIssue.summary.consensusInfo.finalConsensusMeasure ?? "—"}
             />
-          </>
+          </Box>
         ) : null}
+        </Box>
       </Stack>
     </SectionCard>
   );

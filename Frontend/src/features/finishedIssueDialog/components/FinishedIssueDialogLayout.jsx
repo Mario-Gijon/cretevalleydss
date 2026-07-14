@@ -16,11 +16,6 @@ import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
 const FinishedIssueDialogLayout = () => {
   const { navigation, modelSpecificOutputSection } = useFinishedIssueDialogContext();
   const view = navigation.activeView;
-  const isWideDataView = [
-    FINISHED_ISSUE_VIEWS.RESULTS,
-    FINISHED_ISSUE_VIEWS.GRAPHS,
-    FINISHED_ISSUE_VIEWS.EVALUATIONS,
-  ].includes(view);
   const content = {
     [FINISHED_ISSUE_VIEWS.OVERVIEW]: <FinishedIssueOverview />,
     [FINISHED_ISSUE_VIEWS.ISSUE_DETAILS]: <SummarySection />,
@@ -33,7 +28,7 @@ const FinishedIssueDialogLayout = () => {
   }[view] || <FinishedIssueOverview />;
 
   return (
-    <Box sx={{ width: "100%", maxWidth: isWideDataView ? 1880 : 1500, mx: "auto" }}>
+    <Box sx={{ width: "100%", maxWidth: "none" }}>
       <Stack spacing={1.25}>
         {view !== FINISHED_ISSUE_VIEWS.OVERVIEW ? (
           <Box>
