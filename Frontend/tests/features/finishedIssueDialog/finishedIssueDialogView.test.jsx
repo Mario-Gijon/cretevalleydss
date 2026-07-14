@@ -42,6 +42,11 @@ import {
   schemaCompatibleScenarioModelFixture,
   schemaIncompatibleScenarioModelFixture,
 } from "../../mocks/fixtures/finishedIssueDialog.fixtures.js";
+import {
+  FINISHED_ISSUE_TABS,
+  FINISHED_ISSUE_VIEWS,
+} from "../../../src/features/finishedIssueDialog/shared/logic/finishedIssueNavigation.js";
+import { RESULTS_ANALYSIS_VIEWS } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/resultsAnalysisNavigation.js";
 
 const buildSelectedIssue = () => ({
   _id: "issue-finished-robust",
@@ -95,15 +100,56 @@ describe("useFinishedIssueDialogView", () => {
     ]);
     expect(result.current.header.selectedRunKey).toBe("base");
     expect(result.current.header.currentPhaseIndex).toBe(1);
-    expect(result.current.summarySection.openDescriptionList).toBe(false);
-    expect(result.current.summarySection.openCriteriaList).toBe(false);
-    expect(result.current.summarySection.openAlternativeList).toBe(false);
-    expect(result.current.summarySection.openConsensusInfoList).toBe(false);
-    expect(result.current.summarySection.openExpertsList).toBe(false);
+    expect(result.current.overviewSection.openDescriptionList).toBe(false);
+    expect(result.current.overviewSection.openCriteriaList).toBe(false);
+    expect(result.current.overviewSection.openAlternativeList).toBe(false);
+    expect(result.current.overviewSection.openConsensusInfoList).toBe(false);
+    expect(result.current.overviewSection.openExpertsList).toBe(false);
     expect(result.current.modelsSection.openParamsViewer).toBe(false);
     expect(result.current.modelsSection.addDialog.selectedModelId).toBe("");
     expect(result.current.modelsSection.addDialog.scenarioName).toBe("");
     expect(result.current.modelsSection.addDialog.paramsJson).toBe("{}");
+    expect(result.current.navigation.activeView).toBe(FINISHED_ISSUE_VIEWS.DASHBOARD);
+  });
+
+  it("preserves Results Analysis subview for execution and phase changes", async () => {
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: buildFinishedIssueBaseFixture() });
+    getIssueScenarios.mockResolvedValueOnce(buildFinishedScenarioRunsFixture());
+    getIssueScenarioById.mockResolvedValueOnce({ data: { scenario: buildFinishedScenarioFixture() } });
+
+    const { result } = renderDialogHook({ selectedIssue: buildSelectedIssue(), openFinishedIssueDialog: true });
+    await waitForLoad(result);
+
+    act(() => {
+      result.current.navigation.handleSelectTab(FINISHED_ISSUE_TABS.RESULTS_ANALYSIS);
+      result.current.resultsAnalysisNavigation.setActiveView(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
+      result.current.roundsNavigation.handlePreviousRound();
+    });
+    expect(result.current.navigation.activeView).toBe(FINISHED_ISSUE_VIEWS.RESULTS_ANALYSIS);
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
+
+    await act(async () => {
+      await result.current.header.handleSelectRun("scenario-1");
+    });
+    expect(result.current.navigation.activeView).toBe(FINISHED_ISSUE_VIEWS.RESULTS_ANALYSIS);
+    expect(result.current.resultsAnalysisNavigation.activeView).toBe(RESULTS_ANALYSIS_VIEWS.VISUALIZATIONS);
+  });
+
+  it("returns to Dashboard when a non-consensus execution is selected from Consensus", async () => {
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: buildFinishedIssueBaseFixture() });
+    getIssueScenarios.mockResolvedValueOnce(buildFinishedScenarioRunsFixture());
+    getIssueScenarioById.mockResolvedValueOnce({ data: { scenario: buildFinishedScenarioFixture() } });
+
+    const { result } = renderDialogHook({ selectedIssue: buildSelectedIssue(), openFinishedIssueDialog: true });
+    await waitForLoad(result);
+    act(() => result.current.navigation.handleSelectTab(FINISHED_ISSUE_TABS.CONSENSUS));
+    expect(result.current.navigation.activeView).toBe(FINISHED_ISSUE_VIEWS.CONSENSUS);
+
+    await act(async () => {
+      await result.current.header.handleSelectRun("scenario-1");
+    });
+    await waitFor(() => expect(result.current.navigation.activeView).toBe(FINISHED_ISSUE_VIEWS.DASHBOARD));
+    expect(result.current.navigation.availableTabs).not.toContain(FINISHED_ISSUE_TABS.CONSENSUS);
   });
 
   it("does not load while the dialog is closed", () => {
@@ -156,11 +202,6 @@ describe("useFinishedIssueDialogView", () => {
     expect(result.current.rankingSection.ranking[0].name).toBe("Beta");
 
     act(() => {
-      result.current.graphsSection.handleNext();
-    });
-    expect(result.current.graphsSection.activeStep).toBe(1);
-
-    act(() => {
       result.current.roundsNavigation.handlePreviousRound();
     });
 
@@ -168,7 +209,6 @@ describe("useFinishedIssueDialogView", () => {
     await waitFor(() =>
       expect(result.current.ratingsSection.selectedExpert).toBe("anon@example.com")
     );
-    expect(result.current.graphsSection.activeStep).toBe(0);
     expect(result.current.rankingSection.ranking[0].name).toBe("Alpha");
     expect(result.current.ratingsSection.evaluations).toEqual({
       stage: "phase-0-anon",

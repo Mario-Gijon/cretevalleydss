@@ -35,7 +35,7 @@ const hasModelSpecificOutput = (value) => {
 /**
  * Seccion para inspección de output bruto del modelo ejecutado.
  *
- * @returns {JSX.Element|null}
+ * @returns {JSX.Element}
  */
 const ModelSpecificOutputSection = ({
   rawOutput = null,
@@ -45,7 +45,15 @@ const ModelSpecificOutputSection = ({
   const theme = useTheme();
   const hasOutput = hasModelSpecificOutput(rawOutput);
 
-  if (!hasOutput) return null;
+  if (!hasOutput) {
+    return (
+      <SectionCard title="Model-specific output" icon={<DataObjectIcon fontSize="small" />}>
+        <Typography variant="body2" color="text.secondary">
+          No model-specific output is available for this execution.
+        </Typography>
+      </SectionCard>
+    );
+  }
 
   const metadataRows = buildMetadataRows(modelExecution);
 

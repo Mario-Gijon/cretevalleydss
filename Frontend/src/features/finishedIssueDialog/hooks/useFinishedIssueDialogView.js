@@ -36,9 +36,8 @@ import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhase
 import {
   FINISHED_ISSUE_TABS,
   FINISHED_ISSUE_VIEWS,
-  getFinishedIssueParentTab,
-  getFinishedIssueTabDefaultView,
 } from "../shared/logic/finishedIssueNavigation";
+import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis/logic/resultsAnalysisNavigation";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const unwrap = (response) =>
@@ -85,14 +84,16 @@ export const useFinishedIssueDialogView = ({
 }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
   const scatterPlotRef = useRef(null);
-  const consensusLevelChartRef = useRef(null);
   const resetZoom = (chartRef) => chartRef?.current?.resetZoom?.();
 
   const openTokenRef = useRef(0);
   const baseIssueRef = useRef(null);
 
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
-  const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.OVERVIEW);
+  const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.DASHBOARD);
+  const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(
+    RESULTS_ANALYSIS_VIEWS.OUTCOME
+  );
 
   const [openDescriptionList, setOpenDescriptionList] = useState(true);
   const [openCriteriaList, setOpenCriteriaList] = useState(true);
@@ -103,10 +104,6 @@ export const useFinishedIssueDialogView = ({
 
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [issue, setIssue] = useState({});
-
-  const [activeStep, setActiveStep] = useState(0);
-  const handleNext = () => setActiveStep((prev) => Math.min(1, prev + 1));
-  const handleBack = () => setActiveStep((prev) => Math.max(0, prev - 1));
 
   const [runsLoading, setRunsLoading] = useState(false);
   const [runs, setRuns] = useState([]);
@@ -174,9 +171,9 @@ export const useFinishedIssueDialogView = ({
 
         const index = getLastPhaseIndex(loadedIssue || {});
         setCurrentPhaseIndex(index);
-        setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW);
+        setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
+        setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
 
-        setActiveStep(0);
         setOpenDescriptionList(true);
         setOpenCriteriaList(true);
         setOpenAlternativesList(true);
@@ -197,7 +194,8 @@ export const useFinishedIssueDialogView = ({
         setSelectedRunKey("base");
         setRunCache({});
         setCurrentPhaseIndex(0);
-        setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW);
+        setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
+        setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
       } finally {
         // eslint-disable-next-line no-unsafe-finally
         if (cancelled || openTokenRef.current !== token) return;
@@ -242,8 +240,6 @@ export const useFinishedIssueDialogView = ({
 
   const handleSelectRun = async (runKey) => {
     setSelectedRunKey(runKey);
-    setActiveStep(0);
-
     if (runKey === "base") {
       setCurrentPhaseIndex(getLastPhaseIndex(issue || {}));
       return;
@@ -338,10 +334,10 @@ export const useFinishedIssueDialogView = ({
   const hasConsensus = Boolean(viewIssue?.summary?.consensusInfo);
 
   useEffect(() => {
-    if (activeView === FINISHED_ISSUE_VIEWS.CONSENSUS && !hasConsensus) {
-      setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW);
+    if (activeView === FINISHED_ISSUE_VIEWS.CONSENSUS && viewIssue && !hasConsensus) {
+      setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
     }
-  }, [activeView, hasConsensus]);
+  }, [activeView, hasConsensus, viewIssue]);
 
   const ratingsView = useFinishedIssueRatingsView({
     viewIssue,
@@ -371,24 +367,26 @@ export const useFinishedIssueDialogView = ({
       : 0;
 
     setCurrentPhaseIndex(nextPhaseIndex);
-    setActiveStep(0);
   };
 
   const handleSelectTab = (tab) => {
     if (tab === FINISHED_ISSUE_TABS.CONSENSUS && !hasConsensus) {
-      setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW);
+      setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
       return;
     }
-    setActiveView(getFinishedIssueTabDefaultView(tab));
+    if (tab === FINISHED_ISSUE_TABS.RESULTS_ANALYSIS) {
+      setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
+    }
+    setActiveView(tab);
   };
   const currentPhaseLabel = formatFinishedIssuePhaseLabel({
     phaseIndex: currentPhaseIndex,
     phasesCount: roundsCount,
   });
   const availableTabs = [
+    FINISHED_ISSUE_TABS.DASHBOARD,
     FINISHED_ISSUE_TABS.OVERVIEW,
-    FINISHED_ISSUE_TABS.RESULTS,
-    FINISHED_ISSUE_TABS.ANALYSIS,
+    FINISHED_ISSUE_TABS.RESULTS_ANALYSIS,
     FINISHED_ISSUE_TABS.EVALUATIONS,
     ...(hasConsensus ? [FINISHED_ISSUE_TABS.CONSENSUS] : []),
     FINISHED_ISSUE_TABS.MODELS,
@@ -728,7 +726,7 @@ export const useFinishedIssueDialogView = ({
       currentPhaseLabel,
       selectedRunLabel,
     },
-    summarySection: {
+    overviewSection: {
       viewIssue,
       selectedModelNameView,
       selectedModelParamsView,
@@ -812,14 +810,8 @@ export const useFinishedIssueDialogView = ({
         domainType,
       },
     },
-    graphsSection: {
-      viewIssue,
-      activeStep,
-      handleNext,
-      handleBack,
-      currentPhaseIndex,
+    resultsAnalysisSection: {
       scatterPlotRef,
-      consensusLevelChartRef,
       resetZoom,
     },
     ratingsSection: {
@@ -840,11 +832,15 @@ export const useFinishedIssueDialogView = ({
     },
     navigation: {
       activeView,
-      activeTab: getFinishedIssueParentTab(activeView),
+      activeTab: activeView,
       setActiveView,
       handleSelectTab,
-      handleBackToOverview: () => setActiveView(FINISHED_ISSUE_VIEWS.OVERVIEW),
+      handleBackToDashboard: () => setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD),
       availableTabs,
+    },
+    resultsAnalysisNavigation: {
+      activeView: activeResultsAnalysisView,
+      setActiveView: setActiveResultsAnalysisView,
     },
     debug: {
       selectedRunMeta,

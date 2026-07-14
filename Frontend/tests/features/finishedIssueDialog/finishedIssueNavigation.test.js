@@ -4,21 +4,19 @@ import { formatFinishedIssuePhaseLabel } from "../../../src/features/finishedIss
 import {
   FINISHED_ISSUE_TABS,
   FINISHED_ISSUE_VIEWS,
-  getFinishedIssueParentTab,
-  getFinishedIssueTabDefaultView,
 } from "../../../src/features/finishedIssueDialog/shared/logic/finishedIssueNavigation.js";
 
 describe("finished issue navigation", () => {
-  it("maps detailed views to their parent tabs", () => {
-    expect(getFinishedIssueParentTab(FINISHED_ISSUE_VIEWS.ISSUE_DETAILS)).toBe(
-      FINISHED_ISSUE_TABS.OVERVIEW
-    );
-    expect(getFinishedIssueParentTab(FINISHED_ISSUE_VIEWS.GRAPHS)).toBe(
-      FINISHED_ISSUE_TABS.RESULTS
-    );
-    expect(getFinishedIssueTabDefaultView(FINISHED_ISSUE_TABS.OVERVIEW)).toBe(
-      FINISHED_ISSUE_VIEWS.OVERVIEW
-    );
+  it("defines only the final top-level sections", () => {
+    expect(FINISHED_ISSUE_VIEWS).toEqual({
+      DASHBOARD: "dashboard",
+      OVERVIEW: "overview",
+      RESULTS_ANALYSIS: "results-analysis",
+      EVALUATIONS: "evaluations",
+      CONSENSUS: "consensus",
+      MODELS: "models",
+    });
+    expect(FINISHED_ISSUE_TABS).toEqual(FINISHED_ISSUE_VIEWS);
   });
 
   it("formats finished phases without a current label", () => {

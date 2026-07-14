@@ -1,8 +1,8 @@
 import { Backdrop, Box } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
-import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
+import { CircularLoading } from "../../components/LoadingProgress/CircularLoading";
+import { GlassDialog } from "../../components/StyledComponents/GlassDialog";
 import { getFinishedIssueDialogAuroraBg } from "./styles/finishedIssueDialog.styles";
 import { FinishedIssueDialogProvider } from "./context/finishedIssueDialog.provider";
 import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.context";

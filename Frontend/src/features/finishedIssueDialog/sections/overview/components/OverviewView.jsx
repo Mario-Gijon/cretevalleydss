@@ -1,26 +1,30 @@
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
-import { overviewGridSx, overviewRootSx } from "../overview.styles";
-import AnalyticalGraphsOverviewCard from "./cards/AnalyticalGraphsOverviewCard";
-import ConsensusOverviewCard from "./cards/ConsensusOverviewCard";
-import EvaluationsOverviewCard from "./cards/EvaluationsOverviewCard";
-import IssueOverviewCard from "./cards/IssueOverviewCard";
-import ModelsOverviewCard from "./cards/ModelsOverviewCard";
-import ResultsAnalysisCard from "./cards/ResultsAnalysisCard";
-import ResultsSummaryCard from "./cards/ResultsSummaryCard";
+import { SectionCard } from "../../../shared/components/FinishedIssueDialogPrimitives";
+import { overviewDetailsGridSx, overviewExpertsGridSx } from "../overview.styles";
+import AlternativesSection from "./AlternativesSection";
+import ConsensusConfiguration from "./ConsensusConfiguration";
+import CriteriaSection from "./CriteriaSection";
+import DescriptionSection from "./DescriptionSection";
+import ExpertsSection from "./ExpertsSection";
+import GeneralInformation from "./GeneralInformation";
 
-const OverviewView = ({ data, actions }) => (
-  <Box sx={overviewRootSx}>
-    <Box sx={overviewGridSx}>
-      <IssueOverviewCard issue={data.issue} onViewMore={actions.openIssueDetails} />
-      <ModelsOverviewCard models={data.models} onViewModels={actions.openModels} />
-      <ResultsSummaryCard results={data.results} onViewResults={actions.openResults} />
-      <ResultsAnalysisCard onViewAnalysis={actions.openAnalysis} />
-      <EvaluationsOverviewCard evaluations={data.evaluations} onViewEvaluations={actions.openEvaluations} />
-      {data.consensus ? <ConsensusOverviewCard consensus={data.consensus} onViewConsensus={actions.openConsensus} /> : null}
-      <AnalyticalGraphsOverviewCard graphs={data.graphs} onViewGraphs={actions.openGraphs} />
-    </Box>
-  </Box>
+const OverviewView = ({ data, state, actions }) => (
+  <SectionCard title="Overview" icon={<AssignmentTurnedInIcon fontSize="small" />}>
+    <Stack spacing={1.4}>
+      <GeneralInformation general={data.general} />
+      <DescriptionSection description={data.description} expanded={state.descriptionExpanded} onToggle={actions.toggleDescription} />
+      <Box sx={overviewDetailsGridSx}>
+        <CriteriaSection criteria={data.criteria} expanded={state.criteriaExpanded} onToggle={actions.toggleCriteria} />
+        <AlternativesSection alternatives={data.alternatives} expanded={state.alternativesExpanded} onToggle={actions.toggleAlternatives} />
+      </Box>
+      <Box sx={overviewExpertsGridSx(Boolean(data.consensus))}>
+        <ExpertsSection experts={data.experts} expanded={state.expertsExpanded} onToggle={actions.toggleExperts} />
+        <ConsensusConfiguration consensus={data.consensus} />
+      </Box>
+    </Stack>
+  </SectionCard>
 );
 
 export default OverviewView;

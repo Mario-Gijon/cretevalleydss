@@ -1,9 +1,9 @@
 import { Tab, Tabs } from "@mui/material";
 
 const TAB_LABELS = {
+  dashboard: "Dashboard",
   overview: "Overview",
-  results: "Results",
-  analysis: "Analysis",
+  "results-analysis": "Results analysis",
   evaluations: "Evaluations",
   consensus: "Consensus",
   models: "Models",

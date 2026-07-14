@@ -1,36 +1,39 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import { FINISHED_ISSUE_VIEWS } from "../../shared/logic/finishedIssueNavigation";
-import { buildFinishedIssueOverviewData } from "./logic/buildFinishedIssueOverviewData";
+import { formatConsensusRoundLabel } from "../../shared/logic/formatConsensusRoundLabel";
 import OverviewView from "./components/OverviewView";
+import { buildFinishedIssueOverviewData } from "./logic/buildFinishedIssueOverviewData";
 
 const OverviewSection = () => {
-  const { dialog, rankingSection, ratingsSection, header, navigation } = useFinishedIssueDialogContext();
+  const { overviewSection } = useFinishedIssueDialogContext();
+  const {
+    viewIssue,
+    selectedModelNameView,
+    openDescriptionList,
+    setOpenDescriptionList,
+    openCriteriaList,
+    setOpenCriteriaList,
+    openAlternativeList,
+    setOpenAlternativesList,
+    openExpertsList,
+    setOpenExpertsList,
+  } = overviewSection;
+  const reachedPhase = viewIssue?.summary?.consensusInfo?.consensusReachedPhase;
   const data = buildFinishedIssueOverviewData({
-    viewIssue: dialog.viewIssue,
-    ranking: rankingSection.ranking,
-    formatScore: rankingSection.formatScore,
-    currentPhaseLabel: header.currentPhaseLabel,
-    currentPhaseIndex: header.currentPhaseIndex,
-    expertList: ratingsSection.expertList,
-    evaluationStructure: ratingsSection.evaluationStructure,
-    canShowCollective: ratingsSection.canShowCollective,
-    criteriaWeightsPayload: ratingsSection.criteriaWeightsEvaluation,
-    selectedModelName: header.selectedModelNameView,
-    selectedRunKey: header.selectedRunKey,
-    selectedRunLabel: header.selectedRunLabel,
-    runs: header.runs,
-    roundsCount: header.roundsCount,
+    viewIssue,
+    selectedModelName: selectedModelNameView,
+    reachedPhaseLabel: reachedPhase !== undefined ? formatConsensusRoundLabel(reachedPhase) : "—",
   });
-  const open = (view) => () => navigation.setActiveView(view);
 
-  return <OverviewView data={data} actions={{
-    openIssueDetails: open(FINISHED_ISSUE_VIEWS.ISSUE_DETAILS),
-    openResults: open(FINISHED_ISSUE_VIEWS.RESULTS),
-    openAnalysis: open(FINISHED_ISSUE_VIEWS.ANALYSIS),
-    openEvaluations: open(FINISHED_ISSUE_VIEWS.EVALUATIONS),
-    openConsensus: open(FINISHED_ISSUE_VIEWS.CONSENSUS),
-    openGraphs: open(FINISHED_ISSUE_VIEWS.GRAPHS),
-    openModels: open(FINISHED_ISSUE_VIEWS.MODELS),
+  return <OverviewView data={data} state={{
+    descriptionExpanded: openDescriptionList,
+    criteriaExpanded: openCriteriaList,
+    alternativesExpanded: openAlternativeList,
+    expertsExpanded: openExpertsList,
+  }} actions={{
+    toggleDescription: () => setOpenDescriptionList((value) => !value),
+    toggleCriteria: () => setOpenCriteriaList((value) => !value),
+    toggleAlternatives: () => setOpenAlternativesList((value) => !value),
+    toggleExperts: () => setOpenExpertsList((value) => !value),
   }} />;
 };
 

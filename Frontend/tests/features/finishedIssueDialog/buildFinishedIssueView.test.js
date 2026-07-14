@@ -18,6 +18,7 @@ describe("buildFinishedIssueView", () => {
 
     expect(viewIssue.summary.modelName).toBe("Weighted Scenario Model");
     expect(viewIssue.summary.targetModelName).toBe("Weighted Scenario Model");
+    expect(viewIssue.summary.consensusInfo).toBeUndefined();
     expect(viewIssue.modelParams.base.paramsResolved.threshold).toBe(0.7);
     expect(viewIssue.alternativesRankings).toEqual([
       {

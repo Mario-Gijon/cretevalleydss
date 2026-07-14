@@ -53,8 +53,11 @@ export const applyScenarioToIssueInfo = (baseIssueInfo, scenario) => {
       ? standardResult.collectiveEvaluations
       : null;
 
+  const baseSummary = { ...(out.summary || {}) };
+  delete baseSummary.consensusInfo;
+
   out.summary = {
-    ...(out.summary || {}),
+    ...baseSummary,
     model: scenario?.targetModelName || out?.summary?.model,
     modelName: scenario?.targetModelName || out?.summary?.modelName,
     targetModelName: scenario?.targetModelName,

@@ -1,29 +1,29 @@
-export const overviewRootSx = { width: "100%", maxWidth: "none" };
-
-export const overviewGridSx = {
+export const overviewGeneralGridSx = {
   display: "grid",
-  gridTemplateColumns: {
-    xs: "1fr",
-    md: "repeat(2, minmax(0, 1fr))",
-    xl: "repeat(3, minmax(0, 1fr))",
-  },
+  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
+  gap: 1,
+};
+
+export const overviewDetailsGridSx = {
+  display: "grid",
+  gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
   gap: 2,
-  alignItems: "stretch",
 };
 
-export const overviewCardContentSx = {
-  minHeight: { xs: 0, md: 240 },
-  height: "100%",
-};
-
-export const overviewActionSx = { alignSelf: { xs: "stretch", sm: "flex-start" } };
+export const overviewExpertsGridSx = (hasConsensus) => ({
+  display: "grid",
+  gridTemplateColumns: { xs: "1fr", md: hasConsensus ? "repeat(2, minmax(0, 1fr))" : "1fr" },
+  gap: 2,
+});
 
 export const overviewDescriptionSx = {
-  whiteSpace: "pre-line",
-  display: "-webkit-box",
-  WebkitLineClamp: 3,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
+  fontWeight: 850,
+  color: "text.primary",
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
 };
 
-export const overviewGraphPreviewSx = { height: 165, mb: 0.5 };
+export const overviewListSx = { py: 0.25 };
+export const overviewDividerSx = { opacity: 0.14 };
+export const overviewExpertNameSx = { fontWeight: 850 };
+export const overviewNotAcceptedTitleSx = { fontWeight: 950, color: "text.secondary" };

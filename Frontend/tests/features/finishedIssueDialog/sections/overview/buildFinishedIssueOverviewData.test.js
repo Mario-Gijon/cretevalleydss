@@ -2,34 +2,22 @@ import { describe, expect, it } from "vitest";
 import { buildFinishedIssueOverviewData } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 
 describe("buildFinishedIssueOverviewData", () => {
-  it("builds factual metadata, ranking, and execution data", () => {
+  it("normalizes factual summary values and alternatives", () => {
     const data = buildFinishedIssueOverviewData({
       viewIssue: {
         summary: {
-          name: "Issue", alternatives: [{ id: "a", name: "A", description: "Detail" }], criteria: [{}], experts: { participated: ["expert"] },
-          consensusInfo: { threshold: 0.8, finalConsensusMeasure: 0.9, finalizationReason: "Reached" },
+          name: "Issue", alternatives: [{ _id: "a", name: "A", description: "Detail" }, null], criteria: [{ id: "criterion" }],
+          experts: { participated: ["one"], notAccepted: ["two"] },
+          consensusInfo: { threshold: 0.8, maxPhases: 3, finalConsensusMeasure: 0.9, finalizationReason: "Reached" },
         },
-        analyticalGraphs: { plotsGraphic: { expert_points: [[0.1, 0.2]], collective_point: [0.3, 0.4] }, consensusLevelLineChart: { data: [0.3, 0.9] } },
       },
-      ranking: [{ alternativeId: "a", name: "A", score: 2 }], formatScore: String,
-      currentPhaseLabel: "Final", currentPhaseIndex: 0, expertList: ["expert"],
-      evaluationStructure: "alternativeCriteriaMatrix", canShowCollective: true,
-      selectedModelName: "Model", selectedRunKey: "base", selectedRunLabel: "Base", runs: [], roundsCount: 1,
+      selectedModelName: "Model",
+      reachedPhaseLabel: "Phase 2",
     });
-    expect(data.issue).toMatchObject({ name: "Issue", alternativesCount: 1, criteriaCount: 1, participatingExpertsCount: 1 });
-    expect(data.results.items[0]).toMatchObject({ name: "A", description: "Detail", formattedScore: "2" });
-    expect(data.models).toMatchObject({ selectedExecutionIsBase: true, additionalRunsCount: 0 });
-    expect(data.evaluations).toMatchObject({ expertsCount: 1, structure: "alternativeCriteriaMatrix", hasCollective: true });
-    expect(data.graphs).toMatchObject({ hasPerformanceMap: true, hasConsensusEvolution: true });
-    expect(data.consensus).toMatchObject({ threshold: 0.8, finalMeasure: 0.9 });
-    expect(JSON.stringify(data)).not.toContain("function");
-  });
-
-  it("handles missing optional payload fields", () => {
-    const data = buildFinishedIssueOverviewData({ viewIssue: {}, ranking: [] });
-
-    expect(data.issue).toMatchObject({ alternativesCount: 0, criteriaCount: 0, participatingExpertsCount: 0, closureDate: null });
-    expect(data.results).toMatchObject({ available: false, items: [] });
-    expect(data.consensus).toBeNull();
+    expect(data.general).toMatchObject({ name: "Issue", model: "Model", closureDate: null });
+    expect(data.alternatives).toEqual(expect.arrayContaining([expect.objectContaining({ id: "a", name: "A", description: "Detail" })]));
+    expect(data.experts).toMatchObject({ total: 2, participated: ["one"], notAccepted: ["two"] });
+    expect(data.criteria).toEqual([{ id: "criterion" }]);
+    expect(data.consensus).toMatchObject({ threshold: 0.8, reachedPhaseLabel: "Phase 2", finalMeasure: 0.9 });
   });
 });
