@@ -9,7 +9,7 @@ import ScienceIcon from "@mui/icons-material/Science";
 
 import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import { getFinishedIssueGraphAvailability } from "../logic/buildFinishedIssueGraphs";
+import { buildFinishedIssueOverviewData } from "../logic/buildFinishedIssueOverviewData";
 import { FINISHED_ISSUE_VIEWS } from "../logic/finishedIssueNavigation";
 import { AnalyticalScatterChart } from "../graphs/components/AnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "../graphs/components/AnalyticalConsensusLineChart";
@@ -54,25 +54,29 @@ const FinishedIssueOverview = () => {
   const { dialog, rankingSection, ratingsSection, header } =
     useFinishedIssueDialogContext();
   const viewIssue = dialog.viewIssue;
-  const summary = viewIssue?.summary || {};
-  const alternatives = Array.isArray(summary.alternatives) ? summary.alternatives : [];
-  const criteria = Array.isArray(summary.criteria) ? summary.criteria : [];
-  const ranking = Array.isArray(rankingSection.ranking) ? rankingSection.ranking : [];
-  const consensusInfo = summary.consensusInfo || null;
-  const graphAvailability = getFinishedIssueGraphAvailability(viewIssue);
-  const compactScatterData = viewIssue?.analyticalGraphs?.scatterPlot ||
-    (graphAvailability.normalizedPlots?.isValid
-      ? [{
-          expertPoints: graphAvailability.normalizedPlots.expertPoints,
-          collectivePoint: graphAvailability.normalizedPlots.collectivePoint,
-        }]
-      : null);
-  const evaluationCount = Array.isArray(ratingsSection.expertList)
-    ? ratingsSection.expertList.length
-    : 0;
-  const participatingExperts = Array.isArray(summary.experts?.participated)
-    ? summary.experts.participated.length
-    : 0;
+  const data = buildFinishedIssueOverviewData({
+    viewIssue, ranking: rankingSection.ranking, formatScore: rankingSection.formatScore,
+    currentPhaseLabel: header.currentPhaseLabel, currentPhaseIndex: header.currentPhaseIndex,
+    expertList: ratingsSection.expertList, evaluationStructure: ratingsSection.evaluationStructure,
+    canShowCollective: ratingsSection.canShowCollective,
+    criteriaWeightsPayload: ratingsSection.criteriaWeightsEvaluation,
+    selectedModelName: header.selectedModelNameView, selectedRunKey: header.selectedRunKey,
+    selectedRunLabel: header.selectedRunLabel, runs: header.runs, roundsCount: header.roundsCount,
+  });
+  const { issue, results, evaluations, graphs, models, consensus } = data;
+  const alternatives = Array.from({ length: issue.alternativesCount });
+  const criteria = Array.from({ length: issue.criteriaCount });
+  const ranking = results.items;
+  const consensusInfo = consensus;
+  const graphAvailability = graphs;
+  const compactScatterData = graphs.performanceMapData;
+  const evaluationCount = evaluations.expertsCount;
+  const participatingExperts = issue.participatingExpertsCount;
+  const summary = {
+    description: issue.description,
+    creationDate: issue.creationDate,
+    closureDate: issue.closureDate,
+  };
 
   return (
     <Box sx={{ width: "100%", maxWidth: "none" }}>
@@ -124,9 +128,9 @@ const FinishedIssueOverview = () => {
           actionView={FINISHED_ISSUE_VIEWS.MODELS}
         >
           <Stack spacing={0.5}>
-            <Typography variant="body2">Base model: {header.selectedModelNameView || "—"}</Typography>
-            <MetaText>Selected execution: {header.selectedRunKey === "base" ? "Base" : header.selectedRunLabel || "Scenario"}</MetaText>
-            <MetaText>Additional runs: {Array.isArray(header.runs) ? header.runs.length : 0}</MetaText>
+            <Typography variant="body2">Base model: {models.baseModelName}</Typography>
+            <MetaText>Selected execution: {models.selectedExecutionLabel}</MetaText>
+            <MetaText>Additional runs: {models.additionalRunsCount}</MetaText>
           </Stack>
         </OverviewCard>
 

@@ -10,6 +10,7 @@ import {
 } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatConsensusRoundLabel } from "../logic/formatConsensusRoundLabel";
+import { buildFinishedIssueSummaryData } from "../logic/buildFinishedIssueSummaryData";
 
 /**
  * Seccion Summary del dialogo de issue finalizado.
@@ -34,17 +35,24 @@ const SummarySection = () => {
     participated,
     notAccepted,
   } = summarySection;
+  const data = buildFinishedIssueSummaryData({
+    viewIssue,
+    selectedModelName: selectedModelNameView,
+    reachedPhaseLabel: viewIssue?.summary?.consensusInfo?.consensusReachedPhase !== undefined
+      ? formatConsensusRoundLabel(viewIssue.summary.consensusInfo.consensusReachedPhase)
+      : "—",
+  });
 
   return (
     <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>
       <Stack spacing={1.4}>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" }, gap: 1 }}>
-          <Row label="Name" value={viewIssue?.summary?.name} />
-          <Row label="Owner" value={viewIssue?.summary?.owner} />
-          <Row label="Model" value={selectedModelNameView} />
-          <Row label="Creation date" value={viewIssue?.summary?.creationDate} />
-          {viewIssue?.summary?.closureDate ? (
-            <Row label="Closure date" value={viewIssue.summary.closureDate} />
+          <Row label="Name" value={data.general.name} />
+          <Row label="Owner" value={data.general.owner} />
+          <Row label="Model" value={data.general.model} />
+          <Row label="Creation date" value={data.general.creationDate} />
+          {data.general.closureDate ? (
+            <Row label="Closure date" value={data.general.closureDate} />
           ) : null}
         </Box>
 
@@ -54,19 +62,19 @@ const SummarySection = () => {
           onToggle={() => setOpenDescriptionList((value) => !value)}
         >
           <Typography variant="body2" sx={{ fontWeight: 850, color: "text.primary", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-            {viewIssue?.summary?.description || "—"}
+            {data.description || "—"}
           </Typography>
         </SummaryAccordionRow>
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
-        {Array.isArray(viewIssue?.summary?.criteria) ? (
+        {data.criteria.length ? (
           <SummaryAccordionRow
             label="Criteria"
             open={openCriteriaList}
             onToggle={() => setOpenCriteriaList((value) => !value)}
           >
             <List disablePadding sx={{ py: 0.25 }}>
-              {viewIssue.summary.criteria.map((criterion, index) => (
+              {data.criteria.map((criterion, index) => (
                 <CriterionItem key={criterion?.id || criterion?._id || index} criterion={criterion} isChild={false} />
               ))}
             </List>
@@ -79,10 +87,8 @@ const SummarySection = () => {
           onToggle={() => setOpenAlternativesList((value) => !value)}
         >
           <Stack spacing={0.5}>
-            {(viewIssue?.summary?.alternatives || []).map((alternative, index) => {
-              const item = alternative && typeof alternative === "object" ? alternative : null;
-              const name = item?.name || (typeof alternative === "string" ? alternative : "—");
-              return <Stack key={item?.id || item?._id || `${name}-${index}`} spacing={0.1}><Typography variant="body2" sx={{ fontWeight: 850 }}>{name}</Typography>{item?.description ? <Typography variant="caption" color="text.secondary">{item.description}</Typography> : null}</Stack>;
+            {data.alternatives.map((alternative, index) => {
+              return <Stack key={alternative.id || index} spacing={0.1}><Typography variant="body2" sx={{ fontWeight: 850 }}>{alternative.name}</Typography>{alternative.description ? <Typography variant="caption" color="text.secondary">{alternative.description}</Typography> : null}</Stack>;
             })}
           </Stack>
         </SummaryAccordionRow>
