@@ -16,6 +16,11 @@ import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
 const FinishedIssueDialogLayout = () => {
   const { navigation, modelSpecificOutputSection } = useFinishedIssueDialogContext();
   const view = navigation.activeView;
+  const isWideDataView = [
+    FINISHED_ISSUE_VIEWS.RESULTS,
+    FINISHED_ISSUE_VIEWS.GRAPHS,
+    FINISHED_ISSUE_VIEWS.EVALUATIONS,
+  ].includes(view);
   const content = {
     [FINISHED_ISSUE_VIEWS.OVERVIEW]: <FinishedIssueOverview />,
     [FINISHED_ISSUE_VIEWS.ISSUE_DETAILS]: <SummarySection />,
@@ -27,7 +32,26 @@ const FinishedIssueDialogLayout = () => {
     [FINISHED_ISSUE_VIEWS.MODELS]: <Stack spacing={2}><ModelsSection />{modelSpecificOutputSection?.hasOutput ? <ModelSpecificOutputSection {...modelSpecificOutputSection} /> : null}</Stack>,
   }[view] || <FinishedIssueOverview />;
 
-  return <Stack spacing={1.25}>{view !== FINISHED_ISSUE_VIEWS.OVERVIEW ? <Box><Button size="small" startIcon={<ArrowBackIcon />} onClick={navigation.handleBackToOverview}>Back to overview</Button></Box> : null}{content}</Stack>;
+  return (
+    <Box sx={{ width: "100%", maxWidth: isWideDataView ? 1880 : 1500, mx: "auto" }}>
+      <Stack spacing={1.25}>
+        {view !== FINISHED_ISSUE_VIEWS.OVERVIEW ? (
+          <Box>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={navigation.handleBackToOverview}
+            >
+              Back to overview
+            </Button>
+          </Box>
+        ) : null}
+        {content}
+      </Stack>
+    </Box>
+  );
 };
 
 export default FinishedIssueDialogLayout;

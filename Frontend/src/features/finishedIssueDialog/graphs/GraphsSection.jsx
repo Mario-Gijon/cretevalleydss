@@ -8,7 +8,7 @@ import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
 import { AnalyticalScatterChart } from "./components/AnalyticalScatterChart";
 import { AnalyticalConsensusLineChart } from "./components/AnalyticalConsensusLineChart";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import { normalizePlotsGraphic } from "../logic/buildFinishedIssueGraphs";
+import { getFinishedIssueGraphAvailability } from "../logic/buildFinishedIssueGraphs";
 
 /**
  * Seccion Graphs del dialogo de issue finalizado.
@@ -33,11 +33,8 @@ const GraphsSection = () => {
 
   if (!viewIssue) return null;
 
-  const preferredPlotsGraphic =
-    viewIssue?.analyticalGraphs?.plotsGraphic ??
-    viewIssue?.consensusDetails?.plotsGraphic ??
-    null;
-  const normalizedPlots = normalizePlotsGraphic(preferredPlotsGraphic);
+  const { hasConsensusEvolution: hasConsensusLine, normalizedPlots } =
+    getFinishedIssueGraphAvailability(viewIssue);
 
   const scatterPlotData =
     viewIssue?.analyticalGraphs?.scatterPlot ||
@@ -50,9 +47,6 @@ const GraphsSection = () => {
         ]
       : null);
 
-  const hasConsensusLine = Boolean(
-    viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data?.length > 1
-  );
 
   if (!scatterPlotData && !hasConsensusLine && !normalizedPlots?.reason) {
     return (
