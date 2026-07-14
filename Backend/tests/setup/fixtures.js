@@ -62,13 +62,12 @@ export const createIssueModel = async (overrides = {}) => {
     usesExpertWeights: false,
     usesFuzzyCriteriaWeights: false,
     usesCriterionTypes: false,
-    supportedDomains: {
-      numeric: {
-        continuous: true,
-        discrete: true,
+    supportedExpressionDomains: [
+      {
+        typeKey: "numericDiscrete",
+        constraints: {},
       },
-      linguistic: [],
-    },
+    ],
     request: null,
     response: null,
     ...overrides,

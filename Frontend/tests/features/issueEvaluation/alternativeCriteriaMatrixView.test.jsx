@@ -1,6 +1,22 @@
 import { createRef, useState } from "react";
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@mui/x-data-grid", () => ({
+  DataGrid: ({ rows, columns }) => (
+    <div>
+      {rows.flatMap((row) =>
+        columns
+          .filter((column) => typeof column.renderCell === "function")
+          .map((column) => (
+            <div key={`${row.id}-${column.field}`}>
+              {column.renderCell({ row })}
+            </div>
+          ))
+      )}
+    </div>
+  ),
+}));
 
 import AlternativeCriteriaMatrixView from "../../../src/features/decisionPlugins/evaluations/structures/alternativeCriteriaMatrix/AlternativeCriteriaMatrixView.jsx";
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
@@ -78,11 +94,9 @@ describe("AlternativeCriteriaMatrixView", () => {
           "alt-1": {
             "criterion-cost": {
               value: 5,
-              expressionDomain: numericContinuousDomain,
             },
             "criterion-quality": {
               value: { labelKey: "medium" },
-              expressionDomain: linguisticOrdinalDomain,
             },
           },
         }}
@@ -103,11 +117,9 @@ describe("AlternativeCriteriaMatrixView", () => {
           "alt-1": {
             "criterion-cost": {
               value: 12,
-              expressionDomain: numericContinuousDomain,
             },
             "criterion-quality": {
               value: { labelKey: "medium" },
-              expressionDomain: linguisticOrdinalDomain,
             },
           },
         }}

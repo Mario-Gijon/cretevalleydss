@@ -269,6 +269,49 @@ describe("evaluation API contracts", () => {
     });
   });
 
+  it("authenticated GET returns an empty canonical alternative matrix before the expert saves a draft", async () => {
+    const { expert, issue, alternatives, leafCriteria } =
+      await createAlternativeEvaluationIssueApiFixture();
+
+    authState.currentPayload = {
+      uid: String(expert._id),
+      role: "user",
+    };
+
+    const response = await request(app)
+      .get(`/api/issues/${issue._id}/evaluations/alternativeEvaluation`)
+      .set(getAuthHeader())
+      .expect(200);
+
+    const alternativeIds = alternatives.map((alternative) => String(alternative._id));
+    const criterionIds = leafCriteria.map((criterion) => String(criterion._id));
+    const payload = response.body.data.payload;
+
+    expect(response.body).toMatchObject({
+      success: true,
+      message: "Evaluation fetched successfully",
+      data: {
+        stage: "alternativeEvaluation",
+        structureKey: "alternativeCriteriaMatrix",
+        consensusPhase: 0,
+        completed: false,
+        submittedAt: null,
+      },
+    });
+    expect(Object.keys(payload)).toEqual(alternativeIds);
+    expect(response.body.data.evaluationContext.alternatives.map((item) => item.id))
+      .toEqual(alternativeIds);
+    expect(response.body.data.evaluationContext.leafCriteria.map((item) => item.id))
+      .toEqual(criterionIds);
+
+    for (const alternativeId of alternativeIds) {
+      expect(Object.keys(payload[alternativeId])).toEqual(criterionIds);
+      for (const criterionId of criterionIds) {
+        expect(payload[alternativeId][criterionId]).toEqual({ value: "" });
+      }
+    }
+  });
+
   it("unrelated authenticated user is rejected from evaluation routes", async () => {
     const outsider = await createConfirmedUser();
     const { issue, leafCriteria } = await createCriteriaWeightingIssueApiFixture();

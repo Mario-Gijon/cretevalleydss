@@ -22,10 +22,12 @@ describe("createIssueCriterionIds", () => {
       {
         name: "Impact",
         id: "generated-root",
+        description: "",
         children: [
           {
             name: "Cost",
             id: "generated-child",
+            description: "",
             children: [],
           },
         ],

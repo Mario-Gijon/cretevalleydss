@@ -184,7 +184,9 @@ export const resolveAssignedFuzzyValueCount = ({
   const valueCounts = new Set();
   for (const domainId of assignedDomainIds) {
     const domain = domainById.get(domainId);
-    if (!isLinguisticFuzzyExpressionDomain(domain)) continue;
+    if (!domain || !isLinguisticFuzzyExpressionDomain(domain)) {
+      return null;
+    }
 
     const valueCount = getExpressionDomainFuzzyValueCount(domain);
     if (!Number.isInteger(valueCount) || valueCount < 2) {

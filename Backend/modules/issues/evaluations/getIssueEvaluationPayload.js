@@ -25,7 +25,10 @@ export const getIssueEvaluationPayload = async ({ issueId, userId, stage }) => {
   });
 
   const payload = await structure.get({
-    payload: storedEvaluation?.payload ?? {},
+    // An absent evaluation document is semantically different from a stored
+    // (and potentially malformed) empty payload. Structures own the former
+    // case; they must still validate every persisted payload strictly.
+    payload: storedEvaluation ? storedEvaluation.payload : null,
     evaluationContext,
   });
 

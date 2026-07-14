@@ -38,8 +38,6 @@ const buildAlternativeMatrixPayload = ({
   leafCriteria,
   valuesByAlternativeId = {},
 }) => {
-  const criterionId = String(leafCriteria[0]._id);
-
   return Object.fromEntries(
     alternatives.map((alternative) => {
       const alternativeId = String(alternative._id);
@@ -47,13 +45,12 @@ const buildAlternativeMatrixPayload = ({
 
       return [
         alternativeId,
-        rawValue === undefined
-          ? {}
-          : {
-              [criterionId]: {
-                value: rawValue,
-              },
-            },
+        Object.fromEntries(
+          leafCriteria.map((criterion) => [
+            String(criterion._id),
+            { value: rawValue ?? "" },
+          ])
+        ),
       ];
     })
   );
@@ -488,7 +485,7 @@ describe("evaluation draft save behavior", () => {
     });
   });
 
-  it("accepted expert can save an alternativeEvaluation draft with normalized flexible payload", async () => {
+  it("accepted expert can save an alternativeEvaluation draft with a canonical payload", async () => {
     const {
       issue,
       expert,
@@ -506,7 +503,7 @@ describe("evaluation draft save behavior", () => {
         alternatives,
         leafCriteria,
         valuesByAlternativeId: {
-          [firstAlternativeId]: "7.5",
+          [firstAlternativeId]: 7,
         },
       }),
     });
@@ -528,18 +525,8 @@ describe("evaluation draft save behavior", () => {
     });
     expect(stored.completed).toBe(false);
     expect(stored.submittedAt).toBeNull();
-    expect(stored.payload[firstAlternativeId][criterionId]).toMatchObject({
-      value: 7.5,
-      expressionDomain: expect.objectContaining({
-        type: "numeric",
-      }),
-    });
-    expect(stored.payload[secondAlternativeId][criterionId]).toMatchObject({
-      value: "",
-      expressionDomain: expect.objectContaining({
-        type: "numeric",
-      }),
-    });
+    expect(stored.payload[firstAlternativeId][criterionId]).toEqual({ value: 7 });
+    expect(stored.payload[secondAlternativeId][criterionId]).toEqual({ value: "" });
   });
 
   it("saving a draft twice updates the existing document and does not touch other experts or issues", async () => {
@@ -675,6 +662,65 @@ describe("get evaluation payload behavior", () => {
       collectiveReference: null,
       completed: false,
       submittedAt: null,
+    });
+  });
+
+  it("returns a complete empty alternative matrix for an accepted expert without an evaluation", async () => {
+    const { issue, expert, alternatives, leafCriteria } =
+      await createAlternativeEvaluationFixture({
+        consensusPhase: 2,
+      });
+
+    const result = await getIssueEvaluationPayload({
+      issueId: issue._id,
+      userId: expert._id,
+      stage: "alternativeEvaluation",
+    });
+
+    const alternativeIds = alternatives.map((alternative) => String(alternative._id));
+    const criterionIds = leafCriteria.map((criterion) => String(criterion._id));
+
+    expect(result).toMatchObject({
+      stage: "alternativeEvaluation",
+      structureKey: "alternativeCriteriaMatrix",
+      consensusPhase: 2,
+      completed: false,
+      submittedAt: null,
+    });
+    expect(Object.keys(result.payload)).toEqual(alternativeIds);
+    expect(result.evaluationContext.alternatives.map((alternative) => alternative.id))
+      .toEqual(alternativeIds);
+    expect(result.evaluationContext.leafCriteria.map((criterion) => criterion.id))
+      .toEqual(criterionIds);
+
+    for (const alternativeId of alternativeIds) {
+      expect(Object.keys(result.payload[alternativeId])).toEqual(criterionIds);
+      for (const criterionId of criterionIds) {
+        expect(result.payload[alternativeId][criterionId]).toEqual({ value: "" });
+      }
+    }
+  });
+
+  it("rejects a malformed stored alternative matrix instead of replacing it with an empty matrix", async () => {
+    const { issue, expert, alternatives } = await createAlternativeEvaluationFixture();
+
+    await createIssueEvaluationFixture({
+      issueId: issue._id,
+      expertId: expert._id,
+      stage: "alternativeEvaluation",
+      consensusPhase: 0,
+      payload: {},
+    });
+
+    await expect(
+      getIssueEvaluationPayload({
+        issueId: issue._id,
+        userId: expert._id,
+        stage: "alternativeEvaluation",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      field: `payload.${String(alternatives[0]._id)}`,
     });
   });
 

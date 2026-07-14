@@ -336,6 +336,10 @@ export const ViewExpressionsDomainDialog = ({
               ) : null}
             </Stack>
 
+            <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+              {`${visibleDomainCount} of ${allManagedDomains.length} domains`}
+            </Typography>
+
             {visibleDomains.length === 0 ? (
               <Box sx={{ py: 3 }}>
                 <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700 }}>

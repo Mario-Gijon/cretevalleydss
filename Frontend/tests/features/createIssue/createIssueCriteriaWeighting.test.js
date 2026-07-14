@@ -15,7 +15,6 @@ import {
   createIssueSingleLeafCriteriaFixture,
   criteriaWeightModelFixture,
   expressionLinguisticDomainFixture,
-  expressionLinguisticDomainSevenFixture,
   fuzzyCriteriaWeightModelFixture,
   globalContinuousDomainFixture,
 } from "../../mocks/fixtures/createIssue.fixtures.js";
@@ -113,7 +112,7 @@ describe("createIssueCriteriaWeighting", () => {
         globalDomains: [],
         expressionDomains: [expressionLinguisticDomainFixture],
       })
-    ).toBe(5);
+    ).toBe(3);
   });
 
   it("returns null safely when assignments or domain definitions are missing or inconsistent", () => {
@@ -132,14 +131,13 @@ describe("createIssueCriteriaWeighting", () => {
           mode: "byCriterion",
           domainsByCriterion: {
             Cost: expressionLinguisticDomainFixture._id,
-            Speed: expressionLinguisticDomainSevenFixture._id,
+            Speed: "missing-domain",
           },
         },
         leafCriteria: createIssueLeafCriteriaFixture,
         globalDomains: [],
         expressionDomains: [
           expressionLinguisticDomainFixture,
-          expressionLinguisticDomainSevenFixture,
         ],
       })
     ).toBeNull();

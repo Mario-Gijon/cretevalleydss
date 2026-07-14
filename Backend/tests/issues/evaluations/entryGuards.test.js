@@ -33,8 +33,6 @@ const buildAlternativeMatrixPayload = ({
   leafCriteria,
   valuesByAlternativeId = {},
 }) => {
-  const criterionId = String(leafCriteria[0]._id);
-
   return Object.fromEntries(
     alternatives.map((alternative) => {
       const alternativeId = String(alternative._id);
@@ -42,13 +40,12 @@ const buildAlternativeMatrixPayload = ({
 
       return [
         alternativeId,
-        rawValue === undefined
-          ? {}
-          : {
-              [criterionId]: {
-                value: rawValue,
-              },
-            },
+        Object.fromEntries(
+          leafCriteria.map((criterion) => [
+            String(criterion._id),
+            { value: rawValue ?? "" },
+          ])
+        ),
       ];
     })
   );

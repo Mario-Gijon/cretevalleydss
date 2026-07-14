@@ -84,6 +84,15 @@ const fuzzyDomainFixture = {
   },
 };
 
+const allDomainFixtures = [
+  globalDomainFixture,
+  userDomainFixture,
+  ordinalDomainFixture,
+  fuzzyDomainFixture,
+  largeDiscreteDomainFixture,
+];
+const totalDomainCount = allDomainFixtures.length;
+
 describe("ViewExpressionsDomainDialog", () => {
   it("shows compact filtering controls and renders numeric and linguistic family columns", async () => {
     const handleOpenEdit = vi.fn();
@@ -139,7 +148,9 @@ describe("ViewExpressionsDomainDialog", () => {
       "Extended discrete domain",
     ]);
     expect(linguisticNames).toEqual(["Priority scale", "Fuzzy suitability"]);
-    expect(screen.getByText("5 of 5 domains")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${totalDomainCount} of ${totalDomainCount} domains`)
+    ).toBeInTheDocument();
   });
 
   it("does not auto-close when only global domains are available", async () => {
@@ -197,7 +208,7 @@ describe("ViewExpressionsDomainDialog", () => {
     await user.click(screen.getByRole("option", { name: "Numeric" }));
 
     expect(screen.getByLabelText("Subtype")).toBeInTheDocument();
-    expect(screen.getByText("3 of 5 domains")).toBeInTheDocument();
+    expect(screen.getByText(`3 of ${totalDomainCount} domains`)).toBeInTheDocument();
     expect(screen.queryByText("Priority scale")).not.toBeInTheDocument();
     expect(screen.queryByText("Fuzzy suitability")).not.toBeInTheDocument();
     expect(screen.getByTestId("expression-domain-numeric-only-layout")).toBeInTheDocument();
@@ -219,7 +230,7 @@ describe("ViewExpressionsDomainDialog", () => {
 
     await user.type(screen.getByPlaceholderText("Search domains by name"), "missing");
     expect(screen.getByText("No expression domains match the current filters.")).toBeInTheDocument();
-    expect(screen.getByText("0 of 5 domains")).toBeInTheDocument();
+    expect(screen.getByText(`0 of ${totalDomainCount} domains`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
