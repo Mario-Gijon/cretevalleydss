@@ -2,7 +2,7 @@ import { Chip, List, ListItem, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
-import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { SectionCard } from "../shared/components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 
 /**

@@ -8,15 +8,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
-
-const TAB_LABELS = {
-  overview: "Overview",
-  results: "Results",
-  analysis: "Analysis",
-  evaluations: "Evaluations",
-  consensus: "Consensus",
-  models: "Models",
-};
+import FinishedIssueNavigation from "./FinishedIssueNavigation";
 
 const FinishedIssueDialogHeader = () => {
   const theme = useTheme();
@@ -46,9 +38,7 @@ const FinishedIssueDialogHeader = () => {
         {Array.from({ length: header.roundsCount }).map((_, index) => <Tab key={index} label={formatFinishedIssuePhaseLabel({ phaseIndex: index, phasesCount: header.roundsCount })} />)}
       </Tabs> : null}
 
-      <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.handleSelectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}>
-        {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} label={TAB_LABELS[tab]} />)}
-      </Tabs>
+      <FinishedIssueNavigation navigation={navigation} />
     </Stack>
   </Box>;
 };

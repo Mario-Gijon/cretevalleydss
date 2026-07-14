@@ -6,7 +6,7 @@ import {
   FINISHED_ISSUE_VIEWS,
   getFinishedIssueParentTab,
   getFinishedIssueTabDefaultView,
-} from "../../../src/features/finishedIssueDialog/logic/finishedIssueNavigation.js";
+} from "../../../src/features/finishedIssueDialog/shared/logic/finishedIssueNavigation.js";
 
 describe("finished issue navigation", () => {
   it("maps detailed views to their parent tabs", () => {

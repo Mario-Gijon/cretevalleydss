@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getFinishedIssueGraphAvailability } from "../../../src/features/finishedIssueDialog/logic/buildFinishedIssueGraphs.js";
+import { getFinishedIssueGraphAvailability } from "../../../src/features/finishedIssueDialog/shared/logic/buildFinishedIssueGraphs.js";
 
 describe("getFinishedIssueGraphAvailability", () => {
   it("recognizes direct and normalized performance maps", () => {

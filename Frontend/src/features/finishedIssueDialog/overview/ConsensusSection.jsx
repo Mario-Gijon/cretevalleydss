@@ -1,7 +1,7 @@
 import { Stack, Typography } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 
-import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { SectionCard } from "../shared/components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 
 const ConsensusSection = () => {

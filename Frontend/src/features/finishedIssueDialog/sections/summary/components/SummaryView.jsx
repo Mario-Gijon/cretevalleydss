@@ -1,0 +1,30 @@
+import { Box, Stack } from "@mui/material";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+
+import { SectionCard } from "../../../shared/components/FinishedIssueDialogPrimitives";
+import { summaryDetailsGridSx, summaryExpertsGridSx } from "../summary.styles";
+import AlternativesSection from "./AlternativesSection";
+import ConsensusConfiguration from "./ConsensusConfiguration";
+import CriteriaSection from "./CriteriaSection";
+import DescriptionSection from "./DescriptionSection";
+import ExpertsSection from "./ExpertsSection";
+import GeneralInformation from "./GeneralInformation";
+
+const SummaryView = ({ data, state, actions }) => (
+  <SectionCard title="Summary" icon={<AssignmentTurnedInIcon fontSize="small" />}>
+    <Stack spacing={1.4}>
+      <GeneralInformation general={data.general} />
+      <DescriptionSection description={data.description} expanded={state.descriptionExpanded} onToggle={actions.toggleDescription} />
+      <Box sx={summaryDetailsGridSx}>
+        <CriteriaSection criteria={data.criteria} expanded={state.criteriaExpanded} onToggle={actions.toggleCriteria} />
+        <AlternativesSection alternatives={data.alternatives} expanded={state.alternativesExpanded} onToggle={actions.toggleAlternatives} />
+      </Box>
+      <Box sx={summaryExpertsGridSx(Boolean(data.consensus))}>
+        <ExpertsSection experts={data.experts} expanded={state.expertsExpanded} onToggle={actions.toggleExperts} />
+        <ConsensusConfiguration consensus={data.consensus} />
+      </Box>
+    </Stack>
+  </SectionCard>
+);
+
+export default SummaryView;

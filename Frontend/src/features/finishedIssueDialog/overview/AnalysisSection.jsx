@@ -1,7 +1,7 @@
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import { Alert, Typography } from "@mui/material";
 
-import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { SectionCard } from "../shared/components/FinishedIssueDialogPrimitives";
 
 /**
  * Results analysis placeholder.

@@ -12,7 +12,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
-import { SectionCard } from "../components/FinishedIssueDialogPrimitives";
+import { SectionCard } from "../shared/components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 import { Fragment } from "react";

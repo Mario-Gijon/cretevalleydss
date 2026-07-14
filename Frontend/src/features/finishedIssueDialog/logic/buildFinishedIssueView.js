@@ -1,4 +1,4 @@
-import { normalizePlotsGraphic } from "./buildFinishedIssueGraphs";
+import { normalizePlotsGraphic } from "../shared/logic/buildFinishedIssueGraphs";
 
 const deepClone = (value) =>
   typeof structuredClone === "function"

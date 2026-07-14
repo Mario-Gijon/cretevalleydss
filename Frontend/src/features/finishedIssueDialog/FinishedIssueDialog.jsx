@@ -3,12 +3,12 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
-import { getFinishedIssueDialogAuroraBg } from "../styles/finishedIssueDialog.styles";
-import { FinishedIssueDialogProvider } from "../context/finishedIssueDialog.provider";
-import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import FinishedIssueDialogHeader from "./FinishedIssueDialogHeader";
-import FinishedIssueDialogLayout from "./FinishedIssueDialogLayout";
-import ModelsSectionAddDialog from "../models/components/ModelsSectionAddDialog";
+import { getFinishedIssueDialogAuroraBg } from "./styles/finishedIssueDialog.styles";
+import { FinishedIssueDialogProvider } from "./context/finishedIssueDialog.provider";
+import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.context";
+import FinishedIssueDialogHeader from "./shell/FinishedIssueDialogHeader";
+import FinishedIssueDialogLayout from "./shell/FinishedIssueDialogLayout";
+import FinishedIssueAddModelHost from "./shell/FinishedIssueAddModelHost";
 
 /**
  * Contenido interno del dialogo de finished issue.
@@ -48,7 +48,7 @@ const FinishedIssueDialogBody = () => {
           <FinishedIssueDialogLayout />
         </Box>
       )}
-      <ModelsSectionAddDialog />
+      <FinishedIssueAddModelHost />
     </GlassDialog>
   );
 };

@@ -38,7 +38,7 @@ import {
   FINISHED_ISSUE_VIEWS,
   getFinishedIssueParentTab,
   getFinishedIssueTabDefaultView,
-} from "../logic/finishedIssueNavigation";
+} from "../shared/logic/finishedIssueNavigation";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 
 const unwrap = (response) =>

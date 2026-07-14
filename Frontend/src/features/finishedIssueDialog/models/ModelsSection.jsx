@@ -7,7 +7,7 @@ import {
   Pill,
   SectionCard,
   SummaryAccordionRow,
-} from "../components/FinishedIssueDialogPrimitives";
+} from "../shared/components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { buildParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
 
