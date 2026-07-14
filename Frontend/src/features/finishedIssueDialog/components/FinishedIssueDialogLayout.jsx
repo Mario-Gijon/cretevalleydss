@@ -1,77 +1,33 @@
-import { Box } from "@mui/material";
+import { Box, Button, Stack } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-import { getFinishedIssueDialogGridAreas } from "../styles/finishedIssueDialog.styles";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import AnalysisSection from "../overview/AnalysisSection";
-import RankingSection from "../overview/RankingSection";
+import { FINISHED_ISSUE_VIEWS } from "../logic/finishedIssueNavigation";
+import FinishedIssueOverview from "../overview/FinishedIssueOverview";
 import SummarySection from "../overview/SummarySection";
+import RankingSection from "../overview/RankingSection";
+import AnalysisSection from "../overview/AnalysisSection";
+import ConsensusSection from "../overview/ConsensusSection";
 import GraphsSection from "../graphs/GraphsSection";
-import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
-import ModelsSection from "../models/ModelsSection";
 import RatingsSection from "../evaluations/RatingsSection";
+import ModelsSection from "../models/ModelsSection";
+import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
 
-/**
- * Layout grid del contenido del dialogo de issue finalizado.
- *
- * @param {Object} props Props del layout.
- * @param {boolean} props.isMdUp Indica si se usa layout de escritorio.
- * @returns {JSX.Element}
- */
-const FinishedIssueDialogLayout = ({ isMdUp }) => {
-  const { modelSpecificOutputSection } = useFinishedIssueDialogContext();
-  const hasModelSpecificOutput = Boolean(modelSpecificOutputSection?.hasOutput);
-  const rawOutput = modelSpecificOutputSection?.rawOutput ?? null;
-  const rawOutputPretty = modelSpecificOutputSection?.rawOutputPretty ?? "";
-  const modelExecution = modelSpecificOutputSection?.modelExecution ?? null;
+const FinishedIssueDialogLayout = () => {
+  const { navigation, modelSpecificOutputSection } = useFinishedIssueDialogContext();
+  const view = navigation.activeView;
+  const content = {
+    [FINISHED_ISSUE_VIEWS.OVERVIEW]: <FinishedIssueOverview />,
+    [FINISHED_ISSUE_VIEWS.ISSUE_DETAILS]: <SummarySection />,
+    [FINISHED_ISSUE_VIEWS.RESULTS]: <Stack spacing={2}><RankingSection /><GraphsSection /></Stack>,
+    [FINISHED_ISSUE_VIEWS.GRAPHS]: <GraphsSection />,
+    [FINISHED_ISSUE_VIEWS.ANALYSIS]: <AnalysisSection />,
+    [FINISHED_ISSUE_VIEWS.EVALUATIONS]: <RatingsSection />,
+    [FINISHED_ISSUE_VIEWS.CONSENSUS]: <ConsensusSection />,
+    [FINISHED_ISSUE_VIEWS.MODELS]: <Stack spacing={2}><ModelsSection />{modelSpecificOutputSection?.hasOutput ? <ModelSpecificOutputSection {...modelSpecificOutputSection} /> : null}</Stack>,
+  }[view] || <FinishedIssueOverview />;
 
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        gap: 2,
-        gridTemplateColumns: isMdUp ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-        gridTemplateAreas: getFinishedIssueDialogGridAreas(
-          isMdUp,
-          hasModelSpecificOutput
-        ),
-        alignItems: "stretch",
-      }}
-    >
-      <Box sx={{ gridArea: "summary", minWidth: 0 }}>
-        <SummarySection />
-      </Box>
-
-      <Box sx={{ gridArea: "ranking", minWidth: 0 }}>
-        <RankingSection />
-      </Box>
-
-      <Box sx={{ gridArea: "analysis", minWidth: 0 }}>
-        <AnalysisSection />
-      </Box>
-
-      {hasModelSpecificOutput ? (
-        <Box sx={{ gridArea: "modelSpecificOutput", minWidth: 0 }}>
-          <ModelSpecificOutputSection
-            rawOutput={rawOutput}
-            rawOutputPretty={rawOutputPretty}
-            modelExecution={modelExecution}
-          />
-        </Box>
-      ) : null}
-
-      <Box sx={{ gridArea: "models", minWidth: 0 }}>
-        <ModelsSection />
-      </Box>
-
-      <Box sx={{ gridArea: "graphs", minWidth: 0 }}>
-        <GraphsSection />
-      </Box>
-
-      <Box sx={{ gridArea: "ratings", minWidth: 0 }}>
-        <RatingsSection />
-      </Box>
-    </Box>
-  );
+  return <Stack spacing={1.25}>{view !== FINISHED_ISSUE_VIEWS.OVERVIEW ? <Box><Button size="small" startIcon={<ArrowBackIcon />} onClick={navigation.handleBackToOverview}>Back to overview</Button></Box> : null}{content}</Stack>;
 };
 
 export default FinishedIssueDialogLayout;

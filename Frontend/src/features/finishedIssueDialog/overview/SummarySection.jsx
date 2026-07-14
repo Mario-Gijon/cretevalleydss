@@ -76,11 +76,11 @@ const SummarySection = () => {
           onToggle={() => setOpenAlternativesList((value) => !value)}
         >
           <Stack spacing={0.5}>
-            {(viewIssue?.summary?.alternatives || []).map((alternative, index) => (
-              <Typography key={index} variant="body2" sx={{ fontWeight: 850 }}>
-                {alternative}
-              </Typography>
-            ))}
+            {(viewIssue?.summary?.alternatives || []).map((alternative, index) => {
+              const item = alternative && typeof alternative === "object" ? alternative : null;
+              const name = item?.name || (typeof alternative === "string" ? alternative : "—");
+              return <Stack key={item?.id || item?._id || `${name}-${index}`} spacing={0.1}><Typography variant="body2" sx={{ fontWeight: 850 }}>{name}</Typography>{item?.description ? <Typography variant="caption" color="text.secondary">{item.description}</Typography> : null}</Stack>;
+            })}
           </Stack>
         </SummaryAccordionRow>
 

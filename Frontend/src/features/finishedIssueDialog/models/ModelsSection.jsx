@@ -1,8 +1,5 @@
-import { Box, Button, Chip, Divider, Stack, Typography } from "@mui/material";
+import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import AddIcon from "@mui/icons-material/Add";
-import TuneIcon from "@mui/icons-material/Tune";
-import LayersIcon from "@mui/icons-material/Layers";
 import ScienceIcon from "@mui/icons-material/Science";
 
 import ModelParamsView from "./components/ModelParamsView";
@@ -12,7 +9,6 @@ import {
   SummaryAccordionRow,
 } from "../components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import ModelsSectionAddDialog from "./components/ModelsSectionAddDialog";
 import { buildParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
 
 /**
@@ -28,12 +24,8 @@ const ModelsSection = () => {
   const {
     selectedRunKey,
     handleRemoveSelectedRun,
-    handleSelectRun,
-    runs,
     runsLoading,
     viewIssue,
-    getRunId,
-    getRunLabel,
     openParamsViewer,
     setOpenParamsViewer,
     baseModelName,
@@ -46,7 +38,6 @@ const ModelsSection = () => {
     selectedRunLabel,
     selectedParamsForViewer,
     selectedResolved,
-    addDialog,
   } = modelsSection;
   const parameterContext = buildParameterContext({
     model: selectedRunKey === "base"
@@ -84,71 +75,10 @@ const ModelsSection = () => {
               </Button>
             ) : null}
 
-            <Button
-              size="small"
-              variant="outlined"
-              color="secondary"
-              onClick={addDialog.openAddDialog}
-              startIcon={<AddIcon />}
-              sx={{ borderColor: "rgba(255,255,255,0.16)" }}
-            >
-              Add model
-            </Button>
           </Stack>
         }
       >
         <Stack spacing={1.4}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-            <Chip
-              icon={<LayersIcon />}
-              label="Base"
-              clickable
-              onClick={() => handleSelectRun("base")}
-              color="secondary"
-              variant={selectedRunKey === "base" ? "filled" : "outlined"}
-              sx={{
-                fontWeight: 950,
-                borderColor: "rgba(255,255,255,0.18)",
-                bgcolor:
-                  selectedRunKey === "base"
-                    ? alpha(theme.palette.secondary.main, 0.8)
-                    : "transparent",
-              }}
-            />
-
-            {runs.map((run) => {
-              const id = getRunId(run);
-              if (!id) return null;
-
-              const label = getRunLabel(run);
-              const selected = selectedRunKey === id;
-
-              return (
-                <Chip
-                  key={id}
-                  icon={<TuneIcon />}
-                  label={label}
-                  clickable
-                  onClick={() => handleSelectRun(id)}
-                  color="secondary"
-                  variant={selected ? "filled" : "outlined"}
-                  sx={{
-                    fontWeight: 950,
-                    borderColor: "rgba(255,255,255,0.18)",
-                    bgcolor: selected
-                      ? alpha(theme.palette.secondary.main, 0.8)
-                      : "transparent",
-                    maxWidth: 320,
-                    "& .MuiChip-label": {
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    },
-                  }}
-                />
-              );
-            })}
-          </Stack>
-
           {runsLoading ? (
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
               Loading models…
@@ -219,7 +149,6 @@ const ModelsSection = () => {
         </Stack>
       </SectionCard>
 
-      <ModelsSectionAddDialog />
     </>
   );
 };

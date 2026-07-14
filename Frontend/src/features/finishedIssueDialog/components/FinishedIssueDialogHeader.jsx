@@ -1,155 +1,56 @@
-import { Avatar, Box, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from "@mui/material";
+import { Avatar, Box, Button, Chip, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import AddIcon from "@mui/icons-material/Add";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import TuneIcon from "@mui/icons-material/Tune";
 
-import { Pill } from "./FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import { formatConsensusRoundLabel } from "../logic/formatConsensusRoundLabel";
+import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
 
-/**
- * Cabecera sticky del dialogo de issue finalizado.
- *
- * @returns {JSX.Element}
- */
+const TAB_LABELS = {
+  overview: "Overview",
+  results: "Results",
+  analysis: "Analysis",
+  evaluations: "Evaluations",
+  consensus: "Consensus",
+  models: "Models",
+};
+
 const FinishedIssueDialogHeader = () => {
   const theme = useTheme();
+  const { selectedIssue, setOpenRemoveConfirmDialog, handleCloseFinishedIssueDialog, header, navigation } = useFinishedIssueDialogContext();
+  const runLabel = (run) => `${header.getRunLabel(run)} · ${run?.targetModelName || run?.modelName || "—"}`;
 
-  const {
-    selectedIssue,
-    setOpenRemoveConfirmDialog,
-    handleCloseFinishedIssueDialog,
-    header,
-  } = useFinishedIssueDialogContext();
-
-  const {
-    selectedRunKey,
-    selectedModelNameView,
-    showRounds,
-    currentPhaseIndex,
-    roundsCount,
-    handleChangePhase,
-  } = header;
-
-  return (
-    <Box
-      sx={{
-        px: { xs: 1.5, md: 2.25 },
-        pt: 1.35,
-        pb: 1.15,
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-        borderBottom: "1px solid rgba(255,255,255,0.10)",
-        background: alpha("#0B1118", 0.55),
-        backdropFilter: "blur(12px)",
-      }}
-    >
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
-        <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0 }}>
-          <Avatar
-            sx={{
-              width: 44,
-              height: 44,
-              bgcolor: alpha(theme.palette.success.main, 0.14),
-              color: "success.main",
-              border: "1px solid rgba(255,255,255,0.10)",
-            }}
-          >
-            <AssignmentTurnedInIcon />
-          </Avatar>
-
-          <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 980,
-                lineHeight: 1.05,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              title={selectedIssue?.name || ""}
-            >
-              {selectedIssue?.name || "Finished issue"}
-            </Typography>
-
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-              <Pill tone={selectedRunKey === "base" ? "success" : "secondary"}>
-                {selectedRunKey === "base" ? "Base" : "Simulation"}
-              </Pill>
-              <Pill tone="info">{selectedModelNameView}</Pill>
-            </Stack>
-          </Stack>
+  return <Box sx={{ px: { xs: 1.5, md: 2.25 }, pt: 1.25, pb: 1, position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid rgba(255,255,255,0.10)", background: alpha("#0B1118", 0.72), backdropFilter: "blur(12px)" }}>
+    <Stack spacing={1.1}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.25}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+          <Avatar sx={{ width: 40, height: 40, bgcolor: alpha(theme.palette.success.main, 0.14), color: "success.main" }}><AssignmentTurnedInIcon /></Avatar>
+          <Typography variant="h6" noWrap sx={{ fontWeight: 950, minWidth: 0 }} title={selectedIssue?.name || ""}>{selectedIssue?.name || "Finished issue"}</Typography>
         </Stack>
-
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Tooltip title="Remove issue" arrow>
-            <IconButton
-              onClick={() => setOpenRemoveConfirmDialog(true)}
-              sx={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                bgcolor: alpha(theme.palette.error.main, 0.1),
-                "&:hover": { bgcolor: alpha(theme.palette.error.main, 0.14) },
-              }}
-            >
-              <DeleteOutlineIcon color="error" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Close" arrow>
-            <IconButton
-              onClick={handleCloseFinishedIssueDialog}
-              sx={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                bgcolor: alpha(theme.palette.common.white, 0.06),
-                "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.09) },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Tooltip>
+        <Stack direction="row" spacing={0.75} flexShrink={0}>
+          <Tooltip title="Remove issue"><IconButton onClick={() => setOpenRemoveConfirmDialog(true)}><DeleteOutlineIcon color="error" /></IconButton></Tooltip>
+          <Tooltip title="Close"><IconButton onClick={handleCloseFinishedIssueDialog}><CloseIcon /></IconButton></Tooltip>
         </Stack>
       </Stack>
 
-      {showRounds ? (
-        <Box sx={{ mt: 1.25 }}>
-          <Tabs
-            value={currentPhaseIndex}
-            onChange={(_, value) => handleChangePhase(value)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            indicatorColor="secondary"
-            textColor="inherit"
-            sx={{
-              minHeight: 40,
-              "& .MuiTab-root": {
-                minHeight: 40,
-                textTransform: "none",
-                fontWeight: 950,
-                borderRadius: 999,
-                px: 2,
-                mr: 1,
-                bgcolor: alpha(theme.palette.common.white, 0.04),
-                border: "1px solid rgba(255,255,255,0.10)",
-              },
-              "& .MuiTab-root.Mui-selected": {
-                bgcolor: alpha(theme.palette.secondary.main, 0.12),
-                borderColor: alpha(theme.palette.secondary.main, 0.35),
-              },
-              "& .MuiTabs-indicator": { height: 0 },
-            }}
-          >
-            {Array.from({ length: roundsCount }).map((_, index) => (
-              <Tab key={index} label={formatConsensusRoundLabel(index)} />
-            ))}
-          </Tabs>
-        </Box>
-      ) : null}
-    </Box>
-  );
+      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
+        <Chip label={`Base · ${header.selectedModelNameView}`} icon={<TuneIcon />} clickable onClick={() => header.handleSelectRun("base")} color={header.selectedRunKey === "base" ? "secondary" : "default"} variant={header.selectedRunKey === "base" ? "filled" : "outlined"} sx={{ maxWidth: { xs: "100%", sm: 260 }, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+        {header.runs.map((run) => { const id = header.getRunId(run); return id ? <Chip key={id} label={runLabel(run)} clickable onClick={() => header.handleSelectRun(id)} color={header.selectedRunKey === id ? "secondary" : "default"} variant={header.selectedRunKey === id ? "filled" : "outlined"} sx={{ maxWidth: { xs: "100%", sm: 280 }, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} /> : null; })}
+        <Button size="small" color="secondary" startIcon={<AddIcon />} onClick={header.openAddDialog}>Add model</Button>
+      </Stack>
+
+      {header.showRounds ? <Tabs value={header.currentPhaseIndex} onChange={(_, value) => header.handleChangePhase(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 36, "& .MuiTab-root": { minHeight: 36, textTransform: "none", fontWeight: 800 } }}>
+        {Array.from({ length: header.roundsCount }).map((_, index) => <Tab key={index} label={formatFinishedIssuePhaseLabel({ phaseIndex: index, phasesCount: header.roundsCount })} />)}
+      </Tabs> : null}
+
+      <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.handleSelectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}>
+        {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} label={TAB_LABELS[tab]} />)}
+      </Tabs>
+    </Stack>
+  </Box>;
 };
 
 export default FinishedIssueDialogHeader;

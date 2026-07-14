@@ -1,7 +1,5 @@
-import { Backdrop, Box, IconButton, Stack, useMediaQuery } from "@mui/material";
+import { Backdrop, Box } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
@@ -10,6 +8,7 @@ import { FinishedIssueDialogProvider } from "../context/finishedIssueDialog.prov
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import FinishedIssueDialogHeader from "./FinishedIssueDialogHeader";
 import FinishedIssueDialogLayout from "./FinishedIssueDialogLayout";
+import ModelsSectionAddDialog from "../models/components/ModelsSectionAddDialog";
 
 /**
  * Contenido interno del dialogo de finished issue.
@@ -18,13 +17,10 @@ import FinishedIssueDialogLayout from "./FinishedIssueDialogLayout";
  */
 const FinishedIssueDialogBody = () => {
   const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-
   const {
     openFinishedIssueDialog,
     handleCloseFinishedIssueDialog,
     dialog,
-    roundsNavigation,
   } = useFinishedIssueDialogContext();
 
   return (
@@ -49,41 +45,10 @@ const FinishedIssueDialogBody = () => {
         </Backdrop>
       ) : (
         <Box sx={{ px: { xs: 1.5, md: 2.25 }, py: 2 }}>
-          <FinishedIssueDialogLayout isMdUp={isMdUp} />
-
-          {roundsNavigation.showRounds ? (
-            <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "center" }}>
-              <IconButton
-                color="secondary"
-                disabled={roundsNavigation.currentPhaseIndex === 0}
-                onClick={roundsNavigation.handlePreviousRound}
-                sx={{
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  bgcolor: alpha(theme.palette.common.white, 0.06),
-                  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.09) },
-                }}
-              >
-                <ArrowBackIosIcon />
-              </IconButton>
-
-              <IconButton
-                color="secondary"
-                disabled={
-                  roundsNavigation.currentPhaseIndex === roundsNavigation.roundsCount - 1
-                }
-                onClick={roundsNavigation.handleNextRound}
-                sx={{
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  bgcolor: alpha(theme.palette.common.white, 0.06),
-                  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.09) },
-                }}
-              >
-                <ArrowForwardIosIcon />
-              </IconButton>
-            </Stack>
-          ) : null}
+          <FinishedIssueDialogLayout />
         </Box>
       )}
+      <ModelsSectionAddDialog />
     </GlassDialog>
   );
 };
