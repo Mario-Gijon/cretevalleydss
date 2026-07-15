@@ -1,20 +1,54 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Stack,
+  Typography,
+} from "@mui/material";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
 import { SectionCard } from "../../../shared/components/FinishedIssueDialogPrimitives";
-import { dashboardActionSx, dashboardCardContentSx } from "../dashboard.styles";
+import {
+  dashboardCardActionSx,
+  dashboardCardBodySx,
+  dashboardCardFooterSx,
+  dashboardCardInnerSx,
+  dashboardMetaTextSx,
+} from "../dashboard.styles";
 
 export const MetaText = ({ children }) => (
-  <Typography variant="caption" color="text.secondary">
+  <Typography variant="caption" sx={dashboardMetaTextSx}>
     {children}
   </Typography>
 );
 
-const DashboardCardShell = ({ title, icon, actionLabel, onAction, children }) => (
-  <SectionCard title={title} icon={icon} sx={{ height: "100%" }}>
-    <Stack spacing={1} sx={dashboardCardContentSx}>
-      <Box>{children}</Box>
-      <Box sx={{ mt: "auto", pt: 1 }}>
-        <Button variant="outlined" color="secondary" size="small" onClick={onAction} sx={dashboardActionSx}>
+const DashboardCardShell = ({
+  title,
+  icon,
+  actionLabel,
+  onAction,
+  children,
+}) => (
+  <SectionCard
+    title={title}
+    icon={icon}
+    sx={{
+      height: "100%",
+    }}
+  >
+    <Stack sx={dashboardCardInnerSx}>
+      <Box sx={dashboardCardBodySx}>
+        {children}
+      </Box>
+
+      <Box sx={dashboardCardFooterSx}>
+        <Button
+          variant="outlined"
+          color="secondary"
+          size="small"
+          endIcon={<ArrowForwardRoundedIcon />}
+          onClick={onAction}
+          sx={dashboardCardActionSx}
+        >
           {actionLabel}
         </Button>
       </Box>

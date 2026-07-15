@@ -1,6 +1,6 @@
 import {
-  buildFinishedPayload,
-  supportsFinishedPayload,
+  buildFinishedIssuePayload,
+  supportsFinishedIssuePayload,
 } from "./finishedPayload/index.js";
 import {
   assertUserCanAccessIssue,
@@ -15,6 +15,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId, userId }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
     populate: [
       { path: "model" },
+      { path: "criteriaWeightingModel" },
       { path: "ownerId", select: "email name" },
       { path: "createdBy", select: "email name" },
     ],
@@ -27,7 +28,7 @@ export const getFinishedIssueInfoPayload = async ({ issueId, userId }) => {
     message: "You are not allowed to access this finished issue",
   });
 
-  if (!supportsFinishedPayload(issue)) {
+  if (!supportsFinishedIssuePayload(issue)) {
     throw createInternalError(
       "Finished issue requires finished evaluation payload support",
       {
@@ -39,5 +40,5 @@ export const getFinishedIssueInfoPayload = async ({ issueId, userId }) => {
     );
   }
 
-  return buildFinishedPayload({ issue });
+  return buildFinishedIssuePayload({ issue });
 };

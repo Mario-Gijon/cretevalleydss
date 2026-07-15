@@ -9,13 +9,14 @@ const authState = vi.hoisted(() => ({
 }));
 
 const finishedPayloadState = vi.hoisted(() => ({
-  buildFinishedPayload: vi.fn(async ({ issue }) => ({
-    summary: {
+  buildFinishedIssuePayload: vi.fn(async ({ issue }) => ({
+    issue: {
+      id: String(issue._id),
       name: issue.name,
     },
     scenarios: [],
   })),
-  supportsFinishedPayload: vi.fn(() => true),
+  supportsFinishedIssuePayload: vi.fn(() => true),
 }));
 
 vi.mock("jsonwebtoken", () => ({
@@ -32,8 +33,8 @@ vi.mock("../../../services/email.service.js", () => ({
 }));
 
 vi.mock("../../../modules/issues/finished/finishedPayload/index.js", () => ({
-  buildFinishedPayload: finishedPayloadState.buildFinishedPayload,
-  supportsFinishedPayload: finishedPayloadState.supportsFinishedPayload,
+  buildFinishedIssuePayload: finishedPayloadState.buildFinishedIssuePayload,
+  supportsFinishedIssuePayload: finishedPayloadState.supportsFinishedIssuePayload,
 }));
 
 import app from "../../../app.js";
@@ -86,8 +87,8 @@ describe("active issue visibility", () => {
       uid: null,
       role: "user",
     };
-    finishedPayloadState.buildFinishedPayload.mockClear();
-    finishedPayloadState.supportsFinishedPayload.mockClear();
+    finishedPayloadState.buildFinishedIssuePayload.mockClear();
+    finishedPayloadState.supportsFinishedIssuePayload.mockClear();
   });
 
   it("owner sees the active issue they own with the stable top-level payload shape", async () => {
@@ -232,8 +233,8 @@ describe("finished issues visibility and detail access", () => {
       uid: null,
       role: "user",
     };
-    finishedPayloadState.buildFinishedPayload.mockClear();
-    finishedPayloadState.supportsFinishedPayload.mockClear();
+    finishedPayloadState.buildFinishedIssuePayload.mockClear();
+    finishedPayloadState.supportsFinishedIssuePayload.mockClear();
   });
 
   it("owner sees finished issues they own", async () => {
@@ -461,12 +462,13 @@ describe("finished issues visibility and detail access", () => {
     });
 
     expect(ownerPayload).toEqual({
-      summary: {
+      issue: {
+        id: String(issue._id),
         name: "Detailed finished issue",
       },
       scenarios: [],
     });
-    expect(participantPayload.summary.name).toBe("Detailed finished issue");
+    expect(participantPayload.issue.name).toBe("Detailed finished issue");
 
     await expect(
       getFinishedIssueInfoPayload({
@@ -517,7 +519,7 @@ describe("finished issues visibility and detail access", () => {
       success: true,
       message: "Issue info sent",
       data: {
-        summary: {
+        issue: {
           name: "Finished detail API issue",
         },
       },
@@ -531,8 +533,8 @@ describe("users and models catalogs", () => {
       uid: null,
       role: "user",
     };
-    finishedPayloadState.buildFinishedPayload.mockClear();
-    finishedPayloadState.supportsFinishedPayload.mockClear();
+    finishedPayloadState.buildFinishedIssuePayload.mockClear();
+    finishedPayloadState.supportsFinishedIssuePayload.mockClear();
   });
 
   it("GET /api/issues/users returns confirmed active users only with safe fields", async () => {

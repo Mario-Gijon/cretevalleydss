@@ -1,2 +1,4 @@
-export { supportsFinishedPayload } from "./supportsFinishedPayload.js";
-export { buildFinishedPayload } from "./buildFinishedPayload.js";
+export {
+  buildFinishedIssuePayload,
+  supportsFinishedIssuePayload,
+} from "./buildFinishedIssuePayload.js";
