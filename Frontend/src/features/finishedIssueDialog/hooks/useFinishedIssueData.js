@@ -21,7 +21,7 @@ export const useFinishedIssueData = ({ selectedIssue, open }) => {
     setError(null);
     try {
       const response = unwrap(await getFinishedIssueInfo(issueId));
-      const nextPayload = response?.payload || response?.issueInfo || response || null;
+      const nextPayload = response || null;
       if (token !== tokenRef.current) return null;
       setPayload(nextPayload);
       return nextPayload;

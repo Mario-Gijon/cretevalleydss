@@ -1,2 +1,2 @@
 export { default as ModelsSection } from "./ModelsSection.jsx";
-export { buildModelsData, buildModelsPreview } from "./logic/buildModelsData.js";
+export { buildModelsData, buildModelsPreview, buildModelsParameterContextData } from "./logic/buildModelsData.js";

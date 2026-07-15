@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { buildEvaluationsData } from "../sections/evaluations/logic/buildEvaluationsData.js";
+import { resolveEvaluationsSelection } from "../sections/evaluations";
 
 export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
   const [selectedStage, setSelectedStage] = useState("alternativeEvaluation");
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [selectedExpertId, setSelectedExpertId] = useState(null);
   const [showCollective, setShowCollective] = useState(false);
-  const selection = useMemo(() => buildEvaluationsData({
+  const selection = useMemo(() => resolveEvaluationsSelection({
     payload,
     selectedStage,
     selectedPhase,

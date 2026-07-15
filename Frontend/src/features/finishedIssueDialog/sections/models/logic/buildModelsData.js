@@ -1,5 +1,46 @@
 import { buildFinishedIssueExecutionOptions } from "../../../logic/selectFinishedIssueExecution.js";
 
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
+const buildCriteriaTree = ({ nodes, rootIds, domainsById }) => {
+  const nodesById = new Map(asArray(nodes).map((node) => [node?.id, node]));
+  const visit = (id) => {
+    const node = nodesById.get(id);
+    if (!node) return null;
+    return {
+      id: node.id,
+      name: node.name,
+      type: node.type ?? null,
+      expressionDomain: node.expressionDomainId ? domainsById.get(node.expressionDomainId) || null : null,
+      children: asArray(node.childIds).map(visit).filter(Boolean),
+    };
+  };
+  return asArray(rootIds).map(visit).filter(Boolean);
+};
+
+export const buildModelsParameterContextData = ({ payload, selectedExecution }) => {
+  const domainsById = new Map(asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain]));
+  const criteriaTree = buildCriteriaTree({
+    nodes: payload?.criteria?.nodes,
+    rootIds: payload?.criteria?.rootIds,
+    domainsById,
+  });
+  const leafCriteria = asArray(payload?.criteria?.nodes)
+    .filter((node) => node?.isLeaf)
+    .map((node) => ({
+      id: node.id,
+      name: node.name,
+      type: node.type ?? null,
+      expressionDomain: node.expressionDomainId ? domainsById.get(node.expressionDomainId) || null : null,
+    }));
+  return {
+    model: selectedExecution?.model || payload?.models?.base || null,
+    alternatives: asArray(payload?.alternatives).map(({ id, name }) => ({ id, name })),
+    criteriaTree,
+    leafCriteria,
+  };
+};
+
 export const buildModelsData = ({ payload, selectedExecution }) => ({
   baseModel: payload?.models?.base || null,
   criteriaWeightingModel: payload?.models?.criteriaWeighting || null,

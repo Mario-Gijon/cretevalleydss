@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { selectAlternativePhaseResults } from "../logic/selectFinishedIssueExecution.js";
 import { FINISHED_ISSUE_TABS, FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation.js";
-import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis/logic/resultsAnalysisNavigation.js";
+import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis";
 
 export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) => {
   const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.DASHBOARD);

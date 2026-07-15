@@ -21,9 +21,15 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   );
   const executionOptions = useMemo(() => buildFinishedIssueExecutionOptions(payload), [payload]);
   const availableModels = asArray(payload?.models?.compatible);
+  const domainsById = new Map(asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain]));
   const leafCriteria = asArray(payload?.criteria?.nodes)
     .filter((criterion) => criterion?.isLeaf)
-    .map((criterion) => ({ id: criterion.id, name: criterion.name }));
+    .map((criterion) => ({
+      id: criterion.id,
+      name: criterion.name,
+      type: criterion.type ?? null,
+      expressionDomain: criterion.expressionDomainId ? domainsById.get(criterion.expressionDomainId) || null : null,
+    }));
   const selectedModel = availableModels.find((model) => model?.id === selectedModelId) || null;
   const selectedModelCompatible = selectedModel ? isModelCompatible(selectedModel) : false;
 

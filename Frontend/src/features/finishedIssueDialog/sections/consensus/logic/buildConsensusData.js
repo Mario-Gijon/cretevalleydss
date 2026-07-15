@@ -7,6 +7,14 @@ export const buildConsensusData = (payload) => {
     .map((round) => ({ ...round, phaseResult: phaseById.get(round?.phaseResultId) || null }))
     .sort((left, right) => (left.phase ?? 0) - (right.phase ?? 0));
 
+  const series = rounds.map((round) => ({
+    phase: round.phase,
+    measure: round.phaseResult?.consensusMeasure ?? null,
+    ranking: round.phaseResult?.rankedAlternatives || [],
+    collectiveEvaluationId: round.phaseResult?.collectiveEvaluationId ?? null,
+    expertWeightSnapshot: round.phaseResult?.expertWeightSnapshot || [],
+  }));
+
   return {
     enabled: consensus.enabled === true,
     supported: consensus.modelSupportsConsensus === true,
@@ -17,13 +25,8 @@ export const buildConsensusData = (payload) => {
     reachedPhase: consensus.reachedPhase ?? null,
     finalizationReason: consensus.finalizationReason ?? null,
     rounds,
-    series: rounds.map((round) => ({
-      phase: round.phase,
-      measure: round.phaseResult?.consensusMeasure ?? null,
-      ranking: round.phaseResult?.rankedAlternatives || [],
-      collectiveEvaluationId: round.phaseResult?.collectiveEvaluationId ?? null,
-      expertWeightSnapshot: round.phaseResult?.expertWeightSnapshot || [],
-    })),
+    series,
+    graph: { labels: series.map((entry) => `Phase ${entry.phase}`), data: series.map((entry) => entry.measure) },
   };
 };
 
@@ -34,7 +37,7 @@ export const buildConsensusPreview = (data) => data.enabled ? {
   finalMeasure: data.series.at(-1)?.measure ?? null,
   finalizationReason: data.finalizationReason,
   reachedPhase: data.reachedPhase,
-  consensusEvolutionData: { labels: data.series.map((entry) => `Phase ${entry.phase}`), data: data.series.map((entry) => entry.measure) },
+  consensusEvolutionData: data.graph,
 } : null;
 
 export default buildConsensusData;
