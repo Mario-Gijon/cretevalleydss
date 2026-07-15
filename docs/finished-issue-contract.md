@@ -30,4 +30,44 @@ separate execution records and are never merged into the base issue payload.
 `executionMetadata.completeness.missingEvidence` contains machine-readable
 codes for evidence that was never stored.
 
+## Evaluation contexts
+
+Each evaluation context has a stage and phase identity and carries a plain
+`serializedContext` for the registered read-only structure:
+
+```text
+issue, structure, decisionModel, criteriaWeightingModel, activeModel,
+modelParameters, criteriaWeightingParameters, alternatives, criteriaTree,
+leafCriteria, consensus
+```
+
+`decisionModel` is always the issue decision model.
+`criteriaWeightingModel` is the configured weighting model or `null`.
+`activeModel` is the decision model for `alternativeEvaluation`, and the
+configured weighting model (or `null`) for `criteriaWeighting`. There is no
+ambiguous legacy `model` alias. Context previous collective values select the
+greatest stored phase below the current phase within the **same stage**, so
+sparse phases remain factual.
+
+If a registered structure provides `get()` and it fails, Finished Issue loading
+fails with an internal error containing only evaluation id, structure key,
+stage, and phase metadata. It never silently substitutes a null display
+payload. A null display payload is valid only if no `get()` exists or `get()`
+explicitly returns null.
+
+## Weighting provenance
+
+`configuration.criteriaWeighting.source` describes the factual **process**:
+`notRequired`, `directModelParameters`, `creatorCriteriaWeighting`,
+`expertCriteriaWeighting`, or `unknown`. A completed individual
+criteria-weighting evaluation establishes `expertCriteriaWeighting`; a model
+or structure key alone establishes neither creator nor expert origin and is
+therefore `unknown`.
+
+`criteria.finalWeights.source` is separate. It describes the immediate stored
+result used for final weights, including a criteria-weighting stage-result id,
+stage, phase, and model id where applicable. Thus an expert process can
+correctly have `expertCriteriaWeighting` as configuration source and
+`criteriaWeightingStageResult` as final-weight source.
+
 The frontend is intentionally not yet migrated to this contract.

@@ -337,6 +337,9 @@ describe("definitive Finished Issue contract", () => {
         },
       },
     });
+    expect(payload.configuration.criteriaWeighting.source).toBe(
+      "expertCriteriaWeighting"
+    );
     expect(payload.criteria.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: String(fixture.criteria[1]._id),
@@ -378,6 +381,28 @@ describe("definitive Finished Issue contract", () => {
       expect.objectContaining({ id: "criteriaWeighting:0", structureKey: "manualCriteriaWeights" }),
       expect.objectContaining({ id: "alternativeEvaluation:2", alternativeIds: [String(fixture.alternatives[0]._id), String(fixture.alternatives[1]._id)] }),
     ]));
+    const alternativePhaseTwoContext = payload.evaluations.contexts.find(
+      (context) => context.id === "alternativeEvaluation:2"
+    );
+    const criteriaWeightingContext = payload.evaluations.contexts.find(
+      (context) => context.id === "criteriaWeighting:0"
+    );
+    expect(alternativePhaseTwoContext.serializedContext).toMatchObject({
+      decisionModel: { id: String(payload.models.base.id) },
+      criteriaWeightingModel: { id: String(payload.models.criteriaWeighting.id) },
+      activeModel: { id: String(payload.models.base.id) },
+      consensus: {
+        previousCollectiveEvaluations: expect.objectContaining({
+          [String(fixture.alternatives[0]._id)]: expect.any(Object),
+        }),
+      },
+    });
+    expect(criteriaWeightingContext.serializedContext).toMatchObject({
+      activeModel: { id: String(payload.models.criteriaWeighting.id) },
+      modelParameters: { alpha: 0.7, weights: expect.any(Object) },
+      criteriaWeightingParameters: { method: "mean" },
+    });
+    expect(alternativePhaseTwoContext.serializedContext).not.toHaveProperty("model");
     expect(payload.evaluations.collective).toEqual(expect.arrayContaining([
       expect.objectContaining({ phaseResultId: String(fixture.results.criteriaResult._id), stage: "criteriaWeighting" }),
       expect.objectContaining({ phaseResultId: String(fixture.results.finalResult._id), stage: "alternativeEvaluation" }),

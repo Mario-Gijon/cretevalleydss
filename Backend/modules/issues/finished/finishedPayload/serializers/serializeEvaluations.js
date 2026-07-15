@@ -14,6 +14,25 @@ const structureKeyForStage = ({ issue, stage }) =>
 
 const contextIdFor = ({ stage, phase }) => `${stage}:${phase}`;
 
+const serializeContextModel = ({ model, runtimeApiModelKey = null }) =>
+  model
+    ? {
+        id: toRequiredId(model, "evaluation context model"),
+        name: model.name ?? null,
+        apiModelKey: runtimeApiModelKey ?? model.apiModelKey ?? null,
+      }
+    : null;
+
+const findPreviousStageResult = ({ stage, phase, rawPhaseResults }) =>
+  rawPhaseResults
+    .filter(
+      (result) =>
+        result.stage === stage &&
+        Number.isInteger(result.consensusPhase) &&
+        result.consensusPhase < phase
+    )
+    .sort((left, right) => right.consensusPhase - left.consensusPhase)[0] ?? null;
+
 const serializeLeafCriteria = ({ criteria, expressionDomainsById }) =>
   criteria.nodes
     .filter((criterion) => criterion.isLeaf)
@@ -34,19 +53,31 @@ const serializeContext = ({
   alternatives,
   criteria,
   expressionDomainsById,
-  phaseResultByStagePhase,
+  rawPhaseResults,
 }) => {
-  const currentResult = phaseResultByStagePhase.get(`${stage}:${phase}`);
-  const previousResult = phaseResultByStagePhase.get(`${stage}:${phase - 1}`);
+  const currentResult = rawPhaseResults.find(
+    (result) => result.stage === stage && result.consensusPhase === phase
+  );
+  const previousResult = findPreviousStageResult({ stage, phase, rawPhaseResults });
   const leafCriteria = serializeLeafCriteria({ criteria, expressionDomainsById });
-  const modelId = toRequiredId(issue.model, "base model");
+  const decisionModel = serializeContextModel({
+    model: issue.model,
+    runtimeApiModelKey: issue.apiModelKey,
+  });
+  const criteriaWeightingModel = serializeContextModel({
+    model: issue.criteriaWeightingModel,
+    runtimeApiModelKey: issue.criteriaWeightingApiModelKey,
+  });
+  const activeModel =
+    stage === "criteriaWeighting" ? criteriaWeightingModel : decisionModel;
 
   return {
     id: contextIdFor({ stage, phase }),
     stage,
     phase,
     structureKey,
-    modelId,
+    modelId: decisionModel.id,
+    activeModelId: activeModel?.id ?? null,
     modelParameters: cloneSerializable(issue.modelParameters, {}),
     criteriaWeightingModelId: issue.criteriaWeightingModel
       ? toRequiredId(issue.criteriaWeightingModel, "criteria weighting model")
@@ -68,11 +99,9 @@ const serializeContext = ({
         consensusMaxPhases: issue.consensusMaxPhases ?? null,
       },
       structure: { key: structureKey, stage },
-      model: {
-        id: modelId,
-        name: issue.model?.name ?? null,
-        apiModelKey: issue.apiModelKey ?? issue.model?.apiModelKey ?? null,
-      },
+      decisionModel,
+      criteriaWeightingModel,
+      activeModel,
       modelParameters: cloneSerializable(issue.modelParameters, {}),
       criteriaWeightingParameters: cloneSerializable(issue.criteriaWeightingParameters, {}),
       alternatives: alternatives.map(({ id, name }) => ({ id, name })),
@@ -105,9 +134,6 @@ export const serializeEvaluations = async ({
   expressionDomains,
 }) => {
   const expressionDomainsById = new Map(expressionDomains.map((domain) => [domain.id, domain]));
-  const phaseResultByStagePhase = new Map(
-    phaseResults.map((result) => [`${result.stage}:${result.phase}`, result])
-  );
   const rawPhaseResultByStagePhase = new Map(
     rawPhaseResults.map((result) => [`${result.stage}:${result.consensusPhase}`, result])
   );
@@ -146,7 +172,7 @@ export const serializeEvaluations = async ({
       alternatives,
       criteria,
       expressionDomainsById,
-      phaseResultByStagePhase,
+      rawPhaseResults,
     });
     contexts.push(context);
     contextById.set(context.id, context);
@@ -172,8 +198,20 @@ export const serializeEvaluations = async ({
           payload: evaluation.payload ?? {},
           evaluationContext: context.serializedContext,
         });
-      } catch {
-        displayPayload = null;
+      } catch (error) {
+        throw createInternalError(
+          "Finished evaluation display transformation failed",
+          {
+            field: "evaluations.displayPayload",
+            details: {
+              evaluationId: toRequiredId(evaluation, "evaluation"),
+              structureKey: context.structureKey,
+              stage: evaluation.stage,
+              phase: evaluation.consensusPhase,
+            },
+            cause: error,
+          }
+        );
       }
     }
 
