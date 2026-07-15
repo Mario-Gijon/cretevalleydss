@@ -1,4 +1,4 @@
-import { Backdrop, Box } from "@mui/material";
+import { Alert, Backdrop, Box, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { CircularLoading } from "../../components/LoadingProgress/CircularLoading";
@@ -39,10 +39,18 @@ const FinishedIssueDialogBody = () => {
     >
       <FinishedIssueDialogHeader />
 
-      {dialog.loading || !dialog.payload ? (
+      {dialog.loading ? (
         <Backdrop open sx={{ zIndex: 999999 }}>
           <CircularLoading color="secondary" size={50} height="50vh" />
         </Backdrop>
+      ) : dialog.error ? (
+        <Box sx={{ px: { xs: 1.5, md: 2.25 }, py: 2 }}>
+          <Alert severity="error">Unable to load this Finished Issue.</Alert>
+        </Box>
+      ) : !dialog.payload ? (
+        <Stack alignItems="center" sx={{ px: { xs: 1.5, md: 2.25 }, py: 6 }}>
+          <Typography color="text.secondary">Finished Issue information is unavailable.</Typography>
+        </Stack>
       ) : (
         <Box sx={{ px: { xs: 1.5, md: 2.25 }, py: 2 }}>
           <FinishedIssueDialogLayout />

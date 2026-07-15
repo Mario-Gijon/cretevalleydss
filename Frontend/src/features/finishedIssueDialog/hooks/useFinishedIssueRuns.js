@@ -20,16 +20,16 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
     [payload, selectedExecutionKey]
   );
   const executionOptions = useMemo(() => buildFinishedIssueExecutionOptions(payload), [payload]);
-  const availableModels = asArray(payload?.models?.compatible);
-  const domainsById = new Map(asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain]));
-  const leafCriteria = asArray(payload?.criteria?.nodes)
-    .filter((criterion) => criterion?.isLeaf)
-    .map((criterion) => ({
+  const availableModels = useMemo(() => asArray(payload?.models?.compatible), [payload?.models?.compatible]);
+  const leafCriteria = useMemo(() => {
+    const domainsById = new Map(asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain]));
+    return asArray(payload?.criteria?.nodes).filter((criterion) => criterion?.isLeaf).map((criterion) => ({
       id: criterion.id,
       name: criterion.name,
       type: criterion.type ?? null,
       expressionDomain: criterion.expressionDomainId ? domainsById.get(criterion.expressionDomainId) || null : null,
     }));
+  }, [payload?.criteria?.nodes, payload?.expressionDomains]);
   const selectedModel = availableModels.find((model) => model?.id === selectedModelId) || null;
   const selectedModelCompatible = selectedModel ? isModelCompatible(selectedModel) : false;
 
@@ -47,7 +47,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {},
     }));
     setScenarioWeightsError("");
-  }, [addOpen, leafCriteria, payload?.criteria?.finalWeights?.byCriterionId, selectedModel]);
+  }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedModel, leafCriteria]);
 
   const closeAddDialog = () => {
     setAddOpen(false);

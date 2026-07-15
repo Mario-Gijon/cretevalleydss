@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../src/services/issue.service", () => ({ getFinishedIssueInfo: vi.fn() }));
@@ -11,13 +11,40 @@ import { selectFinishedIssueExecution } from "../../../src/features/finishedIssu
 import { buildFinishedIssuePayloadFixture } from "../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 describe("Finished Issue architecture integrity", () => {
-  it("does not unwrap retired response-shape wrappers", async () => {
+  it("rejects retired response-shape wrappers and accepts only the definitive contract", async () => {
     const canonical = buildFinishedIssuePayloadFixture();
     getFinishedIssueInfo.mockResolvedValueOnce({ data: { payload: canonical } });
     const { result } = renderHook(() => useFinishedIssueData({ selectedIssue: { id: "issue-1" }, open: true }));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.payload).toEqual({ payload: canonical });
-    expect(result.current.payload.issue).toBeUndefined();
+    expect(result.current.payload).toBeNull();
+    expect(result.current.error).toBeInstanceOf(Error);
+
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: { issueInfo: canonical } });
+    await act(async () => { await result.current.refreshPayload(); });
+    expect(result.current.payload).toBeNull();
+    expect(result.current.error).toBeInstanceOf(Error);
+
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: canonical });
+    await act(async () => { await result.current.refreshPayload(); });
+    expect(result.current.payload).toEqual(canonical);
+  });
+
+  it("resets payload and errors on close and stores rejected requests as errors", async () => {
+    const canonical = buildFinishedIssuePayloadFixture();
+    getFinishedIssueInfo.mockResolvedValueOnce({ data: canonical });
+    const { result, rerender } = renderHook(({ open }) => useFinishedIssueData({ selectedIssue: { id: "issue-1" }, open }), { initialProps: { open: true } });
+    await waitFor(() => expect(result.current.payload).toEqual(canonical));
+    rerender({ open: false });
+    expect(result.current.payload).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("stores rejected requests without leaving a payload", async () => {
+    getFinishedIssueInfo.mockRejectedValueOnce(new Error("network failure"));
+    const { result } = renderHook(() => useFinishedIssueData({ selectedIssue: { id: "issue-1" }, open: true }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.payload).toBeNull();
+    expect(result.current.error).toBeInstanceOf(Error);
   });
 
   it("resolves only evaluation selection state", () => {

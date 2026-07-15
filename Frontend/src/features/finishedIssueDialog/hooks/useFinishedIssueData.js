@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getFinishedIssueInfo } from "../../../services/issue.service";
+import { validateFinishedIssuePayload } from "../logic/validateFinishedIssuePayload.js";
 
 const unwrap = (response) =>
   response && typeof response === "object" && "data" in response ? response.data : response;
@@ -23,6 +24,12 @@ export const useFinishedIssueData = ({ selectedIssue, open }) => {
       const response = unwrap(await getFinishedIssueInfo(issueId));
       const nextPayload = response || null;
       if (token !== tokenRef.current) return null;
+      const validation = validateFinishedIssuePayload(nextPayload);
+      if (!validation.valid) {
+        setPayload(null);
+        setError(new Error(validation.error));
+        return null;
+      }
       setPayload(nextPayload);
       return nextPayload;
     } catch (caught) {
