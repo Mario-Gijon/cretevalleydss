@@ -71,4 +71,11 @@ export const buildEvaluationsData = ({
   };
 };
 
+export const buildEvaluationsPreview = (data) => ({
+  expertsCount: data.expertOptions.length,
+  phaseLabel: data.selectedPhase === null ? "—" : `Phase ${data.selectedPhase}`,
+  structure: data.structureKey || null,
+  hasCollective: data.canShowCollective === true,
+});
+
 export default buildEvaluationsData;

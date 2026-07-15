@@ -3,29 +3,19 @@ import OverviewView from "./components/OverviewView";
 import { buildOverviewData } from "./logic/buildFinishedIssueOverviewData";
 
 const OverviewSection = () => {
-  const { overviewSection } = useFinishedIssueDialogContext();
-  const {
-    openDescriptionList,
-    setOpenDescriptionList,
-    openCriteriaList,
-    setOpenCriteriaList,
-    openAlternativeList,
-    setOpenAlternativesList,
-    openExpertsList,
-    setOpenExpertsList,
-  } = overviewSection;
-  const data = buildOverviewData(overviewSection.payload);
+  const { dialog, overview } = useFinishedIssueDialogContext();
+  const data = buildOverviewData(dialog.payload);
 
   return <OverviewView data={data} state={{
-    descriptionExpanded: openDescriptionList,
-    criteriaExpanded: openCriteriaList,
-    alternativesExpanded: openAlternativeList,
-    expertsExpanded: openExpertsList,
+    descriptionExpanded: overview.disclosure.description,
+    criteriaExpanded: overview.disclosure.criteria,
+    alternativesExpanded: overview.disclosure.alternatives,
+    expertsExpanded: overview.disclosure.experts,
   }} actions={{
-    toggleDescription: () => setOpenDescriptionList((value) => !value),
-    toggleCriteria: () => setOpenCriteriaList((value) => !value),
-    toggleAlternatives: () => setOpenAlternativesList((value) => !value),
-    toggleExperts: () => setOpenExpertsList((value) => !value),
+    toggleDescription: () => overview.toggleDisclosure("description"),
+    toggleCriteria: () => overview.toggleDisclosure("criteria"),
+    toggleAlternatives: () => overview.toggleDisclosure("alternatives"),
+    toggleExperts: () => overview.toggleDisclosure("experts"),
   }} />;
 };
 

@@ -10,7 +10,7 @@ const TAB_LABELS = {
 };
 
 const FinishedIssueNavigation = ({ navigation }) => (
-  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.handleSelectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}>
+  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 38, "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}>
     {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} label={TAB_LABELS[tab]} />)}
   </Tabs>
 );

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { buildEvaluationsData } from "../sections/evaluations/logic/buildEvaluationsData.js";
 
-export const useFinishedIssueRatingsView = ({ payload }) => {
+export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
   const [selectedStage, setSelectedStage] = useState("alternativeEvaluation");
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [selectedExpertId, setSelectedExpertId] = useState(null);
   const [showCollective, setShowCollective] = useState(false);
-
-  const data = useMemo(() => buildEvaluationsData({
+  const selection = useMemo(() => buildEvaluationsData({
     payload,
     selectedStage,
     selectedPhase,
@@ -16,14 +16,17 @@ export const useFinishedIssueRatingsView = ({ payload }) => {
   }), [payload, selectedStage, selectedPhase, selectedExpertId, showCollective]);
 
   useEffect(() => {
-    if (data.selectedStage !== selectedStage) setSelectedStage(data.selectedStage);
-    if (data.selectedPhase !== selectedPhase) setSelectedPhase(data.selectedPhase);
-    if (data.selectedExpertId !== selectedExpertId) setSelectedExpertId(data.selectedExpertId);
-    if (!data.canShowCollective && showCollective) setShowCollective(false);
-  }, [data, selectedStage, selectedPhase, selectedExpertId, showCollective]);
+    if (selection.selectedStage !== selectedStage) setSelectedStage(selection.selectedStage);
+    if (selection.selectedPhase !== selectedPhase) setSelectedPhase(selection.selectedPhase);
+    if (selection.selectedExpertId !== selectedExpertId) setSelectedExpertId(selection.selectedExpertId);
+    if (!selection.canShowCollective && showCollective) setShowCollective(false);
+  }, [selectedExpertId, selectedPhase, selectedStage, selection, showCollective]);
 
   return {
-    ...data,
+    selectedStage,
+    selectedPhase,
+    selectedExpertId,
+    showCollective,
     setSelectedStage,
     setSelectedPhase,
     setSelectedExpertId,
@@ -31,4 +34,4 @@ export const useFinishedIssueRatingsView = ({ payload }) => {
   };
 };
 
-export default useFinishedIssueRatingsView;
+export default useFinishedIssueEvaluationsSelection;

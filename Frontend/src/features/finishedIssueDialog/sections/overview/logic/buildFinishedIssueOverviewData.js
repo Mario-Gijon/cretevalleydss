@@ -80,4 +80,16 @@ export const buildOverviewData = (payload) => {
   };
 };
 
+export const buildOverviewPreview = (data) => ({
+  id: data.issue.id,
+  name: data.issue.name,
+  description: data.description,
+  owner: data.general.owner,
+  creationDate: data.general.creationDate,
+  closureDate: data.general.closureDate,
+  alternativesCount: data.counts.alternatives,
+  criteriaCount: data.counts.criteria,
+  participatingExpertsCount: data.experts.participated.length,
+});
+
 export default buildOverviewData;

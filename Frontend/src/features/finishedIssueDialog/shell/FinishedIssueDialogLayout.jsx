@@ -7,21 +7,20 @@ import { DashboardSection } from "../sections/dashboard";
 import { OverviewSection } from "../sections/overview";
 import { ResultsAnalysisSection } from "../sections/resultsAnalysis";
 import { ConsensusSection } from "../sections/consensus";
-import RatingsSection from "../evaluations/RatingsSection";
-import ModelsSection from "../models/ModelsSection";
-import ModelSpecificOutputSection from "../models/ModelSpecificOutputSection";
+import { EvaluationsSection } from "../sections/evaluations";
+import { ModelsSection } from "../sections/models";
 import { finishedIssueDialogLayoutSx } from "./finishedIssueShell.styles";
 
 const FinishedIssueDialogLayout = () => {
-  const { navigation, modelSpecificOutputSection } = useFinishedIssueDialogContext();
+  const { navigation } = useFinishedIssueDialogContext();
   const view = navigation.activeView;
   const content = {
     [FINISHED_ISSUE_VIEWS.DASHBOARD]: <DashboardSection />,
     [FINISHED_ISSUE_VIEWS.OVERVIEW]: <OverviewSection />,
     [FINISHED_ISSUE_VIEWS.RESULTS_ANALYSIS]: <ResultsAnalysisSection />,
-    [FINISHED_ISSUE_VIEWS.EVALUATIONS]: <RatingsSection />,
+    [FINISHED_ISSUE_VIEWS.EVALUATIONS]: <EvaluationsSection />,
     [FINISHED_ISSUE_VIEWS.CONSENSUS]: <ConsensusSection />,
-    [FINISHED_ISSUE_VIEWS.MODELS]: <Stack spacing={2}><ModelsSection /><ModelSpecificOutputSection {...modelSpecificOutputSection} /></Stack>,
+    [FINISHED_ISSUE_VIEWS.MODELS]: <ModelsSection />,
   }[view] || <DashboardSection />;
 
   return (
@@ -34,7 +33,7 @@ const FinishedIssueDialogLayout = () => {
               color="secondary"
               size="small"
               startIcon={<ArrowBackIcon />}
-              onClick={navigation.handleBackToDashboard}
+              onClick={navigation.backToDashboard}
             >
               Back to dashboard
             </Button>

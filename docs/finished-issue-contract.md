@@ -94,3 +94,15 @@ Opening or refreshing the dialog uses only `getFinishedIssueInfo(issueId)`.
 The response supplies scenarios and compatible models, so scenario list/detail
 reads are not part of Finished Issue. After a scenario is created or removed,
 the dialog refetches this canonical payload.
+
+## Frontend architecture
+
+Each Finished Issue section owns a context-reading container, a pure builder,
+and provider-free presentational components with section-local styles. Public
+section indexes are the only shell entry points. Focused data, navigation, run,
+and evaluation-selection hooks compose the dialog state.
+
+Dashboard previews compose prepared section data: Overview, Evaluations, and
+Consensus stay canonical, while Results Analysis and Models follow the selected
+execution. A manual redesign should be confined to the target section's
+`components/` and style file without changing its builder or dialog state.

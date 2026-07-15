@@ -1,12 +1,12 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import ResultsAnalysisView from "./components/ResultsAnalysisView";
-import { buildResultsAnalysisData } from "./logic/buildFinishedIssueResultsAnalysisData";
+import { buildResultsAnalysisData } from "./logic/buildResultsAnalysisData.js";
 
 const ResultsAnalysisSection = () => {
-  const { dialog, runs, resultsAnalysisSection, resultsAnalysisNavigation } = useFinishedIssueDialogContext();
-  const data = buildResultsAnalysisData({ payload: dialog.payload, selectedExecution: runs.selectedExecution, selectedPhase: runs.selectedPhase });
+  const { dialog, runs, resultsAnalysis, resultsAnalysisNavigation } = useFinishedIssueDialogContext();
+  const data = buildResultsAnalysisData({ payload: dialog.payload, selectedExecution: runs.selectedExecution, selectedPhase: resultsAnalysis.selectedPhase });
 
-  return <ResultsAnalysisView data={data} navigation={resultsAnalysisNavigation} scatterPlotRef={resultsAnalysisSection.scatterPlotRef} onResetZoom={() => resultsAnalysisSection.resetZoom(resultsAnalysisSection.scatterPlotRef)} />;
+  return <ResultsAnalysisView data={data} navigation={resultsAnalysisNavigation} scatterPlotRef={resultsAnalysis.scatterPlotRef} onResetZoom={resultsAnalysis.resetZoom} />;
 };
 
 export default ResultsAnalysisSection;
