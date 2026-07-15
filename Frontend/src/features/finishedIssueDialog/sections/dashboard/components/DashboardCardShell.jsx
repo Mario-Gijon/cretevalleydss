@@ -1,18 +1,13 @@
-import {
-  Box,
-  Button,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { SectionCard } from "../../../shared/components/FinishedIssueDialogPrimitives";
 import {
   dashboardCardActionSx,
   dashboardCardBodySx,
   dashboardCardFooterSx,
   dashboardCardInnerSx,
   dashboardMetaTextSx,
+  dashboardCardSx,
 } from "../dashboard.styles";
 
 export const MetaText = ({ children }) => (
@@ -24,17 +19,21 @@ export const MetaText = ({ children }) => (
 const DashboardCardShell = ({
   title,
   icon,
+  number,
+  subtitle,
+  accent,
   actionLabel,
   onAction,
   children,
 }) => (
-  <SectionCard
-    title={title}
-    icon={icon}
-    sx={{
-      height: "100%",
-    }}
-  >
+  <Box sx={dashboardCardSx(accent)}>
+    <Stack direction="row" spacing={1.1} alignItems="flex-start">
+      <Box sx={{ width: 27, height: 27, display: "grid", placeItems: "center", borderRadius: 1.2, bgcolor: "rgba(255,255,255,0.075)", color: "secondary.light", fontSize: 12, fontWeight: 950 }}>{number}</Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Stack direction="row" spacing={0.7} alignItems="center"><Box sx={{ display: "grid", color: "secondary.light" }}>{icon}</Box><Typography variant="subtitle1" sx={{ fontWeight: 950 }}>{title}</Typography></Stack>
+        {subtitle ? <Typography variant="caption" sx={{ display: "block", mt: 0.25, color: "text.secondary", fontWeight: 700 }}>{subtitle}</Typography> : null}
+      </Box>
+    </Stack>
     <Stack sx={dashboardCardInnerSx}>
       <Box sx={dashboardCardBodySx}>
         {children}
@@ -53,7 +52,7 @@ const DashboardCardShell = ({
         </Button>
       </Box>
     </Stack>
-  </SectionCard>
+  </Box>
 );
 
 export default DashboardCardShell;

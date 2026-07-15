@@ -85,11 +85,19 @@ export const buildOverviewPreview = (data) => ({
   name: data.issue.name,
   description: data.description,
   owner: data.general.owner,
+  ownerEmail: data.issue.owner?.email || null,
+  baseModelName: data.general.model,
   creationDate: data.general.creationDate,
   closureDate: data.general.closureDate,
+  lifecycleStage: data.issue.lifecycle?.active === false ? "Finished" : "Active",
+  consensusEnabled: Boolean(data.consensus),
   alternativesCount: data.counts.alternatives,
   criteriaCount: data.counts.criteria,
-  participatingExpertsCount: data.experts.participated.length,
+  participantsCount: data.counts.participants,
+  acceptedParticipantsCount: data.experts.participated.length,
+  completedAlternativeEvaluationsCount: data.participants.filter(
+    (participant) => participant.evaluationCompleted
+  ).length,
 });
 
 export default buildOverviewData;

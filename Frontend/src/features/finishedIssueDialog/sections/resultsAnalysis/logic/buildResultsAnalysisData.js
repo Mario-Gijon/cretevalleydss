@@ -3,6 +3,11 @@ import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssu
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
+const formatScore = (value) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return Number(value.toFixed(4)).toString();
+};
+
 export const buildResultsAnalysisData = ({ payload, selectedExecution, selectedPhase }) => {
   const execution = selectedExecution || {};
   const phases = asArray(execution.phaseResults).map((result) => result?.phase).filter(Number.isInteger);
@@ -12,7 +17,7 @@ export const buildResultsAnalysisData = ({ payload, selectedExecution, selectedP
   const alternatives = new Map(asArray(payload?.alternatives).map((alternative) => [alternative?.id, alternative]));
   const normalizedRanking = asArray(standard.rankedAlternatives).map((entry, index) => {
     const alternative = alternatives.get(entry?.alternativeId);
-    return { id: entry?.alternativeId || `ranking-${index}`, name: alternative?.name || entry?.name || "—", description: alternative?.description || "", score: entry?.score ?? null, formattedScore: entry?.score === null || entry?.score === undefined ? "" : String(entry.score), position: Number.isInteger(entry?.rank) ? entry.rank : index + 1 };
+    return { id: entry?.alternativeId || `ranking-${index}`, name: alternative?.name || entry?.name || "—", description: alternative?.description || "", score: entry?.score ?? null, formattedScore: formatScore(entry?.score), position: Number.isInteger(entry?.rank) ? entry.rank : index + 1 };
   });
   const normalizedPlots = normalizePlotsGraphic(standard?.plotsGraphic);
   const unavailableReason = execution.type === "scenario" && execution?.scenario?.status === "error"

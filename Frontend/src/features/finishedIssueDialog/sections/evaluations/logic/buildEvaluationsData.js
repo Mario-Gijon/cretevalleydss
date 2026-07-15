@@ -5,6 +5,39 @@ const byPhase = (items, stage, phase) =>
 
 const payloadFor = (entry) => entry?.displayPayload ?? entry?.rawPayload ?? null;
 
+const stageLabel = (stage) =>
+  stage === "criteriaWeighting" ? "Criteria weighting" : "Alternative evaluation";
+
+const valueLabel = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number(value.toFixed(4)).toString();
+  }
+  if (typeof value === "string" || typeof value === "boolean") return String(value);
+  return "—";
+};
+
+const buildMatrixPreview = ({ context, payload }) => {
+  if (context?.structureKey !== "alternativeCriteriaMatrix" || !payload) return null;
+  const alternatives = asArray(context?.serializedContext?.alternatives).slice(0, 3);
+  const criteria = asArray(context?.serializedContext?.leafCriteria).slice(0, 3);
+  if (!alternatives.length || !criteria.length || typeof payload !== "object") return null;
+
+  return {
+    alternatives: alternatives.map((alternative) => ({ id: alternative?.id, name: alternative?.name || "—" })),
+    criteria: criteria.map((criterion) => ({ id: criterion?.id, name: criterion?.name || "—" })),
+    rows: alternatives.map((alternative) => ({
+      id: alternative?.id,
+      name: alternative?.name || "—",
+      values: criteria.map((criterion) => {
+        const cell = payload?.[alternative?.id]?.[criterion?.id];
+        return valueLabel(cell?.value ?? cell);
+      }),
+    })),
+    hasMoreAlternatives: asArray(context?.serializedContext?.alternatives).length > alternatives.length,
+    hasMoreCriteria: asArray(context?.serializedContext?.leafCriteria).length > criteria.length,
+  };
+};
+
 export const buildEvaluationsData = ({
   payload,
   selectedStage = "alternativeEvaluation",
@@ -52,11 +85,15 @@ export const buildEvaluationsData = ({
     selectedExpertId: expertId,
     selectedParticipant: asArray(payload?.participants).find((item) => item?.expert?.id === expertId) || null,
     individual: individual ? { ...individual, payload: payloadFor(individual) } : null,
+    completedExpertCount: individuals.filter((entry) => entry?.completed === true).length,
     collective: collective ? { ...collective, payload: payloadFor(collective) } : null,
     selectedSerializedContext: context?.serializedContext || null,
     structureKey: context?.structureKey || individual?.structureKey || null,
     expertWeightSnapshot: phaseResult?.expertWeightSnapshot || [],
     finalCriteriaWeights: payload?.criteria?.finalWeights || null,
+    leafCriteria: asArray(payload?.criteria?.nodes)
+      .filter((criterion) => criterion?.isLeaf)
+      .map((criterion) => ({ id: criterion?.id, name: criterion?.name || "—" })),
     showCollective: showCollective === true,
     canShowCollective: Boolean(collective),
     renderer: context && (individual || collective) ? {
@@ -72,10 +109,20 @@ export const buildEvaluationsData = ({
 };
 
 export const buildEvaluationsPreview = (data) => ({
+  stage: data.selectedStage,
+  stageLabel: stageLabel(data.selectedStage),
+  phase: data.selectedPhase,
   expertsCount: data.expertOptions.length,
+  completedExpertsCount: data.completedExpertCount,
   phaseLabel: data.selectedPhase === null ? "—" : `Phase ${data.selectedPhase}`,
   structure: data.structureKey || null,
   hasCollective: data.canShowCollective === true,
+  finalCriteriaWeights: data.finalCriteriaWeights?.byCriterionId || {},
+  criteria: data.leafCriteria,
+  matrix: buildMatrixPreview({
+    context: { structureKey: data.structureKey, serializedContext: data.renderer?.evaluationContext },
+    payload: data.showCollective ? data.collective?.payload : data.individual?.payload,
+  }),
 });
 
 export default buildEvaluationsData;

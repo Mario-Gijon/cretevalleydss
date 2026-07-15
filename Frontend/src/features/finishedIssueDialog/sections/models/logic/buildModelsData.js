@@ -63,4 +63,9 @@ export const buildModelsPreview = (data) => ({
   selectedExecutionLabel: data.selectedExecution?.label || "Base",
   selectedExecutionIsBase: data.selectedExecution?.type !== "scenario",
   additionalRunsCount: data.scenarios.length,
+  selectedModelName: data.selectedExecution?.model?.name || data.baseModel?.name || "—",
+  selectedModelDescription: data.selectedExecution?.model?.smallDescription || data.selectedExecution?.model?.description || null,
+  status: data.status,
+  error: data.error,
+  parameters: data.effectiveParameters || data.configuredParameters || {},
 });

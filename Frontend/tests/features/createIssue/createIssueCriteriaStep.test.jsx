@@ -45,6 +45,66 @@ import { criteriaWeightModelFixture } from "../../mocks/fixtures/createIssue.fix
 import { renderWithProviders } from "../../setup/renderWithProviders.jsx";
 
 describe("CriteriaStep manual equal weights", () => {
+  it("selects Manual by experts with its canonical manual weighting config", async () => {
+    const setCriteriaWeightingConfig = vi.fn();
+    const setDefaultModelParams = vi.fn();
+    const criteria = [
+      {
+        id: "criterion-root",
+        name: "Impact",
+        children: [
+          { id: "criterion-cost", name: "Cost", children: [] },
+          { id: "criterion-speed", name: "Speed", children: [] },
+        ],
+      },
+    ];
+
+    mockUseSnackbarAlertContext.mockReturnValue({ showSnackbarAlert: vi.fn() });
+    mockUseIssuesDataContext.mockReturnValue({
+      globalDomains: [],
+      expressionDomains: [],
+      criteriaWeightingModels: [
+        {
+          _id: "manual-criteria-weighting-model",
+          apiModelKey: "manual_criteria_weights",
+          modelKind: "criteriaWeighting",
+          supportsExpertCriteriaWeighting: true,
+        },
+      ],
+    });
+    mockUseCreateIssueContext.mockReturnValue({
+      criteria,
+      setCriteria: vi.fn(),
+      selectedModel: criteriaWeightModelFixture,
+      criteriaWeightingConfig: {
+        mode: "creatorManual",
+        source: "creator",
+        method: "manual",
+        structureKey: "manualCriteriaWeights",
+        payload: { weightsByCriterion: {} },
+      },
+      setCriteriaWeightingConfig,
+      setDefaultModelParams,
+      expressionDomainConfig: { mode: "global", globalDomainId: "" },
+    });
+
+    renderWithProviders(<CriteriaStep />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Manual by experts" })
+    );
+
+    expect(setDefaultModelParams).toHaveBeenCalledWith(false);
+    expect(setCriteriaWeightingConfig).toHaveBeenCalledWith({
+      mode: "expertManual",
+      source: "experts",
+      method: "manual",
+      structureKey: "manualCriteriaWeights",
+      criteriaWeightingModelKey: "manual_criteria_weights",
+      payload: {},
+    });
+  });
+
   it("stores internal equal weights for six criteria without rounding them to 0.167", async () => {
     const setCriteriaWeightingConfig = vi.fn();
     const setDefaultModelParams = vi.fn();

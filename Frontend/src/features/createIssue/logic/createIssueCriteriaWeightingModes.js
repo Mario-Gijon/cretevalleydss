@@ -46,6 +46,7 @@ export const buildConfigByMode = ({ mode, leafCriteria }) => {
     source: "experts",
     method: "manual",
     structureKey: "manualCriteriaWeights",
+    criteriaWeightingModelKey: MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY,
     payload: {},
   };
 };

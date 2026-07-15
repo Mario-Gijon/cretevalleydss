@@ -5,7 +5,6 @@ import { getLeafCriteria } from "../../../../utils/criteria.utils";
 import { useIssuesDataContext } from "../../../../context/issues/issues.context";
 import {
   CRITERIA_WEIGHTING_MODES,
-  MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY,
   buildApiCriteriaWeightingConfig,
   buildConfigByMode,
   isManualCriteriaWeightingApiModel,
@@ -324,11 +323,7 @@ export const CriteriaWeightingPanel = ({
   const selectedCriteriaWeightingModelId = String(
     safeConfig?.criteriaWeightingModelId || ""
   ).trim();
-  const manualByExpertsSelected =
-    mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL ||
-    (mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
-      selectedCriteriaWeightingModelKey ===
-        MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY);
+  const manualByExpertsSelected = mode === CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL;
 
   return (
     <Stack
@@ -411,10 +406,9 @@ export const CriteriaWeightingPanel = ({
             disabled={isSingleCriterion || !manualExpertWeightingAvailable}
             onClick={() =>
               updateConfig(
-                buildApiCriteriaWeightingConfig({
-                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL,
+                buildConfigByMode({
+                  mode: CRITERIA_WEIGHTING_MODES.EXPERT_MANUAL,
                   leafCriteria,
-                  criteriaWeightingModel: manualCriteriaWeightingModel,
                 }),
                 { markDirty: true }
               )
@@ -494,9 +488,7 @@ export const CriteriaWeightingPanel = ({
         </Alert>
       ) : null}
 
-      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL &&
-      selectedCriteriaWeightingModelKey !==
-        MANUAL_CRITERIA_WEIGHTS_API_MODEL_KEY ? (
+      {mode === CRITERIA_WEIGHTING_MODES.EXPERT_API_MODEL ? (
         <Alert severity="info">
           Preferences will be collected from experts and aggregated before alternative evaluation.
         </Alert>

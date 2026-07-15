@@ -48,31 +48,38 @@ const ManualCriteriaWeightsView = (
           <Box sx={{ width: "100%", minWidth: 0 }}>
             <Stack spacing={1.1} sx={{ pt: 1 }}>
               {criteria.map((criterion) => (
-                <TextField
+                <Stack
                   key={criterion.id}
-                  label={criterion.name}
-                  type="number"
-                  size="small"
-                  color="info"
-                  variant="outlined"
-                  disabled={isReadOnly}
-                  value={weightsByCriterion[criterion.id] ?? ""}
-                  onChange={(event) => {
-                    if (isReadOnly) {
-                      return;
-                    }
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "stretch", md: "center" }}
+                >
+                  <Typography variant="body2" sx={{ flex: 1, fontWeight: 800 }}>
+                    {criterion.name}
+                  </Typography>
+                  <TextField
+                    type="number"
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                    disabled={isReadOnly}
+                    value={weightsByCriterion[criterion.id] ?? ""}
+                    onChange={(event) => {
+                      if (isReadOnly) return;
 
-                    const raw = event.target.value;
-                    setEvaluationPayload((previous) => ({
-                      ...(previous && typeof previous === "object" ? previous : {}),
-                      weightsByCriterion: {
-                        ...((previous && previous.weightsByCriterion) || {}),
-                        [criterion.id]: raw === "" ? "" : Number(raw),
-                      },
-                    }));
-                  }}
-                  inputProps={{ min: 0, max: 1, step: 0.1 }}
-                />
+                      const raw = event.target.value;
+                      setEvaluationPayload((previous) => ({
+                        ...(previous && typeof previous === "object" ? previous : {}),
+                        weightsByCriterion: {
+                          ...((previous && previous.weightsByCriterion) || {}),
+                          [criterion.id]: raw === "" ? "" : Number(raw),
+                        },
+                      }));
+                    }}
+                    inputProps={{ min: 0, max: 1, step: 0.1 }}
+                    sx={{ width: { xs: "100%", md: 150 } }}
+                  />
+                </Stack>
               ))}
             </Stack>
           </Box>

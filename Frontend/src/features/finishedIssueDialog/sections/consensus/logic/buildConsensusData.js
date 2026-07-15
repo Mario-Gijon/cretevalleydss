@@ -33,6 +33,7 @@ export const buildConsensusData = (payload) => {
 export const buildConsensusPreview = (data) => data.enabled ? {
   phasesCount: data.rounds.length,
   phaseLabel: data.finalPhase === null ? "—" : `Phase ${data.finalPhase}`,
+  finalPhase: data.finalPhase,
   threshold: data.threshold,
   finalMeasure: data.series.at(-1)?.measure ?? null,
   finalizationReason: data.finalizationReason,

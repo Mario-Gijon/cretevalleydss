@@ -266,7 +266,11 @@ const resolveCriteriaWeightingStructureKey = ({
   resolvedConfig,
   criteriaWeightingRuntime,
 }) => {
-  if (isApiBackedCriteriaWeightingMode(resolvedConfig)) {
+  if (resolvedConfig.mode === "expertManual") {
+    return resolvedConfig.structureKey;
+  }
+
+  if (resolvedConfig.method === "apiModel") {
     return criteriaWeightingRuntime.criteriaWeightsStructureKey;
   }
 
