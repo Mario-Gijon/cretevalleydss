@@ -1,854 +1,183 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  createIssueScenario,
-  getFinishedIssueInfo,
-  getIssueScenarioById,
-  getIssueScenarios,
-  getModelsInfo,
-  removeIssueScenario,
-} from "../../../services/issue.service";
-import { useFinishedIssueRatingsView } from "./useFinishedIssueRatingsView.js";
-import {
-  applyScenarioToIssueInfo,
-} from "../logic/buildFinishedIssueView";
-import {
-  buildParamsResolved,
-  buildPseudoParametersFromValues,
-  cleanParamsForSend,
-  filterOutWeightsParams,
-  modelUsesScenarioCriteriaWeights,
-  validateScenarioCriteriaWeights,
-  validateParams,
-} from "../logic/buildFinishedScenarioParameters";
-import {
-  getCompatReason,
-  isModelCompatible,
-} from "../logic/buildFinishedScenarioRuns";
-import {
-  getLastPhaseIndex,
-  getLeafCriteriaNamesFallback,
-  getRoundsCount,
-  hasSingleLeafCriterion,
-} from "../logic/selectFinishedIssuePhase";
-import { buildFinishedModelOutputView } from "../logic/buildFinishedModelOutputView";
-import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
-import {
-  FINISHED_ISSUE_TABS,
-  FINISHED_ISSUE_VIEWS,
-} from "../shared/logic/finishedIssueNavigation";
-import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis/logic/resultsAnalysisNavigation";
+import { createIssueScenario, getFinishedIssueInfo, removeIssueScenario } from "../../../services/issue.service";
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
+import { useFinishedIssueRatingsView } from "./useFinishedIssueRatingsView.js";
+import { buildParamsResolved, cleanParamsForSend, modelUsesScenarioCriteriaWeights, validateParams, validateScenarioCriteriaWeights } from "../logic/buildFinishedScenarioParameters.js";
+import { getCompatReason, isModelCompatible } from "../logic/buildFinishedScenarioRuns.js";
+import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution, selectAlternativePhaseResults } from "../logic/selectFinishedIssueExecution.js";
+import { FINISHED_ISSUE_TABS, FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation";
+import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis/logic/resultsAnalysisNavigation";
+import { buildModelsData } from "../models/logic/buildModelsData.js";
 
-const unwrap = (response) =>
-  response && typeof response === "object" && "data" in response
-    ? response.data
-    : response;
-
-const isPlainObject = (value) =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const getSelectedIssueId = (selectedIssue) =>
-  selectedIssue?.id || selectedIssue?._id || null;
-
-const safeJsonStringify = (value) => {
-  try {
-    if (value === null || value === undefined) return "";
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return "";
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-        return JSON.stringify(JSON.parse(trimmed), null, 2);
-      }
-      return value;
-    }
-
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return typeof value === "string" ? value : String(value);
-  }
+const unwrap = (response) => response && typeof response === "object" && "data" in response ? response.data : response;
+const getIssueId = (issue) => issue?.id || issue?._id || null;
+const asArray = (value) => Array.isArray(value) ? value : [];
+const pretty = (value) => {
+  try { return value === null || value === undefined ? "" : JSON.stringify(value, null, 2); } catch { return String(value); }
 };
 
-/**
- * Hook principal del dialogo de detalle de finished issue.
- *
- * Centraliza estado, derivaciones y acciones del flujo del dialogo
- * para mantener el componente de UI enfocado en composicion.
- *
- * @param {Object} params Parametros del hook.
- * @returns {Object}
- */
-export const useFinishedIssueDialogView = ({
-  selectedIssue,
-  openFinishedIssueDialog,
-}) => {
+export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDialog }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
+  const issueId = getIssueId(selectedIssue);
+  const requestToken = useRef(0);
   const scatterPlotRef = useRef(null);
-  const resetZoom = (chartRef) => chartRef?.current?.resetZoom?.();
-
-  const openTokenRef = useRef(0);
-  const baseIssueRef = useRef(null);
-
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
+  const [payload, setPayload] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedExecutionKey, setSelectedExecutionKey] = useState("base");
+  const [selectedPhase, setSelectedPhase] = useState(null);
   const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.DASHBOARD);
-  const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(
-    RESULTS_ANALYSIS_VIEWS.OUTCOME
-  );
-
+  const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(RESULTS_ANALYSIS_VIEWS.OUTCOME);
   const [openDescriptionList, setOpenDescriptionList] = useState(true);
   const [openCriteriaList, setOpenCriteriaList] = useState(true);
   const [openAlternativeList, setOpenAlternativesList] = useState(true);
   const [openConsensusInfoList, setOpenConsensusInfoList] = useState(false);
   const [openExpertsList, setOpenExpertsList] = useState(true);
   const [openParamsViewer, setOpenParamsViewer] = useState(false);
-
-  const [loadingInfo, setLoadingInfo] = useState(false);
-  const [issue, setIssue] = useState({});
-
-  const [runsLoading, setRunsLoading] = useState(false);
-  const [runs, setRuns] = useState([]);
-  const [selectedRunKey, setSelectedRunKey] = useState("base");
-  const [runCache, setRunCache] = useState({});
-
   const [addOpen, setAddOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
-
   const [selectedModelId, setSelectedModelId] = useState("");
   const [scenarioParamValues, setScenarioParamValues] = useState({});
   const [scenarioWeightsError, setScenarioWeightsError] = useState("");
 
-  const [modelsCatalog, setModelsCatalog] = useState([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-  const [paramsJson, setParamsJson] = useState("{}");
-  const selectedIssueId = getSelectedIssueId(selectedIssue);
-
-  useEffect(() => {
-    baseIssueRef.current = issue;
-  }, [issue]);
-
-  const refreshRuns = async (issueId) => {
-    if (!issueId) return [];
-
-    const data = unwrap(await getIssueScenarios(issueId));
-    const list = Array.isArray(data) ? data : data?.scenarios || [];
-    const normalized = Array.isArray(list) ? list : [];
-
-    setRuns(normalized);
-    return normalized;
-  };
-
-  useEffect(() => {
-    const issueId = selectedIssueId;
-    if (!issueId || !openFinishedIssueDialog) return;
-
-    let cancelled = false;
-    const token = ++openTokenRef.current;
-
-    const run = async () => {
-      setLoadingInfo(true);
-      setRunsLoading(true);
-
-      try {
-        const [baseResp, runsResp] = await Promise.all([
-          getFinishedIssueInfo(issueId),
-          getIssueScenarios(issueId),
-        ]);
-
-        if (cancelled || openTokenRef.current !== token) return;
-
-        const baseData = unwrap(baseResp);
-        const loadedIssue = baseData?.issueInfo || baseData || {};
-
-        setIssue(loadedIssue || {});
-        setSelectedRunKey("base");
-        setRunCache({});
-        setRuns([]);
-
-        const runsData = unwrap(runsResp);
-        const list = Array.isArray(runsData) ? runsData : runsData?.scenarios || [];
-        setRuns(Array.isArray(list) ? list : []);
-
-        const index = getLastPhaseIndex(loadedIssue || {});
-        setCurrentPhaseIndex(index);
-        setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
-        setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
-
-        setOpenDescriptionList(true);
-        setOpenCriteriaList(true);
-        setOpenAlternativesList(true);
-        setOpenConsensusInfoList(false);
-        setOpenExpertsList(true);
-        setOpenParamsViewer(false);
-
-        setSelectedModelId("");
-        setScenarioParamValues({});
-        setScenarioWeightsError("");
-        setScenarioName("");
-        setParamsJson("{}");
-
-      } catch {
-        if (cancelled || openTokenRef.current !== token) return;
-        setIssue({});
-        setRuns([]);
-        setSelectedRunKey("base");
-        setRunCache({});
-        setCurrentPhaseIndex(0);
-        setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
-        setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
-      } finally {
-        // eslint-disable-next-line no-unsafe-finally
-        if (cancelled || openTokenRef.current !== token) return;
-        setLoadingInfo(false);
-        setRunsLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedIssueId, openFinishedIssueDialog]);
-
-  const ensureRunLoaded = async (runKey) => {
-    if (!runKey || runKey === "base") return null;
-
-    const cached = runCache[runKey];
-    if (cached) return cached;
-
+  const loadPayload = useCallback(async (id, { preserveExecution = false } = {}) => {
+    if (!id) return null;
+    const token = ++requestToken.current;
+    setLoading(true); setError(null);
     try {
-      setRunsLoading(true);
-      const response = unwrap(await getIssueScenarioById(runKey));
-      const scenario = response?.scenario || response || null;
-
-      if (!scenario?.outputs?.standardResult) {
-        showSnackbarAlert("Scenario results not available yet.", "warning");
-        return null;
-      }
-
-      const info = applyScenarioToIssueInfo(baseIssueRef.current || issue, scenario);
-      setRunCache((prev) => ({ ...prev, [runKey]: info }));
-      return info;
-    } catch {
-      showSnackbarAlert("Could not load scenario.", "error");
+      const response = unwrap(await getFinishedIssueInfo(id));
+      const nextPayload = response?.payload || response?.issueInfo || response || null;
+      if (token !== requestToken.current) return null;
+      setPayload(nextPayload);
+      const phase = selectAlternativePhaseResults(nextPayload).at(-1)?.phase ?? null;
+      setSelectedPhase(phase);
+      setSelectedExecutionKey((current) =>
+        preserveExecution && asArray(nextPayload?.scenarios).some((scenario) => scenario?.id === current)
+          ? current
+          : "base"
+      );
+      return nextPayload;
+    } catch (caught) {
+      if (token === requestToken.current) { setPayload(null); setError(caught); setSelectedExecutionKey("base"); setSelectedPhase(null); }
       return null;
     } finally {
-      setRunsLoading(false);
+      if (token === requestToken.current) setLoading(false);
     }
-  };
-
-  const handleSelectRun = async (runKey) => {
-    setSelectedRunKey(runKey);
-    if (runKey === "base") {
-      setCurrentPhaseIndex(getLastPhaseIndex(issue || {}));
-      return;
-    }
-
-    await ensureRunLoaded(runKey);
-    setCurrentPhaseIndex(0);
-  };
+  }, []);
 
   useEffect(() => {
-    if (!openFinishedIssueDialog) return;
-
-    if (selectedRunKey === "base") {
-      setCurrentPhaseIndex(getLastPhaseIndex(issue || {}));
-      return;
+    if (!openFinishedIssueDialog || !issueId) {
+      requestToken.current += 1;
+      setPayload(null); setError(null); setSelectedExecutionKey("base"); setSelectedPhase(null);
+      return undefined;
     }
+    loadPayload(issueId);
+    setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
+    setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
+    return () => { requestToken.current += 1; };
+  }, [issueId, openFinishedIssueDialog, loadPayload]);
 
-    const info = runCache[selectedRunKey];
-    if (info) setCurrentPhaseIndex(0);
-  }, [selectedRunKey, issue, runCache, openFinishedIssueDialog]);
-
-  const selectedPhase = currentPhaseIndex;
-
-  const baseModelParamsBlock = issue?.modelParams || null;
-  const availableModelsRaw = baseModelParamsBlock?.availableModels;
-  const baseIssueWeights = useMemo(() => {
-    const weightsFromSaved = issue?.modelParams?.base?.paramsSaved?.weights;
-    if (isPlainObject(weightsFromSaved)) return weightsFromSaved;
-    const weightsFromResolved = issue?.modelParams?.base?.paramsResolved?.weights;
-    if (isPlainObject(weightsFromResolved)) return weightsFromResolved;
-    const weightsFromResult = issue?.finalCriteriaWeights?.weightsByCriterion;
-    if (isPlainObject(weightsFromResult)) return weightsFromResult;
-    return {};
-  }, [issue]);
-
-  const availableModels = useMemo(
-    () =>
-      (Array.isArray(availableModelsRaw) ? availableModelsRaw : []).map((model) => ({
-        ...model,
-        baseIssueWeights,
-      })),
-    [availableModelsRaw, baseIssueWeights]
+  const selectedExecution = useMemo(
+    () => selectFinishedIssueExecution(payload, selectedExecutionKey),
+    [payload, selectedExecutionKey]
   );
-
-  const domainType = baseModelParamsBlock?.domainType || null;
-  const viewIssue =
-    selectedRunKey === "base" ? issue : runCache[selectedRunKey] || null;
-  const isScenarioSelected = selectedRunKey !== "base";
-
-  const leafNames = useMemo(() => {
-    const fromBackend = baseModelParamsBlock?.leafCriteria
-      ?.map((criterion) => criterion?.name)
-      .filter(Boolean);
-
-    if (fromBackend?.length) return fromBackend;
-    return getLeafCriteriaNamesFallback(issue?.summary?.criteria || []);
-  }, [baseModelParamsBlock, issue?.summary?.criteria]);
-  const leafCriteriaForParams = useMemo(
-    () =>
-      Array.isArray(baseModelParamsBlock?.leafCriteria)
-        ? baseModelParamsBlock.leafCriteria
-            .map((criterion, index) => {
-              const id =
-                String(criterion?.id || criterion?._id || "").trim() || null;
-              const name =
-                String(criterion?.name || "").trim() ||
-                `Criterion ${index + 1}`;
-              if (!id) return null;
-              return { id, name };
-            })
-            .filter(Boolean)
-        : [],
-    [baseModelParamsBlock?.leafCriteria]
-  );
-  const criteriaTreeForParams = useMemo(
-    () =>
-      Array.isArray(viewIssue?.summary?.criteria)
-        ? viewIssue.summary.criteria
-        : Array.isArray(issue?.summary?.criteria)
-          ? issue.summary.criteria
-          : [],
-    [issue?.summary?.criteria, viewIssue?.summary?.criteria]
-  );
-
-  const hasSingleCriterion = useMemo(
-    () => hasSingleLeafCriterion(viewIssue || issue),
-    [viewIssue, issue]
-  );
-
-  const roundsCount = getRoundsCount(viewIssue || {});
-  const showRounds = Boolean(viewIssue?.summary?.consensusInfo && roundsCount > 1);
-  const hasConsensus = Boolean(viewIssue?.summary?.consensusInfo);
+  const executionOptions = useMemo(() => buildFinishedIssueExecutionOptions(payload), [payload]);
+  const basePhases = useMemo(() => selectAlternativePhaseResults(payload).map((result) => result.phase), [payload]);
+  const ratingsSection = useFinishedIssueRatingsView({ payload });
 
   useEffect(() => {
-    if (activeView === FINISHED_ISSUE_VIEWS.CONSENSUS && viewIssue && !hasConsensus) {
-      setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
-    }
-  }, [activeView, hasConsensus, viewIssue]);
+    if (selectedExecution.type === "base" && !basePhases.includes(selectedPhase)) setSelectedPhase(basePhases.at(-1) ?? null);
+  }, [selectedExecution.type, basePhases, selectedPhase]);
 
-  const ratingsView = useFinishedIssueRatingsView({
-    viewIssue,
-    currentPhaseIndex,
-    leafCriteria: leafCriteriaForParams,
-  });
-
-  const ranking =
-    (Array.isArray(viewIssue?.alternativesRankings)
-      ? viewIssue.alternativesRankings.find(
-        (entry) => Number(entry?.phase) === Number(selectedPhase)
-      )
-      : null)?.rankedAlternatives ?? [];
-  const lastIndex = ranking.length - 1;
-
-  const formatScore = (number) =>
-    new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(number);
-
-  const handleChangePhase = (index) => {
-    const parsedIndex = Number(index);
-    const maxPhaseIndex = Math.max(0, roundsCount - 1);
-    const nextPhaseIndex = Number.isFinite(parsedIndex)
-      ? Math.min(maxPhaseIndex, Math.max(0, Math.trunc(parsedIndex)))
-      : 0;
-
-    setCurrentPhaseIndex(nextPhaseIndex);
+  const handleSelectRun = (key) => {
+    const execution = selectFinishedIssueExecution(payload, key);
+    setSelectedExecutionKey(execution.key);
+    if (execution.type === "base") setSelectedPhase(basePhases.at(-1) ?? null);
   };
-
-  const handleSelectTab = (tab) => {
-    if (tab === FINISHED_ISSUE_TABS.CONSENSUS && !hasConsensus) {
-      setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
-      return;
-    }
-    if (tab === FINISHED_ISSUE_TABS.RESULTS_ANALYSIS) {
-      setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
-    }
-    setActiveView(tab);
+  const handleChangePhase = (phase) => {
+    const next = Number(phase);
+    if (selectedExecution.type === "base" && basePhases.includes(next)) setSelectedPhase(next);
   };
-  const currentPhaseLabel = formatFinishedIssuePhaseLabel({
-    phaseIndex: currentPhaseIndex,
-    phasesCount: roundsCount,
-  });
-  const availableTabs = [
-    FINISHED_ISSUE_TABS.DASHBOARD,
-    FINISHED_ISSUE_TABS.OVERVIEW,
-    FINISHED_ISSUE_TABS.RESULTS_ANALYSIS,
-    FINISHED_ISSUE_TABS.EVALUATIONS,
-    ...(hasConsensus ? [FINISHED_ISSUE_TABS.CONSENSUS] : []),
-    FINISHED_ISSUE_TABS.MODELS,
-  ];
-
-  const participated = viewIssue?.summary?.experts?.participated || [];
-  const notAccepted = viewIssue?.summary?.experts?.notAccepted || [];
-  const totalExperts = participated.length + notAccepted.length;
-
-  const getRunId = (run) => run?._id || run?.id || run?.scenarioId || run?.runId;
-  const getRunLabel = (run) => {
-    const customName = run?.name || run?.scenarioName;
-    if (customName) return customName;
-
-    return run?.targetModelName || run?.modelName || "Model run";
-  };
-
-  const useSchemaAdd = Array.isArray(availableModelsRaw);
-
-  const selectedModelFromSchema = useMemo(() => {
-    if (!useSchemaAdd) return null;
-    return availableModels.find((model) => model?.id === selectedModelId) || null;
-  }, [useSchemaAdd, availableModels, selectedModelId]);
-  const selectedModelCompatible = useMemo(
-    () => (selectedModelFromSchema ? isModelCompatible(selectedModelFromSchema) : false),
-    [selectedModelFromSchema]
-  );
-
-  const openAddDialog = async () => {
-    setAddOpen(true);
-
-    if (useSchemaAdd) {
-      setModelsCatalog([]);
-      return;
-    }
-
-    if (modelsCatalog?.length) return;
-
-    try {
-      setModelsLoading(true);
-      const response = unwrap(await getModelsInfo());
-      const models = response?.models || response || [];
-      setModelsCatalog(Array.isArray(models) ? models : []);
-    } catch {
-      setModelsCatalog([]);
-    } finally {
-      setModelsLoading(false);
-    }
-  };
-
-  const closeAddDialog = () => {
-    setAddOpen(false);
-    setScenarioName("");
-    setSelectedModelId("");
-    setScenarioParamValues({});
-    setScenarioWeightsError("");
-    setParamsJson("{}");
-  };
-
+  const hasConsensus = payload?.consensus?.enabled === true;
   useEffect(() => {
-    if (!addOpen) return;
-    if (!useSchemaAdd) return;
-    if (!selectedModelFromSchema) return;
+    if (activeView === FINISHED_ISSUE_VIEWS.CONSENSUS && !hasConsensus) setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
+  }, [activeView, hasConsensus]);
 
-    const defaults = buildParamsResolved({
-      model: selectedModelFromSchema,
-      leafCount: leafNames.length,
-      leafCriteria: leafCriteriaForParams,
-    });
-
-    setScenarioParamValues(defaults);
+  const availableModels = asArray(payload?.models?.compatible);
+  const leafCriteria = asArray(payload?.criteria?.nodes).filter((criterion) => criterion?.isLeaf).map((criterion) => ({ id: criterion.id, name: criterion.name }));
+  const criteriaTree = asArray(ratingsSection.selectedSerializedContext?.criteriaTree);
+  const selectedModel = availableModels.find((model) => model?.id === selectedModelId) || null;
+  const selectedModelCompatible = selectedModel ? isModelCompatible(selectedModel) : false;
+  useEffect(() => {
+    if (!addOpen || !selectedModel) return;
+    setScenarioParamValues(buildParamsResolved({ model: selectedModel, leafCount: leafCriteria.length, leafCriteria, baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {} }));
     setScenarioWeightsError("");
-  }, [addOpen, useSchemaAdd, selectedModelFromSchema, leafNames, leafCriteriaForParams]);
-
-  const restoreScenarioDefaults = () => {
-    if (!selectedModelFromSchema) return;
-    const defaults = buildParamsResolved({
-      model: selectedModelFromSchema,
-      leafCount: leafNames.length,
-      leafCriteria: leafCriteriaForParams,
-    });
-    setScenarioParamValues(defaults);
-    setScenarioWeightsError("");
-  };
-
+  }, [addOpen, selectedModel, leafCriteria, payload?.criteria?.finalWeights?.byCriterionId]);
+  const openAddDialog = () => setAddOpen(true);
+  const closeAddDialog = () => { setAddOpen(false); setScenarioName(""); setSelectedModelId(""); setScenarioParamValues({}); setScenarioWeightsError(""); };
   const handleAddModelRun = async () => {
-    if (!selectedIssueId) return;
-
-    if (!selectedModelId) {
-      showSnackbarAlert("Please select a model.", "warning");
-      return;
+    if (!issueId || !selectedModel) { showSnackbarAlert("Please select a compatible model.", "warning"); return; }
+    if (!selectedModelCompatible) { showSnackbarAlert(getCompatReason(selectedModel) || "Selected model is not compatible.", "error"); return; }
+    let values = scenarioParamValues;
+    if (modelUsesScenarioCriteriaWeights(selectedModel)) {
+      const checked = validateScenarioCriteriaWeights({ weights: values.weights, leafCriteria, leafCount: leafCriteria.length });
+      if (!checked.ok) { setScenarioWeightsError(checked.msg); showSnackbarAlert(checked.msg, "error"); return; }
+      values = { ...values, weights: checked.normalized };
     }
-    if (useSchemaAdd && selectedModelFromSchema && !selectedModelCompatible) {
-      showSnackbarAlert("Selected model is not compatible with this issue scenario.", "error");
-      return;
-    }
-
-    let modelParameters = {};
-
-    if (useSchemaAdd) {
-      const leafCount = leafNames?.length || 0;
-      const modelNeedsCriteriaWeights =
-        modelUsesScenarioCriteriaWeights(selectedModelFromSchema);
-      let normalizedScenarioWeights = null;
-
-      if (modelNeedsCriteriaWeights) {
-        const weightsValidation = validateScenarioCriteriaWeights({
-          weights: scenarioParamValues?.weights,
-          leafCriteria: leafCriteriaForParams,
-          leafCount,
-        });
-
-        if (!weightsValidation.ok) {
-          setScenarioWeightsError(weightsValidation.msg || "Invalid criteria weights.");
-          showSnackbarAlert(weightsValidation.msg || "Invalid criteria weights.", "error");
-          return;
-        }
-
-        normalizedScenarioWeights = weightsValidation.normalized;
-        setScenarioWeightsError("");
-      }
-
-      const validation = validateParams({
-        model: selectedModelFromSchema,
-        values: scenarioParamValues,
-        leafCount,
-        leafCriteria: leafCriteriaForParams,
-      });
-
-      if (!validation.ok) {
-        showSnackbarAlert(validation.msg || "Invalid parameters.", "error");
-        return;
-      }
-
-      modelParameters = cleanParamsForSend({
-        model: selectedModelFromSchema,
-        values: scenarioParamValues,
-        leafCount,
-        leafCriteria: leafCriteriaForParams,
-      });
-
-      if (modelNeedsCriteriaWeights) {
-        modelParameters.weights = isPlainObject(normalizedScenarioWeights)
-          ? normalizedScenarioWeights
-          : {};
-      }
-    } else {
-      let parsedParams = {};
-      try {
-        parsedParams = paramsJson?.trim() ? JSON.parse(paramsJson) : {};
-      } catch {
-        showSnackbarAlert("Parameters JSON is not valid.", "error");
-        return;
-      }
-
-      modelParameters = parsedParams;
-    }
-
+    const validation = validateParams({ model: selectedModel, values, leafCount: leafCriteria.length, leafCriteria });
+    if (!validation.ok) { showSnackbarAlert(validation.msg || "Invalid parameters.", "error"); return; }
     try {
       setAddLoading(true);
-
-      const response = await createIssueScenario({
-        issueId: selectedIssueId,
-        scenarioName: scenarioName?.trim() || undefined,
-        targetModelId: selectedModelId,
-        paramOverrides: modelParameters,
-      });
-
-      if (!response?.success) {
-        const msg = response?.message || "Could not add model.";
-        showSnackbarAlert(msg, "error");
-        return;
-      }
-
+      const response = await createIssueScenario({ issueId, scenarioName: scenarioName.trim() || undefined, targetModelId: selectedModel.id, paramOverrides: cleanParamsForSend({ model: selectedModel, values, leafCount: leafCriteria.length, leafCriteria }) });
+      if (!response?.success) { showSnackbarAlert(response?.message || "Could not add model.", "error"); return; }
       const scenarioId = response?.data?.scenarioId || null;
-
-      await refreshRuns(selectedIssueId);
-
-      if (scenarioId) {
-        setSelectedRunKey(scenarioId);
-        const info = await ensureRunLoaded(scenarioId);
-        setCurrentPhaseIndex(info ? getLastPhaseIndex(info) : 0);
-      }
-
-      showSnackbarAlert("Model run added.", "success");
-
-      closeAddDialog();
-    } catch (error) {
-      const msg = error?.response?.data?.message || "Unexpected error adding model.";
-      showSnackbarAlert(msg, "error");
-    } finally {
-      setAddLoading(false);
-    }
+      const refreshed = await loadPayload(issueId, { preserveExecution: false });
+      setSelectedExecutionKey(scenarioId && asArray(refreshed?.scenarios).some((scenario) => scenario.id === scenarioId) ? scenarioId : "base");
+      closeAddDialog(); showSnackbarAlert("Model run added.", "success");
+    } catch (caught) { showSnackbarAlert(caught?.response?.data?.message || "Unexpected error adding model.", "error"); }
+    finally { setAddLoading(false); }
   };
-
   const handleRemoveSelectedRun = async () => {
-    if (!selectedRunKey || selectedRunKey === "base") return;
-
+    if (selectedExecution.type !== "scenario") return;
     try {
-      setRunsLoading(true);
-      const response = await removeIssueScenario(selectedRunKey);
-
-      if (!response?.success) {
-        showSnackbarAlert(response?.message || "Could not remove model.", "error");
-        return;
-      }
-
+      setLoading(true);
+      const response = await removeIssueScenario(selectedExecution.key);
+      if (!response?.success) { showSnackbarAlert(response?.message || "Could not remove model.", "error"); return; }
+      setSelectedExecutionKey("base");
+      await loadPayload(issueId, { preserveExecution: false });
       showSnackbarAlert("Model removed.", "success");
-
-      const removedKey = selectedRunKey;
-      setSelectedRunKey("base");
-      setRunCache((prev) => {
-        const next = { ...prev };
-        delete next[removedKey];
-        return next;
-      });
-
-      await refreshRuns(selectedIssueId);
-    } catch {
-      showSnackbarAlert("Unexpected error removing model.", "error");
-    } finally {
-      setRunsLoading(false);
-    }
+    } catch { showSnackbarAlert("Unexpected error removing model.", "error"); }
   };
-
-  const selectedModelNameView =
-    viewIssue?.summary?.model ||
-    viewIssue?.summary?.modelName ||
-    viewIssue?.summary?.targetModelName ||
-    viewIssue?.summary?.selectedModel ||
-    viewIssue?.modelParams?.base?.modelName ||
-    issue?.modelParams?.base?.modelName ||
-    "—";
-
-  const selectedModelParamsViewRaw =
-    viewIssue?.modelParams?.base?.paramsResolved ||
-    viewIssue?.modelParams?.base?.paramsSaved ||
-    viewIssue?.selectedScenario?.config?.normalizedModelParameters ||
-    viewIssue?.selectedScenario?.config?.modelParameters ||
-    viewIssue?.summary?.modelParameters ||
-    viewIssue?.summary?.parameters ||
-    viewIssue?.summary?.params ||
-    viewIssue?.summary?.modelParams ||
-    null;
-
-  const selectedModelParamsView = selectedModelParamsViewRaw || {};
-  const paramsPretty = safeJsonStringify(selectedModelParamsView);
-
-  const baseModelName = issue?.modelParams?.base?.modelName || "—";
-
-  const baseModelSchemaFromCatalog =
-    availableModels.find((model) => (model?.name || model?.modelName) === baseModelName) ||
-    null;
-
-  const baseResolved =
-    issue?.modelParams?.base?.paramsResolved ||
-    issue?.modelParams?.base?.paramsSaved ||
-    {};
-
-  const baseSchemaParams = filterOutWeightsParams(
-    baseModelSchemaFromCatalog?.parameters || issue?.modelParams?.base?.parameters || []
-  );
-
-  const baseParamsForViewer = baseSchemaParams?.length
-    ? baseSchemaParams
-    : buildPseudoParametersFromValues(baseResolved);
-
-  const selectedRunModelName =
-    viewIssue?.modelParams?.base?.modelName ||
-    viewIssue?.summary?.targetModelName ||
-    viewIssue?.summary?.modelName ||
-    viewIssue?.summary?.model ||
-    "—";
-
-  const selectedResolved =
-    viewIssue?.modelParams?.base?.paramsResolved ||
-    viewIssue?.modelParams?.base?.paramsSaved ||
-    viewIssue?.selectedScenario?.config?.normalizedModelParameters ||
-    viewIssue?.selectedScenario?.config?.modelParameters ||
-    {};
-
-  const selectedModelSchemaFromCatalog =
-    availableModels.find(
-      (model) => (model?.name || model?.modelName) === selectedRunModelName
-    ) || null;
-
-  const selectedSchemaParams =
-    selectedModelSchemaFromCatalog?.parameters ||
-    viewIssue?.modelParams?.base?.parameters ||
-    [];
-
-  const selectedParamsForViewer = selectedSchemaParams?.length
-    ? selectedSchemaParams
-    : buildPseudoParametersFromValues(selectedResolved);
-  const summaryParamsForViewer =
-    selectedRunKey === "base" ? baseParamsForViewer : selectedParamsForViewer;
-  const summaryResolvedParams =
-    selectedRunKey === "base" ? baseResolved : selectedResolved;
-
-  const selectedRunMeta = useMemo(
-    () => runs.find((run) => getRunId(run) === selectedRunKey) || null,
-    [runs, selectedRunKey]
-  );
-
-  const selectedRunLabel = selectedRunKey === "base" ? "Base" : getRunLabel(selectedRunMeta);
-
-  const {
-    rawOutput,
-    rawOutputExists,
-    modelExecution,
-  } = buildFinishedModelOutputView({
-    viewIssue,
-    currentPhaseIndex,
-  });
-  const rawOutputPretty = rawOutputExists ? safeJsonStringify(rawOutput) : "";
+  const modelsData = buildModelsData({ payload, selectedExecution });
+  const selectedParams = modelsData.effectiveParameters || modelsData.configuredParameters || {};
 
   return {
-    dialog: {
-      loadingInfo,
-      issue,
-      viewIssue,
-    },
+    selectedIssue,
+    dialog: { payload, loading, loadingInfo: loading, error },
     header: {
-      selectedIssue,
-      selectedRunKey,
-      selectedModelNameView,
-      showRounds,
-      currentPhaseIndex,
-      roundsCount,
-      handleChangePhase,
-      runs,
-      runsLoading,
-      getRunId,
-      getRunLabel,
-      handleSelectRun,
-      openAddDialog,
-      currentPhaseLabel,
-      selectedRunLabel,
-    },
-    overviewSection: {
-      viewIssue,
-      selectedModelNameView,
-      selectedModelParamsView,
-      paramsPretty,
-      summaryParamsForViewer,
-      summaryResolvedParams,
-      leafNames,
-      openDescriptionList,
-      setOpenDescriptionList,
-      openCriteriaList,
-      setOpenCriteriaList,
-      openAlternativeList,
-      setOpenAlternativesList,
-      openConsensusInfoList,
-      setOpenConsensusInfoList,
-      openExpertsList,
-      setOpenExpertsList,
-      totalExperts,
-      participated,
-      notAccepted,
-    },
-    rankingSection: {
-      viewIssue,
-      ranking,
-      lastIndex,
-      formatScore,
-      isScenarioSelected,
-    },
-    modelSpecificOutputSection: {
-      rawOutput: rawOutputExists ? rawOutput : null,
-      rawOutputPretty,
-      modelExecution,
-      hasOutput: rawOutputExists,
-    },
-    modelsSection: {
-      selectedRunKey,
-      handleRemoveSelectedRun,
-      handleSelectRun,
-      runs,
-      runsLoading,
-      viewIssue,
-      getRunId,
-      getRunLabel,
-      openParamsViewer,
-      setOpenParamsViewer,
-      baseModelName,
-      selectedRunModelName,
-      domainType,
-      baseParamsForViewer,
-      baseResolved,
-      criteriaTree: criteriaTreeForParams,
-      leafCriteria: leafCriteriaForParams,
-      selectedRunLabel,
-      selectedParamsForViewer,
-      selectedResolved,
-      addDialog: {
-        addOpen,
-        addLoading,
-        closeAddDialog,
-        openAddDialog,
-        handleAddModelRun,
-        scenarioName,
-        setScenarioName,
-        selectedModelId,
-        setSelectedModelId,
-        useSchemaAdd,
-        availableModels,
-        modelsCatalog,
-        selectedModelFromSchema,
-        selectedModelCompatible,
-        restoreScenarioDefaults,
-        scenarioParamValues,
-        setScenarioParamValues,
-        scenarioWeightsError,
-        clearScenarioWeightsError: () => setScenarioWeightsError(""),
-        criteriaTree: criteriaTreeForParams,
-        leafCriteria: leafCriteriaForParams,
-        paramsJson,
-        setParamsJson,
-        modelsLoading,
-        domainType,
-      },
-    },
-    resultsAnalysisSection: {
-      scatterPlotRef,
-      resetZoom,
-    },
-    ratingsSection: {
-      viewIssue,
-      currentPhaseIndex,
-      leafNames,
-      leafCriteria: leafCriteriaForParams,
-      hasSingleCriterion,
-      ...ratingsView,
-    },
-    roundsNavigation: {
-      showRounds,
-      currentPhaseIndex,
-      roundsCount,
-      handleChangePhase,
-      handlePreviousRound: () => handleChangePhase(currentPhaseIndex - 1),
-      handleNextRound: () => handleChangePhase(currentPhaseIndex + 1),
+      selectedExecutionKey, selectedModelNameView: selectedExecution.model?.name || "—", executionOptions,
+      selectedRunKey: selectedExecutionKey, selectedRunLabel: selectedExecution.label,
+      showRounds: selectedExecution.type === "base" && basePhases.length > 1,
+      selectedPhase, basePhases, handleChangePhase, handleSelectRun, openAddDialog,
     },
     navigation: {
-      activeView,
-      activeTab: activeView,
-      setActiveView,
-      handleSelectTab,
-      handleBackToDashboard: () => setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD),
-      availableTabs,
+      activeView, activeTab: activeView, availableTabs: [FINISHED_ISSUE_TABS.DASHBOARD, FINISHED_ISSUE_TABS.OVERVIEW, FINISHED_ISSUE_TABS.RESULTS_ANALYSIS, FINISHED_ISSUE_TABS.EVALUATIONS, ...(hasConsensus ? [FINISHED_ISSUE_TABS.CONSENSUS] : []), FINISHED_ISSUE_TABS.MODELS],
+      setActiveView, handleSelectTab: (tab) => { if (tab === FINISHED_ISSUE_TABS.RESULTS_ANALYSIS) setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME); setActiveView(tab); }, handleBackToDashboard: () => setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD),
     },
-    resultsAnalysisNavigation: {
-      activeView: activeResultsAnalysisView,
-      setActiveView: setActiveResultsAnalysisView,
+    resultsAnalysisNavigation: { activeView: activeResultsAnalysisView, setActiveView: setActiveResultsAnalysisView },
+    resultsAnalysisSection: { scatterPlotRef, resetZoom: (ref) => ref?.current?.resetZoom?.() },
+    overviewSection: { payload, openDescriptionList, setOpenDescriptionList, openCriteriaList, setOpenCriteriaList, openAlternativeList, setOpenAlternativesList, openConsensusInfoList, setOpenConsensusInfoList, openExpertsList, setOpenExpertsList },
+    ratingsSection,
+    runs: { selectedExecution, selectedExecutionKey, executionOptions, selectedPhase, basePhases },
+    modelsSection: {
+      ...modelsData, selectedRunKey: selectedExecutionKey, handleRemoveSelectedRun, runsLoading: loading,
+      openParamsViewer, setOpenParamsViewer, selectedParams, criteriaTree, leafCriteria,
+      selectedRunLabel: selectedExecution.label,
+      addDialog: { addOpen, closeAddDialog, addLoading, scenarioName, setScenarioName, selectedModelId, setSelectedModelId, availableModels, selectedModelFromSchema: selectedModel, selectedModelCompatible, scenarioParamValues, setScenarioParamValues, scenarioWeightsError, clearScenarioWeightsError: () => setScenarioWeightsError(""), handleAddModelRun, restoreScenarioDefaults: () => selectedModel && setScenarioParamValues(buildParamsResolved({ model: selectedModel, leafCount: leafCriteria.length, leafCriteria, baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {} })), domainType: null, criteriaTree, leafCriteria },
     },
-    debug: {
-      selectedRunMeta,
-      ensureRunLoaded,
-      refreshRuns,
-      isModelCompatible,
-      getCompatReason,
-    },
+    modelSpecificOutputSection: { rawOutput: selectedExecution.rawOutput, rawOutputPretty: pretty(selectedExecution.rawOutput), modelExecution: selectedExecution.modelSpecificOutput },
   };
 };
 

@@ -54,7 +54,7 @@ const formatCriterionWeightLabel = (value) => {
 };
 
 /**
- * Item recursivo para visualizar arbol de criterios en el summary.
+ * Item recursivo para visualizar el arbol de criterios.
  *
  * @param {Object} props Props del componente.
  * @returns {JSX.Element}

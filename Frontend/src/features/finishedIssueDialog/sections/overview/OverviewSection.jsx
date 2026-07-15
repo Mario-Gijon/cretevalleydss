@@ -1,13 +1,10 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import { formatConsensusRoundLabel } from "../../shared/logic/formatConsensusRoundLabel";
 import OverviewView from "./components/OverviewView";
-import { buildFinishedIssueOverviewData } from "./logic/buildFinishedIssueOverviewData";
+import { buildOverviewData } from "./logic/buildFinishedIssueOverviewData";
 
 const OverviewSection = () => {
   const { overviewSection } = useFinishedIssueDialogContext();
   const {
-    viewIssue,
-    selectedModelNameView,
     openDescriptionList,
     setOpenDescriptionList,
     openCriteriaList,
@@ -17,12 +14,7 @@ const OverviewSection = () => {
     openExpertsList,
     setOpenExpertsList,
   } = overviewSection;
-  const reachedPhase = viewIssue?.summary?.consensusInfo?.consensusReachedPhase;
-  const data = buildFinishedIssueOverviewData({
-    viewIssue,
-    selectedModelName: selectedModelNameView,
-    reachedPhaseLabel: reachedPhase !== undefined ? formatConsensusRoundLabel(reachedPhase) : "—",
-  });
+  const data = buildOverviewData(overviewSection.payload);
 
   return <OverviewView data={data} state={{
     descriptionExpanded: openDescriptionList,

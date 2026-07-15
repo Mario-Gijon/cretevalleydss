@@ -1,88 +1,60 @@
-import { getFinishedIssueGraphAvailability } from "../../../shared/logic/buildFinishedIssueGraphs";
-import { buildFinishedIssueResultsAnalysisData } from "../../../shared/logic/buildFinishedIssueResultsAnalysisData";
+import { buildOverviewData } from "../../overview/logic/buildFinishedIssueOverviewData.js";
+import { buildResultsAnalysisData } from "../../../shared/logic/buildFinishedIssueResultsAnalysisData.js";
+import { buildConsensusData } from "../../consensus/logic/buildConsensusData.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
-const asText = (value) => (typeof value === "string" ? value : "");
 
-export const buildFinishedIssueDashboardData = ({
-  viewIssue,
-  ranking,
-  formatScore,
-  currentPhaseLabel,
-  currentPhaseIndex,
-  expertList,
-  evaluationStructure,
-  canShowCollective,
-  criteriaWeightsPayload,
-  selectedModelName,
-  selectedRunKey,
-  selectedRunLabel,
-  runs,
-  roundsCount,
-}) => {
-  const summary = viewIssue?.summary || {};
-  const graphAvailability = getFinishedIssueGraphAvailability(viewIssue);
-  const alternatives = asArray(summary.alternatives);
-  const resultsAnalysis = buildFinishedIssueResultsAnalysisData({
-    viewIssue,
-    ranking,
-    formatScore,
-    currentPhaseIndex,
-    currentPhaseLabel,
-    executionLabel: selectedRunLabel,
-  });
-  const consensusInfo = summary.consensusInfo;
+export const buildDashboardData = ({ payload, selectedExecution, selectedPhase, evaluations }) => {
+  const overview = buildOverviewData(payload);
+  const resultsAnalysis = buildResultsAnalysisData({ payload, selectedExecution, selectedPhase });
+  const consensus = buildConsensusData(payload);
+  const canonicalEvaluationPhase = selectedPhase ?? asArray(payload?.phaseResults)
+    .filter((result) => result?.stage === "alternativeEvaluation")
+    .sort((left, right) => right.phase - left.phase)[0]?.phase ?? null;
+
   return {
     issue: {
-      id: summary.id || viewIssue?.id || viewIssue?._id || null,
-      name: asText(summary.name),
-      description: asText(summary.description),
-      owner: asText(summary.owner),
-      creationDate: summary.creationDate ?? null,
-      closureDate: summary.closureDate ?? null,
-      alternativesCount: alternatives.length,
-      criteriaCount: asArray(summary.criteria).length,
-      participatingExpertsCount: asArray(summary.experts?.participated).length,
+      id: overview.issue.id,
+      name: overview.issue.name,
+      description: overview.description,
+      owner: overview.general.owner,
+      creationDate: overview.general.creationDate,
+      closureDate: overview.general.closureDate,
+      alternativesCount: overview.counts.alternatives,
+      criteriaCount: overview.counts.criteria,
+      participatingExpertsCount: overview.experts.participated.length,
     },
     resultsAnalysis: {
-      context: resultsAnalysis.context,
-      outcome: {
-        available: resultsAnalysis.outcome.available,
-        winner: resultsAnalysis.outcome.winner,
-        topRanking: resultsAnalysis.outcome.ranking.slice(0, 3),
-      },
-      visualizations: {
-        hasPerformanceMap: resultsAnalysis.visualizations.hasPerformanceMap,
-        performanceMapData: resultsAnalysis.visualizations.performanceMapData,
-        selectedPhaseIndex: resultsAnalysis.visualizations.selectedPhaseIndex,
-        unavailableReason: resultsAnalysis.visualizations.unavailableReason,
-      },
-      interpretation: resultsAnalysis.interpretation,
+      ...resultsAnalysis,
+      outcome: { ...resultsAnalysis.outcome, topRanking: resultsAnalysis.outcome.ranking.slice(0, 3) },
     },
     evaluations: {
-      expertsCount: asArray(expertList).length,
-      phaseLabel: currentPhaseLabel,
-      structure: evaluationStructure || null,
-      hasCollective: Boolean(canShowCollective),
-      hasCriteriaWeights: Boolean(criteriaWeightsPayload),
+      expertsCount: asArray(evaluations?.expertOptions).length,
+      phaseLabel: canonicalEvaluationPhase === null ? "—" : `Phase ${canonicalEvaluationPhase}`,
+      structure: evaluations?.structureKey || null,
+      hasCollective: evaluations?.canShowCollective === true,
+      hasCriteriaWeights: payload?.configuration?.criteriaWeighting?.required === true,
     },
     models: {
-      baseModelName: selectedModelName || "—",
-      selectedExecutionKey: selectedRunKey || "base",
-      selectedExecutionLabel: selectedRunKey === "base" ? "Base" : selectedRunLabel || "Scenario",
-      selectedExecutionIsBase: selectedRunKey === "base",
-      additionalRunsCount: asArray(runs).length,
+      baseModelName: payload?.models?.base?.name || "—",
+      selectedExecutionKey: selectedExecution?.key || "base",
+      selectedExecutionLabel: selectedExecution?.label || "Base",
+      selectedExecutionIsBase: selectedExecution?.type !== "scenario",
+      additionalRunsCount: asArray(payload?.scenarios).length,
     },
-    consensus: consensusInfo ? {
-      phasesCount: roundsCount,
-      phaseLabel: currentPhaseLabel,
-      threshold: consensusInfo.threshold ?? null,
-      finalMeasure: consensusInfo.finalConsensusMeasure ?? null,
-      finalizationReason: consensusInfo.finalizationReason ?? null,
-      reachedPhase: consensusInfo.consensusReachedPhase ?? null,
-      consensusEvolutionData: graphAvailability.hasConsensusEvolution
-        ? viewIssue?.analyticalGraphs?.consensusLevelLineChart || null
-        : null,
+    consensus: consensus.enabled ? {
+      phasesCount: consensus.rounds.length,
+      phaseLabel: consensus.finalPhase === null ? "—" : `Phase ${consensus.finalPhase}`,
+      threshold: consensus.threshold,
+      finalMeasure: consensus.series.at(-1)?.measure ?? null,
+      finalizationReason: consensus.finalizationReason,
+      reachedPhase: consensus.reachedPhase,
+      consensusEvolutionData: {
+        labels: consensus.series.map((entry) => `Phase ${entry.phase}`),
+        data: consensus.series.map((entry) => entry.measure),
+      },
     } : null,
   };
 };
+
+export default buildDashboardData;

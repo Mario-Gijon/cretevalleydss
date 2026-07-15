@@ -39,7 +39,7 @@ const FinishedIssueDialogBody = () => {
     >
       <FinishedIssueDialogHeader />
 
-      {dialog.loadingInfo || !dialog.issue?.summary ? (
+      {dialog.loading || !dialog.payload ? (
         <Backdrop open sx={{ zIndex: 999999 }}>
           <CircularLoading color="secondary" size={50} height="50vh" />
         </Backdrop>

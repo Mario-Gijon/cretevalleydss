@@ -25,32 +25,19 @@ const ModelsSection = () => {
     selectedRunKey,
     handleRemoveSelectedRun,
     runsLoading,
-    viewIssue,
     openParamsViewer,
     setOpenParamsViewer,
-    baseModelName,
-    selectedRunModelName,
-    domainType,
-    baseParamsForViewer,
-    baseResolved,
+    baseModel,
+    selectedExecution,
+    selectedParams,
     criteriaTree,
     leafCriteria,
     selectedRunLabel,
-    selectedParamsForViewer,
-    selectedResolved,
+    status,
+    error,
   } = modelsSection;
   const parameterContext = buildParameterContext({
-    model: selectedRunKey === "base"
-      ? {
-          id: viewIssue?.modelParams?.base?.modelId || null,
-          name: baseModelName,
-          apiModelKey: null,
-        }
-      : {
-          id: null,
-          name: selectedRunModelName,
-          apiModelKey: null,
-        },
+    model: selectedExecution?.model || baseModel || null,
     criteriaTree: Array.isArray(criteriaTree) ? criteriaTree : [],
     leafCriteria: Array.isArray(leafCriteria) ? leafCriteria : [],
     alternatives: [],
@@ -85,9 +72,9 @@ const ModelsSection = () => {
             </Typography>
           ) : null}
 
-          {selectedRunKey !== "base" && !viewIssue ? (
+          {selectedRunKey !== "base" && status === "error" ? (
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-              This model run is not available yet.
+              {error || "This model run is not available yet."}
             </Typography>
           ) : null}
 
@@ -100,9 +87,9 @@ const ModelsSection = () => {
             right={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Pill tone="secondary">
-                  Method: {selectedRunKey === "base" ? baseModelName : selectedRunModelName}
+                  Method: {selectedExecution?.model?.name || "—"}
                 </Pill>
-                <Pill tone="info">{domainType ? `Domain: ${domainType}` : "domain: —"}</Pill>
+                <Pill tone="info">{selectedExecution?.configuration?.domainType ? `Domain: ${selectedExecution.configuration.domainType}` : "domain: —"}</Pill>
                 {selectedRunKey === "base" ? (
                   <Pill tone="success">base</Pill>
                 ) : (
@@ -113,12 +100,12 @@ const ModelsSection = () => {
           >
             <Stack spacing={1.25}>
               {selectedRunKey === "base" ? (
-                viewIssue ? (
+                baseModel ? (
                   <ModelParamsView
                     title="Base"
-                    modelName={baseModelName}
-                    parameters={baseParamsForViewer}
-                    values={baseResolved}
+                    modelName={baseModel?.name}
+                    parameters={baseModel?.parameterDefinitions || []}
+                    values={selectedParams}
                     parameterContext={parameterContext}
                   />
                 ) : (
@@ -136,11 +123,11 @@ const ModelsSection = () => {
                   </Box>
                 )
               ) : (
-                <ModelParamsView
+                  <ModelParamsView
                   title={selectedRunLabel || "Simulation"}
-                  modelName={selectedRunModelName}
-                  parameters={selectedParamsForViewer}
-                  values={selectedResolved}
+                  modelName={selectedExecution?.model?.name}
+                  parameters={selectedExecution?.model?.parameterDefinitions || []}
+                  values={selectedParams}
                   parameterContext={parameterContext}
                 />
               )}

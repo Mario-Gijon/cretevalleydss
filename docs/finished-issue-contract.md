@@ -70,4 +70,27 @@ stage, phase, and model id where applicable. Thus an expert process can
 correctly have `expertCriteriaWeighting` as configuration source and
 `criteriaWeightingStageResult` as final-weight source.
 
-The frontend is intentionally not yet migrated to this contract.
+The frontend consumes this contract directly.
+
+## Frontend consumption
+
+The Finished Issue dialog keeps the response as one canonical `payload` and
+selects an execution by `"base"` or a scenario id. Selecting a scenario never
+merges it into, clones, or otherwise mutates the issue. Overview, Evaluations,
+and Consensus always consume canonical issue data. Header model information,
+Results Analysis, Models, and their dashboard previews may consume the selected
+execution.
+
+Base phase selection uses the stored numeric `phaseResults[].phase` values,
+sorted by value; it never uses an array index. Scenarios expose their stored
+source phase only as metadata and do not create synthetic rounds.
+
+Evaluations use the registry renderer with `{ stage, structureKey,
+evaluationContext, backendPayload, collectivePayload, readOnly: true }`.
+`evaluationContext` is the serialized context referenced by the evaluation's
+`contextId`; display payload is preferred over raw payload when present.
+
+Opening or refreshing the dialog uses only `getFinishedIssueInfo(issueId)`.
+The response supplies scenarios and compatible models, so scenario list/detail
+reads are not part of Finished Issue. After a scenario is created or removed,
+the dialog refetches this canonical payload.

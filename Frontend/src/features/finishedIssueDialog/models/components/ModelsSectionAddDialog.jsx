@@ -86,8 +86,7 @@ const ModelsSectionAddDialog = () => {
               color="info"
               onChange={(event) => addDialog.setSelectedModelId(event.target.value)}
             >
-              {addDialog.useSchemaAdd
-                ? (Array.isArray(addDialog.availableModels) ? addDialog.availableModels : []).map((model) => {
+              {(Array.isArray(addDialog.availableModels) ? addDialog.availableModels : []).map((model) => {
                     const disabled = !isModelCompatible(model);
                     const reason = getCompatReason(model, addDialog.domainType);
                     const label = model?.name || "—";
@@ -128,26 +127,15 @@ const ModelsSectionAddDialog = () => {
                         </Stack>
                       </MenuItem>
                     );
-                  })
-                : (addDialog.modelsCatalog || []).map((model) => {
-                    const name = model.name || model.model || model.id;
-                    const modelId = model.id || name;
-
-                    return (
-                      <MenuItem key={modelId} value={modelId}>
-                        {model.label || name}
-                      </MenuItem>
-                    );
                   })}
             </Select>
           </FormControl>
-          {addDialog.useSchemaAdd && (!Array.isArray(addDialog.availableModels) || addDialog.availableModels.length === 0) ? (
+          {(!Array.isArray(addDialog.availableModels) || addDialog.availableModels.length === 0) ? (
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
               No scenario candidate models are available for this issue yet.
             </Typography>
           ) : null}
-          {addDialog.useSchemaAdd &&
-          addDialog.selectedModelFromSchema &&
+          {addDialog.selectedModelFromSchema &&
           !addDialog.selectedModelCompatible ? (
             <Typography variant="caption" color="error">
               {getCompatReason(addDialog.selectedModelFromSchema, addDialog.domainType) ||
@@ -155,8 +143,7 @@ const ModelsSectionAddDialog = () => {
             </Typography>
           ) : null}
 
-          {addDialog.useSchemaAdd ? (
-            <>
+          <>
               {addDialog.selectedModelFromSchema ? (
                 <Stack direction="row" justifyContent="flex-end">
                   <Button
@@ -180,8 +167,8 @@ const ModelsSectionAddDialog = () => {
               />
 
               {addDialog.selectedModelFromSchema &&
-              Array.isArray(addDialog.selectedModelFromSchema.parameters) &&
-              addDialog.selectedModelFromSchema.parameters.length ? (
+              Array.isArray(addDialog.selectedModelFromSchema.parameterDefinitions) &&
+              addDialog.selectedModelFromSchema.parameterDefinitions.length ? (
                 <Box
                   sx={{
                     mt: 1,
@@ -196,27 +183,7 @@ const ModelsSectionAddDialog = () => {
                   </Typography>
                 </Box>
               ) : null}
-            </>
-          ) : (
-            <>
-              <TextField
-                label="Parameters (JSON)"
-                value={addDialog.paramsJson}
-                onChange={(event) => addDialog.setParamsJson(event.target.value)}
-                size="small"
-                fullWidth
-                multiline
-                minRows={6}
-                placeholder={`{\n  "alpha": 0.5,\n  "maxIter": 200,\n  "weights": {\n    "<criterionId1>": 0.5,\n    "<criterionId2>": 0.5\n  }\n}`}
-              />
-
-              {addDialog.modelsLoading ? (
-                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>
-                  Loading models…
-                </Typography>
-              ) : null}
-            </>
-          )}
+          </>
         </Stack>
       </DialogContent>
 
@@ -230,9 +197,7 @@ const ModelsSectionAddDialog = () => {
           color="secondary"
           disabled={
             addDialog.addLoading ||
-            (addDialog.useSchemaAdd &&
-              addDialog.selectedModelFromSchema &&
-              !addDialog.selectedModelCompatible)
+            (addDialog.selectedModelFromSchema && !addDialog.selectedModelCompatible)
           }
         >
           Add

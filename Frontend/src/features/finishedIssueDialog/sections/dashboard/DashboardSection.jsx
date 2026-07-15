@@ -1,27 +1,12 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import { FINISHED_ISSUE_VIEWS } from "../../shared/logic/finishedIssueNavigation";
 import { RESULTS_ANALYSIS_VIEWS } from "../resultsAnalysis";
-import { buildFinishedIssueDashboardData } from "./logic/buildFinishedIssueDashboardData";
+import { buildDashboardData } from "./logic/buildFinishedIssueDashboardData";
 import DashboardView from "./components/DashboardView";
 
 const DashboardSection = () => {
-  const { dialog, rankingSection, ratingsSection, header, navigation, resultsAnalysisNavigation } = useFinishedIssueDialogContext();
-  const data = buildFinishedIssueDashboardData({
-    viewIssue: dialog.viewIssue,
-    ranking: rankingSection.ranking,
-    formatScore: rankingSection.formatScore,
-    currentPhaseLabel: header.currentPhaseLabel,
-    currentPhaseIndex: header.currentPhaseIndex,
-    expertList: ratingsSection.expertList,
-    evaluationStructure: ratingsSection.evaluationStructure,
-    canShowCollective: ratingsSection.canShowCollective,
-    criteriaWeightsPayload: ratingsSection.criteriaWeightsEvaluation,
-    selectedModelName: header.selectedModelNameView,
-    selectedRunKey: header.selectedRunKey,
-    selectedRunLabel: header.selectedRunLabel,
-    runs: header.runs,
-    roundsCount: header.roundsCount,
-  });
+  const { dialog, ratingsSection, runs, navigation, resultsAnalysisNavigation } = useFinishedIssueDialogContext();
+  const data = buildDashboardData({ payload: dialog.payload, selectedExecution: runs.selectedExecution, selectedPhase: runs.selectedPhase, evaluations: ratingsSection });
   const open = (view) => () => navigation.setActiveView(view);
   const openResultsAnalysis = () => {
     resultsAnalysisNavigation.setActiveView(RESULTS_ANALYSIS_VIEWS.OUTCOME);

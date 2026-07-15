@@ -60,19 +60,3 @@ export const normalizePlotsGraphic = (plotsGraphic) => {
     isValid: expertPoints.length > 0 && isFinitePoint([collectivePoint?.x, collectivePoint?.y]),
   };
 };
-
-export const getFinishedIssueGraphAvailability = (viewIssue) => {
-  const preferredPlotsGraphic =
-    viewIssue?.analyticalGraphs?.plotsGraphic ?? viewIssue?.consensusDetails?.plotsGraphic ?? null;
-  const normalizedPlots = normalizePlotsGraphic(preferredPlotsGraphic);
-  const directScatter = viewIssue?.analyticalGraphs?.scatterPlot;
-  const consensusPoints = viewIssue?.analyticalGraphs?.consensusLevelLineChart?.data;
-
-  return {
-    hasPerformanceMap:
-      (Array.isArray(directScatter) && directScatter.length > 0) || Boolean(normalizedPlots?.isValid),
-    hasConsensusEvolution:
-      Array.isArray(consensusPoints) && consensusPoints.filter((point) => Number.isFinite(Number(point))).length > 1,
-    normalizedPlots,
-  };
-};

@@ -1,9 +1,6 @@
 import { Stack, Typography } from "@mui/material";
 
-import {
-  getCreateIssueModelParameters,
-  ParameterFieldHost,
-} from "../../../modelParameters";
+import { ParameterFieldHost } from "../../../modelParameters";
 import ModelsSectionScenarioWeightsField from "./ModelsSectionScenarioWeightsField";
 import { modelUsesScenarioCriteriaWeights } from "../../logic/buildFinishedScenarioParameters";
 
@@ -23,7 +20,9 @@ const ModelsSectionParametersForm = ({
     );
   }
 
-  const params = getCreateIssueModelParameters(model);
+  const params = Array.isArray(model.parameterDefinitions)
+    ? model.parameterDefinitions.filter((parameter) => parameter?.key && parameter?.semanticRole !== "criteriaWeights")
+    : [];
   const showWeightsField = modelUsesScenarioCriteriaWeights(model);
   if (params.length === 0 && !showWeightsField) {
     return (

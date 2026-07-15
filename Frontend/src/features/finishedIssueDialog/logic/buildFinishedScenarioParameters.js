@@ -7,15 +7,6 @@ const normalizeNonEmptyString = (value) => {
   return normalized.length > 0 ? normalized : null;
 };
 
-const stripWeights = (obj) => {
-  if (!obj || typeof obj !== "object") return {};
-  const { weights, ...rest } = obj;
-  void weights;
-  return rest;
-};
-
-const stripWeightsDeep = (value) => stripWeights(value);
-
 const filterOutWeightsParam = (param) =>
   Boolean(param) &&
   param?.semanticRole !== "criteriaWeights";
@@ -29,10 +20,12 @@ export const filterOutWeightsParams = (params) =>
   Array.isArray(params) ? params.filter(filterOutWeightsParam) : [];
 
 const resolveScenarioModelParameters = (model) =>
-  filterOutWeightsParams(Array.isArray(model?.parameters) ? model.parameters : []);
+  filterOutWeightsParams(
+    Array.isArray(model?.parameterDefinitions) ? model.parameterDefinitions : []
+  );
 
 export const modelUsesScenarioCriteriaWeights = (model) =>
-  model?.usesCriteriaWeights === true;
+  model?.capabilities?.usesCriteriaWeights === true;
 
 export const formatScenarioWeightValue = (value) => {
   const parsed = Number(value);
@@ -459,15 +452,13 @@ const buildCriterionMapFromDefaults = ({ param, leafCriteria }) => {
   return out;
 };
 
-export const buildParamsResolved = ({ model, leafCount, leafCriteria = [] }) => {
-  const out = isPlainObject(model?.defaultsResolved)
-    ? stripWeightsDeep(model.defaultsResolved)
-    : {};
+export const buildParamsResolved = ({ model, leafCount, leafCriteria = [], baseIssueWeights = {} }) => {
+  const out = {};
   const safeLeafCount = Number.isInteger(leafCount) && leafCount > 0 ? leafCount : 0;
   const defaultWeights = resolveScenarioWeightDefaults({
     leafCriteria,
     leafCount: safeLeafCount,
-    baseIssueWeights: model?.baseIssueWeights,
+    baseIssueWeights,
   });
 
   for (const param of getScenarioParameterDefinitions(model)) {
@@ -546,7 +537,7 @@ export const cleanParamsForSend = ({
         out[name] = resolveScenarioWeightDefaults({
           leafCriteria,
           leafCount,
-          baseIssueWeights: values?.[name] ?? model?.baseIssueWeights,
+          baseIssueWeights: values?.[name],
         });
         continue;
       }
@@ -555,7 +546,7 @@ export const cleanParamsForSend = ({
         out[name] = resolveScenarioWeightDefaults({
           leafCriteria,
           leafCount,
-          baseIssueWeights: values?.[name] ?? model?.baseIssueWeights,
+          baseIssueWeights: values?.[name],
         });
         continue;
       }

@@ -1,6 +1,9 @@
-export const formatFinishedIssuePhaseLabel = ({ phaseIndex, phasesCount }) => {
-  const index = Number(phaseIndex);
-  const count = Number(phasesCount);
+export const formatFinishedIssuePhaseLabel = ({ phase, orderedPhases, phaseIndex, phasesCount }) => {
+  const phases = Array.isArray(orderedPhases)
+    ? orderedPhases.filter(Number.isInteger).slice().sort((left, right) => left - right)
+    : null;
+  const index = phases ? phases.indexOf(phase) : Number(phaseIndex);
+  const count = phases ? phases.length : Number(phasesCount);
 
   if (!Number.isInteger(index) || index < 0 || !Number.isInteger(count) || count < 1) {
     return "Final";

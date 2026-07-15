@@ -1,311 +1,62 @@
-import {
-  Box,
-  Divider,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  ToggleButton,
-  Typography,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Box, Divider, FormControl, InputLabel, MenuItem, Select, Stack, ToggleButton, Typography } from "@mui/material";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 
 import { SectionCard } from "../shared/components/FinishedIssueDialogPrimitives";
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
-import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
-import { Fragment } from "react";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
 import EvaluationStructureRenderer from "../../issueEvaluation/components/EvaluationStructureRenderer";
+import UnsupportedEvaluationStructureAlert from "./components/UnsupportedEvaluationStructureAlert";
 
-/**
- * Ratings section of the finished issue dialog.
- *
- * Manages:
- * - Expert selector
- * - Criterion selector (if applicable)
- * - Show collective toggle
- * - Expert criteria weights review
- * - Registered matrix component for the evaluation structure
- *
- * @returns {JSX.Element}
- */
+const STAGE_LABELS = {
+  criteriaWeighting: "Criteria weighting",
+  alternativeEvaluation: "Alternative evaluation",
+};
+
 const RatingsSection = () => {
-  const theme = useTheme();
-
   const { ratingsSection } = useFinishedIssueDialogContext();
+  const data = ratingsSection;
 
-  const {
-    viewIssue,
-    selectedExpert,
-    setSelectedExpert,
-    expertList,
-    showCollective,
-    setShowCollective,
-    canShowCollective,
-    evaluations,
-    criteriaWeightsEvaluation,
-    finalCriteriaWeights,
-    shouldShowExpertWeights,
-    collectiveEvaluations,
-    leafCriteria,
-    evaluationStructure,
-    unsupportedEvaluationStructure,
-  } = ratingsSection;
-
-  if (unsupportedEvaluationStructure) {
-    return (
-      <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
-        <UnsupportedEvaluationStructureAlert />
-      </SectionCard>
-    );
+  if (data.empty) {
+    return <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}><Typography color="text.secondary">No evaluations are available for this issue.</Typography></SectionCard>;
   }
 
-  if (!evaluationStructure) {
-    return null;
+  if (!data.renderer?.structureKey) {
+    return <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}><UnsupportedEvaluationStructureAlert /></SectionCard>;
   }
-
-  const expertWeightStatus = criteriaWeightsEvaluation?.status || "notRequired";
-  const finalWeightsRows = Array.isArray(finalCriteriaWeights?.weights)
-    ? finalCriteriaWeights.weights
-    : [];
-  const orderedLeafCriteria = Array.isArray(leafCriteria) ? leafCriteria : [];
-  const runtimeEvaluationContext =
-    viewIssue?.evaluationContext &&
-    typeof viewIssue.evaluationContext === "object" &&
-    Array.isArray(viewIssue.evaluationContext?.alternatives) &&
-    Array.isArray(viewIssue.evaluationContext?.criteriaTree) &&
-    Array.isArray(viewIssue.evaluationContext?.leafCriteria)
-      ? viewIssue.evaluationContext
-      : null;
-
-  const finalWeightsByCriterion = finalWeightsRows.reduce((accumulator, entry) => {
-    if (entry?.criterionName) {
-      accumulator[entry.criterionName] = entry.weight;
-    }
-
-    return accumulator;
-  }, {});
-  const criteriaNamesForWeights = orderedLeafCriteria
-    .map((criterion) => criterion?.name)
-    .filter(Boolean);
-
-  const formatFinalWeight = (value) => {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: 3,
-      }).format(Object.is(value, -0) ? 0 : value);
-    }
-
-    if (Array.isArray(value) && value.every((entry) => Number.isFinite(entry))) {
-      return `[${value
-        .map((entry) =>
-          new Intl.NumberFormat("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(Object.is(entry, -0) ? 0 : entry)
-        )
-        .join(", ")}]`;
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    if (value && typeof value === "object") {
-      if (typeof value.label === "string" && value.label.trim()) {
-        return value.label;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(value, "value")) {
-        return formatFinalWeight(value.value);
-      }
-
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return String(value);
-      }
-    }
-
-    return null;
-  };
-
-  const getFinalWeightDisplayValue = (criterionName) => {
-    const rawValue = finalWeightsByCriterion?.[criterionName];
-    const formatted = formatFinalWeight(rawValue);
-
-    return formatted ?? "—";
-  };
 
   return (
     <SectionCard title="Experts ratings" icon={<AnalyticsIcon fontSize="small" />}>
       <Stack spacing={2}>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1.25}
-          alignItems={{ xs: "stretch", sm: "center" }}
-          sx={{ width: "100%" }}
-        >
-          <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
-            <InputLabel color="info">Expert</InputLabel>
-            <Select
-              value={selectedExpert}
-              label="Expert"
-              color="info"
-              onChange={(event) => setSelectedExpert(event.target.value)}
-            >
-              {expertList.map((expert) => (
-                <MenuItem key={expert} value={expert}>
-                  {expert}
-                </MenuItem>
-              ))}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>Stage</InputLabel>
+            <Select value={data.selectedStage} label="Stage" onChange={(event) => data.setSelectedStage(event.target.value)}>
+              {data.availableStages.map((stage) => <MenuItem key={stage} value={stage}>{STAGE_LABELS[stage] || stage}</MenuItem>)}
             </Select>
           </FormControl>
-
-          <Box sx={{ flex: 1 }} />
-
-          {canShowCollective ? (
-            <ToggleButton
-              selected={showCollective}
-              onChange={() => setShowCollective((value) => !value)}
-              color="secondary"
-              sx={{
-                borderRadius: 3,
-                borderColor: "rgba(255,255,255,0.14)",
-                bgcolor: alpha(theme.palette.background.paper, 0.06),
-                "&.Mui-selected": {
-                  bgcolor: alpha(theme.palette.secondary.main, 0.14),
-                  borderColor: alpha(theme.palette.secondary.main, 0.3),
-                },
-              }}
-            >
-              {showCollective ? "Hide collective" : "Show collective"}
-            </ToggleButton>
-          ) : null}
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel>Phase</InputLabel>
+            <Select value={data.selectedPhase ?? ""} label="Phase" onChange={(event) => data.setSelectedPhase(Number(event.target.value))}>
+              {data.availablePhases.map((phase) => <MenuItem key={phase} value={phase}>Phase {phase}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 250 }}>
+            <InputLabel>Expert</InputLabel>
+            <Select value={data.selectedExpertId ?? ""} label="Expert" onChange={(event) => data.setSelectedExpertId(event.target.value)}>
+              {data.expertOptions.map((expert) => <MenuItem key={expert.id} value={expert.id}>{expert.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          {data.canShowCollective ? <ToggleButton selected={data.showCollective} onChange={() => data.setShowCollective(!data.showCollective)} color="secondary">{data.showCollective ? "Hide collective" : "Show collective"}</ToggleButton> : null}
         </Stack>
-
         <Divider sx={{ opacity: 0.14 }} />
-
-        {shouldShowExpertWeights ? (
-          <>
-            <Box
-              sx={{
-                px: 1.5,
-                py: 1.25,
-                borderRadius: 2.5,
-                border: "1px solid rgba(255,255,255,0.08)",
-                bgcolor: alpha(theme.palette.common.white, 0.025),
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 800 }}>
-                Weights
-              </Typography>
-
-              {criteriaWeightsEvaluation?.payload ? (
-                <Box sx={{ width: "100%", minWidth: 0 }}>
-                  <EvaluationStructureRenderer
-                    issue={{
-                      ...viewIssue,
-                      criteria: Array.isArray(viewIssue?.summary?.criteria)
-                        ? viewIssue.summary.criteria
-                        : [],
-                    }}
-                    stage={EVALUATION_STAGES.CRITERIA_WEIGHTING}
-                    structureKey={
-                      criteriaWeightsEvaluation?.structureKey ||
-                      viewIssue?.summary?.criteriaWeightsStructureKey ||
-                      ""
-                    }
-                    backendPayload={criteriaWeightsEvaluation.payload}
-                    readOnly
-                  />
-                </Box>
-              ) : expertWeightStatus === "notRequired" ? (
-                <Typography variant="body2" color="text.secondary">
-                  Criteria weights are not required for this issue.
-                </Typography>
-              ) : expertWeightStatus === "notSubmitted" ? (
-                <Typography variant="body2" color="text.secondary">
-                  Expert did not submit criteria weights.
-                </Typography>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No criteria-weight payload available.
-                </Typography>
-              )}
-
-              {criteriaNamesForWeights.length > 0 ? (
-                <>
-                  <Divider sx={{ opacity: 0.14, my: 1.25 }} />
-
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: {
-                        xs: "1fr",
-                        sm: "max-content max-content",
-                      },
-                      columnGap: { xs: 0, sm: 2.5 },
-                      rowGap: 0.75,
-                      alignItems: "center",
-                      width: "fit-content",
-                      maxWidth: "100%",
-                    }}
-                  >
-                    {criteriaNamesForWeights.map((criterionName) => (
-                      <Fragment key={criterionName}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 750,
-                            pr: { xs: 0, sm: 1 },
-                          }}
-                        >
-                          {criterionName}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            fontVariantNumeric: "tabular-nums",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          Final:{" "}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            sx={{ color: "text.primary", fontWeight: 700 }}
-                          >
-                            {getFinalWeightDisplayValue(criterionName)}
-                          </Typography>
-                        </Typography>
-                      </Fragment>
-                    ))}
-                  </Box>
-                </>
-              ) : null}
-            </Box>
-
-            <Divider sx={{ opacity: 0.14 }} />
-          </>
-        ) : null}
-
+        {data.individual ? <Typography variant="caption" color="text.secondary">Submitted: {data.individual.submittedAt || "not submitted"} · Completed: {data.individual.completed ? "yes" : "no"}</Typography> : <Typography variant="body2" color="text.secondary">The selected participant has no completed evaluation.</Typography>}
+        {data.selectedParticipant ? <Typography variant="caption" color="text.secondary">Current participant weight: {data.selectedParticipant.currentWeight ?? "—"} · Phase snapshot: {data.expertWeightSnapshot.find((entry) => entry.expertId === data.selectedExpertId)?.weight ?? "—"}</Typography> : null}
         <Box sx={{ width: "100%", minWidth: 0 }}>
           <EvaluationStructureRenderer
-            evaluationContext={runtimeEvaluationContext}
-            issue={{
-              ...viewIssue,
-              alternatives: runtimeEvaluationContext?.alternatives || [],
-              criteria: runtimeEvaluationContext?.criteriaTree || [],
-            }}
-            stage={EVALUATION_STAGES.ALTERNATIVE_EVALUATION}
-            structureKey={evaluationStructure}
-            backendPayload={evaluations || {}}
-            collectivePayload={showCollective ? collectiveEvaluations || null : null}
+            stage={data.renderer.stage}
+            structureKey={data.renderer.structureKey}
+            evaluationContext={data.renderer.evaluationContext}
+            backendPayload={data.renderer.backendPayload}
+            collectivePayload={data.showCollective ? data.renderer.collectivePayload : null}
             readOnly
           />
         </Box>

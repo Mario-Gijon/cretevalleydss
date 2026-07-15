@@ -1,1 +1,1 @@
-export { buildFinishedIssueResultsAnalysisData } from "../../../shared/logic/buildFinishedIssueResultsAnalysisData";
+export { buildResultsAnalysisData } from "../../../shared/logic/buildFinishedIssueResultsAnalysisData";

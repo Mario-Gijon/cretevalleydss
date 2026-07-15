@@ -54,7 +54,7 @@ export const getFinishedIssueDialogGridAreas = (
 ) =>
   isMdUp
     ? `
-        "summary ranking"
+        "overview ranking"
         "analysis analysis"
         "models models"
         "graphs graphs"
@@ -62,7 +62,7 @@ export const getFinishedIssueDialogGridAreas = (
         ${hasModelSpecificOutput ? '"modelSpecificOutput modelSpecificOutput"' : ""}
       `
     : `
-        "summary"
+        "overview"
         "ranking"
         "analysis"
         "models"
