@@ -1,8 +1,9 @@
-import { buildEvaluationsData } from "./buildEvaluationsData";
-
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
 const unique = (values) => [...new Set(values)];
+
+const payloadFor = (entry) =>
+  entry?.displayPayload ?? entry?.rawPayload ?? null;
 
 const formatTechnicalLabel = (value) => {
   if (typeof value !== "string" || !value.trim()) return "—";
@@ -20,8 +21,7 @@ const stagePhases = (payload, stage) =>
       ...asArray(payload?.evaluations?.collective),
     ]
       .filter(
-        (entry) =>
-          entry?.stage === stage && Number.isInteger(entry?.phase)
+        (entry) => entry?.stage === stage && Number.isInteger(entry?.phase)
       )
       .map((entry) => entry.phase)
   ).sort((left, right) => left - right);
@@ -29,56 +29,118 @@ const stagePhases = (payload, stage) =>
 const defaultPhase = (phases, selected) =>
   phases.includes(selected) ? selected : phases.at(-1) ?? null;
 
+const stageHasEvidence = (payload, stage) =>
+  [
+    ...asArray(payload?.evaluations?.individual),
+    ...asArray(payload?.evaluations?.collective),
+  ].some((entry) => entry?.stage === stage);
+
+const contextFor = ({ payload, stage, phase, individual, collective }) => {
+  const contexts = asArray(payload?.evaluations?.contexts);
+  const contextId = individual?.contextId || collective?.contextId || null;
+
+  return contexts.find((entry) => entry?.id === contextId) ||
+    contexts.find(
+      (entry) => entry?.stage === stage && entry?.phase === phase
+    ) ||
+    null;
+};
+
 const participantFor = (payload, expertId) =>
   asArray(payload?.participants).find(
     (participant) => participant?.expert?.id === expertId
   ) || null;
 
-const stageRecord = ({
-  payload,
-  stage,
-  phase,
-  selectedExpertId,
-  showCollective,
-}) => {
-  const hasEvidence = [
-    ...asArray(payload?.evaluations?.individual),
-    ...asArray(payload?.evaluations?.collective),
-  ].some((entry) => entry?.stage === stage);
+const expertOptionsFor = ({ payload, criteriaPhase, alternativePhase }) => {
+  const records = asArray(payload?.evaluations?.individual).filter(
+    (entry) =>
+      (entry?.stage === "criteriaWeighting" && entry?.phase === criteriaPhase) ||
+      (entry?.stage === "alternativeEvaluation" && entry?.phase === alternativePhase)
+  );
+  const participantOrder = new Map(
+    asArray(payload?.participants).map((participant, index) => [
+      participant?.expert?.id,
+      index,
+    ])
+  );
 
-  if (!hasEvidence) {
+  return unique(records.map((entry) => entry?.expertId).filter(Boolean))
+    .map((id) => {
+      const participant = participantFor(payload, id);
+      const name = participant?.expert?.name || "Unknown participant";
+      const email = participant?.expert?.email || null;
+
+      return {
+        id,
+        label: email ? `${name} (${email})` : name,
+        order: participantOrder.get(id) ?? Number.MAX_SAFE_INTEGER,
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.order - right.order || left.label.localeCompare(right.label) ||
+        left.id.localeCompare(right.id)
+    )
+    .map((option) => ({ id: option.id, label: option.label }));
+};
+
+const stageDataFor = ({ payload, stage, phase, selectedExpertId }) => {
+  const available = stageHasEvidence(payload, stage);
+  if (!available) {
     return {
-      selectedStage: stage,
+      stage,
+      available: false,
       selectedPhase: null,
-      expertOptions: [],
-      selectedExpertId: null,
-      selectedParticipant: null,
       individual: null,
       collective: null,
-      completedExpertCount: 0,
-      selectedSerializedContext: null,
-      structureKey: null,
+      submittedAt: null,
+      hasSelectedExpertSubmission: false,
       canShowCollective: false,
       renderer: null,
-      empty: true,
     };
   }
 
-  return buildEvaluationsData({
-    payload,
-    selectedStage: stage,
+  const individuals = asArray(payload?.evaluations?.individual).filter(
+    (entry) => entry?.stage === stage && entry?.phase === phase
+  );
+  const collective = asArray(payload?.evaluations?.collective).find(
+    (entry) => entry?.stage === stage && entry?.phase === phase
+  ) || null;
+  const individual = individuals.find(
+    (entry) => entry?.expertId === selectedExpertId
+  ) || null;
+  const context = contextFor({ payload, stage, phase, individual, collective });
+
+  return {
+    stage,
+    available: true,
     selectedPhase: phase,
-    selectedExpertId,
-    showCollective,
-  });
+    individual: individual
+      ? { ...individual, payload: payloadFor(individual) }
+      : null,
+    collective: collective
+      ? { ...collective, payload: payloadFor(collective) }
+      : null,
+    submittedAt: individual?.submittedAt || null,
+    hasSelectedExpertSubmission: Boolean(individual),
+    canShowCollective: Boolean(collective),
+    renderer:
+      context && (individual || collective)
+        ? {
+            stage,
+            structureKey: context.structureKey,
+            evaluationContext: context.serializedContext,
+            backendPayload: individual ? payloadFor(individual) : null,
+            collectivePayload: collective ? payloadFor(collective) : null,
+            readOnly: true,
+          }
+        : null,
+  };
 };
 
 const criterionDomainRows = (payload) => {
   const domainsById = new Map(
-    asArray(payload?.expressionDomains).map((domain) => [
-      domain?.id,
-      domain,
-    ])
+    asArray(payload?.expressionDomains).map((domain) => [domain?.id, domain])
   );
 
   return asArray(payload?.criteria?.nodes)
@@ -89,7 +151,6 @@ const criterionDomainRows = (payload) => {
       return {
         criterionId: criterion?.id || null,
         name: criterion?.name || "Unnamed criterion",
-        description: criterion?.description || "",
         criterionType: criterion?.type || null,
         criterionTypeLabel:
           criterion?.type === "benefit"
@@ -97,284 +158,203 @@ const criterionDomainRows = (payload) => {
             : criterion?.type === "cost"
               ? "Cost"
               : null,
-        domainId: domain?.id || null,
         domainName: domain?.name || "—",
-        domainTypeKey: domain?.typeKey || null,
         domainTypeLabel: formatTechnicalLabel(domain?.typeKey),
         domainDefinition: domain?.definition ?? null,
       };
     });
 };
 
-const participationRows = ({
-  payload,
-  criteriaStage,
-  alternativeStage,
-}) => {
+const participationRows = ({ payload, criteriaStage, alternativeStage }) => {
   const criteriaByExpert = new Map(
-    asArray(
-      criteriaStage?.selectedPhase === null
-        ? []
-        : payload?.evaluations?.individual
-    )
+    asArray(payload?.evaluations?.individual)
       .filter(
         (entry) =>
           entry?.stage === "criteriaWeighting" &&
-          entry?.phase === criteriaStage?.selectedPhase
+          entry?.phase === criteriaStage.selectedPhase
       )
       .map((entry) => [entry.expertId, entry])
   );
-
   const alternativeByExpert = new Map(
     asArray(payload?.evaluations?.individual)
       .filter(
         (entry) =>
           entry?.stage === "alternativeEvaluation" &&
-          entry?.phase === alternativeStage?.selectedPhase
+          entry?.phase === alternativeStage.selectedPhase
       )
       .map((entry) => [entry.expertId, entry])
   );
 
-  const expertIds = unique([
-    ...criteriaByExpert.keys(),
-    ...alternativeByExpert.keys(),
-  ]);
+  return unique([...criteriaByExpert.keys(), ...alternativeByExpert.keys()]).map(
+    (expertId) => {
+      const participant = participantFor(payload, expertId);
+      const criteria = criteriaByExpert.get(expertId) || null;
+      const alternative = alternativeByExpert.get(expertId) || null;
+      const currentlyRemoved =
+        participant?.invitationStatus === "declined" ||
+        participant?.invitationStatus === "removed" ||
+        participant?.invitationStatus === "expelled";
 
-  return expertIds.map((expertId) => {
-    const participant = participantFor(payload, expertId);
-    const criteria = criteriaByExpert.get(expertId) || null;
-    const alternative = alternativeByExpert.get(expertId) || null;
-    const currentlyRemoved =
-      participant?.invitationStatus === "declined" ||
-      participant?.invitationStatus === "removed" ||
-      participant?.invitationStatus === "expelled";
-
-    return {
-      expertId,
-      name: participant?.expert?.name || "Unknown participant",
-      email: participant?.expert?.email || null,
-      currentInvitationStatus:
-        participant?.invitationStatus || null,
-      currentlyRemoved,
-      criteriaWeighting: criteria
-        ? {
-            submittedAt: criteria.submittedAt || null,
-            completed: criteria.completed === true,
-          }
-        : null,
-      alternativeEvaluation: alternative
-        ? {
-            submittedAt: alternative.submittedAt || null,
-            completed: alternative.completed === true,
-          }
-        : null,
-      submittedBoth: Boolean(criteria && alternative),
-    };
-  });
+      return {
+        expertId,
+        name: participant?.expert?.name || "Unknown participant",
+        email: participant?.expert?.email || null,
+        currentlyRemoved,
+        criteriaWeighting: criteria
+          ? { submittedAt: criteria.submittedAt || null, completed: criteria.completed === true }
+          : null,
+        alternativeEvaluation: alternative
+          ? { submittedAt: alternative.submittedAt || null, completed: alternative.completed === true }
+          : null,
+        submittedBoth: Boolean(criteria && alternative),
+      };
+    }
+  );
 };
 
-const participationSummary = (rows, hasCriteriaWeighting) => {
-  if (!hasCriteriaWeighting) {
-    return {
-      both: 0,
-      criteriaOnly: 0,
-      alternativeOnly: rows.filter(
-        (row) => row.alternativeEvaluation
-      ).length,
-      total: rows.length,
-    };
-  }
-
-  return {
-    both: rows.filter((row) => row.submittedBoth).length,
-    criteriaOnly: rows.filter(
-      (row) =>
-        row.criteriaWeighting && !row.alternativeEvaluation
-    ).length,
-    alternativeOnly: rows.filter(
-      (row) =>
-        !row.criteriaWeighting && row.alternativeEvaluation
-    ).length,
-    total: rows.length,
-  };
-};
+const participationSummary = (rows, hasCriteriaWeighting) => ({
+  both: hasCriteriaWeighting ? rows.filter((row) => row.submittedBoth).length : 0,
+  criteriaOnly: hasCriteriaWeighting
+    ? rows.filter((row) => row.criteriaWeighting && !row.alternativeEvaluation).length
+    : 0,
+  alternativeOnly: rows.filter(
+    (row) => !row.criteriaWeighting && row.alternativeEvaluation
+  ).length,
+  total: rows.length,
+});
 
 const latestEvidence = (payload, alternativePhase) =>
   asArray(payload?.phaseResults)
     .filter(
       (result) =>
-        result?.stage === "alternativeEvaluation" &&
-        result?.phase === alternativePhase
+        result?.stage === "alternativeEvaluation" && result?.phase === alternativePhase
     )
-    .sort((left, right) => {
-      const leftTime = new Date(
-        left?.updatedAt || left?.createdAt || 0
-      ).getTime();
-      const rightTime = new Date(
-        right?.updatedAt || right?.createdAt || 0
-      ).getTime();
-      return rightTime - leftTime;
-    })[0] || null;
+    .sort(
+      (left, right) =>
+        new Date(right?.updatedAt || right?.createdAt || 0).getTime() -
+        new Date(left?.updatedAt || left?.createdAt || 0).getTime()
+    )[0] || null;
+
+const selectionFor = ({ payload, selectedConsensusPhase, selectedExpertId }) => {
+  const consensusEnabled = payload?.consensus?.enabled === true;
+  const alternativePhase = defaultPhase(
+    stagePhases(payload, "alternativeEvaluation"),
+    consensusEnabled ? selectedConsensusPhase : null
+  );
+  const criteriaPhase = stagePhases(payload, "criteriaWeighting").at(-1) ?? null;
+  const expertOptions = expertOptionsFor({
+    payload,
+    criteriaPhase,
+    alternativePhase,
+  });
+
+  return {
+    consensusEnabled,
+    alternativePhase,
+    criteriaPhase,
+    expertOptions,
+    selectedExpertId: expertOptions.some((option) => option.id === selectedExpertId)
+      ? selectedExpertId
+      : expertOptions[0]?.id ?? null,
+  };
+};
 
 export const resolveEvaluationsWorkspaceSelection = ({
   payload,
   selectedConsensusPhase,
-  selectedCriteriaExpertId,
-  selectedAlternativeExpertId,
-  showCollective,
+  selectedExpertId,
 }) => {
-  const consensusEnabled = payload?.consensus?.enabled === true;
-  const alternativePhases = stagePhases(
+  const selection = selectionFor({
     payload,
-    "alternativeEvaluation"
-  );
-  const criteriaPhases = stagePhases(payload, "criteriaWeighting");
-
-  const alternativePhase = defaultPhase(
-    alternativePhases,
-    consensusEnabled ? selectedConsensusPhase : null
-  );
-  const criteriaPhase = criteriaPhases.at(-1) ?? null;
-
-  const criteriaStage = stageRecord({
+    selectedConsensusPhase,
+    selectedExpertId,
+  });
+  const criteria = stageDataFor({
     payload,
     stage: "criteriaWeighting",
-    phase: criteriaPhase,
-    selectedExpertId: selectedCriteriaExpertId,
-    showCollective,
+    phase: selection.criteriaPhase,
+    selectedExpertId: selection.selectedExpertId,
   });
-
-  const alternativeStage = stageRecord({
+  const alternative = stageDataFor({
     payload,
     stage: "alternativeEvaluation",
-    phase: alternativePhase,
-    selectedExpertId: selectedAlternativeExpertId,
-    showCollective,
+    phase: selection.alternativePhase,
+    selectedExpertId: selection.selectedExpertId,
   });
 
   return {
-    selectedConsensusPhase: consensusEnabled
-      ? alternativePhase
+    selectedConsensusPhase: selection.consensusEnabled
+      ? selection.alternativePhase
       : null,
-    selectedCriteriaExpertId:
-      criteriaStage.selectedExpertId,
-    selectedAlternativeExpertId:
-      alternativeStage.selectedExpertId,
-    canShowCollective:
-      criteriaStage.canShowCollective ||
-      alternativeStage.canShowCollective,
+    selectedExpertId: selection.selectedExpertId,
+    canShowCollective: criteria.canShowCollective || alternative.canShowCollective,
   };
 };
 
-export const buildEvaluationsWorkspaceData = ({
-  payload,
-  selection,
-}) => {
-  const consensusEnabled = payload?.consensus?.enabled === true;
-  const alternativePhases = stagePhases(
+export const buildEvaluationsWorkspaceData = ({ payload, selection }) => {
+  const resolved = selectionFor({
     payload,
-    "alternativeEvaluation"
-  );
-  const criteriaPhases = stagePhases(payload, "criteriaWeighting");
-
-  const selectedAlternativePhase = defaultPhase(
-    alternativePhases,
-    consensusEnabled
-      ? selection?.selectedConsensusPhase
-      : null
-  );
-  const selectedCriteriaPhase = criteriaPhases.at(-1) ?? null;
-
-  const criteriaWeighting = stageRecord({
+    selectedConsensusPhase: selection?.selectedConsensusPhase,
+    selectedExpertId: selection?.selectedExpertId,
+  });
+  const criteriaWeighting = stageDataFor({
     payload,
     stage: "criteriaWeighting",
-    phase: selectedCriteriaPhase,
-    selectedExpertId: selection?.selectedCriteriaExpertId,
-    showCollective: selection?.showCollective,
+    phase: resolved.criteriaPhase,
+    selectedExpertId: resolved.selectedExpertId,
   });
-
-  const alternativeEvaluation = stageRecord({
+  const alternativeEvaluation = stageDataFor({
     payload,
     stage: "alternativeEvaluation",
-    phase: selectedAlternativePhase,
-    selectedExpertId: selection?.selectedAlternativeExpertId,
-    showCollective: selection?.showCollective,
+    phase: resolved.alternativePhase,
+    selectedExpertId: resolved.selectedExpertId,
   });
-
-  const hasCriteriaWeighting =
-    !criteriaWeighting.empty &&
-    Boolean(criteriaWeighting.renderer?.structureKey);
-
-  const hasAlternativeEvaluation =
-    !alternativeEvaluation.empty &&
-    Boolean(alternativeEvaluation.renderer?.structureKey);
-
   const participants = participationRows({
     payload,
     criteriaStage: criteriaWeighting,
     alternativeStage: alternativeEvaluation,
   });
-
-  const evidence = latestEvidence(
-    payload,
-    selectedAlternativePhase
-  );
+  const evidence = latestEvidence(payload, resolved.alternativePhase);
 
   return {
     consensus: {
-      enabled: consensusEnabled,
-      availablePhases: consensusEnabled
-        ? alternativePhases
+      enabled: resolved.consensusEnabled,
+      availablePhases: resolved.consensusEnabled
+        ? stagePhases(payload, "alternativeEvaluation")
         : [],
-      selectedPhase: consensusEnabled
-        ? selectedAlternativePhase
-        : null,
+      selectedPhase: resolved.consensusEnabled ? resolved.alternativePhase : null,
     },
-    showCollective: selection?.showCollective === true,
+    expertOptions: resolved.expertOptions,
+    selectedExpertId: resolved.selectedExpertId,
     canShowCollective:
-      criteriaWeighting.canShowCollective ||
-      alternativeEvaluation.canShowCollective,
+      criteriaWeighting.canShowCollective || alternativeEvaluation.canShowCollective,
     criteriaWeighting: {
       ...criteriaWeighting,
-      available: hasCriteriaWeighting,
       title: "Criteria weighting",
-      subtitle:
-        "Weights assigned to criteria by the selected expert.",
+      subtitle: "Weights assigned to criteria by the selected expert.",
+      emptySubmissionMessage: "This expert did not submit a criteria-weighting evaluation.",
     },
     alternativeEvaluation: {
       ...alternativeEvaluation,
-      available: hasAlternativeEvaluation,
       title: "Alternative evaluation",
-      subtitle:
-        "Performance of alternatives on each criterion.",
+      subtitle: "Performance of alternatives on each criterion.",
+      emptySubmissionMessage: "This expert did not submit an alternative evaluation in this context.",
     },
     domains: criterionDomainRows(payload),
     participation: {
       rows: participants,
-      summary: participationSummary(
-        participants,
-        hasCriteriaWeighting
-      ),
+      summary: participationSummary(participants, criteriaWeighting.available),
     },
     evidence: {
       resultId: evidence?.id || null,
-      storedAt:
-        evidence?.updatedAt || evidence?.createdAt || null,
+      storedAt: evidence?.updatedAt || evidence?.createdAt || null,
       createdBy:
-        payload?.issue?.creator?.name ||
-        payload?.issue?.owner?.name ||
-        payload?.issue?.creator?.email ||
-        payload?.issue?.owner?.email ||
-        "—",
-      executionLabel: `Base · ${
-        payload?.models?.base?.name || "—"
-      }`,
-      phase: consensusEnabled
-        ? selectedAlternativePhase
-        : null,
+        payload?.issue?.creator?.name || payload?.issue?.owner?.name ||
+        payload?.issue?.creator?.email || payload?.issue?.owner?.email || "—",
+      executionLabel: `Base · ${payload?.models?.base?.name || "—"}`,
+      phase: resolved.consensusEnabled ? resolved.alternativePhase : null,
     },
-    empty:
-      !hasCriteriaWeighting && !hasAlternativeEvaluation,
+    empty: !criteriaWeighting.available && !alternativeEvaluation.available,
   };
 };
 

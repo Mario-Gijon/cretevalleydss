@@ -12,11 +12,13 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 
 import {
   evaluationsHeaderSx,
+  evaluationsExpertControlSx,
   evaluationsRoundControlSx,
   evaluationsToggleSx,
 } from "../evaluations.styles";
 
 const consensusRoundLabelId = "finished-issue-consensus-round-label";
+const expertLabelId = "finished-issue-expert-label";
 
 const EvaluationsHeader = ({ data, state, actions }) => (
   <Box sx={evaluationsHeaderSx}>
@@ -78,6 +80,24 @@ const EvaluationsHeader = ({ data, state, actions }) => (
           </Select>
         </FormControl>
       ) : null}
+
+      <FormControl size="small" sx={evaluationsExpertControlSx}>
+        <InputLabel id={expertLabelId}>Expert</InputLabel>
+        <Select
+          id="finished-issue-expert"
+          labelId={expertLabelId}
+          value={state.selectedExpertId ?? ""}
+          label="Expert"
+          disabled={!data.expertOptions.length}
+          onChange={(event) => actions.setSelectedExpertId(event.target.value)}
+        >
+          {data.expertOptions.map((expert) => (
+            <MenuItem key={expert.id} value={expert.id}>
+              {expert.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {data.canShowCollective ? (
         <ToggleButton

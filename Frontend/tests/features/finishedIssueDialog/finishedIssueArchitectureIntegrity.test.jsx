@@ -47,9 +47,9 @@ describe("Finished Issue architecture integrity", () => {
     expect(result.current.error).toBeInstanceOf(Error);
   });
 
-  it("resolves independent evaluation workspace selections", () => {
+  it("resolves the shared evaluation workspace selection", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    expect(resolveEvaluationsWorkspaceSelection({ payload, selectedConsensusPhase: 5, selectedCriteriaExpertId: "expert-1", selectedAlternativeExpertId: "expert-1", showCollective: false })).toEqual({ selectedConsensusPhase: 5, selectedCriteriaExpertId: "expert-1", selectedAlternativeExpertId: "expert-1", canShowCollective: true });
+    expect(resolveEvaluationsWorkspaceSelection({ payload, selectedConsensusPhase: 5, selectedExpertId: "expert-1" })).toEqual({ selectedConsensusPhase: 5, selectedExpertId: "expert-1", canShowCollective: true });
   });
 
   it("builds complete immutable parameter context data for base and scenario executions", () => {

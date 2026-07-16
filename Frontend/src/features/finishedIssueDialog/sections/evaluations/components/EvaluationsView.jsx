@@ -35,15 +35,11 @@ const EvaluationsView = ({ data, state, actions }) => {
       <Box sx={evaluationsPluginGridSx(bothStages)}>
         <EvaluationPluginPanel
           stageData={data.criteriaWeighting}
-          selectedExpertId={state.selectedCriteriaExpertId}
-          onSelectExpert={actions.setSelectedCriteriaExpertId}
           showCollective={state.showCollective}
         />
 
         <EvaluationPluginPanel
           stageData={data.alternativeEvaluation}
-          selectedExpertId={state.selectedAlternativeExpertId}
-          onSelectExpert={actions.setSelectedAlternativeExpertId}
           showCollective={state.showCollective}
           fullWidth={!data.criteriaWeighting.available}
         />

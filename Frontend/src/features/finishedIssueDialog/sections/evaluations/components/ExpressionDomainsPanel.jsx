@@ -1,56 +1,53 @@
 import {
   Box,
   Chip,
-  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
 } from "@mui/material";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import {
-  evaluationsPanelSx,
   evaluationsPanelHeaderSx,
+  evaluationsPanelSx,
   evaluationsScrollableSx,
-  expressionDomainRowSx,
 } from "../evaluations.styles";
 
-const safeDefinitionSummary = (definition) => {
+const definitionSummary = (definition) => {
   if (!definition || typeof definition !== "object") return null;
-
-  const min =
-    typeof definition.min === "number" ? definition.min : null;
-  const max =
-    typeof definition.max === "number" ? definition.max : null;
-
-  if (min !== null && max !== null) return `${min} – ${max}`;
-
-  if (Array.isArray(definition.labels)) {
-    return `${definition.labels.length} labels`;
+  if (typeof definition.min === "number" && typeof definition.max === "number") {
+    return `${definition.min} – ${definition.max}`;
   }
-
-  if (Array.isArray(definition.values)) {
-    return `${definition.values.length} values`;
-  }
-
+  if (Array.isArray(definition.labels)) return `${definition.labels.length} labels`;
+  if (Array.isArray(definition.values)) return `${definition.values.length} values`;
   return null;
+};
+
+const headerCellSx = {
+  py: 0.75,
+  px: 0.85,
+  bgcolor: "rgba(12, 33, 47, 0.98)",
+  color: "text.secondary",
+  fontSize: 10.5,
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: 0.35,
+  whiteSpace: "nowrap",
 };
 
 const ExpressionDomainsPanel = ({ domains }) => (
   <Box sx={evaluationsPanelSx}>
     <Box sx={evaluationsPanelHeaderSx}>
-      <TuneRoundedIcon
-        sx={{ color: "secondary.light", fontSize: 21 }}
-      />
+      <TuneRoundedIcon sx={{ color: "secondary.light", fontSize: 21 }} />
       <Box sx={{ minWidth: 0 }}>
         <Typography component="h2" sx={{ fontSize: 16, fontWeight: 950 }}>
           Expression domains by criterion
         </Typography>
-        <Typography
-          sx={{
-            color: "text.secondary",
-            fontSize: 11.5,
-            fontWeight: 600,
-          }}
-        >
+        <Typography sx={{ color: "text.secondary", fontSize: 11.5, fontWeight: 600 }}>
           Stored domains used to express each leaf criterion.
         </Typography>
       </Box>
@@ -64,79 +61,56 @@ const ExpressionDomainsPanel = ({ domains }) => (
     </Box>
 
     {domains.length ? (
-      <Stack spacing={0.65} sx={evaluationsScrollableSx("domains")}>
-        {domains.map((item) => {
-          const definitionSummary = safeDefinitionSummary(
-            item.domainDefinition
-          );
+      <TableContainer sx={evaluationsScrollableSx("domains")}>
+        <Table size="small" stickyHeader aria-label="Expression domains by criterion">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={headerCellSx}>Criterion</TableCell>
+              <TableCell sx={headerCellSx}>Type</TableCell>
+              <TableCell sx={headerCellSx}>Expression domain</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {domains.map((item) => {
+              const metadata = [
+                item.domainTypeLabel,
+                definitionSummary(item.domainDefinition),
+              ]
+                .filter((value) => value && value !== "—")
+                .join(" · ");
 
-          return (
-            <Box key={item.criterionId} sx={expressionDomainRowSx}>
-              <Typography
-                noWrap
-                title={item.name}
-                sx={{
-                  minWidth: 0,
-                  fontSize: 12.5,
-                  fontWeight: 850,
-                }}
-              >
-                {item.name}
-              </Typography>
-
-              {item.criterionTypeLabel ? (
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  color={
-                    item.criterionType === "cost"
-                      ? "error"
-                      : "success"
-                  }
-                  label={item.criterionTypeLabel}
-                  sx={{ height: 23, fontSize: 10.5, fontWeight: 800 }}
-                />
-              ) : (
-                <Box />
-              )}
-
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  noWrap
-                  title={item.domainName}
-                  sx={{
-                    color: "secondary.light",
-                    fontSize: 12,
-                    fontWeight: 850,
-                  }}
-                >
-                  {item.domainName}
-                </Typography>
-                <Typography
-                  noWrap
-                  title={[
-                    item.domainTypeLabel,
-                    definitionSummary,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  sx={{
-                    color: "text.secondary",
-                    fontSize: 10.5,
-                    fontWeight: 600,
-                  }}
-                >
-                  {[item.domainTypeLabel, definitionSummary]
-                    .filter(
-                      (value) => value && value !== "—"
-                    )
-                    .join(" · ") || "—"}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })}
-      </Stack>
+              return (
+                <TableRow key={item.criterionId} hover>
+                  <TableCell sx={{ maxWidth: 210, py: 0.7, px: 0.85 }}>
+                    <Typography noWrap title={item.name} sx={{ fontSize: 12.5, fontWeight: 850 }}>
+                      {item.name}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 0.7, px: 0.85, whiteSpace: "nowrap" }}>
+                    {item.criterionTypeLabel ? (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={item.criterionType === "cost" ? "error" : "success"}
+                        label={item.criterionTypeLabel}
+                        sx={{ height: 23, fontSize: 10.5, fontWeight: 800 }}
+                      />
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 175, py: 0.7, px: 0.85 }}>
+                    <Typography noWrap title={item.domainName} sx={{ color: "secondary.light", fontSize: 12, fontWeight: 850 }}>
+                      {item.domainName}
+                    </Typography>
+                    <Typography noWrap title={metadata || "—"} sx={{ color: "text.secondary", fontSize: 10.5, fontWeight: 600 }}>
+                      {metadata || "—"}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
     ) : (
       <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
         No criterion domain assignments are available.

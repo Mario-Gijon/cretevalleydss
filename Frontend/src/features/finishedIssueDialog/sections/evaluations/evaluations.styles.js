@@ -81,8 +81,7 @@ export const evaluationPluginRendererViewportSx = {
   mt: 1.15,
   width: "100%",
   minWidth: 0,
-  minHeight: 360,
-  maxHeight: { xs: 520, xl: 610 },
+  maxHeight: { xs: 520, xl: 620 },
   overflow: "auto",
   p: 0.85,
   borderRadius: 1.8,
@@ -122,32 +121,13 @@ export const evaluationsScrollableSx = (kind) => ({
   ...localScrollbarSx,
   minWidth: 0,
   overflowY: "auto",
-  overflowX: kind === "participants" ? "auto" : "hidden",
+  overflowX: kind === "participants" || kind === "domains" ? "auto" : "hidden",
   pr: 0.35,
   maxHeight:
     kind === "domains"
       ? { xs: 320, md: 360, xl: 400 }
       : { xs: 330, md: 370, xl: 420 },
 });
-
-export const expressionDomainRowSx = {
-  display: "grid",
-  gridTemplateColumns: {
-    xs: "minmax(120px, 1fr) auto",
-    sm: "minmax(150px, 1.1fr) auto minmax(150px, 0.9fr)",
-  },
-  gap: 0.8,
-  alignItems: "center",
-  minWidth: 0,
-  px: 0.9,
-  py: 0.75,
-  borderRadius: 1.45,
-  border: "1px solid rgba(255,255,255,0.075)",
-  bgcolor: "rgba(255,255,255,0.02)",
-  "& > :last-child": {
-    gridColumn: { xs: "1 / -1", sm: "auto" },
-  },
-};
 
 export const evaluationParticipationGridSx = {
   display: "grid",

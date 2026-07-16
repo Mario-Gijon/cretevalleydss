@@ -1,11 +1,12 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { Box, Stack, TextField, Typography } from "@mui/material";
+import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 
 const ManualCriteriaWeightsView = (
   {
     evaluationContext,
     evaluationPayload,
     setEvaluationPayload,
+    collectivePayload,
     readOnly,
     loading,
   },
@@ -25,6 +26,15 @@ const ManualCriteriaWeightsView = (
     typeof evaluationPayload === "object" &&
     !Array.isArray(evaluationPayload)
       ? evaluationPayload.weightsByCriterion || {}
+      : {};
+  const collectiveWeightsByCriterion =
+    collectivePayload &&
+    typeof collectivePayload === "object" &&
+    !Array.isArray(collectivePayload) &&
+    collectivePayload.weightsByCriterion &&
+    typeof collectivePayload.weightsByCriterion === "object" &&
+    !Array.isArray(collectivePayload.weightsByCriterion)
+      ? collectivePayload.weightsByCriterion
       : {};
 
   useImperativeHandle(ref, () => ({}));
@@ -57,28 +67,39 @@ const ManualCriteriaWeightsView = (
                   <Typography variant="body2" sx={{ flex: 1, fontWeight: 800 }}>
                     {criterion.name}
                   </Typography>
-                  <TextField
-                    type="number"
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                    disabled={isReadOnly}
-                    value={weightsByCriterion[criterion.id] ?? ""}
-                    onChange={(event) => {
-                      if (isReadOnly) return;
+                  <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+                    <TextField
+                      type="number"
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                      disabled={isReadOnly}
+                      value={weightsByCriterion[criterion.id] ?? ""}
+                      onChange={(event) => {
+                        if (isReadOnly) return;
 
-                      const raw = event.target.value;
-                      setEvaluationPayload((previous) => ({
-                        ...(previous && typeof previous === "object" ? previous : {}),
-                        weightsByCriterion: {
-                          ...((previous && previous.weightsByCriterion) || {}),
-                          [criterion.id]: raw === "" ? "" : Number(raw),
-                        },
-                      }));
-                    }}
-                    inputProps={{ min: 0, max: 1, step: 0.1 }}
-                    sx={{ width: { xs: "100%", md: 150 } }}
-                  />
+                        const raw = event.target.value;
+                        setEvaluationPayload((previous) => ({
+                          ...(previous && typeof previous === "object" ? previous : {}),
+                          weightsByCriterion: {
+                            ...((previous && previous.weightsByCriterion) || {}),
+                            [criterion.id]: raw === "" ? "" : Number(raw),
+                          },
+                        }));
+                      }}
+                      inputProps={{ min: 0, max: 1, step: 0.1 }}
+                      sx={{ width: { xs: "100%", md: 150 } }}
+                    />
+                    {typeof collectiveWeightsByCriterion[criterion.id] === "number" ? (
+                      <Chip
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                        label={`Collective ${collectiveWeightsByCriterion[criterion.id]}`}
+                        sx={{ height: 25, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap" }}
+                      />
+                    ) : null}
+                  </Stack>
                 </Stack>
               ))}
             </Stack>

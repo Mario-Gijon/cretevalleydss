@@ -1,26 +1,20 @@
 import {
+  Alert,
   Box,
-  Chip,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   Typography,
 } from "@mui/material";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import EvaluationStructureRenderer from "../../../../issueEvaluation/components/EvaluationStructureRenderer";
 import {
   evaluationPluginPanelSx,
   evaluationPluginRendererViewportSx,
-  evaluationsExpertControlSx,
 } from "../evaluations.styles";
 import UnsupportedEvaluationStructureAlert from "./UnsupportedEvaluationStructureAlert";
 
 const formatSubmittedAt = (value) => {
-  if (!value) return "Not submitted";
+  if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
 
@@ -32,13 +26,14 @@ const formatSubmittedAt = (value) => {
 
 const EvaluationPluginPanel = ({
   stageData,
-  selectedExpertId,
-  onSelectExpert,
   showCollective,
   fullWidth = false,
 }) => {
   if (!stageData.available) return null;
-  const expertLabelId = `finished-issue-${stageData.stage}-expert-label`;
+  const shouldRender =
+    stageData.renderer?.structureKey &&
+    (stageData.hasSelectedExpertSubmission ||
+      (showCollective && stageData.canShowCollective));
 
   return (
     <Box sx={evaluationPluginPanelSx(fullWidth)}>
@@ -81,41 +76,6 @@ const EvaluationPluginPanel = ({
           </Typography>
         </Box>
 
-        <Stack
-          direction="row"
-          spacing={0.8}
-          useFlexGap
-          flexWrap="wrap"
-          alignItems="center"
-        >
-          <FormControl size="small" sx={evaluationsExpertControlSx}>
-            <InputLabel id={expertLabelId}>Expert</InputLabel>
-            <Select
-              id={`finished-issue-${stageData.stage}-expert`}
-              labelId={expertLabelId}
-              value={selectedExpertId ?? ""}
-              label="Expert"
-              onChange={(event) => onSelectExpert(event.target.value)}
-            >
-              {stageData.expertOptions.map((expert) => (
-                <MenuItem key={expert.id} value={expert.id}>
-                  {expert.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {stageData.individual?.completed ? (
-            <Chip
-              size="small"
-              variant="outlined"
-              color="success"
-              icon={<CheckCircleRoundedIcon />}
-              label="Submitted"
-              sx={{ height: 32, fontWeight: 850 }}
-            />
-          ) : null}
-        </Stack>
       </Stack>
 
       <Typography
@@ -130,8 +90,14 @@ const EvaluationPluginPanel = ({
         Submitted: {formatSubmittedAt(stageData.individual?.submittedAt)}
       </Typography>
 
-      <Box sx={evaluationPluginRendererViewportSx}>
-        {stageData.renderer?.structureKey ? (
+      {!stageData.hasSelectedExpertSubmission ? (
+        <Alert severity="info" variant="outlined" sx={{ mt: 1, fontSize: 12 }}>
+          {stageData.emptySubmissionMessage}
+        </Alert>
+      ) : null}
+
+      {shouldRender ? (
+        <Box sx={evaluationPluginRendererViewportSx}>
           <EvaluationStructureRenderer
             stage={stageData.renderer.stage}
             structureKey={stageData.renderer.structureKey}
@@ -144,10 +110,12 @@ const EvaluationPluginPanel = ({
             }
             readOnly
           />
-        ) : (
+        </Box>
+      ) : stageData.hasSelectedExpertSubmission ? (
+        <Box sx={evaluationPluginRendererViewportSx}>
           <UnsupportedEvaluationStructureAlert />
-        )}
-      </Box>
+        </Box>
+      ) : null}
     </Box>
   );
 };
