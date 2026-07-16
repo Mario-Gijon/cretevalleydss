@@ -1,30 +1,44 @@
-import { Box, Stack } from "@mui/material";
-import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import { Box } from "@mui/material";
 
-import { SectionCard } from "../../../shared/components/FinishedIssueDialogPrimitives";
-import { overviewDetailsGridSx, overviewExpertsGridSx } from "../overview.styles";
-import AlternativesSection from "./AlternativesSection";
-import ConsensusConfiguration from "./ConsensusConfiguration";
-import CriteriaSection from "./CriteriaSection";
-import DescriptionSection from "./DescriptionSection";
-import ExpertsSection from "./ExpertsSection";
-import GeneralInformation from "./GeneralInformation";
+import {
+  overviewBottomGridSx,
+  overviewGridItemSx,
+  overviewRootSx,
+  overviewTopGridSx,
+} from "../overview.styles";
+import AlternativesPanel from "./AlternativesPanel";
+import ConfigurationDomainsPanel from "./ConfigurationDomainsPanel";
+import CriteriaStructurePanel from "./CriteriaStructurePanel";
+import IssueInformationPanel from "./IssueInformationPanel";
+import OverviewExecutionFooter from "./OverviewExecutionFooter";
+import OverviewSummaryStrip from "./OverviewSummaryStrip";
+import ParticipationPanel from "./ParticipationPanel";
 
-const OverviewView = ({ data, state, actions }) => (
-  <SectionCard title="Overview" icon={<AssignmentTurnedInIcon fontSize="small" />}>
-    <Stack spacing={1.4}>
-      <GeneralInformation general={data.general} />
-      <DescriptionSection description={data.description} expanded={state.descriptionExpanded} onToggle={actions.toggleDescription} />
-      <Box sx={overviewDetailsGridSx}>
-        <CriteriaSection criteria={data.criteria} expanded={state.criteriaExpanded} onToggle={actions.toggleCriteria} />
-        <AlternativesSection alternatives={data.alternatives} expanded={state.alternativesExpanded} onToggle={actions.toggleAlternatives} />
+const OverviewView = ({ data }) => (
+  <Box sx={overviewRootSx}>
+    <OverviewSummaryStrip summary={data.summary} />
+
+    <Box sx={overviewTopGridSx}>
+      <IssueInformationPanel data={data} />
+      <AlternativesPanel alternatives={data.alternatives} />
+    </Box>
+
+    <Box sx={overviewBottomGridSx}>
+      <Box sx={overviewGridItemSx("criteria")}>
+        <CriteriaStructurePanel data={data} />
       </Box>
-      <Box sx={overviewExpertsGridSx(Boolean(data.consensus))}>
-        <ExpertsSection experts={data.experts} expanded={state.expertsExpanded} onToggle={actions.toggleExperts} />
-        <ConsensusConfiguration consensus={data.consensus} />
+      <Box sx={overviewGridItemSx("participation")}>
+        <ParticipationPanel participation={data.participation} />
       </Box>
-    </Stack>
-  </SectionCard>
+      <Box sx={overviewGridItemSx("configuration")}>
+        <ConfigurationDomainsPanel
+          configuration={data.configuration}
+        />
+      </Box>
+    </Box>
+
+    <OverviewExecutionFooter evidence={data.evidence} />
+  </Box>
 );
 
 export default OverviewView;

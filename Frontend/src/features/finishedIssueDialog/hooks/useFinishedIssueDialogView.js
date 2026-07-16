@@ -21,13 +21,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   });
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload });
   const scatterPlotRef = useRef(null);
-  const [overviewDisclosure, setOverviewDisclosure] = useState({
-    description: true,
-    criteria: true,
-    alternatives: true,
-    consensus: false,
-    experts: true,
-  });
   const [modelsParamsOpen, setModelsParamsOpen] = useState(false);
 
   return {
@@ -59,10 +52,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       scatterPlotRef,
       resetZoom: () => scatterPlotRef.current?.resetZoom?.(),
       selectedPhase: navigation.selectedPhase,
-    },
-    overview: {
-      disclosure: overviewDisclosure,
-      toggleDisclosure: (key) => setOverviewDisclosure((current) => ({ ...current, [key]: !current[key] })),
     },
     evaluationsSelection,
     runs,
