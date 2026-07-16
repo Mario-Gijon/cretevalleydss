@@ -9,6 +9,7 @@ import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.con
 import FinishedIssueDialogHeader from "./shell/FinishedIssueDialogHeader";
 import FinishedIssueDialogLayout from "./shell/FinishedIssueDialogLayout";
 import FinishedIssueAddModelHost from "./shell/FinishedIssueAddModelHost";
+import { finishedIssueContentFrameSx } from "./shell/finishedIssueShell.styles";
 
 /**
  * Contenido interno del dialogo de finished issue.
@@ -53,7 +54,9 @@ const FinishedIssueDialogBody = () => {
         </Stack>
       ) : (
         <Box sx={{ px: { xs: 1.5, md: 2.25 }, py: 2 }}>
-          <FinishedIssueDialogLayout />
+          <Box sx={finishedIssueContentFrameSx}>
+            <FinishedIssueDialogLayout />
+          </Box>
         </Box>
       )}
       <FinishedIssueAddModelHost />

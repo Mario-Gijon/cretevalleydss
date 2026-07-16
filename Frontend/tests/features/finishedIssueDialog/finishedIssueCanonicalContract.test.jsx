@@ -45,6 +45,7 @@ describe("Finished Issue canonical contract", () => {
     expect(evaluations.expertWeightSnapshot[0]).toEqual({ expertId: "expert-1", weight: 0.7 });
   });
 
+
   it("loads once, does not issue scenario reads, and refreshes after scenario writes", async () => {
     const payload = buildFinishedIssuePayloadFixture();
     getFinishedIssueInfo.mockResolvedValue({ data: payload });

@@ -1,53 +1,95 @@
-import { Avatar, Box, Button, Chip, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Stack,
+  Tab,
+  Tabs,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
-import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import TuneIcon from "@mui/icons-material/Tune";
+import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
 import FinishedIssueNavigation from "./FinishedIssueNavigation";
-import { finishedIssueHeaderChipSx, finishedIssueHeaderSx, finishedIssueHeaderTabsSx } from "./finishedIssueShell.styles.js";
+import {
+  finishedIssueContentFrameSx,
+  finishedIssueHeaderChipSx,
+  finishedIssueHeaderIdentitySx,
+  finishedIssueHeaderSx,
+  finishedIssueHeaderTabsSx,
+  finishedIssueHeaderTitleSx,
+} from "./finishedIssueShell.styles";
 
 const FinishedIssueDialogHeader = () => {
-  const theme = useTheme();
-  const { dialog, selectedIssue, setOpenRemoveConfirmDialog, handleCloseFinishedIssueDialog, header, navigation } = useFinishedIssueDialogContext();
+  const {
+    dialog,
+    selectedIssue,
+    setOpenRemoveConfirmDialog,
+    handleCloseFinishedIssueDialog,
+    header,
+    navigation,
+  } = useFinishedIssueDialogContext();
+
   const issue = dialog.payload?.issue || selectedIssue || {};
   const lifecycle = dialog.payload?.lifecycle || {};
-  const runLabel = (option) => `${option.label} · ${option.modelName || "—"}${option.status === "error" ? " · Failed" : ""}`;
+  const runLabel = (option) =>
+    `${option.label} · ${option.modelName || "—"}${
+      option.status === "error" ? " · Failed" : ""
+    }`;
 
-  return <Box sx={{ ...finishedIssueHeaderSx, background: alpha("#09121d", 0.88) }}>
-    <Stack spacing={1.15}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.25}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-          <Avatar sx={{ width: 42, height: 42, bgcolor: alpha(theme.palette.success.main, 0.14), color: "success.main", border: `1px solid ${alpha(theme.palette.success.main, 0.22)}` }}><AssignmentTurnedInIcon /></Avatar>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Finished issue</Typography>
-            <Stack direction="row" spacing={0.7} alignItems="center" sx={{ minWidth: 0 }}><Typography variant="h5" noWrap sx={{ fontWeight: 950, minWidth: 0, letterSpacing: "-0.025em" }} title={issue?.name || ""}>{issue?.name || "Finished issue"}</Typography><Chip size="small" color="success" label="Finished" title={lifecycle.closureDate ? `Finished ${lifecycle.closureDate}` : "Finished"} sx={{ fontWeight: 900, flexShrink: 0 }} /></Stack>
-          </Box>
+  return (
+    <Box sx={{ ...finishedIssueHeaderSx, background: alpha("#07111c", 0.92) }}>
+      <Box sx={finishedIssueContentFrameSx}>
+        <Stack spacing={1.15}>
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            alignItems={{ xs: "stretch", lg: "flex-start" }}
+            justifyContent="space-between"
+            spacing={1.4}
+          >
+            <Box sx={finishedIssueHeaderIdentitySx}>
+              <Typography sx={{ color: "text.secondary", fontSize: 11, lineHeight: 1.2, fontWeight: 900, letterSpacing: "0.105em", textTransform: "uppercase" }}>
+                Finished issue
+              </Typography>
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.35, minWidth: 0 }}>
+                <CheckCircleRoundedIcon sx={{ color: "success.main", fontSize: { xs: 25, lg: 29 }, flexShrink: 0 }} />
+                <Typography noWrap title={issue?.name || ""} sx={finishedIssueHeaderTitleSx}>
+                  {issue?.name || "Finished issue"}
+                </Typography>
+                <Chip size="small" color="success" label="Finished" title={lifecycle.closureDate ? `Finished ${lifecycle.closureDate}` : "Finished"} sx={{ flexShrink: 0, fontWeight: 900 }} />
+              </Stack>
+              {issue?.description ? <Typography title={issue.description} sx={{ mt: 0.75, maxWidth: 760, color: "text.secondary", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13.5, lineHeight: 1.45, fontWeight: 600 }}>
+                {issue.description}
+              </Typography> : null}
+            </Box>
+
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} sx={{ flex: "1 1 520px" }}>
+              {header.executionOptions.map((option) => <Chip key={option.key} label={runLabel(option)} icon={option.type === "base" ? <LayersRoundedIcon /> : undefined} clickable onClick={() => header.selectExecution(option.key)} color={option.status === "error" ? "error" : header.selectedExecutionKey === option.key ? "secondary" : "default"} variant={header.selectedExecutionKey === option.key ? "filled" : "outlined"} sx={finishedIssueHeaderChipSx(option.status === "error")} />)}
+              <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={header.openAddScenario} sx={{ minHeight: 34, borderRadius: 1.45, textTransform: "none", fontSize: 12.5, fontWeight: 900 }}>
+                Add model
+              </Button>
+              <Tooltip title="Remove issue"><IconButton aria-label="Remove issue" onClick={() => setOpenRemoveConfirmDialog(true)} sx={{ ml: { lg: 0.5 } }}><DeleteOutlineIcon color="error" /></IconButton></Tooltip>
+              <Tooltip title="Close"><IconButton aria-label="Close Finished Issue" onClick={handleCloseFinishedIssueDialog}><CloseIcon /></IconButton></Tooltip>
+            </Stack>
+          </Stack>
+
+          {header.showRounds ? <Tabs value={header.selectedPhase} onChange={(_, value) => header.changePhase(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={finishedIssueHeaderTabsSx}>
+            {header.basePhases.map((phase) => <Tab key={phase} value={phase} label={formatFinishedIssuePhaseLabel({ phase, orderedPhases: header.basePhases })} />)}
+          </Tabs> : null}
+
+          <FinishedIssueNavigation navigation={navigation} />
         </Stack>
-        <Stack direction="row" spacing={0.75} flexShrink={0}>
-          <Tooltip title="Remove issue"><IconButton onClick={() => setOpenRemoveConfirmDialog(true)}><DeleteOutlineIcon color="error" /></IconButton></Tooltip>
-          <Tooltip title="Close"><IconButton onClick={handleCloseFinishedIssueDialog}><CloseIcon /></IconButton></Tooltip>
-        </Stack>
-      </Stack>
-
-      {issue?.description ? <Typography variant="body2" sx={{ maxWidth: 900, color: "text.secondary", fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={issue.description}>{issue.description}</Typography> : null}
-
-      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
-        {header.executionOptions.map((option) => <Chip key={option.key} label={runLabel(option)} icon={option.type === "base" ? <TuneIcon /> : undefined} clickable onClick={() => header.selectExecution(option.key)} color={option.status === "error" ? "error" : header.selectedExecutionKey === option.key ? "secondary" : "default"} variant={header.selectedExecutionKey === option.key ? "filled" : "outlined"} sx={finishedIssueHeaderChipSx(option.status === "error")} />)}
-        <Button variant="outlined" size="small" color="secondary" startIcon={<AddIcon />} onClick={header.openAddScenario}>Add model</Button>
-      </Stack>
-
-      {header.showRounds ? <Tabs value={header.selectedPhase} onChange={(_, value) => header.changePhase(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={finishedIssueHeaderTabsSx}>
-        {header.basePhases.map((phase) => <Tab key={phase} value={phase} label={formatFinishedIssuePhaseLabel({ phase, orderedPhases: header.basePhases })} />)}
-      </Tabs> : null}
-
-      <FinishedIssueNavigation navigation={navigation} />
-    </Stack>
-  </Box>;
+      </Box>
+    </Box>
+  );
 };
 
 export default FinishedIssueDialogHeader;

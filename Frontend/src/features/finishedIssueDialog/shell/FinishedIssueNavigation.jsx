@@ -6,6 +6,8 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
+import { finishedIssueNavigationSx } from "./finishedIssueShell.styles";
+
 const TAB_LABELS = {
   dashboard: "Dashboard",
   overview: "Overview",
@@ -25,7 +27,7 @@ const TAB_ICONS = {
 };
 
 const FinishedIssueNavigation = ({ navigation }) => (
-  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, px: 1.2, gap: 0.55, textTransform: "none", fontWeight: 900 } }}>
+  <Tabs value={navigation.activeTab} onChange={(_, tab) => navigation.selectTab(tab)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile indicatorColor="secondary" textColor="inherit" sx={finishedIssueNavigationSx}>
     {navigation.availableTabs.map((tab) => <Tab key={tab} value={tab} icon={TAB_ICONS[tab]} iconPosition="start" label={TAB_LABELS[tab]} />)}
   </Tabs>
 );

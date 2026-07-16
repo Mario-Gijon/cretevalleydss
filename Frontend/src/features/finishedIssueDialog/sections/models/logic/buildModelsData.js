@@ -2,6 +2,16 @@ import { buildFinishedIssueExecutionOptions } from "../../../logic/selectFinishe
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
+const resolveModelDescription = (model) => {
+  const short = model?.description?.short;
+  if (typeof short === "string" && short.trim()) return short;
+
+  const extended = model?.description?.extended;
+  if (typeof extended === "string" && extended.trim()) return extended;
+
+  return null;
+};
+
 const buildCriteriaTree = ({ nodes, rootIds, domainsById }) => {
   const nodesById = new Map(asArray(nodes).map((node) => [node?.id, node]));
   const visit = (id) => {
@@ -64,7 +74,9 @@ export const buildModelsPreview = (data) => ({
   selectedExecutionIsBase: data.selectedExecution?.type !== "scenario",
   additionalRunsCount: data.scenarios.length,
   selectedModelName: data.selectedExecution?.model?.name || data.baseModel?.name || "—",
-  selectedModelDescription: data.selectedExecution?.model?.smallDescription || data.selectedExecution?.model?.description || null,
+  selectedModelDescription: resolveModelDescription(
+    data.selectedExecution?.model || data.baseModel
+  ),
   status: data.status,
   error: data.error,
   parameters: data.effectiveParameters || data.configuredParameters || {},
