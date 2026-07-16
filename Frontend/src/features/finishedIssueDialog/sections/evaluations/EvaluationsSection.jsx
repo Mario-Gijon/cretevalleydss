@@ -1,11 +1,24 @@
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
-import { buildEvaluationsData } from "./logic/buildEvaluationsData.js";
-import EvaluationsView from "./components/EvaluationsView.jsx";
+
+import EvaluationsView from "./components/EvaluationsView";
+import { buildEvaluationsWorkspaceData } from "./logic/buildEvaluationsWorkspaceData";
 
 const EvaluationsSection = () => {
-  const { dialog, evaluationsSelection } = useFinishedIssueDialogContext();
-  const data = buildEvaluationsData({ payload: dialog.payload, ...evaluationsSelection });
-  return <EvaluationsView data={data} state={evaluationsSelection} actions={evaluationsSelection} />;
+  const { dialog, evaluationsSelection } =
+    useFinishedIssueDialogContext();
+
+  const data = buildEvaluationsWorkspaceData({
+    payload: dialog.payload,
+    selection: evaluationsSelection,
+  });
+
+  return (
+    <EvaluationsView
+      data={data}
+      state={evaluationsSelection}
+      actions={evaluationsSelection}
+    />
+  );
 };
 
 export default EvaluationsSection;

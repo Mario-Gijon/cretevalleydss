@@ -5,7 +5,7 @@ vi.mock("../../../src/services/issue.service", () => ({ getFinishedIssueInfo: vi
 
 import { getFinishedIssueInfo } from "../../../src/services/issue.service";
 import { useFinishedIssueData } from "../../../src/features/finishedIssueDialog/hooks/useFinishedIssueData.js";
-import { resolveEvaluationsSelection } from "../../../src/features/finishedIssueDialog/sections/evaluations/logic/resolveEvaluationsSelection.js";
+import { resolveEvaluationsWorkspaceSelection } from "../../../src/features/finishedIssueDialog/sections/evaluations/logic/buildEvaluationsWorkspaceData.js";
 import { buildModelsParameterContextData } from "../../../src/features/finishedIssueDialog/sections/models/logic/buildModelsData.js";
 import { selectFinishedIssueExecution } from "../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 import { buildFinishedIssuePayloadFixture } from "../../mocks/fixtures/finishedIssueDialog.fixtures.js";
@@ -47,9 +47,9 @@ describe("Finished Issue architecture integrity", () => {
     expect(result.current.error).toBeInstanceOf(Error);
   });
 
-  it("resolves only evaluation selection state", () => {
+  it("resolves independent evaluation workspace selections", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    expect(resolveEvaluationsSelection({ payload, selectedStage: "criteriaWeighting", selectedPhase: 1, selectedExpertId: "expert-1" })).toEqual({ selectedStage: "criteriaWeighting", selectedPhase: 1, selectedExpertId: "expert-1", canShowCollective: true });
+    expect(resolveEvaluationsWorkspaceSelection({ payload, selectedConsensusPhase: 5, selectedCriteriaExpertId: "expert-1", selectedAlternativeExpertId: "expert-1", showCollective: false })).toEqual({ selectedConsensusPhase: 5, selectedCriteriaExpertId: "expert-1", selectedAlternativeExpertId: "expert-1", canShowCollective: true });
   });
 
   it("builds complete immutable parameter context data for base and scenario executions", () => {

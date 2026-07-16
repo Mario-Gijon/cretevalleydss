@@ -1,35 +1,62 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { resolveEvaluationsSelection } from "../sections/evaluations";
+import { resolveEvaluationsWorkspaceSelection } from "../sections/evaluations";
 
 export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
-  const [selectedStage, setSelectedStage] = useState("alternativeEvaluation");
-  const [selectedPhase, setSelectedPhase] = useState(null);
-  const [selectedExpertId, setSelectedExpertId] = useState(null);
+  const [selectedConsensusPhase, setSelectedConsensusPhase] = useState(null);
+  const [selectedCriteriaExpertId, setSelectedCriteriaExpertId] = useState(null);
+  const [selectedAlternativeExpertId, setSelectedAlternativeExpertId] =
+    useState(null);
   const [showCollective, setShowCollective] = useState(false);
-  const selection = useMemo(() => resolveEvaluationsSelection({
-    payload,
-    selectedStage,
-    selectedPhase,
-    selectedExpertId,
-    showCollective,
-  }), [payload, selectedStage, selectedPhase, selectedExpertId, showCollective]);
+
+  const selection = useMemo(
+    () =>
+      resolveEvaluationsWorkspaceSelection({
+        payload,
+        selectedConsensusPhase,
+        selectedCriteriaExpertId,
+        selectedAlternativeExpertId,
+        showCollective,
+      }),
+    [
+      payload,
+      selectedAlternativeExpertId,
+      selectedConsensusPhase,
+      selectedCriteriaExpertId,
+      showCollective,
+    ]
+  );
 
   useEffect(() => {
-    if (selection.selectedStage !== selectedStage) setSelectedStage(selection.selectedStage);
-    if (selection.selectedPhase !== selectedPhase) setSelectedPhase(selection.selectedPhase);
-    if (selection.selectedExpertId !== selectedExpertId) setSelectedExpertId(selection.selectedExpertId);
-    if (!selection.canShowCollective && showCollective) setShowCollective(false);
-  }, [selectedExpertId, selectedPhase, selectedStage, selection, showCollective]);
+    if (selection.selectedConsensusPhase !== selectedConsensusPhase) {
+      setSelectedConsensusPhase(selection.selectedConsensusPhase);
+    }
+    if (selection.selectedCriteriaExpertId !== selectedCriteriaExpertId) {
+      setSelectedCriteriaExpertId(selection.selectedCriteriaExpertId);
+    }
+    if (selection.selectedAlternativeExpertId !== selectedAlternativeExpertId) {
+      setSelectedAlternativeExpertId(selection.selectedAlternativeExpertId);
+    }
+    if (!selection.canShowCollective && showCollective) {
+      setShowCollective(false);
+    }
+  }, [
+    selectedAlternativeExpertId,
+    selectedConsensusPhase,
+    selectedCriteriaExpertId,
+    selection,
+    showCollective,
+  ]);
 
   return {
-    selectedStage,
-    selectedPhase,
-    selectedExpertId,
+    selectedConsensusPhase,
+    selectedCriteriaExpertId,
+    selectedAlternativeExpertId,
     showCollective,
-    setSelectedStage,
-    setSelectedPhase,
-    setSelectedExpertId,
+
+    setSelectedConsensusPhase,
+    setSelectedCriteriaExpertId,
+    setSelectedAlternativeExpertId,
     setShowCollective,
   };
 };

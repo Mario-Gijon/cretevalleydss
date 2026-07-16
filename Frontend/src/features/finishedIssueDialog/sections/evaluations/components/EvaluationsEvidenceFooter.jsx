@@ -1,0 +1,73 @@
+import { Box, Stack, Typography } from "@mui/material";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+
+import { evaluationsEvidenceFooterSx } from "../evaluations.styles";
+
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(date);
+};
+
+const Item = ({ icon, label, value }) => (
+  <Stack direction="row" spacing={0.55} alignItems="center" sx={{ minWidth: 0 }}>
+    <Box sx={{ color: "secondary.light", display: "grid" }}>{icon}</Box>
+    <Typography
+      sx={{ color: "text.secondary", fontSize: 11.2, fontWeight: 700 }}
+    >
+      {label}:
+    </Typography>
+    <Typography
+      noWrap
+      title={String(value)}
+      sx={{ minWidth: 0, fontSize: 11.5, fontWeight: 850 }}
+    >
+      {value}
+    </Typography>
+  </Stack>
+);
+
+const EvaluationsEvidenceFooter = ({ evidence }) => (
+  <Box sx={evaluationsEvidenceFooterSx}>
+    <Item
+      icon={<AccessTimeRoundedIcon fontSize="small" />}
+      label="Stored result"
+      value={formatDate(evidence.storedAt)}
+    />
+    <Item
+      icon={<PersonRoundedIcon fontSize="small" />}
+      label="Created by"
+      value={evidence.createdBy || "—"}
+    />
+    <Item
+      icon={<LayersRoundedIcon fontSize="small" />}
+      label="Execution"
+      value={`${evidence.executionLabel}${
+        evidence.phase === null ? "" : ` · Phase ${evidence.phase}`
+      }`}
+    />
+    <Box sx={{ minWidth: 0, ml: { lg: "auto" } }}>
+      <Typography
+        noWrap
+        title={evidence.resultId || "—"}
+        sx={{
+          fontFamily:
+            '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+          fontSize: 10.8,
+          color: "text.secondary",
+        }}
+      >
+        Result ID: {evidence.resultId || "—"}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+export default EvaluationsEvidenceFooter;
