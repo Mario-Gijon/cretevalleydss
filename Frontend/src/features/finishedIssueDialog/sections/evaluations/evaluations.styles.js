@@ -26,19 +26,67 @@ export const evaluationsRootSx = {
 
 export const evaluationsHeaderSx = {
   display: "flex",
-  flexDirection: { xs: "column", sm: "row" },
-  alignItems: { xs: "stretch", sm: "center" },
+  flexDirection: { xs: "column", md: "row" },
+  alignItems: { xs: "stretch", md: "center" },
   justifyContent: "space-between",
   gap: 1.2,
-  mb: 1.5,
-  px: 0.2,
+  p: { xs: 1.35, md: 1.65 },
+};
+
+export const evaluationsSelectorGroupSx = {
+  display: "flex",
+  flexDirection: { xs: "column", sm: "row" },
+  alignItems: { xs: "stretch", sm: "center" },
+  flexWrap: "wrap",
+  gap: 1,
+  width: { xs: "100%", md: "auto" },
+  minWidth: 0,
+};
+
+export const evaluationsActionGroupSx = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: { xs: "stretch", md: "flex-end" },
+  width: { xs: "100%", md: "auto" },
+  minWidth: 0,
+};
+
+export const evaluationsWorkspaceSx = {
+  width: "100%",
+  minWidth: 0,
+  overflow: "hidden",
+  borderRadius: 3,
+  border: "1px solid rgba(83, 198, 214, 0.21)",
+  bgcolor: "rgba(8, 18, 29, 0.93)",
+  background:
+    "linear-gradient(150deg, rgba(25, 105, 140, 0.16), rgba(8, 18, 29, 0.96) 48%)",
+  boxShadow: "0 15px 36px rgba(0,0,0,0.18)",
+};
+
+export const evaluationsToolbarDividerSx = {
+  borderColor: "rgba(83, 198, 214, 0.16)",
+};
+
+export const evaluationsStageDividerWideSx = {
+  display: { xs: "none", xl: "block" },
+  borderColor: "rgba(83, 198, 214, 0.16)",
+  my: { xl: 1.6 },
+};
+
+export const evaluationsStageDividerNarrowSx = {
+  display: { xs: "block", xl: "none" },
+  borderColor: "rgba(83, 198, 214, 0.16)",
+  mx: { xs: 1.35, md: 1.65 },
 };
 
 export const evaluationsRoundControlSx = {
-  minWidth: 190,
+  width: { xs: "100%", sm: "auto" },
+  minWidth: { sm: 190 },
 };
 
 export const evaluationsToggleSx = {
+  width: { xs: "100%", sm: "auto" },
+  justifyContent: "center",
   minHeight: 34,
   px: 1.35,
   borderRadius: 1.35,
@@ -48,7 +96,8 @@ export const evaluationsToggleSx = {
 };
 
 export const evaluationsExpertControlSx = {
-  minWidth: { xs: "100%", sm: 230 },
+  width: { xs: "100%", sm: 230 },
+  minWidth: 0,
 };
 
 export const evaluationsPluginGridSx = (bothStages) => ({
@@ -56,30 +105,24 @@ export const evaluationsPluginGridSx = (bothStages) => ({
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
     xl: bothStages
-      ? "minmax(0, 0.92fr) minmax(0, 1.08fr)"
+      ? "minmax(0, 0.92fr) auto minmax(0, 1.08fr)"
       : "minmax(0, 1fr)",
   },
-  gap: { xs: 1.5, md: 1.75 },
   alignItems: "stretch",
 });
 
-export const evaluationPluginPanelSx = (fullWidth) => ({
+export const evaluationPluginPanelSx = {
   minWidth: 0,
+  maxWidth: "100%",
   width: "100%",
   p: { xs: 1.35, md: 1.65 },
-  borderRadius: 3,
-  border: "1px solid rgba(83, 198, 214, 0.21)",
-  bgcolor: "rgba(8, 18, 29, 0.93)",
-  background:
-    "linear-gradient(150deg, rgba(25, 105, 140, 0.16), rgba(8, 18, 29, 0.96) 48%)",
-  boxShadow: "0 15px 36px rgba(0,0,0,0.18)",
-  ...(fullWidth ? { gridColumn: "1 / -1" } : {}),
-});
+};
 
 export const evaluationPluginRendererViewportSx = {
   ...localScrollbarSx,
   mt: 1.15,
   width: "100%",
+  maxWidth: "100%",
   minWidth: 0,
   maxHeight: { xs: 520, xl: 620 },
   overflow: "auto",
@@ -121,7 +164,7 @@ export const evaluationsScrollableSx = (kind) => ({
   ...localScrollbarSx,
   minWidth: 0,
   overflowY: "auto",
-  overflowX: kind === "participants" || kind === "domains" ? "auto" : "hidden",
+  overflowX: kind === "domains" ? "auto" : "hidden",
   pr: 0.35,
   maxHeight:
     kind === "domains"
@@ -133,7 +176,7 @@ export const evaluationParticipationGridSx = {
   display: "grid",
   gridTemplateColumns: {
     xs: "minmax(0, 1fr)",
-    sm: "220px minmax(0, 1fr)",
+    md: "220px minmax(0, 1fr)",
   },
   gap: 1.1,
   alignItems: "stretch",
@@ -141,11 +184,18 @@ export const evaluationParticipationGridSx = {
 
 export const evaluationParticipantRowSx = {
   display: "grid",
-  gridTemplateColumns:
-    "34px minmax(120px, 1fr) minmax(130px, 0.85fr) auto",
+  gridTemplateColumns: {
+    xs: "34px minmax(0, 1fr) auto",
+    sm: "34px minmax(120px, 1fr) minmax(130px, 0.85fr) auto",
+  },
+  gridTemplateAreas: {
+    xs: '"avatar identity status" "coverage coverage coverage"',
+    sm: '"avatar identity coverage status"',
+  },
   gap: 0.75,
   alignItems: "center",
-  minWidth: 620,
+  minWidth: 0,
+  maxWidth: "100%",
   px: 0.85,
   py: 0.72,
   borderRadius: 1.4,

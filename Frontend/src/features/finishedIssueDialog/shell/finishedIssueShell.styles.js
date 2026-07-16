@@ -24,7 +24,13 @@ export const finishedIssueHeaderSx = {
 
 export const finishedIssueHeaderIdentitySx = {
   minWidth: 0,
-  flex: "1 1 360px",
+  flex: { xs: "0 0 auto", lg: "1 1 360px" },
+};
+
+export const finishedIssueHeaderControlsSx = {
+  flex: { xs: "0 0 auto", lg: "1 1 520px" },
+  width: { xs: "100%", lg: "auto" },
+  minWidth: 0,
 };
 
 export const finishedIssueHeaderTitleSx = {

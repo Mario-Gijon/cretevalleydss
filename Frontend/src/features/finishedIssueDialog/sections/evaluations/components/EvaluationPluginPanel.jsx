@@ -27,7 +27,6 @@ const formatSubmittedAt = (value) => {
 const EvaluationPluginPanel = ({
   stageData,
   showCollective,
-  fullWidth = false,
 }) => {
   if (!stageData.available) return null;
   const shouldRender =
@@ -36,47 +35,37 @@ const EvaluationPluginPanel = ({
       (showCollective && stageData.canShowCollective));
 
   return (
-    <Box sx={evaluationPluginPanelSx(fullWidth)}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={1.2}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", md: "flex-start" }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Stack direction="row" spacing={0.7} alignItems="center">
-            <Typography
-              component="h2"
-              sx={{ fontSize: 17, fontWeight: 950 }}
-            >
-              {stageData.title}
-            </Typography>
-            <Typography
-              sx={{
-                color: "text.secondary",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              (read-only)
-            </Typography>
-            <InfoOutlinedIcon
-              sx={{ color: "text.secondary", fontSize: 16 }}
-            />
-          </Stack>
+    <Box sx={evaluationPluginPanelSx}>
+      <Box sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={0.7} alignItems="center" useFlexGap flexWrap="wrap">
+          <Typography
+            component="h2"
+            sx={{ fontSize: 17, fontWeight: 950 }}
+          >
+            {stageData.title}
+          </Typography>
           <Typography
             sx={{
-              mt: 0.25,
               color: "text.secondary",
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
-            {stageData.subtitle}
+            (read-only)
           </Typography>
-        </Box>
-
-      </Stack>
+          <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16, flexShrink: 0 }} />
+        </Stack>
+        <Typography
+          sx={{
+            mt: 0.25,
+            color: "text.secondary",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          {stageData.subtitle}
+        </Typography>
+      </Box>
 
       <Typography
         sx={{

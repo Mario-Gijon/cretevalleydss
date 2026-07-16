@@ -1,5 +1,5 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rendererSpy = vi.hoisted(() => vi.fn());
@@ -20,6 +20,15 @@ import { buildEvaluationsWorkspaceData } from "../../../../../src/features/finis
 import {
   evaluationPluginPanelSx,
   evaluationPluginRendererViewportSx,
+  evaluationParticipantRowSx,
+  evaluationsExpertControlSx,
+  evaluationsRoundControlSx,
+  evaluationsActionGroupSx,
+  evaluationsSelectorGroupSx,
+  evaluationsStageDividerNarrowSx,
+  evaluationsStageDividerWideSx,
+  evaluationsHeaderSx,
+  evaluationsWorkspaceSx,
 } from "../../../../../src/features/finishedIssueDialog/sections/evaluations/evaluations.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -93,11 +102,24 @@ describe("EvaluationsView", () => {
     });
     renderView(data);
 
+    const workspace = screen.getByTestId("evaluations-workspace");
+    const selectors = within(workspace).getByTestId("evaluations-selector-group");
+    const actions = within(workspace).getByTestId("evaluations-action-group");
+    expect(within(selectors).getByLabelText("Consensus round")).toBeInTheDocument();
+    expect(within(selectors).getByLabelText("Expert")).toBeInTheDocument();
+    expect(within(actions).getByLabelText("Show collective values")).toBeInTheDocument();
+    expect(selectors.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(workspace).toContainElement(screen.getByRole("heading", { name: "Criteria weighting" }));
+    expect(workspace).toContainElement(screen.getByRole("heading", { name: "Alternative evaluation" }));
+    expect(screen.queryByRole("heading", { name: "Evaluations" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Review stored expert inputs and collective values.")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
     expect(screen.getAllByLabelText("Expert")).toHaveLength(1);
     expect(screen.getByLabelText("Consensus round")).toBeInTheDocument();
     expect(screen.getByLabelText("Show collective values")).toBeInTheDocument();
+    expect(screen.getByTestId("evaluations-stage-divider-wide")).toBeInTheDocument();
+    expect(screen.getByTestId("evaluations-stage-divider-narrow")).toBeInTheDocument();
     expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "criteriaWeighting", readOnly: true, collectivePayload: null }));
     expect(rendererSpy).toHaveBeenCalledWith(expect.objectContaining({ stage: "alternativeEvaluation", readOnly: true, collectivePayload: null }));
   });
@@ -148,7 +170,12 @@ describe("EvaluationsView", () => {
 
     expect(screen.queryByRole("heading", { name: "Criteria weighting" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
-    expect(evaluationPluginPanelSx(true)).toMatchObject({ gridColumn: "1 / -1" });
+    expect(screen.queryByTestId("evaluations-stage-divider-wide")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("evaluations-stage-divider-narrow")).not.toBeInTheDocument();
+    expect(evaluationsWorkspaceSx).toMatchObject({ width: "100%", overflow: "hidden" });
+    expect(evaluationPluginPanelSx).not.toHaveProperty("boxShadow");
+    expect(evaluationPluginPanelSx).not.toHaveProperty("background");
+    expect(evaluationPluginPanelSx).not.toHaveProperty("border");
   });
 
   it("renders a compact domain table and content-driven renderer viewport", () => {
@@ -163,7 +190,19 @@ describe("EvaluationsView", () => {
     expect(screen.getByText("Quality")).toBeInTheDocument();
     expect(screen.getByText("Benefit")).toBeInTheDocument();
     expect(evaluationPluginRendererViewportSx).not.toHaveProperty("minHeight");
-    expect(evaluationPluginRendererViewportSx).toMatchObject({ maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
+    expect(evaluationPluginRendererViewportSx).toMatchObject({ width: "100%", maxWidth: "100%", maxHeight: { xs: 520, xl: 620 }, overflow: "auto" });
+    expect(evaluationParticipantRowSx).not.toHaveProperty("minWidth", 620);
+    expect(evaluationParticipantRowSx.gridTemplateAreas.xs).toContain("coverage coverage coverage");
+    expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
+    expect(evaluationsRoundControlSx).toMatchObject({ width: { xs: "100%", sm: "auto" } });
+    expect(evaluationsHeaderSx).toMatchObject({
+      justifyContent: "space-between",
+      flexDirection: { xs: "column", md: "row" },
+    });
+    expect(evaluationsSelectorGroupSx).toMatchObject({ width: { xs: "100%", md: "auto" } });
+    expect(evaluationsActionGroupSx).toMatchObject({ width: { xs: "100%", md: "auto" } });
+    expect(evaluationsStageDividerWideSx.display).toEqual({ xs: "none", xl: "block" });
+    expect(evaluationsStageDividerNarrowSx.display).toEqual({ xs: "block", xl: "none" });
   });
 
   it("does not render a fake round selector for non-consensus evidence", () => {

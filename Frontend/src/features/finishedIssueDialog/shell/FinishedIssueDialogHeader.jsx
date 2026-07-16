@@ -22,6 +22,7 @@ import FinishedIssueNavigation from "./FinishedIssueNavigation";
 import {
   finishedIssueContentFrameSx,
   finishedIssueHeaderChipSx,
+  finishedIssueHeaderControlsSx,
   finishedIssueHeaderIdentitySx,
   finishedIssueHeaderSx,
   finishedIssueHeaderTabsSx,
@@ -71,7 +72,7 @@ const FinishedIssueDialogHeader = () => {
               </Typography> : null}
             </Box>
 
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} sx={{ flex: "1 1 520px" }}>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} sx={finishedIssueHeaderControlsSx}>
               {header.executionOptions.map((option) => <Chip key={option.key} label={runLabel(option)} icon={option.type === "base" ? <LayersRoundedIcon /> : undefined} clickable onClick={() => header.selectExecution(option.key)} color={option.status === "error" ? "error" : header.selectedExecutionKey === option.key ? "secondary" : "default"} variant={header.selectedExecutionKey === option.key ? "filled" : "outlined"} sx={finishedIssueHeaderChipSx(option.status === "error")} />)}
               <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={header.openAddScenario} sx={{ minHeight: 34, borderRadius: 1.45, textTransform: "none", fontSize: 12.5, fontWeight: 900 }}>
                 Add model

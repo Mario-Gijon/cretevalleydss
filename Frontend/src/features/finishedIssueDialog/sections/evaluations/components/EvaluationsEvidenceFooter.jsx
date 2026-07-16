@@ -17,7 +17,7 @@ const formatDate = (value) => {
 };
 
 const Item = ({ icon, label, value }) => (
-  <Stack direction="row" spacing={0.55} alignItems="center" sx={{ minWidth: 0 }}>
+  <Stack direction="row" spacing={0.55} alignItems="center" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: 0 }}>
     <Box sx={{ color: "secondary.light", display: "grid" }}>{icon}</Box>
     <Typography
       sx={{ color: "text.secondary", fontSize: 11.2, fontWeight: 700 }}
@@ -53,7 +53,7 @@ const EvaluationsEvidenceFooter = ({ evidence }) => (
         evidence.phase === null ? "" : ` · Phase ${evidence.phase}`
       }`}
     />
-    <Box sx={{ minWidth: 0, ml: { lg: "auto" } }}>
+    <Box sx={{ width: { xs: "100%", sm: "auto" }, minWidth: 0, ml: { lg: "auto" } }}>
       <Typography
         noWrap
         title={evidence.resultId || "—"}

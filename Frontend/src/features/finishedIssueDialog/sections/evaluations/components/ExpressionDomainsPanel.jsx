@@ -62,7 +62,7 @@ const ExpressionDomainsPanel = ({ domains }) => (
 
     {domains.length ? (
       <TableContainer sx={evaluationsScrollableSx("domains")}>
-        <Table size="small" stickyHeader aria-label="Expression domains by criterion">
+        <Table size="small" stickyHeader aria-label="Expression domains by criterion" sx={{ minWidth: { xs: 560, md: "100%" } }}>
           <TableHead>
             <TableRow>
               <TableCell sx={headerCellSx}>Criterion</TableCell>

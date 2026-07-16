@@ -2,7 +2,7 @@ export const dashboardRootSx = { width: "100%", minWidth: 0 };
 
 export const dashboardKpiStripSx = {
   display: "grid",
-  gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(3, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))" },
   mb: { xs: 1.5, md: 2 },
   border: "1px solid rgba(100, 211, 219, 0.18)",
   borderRadius: 3,
@@ -12,10 +12,23 @@ export const dashboardKpiStripSx = {
   boxShadow: "0 14px 34px rgba(0, 0, 0, 0.16)",
 };
 
-export const dashboardKpiItemSx = ({ tone = "default", interactive = false, index = 0 }) => ({
+export const dashboardKpiItemSx = ({ metricKey, tone = "default", interactive = false }) => ({
   appearance: "none", border: 0,
-  borderRight: { xs: index % 2 === 0 ? "1px solid rgba(255,255,255,0.075)" : 0, sm: index % 3 !== 2 ? "1px solid rgba(255,255,255,0.075)" : 0, lg: index < 4 ? "1px solid rgba(255,255,255,0.075)" : 0 },
-  borderBottom: { xs: index < 4 ? "1px solid rgba(255,255,255,0.075)" : 0, sm: index < 3 ? "1px solid rgba(255,255,255,0.075)" : 0, lg: 0 },
+  gridColumn: metricKey === "winner"
+    ? { xs: "auto", sm: "1 / -1", lg: "span 2" }
+    : "auto",
+  borderRight: {
+    xs: 0,
+    sm: metricKey === "score" || metricKey === "coverage"
+      ? "1px solid rgba(255,255,255,0.075)"
+      : 0,
+    lg: metricKey !== "consensus" ? "1px solid rgba(255,255,255,0.075)" : 0,
+  },
+  borderBottom: {
+    xs: metricKey !== "consensus" ? "1px solid rgba(255,255,255,0.075)" : 0,
+    sm: metricKey === "winner" ? "1px solid rgba(255,255,255,0.075)" : 0,
+    lg: 0,
+  },
   textAlign: "left", font: "inherit", color: "inherit", minWidth: 0, minHeight: { xs: 78, lg: 84 }, px: { xs: 1.2, sm: 1.5, xl: 1.8 }, py: { xs: 1.1, lg: 1.25 },
   bgcolor: tone === "winner" ? "rgba(63, 193, 139, 0.055)" : tone === "success" ? "rgba(63, 193, 139, 0.055)" : "transparent",
   cursor: interactive ? "pointer" : "default", transition: "background-color 160ms ease", "&:hover": interactive ? { bgcolor: "rgba(71, 213, 211, 0.095)" } : undefined,

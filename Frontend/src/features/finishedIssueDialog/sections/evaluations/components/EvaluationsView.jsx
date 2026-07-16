@@ -1,9 +1,12 @@
-import { Alert, Box } from "@mui/material";
+import { Alert, Box, Divider } from "@mui/material";
 
 import {
   evaluationsLowerGridSx,
   evaluationsPluginGridSx,
   evaluationsRootSx,
+  evaluationsStageDividerNarrowSx,
+  evaluationsStageDividerWideSx,
+  evaluationsWorkspaceSx,
 } from "../evaluations.styles";
 import EvaluationParticipationPanel from "./EvaluationParticipationPanel";
 import EvaluationPluginPanel from "./EvaluationPluginPanel";
@@ -26,23 +29,41 @@ const EvaluationsView = ({ data, state, actions }) => {
 
   return (
     <Box sx={evaluationsRootSx}>
-      <EvaluationsHeader
-        data={data}
-        state={state}
-        actions={actions}
-      />
-
-      <Box sx={evaluationsPluginGridSx(bothStages)}>
-        <EvaluationPluginPanel
-          stageData={data.criteriaWeighting}
-          showCollective={state.showCollective}
+      <Box sx={evaluationsWorkspaceSx} data-testid="evaluations-workspace">
+        <EvaluationsHeader
+          data={data}
+          state={state}
+          actions={actions}
         />
 
-        <EvaluationPluginPanel
-          stageData={data.alternativeEvaluation}
-          showCollective={state.showCollective}
-          fullWidth={!data.criteriaWeighting.available}
-        />
+        <Box sx={evaluationsPluginGridSx(bothStages)}>
+          <EvaluationPluginPanel
+            stageData={data.criteriaWeighting}
+            showCollective={state.showCollective}
+          />
+
+          {bothStages ? (
+            <>
+              <Divider
+                orientation="vertical"
+                flexItem
+                aria-hidden="true"
+                data-testid="evaluations-stage-divider-wide"
+                sx={evaluationsStageDividerWideSx}
+              />
+              <Divider
+                aria-hidden="true"
+                data-testid="evaluations-stage-divider-narrow"
+                sx={evaluationsStageDividerNarrowSx}
+              />
+            </>
+          ) : null}
+
+          <EvaluationPluginPanel
+            stageData={data.alternativeEvaluation}
+            showCollective={state.showCollective}
+          />
+        </Box>
       </Box>
 
       <Box sx={evaluationsLowerGridSx}>

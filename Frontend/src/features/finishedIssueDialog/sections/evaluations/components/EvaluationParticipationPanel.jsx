@@ -110,6 +110,7 @@ const EvaluationParticipationPanel = ({
             <Box key={row.expertId} sx={evaluationParticipantRowSx}>
               <Avatar
                 sx={{
+                  gridArea: "avatar",
                   width: 34,
                   height: 34,
                   bgcolor: "rgba(51, 164, 197, 0.20)",
@@ -121,7 +122,7 @@ const EvaluationParticipationPanel = ({
                 {initials(row.name)}
               </Avatar>
 
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ gridArea: "identity", minWidth: 0 }}>
                 <Typography
                   noWrap
                   title={row.name}
@@ -143,7 +144,7 @@ const EvaluationParticipationPanel = ({
                 ) : null}
               </Box>
 
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ gridArea: "coverage", minWidth: 0 }}>
                 <Typography
                   noWrap
                   title={submissionLabel(row, hasCriteriaWeighting)}
@@ -172,7 +173,7 @@ const EvaluationParticipationPanel = ({
                   size="small"
                   variant="outlined"
                   label="Removed later"
-                  sx={{ height: 23, fontSize: 10.2 }}
+                  sx={{ gridArea: "status", height: 23, fontSize: 10.2 }}
                 />
               ) : (
                 <Chip
@@ -180,7 +181,7 @@ const EvaluationParticipationPanel = ({
                   variant="outlined"
                   color="success"
                   label="Submitted"
-                  sx={{ height: 23, fontSize: 10.2 }}
+                  sx={{ gridArea: "status", height: 23, fontSize: 10.2 }}
                 />
               )}
             </Box>

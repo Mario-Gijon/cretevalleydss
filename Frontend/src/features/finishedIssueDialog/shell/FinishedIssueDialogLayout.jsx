@@ -1,5 +1,4 @@
-import { Box, Button, Stack } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { Box } from "@mui/material";
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation";
@@ -25,22 +24,7 @@ const FinishedIssueDialogLayout = () => {
 
   return (
     <Box sx={finishedIssueDialogLayoutSx}>
-      <Stack spacing={1.25}>
-        {view !== FINISHED_ISSUE_VIEWS.DASHBOARD ? (
-          <Box>
-            <Button
-              variant="outlined"
-              color="secondary"
-              size="small"
-              startIcon={<ArrowBackIcon />}
-              onClick={navigation.backToDashboard}
-            >
-              Back to dashboard
-            </Button>
-          </Box>
-        ) : null}
-        {content}
-      </Stack>
+      {content}
     </Box>
   );
 };

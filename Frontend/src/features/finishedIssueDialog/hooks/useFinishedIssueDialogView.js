@@ -42,7 +42,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       activeTab: navigation.activeView,
       availableTabs: navigation.availableTabs,
       selectTab: navigation.handleSelectTab,
-      backToDashboard: navigation.handleBackToDashboard,
     },
     resultsAnalysisNavigation: {
       activeView: navigation.activeResultsAnalysisView,

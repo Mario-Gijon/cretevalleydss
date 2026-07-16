@@ -57,7 +57,6 @@ export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) =
     setActiveResultsAnalysisView,
     handleChangePhase,
     handleSelectTab,
-    handleBackToDashboard: () => setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD),
   };
 };
 
