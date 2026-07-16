@@ -41,7 +41,7 @@ const IssueOverviewCard = ({ overview, onViewMore }) => (
         <Typography sx={{ ...dashboardDescriptionSx, mt: 0.65 }}>{overview.description || "—"}</Typography>
       </Box>
       <Stack spacing={0.7}>
-        <InfoRow icon={<AccountCircleRoundedIcon fontSize="small" />} label="Owner" value={overview.owner || "—"} secondary={overview.ownerEmail || null} tone="gold" />
+        <InfoRow icon={<AccountCircleRoundedIcon fontSize="small" />} label="Owner" value={overview.owner || "—"} secondary={overview.ownerEmail || null} />
         <InfoRow icon={<LayersRoundedIcon fontSize="small" />} label="Base model" value={overview.baseModelName || "—"} />
         <InfoRow icon={<CalendarMonthRoundedIcon fontSize="small" />} label="Created" value={readableDate(overview.creationDate)} />
         <InfoRow icon={<CheckCircleRoundedIcon fontSize="small" />} label="Finished" value={readableDate(overview.closureDate)} tone="green" />

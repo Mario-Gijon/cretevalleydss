@@ -10,15 +10,15 @@ import { dashboardResultsUpperGridSx } from "../../dashboard.styles";
 const scoreText = (item) => typeof item?.formattedScore === "string" && item.formattedScore ? item.formattedScore : "—";
 
 const positionStyle = (position) => ({
-  bgcolor: position === 1 ? "rgba(231, 188, 54, 0.14)" : position === 2 ? "rgba(192, 204, 214, 0.11)" : "rgba(207, 123, 64, 0.12)",
-  color: position === 1 ? "#e7bc36" : position === 2 ? "#d4dde4" : "#de8b55",
-  border: position === 1 ? "1px solid rgba(231,188,54,0.42)" : position === 2 ? "1px solid rgba(192,204,214,0.30)" : "1px solid rgba(222,139,85,0.34)",
+  bgcolor: position === 1 ? "rgba(63, 193, 139, 0.13)" : position === 2 ? "rgba(54, 190, 203, 0.12)" : "rgba(52, 139, 218, 0.12)",
+  color: position === 1 ? "success.light" : position === 2 ? "secondary.light" : "#8fc7ff",
+  border: position === 1 ? "1px solid rgba(63, 193, 139, 0.34)" : position === 2 ? "1px solid rgba(54, 190, 203, 0.30)" : "1px solid rgba(52, 139, 218, 0.30)",
 });
 
 const ResultsAnalysisPreviewCard = ({ resultsAnalysis, onViewResultsAnalysis }) => {
   const ranking = resultsAnalysis.outcome?.topRanking || [];
   const winner = resultsAnalysis.outcome?.winner || ranking[0] || null;
-  return <DashboardPreviewCard number="2" title="Results analysis" subtitle={`${resultsAnalysis.context.executionLabel || "—"} · ${resultsAnalysis.context.phaseLabel || "—"}`} actionLabel="View results analysis" onAction={onViewResultsAnalysis} accent="gold">
+  return <DashboardPreviewCard number="2" title="Results analysis" subtitle={`${resultsAnalysis.context.executionLabel || "—"} · ${resultsAnalysis.context.phaseLabel || "—"}`} actionLabel="View results analysis" onAction={onViewResultsAnalysis} accent="cyan">
     {resultsAnalysis.outcome.available ? <Stack spacing={1}>
       <Box sx={dashboardResultsUpperGridSx}>
         <DashboardInnerPanel>
