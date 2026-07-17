@@ -446,6 +446,7 @@ export const createIssueScenario = async (req, res) => {
   const issueId = req.params.id;
   const targetModelId = req.body.targetModelId;
   const scenarioName = req.body.scenarioName;
+  const sourcePhase = req.body.sourcePhase;
   const paramOverrides = req.body.paramOverrides;
 
   const { scenarioId } = await createIssueScenarioUseCase({
@@ -453,6 +454,7 @@ export const createIssueScenario = async (req, res) => {
     issueId,
     targetModelId,
     scenarioName,
+    sourcePhase,
     paramOverrides,
   });
 

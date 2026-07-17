@@ -1,20 +1,23 @@
 import {
   Box,
-  Button,
   Chip,
   IconButton,
+  Menu,
+  MenuItem,
   Stack,
   Tab,
   Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
 import { alpha } from "@mui/material/styles";
-import AddIcon from "@mui/icons-material/Add";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
+import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
@@ -41,10 +44,15 @@ const FinishedIssueDialogHeader = () => {
 
   const issue = dialog.payload?.issue || selectedIssue || {};
   const lifecycle = dialog.payload?.lifecycle || {};
+  const [executionMenuAnchor, setExecutionMenuAnchor] = useState(null);
   const runLabel = (option) =>
     `${option.label} · ${option.modelName || "—"}${
       option.status === "error" ? " · Failed" : ""
     }`;
+  const activeExecution =
+    header.executionOptions.find(
+      (option) => option.key === header.selectedExecutionKey
+    ) || header.executionOptions[0] || null;
 
   return (
     <Box sx={{ ...finishedIssueHeaderSx, background: alpha("#07111c", 0.92) }}>
@@ -73,10 +81,40 @@ const FinishedIssueDialogHeader = () => {
             </Box>
 
             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} sx={finishedIssueHeaderControlsSx}>
-              {header.executionOptions.map((option) => <Chip key={option.key} label={runLabel(option)} icon={option.type === "base" ? <LayersRoundedIcon /> : undefined} clickable onClick={() => header.selectExecution(option.key)} color={option.status === "error" ? "error" : header.selectedExecutionKey === option.key ? "secondary" : "default"} variant={header.selectedExecutionKey === option.key ? "filled" : "outlined"} sx={finishedIssueHeaderChipSx(option.status === "error")} />)}
-              <Button variant="outlined" color="secondary" startIcon={<AddIcon />} onClick={header.openAddScenario} sx={{ minHeight: 34, borderRadius: 1.45, textTransform: "none", fontSize: 12.5, fontWeight: 900 }}>
-                Add model
-              </Button>
+              <Chip
+                label={activeExecution ? runLabel(activeExecution) : "Base · —"}
+                icon={activeExecution?.type === "base" ? <LayersRoundedIcon /> : <ScienceRoundedIcon />}
+                clickable
+                onClick={(event) => setExecutionMenuAnchor(event.currentTarget)}
+                color={activeExecution?.status === "error" ? "error" : "secondary"}
+                variant="outlined"
+                sx={finishedIssueHeaderChipSx(activeExecution?.status === "error")}
+                aria-label="Select execution"
+              />
+              <Menu
+                anchorEl={executionMenuAnchor}
+                open={Boolean(executionMenuAnchor)}
+                onClose={() => setExecutionMenuAnchor(null)}
+                MenuListProps={{ sx: { maxHeight: 360, minWidth: 260 } }}
+              >
+                {header.executionOptions.map((option) => (
+                  <MenuItem
+                    key={option.key}
+                    selected={option.key === header.selectedExecutionKey}
+                    onClick={() => {
+                      header.selectExecution(option.key);
+                      setExecutionMenuAnchor(null);
+                    }}
+                  >
+                    {option.type === "base" ? <LayersRoundedIcon fontSize="small" /> : <ScienceRoundedIcon fontSize="small" />}
+                    <Box sx={{ ml: 1, minWidth: 0 }}>
+                      <Typography noWrap title={runLabel(option)} sx={{ fontSize: 13, fontWeight: 850 }}>{option.label}</Typography>
+                      <Typography noWrap sx={{ color: "text.secondary", fontSize: 11 }}>{option.modelName}{option.status === "error" ? " · Failed" : ""}</Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Menu>
+              <Tooltip title="Add model"><IconButton aria-label="Add model" color="secondary" onClick={header.openAddScenario}><AddRoundedIcon /></IconButton></Tooltip>
               <Tooltip title="Remove issue"><IconButton aria-label="Remove issue" onClick={() => setOpenRemoveConfirmDialog(true)} sx={{ ml: { lg: 0.5 } }}><DeleteOutlineIcon color="error" /></IconButton></Tooltip>
               <Tooltip title="Close"><IconButton aria-label="Close Finished Issue" onClick={handleCloseFinishedIssueDialog}><CloseIcon /></IconButton></Tooltip>
             </Stack>

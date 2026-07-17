@@ -13,6 +13,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const [addLoading, setAddLoading] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
+  const [selectedSourcePhase, setSelectedSourcePhase] = useState(null);
   const [scenarioParamValues, setScenarioParamValues] = useState({});
   const [scenarioWeightsError, setScenarioWeightsError] = useState("");
   const selectedExecution = useMemo(
@@ -32,6 +33,15 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   }, [payload?.criteria?.nodes, payload?.expressionDomains]);
   const selectedModel = availableModels.find((model) => model?.id === selectedModelId) || null;
   const selectedModelCompatible = selectedModel ? isModelCompatible(selectedModel) : false;
+  const sourcePhases = useMemo(
+    () => [...new Set(
+      asArray(payload?.phaseResults)
+        .filter((result) => result?.stage === "alternativeEvaluation" && Number.isInteger(result?.phase))
+        .map((result) => result.phase)
+    )].sort((left, right) => left - right),
+    [payload?.phaseResults]
+  );
+  const consensusEnabled = payload?.consensus?.enabled === true;
 
   useEffect(() => {
     if (selectedExecutionKey !== "base" && !asArray(payload?.scenarios).some((scenario) => scenario?.id === selectedExecutionKey)) {
@@ -48,11 +58,18 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
     }));
     setScenarioWeightsError("");
   }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedModel, leafCriteria]);
+  useEffect(() => {
+    if (!addOpen) return;
+    setSelectedSourcePhase(
+      consensusEnabled ? sourcePhases.at(-1) ?? null : null
+    );
+  }, [addOpen, consensusEnabled, sourcePhases]);
 
   const closeAddDialog = () => {
     setAddOpen(false);
     setScenarioName("");
     setSelectedModelId("");
+    setSelectedSourcePhase(null);
     setScenarioParamValues({});
     setScenarioWeightsError("");
   };
@@ -66,6 +83,10 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
     }));
   };
   const handleAddScenario = async () => {
+    if (!scenarioName.trim()) {
+      showSnackbarAlert("Scenario name is required.", "warning");
+      return;
+    }
     if (!issueId || !selectedModel) {
       showSnackbarAlert("Please select a compatible model.", "warning");
       return;
@@ -95,6 +116,9 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
         issueId,
         scenarioName: scenarioName.trim() || undefined,
         targetModelId: selectedModel.id,
+        ...(consensusEnabled && Number.isInteger(selectedSourcePhase)
+          ? { sourcePhase: selectedSourcePhase }
+          : {}),
         paramOverrides: cleanParamsForSend({ model: selectedModel, values, leafCount: leafCriteria.length, leafCriteria }),
       });
       if (!response?.success) {
@@ -116,15 +140,15 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       setAddLoading(false);
     }
   };
-  const handleRemoveSelectedScenario = async () => {
-    if (selectedExecution.type !== "scenario") return;
+  const removeScenario = async (scenarioId) => {
+    if (!scenarioId || scenarioId === "base") return;
     try {
-      const response = await removeIssueScenario(selectedExecution.key);
+      const response = await removeIssueScenario(scenarioId);
       if (!response?.success) {
         showSnackbarAlert(response?.message || "Could not remove model.", "error");
         return;
       }
-      setSelectedExecutionKey("base");
+      if (selectedExecutionKey === scenarioId) setSelectedExecutionKey("base");
       await refreshPayload();
       showSnackbarAlert("Model removed.", "success");
     } catch {
@@ -145,10 +169,14 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       availableModels,
       selectedModel,
       selectedModelCompatible,
+      selectedSourcePhase,
+      sourcePhases,
+      consensusEnabled,
       scenarioParamValues,
       scenarioWeightsError,
       setScenarioName,
       setSelectedModelId,
+      setSelectedSourcePhase,
       setScenarioParamValues,
       clearScenarioWeightsError: () => setScenarioWeightsError(""),
       open: () => setAddOpen(true),
@@ -157,7 +185,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       submit: handleAddScenario,
       leafCriteria,
     },
-    removeSelectedScenario: handleRemoveSelectedScenario,
+    removeScenario,
   };
 };
 

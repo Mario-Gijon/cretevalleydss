@@ -1,20 +1,33 @@
-import { useMemo } from "react";
 import { useFinishedIssueDialogContext } from "../../context/finishedIssueDialog.context";
 import { buildParameterContext } from "../../../modelParameters/logic/buildModelParameterContext.js";
-import { buildModelsData, buildModelsParameterContextData } from "./logic/buildModelsData.js";
+import { buildModelsParameterContextData } from "./logic/buildModelsData.js";
+import { buildModelsWorkspaceData } from "./logic/buildModelsWorkspaceData.js";
 import ModelsView from "./components/ModelsView.jsx";
-
-const stringify = (value) => { try { return value === null || value === undefined ? "" : JSON.stringify(value, null, 2); } catch { return String(value); } };
 
 const ModelsSection = () => {
   const { dialog, runs, models } = useFinishedIssueDialogContext();
-  const data = useMemo(() => {
-    const modelData = buildModelsData({ payload: dialog.payload, selectedExecution: runs.selectedExecution });
-    const contextData = buildModelsParameterContextData({ payload: dialog.payload, selectedExecution: runs.selectedExecution });
-    const context = buildParameterContext(contextData);
-    return { ...modelData, parameterContext: context, rawOutputPretty: stringify(modelData.rawOutput) };
-  }, [dialog.payload, runs.selectedExecution]);
-  return <ModelsView data={data} state={{ paramsOpen: models.paramsOpen }} actions={{ setParamsOpen: models.setParamsOpen, removeSelectedScenario: models.removeSelectedScenario }} />;
+  const data = buildModelsWorkspaceData({
+    payload: dialog.payload,
+    selectedExecution: runs.selectedExecution,
+    executionOptions: runs.executionOptions,
+  });
+  const parameterContext = buildParameterContext(
+    buildModelsParameterContextData({
+      payload: dialog.payload,
+      selectedExecution: runs.selectedExecution,
+    })
+  );
+  const addParameterContext = buildParameterContext({
+    ...buildModelsParameterContextData({
+      payload: dialog.payload,
+      selectedExecution: {
+        model: models.addDialog.selectedModel,
+      },
+    }),
+    model: models.addDialog.selectedModel,
+  });
+
+  return <ModelsView data={data} parameterContext={parameterContext} addParameterContext={addParameterContext} state={{ add: models.addDialog }} actions={{ selectExecution: runs.selectExecution, removeScenario: models.removeScenario, openAdd: models.addDialog.open, closeAdd: models.addDialog.close, setScenarioName: models.addDialog.setScenarioName, setSelectedModelId: models.addDialog.setSelectedModelId, setSelectedSourcePhase: models.addDialog.setSelectedSourcePhase, setScenarioParamValues: models.addDialog.setScenarioParamValues, submitAdd: models.addDialog.submit }} />;
 };
 
 export default ModelsSection;

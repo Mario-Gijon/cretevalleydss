@@ -192,7 +192,7 @@ const buildSyntheticWeightsParameter = (model) => {
   };
 };
 
-const getScenarioParameterDefinitions = (model) => {
+export const getScenarioParameterDefinitions = (model) => {
   const params = resolveScenarioModelParameters(model);
   const syntheticWeights = buildSyntheticWeightsParameter(model);
   return syntheticWeights ? [...params, syntheticWeights] : params;

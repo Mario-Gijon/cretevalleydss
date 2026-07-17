@@ -8,7 +8,6 @@ import { FinishedIssueDialogProvider } from "./context/finishedIssueDialog.provi
 import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.context";
 import FinishedIssueDialogHeader from "./shell/FinishedIssueDialogHeader";
 import FinishedIssueDialogLayout from "./shell/FinishedIssueDialogLayout";
-import FinishedIssueAddModelHost from "./shell/FinishedIssueAddModelHost";
 import { finishedIssueContentFrameSx } from "./shell/finishedIssueShell.styles";
 
 /**
@@ -59,7 +58,6 @@ const FinishedIssueDialogBody = () => {
           </Box>
         </Box>
       )}
-      <FinishedIssueAddModelHost />
     </GlassDialog>
   );
 };

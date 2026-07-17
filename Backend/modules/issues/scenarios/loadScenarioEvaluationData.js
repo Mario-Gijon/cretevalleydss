@@ -6,13 +6,24 @@ import {
 import { toIdString } from "../../../utils/common/ids.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 
-export const resolveLatestAlternativeResultOrThrow = async ({ issue }) => {
-  const latestAlternativeResult = await IssueStageResult.findOne({
+export const resolveAlternativeResultOrThrow = async ({ issue, sourcePhase }) => {
+  if (sourcePhase !== undefined && issue.isConsensus !== true) {
+    throw createBadRequestError("sourcePhase is only available for consensus issues", {
+      field: "sourcePhase",
+    });
+  }
+
+  const query = {
     issue: issue._id,
     stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
-  })
-    .sort({ consensusPhase: -1 })
-    .lean();
+  };
+  if (sourcePhase !== undefined) query.consensusPhase = sourcePhase;
+
+  const resultQuery = IssueStageResult.findOne(query);
+  if (sourcePhase === undefined) {
+    resultQuery.sort({ consensusPhase: -1 });
+  }
+  const latestAlternativeResult = await resultQuery.lean();
 
   if (!latestAlternativeResult) {
     throw createBadRequestError(
@@ -40,3 +51,5 @@ export const resolveLatestAlternativeResultOrThrow = async ({ issue }) => {
     phase,
   };
 };
+
+export const resolveLatestAlternativeResultOrThrow = resolveAlternativeResultOrThrow;

@@ -363,6 +363,7 @@ export const createIssueScenario = async ({
   issueId,
   scenarioName,
   targetModelId,
+  sourcePhase,
   paramOverrides,
 }) => {
   const normalizedIssueId = getIssueId(issueId);
@@ -372,6 +373,7 @@ export const createIssueScenario = async ({
     jsonRequest("POST", {
       scenarioName,
       targetModelId,
+      ...(sourcePhase === undefined ? {} : { sourcePhase }),
       paramOverrides,
     }),
     "Error creating scenario."

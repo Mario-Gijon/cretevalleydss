@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useFinishedIssueData } from "./useFinishedIssueData.js";
@@ -21,7 +21,6 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   });
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload });
   const scatterPlotRef = useRef(null);
-  const [modelsParamsOpen, setModelsParamsOpen] = useState(false);
 
   return {
     selectedIssue,
@@ -35,7 +34,10 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       basePhases: navigation.basePhases,
       selectExecution: runs.selectExecution,
       changePhase: navigation.handleChangePhase,
-      openAddScenario: runs.addDialog.open,
+      openAddScenario: () => {
+        navigation.handleSelectTab("models");
+        runs.addDialog.open();
+      },
     },
     navigation: {
       activeView: navigation.activeView,
@@ -55,10 +57,8 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     evaluationsSelection,
     runs,
     models: {
-      paramsOpen: modelsParamsOpen,
-      setParamsOpen: setModelsParamsOpen,
       addDialog: runs.addDialog,
-      removeSelectedScenario: runs.removeSelectedScenario,
+      removeScenario: runs.removeScenario,
     },
   };
 };

@@ -15,7 +15,6 @@ vi.mock("../../../modules/issues/modelExecution/index.js", () => ({
   executeScenarioModel: scenarioExecutionState.executeScenarioModel,
 }));
 
-import { IssueScenario } from "../../../models/IssueScenarios.js";
 import { createIssueScenario } from "../../../modules/issues/scenarios/createIssueScenario.js";
 import { setupMongoDbTestHooks } from "../../setup/database.js";
 
@@ -134,6 +133,7 @@ describe("createIssueScenario input normalization", () => {
         userId: new mongoose.Types.ObjectId(),
         issueId: new mongoose.Types.ObjectId(),
         targetModelId: "target-model-id",
+        scenarioName: "Invalid parameters",
         paramOverrides: ["invalid"],
       })
     ).rejects.toMatchObject({
@@ -143,53 +143,62 @@ describe("createIssueScenario input normalization", () => {
     });
   });
 
-  it("normalizes a blank scenarioName to an empty string before persisting", async () => {
+  it("requires a non-blank scenarioName", async () => {
+    await expect(
+      createIssueScenario({
+        userId: new mongoose.Types.ObjectId(),
+        issueId: new mongoose.Types.ObjectId(),
+        targetModelId: "target-model-id",
+        scenarioName: "   ",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      field: "scenarioName",
+      message: "scenarioName is required",
+    });
+  });
+
+  it("passes an explicit source phase into the scenario execution context", async () => {
     const userId = new mongoose.Types.ObjectId();
     const context = buildMockExecutionContext();
-
     scenarioExecutionState.buildScenarioExecutionContext.mockResolvedValue(context);
     scenarioExecutionState.executeScenarioModel.mockResolvedValue({
-      standardResult: {
-        ranking: ["Alternative A"],
-      },
-      modelExecution: {
-        ok: true,
-      },
-      rawOutput: {
-        raw: true,
-      },
+      standardResult: { ranking: ["Alternative A"] },
+      modelExecution: { ok: true },
+      rawOutput: { raw: true },
     });
 
-    const result = await createIssueScenario({
+    await createIssueScenario({
       userId,
       issueId: String(context.issue._id),
       targetModelId: "  target-model-id  ",
-      scenarioName: "   ",
+      scenarioName: "Historical run",
+      sourcePhase: 3,
       paramOverrides: null,
     });
-
-    const storedScenario = await IssueScenario.findById(result.scenarioId).lean();
 
     expect(scenarioExecutionState.buildScenarioExecutionContext).toHaveBeenCalledWith({
       issueId: String(context.issue._id),
       userId,
       targetModelId: "target-model-id",
+      sourcePhase: 3,
       paramOverrides: {},
     });
-    expect(scenarioExecutionState.executeScenarioModel).toHaveBeenCalledWith({
-      requestPayload: context.requestPayload,
-      targetRuntimeSnapshot: context.targetRuntimeSnapshot,
-      decisionModelsServiceBaseUrl: "http://localhost:7000",
-      httpClient: expect.any(Function),
-    });
-    expect(storedScenario).toMatchObject({
-      name: "",
-      createdBy: userId,
-      issue: context.issue._id,
-      targetModel: context.targetModel._id,
-      targetModelName: "Target Model",
-      domainType: "numeric",
-      status: "done",
+  });
+
+  it("rejects an invalid source phase", async () => {
+    await expect(
+      createIssueScenario({
+        userId: new mongoose.Types.ObjectId(),
+        issueId: new mongoose.Types.ObjectId(),
+        targetModelId: "target-model-id",
+        scenarioName: "Invalid phase",
+        sourcePhase: -1,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      field: "sourcePhase",
+      message: "sourcePhase must be a non-negative integer",
     });
   });
 });

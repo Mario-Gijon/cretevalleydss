@@ -8,6 +8,7 @@ import { executeScenarioModel } from "../modelExecution/index.js";
 const normalizeScenarioCreationInputOrThrow = ({
   targetModelId,
   scenarioName,
+  sourcePhase,
   paramOverrides,
 }) => {
   if (typeof targetModelId !== "string" || targetModelId.trim() === "") {
@@ -28,6 +29,24 @@ const normalizeScenarioCreationInputOrThrow = ({
       field: "scenarioName",
     });
   }
+  if (!normalizedScenarioName) {
+    throw createBadRequestError("scenarioName is required", {
+      field: "scenarioName",
+    });
+  }
+
+  const normalizedSourcePhase =
+    sourcePhase === undefined || sourcePhase === null
+      ? undefined
+      : Number.isInteger(sourcePhase) && sourcePhase >= 0
+        ? sourcePhase
+        : null;
+
+  if (normalizedSourcePhase === null) {
+    throw createBadRequestError("sourcePhase must be a non-negative integer", {
+      field: "sourcePhase",
+    });
+  }
 
   const normalizedParamOverrides =
     paramOverrides === undefined || paramOverrides === null
@@ -45,6 +64,7 @@ const normalizeScenarioCreationInputOrThrow = ({
   return {
     targetModelId: targetModelId.trim(),
     scenarioName: normalizedScenarioName,
+    sourcePhase: normalizedSourcePhase,
     paramOverrides: normalizedParamOverrides,
   };
 };
@@ -54,6 +74,7 @@ export const createIssueScenario = async ({
   issueId,
   targetModelId,
   scenarioName,
+  sourcePhase,
   paramOverrides,
   decisionModelsServiceBaseUrl =
     process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
@@ -62,6 +83,7 @@ export const createIssueScenario = async ({
   const normalizedInput = normalizeScenarioCreationInputOrThrow({
     targetModelId,
     scenarioName,
+    sourcePhase,
     paramOverrides,
   });
 
@@ -69,6 +91,7 @@ export const createIssueScenario = async ({
     issueId,
     userId,
     targetModelId: normalizedInput.targetModelId,
+    sourcePhase: normalizedInput.sourcePhase,
     paramOverrides: normalizedInput.paramOverrides,
   });
 

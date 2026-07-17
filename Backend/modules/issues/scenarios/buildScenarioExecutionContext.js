@@ -12,7 +12,7 @@ import {
 } from "../../../utils/common/errors.js";
 import { sameId, toIdString } from "../../../utils/common/ids.js";
 import {
-  buildExpressionDomainAssignmentsByCriterionOrThrow,
+  buildExpressionDomainAssignmentsByCriterionIdOrThrow,
 } from "../../expressionDomains/buildIssueDomainConfig.js";
 import { getExpressionDomainFamilyOrThrow } from "../../expressionDomains/expressionDomainTypeCatalog.js";
 import {
@@ -21,7 +21,7 @@ import {
 } from "./validateScenarioModelCompatibility.js";
 import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
 import { getTargetScenarioModelOrThrow } from "./loadScenarioTargetModel.js";
-import { resolveLatestAlternativeResultOrThrow } from "./loadScenarioEvaluationData.js";
+import { resolveAlternativeResultOrThrow } from "./loadScenarioEvaluationData.js";
 import { validateEvaluationCoverageOrThrow } from "./validateScenarioEvaluationCoverage.js";
 import { buildScenarioParametersOrThrow } from "./resolveScenarioModelParameters.js";
 import { getIssueByIdOrThrow } from "../shared/queries.js";
@@ -94,10 +94,126 @@ const requireEvaluationExpertOrThrow = ({ issueId, evaluation }) => {
   };
 };
 
+const serializeExpressionDomainDefinitionOrThrow = ({
+  definition,
+  issueId,
+  criterionId,
+  domainSnapshotId,
+}) => {
+  if (
+    !definition ||
+    typeof definition !== "object" ||
+    Array.isArray(definition)
+  ) {
+    throw createInternalError(
+      "Issue expression domain snapshot has invalid definition",
+      {
+        field: "expressionDomain.definition",
+        details: { issueId, criterionId, domainSnapshotId },
+      }
+    );
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(definition));
+  } catch {
+    throw createInternalError(
+      "Issue expression domain snapshot definition is not JSON-compatible",
+      {
+        field: "expressionDomain.definition",
+        details: { issueId, criterionId, domainSnapshotId },
+      }
+    );
+  }
+};
+
+export const buildScenarioCriteriaWithExpressionDomainsOrThrow = ({
+  criteria,
+  domainAssignmentsByCriterion,
+  domainSnapshotsById,
+  issueId,
+}) => criteria.map((criterion) => {
+  const criterionId = toIdString(criterion._id);
+  const domainSnapshotId = toIdString(
+    domainAssignmentsByCriterion[criterionId]
+  );
+  const domainSnapshot = domainSnapshotsById.get(domainSnapshotId);
+
+  if (!criterionId || !domainSnapshotId || !domainSnapshot) {
+    throw createInternalError(
+      "Leaf criterion expression domain snapshot could not be resolved",
+      {
+        field: "expressionDomain",
+        details: {
+          issueId,
+          criterionId,
+          domainSnapshotId: domainSnapshotId || null,
+        },
+      }
+    );
+  }
+
+  return {
+    id: criterionId,
+    name: criterion.name,
+    type: criterion.type,
+    expressionDomain: {
+      id: domainSnapshotId,
+      name: domainSnapshot.name,
+      typeKey: domainSnapshot.typeKey,
+      definition: serializeExpressionDomainDefinitionOrThrow({
+        definition: domainSnapshot.definition,
+        issueId,
+        criterionId,
+        domainSnapshotId,
+      }),
+    },
+  };
+});
+
+const resolveScenarioParticipations = ({
+  sourcePhase,
+  latestAlternativeResult,
+  currentParticipations,
+  completedEvaluations,
+  issueId,
+}) => {
+  if (sourcePhase === undefined) {
+    return currentParticipations;
+  }
+
+  const currentParticipationByExpertId = new Map(
+    currentParticipations.map((participation) => [
+      toIdString(participation.expert?._id || participation.expert),
+      participation,
+    ])
+  );
+  const savedWeightByExpertId = new Map(
+    (Array.isArray(latestAlternativeResult.expertWeights)
+      ? latestAlternativeResult.expertWeights
+      : []
+    ).map((entry) => [toIdString(entry?.expert), entry?.weight])
+  );
+
+  return completedEvaluations.map((evaluation) => {
+    const { expertId } = requireEvaluationExpertOrThrow({ issueId, evaluation });
+    const currentParticipation = currentParticipationByExpertId.get(expertId);
+
+    return {
+      ...(currentParticipation || {}),
+      expert: evaluation.expert,
+      ...(savedWeightByExpertId.has(expertId)
+        ? { weight: savedWeightByExpertId.get(expertId) }
+        : {}),
+    };
+  });
+};
+
 export const buildScenarioExecutionContext = async ({
   issueId,
   userId,
   targetModelId,
+  sourcePhase,
   paramOverrides,
 }) => {
   const issue = await getIssueByIdOrThrow(issueId, {
@@ -112,7 +228,7 @@ export const buildScenarioExecutionContext = async ({
   const targetModel = await getTargetScenarioModelOrThrow({ targetModelId });
   const targetRuntimeSnapshot = buildTargetModelRuntimeSnapshotOrThrow(targetModel);
   const { latestAlternativeResult, phase } =
-    await resolveLatestAlternativeResultOrThrow({ issue });
+    await resolveAlternativeResultOrThrow({ issue, sourcePhase });
 
   const [participations, completedEvaluations, alternatives, criteria] =
     await Promise.all([
@@ -157,7 +273,7 @@ export const buildScenarioExecutionContext = async ({
   }
 
   const domainAssignmentsByCriterion =
-    buildExpressionDomainAssignmentsByCriterionOrThrow({
+    buildExpressionDomainAssignmentsByCriterionIdOrThrow({
       leafCriteria: criteria,
       field: "expressionDomain",
     });
@@ -204,6 +320,19 @@ export const buildScenarioExecutionContext = async ({
     });
   }
 
+  const domainSnapshotsById = new Map(
+    issueDomainSnapshots.map((snapshot) => [
+      toIdString(snapshot._id),
+      snapshot,
+    ])
+  );
+  const scenarioCriteria = buildScenarioCriteriaWithExpressionDomainsOrThrow({
+    criteria,
+    domainAssignmentsByCriterion,
+    domainSnapshotsById,
+    issueId: toIdString(issue._id),
+  });
+
   validateScenarioModelCompatibilityOrThrow({
     issue,
     targetRuntimeSnapshot,
@@ -213,10 +342,18 @@ export const buildScenarioExecutionContext = async ({
       targetModel.supportedExpressionDomains,
   });
 
+  const scenarioParticipations = resolveScenarioParticipations({
+    sourcePhase,
+    latestAlternativeResult,
+    currentParticipations: participations,
+    completedEvaluations,
+    issueId: toIdString(issue._id),
+  });
+
   validateEvaluationCoverageOrThrow({
     issue,
     phase,
-    acceptedParticipations: participations,
+    acceptedParticipations: scenarioParticipations,
     completedEvaluations,
   });
 
@@ -229,7 +366,7 @@ export const buildScenarioExecutionContext = async ({
     });
   const { weightsByExpertId } = buildExpertWeightSnapshotOrThrow({
     model: targetModel,
-    participations,
+    participations: scenarioParticipations,
   });
   const normalizedIssueId = toIdString(issue._id);
 
@@ -244,7 +381,7 @@ export const buildScenarioExecutionContext = async ({
     })
   );
 
-  const sortedParticipations = [...participations].sort((left, right) => {
+  const sortedParticipations = [...scenarioParticipations].sort((left, right) => {
     const leftExpert = requireParticipationExpertOrThrow({
       issueId: normalizedIssueId,
       participation: left,
@@ -321,11 +458,7 @@ export const buildScenarioExecutionContext = async ({
       id: toIdString(alternative._id),
       name: alternative.name,
     })),
-    criteria: criteria.map((criterion) => ({
-      id: toIdString(criterion._id),
-      name: criterion.name,
-      type: criterion.type,
-    })),
+    criteria: scenarioCriteria,
     weights: weightsUsed,
     consensusPhase: phase,
     previousStageResult: latestAlternativeResult,
@@ -351,7 +484,7 @@ export const buildScenarioExecutionContext = async ({
     targetRuntimeSnapshot,
     alternatives,
     criteria,
-    participations,
+    participations: scenarioParticipations,
     completedEvaluations,
     latestAlternativeResult,
     domainType,

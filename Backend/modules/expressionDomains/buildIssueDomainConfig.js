@@ -46,6 +46,43 @@ export const buildExpressionDomainAssignmentsByCriterionOrThrow = ({
   return assignments;
 };
 
+export const buildExpressionDomainAssignmentsByCriterionIdOrThrow = ({
+  leafCriteria,
+  field = "expressionDomain",
+}) => {
+  const assignments = {};
+
+  for (const criterion of leafCriteria) {
+    const criterionName = requireCriterionNameOrThrow({
+      criterion,
+      field: "criteria.name",
+    });
+    const criterionId = toIdString(criterion._id);
+    const snapshotId = toIdString(criterion.expressionDomain);
+
+    if (!criterionId) {
+      throw createInternalError("Leaf criterion id is invalid", {
+        field,
+        details: { criterionName },
+      });
+    }
+
+    if (!snapshotId) {
+      throw createInternalError(
+        `Leaf criterion '${criterionName}' is missing expression domain snapshot`,
+        {
+          field,
+          details: { criterionName, criterionId },
+        }
+      );
+    }
+
+    assignments[criterionId] = snapshotId;
+  }
+
+  return assignments;
+};
+
 export const buildExpressionDomainConfigFromLeafCriteriaOrThrow = ({
   leafCriteria,
   field = "expressionDomain",
