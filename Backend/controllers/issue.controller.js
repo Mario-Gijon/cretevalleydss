@@ -446,6 +446,7 @@ export const createIssueScenario = async (req, res) => {
   const issueId = req.params.id;
   const targetModelId = req.body.targetModelId;
   const scenarioName = req.body.scenarioName;
+  const scenarioDescription = req.body.scenarioDescription;
   const sourcePhase = req.body.sourcePhase;
   const paramOverrides = req.body.paramOverrides;
 
@@ -454,6 +455,7 @@ export const createIssueScenario = async (req, res) => {
     issueId,
     targetModelId,
     scenarioName,
+    scenarioDescription,
     sourcePhase,
     paramOverrides,
   });

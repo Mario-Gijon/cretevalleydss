@@ -8,97 +8,94 @@ const localScrollbarSx = {
 
 export const modelsRootSx = { width: "100%", minWidth: 0 };
 
-export const executionCarouselShellSx = {
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr) auto",
-  gap: 0.7,
-  alignItems: "center",
-  minWidth: 0,
-};
-
-export const executionCarouselGridSx = (visibleCount) => ({
-  display: "grid",
-  gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))`,
-  gap: 1,
-  minWidth: 0,
-});
-
-export const executionCardSx = (selected) => ({
-  appearance: "none",
+export const executionGalleryGridSx = ({ scenarioCount, carousel }) => ({
   width: "100%",
   minWidth: 0,
-  minHeight: 118,
-  p: 1.2,
-  borderRadius: 2.5,
-  border: selected ? "1px solid rgba(72, 213, 213, 0.82)" : "1px solid rgba(255,255,255,0.09)",
-  bgcolor: selected ? "rgba(18, 75, 91, 0.34)" : "rgba(8, 18, 29, 0.90)",
-  background: selected ? "linear-gradient(145deg, rgba(29, 153, 160, 0.22), rgba(8, 18, 29, 0.94))" : "linear-gradient(145deg, rgba(24, 82, 104, 0.12), rgba(8, 18, 29, 0.95))",
-  color: "text.primary",
-  cursor: "pointer",
-  textAlign: "left",
-  "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 2 },
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    sm: "repeat(2, minmax(260px, 1fr))",
+    lg: carousel
+      ? "minmax(260px, 1fr) minmax(0, 2fr) minmax(260px, 1fr)"
+      : `repeat(${scenarioCount + 2}, minmax(260px, 1fr))`,
+  },
+  gap: 1.2,
+  alignItems: "stretch",
 });
 
-export const selectedExecutionShellSx = {
+export const scenarioCarouselShellSx = {
   minWidth: 0,
-  p: { xs: 1.25, md: 1.55 },
-  borderRadius: 3,
-  border: "1px solid rgba(83, 198, 214, 0.18)",
-  bgcolor: "rgba(8, 18, 29, 0.91)",
-  background: "linear-gradient(150deg, rgba(25, 105, 140, 0.13), rgba(8, 18, 29, 0.95) 48%)",
-};
-
-export const selectedExecutionGridSx = {
   display: "grid",
-  gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(250px, 0.75fr) minmax(0, 1.25fr)" },
-  gap: 1,
+  gridTemplateColumns: "36px minmax(0, 1fr) 36px",
+  gap: 0.65,
+  alignItems: "center",
+};
+
+export const scenarioCarouselWindowSx = (capacity) => ({
+  minWidth: 0,
+  display: "grid",
+  gridTemplateColumns: {
+    xs: "minmax(0, 1fr)",
+    lg: `repeat(${capacity}, minmax(0, 1fr))`,
+  },
+  gap: 1.2,
   alignItems: "stretch",
-};
+});
 
-export const modelInnerPanelSx = {
-  minWidth: 0,
-  p: 1.15,
+export const scenarioCarouselControlSx = {
+  width: 36,
+  height: 76,
   borderRadius: 2,
-  border: "1px solid rgba(255,255,255,0.075)",
-  bgcolor: "rgba(3, 10, 17, 0.26)",
+  border: "1px solid rgba(83, 198, 214, 0.22)",
+  bgcolor: "#081521",
+  color: "text.secondary",
+  "&:hover": {
+    bgcolor: "#102c3a",
+    color: "secondary.light",
+    borderColor: "secondary.main",
+  },
+  "&.Mui-disabled": {
+    borderColor: "rgba(255,255,255,0.08)",
+    color: "rgba(255,255,255,0.22)",
+  },
+  "&:focus-visible": {
+    outline: "2px solid",
+    outlineColor: "secondary.main",
+    outlineOffset: 2,
+  },
 };
 
-export const modelParametersViewportSx = {
-  ...localScrollbarSx,
-  mt: 1,
-  minWidth: 0,
-  maxWidth: "100%",
-  maxHeight: { xs: 420, md: 480 },
-  overflow: "auto",
-};
-
-export const rawOutputShellSx = {
-  borderRadius: "12px !important",
-  border: "1px solid rgba(83, 198, 214, 0.18)",
-  bgcolor: "rgba(8, 18, 29, 0.91)",
-  background: "linear-gradient(150deg, rgba(25, 105, 140, 0.10), rgba(8, 18, 29, 0.95) 48%)",
-  "&::before": { display: "none" },
-};
-
-export const rawOutputPreSx = {
-  ...localScrollbarSx,
-  m: 0,
-  p: 1,
-  maxHeight: 430,
-  overflow: "auto",
-  borderRadius: 1.5,
-  bgcolor: "rgba(2, 7, 12, 0.62)",
-  color: "rgba(148, 235, 163, 0.94)",
-  fontSize: 11.5,
-  lineHeight: 1.45,
-  whiteSpace: "pre",
-};
-
-export const inlineAddModelSx = {
-  minWidth: 0,
-  p: { xs: 1.25, md: 1.55 },
+export const executionCardSx = (selected, failed) => ({
+  minWidth: { xs: 0, sm: 260 },
+  minHeight: { xs: 250, md: 290 },
+  p: { xs: 1.5, md: 2 },
   borderRadius: 3,
-  border: "1px solid rgba(83, 198, 214, 0.21)",
-  bgcolor: "rgba(8, 18, 29, 0.92)",
-  background: "linear-gradient(150deg, rgba(25, 105, 140, 0.15), rgba(8, 18, 29, 0.96) 48%)",
-};
+  border: selected ? "1px solid rgba(64, 224, 224, 0.95)" : failed ? "1px solid rgba(239, 83, 80, 0.48)" : "1px solid rgba(255,255,255,0.11)",
+  bgcolor: "rgba(8, 18, 29, 0.93)",
+  background: selected ? "linear-gradient(145deg, rgba(19, 126, 145, 0.30), rgba(8, 18, 29, 0.97) 66%)" : "linear-gradient(145deg, rgba(24, 82, 104, 0.14), rgba(8, 18, 29, 0.97) 66%)",
+  color: "text.primary",
+  display: "flex",
+  flexDirection: "column",
+  cursor: "pointer",
+  boxShadow: selected ? "0 14px 34px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(45, 212, 191, 0.08)" : "0 10px 24px rgba(0, 0, 0, 0.16)",
+  "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 3 },
+});
+
+export const executionCardIconSx = { width: 46, height: 46, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "rgba(24, 147, 165, 0.17)", border: "1px solid rgba(63, 208, 215, 0.26)", color: "secondary.light" };
+
+export const executionCardDescriptionSx = { mt: 1.5, mb: 1.5, color: "text.secondary", fontSize: { xs: 13, md: 14 }, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "4.5em" };
+
+export const addModelCardSx = () => ({
+  appearance: "none", width: "100%", minWidth: { xs: 0, sm: 260 }, minHeight: { xs: 250, md: 290 }, px: 2, borderRadius: 3,
+  border: "1px dashed rgba(255,255,255,0.27)", bgcolor: "rgba(8, 18, 29, 0.50)", color: "text.primary", display: "grid", placeItems: "center", alignContent: "center", gap: 0.7, cursor: "pointer",
+  "&:hover": { borderColor: "secondary.main", color: "secondary.light", bgcolor: "rgba(18, 75, 91, 0.20)" },
+  "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 3 },
+});
+
+export const selectedExecutionShellSx = { minWidth: 0, p: { xs: 1.25, md: 1.5 }, borderRadius: 3, border: "1px solid rgba(83, 198, 214, 0.18)", bgcolor: "rgba(8, 18, 29, 0.92)", background: "linear-gradient(150deg, rgba(25, 105, 140, 0.12), rgba(8, 18, 29, 0.97) 52%)" };
+
+export const modelParametersViewportSx = { ...localScrollbarSx, mt: 1, minWidth: 0, maxWidth: "100%", maxHeight: { xs: 420, md: 500 }, overflow: "auto" };
+
+export const rawOutputShellSx = { borderRadius: "12px !important", border: "1px solid rgba(83, 198, 214, 0.18)", bgcolor: "rgba(8, 18, 29, 0.91)", background: "linear-gradient(150deg, rgba(25, 105, 140, 0.10), rgba(8, 18, 29, 0.95) 48%)", "&::before": { display: "none" } };
+
+export const rawOutputPreSx = { ...localScrollbarSx, m: 0, p: 1, maxHeight: 430, overflow: "auto", borderRadius: 1.5, bgcolor: "rgba(2, 7, 12, 0.62)", color: "rgba(148, 235, 163, 0.94)", fontSize: 11.5, lineHeight: 1.45, whiteSpace: "pre" };

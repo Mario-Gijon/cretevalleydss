@@ -12,6 +12,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const [addOpen, setAddOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
+  const [scenarioDescription, setScenarioDescription] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [selectedSourcePhase, setSelectedSourcePhase] = useState(null);
   const [scenarioParamValues, setScenarioParamValues] = useState({});
@@ -68,6 +69,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const closeAddDialog = () => {
     setAddOpen(false);
     setScenarioName("");
+    setScenarioDescription("");
     setSelectedModelId("");
     setSelectedSourcePhase(null);
     setScenarioParamValues({});
@@ -85,6 +87,15 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const handleAddScenario = async () => {
     if (!scenarioName.trim()) {
       showSnackbarAlert("Scenario name is required.", "warning");
+      return;
+    }
+    const trimmedScenarioDescription = scenarioDescription.trim();
+    if (!trimmedScenarioDescription) {
+      showSnackbarAlert("Scenario description is required.", "warning");
+      return;
+    }
+    if (trimmedScenarioDescription.length > 320) {
+      showSnackbarAlert("Scenario description must not exceed 320 characters.", "warning");
       return;
     }
     if (!issueId || !selectedModel) {
@@ -115,6 +126,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       const response = await createIssueScenario({
         issueId,
         scenarioName: scenarioName.trim() || undefined,
+        scenarioDescription: trimmedScenarioDescription,
         targetModelId: selectedModel.id,
         ...(consensusEnabled && Number.isInteger(selectedSourcePhase)
           ? { sourcePhase: selectedSourcePhase }
@@ -165,6 +177,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       addOpen,
       addLoading,
       scenarioName,
+      scenarioDescription,
       selectedModelId,
       availableModels,
       selectedModel,
@@ -175,6 +188,7 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       scenarioParamValues,
       scenarioWeightsError,
       setScenarioName,
+      setScenarioDescription,
       setSelectedModelId,
       setSelectedSourcePhase,
       setScenarioParamValues,

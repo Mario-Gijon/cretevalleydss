@@ -30,6 +30,28 @@ separate execution records and are never merged into the base issue payload.
 `executionMetadata.completeness.missingEvidence` contains machine-readable
 codes for evidence that was never stored.
 
+## Models and scenarios
+
+`models.base`, `models.criteriaWeighting` (when present), and every entry in
+`models.compatible` expose `paperUrl`. It is derived from the model's stored
+`moreInfoUrl`; when that is unavailable the serializer uses the isolated,
+temporary UI-scaffolding fallback `https://example.com`. Clients display a
+human-facing link label rather than the fallback URL itself.
+
+Scenarios expose a stored `description`, `computedAt`, and
+`targetModel.paperUrl`. New scenario creation accepts `scenarioDescription`:
+it must be a string, is trimmed, must remain non-empty after trimming, and is
+limited to 320 characters. It is persisted only as `IssueScenario.description`.
+Legacy records without a description serialize `description: null`.
+
+`computedAt` is execution evidence, not a page-load or presentation date.
+For scenarios it comes from `outputs.modelExecution.executedAt`, falling back
+to scenario `createdAt` only for historical records. Every phase result exposes
+the same canonical field from `modelExecution.executedAt`, with `createdAt` as
+its legacy fallback. `createdAt` remains the document persistence timestamp.
+Raw output remains the unchanged technical response; these UI metadata fields
+are never injected into it.
+
 ## Evaluation contexts
 
 Each evaluation context has a stage and phase identity and carries a plain

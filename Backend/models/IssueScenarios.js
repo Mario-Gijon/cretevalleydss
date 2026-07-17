@@ -20,6 +20,11 @@ const issueScenarioSchema = new Schema(
       type: String,
       default: "",
     },
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+    },
 
     targetModel: {
       type: Schema.Types.ObjectId,

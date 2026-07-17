@@ -36,11 +36,17 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
     };
   }
 
+  const catalogModel = asArray(payload?.models?.compatible).find(
+    (model) => model?.id === scenario.targetModel?.id
+  );
+
   return {
     key: scenario.id,
     type: "scenario",
     label: nonEmpty(scenario.name) || scenario?.targetModel?.name || "Scenario",
-    model: scenario.targetModel || null,
+    model: catalogModel
+      ? { ...catalogModel, ...scenario.targetModel }
+      : scenario.targetModel || null,
     configuration: scenario.configuration || null,
     sourcePhase: Number.isInteger(scenario?.inputs?.consensusPhaseUsed)
       ? scenario.inputs.consensusPhaseUsed

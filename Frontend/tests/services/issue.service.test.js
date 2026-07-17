@@ -75,6 +75,7 @@ describe("issue.service", () => {
     await issueService.createIssueScenario({
       issueId: { id: "issue-9" },
       scenarioName: "Baseline",
+      scenarioDescription: "Baseline sensitivity run",
       targetModelId: "model-1",
       paramOverrides: { weight: 0.4 },
     });
@@ -85,6 +86,7 @@ describe("issue.service", () => {
         method: "POST",
         body: JSON.stringify({
           scenarioName: "Baseline",
+          scenarioDescription: "Baseline sensitivity run",
           targetModelId: "model-1",
           paramOverrides: { weight: 0.4 },
         }),

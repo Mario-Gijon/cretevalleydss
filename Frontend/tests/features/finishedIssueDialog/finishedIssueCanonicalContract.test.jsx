@@ -59,13 +59,15 @@ describe("Finished Issue canonical contract", () => {
     expect(result.current.runs.selectedExecution.type).toBe("scenario");
     expect(result.current.header.showRounds).toBe(false);
     act(() => result.current.header.selectExecution("base"));
+    act(() => result.current.models.addDialog.setScenarioName("Sensitivity"));
+    act(() => result.current.models.addDialog.setScenarioDescription("A valid scenario description."));
     expect(result.current.header.selectedPhase).toBe(5);
     act(() => result.current.models.addDialog.setSelectedModelId("model-scenario"));
     await act(async () => { await result.current.models.addDialog.submit(); });
     expect(createIssueScenario).toHaveBeenCalledWith(expect.objectContaining({ issueId: "issue-1", targetModelId: "model-scenario" }));
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(2);
     act(() => result.current.header.selectExecution("scenario-ok"));
-    await act(async () => { await result.current.models.removeSelectedScenario(); });
+    await act(async () => { await result.current.models.removeScenario("scenario-ok"); });
     expect(removeIssueScenario).toHaveBeenCalledWith("scenario-ok");
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(3);
     expect(result.current.header.selectedExecutionKey).toBe("base");

@@ -98,6 +98,9 @@ export const serializePhaseResults = ({ phaseResults, alternatives }) => {
       },
       modelSpecificOutput: cloneSerializable(result.modelExecution, {}),
       rawOutput: cloneSerializable(result.rawOutput, {}),
+      computedAt: toIsoOrNull(
+        result.modelExecution?.executedAt ?? result.createdAt
+      ),
       createdAt: toIsoOrNull(result.createdAt),
       updatedAt: toIsoOrNull(result.updatedAt),
     };

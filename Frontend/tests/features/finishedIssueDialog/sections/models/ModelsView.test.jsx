@@ -1,84 +1,150 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ModelsView from "../../../../../src/features/finishedIssueDialog/sections/models/components/ModelsView.jsx";
-import { buildModelsWorkspaceData } from "../../../../../src/features/finishedIssueDialog/sections/models/logic/buildModelsWorkspaceData.js";
-import { selectFinishedIssueExecution, buildFinishedIssueExecutionOptions } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
+import { buildModelsCardsData } from "../../../../../src/features/finishedIssueDialog/sections/models/logic/buildModelsCardsData.js";
+import { capacityForExecutionGallery } from "../../../../../src/features/finishedIssueDialog/sections/models/logic/executionGalleryCapacity.js";
+import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 import { buildParameterContext } from "../../../../../src/features/modelParameters/logic/buildModelParameterContext.js";
-import { executionCarouselGridSx, selectedExecutionGridSx } from "../../../../../src/features/finishedIssueDialog/sections/models/models.styles.js";
-import { buildFinishedIssuePayloadFixture, buildNonConsensusFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
-
-const buildState = (payload, overrides = {}) => ({
-  addOpen: true,
-  addLoading: false,
-  scenarioName: "Historical sensitivity",
-  selectedModelId: "model-scenario",
-  selectedModel: payload.models.compatible[0],
-  selectedModelCompatible: true,
-  sourcePhases: [0, 5],
-  selectedSourcePhase: 5,
-  scenarioParamValues: {},
-  availableModels: payload.models.compatible,
-  ...overrides,
-});
+import { addModelCardSx, executionCardSx, executionGalleryGridSx, scenarioCarouselControlSx } from "../../../../../src/features/finishedIssueDialog/sections/models/models.styles.js";
+import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 const actions = {
-  selectExecution: vi.fn(),
-  removeScenario: vi.fn(),
-  openAdd: vi.fn(),
-  closeAdd: vi.fn(),
-  setScenarioName: vi.fn(),
-  setSelectedModelId: vi.fn(),
-  setSelectedSourcePhase: vi.fn(),
-  setScenarioParamValues: vi.fn(),
-  submitAdd: vi.fn(),
+  selectExecution: vi.fn(), removeScenario: vi.fn(), openAdd: vi.fn(), closeAdd: vi.fn(),
+  setScenarioName: vi.fn(), setScenarioDescription: vi.fn(), setSelectedModelId: vi.fn(),
+  setSelectedSourcePhase: vi.fn(), setScenarioParamValues: vi.fn(), submitAdd: vi.fn(),
 };
 
-const renderView = (payload, selectedKey = "base") => {
+const buildState = (payload, overrides = {}) => ({
+  addOpen: false, addLoading: false, scenarioName: "Historical sensitivity", scenarioDescription: "A saved scenario description.",
+  selectedModelId: "model-scenario", selectedModel: payload.models.compatible[0], selectedModelCompatible: true,
+  sourcePhases: [0, 5], selectedSourcePhase: 5, scenarioParamValues: {}, availableModels: payload.models.compatible, ...overrides,
+});
+
+const renderView = (payload, selectedKey = "base", state = buildState(payload)) => {
   const selectedExecution = selectFinishedIssueExecution(payload, selectedKey);
-  const data = buildModelsWorkspaceData({
-    payload,
-    selectedExecution,
-    executionOptions: buildFinishedIssueExecutionOptions(payload),
-  });
-  const context = buildParameterContext({ model: selectedExecution.model });
-  return render(<ThemeProvider theme={createTheme()}><ModelsView data={data} parameterContext={context} addParameterContext={context} state={{ add: buildState(payload) }} actions={actions} /></ThemeProvider>);
+  const data = buildModelsCardsData({ payload, selectedExecution, executionOptions: buildFinishedIssueExecutionOptions(payload) });
+  const context = buildParameterContext({ model: data.selectedExecution.model });
+  return render(<ThemeProvider theme={createTheme()}><ModelsView data={data} parameterContext={context} addParameterContext={context} state={{ add: state }} actions={actions} /></ThemeProvider>);
 };
+
+beforeEach(() => vi.clearAllMocks());
 
 describe("ModelsView", () => {
-  it("renders execution cards separately from the inline add action and keeps the selected detail factual", () => {
+  it("keeps Base and Add model visible with no scenarios while retaining Base details", () => {
     const payload = buildFinishedIssuePayloadFixture();
-    renderView(payload, "scenario-ok");
-
-    const carousel = screen.getByTestId("models-execution-carousel");
-    expect(within(carousel).getAllByRole("button").filter((button) => button.hasAttribute("aria-pressed"))).toHaveLength(3);
-    expect(within(carousel).getAllByLabelText("Add model")).toHaveLength(1);
-    expect(screen.getByText("Scenario · Scenario model")).toBeInTheDocument();
-    expect(screen.getByLabelText("Source phase")).toBeInTheDocument();
+    payload.scenarios = [];
+    renderView(payload);
+    const gallery = screen.getByTestId("models-execution-gallery");
+    expect(within(gallery).getAllByText("Base").length).toBeGreaterThan(0);
+    expect(within(gallery).getByLabelText("Add model")).toBeInTheDocument();
+    expect(within(gallery).queryByLabelText("Previous scenarios")).not.toBeInTheDocument();
+    expect(within(gallery).queryByLabelText("Next scenarios")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Base · Base model")).toHaveTextContent("Selected execution");
     expect(screen.getByText("Raw output")).toBeInTheDocument();
   });
 
-  it("shows source-phase selection only for consensus issues while retaining the required inline scenario form", () => {
-    const consensusView = renderView(buildFinishedIssuePayloadFixture());
-    expect(screen.getByRole("textbox", { name: /scenario name/i })).toBeRequired();
-    expect(screen.getByLabelText("Source phase")).toBeInTheDocument();
-    expect(screen.getAllByText("Enabled")).toHaveLength(1);
+  it("renders Base, stored scenarios, and the Add model card without old card metadata", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.scenarios = [payload.scenarios[0]];
+    payload.scenarios[0].description = "Test description";
+    payload.scenarios[0].computedAt = "2026-01-02T10:00:00.000Z";
+    renderView(payload, "scenario-ok");
+    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
+    expect(screen.getByText("Scenario")).toBeInTheDocument();
+    expect(screen.getByText("Test description")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Add model")).toHaveLength(1);
+    expect(screen.getAllByText("Computed at")).toHaveLength(2);
+    expect(screen.getAllByText("View paper")).toHaveLength(2);
+    expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model information")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Remove Scenario")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Actions for Scenario")).not.toBeInTheDocument();
+    expect(screen.queryByText("Remove")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Base execution cannot be removed").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("LayersRoundedIcon")).toBeInTheDocument();
 
-    consensusView.unmount();
-    const payload = buildNonConsensusFinishedIssuePayloadFixture();
-    renderView(payload);
-    expect(screen.getByRole("textbox", { name: /scenario name/i })).toBeRequired();
-    expect(screen.queryByLabelText("Source phase")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Remove Scenario"));
+    expect(actions.removeScenario).toHaveBeenCalledWith("scenario-ok");
+    expect(actions.selectExecution).not.toHaveBeenCalled();
   });
 
-  it("uses responsive grid rules for one, two, and three execution cards without an add card", () => {
-    expect(executionCarouselGridSx(1).gridTemplateColumns).toBe("repeat(1, minmax(0, 1fr))");
-    expect(executionCarouselGridSx(2).gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
-    expect(executionCarouselGridSx(3).gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
-    expect(selectedExecutionGridSx.gridTemplateColumns).toEqual({
-      xs: "minmax(0, 1fr)",
-      lg: "minmax(250px, 0.75fr) minmax(0, 1.25fr)",
+  it("keeps Base and Add model fixed while only scenarios move through the desktop carousel", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.scenarios.push({
+      ...payload.scenarios[0],
+      id: "scenario-third",
+      name: "Third scenario",
+      description: "Third scenario description",
     });
+    renderView(payload);
+
+    expect(screen.getByTestId("models-scenario-carousel")).toBeInTheDocument();
+    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Add model")).toBeInTheDocument();
+    expect(screen.getByText("Scenario")).toBeInTheDocument();
+    expect(screen.queryByText("Third scenario")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Previous scenarios")).toBeDisabled();
+    expect(screen.getByLabelText("Next scenarios")).not.toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("Next scenarios"));
+    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Add model")).toBeInTheDocument();
+    expect(screen.getByText("Third scenario")).toBeInTheDocument();
+    expect(screen.getByLabelText("Previous scenarios")).not.toBeDisabled();
+    expect(screen.getByLabelText("Next scenarios")).toBeDisabled();
+  });
+
+  it("brings a selected scenario into the scenario-only window", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.scenarios.push({
+      ...payload.scenarios[0],
+      id: "scenario-third",
+      name: "Third scenario",
+      description: "Third scenario description",
+    });
+    renderView(payload, "scenario-third");
+
+    expect(screen.getByText("Third scenario")).toBeInTheDocument();
+    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
+  });
+
+  it("opens one Dialog with required name and description fields", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    renderView(payload, "base", buildState(payload, { addOpen: true }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const scenarioNameField = screen.getByRole("textbox", { name: /scenario name/i });
+    const scenarioDescriptionField = screen.getByRole("textbox", { name: /scenario description/i });
+    expect(scenarioNameField).toBeRequired();
+    expect(scenarioDescriptionField).toBeRequired();
+    expect(scenarioNameField.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(scenarioDescriptionField.closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(screen.getByText(/\/320$/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Model")).toBeInTheDocument();
+    expect(screen.getByLabelText("Source phase")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    const dialogContent = dialog.querySelector(".MuiDialogContent-root");
+    expect(dialogContent).toBeInTheDocument();
+    expect(window.getComputedStyle(dialogContent).paddingTop).toBe("12px");
+    expect(dialogContent.querySelector("input")).toBe(scenarioNameField);
+    expect(window.getComputedStyle(dialog).opacity).toBe("1");
+    expect(window.getComputedStyle(dialog).backgroundColor).toBe("rgb(7, 19, 31)");
+    expect(window.getComputedStyle(dialog).backgroundImage).toContain("linear-gradient");
+    expect(document.querySelector(".MuiBackdrop-root")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Model" }).closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+    expect(screen.getByRole("combobox", { name: "Source phase" }).closest(".MuiInputBase-root")).toHaveClass("MuiInputBase-colorSecondary");
+  });
+
+  it("keeps responsive scenario capacities and meaningful card dimensions", () => {
+    expect(capacityForExecutionGallery({ mobile: true, tablet: false })).toBe(1);
+    expect(capacityForExecutionGallery({ mobile: false, tablet: true })).toBe(1);
+    expect(capacityForExecutionGallery({ mobile: false, tablet: false })).toBe(2);
+    expect(executionGalleryGridSx({ scenarioCount: 0, carousel: false }).gridTemplateColumns.lg).toBe("repeat(2, minmax(260px, 1fr))");
+    expect(executionGalleryGridSx({ scenarioCount: 2, carousel: false }).gridTemplateColumns.lg).toBe("repeat(4, minmax(260px, 1fr))");
+    expect(executionCardSx(false, false).minHeight).toEqual({ xs: 250, md: 290 });
+    expect(addModelCardSx().minHeight).toEqual({ xs: 250, md: 290 });
+    expect(addModelCardSx().minWidth).toEqual({ xs: 0, sm: 260 });
+    expect(scenarioCarouselControlSx).toMatchObject({ width: 36, height: 76, borderRadius: 2 });
   });
 });

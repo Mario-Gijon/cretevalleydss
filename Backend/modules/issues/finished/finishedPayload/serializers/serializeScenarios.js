@@ -3,6 +3,7 @@ import {
   toIsoOrNull,
   toRequiredId,
 } from "./serializers.shared.js";
+import { resolveModelPaperUrl } from "./modelPaperUrl.js";
 
 const serializeCreator = (creator) =>
   creator
@@ -17,12 +18,17 @@ export const serializeScenarios = ({ scenarios }) =>
   scenarios.map((scenario) => ({
     id: toRequiredId(scenario, "scenario"),
     name: scenario.name ?? "",
+    description:
+      typeof scenario.description === "string" && scenario.description.trim()
+        ? scenario.description.trim()
+        : null,
     createdBy: serializeCreator(scenario.createdBy),
     status: scenario.status,
     error: scenario.error ?? null,
     targetModel: {
       id: toRequiredId(scenario.targetModel, "scenario target model"),
       name: scenario.targetModelName,
+      paperUrl: resolveModelPaperUrl(scenario.targetModel),
       apiModelKey: scenario.targetApiModelKey,
       apiEndpoint: cloneSerializable(scenario.targetApiEndpoint, null),
       evaluationStructureKey: scenario.targetEvaluationStructureKey,
@@ -37,6 +43,9 @@ export const serializeScenarios = ({ scenarios }) =>
     },
     inputs: cloneSerializable(scenario.inputs, {}),
     outputs: cloneSerializable(scenario.outputs, {}),
+    computedAt: toIsoOrNull(
+      scenario.outputs?.modelExecution?.executedAt ?? scenario.createdAt
+    ),
     createdAt: toIsoOrNull(scenario.createdAt),
     updatedAt: toIsoOrNull(scenario.updatedAt),
   }));

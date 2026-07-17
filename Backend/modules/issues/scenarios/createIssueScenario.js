@@ -8,6 +8,7 @@ import { executeScenarioModel } from "../modelExecution/index.js";
 const normalizeScenarioCreationInputOrThrow = ({
   targetModelId,
   scenarioName,
+  scenarioDescription,
   sourcePhase,
   paramOverrides,
 }) => {
@@ -32,6 +33,27 @@ const normalizeScenarioCreationInputOrThrow = ({
   if (!normalizedScenarioName) {
     throw createBadRequestError("scenarioName is required", {
       field: "scenarioName",
+    });
+  }
+
+  const normalizedScenarioDescription =
+    typeof scenarioDescription === "string"
+      ? scenarioDescription.trim()
+      : null;
+
+  if (normalizedScenarioDescription === null) {
+    throw createBadRequestError("scenarioDescription must be a string", {
+      field: "scenarioDescription",
+    });
+  }
+  if (!normalizedScenarioDescription) {
+    throw createBadRequestError("scenarioDescription is required", {
+      field: "scenarioDescription",
+    });
+  }
+  if (normalizedScenarioDescription.length > 320) {
+    throw createBadRequestError("scenarioDescription must not exceed 320 characters", {
+      field: "scenarioDescription",
     });
   }
 
@@ -64,6 +86,7 @@ const normalizeScenarioCreationInputOrThrow = ({
   return {
     targetModelId: targetModelId.trim(),
     scenarioName: normalizedScenarioName,
+    scenarioDescription: normalizedScenarioDescription,
     sourcePhase: normalizedSourcePhase,
     paramOverrides: normalizedParamOverrides,
   };
@@ -74,6 +97,7 @@ export const createIssueScenario = async ({
   issueId,
   targetModelId,
   scenarioName,
+  scenarioDescription,
   sourcePhase,
   paramOverrides,
   decisionModelsServiceBaseUrl =
@@ -83,6 +107,7 @@ export const createIssueScenario = async ({
   const normalizedInput = normalizeScenarioCreationInputOrThrow({
     targetModelId,
     scenarioName,
+    scenarioDescription,
     sourcePhase,
     paramOverrides,
   });
@@ -110,6 +135,7 @@ export const createIssueScenario = async ({
     issue: context.issue._id,
     createdBy: userId,
     name: normalizedInput.scenarioName,
+    description: normalizedInput.scenarioDescription,
     targetModel: context.targetModel._id,
     targetModelName: context.targetModel.name,
     targetApiModelKey: context.targetRuntimeSnapshot.targetApiModelKey,

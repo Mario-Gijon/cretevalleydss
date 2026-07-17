@@ -1,5 +1,6 @@
 import { buildDefaultsResolved, mergeParamsResolved } from "../../../../decisionPlugins/modelParameters/resolveModelParameterValues.js";
 import { buildScenarioCompatibilityMetadata } from "../../../scenarios/validateScenarioModelCompatibility.js";
+import { resolveModelPaperUrl } from "./modelPaperUrl.js";
 import {
   cloneSerializable,
   toNullableId,
@@ -26,6 +27,7 @@ const serializeModel = ({ model, configuredParameters, leafCount, runtime }) => 
   return {
     id: toRequiredId(model, "model"),
     name: model.name,
+    paperUrl: resolveModelPaperUrl(model),
     description: {
       short: model.smallDescription ?? null,
       extended: model.extendDescription ?? null,
@@ -82,6 +84,7 @@ export const serializeModels = ({ issue, compatibleModels, expressionDomains, cr
       return {
         id: toRequiredId(model, "compatible model"),
         name: model.name,
+        paperUrl: resolveModelPaperUrl(model),
         description: {
           short: model.smallDescription ?? null,
           extended: model.extendDescription ?? null,

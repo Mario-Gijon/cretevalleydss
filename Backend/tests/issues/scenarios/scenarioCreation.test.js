@@ -134,6 +134,7 @@ describe("createIssueScenario input normalization", () => {
         issueId: new mongoose.Types.ObjectId(),
         targetModelId: "target-model-id",
         scenarioName: "Invalid parameters",
+        scenarioDescription: "A valid description",
         paramOverrides: ["invalid"],
       })
     ).rejects.toMatchObject({
@@ -158,6 +159,20 @@ describe("createIssueScenario input normalization", () => {
     });
   });
 
+  it("requires a trimmed scenario description with a maximum of 320 characters", async () => {
+    const input = {
+      userId: new mongoose.Types.ObjectId(),
+      issueId: new mongoose.Types.ObjectId(),
+      targetModelId: "target-model-id",
+      scenarioName: "Valid name",
+    };
+
+    await expect(createIssueScenario(input)).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must be a string" });
+    await expect(createIssueScenario({ ...input, scenarioDescription: 42 })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must be a string" });
+    await expect(createIssueScenario({ ...input, scenarioDescription: "   " })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription is required" });
+    await expect(createIssueScenario({ ...input, scenarioDescription: "x".repeat(321) })).rejects.toMatchObject({ field: "scenarioDescription", message: "scenarioDescription must not exceed 320 characters" });
+  });
+
   it("passes an explicit source phase into the scenario execution context", async () => {
     const userId = new mongoose.Types.ObjectId();
     const context = buildMockExecutionContext();
@@ -173,6 +188,7 @@ describe("createIssueScenario input normalization", () => {
       issueId: String(context.issue._id),
       targetModelId: "  target-model-id  ",
       scenarioName: "Historical run",
+      scenarioDescription: "  Replays the stored phase.  ",
       sourcePhase: 3,
       paramOverrides: null,
     });
@@ -184,6 +200,8 @@ describe("createIssueScenario input normalization", () => {
       sourcePhase: 3,
       paramOverrides: {},
     });
+    const { IssueScenario } = await import("../../../models/IssueScenarios.js");
+    expect((await IssueScenario.findOne()).description).toBe("Replays the stored phase.");
   });
 
   it("rejects an invalid source phase", async () => {
@@ -193,6 +211,7 @@ describe("createIssueScenario input normalization", () => {
         issueId: new mongoose.Types.ObjectId(),
         targetModelId: "target-model-id",
         scenarioName: "Invalid phase",
+        scenarioDescription: "A valid description",
         sourcePhase: -1,
       })
     ).rejects.toMatchObject({

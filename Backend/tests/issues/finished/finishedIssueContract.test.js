@@ -29,6 +29,7 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
   const declined = await createConfirmedUser({ email: "declined@example.test" });
   const baseModel = await createIssueModel({
     name: "Base model",
+    moreInfoUrl: "https://papers.example.test/base",
     supportsConsensus: consensus,
     supportsConsensusSimulation: true,
     usesCriteriaWeights: true,
@@ -226,6 +227,7 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
       plotsGraphic: { phase },
       modelExecution: {
         kind: "decisionModelsService",
+        executedAt: new Date(`2026-01-11T12:0${phase}:00.000Z`),
         consensusLifecycle: reason ? { consensusReached: true, finalizationReason: reason } : {},
       },
       rawOutput: { phase },
@@ -245,6 +247,7 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
     issue: issue._id,
     createdBy: owner._id,
     name: "Compatible scenario",
+    description: "Stored scenario description",
     targetModel: baseModel._id,
     targetModelName: baseModel.name,
     targetApiModelKey: baseModel.apiModelKey,
@@ -265,7 +268,7 @@ const createCompleteIssue = async ({ consensus = true } = {}) => {
       evaluationPayloads: [{ expert: { id: String(accepted._id) }, payload: alternativePayload }],
       context: { source: "scenario" },
     },
-    outputs: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario" }, rawOutput: { raw: true } },
+    outputs: { standardResult: { rankedAlternatives: [] }, modelExecution: { kind: "scenario", executedAt: new Date("2026-01-12T11:00:00.000Z") }, rawOutput: { raw: true } },
   });
   const failedScenario = await IssueScenario.create({
     issue: issue._id,
@@ -411,6 +414,9 @@ describe("definitive Finished Issue contract", () => {
       expect.objectContaining({ id: String(fixture.results.initialResult._id), phase: 0, expertWeightSnapshot: [{ expertId: String(fixture.users.accepted._id), weight: 0.7 }] }),
       expect.objectContaining({ id: String(fixture.results.finalResult._id), phase: 2, modelSpecificOutput: expect.any(Object), rawOutput: { phase: 2 } }),
     ]));
+    expect(payload.models.base.paperUrl).toBe("https://papers.example.test/base");
+    expect(payload.models.compatible[0].paperUrl).toBe("https://papers.example.test/base");
+    expect(payload.phaseResults.find((result) => result.id === String(fixture.results.finalResult._id)).computedAt).toBe(iso("2026-01-11T12:02:00.000Z"));
     expect(payload.consensus).toEqual(expect.objectContaining({
       enabled: true,
       finalPhase: 2,
@@ -429,8 +435,8 @@ describe("definitive Finished Issue contract", () => {
     expect(payload.models.criteriaWeighting).toMatchObject({ name: "Weight model" });
     expect(payload.models.compatible.some((model) => model.id === payload.models.base.id)).toBe(true);
     expect(payload.scenarios).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), status: "done", inputs: expect.objectContaining({ consensusPhaseUsed: 2 }) }),
-      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), status: "error", error: "Model service unavailable" }),
+      expect.objectContaining({ id: String(fixture.scenarios.scenario._id), description: "Stored scenario description", computedAt: iso("2026-01-12T11:00:00.000Z"), targetModel: expect.objectContaining({ paperUrl: "https://papers.example.test/base" }), status: "done", inputs: expect.objectContaining({ consensusPhaseUsed: 2 }) }),
+      expect.objectContaining({ id: String(fixture.scenarios.failedScenario._id), description: null, status: "error", error: "Model service unavailable" }),
     ]));
     expect(payload.executionMetadata).toMatchObject({
       contractVersion: 1,
