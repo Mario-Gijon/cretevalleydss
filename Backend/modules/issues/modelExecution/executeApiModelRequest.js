@@ -4,14 +4,12 @@ import {
   unwrapModelApiResponse,
 } from "../../../services/modelApi/modelResponse.js";
 
-const DEFAULT_DECISION_MODELS_SERVICE_BASE_URL =
-  process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000";
-
 export const executeDecisionModelRequest = async ({
   apiEndpointPath,
   requestPayload,
   errorMessage = "Model execution failed",
-  decisionModelsServiceBaseUrl = DEFAULT_DECISION_MODELS_SERVICE_BASE_URL,
+  decisionModelsServiceBaseUrl =
+    process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
   httpClient = axios,
 }) => {
   let response;

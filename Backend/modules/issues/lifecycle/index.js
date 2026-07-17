@@ -23,3 +23,8 @@ export {
 export {
   removeIssueParticipantFromActiveIssue,
 } from "./removeIssueParticipant.js";
+export {
+  deleteActiveIssueWorkflow,
+  hideFinishedIssueWorkflow,
+  leaveActiveIssueWorkflow,
+} from "./issueLifecycleWorkflows.js";

@@ -8,5 +8,8 @@ export {
   respondToIssueInvitation,
 } from "./respondToIssueInvitation.js";
 export {
+  respondToIssueInvitationWorkflow,
+} from "./respondToIssueInvitationWorkflow.js";
+export {
   removeNotificationForUser,
 } from "./removeNotificationForUser.js";

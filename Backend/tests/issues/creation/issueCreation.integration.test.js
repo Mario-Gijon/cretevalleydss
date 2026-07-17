@@ -298,13 +298,12 @@ describe("issue creation integration", () => {
       email: "expert@example.com",
     });
     const model = await createIssueModel({
-      supportedDomains: {
-        numeric: {
-          continuous: true,
-          discrete: false,
+      supportedExpressionDomains: [
+        {
+          typeKey: "numericContinuous",
+          constraints: {},
         },
-        linguistic: [],
-      },
+      ],
     });
     const discreteDomain = await createExpressionDomainFixture({
       userId: owner._id,

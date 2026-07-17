@@ -50,11 +50,76 @@ export const endSessionSafely = async (session) => {
 };
 
 export const abortTransactionSafely = async (session) => {
-  if (!session?.inTransaction?.()) return;
+  if (!session) return;
 
   try {
+    if (!session.inTransaction?.()) return;
+
     await session.abortTransaction();
   } catch (error) {
     console.error("Error aborting mongoose transaction:", error);
+  }
+};
+
+/**
+ * Runs work using the same explicit start/commit/abort lifecycle used by the
+ * authentication mutations. Cleanup failures are logged by the existing safe
+ * helpers and never replace the operation or commit error. The optional
+ * callbacks preserve endpoints that historically emitted transport after
+ * commit, but before their controller finally block ended the session.
+ */
+export const runManualTransaction = async (
+  operation,
+  {
+    startSession = () => mongoose.startSession(),
+    onSuccessBeforeCleanup = (result) => result,
+    onErrorBeforeCleanup = null,
+  } = {}
+) => {
+  const session = await startSession();
+
+  try {
+    session.startTransaction();
+    const result = await operation(session);
+    await session.commitTransaction();
+    return await onSuccessBeforeCleanup(result);
+  } catch (error) {
+    await abortTransactionSafely(session);
+
+    if (onErrorBeforeCleanup) {
+      return await onErrorBeforeCleanup(error);
+    }
+
+    throw error;
+  } finally {
+    await endSessionSafely(session);
+  }
+};
+
+/**
+ * Runs work through Mongoose's withTransaction contract and always ends the
+ * session. Retry and rollback behavior remains owned by Mongoose. A successful
+ * continuation may run after commit and before cleanup when transport ordering
+ * is part of an existing endpoint contract.
+ */
+export const runWithTransaction = async (
+  operation,
+  {
+    startSession = () => mongoose.startSession(),
+    onSuccessBeforeCleanup = (result) => result,
+  } = {}
+) => {
+  const session = await startSession();
+
+  try {
+    let result;
+
+    await session.withTransaction(async () => {
+      result = await operation(session);
+    });
+
+    return await onSuccessBeforeCleanup(result);
+  } finally {
+    await endSessionSafely(session);
   }
 };

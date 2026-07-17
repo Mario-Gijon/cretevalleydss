@@ -1394,7 +1394,8 @@
                         "weights": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "nullable": true,
+                            "type": "number"
                           }
                         },
                         "criteriaOrder": {
@@ -1496,7 +1497,12 @@
                         },
                         "rankedAlternatives": {
                           "nullable": true,
-                          "example": null
+                          "example": null,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
                         }
                       }
                     }
@@ -1596,7 +1602,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -1626,7 +1633,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     },
                     "error": {
                       "type": "object",
@@ -1791,7 +1799,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -1915,7 +1924,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -1995,7 +2005,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -2071,7 +2082,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -2147,7 +2159,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -2224,7 +2237,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -2395,7 +2409,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -3401,7 +3416,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -3492,7 +3508,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -3608,7 +3625,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -3826,7 +3844,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -3913,7 +3932,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -4003,7 +4023,12 @@
                         },
                         "rankedAlternatives": {
                           "nullable": true,
-                          "example": null
+                          "example": null,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                          }
                         }
                       }
                     }
@@ -4165,7 +4190,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -4252,7 +4278,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -4327,7 +4354,8 @@
                         "weights": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "nullable": true,
+                            "type": "number"
                           }
                         },
                         "criteriaOrder": {
@@ -4496,7 +4524,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -4583,7 +4612,8 @@
                     },
                     "data": {
                       "nullable": true,
-                      "example": null
+                      "example": null,
+                      "type": "object"
                     }
                   }
                 }
@@ -4658,7 +4688,8 @@
                         "weights": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "nullable": true,
+                            "type": "number"
                           }
                         },
                         "criteriaOrder": {

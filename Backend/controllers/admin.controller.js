@@ -1,20 +1,9 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-import axios from "axios";
-import mongoose from "mongoose";
-
-import { Issue } from "../models/Issues.js";
-import { IssueModel } from "../models/IssueModels.js";
-
-import { editIssueExperts as editIssueExpertsUseCase } from "../modules/issues/participants/index.js";
 import {
-  computeIssueEvaluationStage,
-} from "../modules/issues/computation/index.js";
-import {
-  deleteIssueCascade,
-} from "../modules/issues/lifecycle/index.js";
-
+  computeAdminIssueWeights,
+  editAdminIssueExperts,
+  removeAdminIssue,
+  resolveAdminIssue,
+} from "../modules/admin/issueCommands/index.js";
 import {
   getAdminIssuesListPayload,
   getIssueAdminDetailPayload,
@@ -22,10 +11,21 @@ import {
   getIssueExpertEvaluationsPayload,
   getIssueExpertWeightsPayload,
 } from "../modules/admin/issueReads/index.js";
-
+import {
+  getAdminModelCatalog,
+  updateAdminModelCatalogVisibility,
+} from "../modules/admin/modelCatalog/index.js";
+import {
+  applyAdminModelForgeModelPackage,
+  deleteAdminModelForgeAsset,
+  getAdminModelForgeAssets,
+  getAdminModelForgeCatalog,
+  previewAdminModelForgeModelPackage,
+} from "../modules/admin/modelForge/index.js";
+import { scheduleBackendReload } from "../modules/admin/system/index.js";
 import {
   createAdminUser as createAdminUserUseCase,
-  deleteAdminUser as deleteAdminUserUseCase,
+  deleteAdminUserWorkflow,
   getAdminUsersListPayload,
   reassignIssueOwner as reassignIssueOwnerUseCase,
   updateAdminUser as updateAdminUserUseCase,
@@ -38,55 +38,10 @@ import {
 import { fetchModelManifest } from "../services/modelApi/modelManifestClient.js";
 import { syncModelManifestToIssueModels } from "../services/modelApi/modelManifestSync.js";
 import {
-  applyModelForgeModelPackage,
-  deleteModelForgeAsset,
-  fetchModelForgeAssets,
-  fetchModelForgeCatalog,
-  previewModelForgeModelPackage,
-} from "../services/modelForge/modelForgeClient.js";
-
-import {
   createBadRequestError,
   createConflictError,
-  createForbiddenError,
-  createNotFoundError,
 } from "../utils/common/errors.js";
-import { toIdString } from "../utils/common/ids.js";
-import {
-  endSessionSafely,
-  isValidObjectIdLike,
-} from "../utils/common/mongoose.js";
 import { sendSuccess } from "../utils/common/responses.js";
-import { getIssueByIdOrThrow } from "../modules/issues/shared/queries.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const BACKEND_RELOAD_MARKER_PATH = path.resolve(
-  __dirname,
-  "../runtime/backendReloadMarker.json"
-);
-const MODEL_FORGE_ASSET_KIND_SET = new Set([
-  "model",
-  "evaluationStructure",
-  "parameterStructure",
-]);
-const MODEL_FORGE_ASSET_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
-
-const getAdminIssueExecutionContextOrThrow = async ({
-  issueId,
-  session = null,
-}) => {
-  const issue = await getIssueByIdOrThrow(issueId, {
-    populate: "model",
-    lean: false,
-    session,
-  });
-
-  return {
-    issue,
-    ownerUserId: toIdString(issue.ownerId),
-  };
-};
 
 const throwIfDuplicateEmailError = (error) => {
   if (error?.code === 11000) {
@@ -100,150 +55,6 @@ const throwIfDuplicateEmailError = (error) => {
   throw error;
 };
 
-const mapIssueModelCatalogItem = (model) => {
-  const id = toIdString(model._id);
-  const isStale = model?.manifestSync?.isStale === true;
-  const publicUsable =
-    model.modelKind === "criteriaWeighting"
-      ? model.visibleInCriteriaWeighting !== false && !isStale
-      : model.visibleInIssueCreation !== false && !isStale;
-
-  return {
-    _id: id,
-    id,
-    name: model.name,
-    apiModelKey: model.apiModelKey,
-    modelKind: model.modelKind || null,
-    implementationStatus: model.implementationStatus || "ready",
-    publicUsable,
-    protectedHistoricalModel: isStale,
-    visibleInIssueCreation: model.visibleInIssueCreation !== false,
-    visibleInCriteriaWeighting: model.visibleInCriteriaWeighting !== false,
-    apiEndpoint: model.apiEndpoint,
-    manifestSync: model.manifestSync,
-    isMultiCriteria: model.isMultiCriteria,
-    evaluationStructureKey: model.evaluationStructureKey,
-    usesCriteriaWeights: model.usesCriteriaWeights === true,
-    usesExpertWeights: model.usesExpertWeights === true,
-    usesFuzzyCriteriaWeights: model.usesFuzzyCriteriaWeights === true,
-    usesCriterionTypes: model.usesCriterionTypes === true,
-    supportsConsensus: model.supportsConsensus === true,
-    supportsConsensusSimulation: model.supportsConsensusSimulation === true,
-    parameters: model.parameters,
-    modelInputFields: model.modelInputFields,
-    modelOutputFields: model.modelOutputFields,
-    request: model.request,
-    response: model.response,
-    supportedExpressionDomains: model.supportedExpressionDomains,
-    smallDescription: model.smallDescription,
-    extendDescription: model.extendDescription,
-    moreInfoUrl: model.moreInfoUrl,
-  };
-};
-
-const getModelCatalogSortRank = (model) => {
-  const visibleInIssueCreation = model.visibleInIssueCreation !== false;
-  const visibleInCriteriaWeighting = model.visibleInCriteriaWeighting !== false;
-  const stale = model?.manifestSync?.isStale === true;
-
-  if (visibleInIssueCreation && !stale) return 0;
-  if (visibleInIssueCreation) return 1;
-  if (visibleInCriteriaWeighting && !stale) return 2;
-  if (visibleInCriteriaWeighting) return 3;
-
-  return 4;
-};
-
-const normalizeModelForgeAssetKeyOrThrow = (key) => {
-  const normalizedKey = String(key || "").trim();
-
-  if (!normalizedKey || !MODEL_FORGE_ASSET_KEY_PATTERN.test(normalizedKey)) {
-    throw createBadRequestError("Valid asset key is required", {
-      field: "key",
-    });
-  }
-
-  return normalizedKey;
-};
-
-const normalizeModelForgeAssetKindOrThrow = (kind) => {
-  const normalizedKind = String(kind || "").trim();
-
-  if (!MODEL_FORGE_ASSET_KIND_SET.has(normalizedKind)) {
-    throw createBadRequestError("Valid asset kind is required", {
-      field: "kind",
-    });
-  }
-
-  return normalizedKind;
-};
-
-const countIssuesUsingIssueModelIds = async (modelIds) => {
-  if (!Array.isArray(modelIds) || modelIds.length === 0) return 0;
-
-  return Issue.countDocuments({
-    $or: [
-      { model: { $in: modelIds } },
-      { criteriaWeightingModel: { $in: modelIds } },
-    ],
-  });
-};
-
-const countIssuesUsingModelForgeAsset = async ({ kind, key }) => {
-  if (kind === "model") {
-    const models = await IssueModel.find({ apiModelKey: key }).select("_id").lean();
-    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
-  }
-
-  if (kind === "evaluationStructure") {
-    const models = await IssueModel.find({ evaluationStructureKey: key })
-      .select("_id")
-      .lean();
-    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
-  }
-
-  if (kind === "parameterStructure") {
-    const models = await IssueModel.find({
-      "parameters.parameterStructureKey": key,
-    })
-      .select("_id")
-      .lean();
-    return countIssuesUsingIssueModelIds(models.map((model) => model._id));
-  }
-
-  throw createBadRequestError("Valid asset kind is required", {
-    field: "kind",
-  });
-};
-
-const enrichModelForgeAssetsWithUsage = async (items = []) =>
-  Promise.all(
-    items.map(async (item) => {
-      const kind = String(item?.kind || "").trim();
-      const key = String(item?.key || "").trim();
-      const resolvedUsageCount = await countIssuesUsingModelForgeAsset({
-        kind,
-        key,
-      });
-      const usageCount = Number.isFinite(resolvedUsageCount)
-        ? resolvedUsageCount
-        : 0;
-      const usedByIssuesCount = usageCount;
-      const deleteBlockedReason =
-        usageCount > 0
-          ? "This asset is used by existing issues and cannot be deleted."
-          : "";
-
-      return {
-        ...item,
-        usageCount,
-        usedByIssuesCount,
-        deleteBlockedReason,
-        deletable: usageCount === 0,
-      };
-    })
-  );
-
 export const getAllUsersAdmin = async (req, res) => {
   const data = await getAdminUsersListPayload({
     adminUserId: req.uid,
@@ -255,118 +66,22 @@ export const getAllUsersAdmin = async (req, res) => {
 };
 
 export const getModelCatalogAdmin = async (_req, res) => {
-  const models = (await IssueModel.find().select("-__v").lean())
-    .map(mapIssueModelCatalogItem)
-    .sort((left, right) => {
-      const rankDifference =
-        getModelCatalogSortRank(left) - getModelCatalogSortRank(right);
+  const data = await getAdminModelCatalog();
 
-      if (rankDifference !== 0) return rankDifference;
-
-      return left.name.localeCompare(right.name);
-    });
-
-  return sendSuccess(res, "Model catalog retrieved successfully", {
-    models,
-  });
+  return sendSuccess(res, "Model catalog retrieved successfully", data);
 };
 
 export const updateModelCatalogVisibilityAdmin = async (req, res) => {
-  const { id } = req.params || {};
-  const { visibleInIssueCreation, visibleInCriteriaWeighting } = req.body || {};
-
-  if (!id || !isValidObjectIdLike(id)) {
-    throw createBadRequestError("Valid model id is required", {
-      field: "id",
-    });
-  }
-
-  const hasIssueVisibility = typeof visibleInIssueCreation === "boolean";
-  const hasCriteriaVisibility =
-    typeof visibleInCriteriaWeighting === "boolean";
-
-  if (!hasIssueVisibility && !hasCriteriaVisibility) {
-    throw createBadRequestError(
-      "visibleInIssueCreation or visibleInCriteriaWeighting must be boolean",
-      {
-        field: "visibleInIssueCreation",
-      }
-    );
-  }
-
-  const currentModel = await IssueModel.findById(id);
-
-  if (!currentModel) {
-    throw createNotFoundError("Model not found", {
-      field: "id",
-    });
-  }
-
-  const isProtectedHistoricalModel =
-    currentModel?.manifestSync?.isStale === true;
-  const isIssueModel = currentModel?.modelKind === "issue";
-  const isCriteriaWeightingModel =
-    currentModel?.modelKind === "criteriaWeighting";
-
-  if (isIssueModel && visibleInCriteriaWeighting === true) {
-    throw createBadRequestError(
-      "This visibility flag is not applicable to the selected model kind.",
-      {
-        code: "MODEL_VISIBILITY_NOT_APPLICABLE",
-        field: "visibleInCriteriaWeighting",
-      }
-    );
-  }
-
-  if (isCriteriaWeightingModel && visibleInIssueCreation === true) {
-    throw createBadRequestError(
-      "This visibility flag is not applicable to the selected model kind.",
-      {
-        code: "MODEL_VISIBILITY_NOT_APPLICABLE",
-        field: "visibleInIssueCreation",
-      }
-    );
-  }
-
-  if (
-    isProtectedHistoricalModel &&
-    ((hasIssueVisibility && visibleInIssueCreation === true) ||
-      (hasCriteriaVisibility && visibleInCriteriaWeighting === true))
-  ) {
-    throw createBadRequestError(
-      "This model is no longer present in the DecisionModelsService manifest and is kept only because existing issues reference it.",
-      {
-        code: "PROTECTED_HISTORICAL_MODEL_NOT_ACTIVABLE",
-        field:
-          hasIssueVisibility && visibleInIssueCreation === true
-            ? "visibleInIssueCreation"
-            : "visibleInCriteriaWeighting",
-      }
-    );
-  }
-
-  const visibilityUpdate = {};
-  if (hasIssueVisibility) {
-    visibilityUpdate.visibleInIssueCreation = visibleInIssueCreation;
-  }
-  if (hasCriteriaVisibility) {
-    visibilityUpdate.visibleInCriteriaWeighting =
-      visibleInCriteriaWeighting;
-  }
-
-  currentModel.set(visibilityUpdate);
-  await currentModel.save();
-
-  const model = await IssueModel.findById(currentModel._id)
-    .select("-__v")
-    .lean();
+  const data = await updateAdminModelCatalogVisibility({
+    modelId: req.params?.id,
+    visibleInIssueCreation: req.body?.visibleInIssueCreation,
+    visibleInCriteriaWeighting: req.body?.visibleInCriteriaWeighting,
+  });
 
   return sendSuccess(
     res,
     "Model catalog visibility updated successfully",
-    {
-      model: mapIssueModelCatalogItem(model),
-    }
+    data
   );
 };
 
@@ -381,7 +96,7 @@ export const getModelManifestDryRunAdmin = async (_req, res) => {
 };
 
 export const getModelForgeCatalogAdmin = async (_req, res) => {
-  const catalog = await fetchModelForgeCatalog();
+  const catalog = await getAdminModelForgeCatalog();
 
   return sendSuccess(
     res,
@@ -391,27 +106,17 @@ export const getModelForgeCatalogAdmin = async (_req, res) => {
 };
 
 export const getModelForgeAssetsAdmin = async (_req, res) => {
-  const assets = await fetchModelForgeAssets();
-  const [models, evaluationStructures, parameterStructures] = await Promise.all([
-    enrichModelForgeAssetsWithUsage(assets?.models || []),
-    enrichModelForgeAssetsWithUsage(assets?.evaluationStructures || []),
-    enrichModelForgeAssetsWithUsage(assets?.parameterStructures || []),
-  ]);
+  const assets = await getAdminModelForgeAssets();
 
   return sendSuccess(
     res,
     "Model Forge generated assets fetched successfully",
-    {
-      ...assets,
-      models,
-      evaluationStructures,
-      parameterStructures,
-    }
+    assets
   );
 };
 
 export const previewModelForgeModelPackageAdmin = async (req, res) => {
-  const preview = await previewModelForgeModelPackage(req.body || {});
+  const preview = await previewAdminModelForgeModelPackage(req.body || {});
 
   return sendSuccess(
     res,
@@ -421,7 +126,7 @@ export const previewModelForgeModelPackageAdmin = async (req, res) => {
 };
 
 export const applyModelForgeModelPackageAdmin = async (req, res) => {
-  const result = await applyModelForgeModelPackage(req.body || {});
+  const result = await applyAdminModelForgeModelPackage(req.body || {});
 
   return sendSuccess(
     res,
@@ -431,91 +136,32 @@ export const applyModelForgeModelPackageAdmin = async (req, res) => {
 };
 
 export const deleteModelForgeAssetAdmin = async (req, res) => {
-  const kind = normalizeModelForgeAssetKindOrThrow(req.params?.kind);
-  const key = normalizeModelForgeAssetKeyOrThrow(req.params?.key);
-
-  const usageCount = await countIssuesUsingModelForgeAsset({ kind, key });
-  const usedByIssuesCount = usageCount;
-
-  if (usageCount > 0) {
-    throw createConflictError(
-      "This asset is used by existing issues and cannot be deleted.",
-      {
-        code: "MODEL_FORGE_ASSET_IN_USE",
-        field: "key",
-        details: {
-          kind,
-          key,
-          usageCount,
-          usedByIssuesCount,
-        },
-      }
-    );
-  }
-
-  const result = await deleteModelForgeAsset(kind, key);
+  const result = await deleteAdminModelForgeAsset({
+    kind: req.params?.kind,
+    key: req.params?.key,
+  });
 
   return sendSuccess(
     res,
     "Model Forge generated asset deleted successfully",
-    {
-      ...result,
-      usageCount,
-      usedByIssuesCount,
-      deletable: true,
-    }
+    result
   );
 };
 
 export const restartBackendAdmin = async (_req, res) => {
-  if (process.env.NODE_ENV === "production") {
-    throw createForbiddenError("Backend restart is disabled in production.", {
-      code: "BACKEND_RESTART_DISABLED",
-    });
-  }
-
-  let restartScheduled = false;
-  const scheduleRestart = () => {
-    if (restartScheduled) return;
-    restartScheduled = true;
-
-    setTimeout(async () => {
-      try {
-        await mkdir(path.dirname(BACKEND_RELOAD_MARKER_PATH), {
-          recursive: true,
-        });
-        await writeFile(
-          BACKEND_RELOAD_MARKER_PATH,
-          JSON.stringify(
-            {
-              updatedAt: new Date().toISOString(),
-            },
-            null,
-            2
-          ) + "\n",
-          "utf-8"
-        );
-      } catch (error) {
-        console.error("Failed to update backend reload marker", error);
-      }
-    }, 250);
-  };
-
-  res.on("finish", scheduleRestart);
+  const { data, afterResponseFinished } = scheduleBackendReload();
+  res.on("finish", afterResponseFinished);
 
   return sendSuccess(
     res,
     "Backend restart scheduled successfully",
-    {
-      service: "backend",
-      restartScheduled: true,
-    },
+    data,
     202
   );
 };
 
 export const getDecisionModelsServiceHealthAdmin = async (_req, res) => {
-  const data = await fetchDecisionModelsServiceHealth({ httpClient: axios });
+  const data = await fetchDecisionModelsServiceHealth();
 
   return sendSuccess(
     res,
@@ -525,7 +171,7 @@ export const getDecisionModelsServiceHealthAdmin = async (_req, res) => {
 };
 
 export const reloadDecisionModelsServiceAdmin = async (_req, res) => {
-  const data = await reloadDecisionModelsService({ httpClient: axios });
+  const data = await reloadDecisionModelsService();
 
   return sendSuccess(
     res,
@@ -536,7 +182,7 @@ export const reloadDecisionModelsServiceAdmin = async (_req, res) => {
 };
 
 export const getCurrentModelManifestAdmin = async (_req, res) => {
-  const manifest = await fetchModelManifest({ httpClient: axios });
+  const manifest = await fetchModelManifest();
 
   return sendSuccess(
     res,
@@ -606,38 +252,12 @@ export const updateUserAdmin = async (req, res) => {
 };
 
 export const deleteUserAdmin = async (req, res) => {
-  const id = req.params.id;
-
-  if (!id || !isValidObjectIdLike(id)) {
-    throw createBadRequestError("Valid user id is required", {
-      field: "id",
-    });
-  }
-
-  const session = await mongoose.startSession();
-
-  try {
-    let result = null;
-
-    await session.withTransaction(async () => {
-      result = await deleteAdminUserUseCase({
-        targetUserId: id,
-        adminUserId: req.uid,
-        session,
-      });
-    });
-
-    return sendSuccess(
-      res,
-      `User ${result.deletedUser.email} deleted successfully`,
-      {
-        deletedUser: result.deletedUser,
-        summary: result.summary,
-      },
-    );
-  } finally {
-    await endSessionSafely(session);
-  }
+  return deleteAdminUserWorkflow({
+    targetUserId: req.params.id,
+    adminUserId: req.uid,
+    beforeSessionCleanup: (result) =>
+      sendSuccess(res, result.message, result.data),
+  });
 };
 
 export const getAllIssuesAdmin = async (req, res) => {
@@ -712,139 +332,34 @@ export const reassignIssueOwnerAdmin = async (req, res) => {
 };
 
 export const editIssueExpertsAdmin = async (req, res) => {
-  const issueId = req.params.id;
-
-  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
-    issueId,
+  const result = await editAdminIssueExperts({
+    issueId: req.params.id,
+    payload: req.body,
   });
 
-  const session = await mongoose.startSession();
-  let result = null;
-
-  try {
-    await session.withTransaction(async () => {
-      result = await editIssueExpertsUseCase({
-        issueId,
-        userId: ownerUserId,
-        expertsToAdd: req.body.expertsToAdd,
-        expertsToRemove: req.body.expertsToRemove,
-        expertWeightsByEmail: req.body.expertWeightsByEmail ?? null,
-        hasExpertWeightsByEmail: Object.prototype.hasOwnProperty.call(
-          req.body,
-          "expertWeightsByEmail"
-        ),
-        session,
-      });
-    });
-  } finally {
-    await endSessionSafely(session);
-  }
-
-  return sendSuccess(
-    res,
-    "Experts updated successfully",
-    {
-      issueName: result.issueName,
-    },
-  );
+  return sendSuccess(res, result.message, result.data);
 };
 
 export const computeIssueWeightsAdmin = async (req, res) => {
-  const issueId = req.params.id;
-
-  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
-    issueId,
+  const result = await computeAdminIssueWeights({
+    issueId: req.params.id,
   });
 
-  const result = await computeIssueEvaluationStage({
-    issueId,
-    userId: ownerUserId,
-    stage: "criteriaWeighting",
-    decisionModelsServiceBaseUrl:
-      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
-    httpClient: axios,
-  });
-
-  return sendSuccess(
-    res,
-    result.message,
-    {
-      currentStage: result.currentStage,
-      consensusPhase: result.consensusPhase,
-      weightsByCriterion: result.result?.weightsByCriterion ?? {},
-      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
-      consensusMeasure: result.result?.consensusMeasure ?? null,
-      consensusLifecycle: result.result?.consensusLifecycle ?? null,
-      modelExecution: result.result?.modelExecution ?? null,
-      rawOutput: result.result?.rawOutput ?? {},
-    },
-  );
+  return sendSuccess(res, result.message, result.data);
 };
 
 export const resolveIssueAdmin = async (req, res) => {
-  const issueId = req.params.id;
-
-  const { ownerUserId } = await getAdminIssueExecutionContextOrThrow({
-    issueId,
+  const result = await resolveAdminIssue({
+    issueId: req.params.id,
   });
 
-  const result = await computeIssueEvaluationStage({
-    issueId,
-    userId: ownerUserId,
-    stage: "alternativeEvaluation",
-    decisionModelsServiceBaseUrl:
-      process.env.DECISION_MODELS_SERVICE_BASE_URL || "http://localhost:7000",
-    httpClient: axios,
-  });
-
-  const finished = result.currentStage === "finished";
-
-  return sendSuccess(
-    res,
-    result.message,
-    {
-      finished,
-      currentStage: result.currentStage,
-      consensusPhase: result.consensusPhase,
-      rankedAlternatives: result.result?.rankedAlternatives ?? [],
-      collectiveEvaluations: result.result?.collectiveEvaluations ?? {},
-      plotsGraphic: result.result?.plotsGraphic ?? {},
-      consensusMeasure: result.result?.consensusMeasure ?? null,
-      consensusLifecycle: result.result?.consensusLifecycle ?? null,
-      modelExecution: result.result?.modelExecution ?? null,
-      rawOutput: result.result?.rawOutput ?? {},
-    },
-  );
+  return sendSuccess(res, result.message, result.data);
 };
 
 export const removeIssueAdmin = async (req, res) => {
-  const issueId = req.params.id;
-  const session = await mongoose.startSession();
-
-  try {
-    let removedIssueName = "";
-
-    await session.withTransaction(async () => {
-      const { issue } = await getAdminIssueExecutionContextOrThrow({
-        issueId,
-        session,
-      });
-      removedIssueName = issue.name;
-
-      await deleteIssueCascade({
-        issueId: issue._id,
-        session,
-      });
-    });
-
-    return sendSuccess(
-      res,
-      `Issue ${removedIssueName} removed`,
-      {
-        issueName: removedIssueName,
-      },
-    );
-  } finally {
-    await endSessionSafely(session);
-  }
+  return removeAdminIssue({
+    issueId: req.params.id,
+    beforeSessionCleanup: (result) =>
+      sendSuccess(res, result.message, result.data),
+  });
 };

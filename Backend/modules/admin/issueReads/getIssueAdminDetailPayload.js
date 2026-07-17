@@ -9,10 +9,12 @@ import { Participation } from "../../../models/Participations.js";
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../../issues/shared/ordering.js";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
-import { buildExpressionDomainConfigFromLeafCriteriaOrThrow } from "../../expressionDomains/buildIssueDomainConfig.js";
-import { getExpressionDomainFamilyOrThrow } from "../../expressionDomains/expressionDomainTypeCatalog.js";
+} from "../../issues/ordering/index.js";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/index.js";
+import {
+  buildExpressionDomainConfigFromLeafCriteriaOrThrow,
+  getExpressionDomainFamilyOrThrow,
+} from "../../expressionDomains/index.js";
 
 import { createInternalError } from "../../../utils/common/errors.js";
 import { toIdString } from "../../../utils/common/ids.js";

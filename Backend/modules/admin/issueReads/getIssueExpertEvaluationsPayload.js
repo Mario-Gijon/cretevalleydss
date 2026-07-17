@@ -6,7 +6,7 @@ import { User } from "../../../models/Users.js";
 import {
   getOrderedAlternativesDb,
   getOrderedLeafCriteriaDb,
-} from "../../issues/shared/ordering.js";
+} from "../../issues/ordering/index.js";
 
 import { toIdString } from "../../../utils/common/ids.js";
 import {

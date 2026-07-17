@@ -1,4 +1,4 @@
-import { getIssueByIdOrThrow } from "../../issues/shared/queries.js";
+import { getIssueByIdOrThrow } from "../../issues/queries/index.js";
 
 import {
   createBadRequestError,

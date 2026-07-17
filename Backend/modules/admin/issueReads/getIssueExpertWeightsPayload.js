@@ -2,7 +2,7 @@ import { IssueEvaluation } from "../../../models/IssueEvaluations.js";
 import { Participation } from "../../../models/Participations.js";
 import { User } from "../../../models/Users.js";
 
-import { getOrderedLeafCriteriaDb } from "../../issues/shared/ordering.js";
+import { getOrderedLeafCriteriaDb } from "../../issues/ordering/index.js";
 
 import {
   createInternalError,

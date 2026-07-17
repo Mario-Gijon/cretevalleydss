@@ -1,7 +1,7 @@
 import { toIdString } from "../../../utils/common/ids.js";
 import { hasOwnKey } from "../../../utils/common/objects.js";
-import { buildCriteriaTreeFromDocs } from "../../issues/shared/criteriaTree.js";
-import { comparePositionId } from "../../issues/shared/ordering.js";
+import { buildCriteriaTreeFromDocs } from "../../issues/criteria/index.js";
+import { comparePositionId } from "../../issues/ordering/index.js";
 import { createInternalError } from "../../../utils/common/errors.js";
 
 export const buildCriteriaTreeAdmin = (criteriaDocs) => {
