@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Box } from "@mui/material";
 
-import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
+import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/registry";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 
 const NOOP = () => {};

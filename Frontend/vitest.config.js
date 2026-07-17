@@ -12,5 +12,10 @@ export default defineConfig({
     setupFiles: ["./tests/setup/testSetup.js"],
     restoreMocks: true,
     clearMocks: true,
+    server: {
+      deps: {
+        inline: [/@mui\/x-charts/],
+      },
+    },
   },
 });

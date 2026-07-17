@@ -3,7 +3,7 @@ import ShowChartRoundedIcon from "@mui/icons-material/ShowChartRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import { Box, Stack, Typography } from "@mui/material";
 
-import { IssueModelParametersView } from "../../../../modelParameters";
+import { IssueModelParametersView } from "../../../../modelParameters/rendering";
 import { modelParametersViewportSx, selectedExecutionShellSx } from "../models.styles.js";
 
 const SelectedExecutionPanel = ({ execution, parameterContext }) => (

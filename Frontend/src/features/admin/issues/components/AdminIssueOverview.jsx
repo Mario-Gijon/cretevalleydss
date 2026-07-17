@@ -13,7 +13,8 @@ import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import CalculateIcon from "@mui/icons-material/Calculate";
 
-import { IssueModelParametersView } from "../../../modelParameters";
+import { buildParameterContext } from "../../../modelParameters/context";
+import { IssueModelParametersView } from "../../../modelParameters/rendering";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 import AdminIssueMetaChip from "./AdminIssueMetaChip";
 import {
@@ -22,7 +23,6 @@ import {
 } from "../logic/formatAdminIssueDisplay";
 import { getAdminIssueStageLabel } from "../logic/getAdminIssueStatusDisplay";
 import { getAdminIssueDetailCardSx } from "../styles/adminIssues.styles";
-import { buildParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
 
 export default function AdminIssueOverview({
   issueDetail,

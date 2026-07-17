@@ -1,7 +1,7 @@
 import {
   buildCreateIssueParameterDefaults,
   updateCreateIssueParameterValues,
-} from "../../modelParameters";
+} from "../../modelParameters/draft";
 
 export const setDefaults = (allData) => {
   return buildCreateIssueParameterDefaults({

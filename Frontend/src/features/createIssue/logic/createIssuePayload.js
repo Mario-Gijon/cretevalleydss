@@ -5,7 +5,7 @@ import {
 } from "../../../utils/domainAssignments.utils";
 import {
   pruneCreateIssueParameterValues,
-} from "../../modelParameters";
+} from "../../modelParameters/draft";
 import {
   CREATE_ISSUE_CRITERIA_WEIGHTING_MODES,
   modelUsesCriteriaWeights,

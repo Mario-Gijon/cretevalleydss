@@ -13,19 +13,47 @@ import {
 } from "../../../src/services/issue.service";
 import {
   fetchIssueEvaluation,
+  normalizeIssueEvaluationResponse,
   saveIssueEvaluation,
   submitIssueEvaluationPayload,
 } from "../../../src/features/issueEvaluation/services/issueEvaluation.service.js";
 
 describe("issueEvaluation.service", () => {
-  it("fetchIssueEvaluation delegates to getIssueEvaluation", async () => {
-    getIssueEvaluation.mockResolvedValue({ success: true });
+  it("fetchIssueEvaluation delegates and returns one canonical load contract", async () => {
+    const evaluationContext = { issue: { id: "issue-1" } };
+    getIssueEvaluation.mockResolvedValue({
+      success: true,
+      data: {
+        evaluationContext,
+        payload: { matrix: { a: 1 } },
+        collectiveReference: { collectiveEvaluations: { shared: true } },
+      },
+    });
 
     const issue = { _id: "issue-1" };
     const response = await fetchIssueEvaluation(issue, "alternativeEvaluation");
 
-    expect(response).toEqual({ success: true });
+    expect(response).toEqual({
+      evaluationContext,
+      payload: { matrix: { a: 1 } },
+      collectivePayload: { shared: true },
+    });
     expect(getIssueEvaluation).toHaveBeenCalledWith(issue, "alternativeEvaluation");
+  });
+
+  it("normalizes optional evaluation data without accepting a missing context", () => {
+    const evaluationContext = { issue: { id: "issue-2" } };
+
+    expect(
+      normalizeIssueEvaluationResponse({ data: { evaluationContext } })
+    ).toEqual({
+      evaluationContext,
+      payload: {},
+      collectivePayload: null,
+    });
+    expect(() =>
+      normalizeIssueEvaluationResponse({ data: { payload: { stale: true } } })
+    ).toThrow("Missing evaluationContext in evaluation response.");
   });
 
   it("saveIssueEvaluation delegates to saveIssueEvaluationDraft and passes payload unchanged", async () => {

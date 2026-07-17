@@ -15,7 +15,7 @@ import AdminIssueActionConfirmDialog from "./components/AdminIssueActionConfirmD
 import AdminIssueAddExpertsDialog from "./components/AdminIssueAddExpertsDialog";
 import AdminIssueDetailDialog from "./components/AdminIssueDetailDialog";
 import AdminIssueReassignDialog from "./components/AdminIssueReassignDialog";
-import ExpertWeightsDialog from "../../issueExperts/components/ExpertWeightsDialog";
+import { ExpertWeightsDialog } from "../../issueExperts/dialogs";
 import AdminIssuesStatCard from "./components/AdminIssuesStatCard";
 import AdminIssuesTable from "./components/AdminIssuesTable";
 import AdminIssuesToolbar from "./components/AdminIssuesToolbar";

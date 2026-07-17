@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Typography,
   Container,
@@ -22,97 +21,27 @@ import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
-import { useOutletContext } from "react-router-dom";
 
-import { signup } from "../../../services/auth.service";
-import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import {
-  signupFormInitialErrors,
-  signupFormInitialValues,
-} from "../constants/signupForm.constants";
-import { validateSignupForm } from "../logic/validateSignupForm";
+import { useSignupForm } from "../hooks/useSignupForm";
 import { authCardContentSx, getAuthCardSx } from "../styles/auth.styles";
 
 const SignUpForm = () => {
   const theme = useTheme();
-  const { navigate } = useOutletContext();
-  const { showSnackbarAlert } = useSnackbarAlertContext();
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showRepeatPassword, setShowRepeatPassword] = useState(false);
-  const [formValues, setFormValues] = useState(signupFormInitialValues);
-  const [errors, setErrors] = useState(signupFormInitialErrors);
-  const [loading, setLoading] = useState(false);
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormValues((prevValues) => ({
-      ...prevValues,
-      [name]: value,
-    }));
-  };
-
-  const handleRestart = () => {
-    setFormValues(signupFormInitialValues);
-    setErrors(signupFormInitialErrors);
-  };
-
-  const handleSignUp = async (event) => {
-    event.preventDefault();
-
-    const newErrors = validateSignupForm(formValues);
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await signup(formValues);
-
-      if (!data?.success) {
-        const validationErrors = data?.error?.details;
-
-        if (
-          validationErrors &&
-          typeof validationErrors === "object" &&
-          !Array.isArray(validationErrors)
-        ) {
-          setErrors(validationErrors);
-        }
-
-        showSnackbarAlert(data?.message || "Error signing up", "error");
-        return;
-      }
-
-      setErrors(signupFormInitialErrors);
-      showSnackbarAlert(
-        "Signup successfully, check your email for confirmation",
-        "success"
-      );
-      navigate("/login");
-    } catch (error) {
-      console.error("Error submitting signup form:", error);
-      showSnackbarAlert("An error occurred while submitting the form", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const focusNextField = (event, nextFieldId) => {
-    if (event.key === "Enter") {
-      document.getElementById(nextFieldId)?.focus();
-    }
-  };
-
-  const handleSubmitOnEnter = (event) => {
-    if (event.key === "Enter") {
-      handleSignUp(event);
-    }
-  };
+  const {
+    errors,
+    formValues,
+    loading,
+    showPassword,
+    showRepeatPassword,
+    focusNextField,
+    handleChange,
+    handleNavigateToLogin,
+    handleRestart,
+    handleSignUp,
+    handleSubmitOnEnter,
+    togglePasswordVisibility,
+    toggleRepeatPasswordVisibility,
+  } = useSignupForm();
 
   return (
     <Container maxWidth="sm" sx={{ display: "flex", justifyContent: "center" }}>
@@ -227,8 +156,9 @@ const SignUpForm = () => {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        onClick={() => setShowPassword((prev) => !prev)}
+                        onClick={togglePasswordVisibility}
                         edge="end"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -260,8 +190,13 @@ const SignUpForm = () => {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        onClick={() => setShowRepeatPassword((prev) => !prev)}
+                        onClick={toggleRepeatPasswordVisibility}
                         edge="end"
+                        aria-label={
+                          showRepeatPassword
+                            ? "Hide repeated password"
+                            : "Show repeated password"
+                        }
                       >
                         {showRepeatPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -306,7 +241,7 @@ const SignUpForm = () => {
                     underline="hover"
                     color="secondary"
                     sx={{ textAlign: "center", cursor: "pointer", fontWeight: 850 }}
-                    onClick={() => navigate("/login")}
+                    onClick={handleNavigateToLogin}
                   >
                     Already registered? Click here to continue
                   </Link>

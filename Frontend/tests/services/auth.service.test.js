@@ -14,6 +14,7 @@ vi.mock("../../src/utils/authFetch.js", async () => {
 
 import {
   bootstrapSession,
+  fetchProtectedData,
   fetchProtectedDataForBootstrap,
   login,
   logout,
@@ -44,6 +45,19 @@ describe("auth.service", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "alice@example.com", password: "secret" }),
       })
+    );
+  });
+
+  it("signup preserves the legacy false fallback on network failure", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetch.mockRejectedValue(new Error("offline"));
+
+    await expect(
+      signup({ email: "alice@example.com", password: "secret" })
+    ).resolves.toBe(false);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Error during signup:",
+      expect.any(Error)
     );
   });
 
@@ -109,6 +123,17 @@ describe("auth.service", () => {
       },
       status: 401,
     });
+  });
+
+  it("fetchProtectedData preserves its false contract for unsuccessful payloads", async () => {
+    authFetchModule.authFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({ success: false, message: "Unauthorized", data: null }),
+        { status: 401 }
+      )
+    );
+
+    await expect(fetchProtectedData()).resolves.toBe(false);
   });
 
   it("updatePassword returns a network error envelope when authFetch fails", async () => {

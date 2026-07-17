@@ -17,9 +17,11 @@ import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import ExpressionDomainSummaryButton from "../../../issueEvaluation/components/ExpressionDomainSummaryButton";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
-import EvaluationStructureRenderer from "../../../issueEvaluation/components/EvaluationStructureRenderer";
+import {
+  EvaluationStructureRenderer,
+  ExpressionDomainSummaryButton,
+} from "../../../issueEvaluation/rendering";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/stages";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 import AdminIssueMetaChip from "./AdminIssueMetaChip";
 import AdminIssueReadOnlyWeights from "./AdminIssueReadOnlyWeights";

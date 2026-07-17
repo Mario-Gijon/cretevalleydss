@@ -3,13 +3,14 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@mui/x-charts/BarChart", () => ({
-  BarChart: ({ xAxis, series }) => <div data-testid="score-overview-chart" data-axis={JSON.stringify(xAxis)} data-values={JSON.stringify(series[0]?.data)} />,
+  BarChart: ({ height, series, xAxis }) => <div data-testid="score-overview-chart" data-axis={JSON.stringify(xAxis)} data-height={height} data-values={JSON.stringify(series[0]?.data)} />,
 }));
 
 import { useFinishedIssueResultsSelection } from "../../../../../src/features/finishedIssueDialog/hooks/useFinishedIssueResultsSelection.js";
 import { buildResultsAnalysisWorkspaceData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
 import ScoreOverviewChart from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/ScoreOverviewChart.jsx";
-import { scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
+import { getScoreOverviewChartHeight } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/scoreOverviewChartHeight.js";
+import { rankingListViewportSx, scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 const completeScenario = (id, ranks) => ({
@@ -82,17 +83,43 @@ describe("Results analysis workspace", () => {
 
   it("uses a stretched single-outcome grid and a flexible score-panel chart body", () => {
     expect(singleOutcomeGridSx.alignItems).toBe("stretch");
-    expect(scoreOverviewPanelSx).toMatchObject({ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 });
-    expect(scoreChartViewportSx).toMatchObject({ flex: 1, display: "flex", minHeight: { xs: 320, md: 0 }, overflowX: "auto", overflowY: "hidden" });
-    expect(scoreChartContainerSx(900)).toMatchObject({ minWidth: 900, width: "100%", flex: 1, height: "100%", minHeight: { xs: 320, md: 360 } });
+    expect(scoreOverviewPanelSx).toMatchObject({ display: "flex", flexDirection: "column", minWidth: 0 });
+    expect(scoreChartViewportSx).toMatchObject({ width: "100%", overflowX: "auto", overflowY: "hidden" });
+    expect(scoreChartViewportSx.flex).toBeUndefined();
+    expect(scoreChartContainerSx(900, 380)).toMatchObject({ minWidth: 900, width: "100%", flex: "0 0 auto", height: 380, minHeight: 380, maxHeight: 380 });
+    expect(rankingListViewportSx(false).maxHeight).toEqual({ xs: 520, xl: 380 });
   });
 
-  it("passes every alternative, including negative, zero, and missing scores, to the chart", () => {
-    render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={[{ id: "a", name: "Alpha", score: -1, formattedScore: "-1", position: 1 }, { id: "b", name: "Beta", score: 0, formattedScore: "0", position: 2 }, { id: "c", name: "Gamma", score: null, formattedScore: "—", position: 3 }]} /></ThemeProvider>);
+  it("uses stable bounded responsive numeric chart heights without creating a ResizeObserver", () => {
+    expect(getScoreOverviewChartHeight({ isMobile: true, isDesktop: false })).toBe(320);
+    expect(getScoreOverviewChartHeight({ isMobile: false, isDesktop: false })).toBe(340);
+    expect(getScoreOverviewChartHeight({ isMobile: false, isDesktop: true })).toBe(380);
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const resizeObserver = vi.fn();
+    globalThis.ResizeObserver = resizeObserver;
+    render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={[{ id: "a", name: "Alpha", score: 1, formattedScore: "1", position: 1 }]} /></ThemeProvider>);
+    expect(resizeObserver).not.toHaveBeenCalled();
+    globalThis.ResizeObserver = originalResizeObserver;
+  });
+
+  it("passes the bounded numeric height while preserving every score value", () => {
+    const { rerender } = render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={[{ id: "a", name: "Alpha", score: -1, formattedScore: "-1", position: 1 }, { id: "b", name: "Beta", score: 0, formattedScore: "0", position: 2 }, { id: "c", name: "Gamma", score: null, formattedScore: "—", position: 3 }]} /></ThemeProvider>);
     const chart = screen.getByTestId("score-overview-chart");
     expect(JSON.parse(chart.dataset.axis)[0].data).toEqual(["Alpha", "Beta", "Gamma"]);
     expect(JSON.parse(chart.dataset.values)).toEqual([-1, 0, null]);
+    expect(Number(chart.dataset.height)).toBeGreaterThanOrEqual(300);
+    expect(Number(chart.dataset.height)).toBeLessThanOrEqual(400);
+    rerender(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={[{ id: "a", name: "Alpha", score: -1, formattedScore: "-1", position: 1 }, { id: "b", name: "Beta", score: 0, formattedScore: "0", position: 2 }, { id: "c", name: "Gamma", score: null, formattedScore: "—", position: 3 }]} /></ThemeProvider>);
+    expect(Number(screen.getByTestId("score-overview-chart").dataset.height)).toBe(Number(chart.dataset.height));
     expect(screen.getByText("Scores are shown in the original scale of this execution.")).toBeInTheDocument();
     expect(chart.compareDocumentPosition(screen.getByText("Scores are shown in the original scale of this execution.")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("preserves internal chart width for ten alternatives", () => {
+    const ranking = Array.from({ length: 10 }, (_, index) => ({ id: `a-${index}`, name: `Alternative ${index + 1}`, score: index, formattedScore: String(index), position: index + 1 }));
+    render(<ThemeProvider theme={createTheme()}><ScoreOverviewChart ranking={ranking} /></ThemeProvider>);
+    const chart = screen.getByTestId("score-overview-chart");
+    expect(JSON.parse(chart.dataset.axis)[0].data).toHaveLength(10);
+    expect(scoreChartContainerSx(900, 380).minWidth).toBe(900);
   });
 });

@@ -4,6 +4,8 @@ import { createIssueScenario, removeIssueScenario } from "../../../services/issu
 import { buildParamsResolved, cleanParamsForSend, modelUsesScenarioCriteriaWeights, validateParams, validateScenarioCriteriaWeights } from "../logic/buildFinishedScenarioParameters.js";
 import { getCompatReason, isModelCompatible } from "../logic/buildFinishedScenarioRuns.js";
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../logic/selectFinishedIssueExecution.js";
+import { SCENARIO_DESCRIPTION_MAX } from "../logic/scenarioDraft.constants.js";
+import { updateScenarioParameterValues } from "../logic/updateScenarioParameterValues.js";
 
 const asArray = (value) => Array.isArray(value) ? value : [];
 
@@ -16,7 +18,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
   const [selectedModelId, setSelectedModelId] = useState("");
   const [selectedSourcePhase, setSelectedSourcePhase] = useState(null);
   const [scenarioParamValues, setScenarioParamValues] = useState({});
-  const [scenarioWeightsError, setScenarioWeightsError] = useState("");
   const selectedExecution = useMemo(
     () => selectFinishedIssueExecution(payload, selectedExecutionKey),
     [payload, selectedExecutionKey]
@@ -57,7 +58,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       leafCriteria,
       baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {},
     }));
-    setScenarioWeightsError("");
   }, [addOpen, payload?.criteria?.finalWeights?.byCriterionId, selectedModel, leafCriteria]);
   useEffect(() => {
     if (!addOpen) return;
@@ -73,16 +73,11 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
     setSelectedModelId("");
     setSelectedSourcePhase(null);
     setScenarioParamValues({});
-    setScenarioWeightsError("");
   };
-  const restoreScenarioDefaults = () => {
-    if (!selectedModel) return;
-    setScenarioParamValues(buildParamsResolved({
-      model: selectedModel,
-      leafCount: leafCriteria.length,
-      leafCriteria,
-      baseIssueWeights: payload?.criteria?.finalWeights?.byCriterionId || {},
-    }));
+  const updateScenarioParameter = (key, value) => {
+    setScenarioParamValues((current) =>
+      updateScenarioParameterValues(current, key, value)
+    );
   };
   const handleAddScenario = async () => {
     if (!scenarioName.trim()) {
@@ -94,8 +89,11 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       showSnackbarAlert("Scenario description is required.", "warning");
       return;
     }
-    if (trimmedScenarioDescription.length > 320) {
-      showSnackbarAlert("Scenario description must not exceed 320 characters.", "warning");
+    if (trimmedScenarioDescription.length > SCENARIO_DESCRIPTION_MAX) {
+      showSnackbarAlert(
+        `Scenario description must not exceed ${SCENARIO_DESCRIPTION_MAX} characters.`,
+        "warning"
+      );
       return;
     }
     if (!issueId || !selectedModel) {
@@ -110,7 +108,6 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
     if (modelUsesScenarioCriteriaWeights(selectedModel)) {
       const checked = validateScenarioCriteriaWeights({ weights: values.weights, leafCriteria, leafCount: leafCriteria.length });
       if (!checked.ok) {
-        setScenarioWeightsError(checked.msg);
         showSnackbarAlert(checked.msg, "error");
         return;
       }
@@ -186,16 +183,13 @@ export const useFinishedIssueRuns = ({ issueId, payload, refreshPayload, showSna
       sourcePhases,
       consensusEnabled,
       scenarioParamValues,
-      scenarioWeightsError,
       setScenarioName,
       setScenarioDescription,
       setSelectedModelId,
       setSelectedSourcePhase,
-      setScenarioParamValues,
-      clearScenarioWeightsError: () => setScenarioWeightsError(""),
+      updateScenarioParameter,
       open: () => setAddOpen(true),
       close: closeAddDialog,
-      restoreScenarioDefaults,
       submit: handleAddScenario,
       leafCriteria,
     },

@@ -1,4 +1,4 @@
-import AdminView from "../../../features/admin/AdminView";
+import { AdminView } from "../../../features/admin";
 
 /**
  * Wrapper de ruta para mantener la URL actual del panel de administracion.

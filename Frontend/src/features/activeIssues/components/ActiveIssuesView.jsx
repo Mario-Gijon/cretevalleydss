@@ -13,7 +13,7 @@ import { useActiveIssueConfirm } from "../hooks/useActiveIssueConfirm";
 import ActiveIssuesDesktopView from "./ActiveIssuesDesktopView";
 import ActiveIssuesMobileView from "./ActiveIssuesMobileView";
 import ActiveIssuesOverlays from "./ActiveIssuesOverlays";
-import IssueExpertsProvider from "../../issueExperts/context/issueExperts.provider.jsx";
+import { IssueExpertsProvider } from "../../issueExperts/provider";
 
 /**
  * Vista principal del feature de issues activos.

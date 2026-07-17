@@ -5,6 +5,7 @@ import {
   buildQuery,
   normalizeApiResponse,
   requestJson,
+  requestPayload,
   safeJson,
 } from "../../src/services/httpRequest.service.js";
 
@@ -65,6 +66,22 @@ describe("httpRequest.service", () => {
       error: null,
       status: 200,
     });
+  });
+
+  it("requestPayload preserves legacy raw payload and network fallback contracts", async () => {
+    const payload = { success: true, data: { value: 42 } };
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(payload)));
+
+    await expect(requestPayload("/api/legacy", {}, { fetcher })).resolves.toEqual(payload);
+
+    const failingFetcher = vi.fn().mockRejectedValue(new Error("offline"));
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(requestPayload("/api/legacy", {}, {
+      fetcher: failingFetcher,
+      errorPrefix: "Legacy request:",
+      networkFallback: { success: false },
+    })).resolves.toEqual({ success: false });
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Legacy request:", expect.any(Error));
   });
 
   it("requestJson returns a network error envelope when fetch fails", async () => {

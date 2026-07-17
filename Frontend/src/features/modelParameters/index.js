@@ -1,19 +1,20 @@
-export { isCriteriaWeightLikeParameter } from "./logic/modelParameterCriteria";
-
 export {
+  isCriteriaWeightLikeParameter,
   getCreateIssueModelParameters,
   buildCreateIssueParameterDefaults,
   updateCreateIssueParameterValues,
   pruneCreateIssueParameterValues,
-} from "./logic/modelParameterValueState";
+} from "./draft/index.js";
 
 export {
   PARAMETER_FIELD_REGISTRY,
   resolveParameterFieldEntry,
   resolveParameterField,
-} from "../decisionPlugins/modelParameters/modelParameterRegistry";
+} from "../decisionPlugins/modelParameters";
 
-export { ParameterFieldHost } from "./components/ParameterFieldHost";
-export { ParameterReadOnlyHost } from "./components/ParameterReadOnlyHost";
-
-export { IssueModelParametersView } from "./components/IssueModelParametersView";
+export {
+  ParameterFieldHost,
+  ParameterReadOnlyHost,
+  IssueModelParametersView,
+} from "./rendering/index.js";
+export { buildParameterContext } from "./context/index.js";

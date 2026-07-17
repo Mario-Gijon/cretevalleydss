@@ -26,7 +26,7 @@ import UndoIcon from "@mui/icons-material/Undo";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
-import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesAuroraBg } from "../../../activeIssues/shared";
 import { normalizeAdminIssueText } from "../logic/getAdminIssueStatusDisplay";
 
 /**

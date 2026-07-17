@@ -15,6 +15,35 @@ export const safeJson = async (response) => {
 };
 
 /**
+ * Ejecuta una petición que conserva el payload JSON sin normalizar.
+ *
+ * Algunos endpoints históricos todavía exponen el payload de transporte como
+ * contrato público. Este helper centraliza únicamente fetch, parseo seguro y
+ * el valor de red, sin alterar ese contrato.
+ *
+ * @param {string} url URL de destino.
+ * @param {object} options Opciones fetch.
+ * @param {object} config Configuración del transporte.
+ * @param {Function} config.fetcher Función fetch a usar.
+ * @param {string} config.errorPrefix Prefijo del log de error.
+ * @param {*} config.networkFallback Valor retornado ante error de red.
+ * @returns {Promise<*>}
+ */
+export const requestPayload = async (
+  url,
+  options = {},
+  { fetcher = fetch, errorPrefix = "Request error:", networkFallback = false } = {}
+) => {
+  try {
+    const response = await fetcher(url, options);
+    return await safeJson(response);
+  } catch (error) {
+    console.error(errorPrefix, error);
+    return networkFallback;
+  }
+};
+
+/**
  * Construye una query string a partir de un objeto plano.
  *
  * @param {object} paramsObj Parámetros de entrada.

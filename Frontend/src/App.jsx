@@ -1,171 +1,36 @@
-import { Suspense, lazy } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Box, useColorScheme } from "@mui/material";
+import { Suspense } from "react";
+import { BrowserRouter } from "react-router-dom";
 
-import { CircularLoading } from "./components/LoadingProgress/CircularLoading";
 import { useAuthContext } from "./context/auth/auth.context";
+import { AppLoadingScreen } from "./routing/AppLoadingScreen.jsx";
+import { AppRoutes } from "./routing/AppRoutes.jsx";
+import { shouldShowAppLoading } from "./routing/appRouteDecisions.js";
 import { isRecentPendingBackendChange } from "./utils/pendingBackendChange.js";
-
-const AuthLayout = lazy(() => import("./features/auth/components/AuthLayout"));
-const LogInForm = lazy(() => import("./features/auth/components/LogInForm"));
-const SignUpForm = lazy(() => import("./features/auth/components/SignUpForm"));
-const PrivateLayout = lazy(() => import("./pages/private/PrivateLayout"));
-const ActiveIssuesPage = lazy(() => import("./pages/private/activeIssues/ActiveIssuesPage"));
-const FinishedIssuesPage = lazy(() => import("./pages/private/finishedIssues/FinishedIssuesPage"));
-const CreateIssuePage = lazy(() => import("./pages/private/createIssue/CreateIssuePage"));
-const AdminRoute = lazy(() => import("./pages/private/admin/AdminRoute"));
-const AdminPage = lazy(() => import("./pages/private/admin/AdminPage"));
-const ApplyingBackendChangesPage = lazy(() =>
-  import("./pages/system/ApplyingBackendChangesPage")
-);
-
-const APP_LOADING_CONTAINER_SX = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-  width: "100%",
-  position: "relative",
-  overflow: "hidden",
-};
-
-function AppLoadingScreen() {
-  const { mode } = useColorScheme();
-
-  return (
-    <Box className="dashboard-background" sx={APP_LOADING_CONTAINER_SX}>
-      <CircularLoading
-        size="5rem"
-        color={mode === "dark" ? "secondary" : "primary"}
-      />
-    </Box>
-  );
-}
-
-function PublicOnlyRoute({ isLoggedIn, hasPendingBackendChange, children }) {
-  if (hasPendingBackendChange) {
-    return <Navigate to="/system/applying-changes" replace />;
-  }
-
-  return isLoggedIn ? <Navigate to="/dashboard" replace /> : children;
-}
-
-function PrivateRoute({ isLoggedIn, hasPendingBackendChange, children }) {
-  if (!isLoggedIn && hasPendingBackendChange) {
-    return <Navigate to="/system/applying-changes" replace />;
-  }
-
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
-}
 
 export function App() {
   const { loading, isLoggedIn } = useAuthContext();
-  const isApplyingBackendChangesRoute =
-    typeof window !== "undefined" &&
-    window.location.pathname === "/system/applying-changes";
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const hasPendingBackendChange =
     typeof window !== "undefined" &&
     isRecentPendingBackendChange();
 
-  if (loading && !(isApplyingBackendChangesRoute && hasPendingBackendChange)) {
+  if (
+    shouldShowAppLoading({
+      loading,
+      pathname,
+      hasPendingBackendChange,
+    })
+  ) {
     return <AppLoadingScreen />;
   }
 
   return (
     <BrowserRouter>
       <Suspense fallback={<AppLoadingScreen />}>
-        <Routes>
-          <Route path="/" element={<AuthLayout />}>
-            <Route
-              path="login"
-              element={
-                <PublicOnlyRoute
-                  isLoggedIn={isLoggedIn}
-                  hasPendingBackendChange={hasPendingBackendChange}
-                >
-                  <LogInForm />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route
-              path="signup"
-              element={
-                <PublicOnlyRoute
-                  isLoggedIn={isLoggedIn}
-                  hasPendingBackendChange={hasPendingBackendChange}
-                >
-                  <SignUpForm />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route path="login/*" element={<Navigate to="/login" replace />} />
-            <Route path="signup/*" element={<Navigate to="/signup" replace />} />
-            <Route path="register/*" element={<Navigate to="/signup" replace />} />
-            <Route
-              index
-              element={
-                isLoggedIn ? (
-                  <Navigate to="/dashboard" replace />
-                ) : hasPendingBackendChange ? (
-                  <Navigate to="/system/applying-changes" replace />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              }
-            />
-          </Route>
-
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute
-                isLoggedIn={isLoggedIn}
-                hasPendingBackendChange={hasPendingBackendChange}
-              >
-                <PrivateLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<ActiveIssuesPage />} />
-            <Route path="active" element={<ActiveIssuesPage />} />
-            <Route path="finished" element={<FinishedIssuesPage />} />
-            <Route path="create" element={<CreateIssuePage />} />
-            <Route
-              path="admin/*"
-              element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              }
-            />
-
-            <Route path="active/*" element={<Navigate to="/dashboard/active" replace />} />
-            <Route path="finished/*" element={<Navigate to="/dashboard/finished" replace />} />
-            <Route path="create/*" element={<Navigate to="/dashboard/create" replace />} />
-          </Route>
-
-          <Route
-            path="/system/applying-changes"
-            element={<ApplyingBackendChangesPage />}
-          />
-
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to={
-                  hasPendingBackendChange
-                    ? "/system/applying-changes"
-                    : isLoggedIn
-                      ? "/dashboard"
-                      : "/login"
-                }
-                replace
-              />
-            }
-          />
-        </Routes>
+        <AppRoutes
+          isLoggedIn={isLoggedIn}
+          hasPendingBackendChange={hasPendingBackendChange}
+        />
       </Suspense>
     </BrowserRouter>
   );

@@ -9,6 +9,7 @@ import {
   buildNetworkErrorResponse,
   normalizeApiResponse,
   jsonRequest,
+  requestPayload,
   safeJson,
 } from "./httpRequest.service.js";
 
@@ -29,15 +30,8 @@ export const EmptyAuthState = {
  * @param {string} errorPrefix Prefijo del log de error.
  * @returns {Promise<object|false>}
  */
-const requestPublicPayload = async (path, options, errorPrefix) => {
-  try {
-    const response = await fetch(`${API}${path}`, options);
-    return await safeJson(response);
-  } catch (error) {
-    console.error(errorPrefix, error);
-    return false;
-  }
-};
+const requestPublicPayload = (path, options, errorPrefix) =>
+  requestPayload(`${API}${path}`, options, { errorPrefix });
 
 /**
  * Ejecuta una petición autenticada y devuelve el payload JSON.
@@ -47,15 +41,8 @@ const requestPublicPayload = async (path, options, errorPrefix) => {
  * @param {string} errorPrefix Prefijo del log de error.
  * @returns {Promise<object|false>}
  */
-const requestAuthPayload = async (path, options, errorPrefix) => {
-  try {
-    const response = await authFetch(`${API}${path}`, options);
-    return await safeJson(response);
-  } catch (error) {
-    console.error(errorPrefix, error);
-    return false;
-  }
-};
+const requestAuthPayload = (path, options, errorPrefix) =>
+  requestPayload(`${API}${path}`, options, { fetcher: authFetch, errorPrefix });
 
 /**
  * Ejecuta una petición autenticada y, ante error de red, devuelve
@@ -72,15 +59,11 @@ const requestAuthPayloadOrNetworkError = async (
   options,
   errorPrefix,
   fallbackMessage
-) => {
-  try {
-    const response = await authFetch(`${API}${path}`, options);
-    return await safeJson(response);
-  } catch (error) {
-    console.error(errorPrefix, error);
-    return buildNetworkErrorResponse(fallbackMessage);
-  }
-};
+) => requestPayload(`${API}${path}`, options, {
+  fetcher: authFetch,
+  errorPrefix,
+  networkFallback: buildNetworkErrorResponse(fallbackMessage),
+});
 
 /**
  * Recupera la sesión del usuario al arrancar la aplicación usando

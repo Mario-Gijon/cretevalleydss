@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { Stack, Typography, ToggleButton } from "@mui/material";
 
 import { getLeafCriteria } from "../../../../utils/criteria.utils";
-import { ParameterFieldHost } from "../../../modelParameters";
-import { buildParameterContext } from "../../../modelParameters/logic/buildModelParameterContext";
+import { buildParameterContext } from "../../../modelParameters/context";
+import { ParameterFieldHost } from "../../../modelParameters/rendering";
 import { getRenderableNormalModelParameters } from "../logic/getRenderableNormalModelParameters";
 
 export const ModelParameters = ({

@@ -6,7 +6,7 @@ import utc from "dayjs/plugin/utc";
 import { createIssue } from "../../../services/issue.service";
 import {
   getCreateIssueModelParameters,
-} from "../../modelParameters";
+} from "../../modelParameters/draft";
 import { getLeafCriteria } from "../../../utils/criteria.utils";
 import {
   buildInitialExpressionDomainConfig,

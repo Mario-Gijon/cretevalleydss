@@ -6,8 +6,10 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useIssuesDataContext } from "../../../context/issues/issues.context";
-import { getEvaluationStructureEntryForStage } from "../../decisionPlugins/evaluations/evaluationStructureRegistry";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages";
+import {
+  EVALUATION_STAGES,
+  getEvaluationStructureEntryForStage,
+} from "../../decisionPlugins/evaluations/registry";
 import { buildEvaluationContext } from "../logic/buildEvaluationContext";
 import {
   fetchIssueEvaluation,
@@ -76,16 +78,11 @@ const EvaluationStructureDialog = ({
       setEvaluationContext(fallbackEvaluationContext);
       setEvaluationPayload({});
       try {
-        const response = await fetchIssueEvaluation(issueId, stage);
-        const responseEvaluationContext = response?.data?.evaluationContext;
-
-        if (!responseEvaluationContext) {
-          throw new Error("Missing evaluationContext in evaluation response.");
-        }
-
-        const nextEvaluationPayload = response?.data?.payload ?? {};
-        const nextCollectivePayload =
-          response?.data?.collectiveReference?.collectiveEvaluations ?? null;
+        const {
+          evaluationContext: responseEvaluationContext,
+          payload: nextEvaluationPayload,
+          collectivePayload: nextCollectivePayload,
+        } = await fetchIssueEvaluation(issueId, stage);
 
         setEvaluationContext(responseEvaluationContext);
         setEvaluationPayload(nextEvaluationPayload);

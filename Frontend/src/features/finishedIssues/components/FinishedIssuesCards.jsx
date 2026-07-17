@@ -12,7 +12,7 @@ import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
-import ActiveIssuesPill from "../../activeIssues/components/ActiveIssuesPill";
+import { ActiveIssuesPill } from "../../activeIssues/shared";
 import {
   FINISHED_ISSUE_CARD_HEIGHT,
   FinishedIssueCard,

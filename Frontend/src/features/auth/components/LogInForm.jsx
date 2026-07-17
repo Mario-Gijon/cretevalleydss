@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Typography,
   Container,
@@ -20,96 +19,25 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
-import { useOutletContext } from "react-router-dom";
 
-import { login } from "../../../services/auth.service";
-import { useAuthContext } from "../../../context/auth/auth.context";
-import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
-import {
-  loginFormInitialErrors,
-  loginFormInitialValues,
-} from "../constants/loginForm.constants";
-import { validateLoginForm } from "../logic/validateLoginForm";
+import { useLoginForm } from "../hooks/useLoginForm";
 import { authCardContentSx, getAuthCardSx } from "../styles/auth.styles";
 
 const LogInForm = () => {
   const theme = useTheme();
-  const { navigate } = useOutletContext();
-  const { showSnackbarAlert } = useSnackbarAlertContext();
-  const { setIsLoggedIn } = useAuthContext();
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formValues, setFormValues] = useState(loginFormInitialValues);
-  const [errors, setErrors] = useState(loginFormInitialErrors);
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormValues((prevValues) => ({
-      ...prevValues,
-      [name]: value,
-    }));
-  };
-
-  const handleRestart = () => {
-    setFormValues(loginFormInitialValues);
-    setErrors(loginFormInitialErrors);
-  };
-
-  const handleLogin = async (event) => {
-    event.preventDefault();
-
-    const newErrors = validateLoginForm(formValues);
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await login(formValues);
-
-      if (!data?.success) {
-        const validationErrors = data?.error?.details;
-
-        if (
-          validationErrors &&
-          typeof validationErrors === "object" &&
-          !Array.isArray(validationErrors)
-        ) {
-          setErrors(validationErrors);
-        }
-
-        showSnackbarAlert(data?.message || "Invalid credentials", "error");
-        return;
-      }
-
-      setErrors(loginFormInitialErrors);
-      showSnackbarAlert("Logged in successfully!", "success");
-      setIsLoggedIn(true);
-      window.location.reload();
-    } catch (error) {
-      console.error("Error submitting login form:", error);
-      showSnackbarAlert("An error occurred while submitting the form", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailKeyDown = (event) => {
-    if (event.key === "Enter") {
-      document.getElementById("password")?.focus();
-    }
-  };
-
-  const handlePasswordKeyDown = (event) => {
-    if (event.key === "Enter") {
-      handleLogin(event);
-    }
-  };
+  const {
+    errors,
+    formValues,
+    loading,
+    showPassword,
+    handleChange,
+    handleEmailKeyDown,
+    handleLogin,
+    handleNavigateToSignup,
+    handlePasswordKeyDown,
+    handleRestart,
+    togglePasswordVisibility,
+  } = useLoginForm();
 
   return (
     <Container maxWidth="xs" sx={{ display: "flex", justifyContent: "center" }}>
@@ -177,8 +105,9 @@ const LogInForm = () => {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        onClick={() => setShowPassword((prev) => !prev)}
+                        onClick={togglePasswordVisibility}
                         edge="end"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -223,7 +152,7 @@ const LogInForm = () => {
                     underline="hover"
                     color="secondary"
                     sx={{ textAlign: "center", cursor: "pointer", fontWeight: 850 }}
-                    onClick={() => navigate("/signup")}
+                    onClick={handleNavigateToSignup}
                   >
                     Not registered? Click here to continue
                   </Link>

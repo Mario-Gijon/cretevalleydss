@@ -1,4 +1,7 @@
-import { findMatchingFuzzyLabel, reflectExpressionDomainValue } from "../../../../../expressionDomains/operations/index.js";
+import {
+  findMatchingFuzzyLabel,
+  reflectExpressionDomainValue,
+} from "../../../../../expressionDomains";
 
 const UNMATCHED_FUZZY_TOOLTIP = "No predefined label matches this derived inverse.";
 

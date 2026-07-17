@@ -2,8 +2,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/evaluationStages";
-import EvaluationStructureRenderer from "../../../issueEvaluation/components/EvaluationStructureRenderer";
+import { EVALUATION_STAGES } from "../../../decisionPlugins/evaluations/stages";
+import { EvaluationStructureRenderer } from "../../../issueEvaluation/rendering";
 
 /**
  * Vista de solo lectura para pesos del experto en admin issues.

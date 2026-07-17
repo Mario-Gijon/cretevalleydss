@@ -1,4 +1,4 @@
-import CreateIssueView from "../../../features/createIssue/components/CreateIssueView";
+import { CreateIssueView } from "../../../features/createIssue";
 
 /**
  * Wrapper de ruta para mantener la URL actual de creación.

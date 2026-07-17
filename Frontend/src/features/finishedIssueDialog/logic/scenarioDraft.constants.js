@@ -1,0 +1,1 @@
+export const SCENARIO_DESCRIPTION_MAX = 320;

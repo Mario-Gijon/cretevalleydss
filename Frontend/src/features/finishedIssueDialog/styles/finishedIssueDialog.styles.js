@@ -40,33 +40,3 @@ export const getFinishedIssueDialogGlassSx = (theme) => ({
   boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.14)}`,
   ...getFinishedIssueDialogCrystalBorder(),
 });
-
-/**
- * Plantilla de areas para el grid principal del dialogo.
- *
- * @param {boolean} isMdUp Indica si se usa layout de escritorio.
- * @param {boolean} hasModelSpecificOutput Indica si se muestra el bloque de output del modelo.
- * @returns {string}
- */
-export const getFinishedIssueDialogGridAreas = (
-  isMdUp,
-  hasModelSpecificOutput = false
-) =>
-  isMdUp
-    ? `
-        "overview ranking"
-        "analysis analysis"
-        "models models"
-        "graphs graphs"
-        "ratings ratings"
-        ${hasModelSpecificOutput ? '"modelSpecificOutput modelSpecificOutput"' : ""}
-      `
-    : `
-        "overview"
-        "ranking"
-        "analysis"
-        "models"
-        "graphs"
-        "ratings"
-        ${hasModelSpecificOutput ? '"modelSpecificOutput"' : ""}
-      `;

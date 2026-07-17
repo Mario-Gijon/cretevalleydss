@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-import EvaluationStructureRenderer from "../../../../issueEvaluation/components/EvaluationStructureRenderer";
+import { EvaluationStructureRenderer } from "../../../../issueEvaluation/rendering";
 import {
   evaluationPluginPanelSx,
   evaluationPluginRendererViewportSx,

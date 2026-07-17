@@ -22,10 +22,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 
 import {
+  ActiveIssuesPill,
   getActiveIssuesAuroraBg,
   getActiveIssuesPanelGlassSx,
-} from "../../activeIssues/styles/activeIssues.styles";
-import ActiveIssuesPill from "../../activeIssues/components/ActiveIssuesPill";
+} from "../../activeIssues/shared";
 
 /**
  * Cabecera de filtros y métricas de la pantalla de issues finalizados.

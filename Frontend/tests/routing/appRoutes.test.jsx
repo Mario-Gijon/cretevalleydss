@@ -68,6 +68,7 @@ describe("App routes", () => {
     authState.loading = false;
     authState.isLoggedIn = false;
     pendingState.value = false;
+    window.history.pushState({}, "", "/");
   });
 
   const renderApp = () =>
@@ -97,6 +98,85 @@ describe("App routes", () => {
   it("sends users to the applying changes screen when a pending backend change exists", async () => {
     pendingState.value = true;
     window.history.pushState({}, "", "/login");
+
+    renderApp();
+
+    expect(
+      await screen.findByText("applying-backend-changes-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders the loading screen while authentication is bootstrapping", () => {
+    authState.loading = true;
+    window.history.pushState({}, "", "/dashboard");
+
+    renderApp();
+
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText("active-issues-page")).not.toBeInTheDocument();
+  });
+
+  it("bypasses bootstrap loading for the pending applying-changes route", async () => {
+    authState.loading = true;
+    pendingState.value = true;
+    window.history.pushState({}, "", "/system/applying-changes");
+
+    renderApp();
+
+    expect(
+      await screen.findByText("applying-backend-changes-page")
+    ).toBeInTheDocument();
+  });
+
+  it("keeps authenticated private routes available during a pending change", async () => {
+    authState.isLoggedIn = true;
+    pendingState.value = true;
+    window.history.pushState({}, "", "/dashboard/finished");
+
+    renderApp();
+
+    expect(await screen.findByText("finished-issues-page")).toBeInTheDocument();
+  });
+
+  it("keeps the authenticated root redirect ahead of a pending change", async () => {
+    authState.isLoggedIn = true;
+    pendingState.value = true;
+    window.history.pushState({}, "", "/");
+
+    renderApp();
+
+    expect(await screen.findByText("active-issues-page")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/login/unrecognized", "login-form"],
+    ["/signup/unrecognized", "signup-form"],
+    ["/register/unrecognized", "signup-form"],
+  ])("redirects the public alias %s", async (route, expectedContent) => {
+    window.history.pushState({}, "", route);
+
+    renderApp();
+
+    expect(await screen.findByText(expectedContent)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/dashboard/active/unrecognized", "active-issues-page"],
+    ["/dashboard/finished/unrecognized", "finished-issues-page"],
+    ["/dashboard/create/unrecognized", "create-issue-page"],
+  ])("redirects the private wildcard %s", async (route, expectedContent) => {
+    authState.isLoggedIn = true;
+    window.history.pushState({}, "", route);
+
+    renderApp();
+
+    expect(await screen.findByText(expectedContent)).toBeInTheDocument();
+  });
+
+  it("gives a pending change precedence on the global wildcard", async () => {
+    authState.isLoggedIn = true;
+    pendingState.value = true;
+    window.history.pushState({}, "", "/unknown-route");
 
     renderApp();
 

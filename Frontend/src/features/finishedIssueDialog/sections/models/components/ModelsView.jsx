@@ -14,10 +14,34 @@ const formatDateTime = (value) => {
 
 const ModelsView = ({ data, parameterContext, addParameterContext, state, actions }) => (
   <Stack spacing={1.5} sx={modelsRootSx}>
-    <ExecutionGallery executions={data.executions} scenarioCount={data.scenarioCount} formatDateTime={formatDateTime} onSelect={actions.selectExecution} onRemove={actions.removeScenario} onAdd={actions.openAdd} />
-    <SelectedExecutionPanel execution={data.selectedExecution} parameterContext={parameterContext} />
+    <ExecutionGallery
+      executions={data.executions}
+      scenarioCount={data.scenarioCount}
+      formatDateTime={formatDateTime}
+      onSelect={actions.selectExecution}
+      onRemove={actions.removeScenario}
+      onAdd={actions.openAdd}
+    />
+    <SelectedExecutionPanel
+      execution={data.selectedExecution}
+      parameterContext={parameterContext}
+    />
     <RawOutputPanel rawOutput={data.selectedExecution.rawOutput} />
-    <AddModelDialog open={state.add.addOpen} consensusEnabled={data.consensusEnabled} state={state.add} parameterContext={addParameterContext} actions={{ close: actions.closeAdd, setScenarioName: actions.setScenarioName, setScenarioDescription: actions.setScenarioDescription, setSelectedModelId: actions.setSelectedModelId, setSelectedSourcePhase: actions.setSelectedSourcePhase, setScenarioParamValues: actions.setScenarioParamValues, submit: actions.submitAdd }} />
+    <AddModelDialog
+      open={state.add.addOpen}
+      consensusEnabled={data.consensusEnabled}
+      state={state.add}
+      parameterContext={addParameterContext}
+      actions={{
+        close: actions.closeAdd,
+        setScenarioName: actions.setScenarioName,
+        setScenarioDescription: actions.setScenarioDescription,
+        setSelectedModelId: actions.setSelectedModelId,
+        setSelectedSourcePhase: actions.setSelectedSourcePhase,
+        updateScenarioParameter: actions.updateScenarioParameter,
+        submit: actions.submitAdd,
+      }}
+    />
   </Stack>
 );
 

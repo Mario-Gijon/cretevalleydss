@@ -15,7 +15,7 @@ import {
   Settings as SettingsIcon,
 } from "@mui/icons-material";
 
-import { NotificationsMenuItemIcon } from "../../../features/notifications/components/NotificationsMenuItemIcon";
+import { NotificationsMenuItemIcon } from "../../../features/notifications";
 import {
   notificationsUserMenuOption,
   userMenuOptions,

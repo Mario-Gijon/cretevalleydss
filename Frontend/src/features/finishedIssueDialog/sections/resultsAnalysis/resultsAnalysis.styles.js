@@ -30,10 +30,9 @@ export const resultsPanelSx = {
 
 export const scoreOverviewPanelSx = {
   ...resultsPanelSx,
-  height: "100%",
   display: "flex",
   flexDirection: "column",
-  minHeight: 0,
+  minWidth: 0,
 };
 
 export const singleOutcomeGridSx = {
@@ -45,7 +44,7 @@ export const singleOutcomeGridSx = {
 
 export const rankingListViewportSx = (compact) => ({
   ...localScrollbarSx,
-  maxHeight: compact ? 430 : 520,
+  maxHeight: compact ? 430 : { xs: 520, xl: 380 },
   overflowY: "auto",
   overflowX: "hidden",
   pr: 0.4,
@@ -68,19 +67,17 @@ export const scoreChartViewportSx = {
   ...localScrollbarSx,
   mt: 1,
   width: "100%",
-  flex: 1,
-  minHeight: { xs: 320, md: 0 },
-  display: "flex",
   overflowX: "auto",
   overflowY: "hidden",
 };
 
-export const scoreChartContainerSx = (minWidth) => ({
+export const scoreChartContainerSx = (minWidth, chartHeight) => ({
   minWidth,
   width: "100%",
-  flex: 1,
-  minHeight: { xs: 320, md: 360 },
-  height: "100%",
+  height: chartHeight,
+  minHeight: chartHeight,
+  maxHeight: chartHeight,
+  flex: "0 0 auto",
 });
 
 export const comparisonOutcomeGridSx = {

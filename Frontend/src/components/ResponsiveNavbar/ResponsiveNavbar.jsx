@@ -15,10 +15,9 @@ import { logout } from "../../services/auth.service";
 import { ConfirmationDialog } from "../StyledComponents/ConfirmationDialog";
 
 import { Account } from "../Account/Account";
-import { AccountSettings } from "../../features/settings/components/AccountSettings";
+import { AccountSettings } from "../../features/settings";
 
-import { NotificationsDrawer } from "../../features/notifications/components/NotificationsDrawer";
-import { useNotificationsPanel } from "../../features/notifications/hooks/useNotificationsPanel";
+import { NotificationsDrawer, useNotificationsPanel } from "../../features/notifications";
 
 import { ResponsiveNavbarDesktopNav } from "./components/ResponsiveNavbarDesktopNav";
 import { ResponsiveNavbarMobileNav } from "./components/ResponsiveNavbarMobileNav";

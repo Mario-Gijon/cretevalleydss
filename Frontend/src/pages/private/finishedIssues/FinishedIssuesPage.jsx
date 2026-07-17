@@ -1,4 +1,4 @@
-import FinishedIssuesView from "../../../features/finishedIssues/components/FinishedIssuesView";
+import { FinishedIssuesView } from "../../../features/finishedIssues";
 
 /**
  * Wrapper de ruta para mantener la URL actual de issues finalizados.

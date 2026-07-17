@@ -1,4 +1,4 @@
-import ActiveIssuesView from "../../../features/activeIssues/components/ActiveIssuesView";
+import { ActiveIssuesView } from "../../../features/activeIssues";
 
 /**
  * Wrapper de ruta para mantener la URL actual de issues activos.

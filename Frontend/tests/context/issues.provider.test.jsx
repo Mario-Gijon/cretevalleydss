@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -46,6 +47,36 @@ function IssuesConsumerProbe() {
   );
 }
 
+function StableActionsProbe() {
+  const {
+    fetchActiveIssues,
+    fetchFinishedIssues,
+    fetchIssues,
+    setIssueCreated,
+  } = useIssuesDataContext();
+  const initialActions = useRef(null);
+
+  if (!initialActions.current) {
+    initialActions.current = {
+      fetchActiveIssues,
+      fetchFinishedIssues,
+      fetchIssues,
+    };
+  }
+
+  const actionsAreStable =
+    initialActions.current.fetchActiveIssues === fetchActiveIssues &&
+    initialActions.current.fetchFinishedIssues === fetchFinishedIssues &&
+    initialActions.current.fetchIssues === fetchIssues;
+
+  return (
+    <div>
+      <div data-testid="actions-stable">{String(actionsAreStable)}</div>
+      <button onClick={() => setIssueCreated("created-issue")}>update issue</button>
+    </div>
+  );
+}
+
 describe("IssuesDataProvider", () => {
   it("loads active issues, finished issues, users, models, and domains on mount", async () => {
     renderWithProviders(
@@ -56,6 +87,9 @@ describe("IssuesDataProvider", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("loading")).toHaveTextContent("false")
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("models-count")).toHaveTextContent("1")
     );
 
     expect(screen.getByTestId("active-count")).toHaveTextContent("1");
@@ -95,6 +129,66 @@ describe("IssuesDataProvider", () => {
     expect(screen.getByTestId("filters-total")).toHaveTextContent("0");
   });
 
+  it("keeps successful active issue data when finished issues fail", async () => {
+    server.use(
+      http.get(`${API}/issues/active`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            issues: [
+              { _id: "issue-1", name: "Budget planning" },
+              { _id: "issue-2", name: "Lab expansion" },
+            ],
+            taskCenter: { pending: 4 },
+            filtersMeta: { total: 2 },
+          },
+        })
+      ),
+      http.get(`${API}/issues/finished`, () =>
+        HttpResponse.json({ success: false, data: null }, { status: 500 })
+      )
+    );
+
+    renderWithProviders(
+      <IssuesDataProvider>
+        <IssuesConsumerProbe />
+      </IssuesDataProvider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("loading")).toHaveTextContent("false")
+    );
+
+    expect(screen.getByTestId("active-count")).toHaveTextContent("2");
+    expect(screen.getByTestId("pending-count")).toHaveTextContent("4");
+    expect(screen.getByTestId("filters-total")).toHaveTextContent("2");
+    expect(screen.getByTestId("finished-count")).toHaveTextContent("0");
+  });
+
+  it("keeps successful catalogs when one initial data endpoint fails", async () => {
+    server.use(
+      http.get(`${API}/issues/users`, () =>
+        HttpResponse.json({ success: false, data: null }, { status: 500 })
+      )
+    );
+
+    renderWithProviders(
+      <IssuesDataProvider>
+        <IssuesConsumerProbe />
+      </IssuesDataProvider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("models-count")).toHaveTextContent("1")
+    );
+
+    expect(screen.getByTestId("experts-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("models-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("criteria-models-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("global-domains-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("user-domains-count")).toHaveTextContent("1");
+  });
+
   it("refetches active issues when issueCreated changes", async () => {
     const user = userEvent.setup();
 
@@ -131,5 +225,25 @@ describe("IssuesDataProvider", () => {
     );
     expect(screen.getByTestId("pending-count")).toHaveTextContent("3");
     expect(screen.getByTestId("filters-total")).toHaveTextContent("2");
+  });
+
+  it("keeps public refresh actions stable across provider state updates", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <IssuesDataProvider>
+        <StableActionsProbe />
+      </IssuesDataProvider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("actions-stable")).toHaveTextContent("true")
+    );
+
+    await user.click(screen.getByRole("button", { name: "update issue" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("actions-stable")).toHaveTextContent("true")
+    );
   });
 });

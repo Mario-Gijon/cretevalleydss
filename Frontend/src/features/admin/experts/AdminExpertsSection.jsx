@@ -41,7 +41,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { GlassDialog } from "../../../components/StyledComponents/GlassDialog";
 import { ConfirmationDialog } from "../../../components/StyledComponents/ConfirmationDialog";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
-import { getActiveIssuesAuroraBg } from "../../activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesAuroraBg } from "../../activeIssues/shared";
 import {
   formatAdminExpertDateTime,
 } from "./logic/formatAdminExpertDisplay";

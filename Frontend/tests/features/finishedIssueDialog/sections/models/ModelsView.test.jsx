@@ -13,7 +13,7 @@ import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/fin
 const actions = {
   selectExecution: vi.fn(), removeScenario: vi.fn(), openAdd: vi.fn(), closeAdd: vi.fn(),
   setScenarioName: vi.fn(), setScenarioDescription: vi.fn(), setSelectedModelId: vi.fn(),
-  setSelectedSourcePhase: vi.fn(), setScenarioParamValues: vi.fn(), submitAdd: vi.fn(),
+  setSelectedSourcePhase: vi.fn(), updateScenarioParameter: vi.fn(), submitAdd: vi.fn(),
 };
 
 const buildState = (payload, overrides = {}) => ({

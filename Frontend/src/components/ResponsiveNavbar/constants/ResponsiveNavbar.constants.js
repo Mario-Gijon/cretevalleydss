@@ -1,4 +1,4 @@
-import { notificationsMenuLabel } from "../../../features/notifications/logic/notificationDisplay";
+import { notificationsMenuLabel } from "../../../features/notifications";
 
 export const navbarPages = [
   { label: "Active", url: "/dashboard/active", path: "/dashboard/active" },

@@ -3,9 +3,9 @@ import { Backdrop } from "@mui/material";
 import { CircularLoading } from "../../../components/LoadingProgress/CircularLoading";
 import ActiveIssueDrawer from "./drawer/ActiveIssueDrawer";
 import ActiveIssueConfirmDialog from "./ActiveIssueConfirmDialog";
-import IssueExpertsDialogs from "../../issueExperts/components/IssueExpertsDialogs.jsx";
-import EvaluationDialogHost from "../../issueEvaluation/components/EvaluationDialogHost.jsx";
-import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/evaluationStages.js";
+import { IssueExpertsDialogs } from "../../issueExperts/dialogs";
+import { EvaluationDialogHost } from "../../issueEvaluation/dialogs";
+import { EVALUATION_STAGES } from "../../decisionPlugins/evaluations/stages";
 
 /**
  * Agrupa overlays y diálogos de la pantalla de issues activos.

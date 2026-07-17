@@ -1,7 +1,9 @@
 import { Alert, Box, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 
-import ExpressionDomainEvaluationInput from "../../../../../expressionDomains/ExpressionDomainEvaluationInput.jsx";
-import { assertPairwiseReflectionCompatible } from "../../../../../expressionDomains/operations/index.js";
+import {
+  assertPairwiseReflectionCompatible,
+  ExpressionDomainEvaluationInput,
+} from "../../../../../expressionDomains";
 import PairwiseDerivedValueDisplay from "./PairwiseDerivedValueDisplay.jsx";
 import {
   requireCanonicalPairwiseEvaluations,

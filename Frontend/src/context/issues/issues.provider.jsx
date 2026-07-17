@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IssuesDataContext } from "./issues.context.js";
 import {
@@ -35,7 +35,7 @@ export const IssuesDataProvider = ({ children }) => {
    * @param {object|null} payload Datos de la respuesta.
    * @returns {object|null}
    */
-  const applyActivePayload = (payload) => {
+  const applyActivePayload = useCallback((payload) => {
     const activePayload = payload && typeof payload === "object" ? payload : null;
 
     setActiveIssues(activePayload?.issues ?? []);
@@ -43,14 +43,14 @@ export const IssuesDataProvider = ({ children }) => {
     setFiltersMeta(activePayload?.filtersMeta ?? null);
 
     return activePayload;
-  };
+  }, []);
 
   /**
    * Carga los issues activos.
    *
    * @returns {Promise<object|null>}
    */
-  const fetchActiveIssues = async () => {
+  const fetchActiveIssues = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAllActiveIssues();
@@ -68,14 +68,14 @@ export const IssuesDataProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [applyActivePayload]);
 
   /**
    * Carga los issues finalizados.
    *
    * @returns {Promise<Array>}
    */
-  const fetchFinishedIssues = async () => {
+  const fetchFinishedIssues = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAllFinishedIssues();
@@ -95,14 +95,14 @@ export const IssuesDataProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Carga los issues activos y finalizados.
    *
    * @returns {Promise<void>}
    */
-  const fetchIssues = async () => {
+  const fetchIssues = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -129,14 +129,14 @@ export const IssuesDataProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [applyActivePayload]);
 
   /**
    * Carga expertos, modelos y dominios necesarios para el contexto.
    *
    * @returns {Promise<void>}
    */
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [expertsData, modelsData, domainsData] = await Promise.all([
         getAllUsers(),
@@ -167,7 +167,7 @@ export const IssuesDataProvider = ({ children }) => {
       setGlobalDomains([]);
       setExpressionDomains([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     /**
@@ -181,8 +181,7 @@ export const IssuesDataProvider = ({ children }) => {
 
     initializeIssuesData();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchInitialData, fetchIssues]);
 
   useEffect(() => {
     if (!issueCreated) {
@@ -191,10 +190,9 @@ export const IssuesDataProvider = ({ children }) => {
 
     fetchActiveIssues();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [issueCreated]);
+  }, [fetchActiveIssues, issueCreated]);
 
-  const issuesContextValue = {
+  const issuesContextValue = useMemo(() => ({
     initialExperts,
     models,
     criteriaWeightingModels,
@@ -216,7 +214,22 @@ export const IssuesDataProvider = ({ children }) => {
     fetchActiveIssues,
     fetchFinishedIssues,
     fetchIssues,
-  };
+  }), [
+    activeIssues,
+    criteriaWeightingModels,
+    expressionDomains,
+    fetchActiveIssues,
+    fetchFinishedIssues,
+    fetchIssues,
+    filtersMeta,
+    finishedIssues,
+    globalDomains,
+    initialExperts,
+    issueCreated,
+    loading,
+    models,
+    taskCenter,
+  ]);
 
   return (
     <IssuesDataContext.Provider value={issuesContextValue}>

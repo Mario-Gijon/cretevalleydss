@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildEvaluationContext } from "../../../src/features/issueEvaluation/logic/buildEvaluationContext.js";
 import { extractLeafCriteria } from "../../../src/features/issueEvaluation/logic/extractIssueEvaluationLeafCriteria.js";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/evaluationStages.js";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
 import {
   evaluationIssueFixture,
   evaluationIssueWithUnderscoreIdFixture,

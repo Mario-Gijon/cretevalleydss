@@ -1,7 +1,7 @@
 import { alpha } from "@mui/material/styles";
 import {
   getActiveIssuesHeaderGlassSx as glassSxBase,
-} from "../../activeIssues/styles/activeIssues.styles";
+} from "../../activeIssues/shared";
 
 /**
  * Color de acento por tono para secciones admin.

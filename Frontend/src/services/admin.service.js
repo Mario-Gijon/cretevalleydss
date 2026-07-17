@@ -4,7 +4,7 @@ import {
   buildQuery,
   jsonRequest,
   requestJson,
-  safeJson,
+  requestPayload,
 } from "./httpRequest.service.js";
 
 /**
@@ -19,15 +19,8 @@ import {
  * @param {string} errorPrefix Prefijo para el log de error.
  * @returns {Promise<object|false>}
  */
-const requestAdmin = async (path, options, errorPrefix) => {
-  try {
-    const response = await authFetch(`${API}${path}`, options);
-    return await safeJson(response);
-  } catch (error) {
-    console.error(errorPrefix, error);
-    return false;
-  }
-};
+const requestAdmin = (path, options, errorPrefix) =>
+  requestPayload(`${API}${path}`, options, { fetcher: authFetch, errorPrefix });
 
 /**
  * Comprueba si el usuario actual tiene acceso de administrador.

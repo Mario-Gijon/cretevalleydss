@@ -14,7 +14,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
-import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesAuroraBg } from "../../../activeIssues/shared";
 import AdminIssueInfoRow from "./AdminIssueInfoRow";
 
 export default function AdminIssueReassignDialog({

@@ -22,7 +22,7 @@ import ActiveIssueAlternatives from "./ActiveIssueAlternatives.jsx";
 import ActiveIssueTimeline from "./ActiveIssueTimeline.jsx";
 import ActiveIssueDrawerHeader from "./ActiveIssueDrawerHeader.jsx";
 import { getNextActionMeta } from "../../logic/activeIssuesMeta.js";
-import IssueExpertsSection from "../../../issueExperts/components/IssueExpertsSection.jsx";
+import { IssueExpertsSection } from "../../../issueExperts/section";
 
 const BASE_DRAWER_TABS = [
   { key: "overview", label: "Overview", icon: InfoOutlinedIcon },

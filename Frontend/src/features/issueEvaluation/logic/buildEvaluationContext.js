@@ -1,5 +1,5 @@
 import { extractLeafCriteria } from "./extractIssueEvaluationLeafCriteria";
-import { buildParameterContext } from "../../modelParameters/logic/buildModelParameterContext";
+import { buildParameterContext } from "../../modelParameters/context";
 
 const toNonEmptyStringOrNull = (value) => {
   const normalized = String(value ?? "").trim();

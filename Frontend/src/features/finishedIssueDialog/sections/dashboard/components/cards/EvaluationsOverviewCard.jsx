@@ -2,7 +2,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 
-import EvaluationStructureRenderer from "../../../../../issueEvaluation/components/EvaluationStructureRenderer";
+import { EvaluationStructureRenderer } from "../../../../../issueEvaluation/rendering";
 import { dashboardEvaluationViewportSx } from "../../dashboard.styles";
 import DashboardInnerPanel from "../DashboardInnerPanel";
 import DashboardPreviewCard from "../DashboardPreviewCard";

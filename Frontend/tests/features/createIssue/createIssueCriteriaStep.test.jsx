@@ -91,7 +91,7 @@ describe("CriteriaStep manual equal weights", () => {
     renderWithProviders(<CriteriaStep />);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Manual by experts" })
+      screen.getByRole("button", { name: /^Manual by experts/ })
     );
 
     expect(setDefaultModelParams).toHaveBeenCalledWith(false);

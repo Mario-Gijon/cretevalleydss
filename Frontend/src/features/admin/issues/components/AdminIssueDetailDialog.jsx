@@ -15,7 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 
 import { GlassDialog } from "../../../../components/StyledComponents/GlassDialog";
 import { CircularLoading } from "../../../../components/LoadingProgress/CircularLoading";
-import { getActiveIssuesAuroraBg } from "../../../activeIssues/styles/activeIssues.styles";
+import { getActiveIssuesAuroraBg } from "../../../activeIssues/shared";
 import { buildAdminIssueDetailView } from "../logic/buildAdminIssueDetailView";
 import AdminIssueExpertReview from "./AdminIssueExpertReview";
 import AdminIssueExpertsProgress from "./AdminIssueExpertsProgress";

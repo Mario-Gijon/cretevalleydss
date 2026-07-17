@@ -79,7 +79,7 @@ const MockEvaluationView = forwardRef((props, ref) => {
 MockEvaluationView.displayName = "MockEvaluationView";
 
 vi.mock(
-  "../../../src/features/decisionPlugins/evaluations/evaluationStructureRegistry",
+  "../../../src/features/decisionPlugins/evaluations/registry",
   async (importOriginal) => {
     const actual = await importOriginal();
 
@@ -161,7 +161,7 @@ vi.mock(
 );
 
 import EvaluationStructureDialog from "../../../src/features/issueEvaluation/components/EvaluationStructureDialog.jsx";
-import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/evaluationStages.js";
+import { EVALUATION_STAGES } from "../../../src/features/decisionPlugins/evaluations/stages";
 import {
   evaluationIssueFixture,
   evaluationIssueWithUnderscoreIdFixture,
@@ -187,7 +187,12 @@ describe("EvaluationStructureDialog", () => {
       stage: EVALUATION_STAGES.ALTERNATIVE_EVALUATION,
       View: MockEvaluationView,
     });
-    mockFetchIssueEvaluation.mockResolvedValue(evaluationResponseFixture);
+    mockFetchIssueEvaluation.mockResolvedValue({
+      evaluationContext: evaluationResponseFixture.data.evaluationContext,
+      payload: evaluationResponseFixture.data.payload,
+      collectivePayload:
+        evaluationResponseFixture.data.collectiveReference.collectiveEvaluations,
+    });
   });
 
   const renderDialog = (props = {}) =>
@@ -253,13 +258,10 @@ describe("EvaluationStructureDialog", () => {
     });
   });
 
-  it("falls back to local context and resets payload when the backend omits evaluationContext", async () => {
-    mockFetchIssueEvaluation.mockResolvedValue({
-      success: true,
-      data: {
-        payload: { stale: true },
-      },
-    });
+  it("falls back to local context and resets payload when boundary validation rejects", async () => {
+    mockFetchIssueEvaluation.mockRejectedValue(
+      new Error("Missing evaluationContext in evaluation response.")
+    );
 
     renderDialog({
       stage: EVALUATION_STAGES.CRITERIA_WEIGHTING,

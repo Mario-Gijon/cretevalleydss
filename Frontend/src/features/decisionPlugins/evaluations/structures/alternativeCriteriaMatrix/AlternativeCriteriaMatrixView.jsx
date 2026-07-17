@@ -8,10 +8,12 @@ import {
   useTheme,
 } from "@mui/material";
 
-import ExpressionDomainEvaluationInput from "../../../../expressionDomains/ExpressionDomainEvaluationInput.jsx";
-import { validateExpressionDomainEvaluation } from "../../../../expressionDomains";
-import { findMatchingFuzzyLabel } from "../../../../expressionDomains/operations/index.js";
-import { getExpressionDomainTypeMetadataOrThrow } from "../../../../expressionDomains/expressionDomainTypeMetadataCatalog.js";
+import {
+  ExpressionDomainEvaluationInput,
+  findMatchingFuzzyLabel,
+  getExpressionDomainTypeMetadataOrThrow,
+  validateExpressionDomainEvaluation,
+} from "../../../../expressionDomains";
 import { formatCollectiveDisplayValue } from "../../shared/formatCollectiveDisplayValue";
 import { buildEvaluationMatrixDataGridSx } from "../../shared/evaluationMatrixTable.styles";
 import {

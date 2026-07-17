@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,9 +24,11 @@ vi.mock("@mui/material", () => {
     onKeyDown,
     helperText,
     type = "text",
+    InputProps,
   }) => (
     <label htmlFor={id}>
       <span>{label}</span>
+      {InputProps?.startAdornment}
       <input
         id={id}
         name={name}
@@ -36,6 +38,7 @@ vi.mock("@mui/material", () => {
         onChange={onChange}
         onKeyDown={onKeyDown}
       />
+      {InputProps?.endAdornment}
       {helperText ? <span>{helperText}</span> : null}
     </label>
   );
@@ -44,7 +47,11 @@ vi.mock("@mui/material", () => {
     Typography: makeDiv(),
     Container: makeDiv(),
     CircularProgress: () => <div role="progressbar">loading</div>,
-    Button: ({ children, ...props }) => <button {...props}>{children}</button>,
+    Button: ({ children, type = "button", ...props }) => (
+      <button type={type} {...props}>
+        {children}
+      </button>
+    ),
     Stack: makeDiv(),
     Link: ({ children, onClick, ...props }) => (
       <button type="button" onClick={onClick} {...props}>
@@ -148,6 +155,21 @@ describe("LogInForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("exposes and updates the password visibility action name", async () => {
+    const user = userEvent.setup();
+    renderLoginForm();
+
+    const password = screen.getByLabelText("Password");
+    expect(password).toHaveAttribute("type", "password");
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+
+    expect(password).toHaveAttribute("type", "text");
+    expect(
+      screen.getByRole("button", { name: "Hide password" })
+    ).toBeInTheDocument();
+  });
+
   it("prevents submit on invalid input and shows validation errors", async () => {
     const user = userEvent.setup();
     renderLoginForm();
@@ -157,6 +179,50 @@ describe("LogInForm", () => {
     expect(login).not.toHaveBeenCalled();
     expect(screen.getByText("Invalid email.")).toBeInTheDocument();
     expect(screen.getByText("1 number, 1 letter, min 6.")).toBeInTheDocument();
+  });
+
+  it("moves focus on Enter and submits from the password field", async () => {
+    const user = userEvent.setup();
+    login.mockResolvedValueOnce({ success: false, message: "Not authorized" });
+    renderLoginForm();
+
+    const email = screen.getByLabelText("Email");
+    const password = screen.getByLabelText("Password");
+    await user.type(email, "user@example.com");
+    await user.type(password, "abc123");
+
+    email.focus();
+    fireEvent.keyDown(email, { key: "Enter" });
+    expect(password).toHaveFocus();
+
+    fireEvent.keyDown(password, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(login).toHaveBeenCalledWith({
+        email: "user@example.com",
+        password: "abc123",
+      })
+    );
+  });
+
+  it("restarts values and validation feedback", async () => {
+    const user = userEvent.setup();
+    renderLoginForm();
+
+    const email = screen.getByLabelText("Email");
+    const password = screen.getByLabelText("Password");
+    await user.type(email, "user@example.com");
+    await user.type(password, "x");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(screen.getByText("1 number, 1 letter, min 6.")).toBeInTheDocument();
+
+    await user.click(screen.getByTitle("Restart"));
+
+    expect(email).toHaveValue("");
+    expect(password).toHaveValue("");
+    expect(
+      screen.queryByText("1 number, 1 letter, min 6.")
+    ).not.toBeInTheDocument();
   });
 
   it("submits successfully, shows loading state, and marks the user as logged in", async () => {
