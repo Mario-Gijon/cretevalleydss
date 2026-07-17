@@ -1,10 +1,12 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { useSnackbarAlertContext } from "../../../context/snackbarAlert/snackbarAlert.context";
 import { useFinishedIssueData } from "./useFinishedIssueData.js";
 import { useFinishedIssueEvaluationsSelection } from "./useFinishedIssueEvaluationsSelection.js";
 import { useFinishedIssueNavigation } from "./useFinishedIssueNavigation.js";
+import { useFinishedIssueResultsSelection } from "./useFinishedIssueResultsSelection.js";
 import { useFinishedIssueRuns } from "./useFinishedIssueRuns.js";
+import { buildResultsAnalysisSelectableOptions } from "../sections/resultsAnalysis/logic/buildResultsAnalysisWorkspaceData.js";
 
 export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDialog }) => {
   const { showSnackbarAlert } = useSnackbarAlertContext();
@@ -20,6 +22,15 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
     selectedExecutionType: runs.selectedExecution.type,
   });
   const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload });
+  const resultsExecutionOptions = useMemo(
+    () => buildResultsAnalysisSelectableOptions(data.payload),
+    [data.payload]
+  );
+  const resultsSelection = useFinishedIssueResultsSelection({
+    issueId: data.issueId,
+    executionOptions: resultsExecutionOptions,
+    selectGlobalExecution: runs.selectExecution,
+  });
   const scatterPlotRef = useRef(null);
 
   return {
@@ -53,6 +64,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       scatterPlotRef,
       resetZoom: () => scatterPlotRef.current?.resetZoom?.(),
       selectedPhase: navigation.selectedPhase,
+      selection: resultsSelection,
     },
     evaluationsSelection,
     runs,

@@ -11,9 +11,9 @@ const unavailableMessage = (reason) => {
   return "No analytical graph data available.";
 };
 
-const VisualizationsPanel = ({ visualizations, scatterPlotRef, onResetZoom }) => (
+const VisualizationsPanel = ({ visualizations = {}, scatterPlotRef, onResetZoom }) => (
   <SectionCard title="Visualizations" icon={<AnalyticsIcon fontSize="small" />} right={visualizations.hasPerformanceMap ? <Button variant="outlined" color="secondary" size="small" onClick={onResetZoom}>Reset zoom</Button> : null}>
-    {visualizations.hasPerformanceMap ? <Box sx={{ width: "100%", height: { xs: 290, md: 520 } }}><AnalyticalScatterChart data={visualizations.performanceMapData} phase={0} scatterPlotRef={scatterPlotRef} /></Box> : <Stack justifyContent="center" alignItems="center"><Typography variant="body2" color="text.secondary">{unavailableMessage(visualizations.unavailableReason)}</Typography></Stack>}
+    {visualizations.hasPerformanceMap ? <Box sx={{ width: "100%", height: { xs: 290, md: 520 } }}><AnalyticalScatterChart data={visualizations.performanceMapData} phase={visualizations.selectedPhase ?? 0} scatterPlotRef={scatterPlotRef} /></Box> : <Stack justifyContent="center" alignItems="center"><Typography variant="body2" color="text.secondary">{unavailableMessage(visualizations.unavailableReason)}</Typography></Stack>}
   </SectionCard>
 );
 
