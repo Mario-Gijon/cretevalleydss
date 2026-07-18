@@ -11,6 +11,8 @@ from issue_scenario_lab.api.session_pool import SessionPool
 from issue_scenario_lab.config import Settings
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
+from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
+from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -115,3 +117,41 @@ def show_config() -> None:
     for name, value in settings.safe_values().items():
         table.add_row(name, str(value))
     console.print(table)
+
+
+@app.command()
+def generate(
+    scenario_id: str,
+    owner_alias: str = "owner",
+    expert_a_alias: str = "expert_a",
+    expert_b_alias: str = "expert_b",
+) -> None:
+    """Generate one supported local issue scenario through the real HTTP API."""
+
+    if scenario_id != SCENARIO_ID:
+        console.print(f"[red]Unsupported scenario:[/red] {scenario_id}. Supported: {SCENARIO_ID}")
+        raise typer.Exit(code=1)
+    try:
+        settings = _settings()
+        with SessionPool.from_settings(settings) as sessions:
+            result = generate_no_consensus_basic(
+                sessions,
+                ManifestStore(settings.manifest_file),
+                owner_alias=owner_alias,
+                expert_a_alias=expert_a_alias,
+                expert_b_alias=expert_b_alias,
+            )
+    except ScenarioLabError as error:
+        _raise_cli_error(error)
+    console.print(
+        {
+            "generationId": result.generation_id,
+            "scenarioId": SCENARIO_ID,
+            "issueId": result.issue_id,
+            "issueName": result.issue_name,
+            "model": "BORDA",
+            "experts": result.expert_aliases,
+            "finalStage": "finished",
+            "manifest": result.manifest_path,
+        }
+    )

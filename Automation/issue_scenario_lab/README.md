@@ -1,8 +1,8 @@
 # CreteValleyDSS Issue Scenario Lab
 
-Issue Scenario Lab is a small Python CLI/library foundation for creating future
-CreteValleyDSS issue variants through the real local Backend HTTP API. It is
-foundation-only: no issue-generation scenario is implemented yet.
+Issue Scenario Lab is a small Python CLI/library for generating local
+CreteValleyDSS issue variants through the real Backend HTTP API. It currently
+implements only `no-consensus-basic`.
 
 Every future operation will use existing HTTP routes so that authentication,
 authorization, workflows, and persistence match normal development users. The
@@ -27,8 +27,10 @@ cp users.example.yaml users.local.yaml
 ```
 
 Edit `users.local.yaml` to reference existing development users. Never commit
-that file. Start the Backend with its normal local configuration; its checked-in
-example uses `http://localhost:5000/api`.
+that file. Configure existing `owner`, `expert_a`, and `expert_b` users, and
+ensure a compatible numeric expression domain exists. Start the Backend,
+DecisionModelsService, and development MongoDB through their normal project
+configuration; the checked-in Backend example uses `http://localhost:5000/api`.
 
 ## Commands
 
@@ -38,10 +40,16 @@ python -m issue_scenario_lab check-user owner
 python -m issue_scenario_lab check-users
 python -m issue_scenario_lab list-generated
 python -m issue_scenario_lab show-config
+python -m issue_scenario_lab generate no-consensus-basic
 ```
 
 `SCENARIO_LAB_ALLOW_NON_LOCALHOST=true` is required before a non-localhost API
 URL can be used. This is an explicit safety override, not a production feature.
+
+The generated issue remains in the development database until cleanup commands
+are implemented. Find it by its `[AUTO:<id>] No consensus · basic` name. All
+operations pass through the real HTTP API; cleanup commands are not implemented
+yet.
 
 ## Development checks
 
@@ -53,4 +61,5 @@ python -m ruff check .
 
 ## Next milestone
 
-The next implementation milestone is `no-consensus-basic`.
+The next milestone after review is cleanup commands using the existing active
+and finished issue deletion routes.
