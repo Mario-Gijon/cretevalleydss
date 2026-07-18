@@ -18,7 +18,7 @@ const DashboardPreviewCard = ({ icon, title, headerRight = null, actionLabel, on
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.05, minWidth: 0, flex: 1 }}>
         <Box data-testid="summary-card-icon" sx={dashboardCardIconSx}>{icon}</Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography component="h2" sx={dashboardCardTitleSx}>{title}</Typography>
+          <Typography variant="h6" component="h2" sx={dashboardCardTitleSx}>{title}</Typography>
         </Box>
       </Box>
       {headerRight ? <Box sx={{ flexShrink: 0, pl: 0.75 }}>{headerRight}</Box> : null}

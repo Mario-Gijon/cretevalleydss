@@ -61,14 +61,12 @@ const EvaluationParticipationPanel = ({
         sx={{ color: "secondary.light", fontSize: 21 }}
       />
       <Box sx={{ minWidth: 0 }}>
-        <Typography component="h2" sx={{ fontSize: 16, fontWeight: 950 }}>
+        <Typography variant="h6" component="h2">
           Evaluation participation
         </Typography>
-        <Typography
+        <Typography variant="caption"
           sx={{
             color: "text.secondary",
-            fontSize: 11.5,
-            fontWeight: 600,
           }}
         >
           Experts with stored submissions in this context.
@@ -91,13 +89,13 @@ const EvaluationParticipationPanel = ({
         />
         {hasCriteriaWeighting ? (
           <Stack spacing={0.25} sx={{ width: "100%", maxWidth: 250 }}>
-            <Typography sx={{ fontSize: 11.5 }}>
+            <Typography variant="caption">
               Both stages: {participation.summary.both}
             </Typography>
-            <Typography sx={{ fontSize: 11.5 }}>
+            <Typography variant="caption">
               Criteria only: {participation.summary.criteriaOnly}
             </Typography>
-            <Typography sx={{ fontSize: 11.5 }}>
+            <Typography variant="caption">
               Alternative only: {participation.summary.alternativeOnly}
             </Typography>
           </Stack>
@@ -115,28 +113,27 @@ const EvaluationParticipationPanel = ({
                   height: 34,
                   bgcolor: "rgba(51, 164, 197, 0.20)",
                   color: "secondary.light",
-                  fontSize: 13,
-                  fontWeight: 900,
+                  typography: "body2",
+                  fontWeight: "fontWeightBold",
                 }}
               >
                 {initials(row.name)}
               </Avatar>
 
               <Box sx={{ gridArea: "identity", minWidth: 0 }}>
-                <Typography
+                <Typography variant="body2"
                   noWrap
                   title={row.name}
-                  sx={{ fontSize: 12.5, fontWeight: 900 }}
+                  sx={{ fontWeight: "fontWeightBold" }}
                 >
                   {row.name}
                 </Typography>
                 {row.email ? (
-                  <Typography
+                  <Typography variant="caption"
                     noWrap
                     title={row.email}
                     sx={{
                       color: "text.secondary",
-                      fontSize: 10.5,
                     }}
                   >
                     {row.email}
@@ -145,23 +142,21 @@ const EvaluationParticipationPanel = ({
               </Box>
 
               <Box sx={{ gridArea: "coverage", minWidth: 0 }}>
-                <Typography
+                <Typography variant="caption"
                   noWrap
                   title={submissionLabel(row, hasCriteriaWeighting)}
                   sx={{
                     color: "secondary.light",
-                    fontSize: 11.5,
-                    fontWeight: 850,
+                    fontWeight: "fontWeightBold",
                   }}
                 >
                   {submissionLabel(row, hasCriteriaWeighting)}
                 </Typography>
-                <Typography
+                <Typography variant="caption"
                   noWrap
                   title={formatDate(latestSubmittedAt(row))}
                   sx={{
                     color: "text.secondary",
-                    fontSize: 10.2,
                   }}
                 >
                   {formatDate(latestSubmittedAt(row))}
@@ -173,7 +168,7 @@ const EvaluationParticipationPanel = ({
                   size="small"
                   variant="outlined"
                   label="Removed later"
-                  sx={{ gridArea: "status", height: 23, fontSize: 10.2 }}
+                  sx={{ gridArea: "status", height: 23 }}
                 />
               ) : (
                 <Chip
@@ -181,13 +176,13 @@ const EvaluationParticipationPanel = ({
                   variant="outlined"
                   color="success"
                   label="Submitted"
-                  sx={{ gridArea: "status", height: 23, fontSize: 10.2 }}
+                  sx={{ gridArea: "status", height: 23 }}
                 />
               )}
             </Box>
           ))
         ) : (
-          <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
+          <Typography variant="body2" color="text.secondary">
             No stored expert submissions are available.
           </Typography>
         )}

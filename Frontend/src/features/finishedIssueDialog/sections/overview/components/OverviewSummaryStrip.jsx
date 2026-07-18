@@ -27,23 +27,20 @@ const SummaryItem = ({ index, icon, label, value, tone }) => (
     <Box sx={overviewSummaryIconSx(tone)}>{icon}</Box>
     <Box sx={{ minWidth: 0 }}>
       <Typography
+        variant="caption"
         sx={{
           color: "text.secondary",
-          fontSize: 11.5,
-          lineHeight: 1.2,
-          fontWeight: 750,
         }}
       >
         {label}
       </Typography>
       <Typography
+        variant="body2"
         noWrap
         title={String(value)}
         sx={{
           mt: 0.2,
-          fontSize: { xs: 14, xl: 15.5 },
-          lineHeight: 1.2,
-          fontWeight: 950,
+          fontWeight: "fontWeightBold",
         }}
       >
         {value}

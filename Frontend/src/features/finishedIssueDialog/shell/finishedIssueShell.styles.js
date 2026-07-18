@@ -35,9 +35,6 @@ export const finishedIssueHeaderControlsSx = {
 
 export const finishedIssueHeaderTitleSx = {
   minWidth: 0,
-  fontSize: { xs: 24, sm: 28, lg: 32 },
-  lineHeight: 1.08,
-  fontWeight: 950,
   letterSpacing: "-0.035em",
 };
 
@@ -45,8 +42,6 @@ export const finishedIssueHeaderChipSx = (failed) => ({
   maxWidth: { xs: "100%", sm: 300 },
   minHeight: 34,
   borderRadius: 1.45,
-  fontSize: 12.5,
-  fontWeight: 850,
   borderColor: failed ? "rgba(243, 104, 104, 0.55)" : undefined,
   "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
 });
@@ -58,8 +53,6 @@ export const finishedIssueHeaderTabsSx = {
     px: 1.25,
     borderRadius: 1.3,
     textTransform: "none",
-    fontSize: 13,
-    fontWeight: 850,
   },
 };
 
@@ -70,7 +63,5 @@ export const finishedIssueNavigationSx = {
     px: { xs: 1.1, md: 1.55 },
     gap: 0.65,
     textTransform: "none",
-    fontSize: { xs: 12.5, md: 14 },
-    fontWeight: 900,
   },
 };

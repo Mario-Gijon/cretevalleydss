@@ -91,7 +91,7 @@ export function ConfirmationDialog({
       <DialogTitle
         id={titleId}
         color={paletteKey}
-        sx={{ fontWeight: 700, fontSize: "1.05rem", ...titleSx }}
+        sx={titleSx}
       >
         {title}
       </DialogTitle>

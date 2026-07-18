@@ -114,7 +114,7 @@ const AlternativeEvaluationDialogShell = ({
               </Avatar>
 
               <Stack spacing={0.15} sx={{ minWidth: 0 }}>
-                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+                <Typography variant="h6">
                   {title}
                 </Typography>
 

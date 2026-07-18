@@ -33,13 +33,13 @@ export const dashboardCardSx = () => ({
 });
 export const dashboardCardHeaderSx = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.8, mb: 2 };
 export const dashboardCardIconSx = { width: 32, height: 32, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "50%", color: "secondary.light", bgcolor: "rgba(63, 203, 207, 0.14)", border: "1px solid rgba(255,255,255,0.07)", mb:0.5 };
-export const dashboardCardTitleSx = { fontSize: { xs: 18, xl: 19 }, lineHeight: 1.2, fontWeight: 950 };
+export const dashboardCardTitleSx = {};
 export const dashboardCardInnerSx = { minWidth: 0, flex: 1 };
 export const dashboardCardBodySx = { minWidth: 0, flex: 1 };
 export const dashboardCardFooterSx = { mt: 0.8, pt: 0.8, borderTop: "1px solid rgba(255,255,255,0.075)" };
-export const dashboardCardActionSx = { width: "100%", minHeight: 36, px: 1.45, borderRadius: 1.25, textTransform: "none", fontSize: 13, fontWeight: 900, justifyContent: "space-between", "& .MuiButton-endIcon": { ml: "auto" } };
+export const dashboardCardActionSx = { width: "100%", minHeight: 36, px: 1.45, borderRadius: 1.25, textTransform: "none", justifyContent: "space-between", "& .MuiButton-endIcon": { ml: "auto" } };
 export const dashboardInnerPanelSx = { minWidth: 0, p: { xs: 0.9, xl: 1.05 }, borderRadius: 2, border: "1px solid rgba(255,255,255,0.085)", bgcolor: "rgba(5, 13, 22, 0.34)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.025)" };
-export const dashboardDescriptionSx = { color: "text.secondary", whiteSpace: "pre-line", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13.5, lineHeight: 1.55, fontWeight: 600 };
+export const dashboardDescriptionSx = { color: "text.secondary", whiteSpace: "pre-line", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.55 };
 export const dashboardResultsUpperGridSx = { display: "grid", gridTemplateColumns: { xs: "1fr", sm: "0.9fr 1.1fr", md: "1fr", lg: "0.9fr 1.1fr" }, gap: 0.75 };
 export const dashboardChartSx = { height: 220, minHeight: 220, width: "100%" };
 export const dashboardEvaluationViewportSx = { width: "100%", minWidth: 0, height: { xs: 250, xl: 285 }, overflow: "auto", p: 0.8, borderRadius: 1.6, border: "1px solid rgba(255,255,255,0.08)", bgcolor: "rgba(3, 10, 17, 0.30)" };

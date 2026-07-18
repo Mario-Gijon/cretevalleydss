@@ -22,19 +22,19 @@ const readableDate = (value) => {
 const MetadataRow = ({ icon, label, value }) => (
   <Box sx={{ display: "grid", gridTemplateColumns: "18px minmax(78px, max-content) minmax(0, 1fr)", gap: 0.7, alignItems: "center", minWidth: 0 }}>
     <Box data-testid="overview-metadata-icon" sx={{ color: "secondary.light", display: "grid", placeItems: "center" }}>{icon}</Box>
-    <Typography sx={{ color: "text.secondary", fontSize: 12, fontWeight: 750, lineHeight: 1.35 }}>{label}</Typography>
+    <Typography variant="caption" sx={{ color: "text.secondary" }}>{label}</Typography>
     <Box sx={{ minWidth: 0 }}>
-      <Typography noWrap title={String(value)} sx={{ color: "text.primary", fontSize: 13, fontWeight: 850, lineHeight: 1.35 }}>{value}</Typography>
+      <Typography variant="body2" noWrap title={String(value)} sx={{ color: "text.primary", fontWeight: "fontWeightBold" }}>{value}</Typography>
     </Box>
   </Box>
 );
 
 const OverviewList = ({ title, items = [] }) => (
   <DashboardInnerPanel sx={{ minWidth: 0, p: 1 }}>
-    <Typography sx={{ mb: 0.6, color: "text.secondary", fontSize: 12.5, fontWeight: 900 }}>{title}</Typography>
+    <Typography variant="subtitle2" sx={{ mb: 0.6, color: "text.secondary" }}>{title}</Typography>
     <Stack spacing={0.45} sx={dashboardBoundedListSx}>
-      {items.map((item, index) => <Typography key={item.id || index} title={item.name} sx={{ minWidth: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 12.5, lineHeight: 1.35, fontWeight: 650 }}>{item.name}</Typography>)}
-      {!items.length ? <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>None available.</Typography> : null}
+      {items.map((item, index) => <Typography variant="body2" key={item.id || index} title={item.name} sx={{ minWidth: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.35 }}>{item.name}</Typography>)}
+      {!items.length ? <Typography variant="body2" color="text.secondary">None available.</Typography> : null}
     </Stack>
   </DashboardInnerPanel>
 );
@@ -43,8 +43,8 @@ const IssueOverviewCard = ({ overview, onViewMore }) => (
   <DashboardPreviewCard icon={<InfoOutlinedIcon fontSize="small" />} title="Overview" actionLabel="View overview" onAction={onViewMore}>
     <Stack spacing={0.75}>
       <Box>
-        <Typography component="h3" noWrap title={overview.name} sx={{ fontSize: { xs: 21, xl: 23 }, fontWeight: 950, lineHeight: 1.15 }}>{overview.name || "—"}</Typography>
-        <Typography sx={{ ...dashboardDescriptionSx, mt: 0.5 }}>{overview.description || "—"}</Typography>
+        <Typography variant="h5" component="h3" noWrap title={overview.name}>{overview.name || "—"}</Typography>
+        <Typography variant="body2" sx={{ ...dashboardDescriptionSx, mt: 0.5 }}>{overview.description || "—"}</Typography>
       </Box>
       <DashboardInnerPanel>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: { xs: 0.65, sm: 1.2 } }}>

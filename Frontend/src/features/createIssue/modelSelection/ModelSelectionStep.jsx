@@ -122,7 +122,7 @@ export const ModelSelectionStep = () => {
                   </Box>
                 )}
 
-                <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.15 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: "fontWeightBold" }}>
                   {model.name}
                 </Typography>
 

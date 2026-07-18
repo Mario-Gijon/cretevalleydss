@@ -91,8 +91,7 @@ export const evaluationsToggleSx = {
   px: 1.35,
   borderRadius: 1.35,
   textTransform: "none",
-  fontSize: 12,
-  fontWeight: 900,
+  fontWeight: "fontWeightBold",
 };
 
 export const evaluationsExpertControlSx = {

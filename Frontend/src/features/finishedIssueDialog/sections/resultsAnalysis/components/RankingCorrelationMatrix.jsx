@@ -15,10 +15,10 @@ const RankingCorrelationMatrix = ({ correlations }) => {
   if (!correlations.available) {
     return (
       <Box sx={resultsPanelSx}>
-        <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>
+        <Typography variant="h6" component="h2">
           Ranking correlations
         </Typography>
-        <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 12 }}>
+        <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
           {correlations.reason}
         </Typography>
       </Box>
@@ -37,10 +37,10 @@ const RankingCorrelationMatrix = ({ correlations }) => {
       <Stack direction="row" spacing={1} alignItems="center">
         <GridViewRoundedIcon sx={{ color: "secondary.light" }} />
         <Box>
-          <Typography component="h2" sx={{ fontSize: 18, fontWeight: 950 }}>
+          <Typography variant="h6" component="h2">
             Ranking correlations
           </Typography>
-          <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Spearman rank correlation between complete rankings (−1 to 1).
           </Typography>
         </Box>
@@ -58,6 +58,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
           <Box />
           {correlations.executions.map((execution) => (
             <Typography
+              variant="caption"
               key={`head-${execution.key}`}
               noWrap
               title={execution.label}
@@ -65,8 +66,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
                 px: 1,
                 py: 0.9,
                 textAlign: "center",
-                fontSize: 11.5,
-                fontWeight: 900,
+                fontWeight: "fontWeightBold",
               }}
             >
               {execution.label}
@@ -88,7 +88,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
                   bgcolor: row.color,
                 }}
               />
-              <Typography noWrap title={row.label} sx={{ fontSize: 11.5 }}>
+              <Typography variant="caption" noWrap title={row.label}>
                 {row.label}
               </Typography>
             </Stack>,
@@ -108,8 +108,8 @@ const RankingCorrelationMatrix = ({ correlations }) => {
                       minHeight: 44,
                       border: "1px solid rgba(255,255,255,0.08)",
                       bgcolor: backgroundFor(cell?.value),
-                      fontSize: 12.5,
-                      fontWeight: 900,
+                      typography: "body2",
+                      fontWeight: "fontWeightBold",
                     }}
                   >
                     {cell?.formattedValue ?? "—"}
@@ -121,7 +121,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
         </Box>
       </Box>
 
-      <Typography sx={{ mt: 0.8, color: "text.secondary", fontSize: 10.5 }}>
+      <Typography variant="caption" sx={{ mt: 0.8, color: "text.secondary" }}>
         1 means identical ordering, 0 means no monotonic rank agreement, and −1
         means exact reverse ordering.
       </Typography>

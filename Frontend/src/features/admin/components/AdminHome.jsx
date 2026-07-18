@@ -52,7 +52,7 @@ const AdminHome = () => {
             </Avatar>
 
             <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 980, fontSize: 45, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+              <Typography variant="h4" component="h1" sx={{ whiteSpace: "nowrap" }}>
                 Admin panel
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>

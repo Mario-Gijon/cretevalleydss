@@ -35,31 +35,31 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                   border: "1px solid",
                   borderColor: winner ? "success.main" : "secondary.main",
                   color: winner ? "success.light" : "secondary.light",
-                  fontSize: compact ? 14 : 17,
-                  fontWeight: 950,
+                  typography: "body2",
+                  fontWeight: "fontWeightBold",
                 }}
               >
                 {entry.position}
               </Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography
+                  variant="body2"
                   noWrap
                   title={entry.name}
                   sx={{
                     minWidth: 0,
                     display: "block",
-                    fontSize: compact ? 14 : 17,
-                    fontWeight: 950,
+                    fontWeight: "fontWeightBold",
                   }}
                 >
                   {entry.name}
                 </Typography>
                 {showDescriptions && entry.description ? (
                   <Typography
+                    variant="caption"
                     title={entry.description}
                     sx={{
                       color: "text.secondary",
-                      fontSize: 10.8,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -90,10 +90,10 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
               </Box>
               <Box sx={{ textAlign: "right", flex: "0 0 auto" }}>
                 <Typography
+                  variant="body2"
                   sx={{
                     color: winner ? "success.light" : "secondary.light",
-                    fontSize: compact ? 15 : 20,
-                    fontWeight: 950,
+                    fontWeight: "fontWeightBold",
                   }}
                 >
                   {entry.formattedScore}

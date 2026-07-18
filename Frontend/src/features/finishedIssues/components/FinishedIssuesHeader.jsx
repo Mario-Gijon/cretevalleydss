@@ -110,10 +110,8 @@ const FinishedIssuesHeader = ({
 
               <Stack spacing={0} sx={{ minWidth: 0 }}>
                 <Typography
+                  variant="h4"
                   sx={{
-                    fontWeight: 980,
-                    fontSize: 45,
-                    lineHeight: 1.05,
                     whiteSpace: "nowrap",
                   }}
                 >
@@ -182,8 +180,8 @@ const FinishedIssuesHeader = ({
                           onChange={(event) => setSearchBy(event.target.value)}
                           disableUnderline
                           sx={{
-                            fontSize: 13,
-                            fontWeight: 950,
+                            typography: "body2",
+                            fontWeight: "fontWeightBold",
                             color: "text.secondary",
                             "& .MuiSelect-icon": {
                               color: alpha(theme.palette.text.primary, 0.55),

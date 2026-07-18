@@ -22,7 +22,7 @@ const Header = ({ title, subtitle, resettable, onResetZoom }) => (
   <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start" sx={{ mb: 1.25 }}>
     <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
       <AnalyticsIcon fontSize="small" color="secondary" />
-      <Box><Typography component="h2" sx={{ fontWeight: 900, fontSize: 18 }}>{title}</Typography><Typography color="text.secondary" sx={{ fontSize: 12 }}>{subtitle}</Typography></Box>
+      <Box><Typography variant="h6" component="h2">{title}</Typography><Typography variant="body2" color="text.secondary">{subtitle}</Typography></Box>
     </Stack>
     {resettable ? <Button variant="outlined" color="secondary" size="small" startIcon={<CenterFocusStrongRoundedIcon />} onClick={onResetZoom}>Reset zoom</Button> : null}
   </Stack>
@@ -38,7 +38,7 @@ const GroupChips = ({ group }) => (
 const ConsensusCard = ({ consensus }) => (
   <Box sx={cardSx}>
     <Header title="Consensus evolution" subtitle="Consensus level by phase." />
-    {consensus.available ? <Box sx={chartFrameSx}><AnalyticalConsensusLineChart data={consensus.graph} /></Box> : <Typography color="text.secondary" sx={{ minHeight: 100, display: "grid", placeItems: "center", fontSize: 13 }}>No finite consensus progression data is available.</Typography>}
+    {consensus.available ? <Box sx={chartFrameSx}><AnalyticalConsensusLineChart data={consensus.graph} /></Box> : <Typography variant="body2" color="text.secondary" sx={{ minHeight: 100, display: "grid", placeItems: "center" }}>No finite consensus progression data is available.</Typography>}
   </Box>
 );
 
@@ -49,8 +49,8 @@ const SingleVisualization = ({ visualizations, scatterPlotRef, onResetZoom }) =>
     <Box sx={{ display: "grid", gridTemplateColumns: showConsensus ? { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(300px, 0.85fr)" } : "1fr", gap: 1.4 }}>
       <Box sx={cardSx}>
         <Header title="Expert–collective map" subtitle="Dispersion of expert points and the collective position." resettable={scatter?.available} onResetZoom={onResetZoom} />
-        {scatter?.available ? <Box sx={chartFrameSx}><AnalyticalScatterChart data={scatter.data} phase={0} scatterPlotRef={scatterPlotRef} color={RESULTS_ANALYSIS_SLOT_COLORS[0]} /></Box> : <Typography color="text.secondary" sx={{ minHeight: 180, display: "grid", placeItems: "center", fontSize: 13 }}>{unavailableMessage(scatter?.unavailableReason)}</Typography>}
-        <Typography color="text.secondary" sx={{ fontSize: 11.5, mt: 1 }}>Coordinates come from the stored analytical projection for this execution.</Typography>
+        {scatter?.available ? <Box sx={chartFrameSx}><AnalyticalScatterChart data={scatter.data} phase={0} scatterPlotRef={scatterPlotRef} color={RESULTS_ANALYSIS_SLOT_COLORS[0]} /></Box> : <Typography variant="body2" color="text.secondary" sx={{ minHeight: 180, display: "grid", placeItems: "center" }}>{unavailableMessage(scatter?.unavailableReason)}</Typography>}
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>Coordinates come from the stored analytical projection for this execution.</Typography>
       </Box>
       {showConsensus ? <ConsensusCard consensus={visualizations.consensus} /> : null}
     </Box>
@@ -60,17 +60,17 @@ const SingleVisualization = ({ visualizations, scatterPlotRef, onResetZoom }) =>
 const ComparisonVisualization = ({ comparison, scatterPlotRef, onResetZoom }) => {
   if (comparison.presentation === "unavailable") return <Box sx={cardSx}><Header title="Comparative visualizations" subtitle="Stored analytical projections." /><Typography color="text.secondary" sx={{ minHeight: 180, display: "grid", placeItems: "center", textAlign: "center" }}>{comparison.footerMessage}</Typography></Box>;
   if (comparison.presentation === "separate") return <Stack spacing={1.1}>
-    {comparison.footerMessages.map((message) => <Typography key={message} color="text.secondary" sx={{ fontSize: 12.5 }}>{message}</Typography>)}
-    {comparison.unavailableExecutions.filter((execution) => !execution.displayAvailable).length ? <Typography color="text.secondary" sx={{ fontSize: 12 }}>Unavailable stored projection: {comparison.unavailableExecutions.filter((execution) => !execution.displayAvailable).map((execution) => execution.executionName).join(", ")}.</Typography> : null}
+    {comparison.footerMessages.map((message) => <Typography variant="body2" key={message} color="text.secondary">{message}</Typography>)}
+    {comparison.unavailableExecutions.filter((execution) => !execution.displayAvailable).length ? <Typography variant="body2" color="text.secondary">Unavailable stored projection: {comparison.unavailableExecutions.filter((execution) => !execution.displayAvailable).map((execution) => execution.executionName).join(", ")}.</Typography> : null}
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" }, gap: 1.4 }}>
-      {comparison.separateExecutions.map((group) => <Box key={group.id} sx={cardSx}><Header title="Expert–collective map" subtitle="Stored projection shown separately." /> <GroupChips group={{ ...group, referenceGroupId: comparison.referenceGroupId }} />{group.equalityMessage ? <Typography color="text.secondary" sx={{ fontSize: 11.5, mb: 0.8 }}>{group.equalityMessage}</Typography> : null}<Box sx={compactChartFrameSx}><ComparativeAnalyticalScatterChart groups={[group]} compact /></Box></Box>)}
+      {comparison.separateExecutions.map((group) => <Box key={group.id} sx={cardSx}><Header title="Expert–collective map" subtitle="Stored projection shown separately." /> <GroupChips group={{ ...group, referenceGroupId: comparison.referenceGroupId }} />{group.equalityMessage ? <Typography variant="caption" color="text.secondary" sx={{ mb: 0.8 }}>{group.equalityMessage}</Typography> : null}<Box sx={compactChartFrameSx}><ComparativeAnalyticalScatterChart groups={[group]} compact /></Box></Box>)}
     </Box>
   </Stack>;
   const groups = comparison.presentation === "shared" ? [comparison.sharedProjection] : comparison.alignedExecutions;
   return <Box sx={cardSx}>
     <Header title="Expert–collective map" subtitle="Dispersion of expert points and the collective position." resettable onResetZoom={onResetZoom} />
     <Box sx={{ ...chartFrameSx, mt: 1 }}><ComparativeAnalyticalScatterChart groups={groups} scatterPlotRef={scatterPlotRef} /></Box>
-    <Stack spacing={0.3} sx={{ mt: 1 }}>{comparison.footerMessages.map((message) => <Typography key={message} color="text.secondary" sx={{ fontSize: 11.5 }}>{message}</Typography>)}</Stack>
+    <Stack spacing={0.3} sx={{ mt: 1 }}>{comparison.footerMessages.map((message) => <Typography variant="caption" key={message} color="text.secondary">{message}</Typography>)}</Stack>
   </Box>;
 };
 

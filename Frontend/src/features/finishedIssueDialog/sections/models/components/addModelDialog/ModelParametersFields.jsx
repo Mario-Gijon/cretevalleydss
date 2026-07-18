@@ -12,7 +12,7 @@ const ModelParametersFields = ({
 }) => (
   <Box sx={addModelParameterColorScopeSx}>
     <Stack spacing={0.8}>
-      <Typography sx={{ fontSize: 14, fontWeight: 950 }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: "fontWeightBold" }}>
         Model parameters
       </Typography>
 

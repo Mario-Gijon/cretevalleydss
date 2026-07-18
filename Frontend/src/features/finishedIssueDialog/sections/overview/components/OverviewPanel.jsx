@@ -18,11 +18,11 @@ const OverviewPanel = ({
   <Box sx={[overviewPanelSx, ...(Array.isArray(sx) ? sx : [sx])]}>
     <Box sx={overviewPanelHeaderSx}>
       <Box sx={overviewPanelIconSx}>{icon}</Box>
-      <Typography component="h2" sx={overviewPanelTitleSx}>
+      <Typography variant="h6" component="h2" sx={overviewPanelTitleSx}>
         {title}
       </Typography>
       {count !== undefined && count !== null ? (
-        <Typography component="span" sx={overviewPanelCountSx}>
+        <Typography variant="caption" component="span" sx={overviewPanelCountSx}>
           {count}
         </Typography>
       ) : null}

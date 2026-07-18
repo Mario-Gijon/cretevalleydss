@@ -47,7 +47,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <PersonSearchIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Expert review
             </Typography>
           </Stack>
@@ -125,7 +125,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
                 >
                   <Stack direction="row" spacing={1} alignItems="center">
                     <RuleOutlinedIcon fontSize="small" />
-                    <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                    <Typography variant="h6" component="h2">
                       Weights
                     </Typography>
                   </Stack>
@@ -141,7 +141,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
             <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                 <FactCheckOutlinedIcon fontSize="small" />
-                <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                <Typography variant="h6" component="h2">
                   Evaluation summary
                 </Typography>
               </Stack>
@@ -181,7 +181,7 @@ export default function AdminIssueExpertReview({ detail, issueExpertsProgress, d
             >
               <Stack direction="row" spacing={1} alignItems="center">
                 <AnalyticsOutlinedIcon fontSize="small" />
-                <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+                <Typography variant="h6" component="h2">
                   Evaluations
                 </Typography>
               </Stack>

@@ -54,7 +54,7 @@ const AuthLayout = () => {
             width="100%"
           >
             <EULogoIcon sx={{ fontSize: 190, height: "auto" }} />
-            <Typography sx={{ fontSize: 13, width: { sm: "100%", md: "60%", lg: "40%" } }}>
+            <Typography variant="body2" sx={{ width: { sm: "100%", md: "60%", lg: "40%" } }}>
               Co-funded by the European Union under grant agreement no. 101136139. Views and
               opinions expressed are however those of the author(s) only and do not necessarily
               reflect those of the European Union or CINEA. Neither the European Union nor the

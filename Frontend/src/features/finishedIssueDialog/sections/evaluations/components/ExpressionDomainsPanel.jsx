@@ -32,8 +32,8 @@ const headerCellSx = {
   px: 0.85,
   bgcolor: "rgba(12, 33, 47, 0.98)",
   color: "text.secondary",
-  fontSize: 10.5,
-  fontWeight: 900,
+  typography: "caption",
+  fontWeight: "fontWeightBold",
   textTransform: "uppercase",
   letterSpacing: 0.35,
   whiteSpace: "nowrap",
@@ -44,10 +44,10 @@ const ExpressionDomainsPanel = ({ domains }) => (
     <Box sx={evaluationsPanelHeaderSx}>
       <TuneRoundedIcon sx={{ color: "secondary.light", fontSize: 21 }} />
       <Box sx={{ minWidth: 0 }}>
-        <Typography component="h2" sx={{ fontSize: 16, fontWeight: 950 }}>
+        <Typography variant="h6" component="h2">
           Expression domains by criterion
         </Typography>
-        <Typography sx={{ color: "text.secondary", fontSize: 11.5, fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           Stored domains used to express each leaf criterion.
         </Typography>
       </Box>
@@ -82,7 +82,7 @@ const ExpressionDomainsPanel = ({ domains }) => (
               return (
                 <TableRow key={item.criterionId} hover>
                   <TableCell sx={{ maxWidth: 210, py: 0.7, px: 0.85 }}>
-                    <Typography noWrap title={item.name} sx={{ fontSize: 12.5, fontWeight: 850 }}>
+                    <Typography variant="body2" noWrap title={item.name} sx={{ fontWeight: "fontWeightBold" }}>
                       {item.name}
                     </Typography>
                   </TableCell>
@@ -93,15 +93,15 @@ const ExpressionDomainsPanel = ({ domains }) => (
                         variant="outlined"
                         color={item.criterionType === "cost" ? "error" : "success"}
                         label={item.criterionTypeLabel}
-                        sx={{ height: 23, fontSize: 10.5, fontWeight: 800 }}
+                        sx={{ height: 23, fontWeight: "fontWeightBold" }}
                       />
                     ) : "—"}
                   </TableCell>
                   <TableCell sx={{ minWidth: 175, py: 0.7, px: 0.85 }}>
-                    <Typography noWrap title={item.domainName} sx={{ color: "secondary.light", fontSize: 12, fontWeight: 850 }}>
+                    <Typography variant="body2" noWrap title={item.domainName} sx={{ color: "secondary.light", fontWeight: "fontWeightBold" }}>
                       {item.domainName}
                     </Typography>
-                    <Typography noWrap title={metadata || "—"} sx={{ color: "text.secondary", fontSize: 10.5, fontWeight: 600 }}>
+                    <Typography variant="caption" noWrap title={metadata || "—"} sx={{ color: "text.secondary" }}>
                       {metadata || "—"}
                     </Typography>
                   </TableCell>
@@ -112,7 +112,7 @@ const ExpressionDomainsPanel = ({ domains }) => (
         </Table>
       </TableContainer>
     ) : (
-      <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
+      <Typography variant="body2" color="text.secondary">
         No criterion domain assignments are available.
       </Typography>
     )}

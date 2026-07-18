@@ -126,7 +126,7 @@ const AddExpertsPickerDialog = ({
               </Avatar>
 
               <Stack spacing={0.15}>
-                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
+                <Typography variant="h6">
                   Add experts
                 </Typography>
                 <Typography

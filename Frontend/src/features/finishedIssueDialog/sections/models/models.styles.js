@@ -83,7 +83,7 @@ export const executionCardSx = (selected, failed) => ({
 
 export const executionCardIconSx = { width: 46, height: 46, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "rgba(24, 147, 165, 0.17)", border: "1px solid rgba(63, 208, 215, 0.26)", color: "secondary.light" };
 
-export const executionCardDescriptionSx = { mt: 1.5, mb: 1.5, color: "text.secondary", fontSize: { xs: 13, md: 14 }, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "4.5em" };
+export const executionCardDescriptionSx = { mt: 1.5, mb: 1.5, color: "text.secondary", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "4.5em" };
 
 export const addModelCardSx = () => ({
   appearance: "none", width: "100%", minWidth: { xs: 0, sm: 260 }, minHeight: { xs: 250, md: 290 }, px: 2, borderRadius: 3,

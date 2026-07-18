@@ -64,11 +64,11 @@ const FinishedIssueDialogHeader = () => {
             spacing={1.4}
           >
             <Box sx={finishedIssueHeaderIdentitySx}>
-              <Typography sx={{ color: "text.secondary", fontSize: 11, lineHeight: 1.2, fontWeight: 900, letterSpacing: "0.105em", textTransform: "uppercase" }}>
+              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: "0.105em" }}>
                 Finished issue
               </Typography>
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.35, minWidth: 0 }}>
-                <Typography noWrap title={issue?.name || ""} sx={finishedIssueHeaderTitleSx}>
+                <Typography variant="h4" component="h1" noWrap title={issue?.name || ""} sx={finishedIssueHeaderTitleSx}>
                   {issue?.name || "Finished issue"}
                 </Typography>
                 <TaskAltIcon sx={{ color: "success.main", fontSize: { xs: 25, lg: 29 }, flexShrink: 0 }} />
@@ -103,8 +103,8 @@ const FinishedIssueDialogHeader = () => {
                   >
                     {option.type === "base" ? <LayersRoundedIcon fontSize="small" /> : <ScienceRoundedIcon fontSize="small" />}
                     <Box sx={{ ml: 1, minWidth: 0 }}>
-                      <Typography noWrap title={runLabel(option)} sx={{ fontSize: 13, fontWeight: 850 }}>{option.label}</Typography>
-                      <Typography noWrap sx={{ color: "text.secondary", fontSize: 11 }}>{option.modelName}{option.status === "error" ? " · Failed" : ""}</Typography>
+                      <Typography variant="subtitle2" noWrap title={runLabel(option)}>{option.label}</Typography>
+                      <Typography variant="caption" noWrap sx={{ color: "text.secondary" }}>{option.modelName}{option.status === "error" ? " · Failed" : ""}</Typography>
                     </Box>
                   </MenuItem>
                 ))}

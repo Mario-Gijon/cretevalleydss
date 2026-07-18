@@ -220,8 +220,8 @@ export const getCreateIssueModelSelectedBadgeSx = (theme) => ({
   border: `1px solid ${alpha(theme.palette.info.main, 0.35)}`,
   bgcolor: alpha(theme.palette.info.main, 0.12),
   color: "info.main",
-  fontWeight: 950,
-  fontSize: 12,
+  typography: "caption",
+  fontWeight: "fontWeightBold",
 });
 
 /**
@@ -250,8 +250,8 @@ export const getCreateIssueExpertsCountBadgeSx = (theme) => ({
   borderRadius: 999,
   bgcolor: alpha(theme.palette.info.main, 0.1),
   color: "info.main",
-  fontSize: 12,
-  fontWeight: 950,
+  typography: "caption",
+  fontWeight: "fontWeightBold",
   border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
 });
 
@@ -372,8 +372,8 @@ export const getCreateIssueExpressionCountBadgeSx = (theme) => ({
   borderRadius: 999,
   bgcolor: alpha(theme.palette.info.main, 0.1),
   color: "info.main",
-  fontSize: 12,
-  fontWeight: 950,
+  typography: "caption",
+  fontWeight: "fontWeightBold",
   border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
 });
 

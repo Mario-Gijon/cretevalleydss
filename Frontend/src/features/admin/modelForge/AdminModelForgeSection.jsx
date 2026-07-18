@@ -110,7 +110,7 @@ const codeBlockSx = (theme) => ({
   borderRadius: 2,
   bgcolor: alpha(theme.palette.common.black, 0.25),
   color: "text.secondary",
-  fontSize: 12,
+  typography: "body2",
   lineHeight: 1.55,
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",

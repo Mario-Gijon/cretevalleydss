@@ -36,7 +36,7 @@ export default function ConfirmPasswordDialog({ open, repeatPassword, setRepeatP
         },
       }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: "1.05rem" }}>Confirm new password</DialogTitle>
+      <DialogTitle>Confirm new password</DialogTitle>
       <DialogContent>
         <TextField
           label="Repeat Password"
