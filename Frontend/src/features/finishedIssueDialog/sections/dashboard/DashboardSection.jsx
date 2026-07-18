@@ -30,7 +30,6 @@ const DashboardSection = () => {
     openOverview: open(FINISHED_ISSUE_VIEWS.OVERVIEW),
     openResultsAnalysis,
     openEvaluations: open(FINISHED_ISSUE_VIEWS.EVALUATIONS),
-    openConsensus: open(FINISHED_ISSUE_VIEWS.CONSENSUS),
     openModels: open(FINISHED_ISSUE_VIEWS.MODELS),
   }} />;
 };

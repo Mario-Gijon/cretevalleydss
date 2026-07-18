@@ -1,9 +1,8 @@
 import { Alert, Backdrop, Box, Stack, Typography } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha, } from "@mui/material/styles";
 
 import { CircularLoading } from "../../components/LoadingProgress/CircularLoading";
 import { GlassDialog } from "../../components/StyledComponents/GlassDialog";
-import { getFinishedIssueDialogAuroraBg } from "./styles/finishedIssueDialog.styles";
 import { FinishedIssueDialogProvider } from "./context/finishedIssueDialog.provider";
 import { useFinishedIssueDialogContext } from "./context/finishedIssueDialog.context";
 import FinishedIssueDialogHeader from "./shell/FinishedIssueDialogHeader";
@@ -16,7 +15,6 @@ import { finishedIssueContentFrameSx } from "./shell/finishedIssueShell.styles";
  * @returns {JSX.Element}
  */
 const FinishedIssueDialogBody = () => {
-  const theme = useTheme();
   const {
     openFinishedIssueDialog,
     handleCloseFinishedIssueDialog,
@@ -32,7 +30,6 @@ const FinishedIssueDialogBody = () => {
         elevation: 0,
         sx: {
           bgcolor: alpha("#070B10", 0.72),
-          ...getFinishedIssueDialogAuroraBg(theme, 0.1),
           backdropFilter: "blur(10px)",
         },
       }}

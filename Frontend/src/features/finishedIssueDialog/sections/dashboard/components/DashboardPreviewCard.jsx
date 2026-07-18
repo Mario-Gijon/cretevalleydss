@@ -6,21 +6,22 @@ import {
   dashboardCardBodySx,
   dashboardCardFooterSx,
   dashboardCardHeaderSx,
+  dashboardCardIconSx,
   dashboardCardInnerSx,
-  dashboardCardNumberSx,
   dashboardCardSx,
-  dashboardCardSubtitleSx,
   dashboardCardTitleSx,
 } from "../dashboard.styles";
 
-const DashboardPreviewCard = ({ number, title, subtitle, accent = "cyan", actionLabel, onAction, children }) => (
-  <Box sx={dashboardCardSx(accent)}>
+const DashboardPreviewCard = ({ icon, title, headerRight = null, actionLabel, onAction, children }) => (
+  <Box sx={dashboardCardSx()}>
     <Box sx={dashboardCardHeaderSx}>
-      <Box sx={dashboardCardNumberSx}>{number}</Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography component="h2" sx={dashboardCardTitleSx}>{title}</Typography>
-        {subtitle ? <Typography sx={dashboardCardSubtitleSx}>{subtitle}</Typography> : null}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.05, minWidth: 0, flex: 1 }}>
+        <Box data-testid="summary-card-icon" sx={dashboardCardIconSx}>{icon}</Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography component="h2" sx={dashboardCardTitleSx}>{title}</Typography>
+        </Box>
       </Box>
+      {headerRight ? <Box sx={{ flexShrink: 0, pl: 0.75 }}>{headerRight}</Box> : null}
     </Box>
     <Stack sx={dashboardCardInnerSx}>
       <Box sx={dashboardCardBodySx}>{children}</Box>

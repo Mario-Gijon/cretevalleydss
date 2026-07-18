@@ -22,7 +22,10 @@ const renderView = (props) => render(<ThemeProvider theme={createTheme()}><Dashb
 
 describe("DashboardView", () => {
   it("renders from props and sends view-more actions without a provider", () => {
+    const openOverview = vi.fn();
+    const openModels = vi.fn();
     const openResultsAnalysis = vi.fn();
+    const openEvaluations = vi.fn();
     renderView({
       data: {
         kpis: { winner: { name: "Alternative", formattedScore: "0.8" }, consensus: { enabled: false, label: "Disabled" }, phase: { label: "Final" } },
@@ -40,8 +43,7 @@ describe("DashboardView", () => {
         evaluations: { evaluationsCount: 1, stageLabel: "Alternative evaluation", phaseLabel: "Final", hasCollective: false, showCollective: false, renderer: null },
       },
       actions: {
-        openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis,
-        openEvaluations: vi.fn(), openConsensus: vi.fn(),
+        openOverview, openModels, openResultsAnalysis, openEvaluations,
       },
     });
 
@@ -50,11 +52,29 @@ describe("DashboardView", () => {
     expect(screen.getByText("Alternatives")).toBeInTheDocument();
     expect(screen.getByText("Leaf criteria")).toBeInTheDocument();
     expect(screen.getByText("Cost")).toBeInTheDocument();
+    expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(screen.getByText("Finished")).toBeInTheDocument();
+    expect(screen.getByText("Consensus")).toBeInTheDocument();
     expect(screen.getByText("Ranking")).toBeInTheDocument();
     expect(screen.getByText("Performance overview")).toBeInTheDocument();
     expect(screen.getByText("Runs generated")).toBeInTheDocument();
+    expect(screen.getByText("1 evaluation")).toBeInTheDocument();
+    expect(screen.getAllByTestId("summary-card-icon")).toHaveLength(4);
+    expect(screen.getAllByTestId("overview-metadata-icon")).toHaveLength(7);
+    expect(screen.queryByText("Best option")).not.toBeInTheDocument();
+    expect(screen.queryByText("Top score")).not.toBeInTheDocument();
+    expect(screen.queryByText("Evaluation coverage")).not.toBeInTheDocument();
+    expect(screen.queryByText("Finished issue summary")).not.toBeInTheDocument();
+    expect(screen.queryByText("Selected execution configuration")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alternative evaluation")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "View overview" }));
+    fireEvent.click(screen.getByRole("button", { name: "View models" }));
     fireEvent.click(screen.getByRole("button", { name: "View results analysis" }));
+    fireEvent.click(screen.getByRole("button", { name: "View evaluations" }));
+    expect(openOverview).toHaveBeenCalledOnce();
+    expect(openModels).toHaveBeenCalledOnce();
     expect(openResultsAnalysis).toHaveBeenCalledOnce();
+    expect(openEvaluations).toHaveBeenCalledOnce();
   });
 
   it("labels a truncated ranking preview as Top 3 ranking", () => {
@@ -79,21 +99,20 @@ describe("DashboardView", () => {
     expect(screen.getByText("Top 3 performance overview")).toBeInTheDocument();
   });
 
-  it("opens Consensus only from an enabled Consensus KPI", () => {
-    const openConsensus = vi.fn();
+  it("formats the compact Evaluations header count with the correct plural", () => {
     renderView({
       data: {
         kpis: { winner: null, consensus: { enabled: true, label: "Enabled" }, phase: { label: "Phase 5" } },
         overview: { name: "Finished issue", description: "Description", owner: "Owner", baseModelName: "Model", creationDate: null, closureDate: null, consensusEnabled: true, lifecycleStage: "Finished", acceptedParticipantsCount: 1, alternatives: [], leafCriteria: [] },
         models: { baseModelName: "Model", selectedExecutionLabel: "Base", selectedModelName: "Model", runsGenerated: 0 },
         resultsAnalysis: { context: { executionLabel: "Base", phaseLabel: "Phase 5" }, outcome: { available: false, winner: null, topRanking: [], unavailableReason: "No result" }, interpretation: { available: false } },
-        evaluations: { evaluationsCount: 0, stageLabel: "Alternative evaluation", phaseLabel: "Phase 5", hasCollective: false, showCollective: false, renderer: null },
+        evaluations: { evaluationsCount: 2, stageLabel: "Alternative evaluation", phaseLabel: "Phase 5", hasCollective: false, showCollective: false, renderer: null },
       },
-      actions: { openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis: vi.fn(), openEvaluations: vi.fn(), openConsensus },
+      actions: { openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis: vi.fn(), openEvaluations: vi.fn() },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /consensus/i }));
-    expect(openConsensus).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("evaluations-count")).toHaveTextContent("2 evaluations");
+    expect(screen.queryByText("1/1 completed")).not.toBeInTheDocument();
   });
 
   it("renders the complete canonical Finished Issue fixture without object-child errors", () => {
@@ -108,7 +127,7 @@ describe("DashboardView", () => {
       models,
     };
 
-    renderView({ data, actions: { openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis: vi.fn(), openEvaluations: vi.fn(), openConsensus: vi.fn() } });
+    renderView({ data, actions: { openOverview: vi.fn(), openModels: vi.fn(), openResultsAnalysis: vi.fn(), openEvaluations: vi.fn() } });
 
     expect(screen.getByText("Canonical short model description")).toBeInTheDocument();
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
@@ -117,7 +136,9 @@ describe("DashboardView", () => {
   it("uses natural card rows: Overview is wider than Models and the lower cards share equal columns", () => {
     expect(dashboardFirstRowSx.gridTemplateColumns.lg).toBe("minmax(0, 1.55fr) minmax(340px, 0.9fr)");
     expect(dashboardSecondRowSx.gridTemplateColumns.lg).toBe("repeat(2, minmax(0, 1fr))");
-    expect(dashboardFirstRowSx.alignItems).toBe("start");
-    expect(dashboardItemSx["& > *"]).toBeUndefined();
+    expect(dashboardFirstRowSx.alignItems).toBe("stretch");
+    expect(dashboardSecondRowSx.alignItems).toBe("stretch");
+    expect(dashboardItemSx.display).toBe("flex");
+    expect(dashboardItemSx["& > *"]).toMatchObject({ width: "100%", height: "100%" });
   });
 });

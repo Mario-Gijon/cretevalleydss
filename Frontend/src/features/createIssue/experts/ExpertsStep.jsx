@@ -42,7 +42,6 @@ import {
   getCreateIssueExpertsHeadCellSx,
   getCreateIssueExpertsHeaderAvatarSx,
   getCreateIssueExpertsHoverRowSx,
-  getCreateIssueExpertsSearchInputSx,
   getCreateIssueExpertsTableContainerSx,
 } from "../styles/createIssueStep.styles";
 import {

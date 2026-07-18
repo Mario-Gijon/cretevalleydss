@@ -13,11 +13,11 @@ import {
 import { useState } from "react";
 import { alpha } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LayersRoundedIcon from "@mui/icons-material/LayersRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 
 import { useFinishedIssueDialogContext } from "../context/finishedIssueDialog.context";
 import { formatFinishedIssuePhaseLabel } from "../logic/formatFinishedIssuePhaseLabel";
@@ -43,7 +43,6 @@ const FinishedIssueDialogHeader = () => {
   } = useFinishedIssueDialogContext();
 
   const issue = dialog.payload?.issue || selectedIssue || {};
-  const lifecycle = dialog.payload?.lifecycle || {};
   const [executionMenuAnchor, setExecutionMenuAnchor] = useState(null);
   const runLabel = (option) =>
     `${option.label} · ${option.modelName || "—"}${
@@ -69,15 +68,11 @@ const FinishedIssueDialogHeader = () => {
                 Finished issue
               </Typography>
               <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.35, minWidth: 0 }}>
-                <CheckCircleRoundedIcon sx={{ color: "success.main", fontSize: { xs: 25, lg: 29 }, flexShrink: 0 }} />
                 <Typography noWrap title={issue?.name || ""} sx={finishedIssueHeaderTitleSx}>
                   {issue?.name || "Finished issue"}
                 </Typography>
-                <Chip size="small" color="success" label="Finished" title={lifecycle.closureDate ? `Finished ${lifecycle.closureDate}` : "Finished"} sx={{ flexShrink: 0, fontWeight: 900 }} />
+                <TaskAltIcon sx={{ color: "success.main", fontSize: { xs: 25, lg: 29 }, flexShrink: 0 }} />
               </Stack>
-              {issue?.description ? <Typography title={issue.description} sx={{ mt: 0.75, maxWidth: 760, color: "text.secondary", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13.5, lineHeight: 1.45, fontWeight: 600 }}>
-                {issue.description}
-              </Typography> : null}
             </Box>
 
             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} sx={finishedIssueHeaderControlsSx}>

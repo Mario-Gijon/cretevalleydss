@@ -26,7 +26,6 @@ import {
   getCreateIssueModelPillToggleSx,
   getCreateIssueModelSelectedBadgeSx,
   getCreateIssueModelTileSx,
-  getCreateIssueStepInputSx,
 } from "../styles/createIssueStep.styles";
 
 export const ModelSelectionStep = () => {

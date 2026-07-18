@@ -9,7 +9,7 @@ import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 import { finishedIssueNavigationSx } from "./finishedIssueShell.styles";
 
 const TAB_LABELS = {
-  dashboard: "Dashboard",
+  dashboard: "Summary",
   overview: "Overview",
   "results-analysis": "Results analysis",
   evaluations: "Evaluations",

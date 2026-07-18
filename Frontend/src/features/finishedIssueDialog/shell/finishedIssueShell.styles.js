@@ -5,7 +5,7 @@ export const finishedIssueDialogLayoutSx = {
 
 export const finishedIssueContentFrameSx = {
   width: "100%",
-  maxWidth: 1920,
+  maxWidth: 2040,
   mx: "auto",
   minWidth: 0,
 };
