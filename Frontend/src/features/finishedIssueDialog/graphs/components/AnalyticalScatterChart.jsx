@@ -11,6 +11,7 @@ import {
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
 import { buildAnalyticalScatterViewModel } from "../logic/buildAnalyticalScatterViewModel.js";
+import { collectiveColorFor } from "../logic/analyticalScatterColors.js";
 
 ChartJS.register(
   ScatterController,
@@ -47,9 +48,9 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = 
       {
         label: "Collective",
         data: [collectivePoint],
-        backgroundColor: alpha(color, 0.95),
-        borderColor: alpha("#fff", 0.85),
-        borderWidth: 1.5,
+        backgroundColor: alpha(collectiveColorFor(color), 0.98),
+        borderColor: alpha(color, 0.95),
+        borderWidth: 2,
         pointRadius: compact ? 5 : 10,
         pointStyle: "rectRot",
         pointHoverRadius: compact ? 7 : 13,

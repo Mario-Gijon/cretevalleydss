@@ -47,13 +47,37 @@ describe("buildModelsPreview description normalization", () => {
     renderCard({
       baseModelName: "Base model",
       selectedExecutionLabel: "Base",
-      additionalRunsCount: 0,
+      runsGenerated: 0,
       selectedModelDescription: { short: "Malformed object", extended: "" },
       status: "completed",
-      parameters: {},
     });
 
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("keeps Dashboard Models compact and never exposes raw parameter values", () => {
+    renderCard({
+      selectedExecutionLabel: "Scenario A",
+      selectedModelName: "TOPSIS",
+      selectedModelDescription: "Canonical description",
+      runsGenerated: 2,
+      parameters: { weights: { "criterion-internal-id": 0.5 } },
+    });
+
+    expect(screen.getByText("Selected execution")).toBeInTheDocument();
+    expect(screen.getByText("Runs generated")).toBeInTheDocument();
+    expect(screen.queryByText("Model parameters")).not.toBeInTheDocument();
+    expect(screen.queryByText("criterion-internal-id")).not.toBeInTheDocument();
+  });
+
+  it("uses the canonical scenario collection for the generated-runs count", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const preview = buildModelsPreview(buildModelsData({
+      payload,
+      selectedExecution: { type: "base", key: "base", label: "Base", model: payload.models.base },
+    }));
+
+    expect(preview.runsGenerated).toBe(payload.scenarios.length);
   });
 });
 

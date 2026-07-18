@@ -88,7 +88,7 @@ export const ModelSelectionStep = () => {
           variant="outlined"
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          sx={{ flex: 1, maxWidth: { xs: "100%", sm: 320 }, ...getCreateIssueStepInputSx(theme) }}
+          sx={{ flex: 1, maxWidth: { xs: "100%", sm: 320 } }}
           autoComplete="off"
           slotProps={{
             input: {

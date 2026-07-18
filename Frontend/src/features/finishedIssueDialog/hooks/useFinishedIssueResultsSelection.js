@@ -4,6 +4,7 @@ const MIN_SELECTIONS = 1;
 const MAX_SELECTIONS = 3;
 
 const uniqueKeys = (keys) => [...new Set((Array.isArray(keys) ? keys : []).filter(Boolean))];
+const sameKeys = (left, right) => left.length === right.length && left.every((key, index) => key === right[index]);
 
 export const useFinishedIssueResultsSelection = ({
   issueId,
@@ -33,7 +34,8 @@ export const useFinishedIssueResultsSelection = ({
         .filter((key) => optionsByKey.has(key))
         .filter((key) => key === "base" || optionsByKey.get(key)?.selectable)
         .slice(0, MAX_SELECTIONS);
-      return pruned.length ? pruned : [fallbackKey];
+      const next = pruned.length ? pruned : [fallbackKey];
+      return sameKeys(current, next) ? current : next;
     });
   }, [fallbackKey, optionsByKey]);
 
@@ -41,30 +43,39 @@ export const useFinishedIssueResultsSelection = ({
     if (selectedExecutionKeys[0]) selectGlobalExecution?.(selectedExecutionKeys[0]);
   }, [selectedExecutionKeys, selectGlobalExecution]);
 
-  const setSelection = (nextKeys) => {
-    const next = uniqueKeys(nextKeys)
+  const normalizeSelection = (keys) => uniqueKeys(keys)
       .filter((key) => optionsByKey.has(key))
       .filter((key) => key === "base" || optionsByKey.get(key)?.selectable)
       .slice(0, MAX_SELECTIONS);
 
-    if (next.length < MIN_SELECTIONS) return;
-    setSelectedExecutionKeys(next);
+  const setSelection = (nextKeys) => {
+    setSelectedExecutionKeys((current) => {
+      const proposed = typeof nextKeys === "function" ? nextKeys(current) : nextKeys;
+      const next = normalizeSelection(proposed);
+      return next.length >= MIN_SELECTIONS && !sameKeys(current, next) ? next : current;
+    });
   };
 
   const addExecution = (key) => {
-    if (!optionsByKey.get(key)?.selectable || selectedExecutionKeys.includes(key)) return;
-    if (selectedExecutionKeys.length >= MAX_SELECTIONS) return;
-    setSelection([...selectedExecutionKeys, key]);
+    setSelection((current) => {
+      if (!optionsByKey.get(key)?.selectable || current.includes(key) || current.length >= MAX_SELECTIONS) return current;
+      return [...current, key];
+    });
   };
 
   const removeExecution = (key) => {
-    if (!selectedExecutionKeys.includes(key) || selectedExecutionKeys.length <= MIN_SELECTIONS) return;
-    setSelection(selectedExecutionKeys.filter((entry) => entry !== key));
+    setSelection((current) => {
+      if (!current.includes(key) || current.length <= MIN_SELECTIONS) return current;
+      return current.filter((entry) => entry !== key);
+    });
   };
 
   const toggleExecution = (key) => {
-    if (selectedExecutionKeys.includes(key)) removeExecution(key);
-    else addExecution(key);
+    setSelection((current) => {
+      if (current.includes(key)) return current.length > MIN_SELECTIONS ? current.filter((entry) => entry !== key) : current;
+      if (!optionsByKey.get(key)?.selectable || current.length >= MAX_SELECTIONS) return current;
+      return [...current, key];
+    });
   };
 
   return {

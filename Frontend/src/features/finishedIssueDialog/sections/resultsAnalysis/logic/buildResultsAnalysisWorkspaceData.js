@@ -46,16 +46,40 @@ const getUnavailableReason = (execution, ranking) => {
   return ranking.length ? null : "This execution does not contain a standardized ranking.";
 };
 
+const baseLabel = (modelName) => `Base · ${modelName || "—"}`;
+
+const visibleExecutionLabels = (executions) => {
+  const candidateCounts = executions.reduce((counts, execution) => {
+    const candidate = execution.shortLabel;
+    counts.set(candidate, (counts.get(candidate) || 0) + 1);
+    return counts;
+  }, new Map());
+  return executions.map((execution) => {
+    const collision = candidateCounts.get(execution.shortLabel) > 1;
+    const visibleLabel = collision && execution.type === "scenario"
+      ? execution.fullLabel === execution.shortLabel ? `${execution.fullLabel} (scenario)` : execution.fullLabel
+      : execution.shortLabel;
+    return { ...execution, displayLabel: visibleLabel };
+  });
+};
+
 const buildExecution = ({ payload, option, slotIndex = 0 }) => {
   const execution = resolveExecution(payload, option.key);
   const ranking = normalizeRanking({ payload, execution });
   const unavailableReason = getUnavailableReason(execution, ranking);
+  const name = option.label || execution?.label || "—";
+  const modelName = option.modelName || execution?.model?.name || "—";
+  const type = execution?.type || option.type;
+  const shortLabel = type === "base" ? baseLabel(modelName) : name;
+  const fullLabel = type === "base" ? shortLabel : `${name} · ${modelName}`;
   return {
     key: option.key,
-    type: execution?.type || option.type,
-    name: option.label || execution?.label || "—",
-    modelName: option.modelName || execution?.model?.name || "—",
-    displayLabel: `${option.label || execution?.label || "—"} · ${option.modelName || execution?.model?.name || "—"}`,
+    type,
+    name,
+    modelName,
+    shortLabel,
+    fullLabel,
+    displayLabel: shortLabel,
     color: RESULTS_ANALYSIS_SLOT_COLORS[slotIndex],
     ranking,
     available: !unavailableReason,
@@ -80,13 +104,13 @@ export const buildResultsAnalysisSelectableOptions = (payload) => buildFinishedI
 export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKeys }) => {
   const selectableOptions = buildResultsAnalysisSelectableOptions(payload);
   const optionsByKey = new Map(selectableOptions.map((option) => [option.key, option]));
-  const selected = asArray(selectedExecutionKeys)
+  const selected = visibleExecutionLabels(asArray(selectedExecutionKeys)
     .slice(0, 3)
     .map((key, slotIndex) => {
       const option = optionsByKey.get(key);
       return option ? buildExecution({ payload, option, slotIndex }) : null;
     })
-    .filter(Boolean);
+    .filter(Boolean));
   const mode = selected.length > 1 ? "comparison" : "single";
   const primary = selected[0] || null;
   const visualizations = buildResultsVisualizationsData({ payload, executions: selected });
@@ -96,6 +120,9 @@ export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKe
     selected,
     primary,
     visualizations,
+    // Interpretation remains a neutral panel for now, but receives this same
+    // workspace contract rather than retaining a separate primary selection.
+    interpretation: { mode, selected, primary },
     selectableOptions,
     selection: {
       count: selected.length,

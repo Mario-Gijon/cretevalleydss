@@ -15,20 +15,20 @@ const renderStrip = (props) => render(
 );
 
 describe("DashboardKpiStrip", () => {
-  it("renders exactly the four factual KPI metrics and omits result phase", () => {
+  it("renders exactly the three factual KPI metrics and omits result phase", () => {
     renderStrip({
       kpis: {
         winner: { name: "Alpha", formattedScore: "0.8" },
-        evaluationCoverage: { completed: 3, total: 4, formattedPercentage: "75%" },
         consensus: { enabled: false, label: "Disabled" },
         phase: { label: "Phase 5" },
       },
     });
 
-    expect(screen.getByText("Winner")).toBeInTheDocument();
+    expect(screen.getByText("Best option")).toBeInTheDocument();
     expect(screen.getByText("Top score")).toBeInTheDocument();
-    expect(screen.getByText("Evaluation coverage")).toBeInTheDocument();
     expect(screen.getByText("Consensus")).toBeInTheDocument();
+    expect(screen.queryByText("Winner")).not.toBeInTheDocument();
+    expect(screen.queryByText("Evaluation coverage")).not.toBeInTheDocument();
     expect(screen.queryByText("Result phase")).not.toBeInTheDocument();
     expect(screen.queryByText("Round")).not.toBeInTheDocument();
   });
@@ -44,17 +44,12 @@ describe("DashboardKpiStrip", () => {
     expect(onOpenConsensus).toHaveBeenCalledOnce();
   });
 
-  it("uses primary Winner grid placement across responsive layouts", () => {
+  it("gives Best option more space while keeping the three KPI cards aligned", () => {
     expect(dashboardKpiStripSx.gridTemplateColumns).toEqual({
       xs: "minmax(0, 1fr)",
-      sm: "repeat(3, minmax(0, 1fr))",
-      lg: "repeat(5, minmax(0, 1fr))",
+      sm: "minmax(0, 1.5fr) repeat(2, minmax(180px, 0.75fr))",
     });
-    expect(dashboardKpiItemSx({ metricKey: "winner" }).gridColumn).toEqual({
-      xs: "auto",
-      sm: "1 / -1",
-      lg: "span 2",
-    });
-    expect(dashboardKpiItemSx({ metricKey: "score" }).gridColumn).toBe("auto");
+    expect(dashboardKpiItemSx({ metricKey: "winner" }).gridColumn).toBeUndefined();
+    expect(dashboardKpiItemSx({ metricKey: "winner" }).bgcolor).toBe("transparent");
   });
 });

@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { buildDashboardData } from "../../../../../src/features/finishedIssueDialog/sections/dashboard/logic/buildFinishedIssueDashboardData.js";
 
 describe("buildDashboardData", () => {
-  it("builds a slim KPI contract without a standalone consensus preview", () => {
+  it("builds the three-KPI Dashboard contract without evaluation coverage", () => {
     const data = buildDashboardData({
-      overview: { acceptedParticipantsCount: 2, completedAlternativeEvaluationsCount: 1 },
+      overview: { alternatives: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }] },
       evaluations: {},
       results: {
         context: { phaseLabel: "Final" },
@@ -17,10 +17,30 @@ describe("buildDashboardData", () => {
 
     expect(data.kpis).toMatchObject({
       winner: { name: "Alternative A", formattedScore: "-0.25" },
-      evaluationCoverage: { completed: 1, total: 2, formattedPercentage: "50%" },
       consensus: { enabled: false, label: "Disabled" },
       phase: { label: "Final" },
     });
+    expect(data.kpis).not.toHaveProperty("evaluationCoverage");
     expect(data).not.toHaveProperty("consensus");
+    expect(data.resultsAnalysis).toMatchObject({
+      alternativesCount: 4,
+      rankingTitle: "Top 3 ranking",
+      performanceTitle: "Top 3 performance overview",
+    });
+  });
+
+  it("keeps full preview headings when three or fewer alternatives exist", () => {
+    const data = buildDashboardData({
+      overview: { alternatives: [{ id: "a" }, { id: "b" }, { id: "c" }] },
+      evaluations: {},
+      results: { context: {}, outcome: { winner: null, ranking: [] } },
+      consensus: null,
+      models: {},
+    });
+
+    expect(data.resultsAnalysis).toMatchObject({
+      rankingTitle: "Ranking",
+      performanceTitle: "Performance overview",
+    });
   });
 });

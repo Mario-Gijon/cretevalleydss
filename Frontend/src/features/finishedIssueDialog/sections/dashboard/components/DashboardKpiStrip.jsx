@@ -1,6 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 
@@ -22,10 +21,9 @@ const Metric = ({ metricKey, icon, label, value, detail, tone = "default", onCli
 const DashboardKpiStrip = ({ kpis = {}, onOpenConsensus }) => {
   const consensus = kpis.consensus || { enabled: false, label: "Disabled" };
   const metrics = [
-    { key: "winner", icon: <EmojiEventsRoundedIcon fontSize="small" />, label: "Winner", value: kpis.winner?.name || "—", tone: "winner" },
+    { key: "winner", icon: <EmojiEventsRoundedIcon fontSize="small" />, label: "Best option", value: kpis.winner?.name || "—" },
     { key: "score", icon: <InsightsRoundedIcon fontSize="small" />, label: "Top score", value: kpis.winner?.formattedScore || "—" },
-    { key: "coverage", icon: <GroupsRoundedIcon fontSize="small" />, label: "Evaluation coverage", value: kpis.evaluationCoverage ? `${kpis.evaluationCoverage.formattedPercentage}` : "—", detail: kpis.evaluationCoverage ? `${kpis.evaluationCoverage.completed}/${kpis.evaluationCoverage.total} completed` : null },
-    { key: "consensus", icon: <TimelineRoundedIcon fontSize="small" />, label: "Consensus", value: consensus.label, detail: consensus.enabled ? "Open consensus" : null, tone: consensus.enabled ? "success" : "default", onClick: consensus.enabled ? onOpenConsensus : undefined },
+    { key: "consensus", icon: <TimelineRoundedIcon fontSize="small" />, label: "Consensus", value: consensus.label, detail: consensus.enabled ? "Open consensus" : null, onClick: consensus.enabled ? onOpenConsensus : undefined },
   ];
   return <Box sx={dashboardKpiStripSx}>{metrics.map((metric) => <Metric key={metric.key} metricKey={metric.key} {...metric} />)}</Box>;
 };

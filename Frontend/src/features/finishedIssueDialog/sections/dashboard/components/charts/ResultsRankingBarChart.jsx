@@ -4,6 +4,7 @@ import { Bar } from "react-chartjs-2";
 import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } from "chart.js";
 
 import { dashboardChartSx } from "../../dashboard.styles";
+import { PERFORMANCE_BAR_TOKENS } from "../../../../shared/logic/chartVisualTokens.js";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -37,10 +38,10 @@ const ResultsRankingBarChart = ({ ranking = [] }) => {
     labels: items.map((item) => item.name),
     datasets: [{
       data: items.map((item) => item.score),
-      backgroundColor: items.map((_, index) => index === 0 ? "rgba(72, 190, 130, 0.82)" : "rgba(52, 139, 218, 0.78)"),
-      borderColor: items.map((_, index) => index === 0 ? "rgba(92, 216, 151, 1)" : "rgba(84, 168, 235, 1)"),
+      backgroundColor: items.map((_, index) => index === 0 ? PERFORMANCE_BAR_TOKENS.winnerFill : PERFORMANCE_BAR_TOKENS.standardFill),
+      borderColor: items.map((_, index) => index === 0 ? PERFORMANCE_BAR_TOKENS.winnerBorder : PERFORMANCE_BAR_TOKENS.standardBorder),
       borderWidth: 1,
-      borderRadius: 4,
+      borderRadius: PERFORMANCE_BAR_TOKENS.radius,
       borderSkipped: false,
       maxBarThickness: 38,
     }],

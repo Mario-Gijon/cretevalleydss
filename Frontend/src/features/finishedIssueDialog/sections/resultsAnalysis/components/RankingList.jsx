@@ -1,4 +1,4 @@
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 
 import { rankingListViewportSx, rankingRowSx } from "../resultsAnalysis.styles.js";
 
@@ -42,32 +42,18 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                 {entry.position}
               </Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Stack
-                  direction="row"
-                  spacing={0.8}
-                  alignItems="center"
-                  sx={{ minWidth: 0 }}
+                <Typography
+                  noWrap
+                  title={entry.name}
+                  sx={{
+                    minWidth: 0,
+                    display: "block",
+                    fontSize: compact ? 14 : 17,
+                    fontWeight: 950,
+                  }}
                 >
-                  <Typography
-                    noWrap
-                    title={entry.name}
-                    sx={{
-                      minWidth: 0,
-                      fontSize: compact ? 14 : 17,
-                      fontWeight: 950,
-                    }}
-                  >
-                    {entry.name}
-                  </Typography>
-                  {winner ? (
-                    <Chip
-                      size="small"
-                      color="success"
-                      variant="outlined"
-                      label="Winner"
-                    />
-                  ) : null}
-                </Stack>
+                  {entry.name}
+                </Typography>
                 {showDescriptions && entry.description ? (
                   <Typography
                     title={entry.description}
@@ -103,11 +89,6 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                 </Box>
               </Box>
               <Box sx={{ textAlign: "right", flex: "0 0 auto" }}>
-                {!compact ? (
-                  <Typography sx={{ color: "text.secondary", fontSize: 10.5 }}>
-                    Score (original)
-                  </Typography>
-                ) : null}
                 <Typography
                   sx={{
                     color: winner ? "success.light" : "secondary.light",

@@ -31,6 +31,7 @@ export const buildCanonicalAnalyticalProjection = ({ execution, slotIndex = 0 })
     executionName: execution?.name || "—",
     modelName: execution?.modelName || "—",
     displayLabel: execution?.displayLabel || execution?.name || "—",
+    fullLabel: execution?.fullLabel || execution?.displayLabel || execution?.name || "—",
     color: execution?.color,
     sourcePhase: execution?.sourcePhase ?? null,
     slotIndex,
@@ -131,6 +132,20 @@ const formatEnglishList = (labels) => {
   return `${unique.slice(0, -1).join(", ")}, and ${unique.at(-1)}`;
 };
 
+export const formatComparisonLegendLabel = (executions) => {
+  const normalized = executions.map((execution) => ({
+    name: execution.executionName || execution.name || execution.label || "Execution",
+    displayLabel: execution.fullLabel || execution.displayLabel || execution.label || execution.executionName || "Execution",
+  }));
+  const nameCounts = normalized.reduce((counts, execution) => {
+    counts.set(execution.name, (counts.get(execution.name) || 0) + 1);
+    return counts;
+  }, new Map());
+  return formatEnglishList(normalized.map((execution) =>
+    nameCounts.get(execution.name) > 1 ? execution.displayLabel : execution.name
+  ));
+};
+
 const chooseRepresentative = (executions) =>
   executions.find((execution) => execution.key === "base") || executions[0];
 
@@ -154,15 +169,16 @@ const equalityMessage = (group) => group.executions.length > 1
 const visualGroup = (group, projection = group.representative) => ({
   ...projection,
   id: group.id,
-  representative: { key: group.representative.key, label: group.representative.executionName, displayLabel: group.representative.displayLabel },
+  representative: { key: group.representative.key, label: group.representative.executionName, displayLabel: group.representative.displayLabel, fullLabel: group.representative.fullLabel },
   projection,
   color: group.representative.color,
-  executions: group.executions.map((entry) => ({ key: entry.key, label: entry.displayLabel, displayLabel: entry.displayLabel, color: entry.color })),
-  representedExecutions: group.executions.map((entry) => ({ key: entry.key, label: entry.displayLabel, displayLabel: entry.displayLabel, color: entry.color })),
+  executions: group.executions.map((entry) => ({ key: entry.key, label: entry.displayLabel, displayLabel: entry.displayLabel, fullLabel: entry.fullLabel, color: entry.color })),
+  representedExecutions: group.executions.map((entry) => ({ key: entry.key, label: entry.displayLabel, displayLabel: entry.displayLabel, fullLabel: entry.fullLabel, color: entry.color })),
   displayLabels: group.executions.map((entry) => entry.displayLabel),
   shared: group.executions.length > 1,
   equalityMessage: equalityMessage(group),
-  groupLabel: group.executions.map((entry) => entry.executionName).join(" + "),
+  groupLabel: formatComparisonLegendLabel(group.executions),
+  tooltipLabel: formatEnglishList(group.executions.map((entry) => entry.fullLabel)),
 });
 
 const buildConsensusVisualization = (payload) => {
@@ -197,7 +213,7 @@ export const buildResultsVisualizationsData = ({ payload, executions }) => {
   }
   const groups = groupEquivalentProjections(valid);
   if (valid.length === projections.length && groups.length === 1) {
-    const sharedProjection = visualGroup(groups[0]);
+    const sharedProjection = { ...visualGroup(groups[0]), legendLabel: null };
     return { mode: "comparison", consensus, expertCollectiveComparison: { available: true, presentation: "shared", groups: [sharedProjection], sharedProjection, alignedExecutions: [], separateExecutions: [], unavailableExecutions: [], footerMessages: [sharedProjection.equalityMessage], footerMessage: sharedProjection.equalityMessage, referenceGroupId: groups[0].id } };
   }
   const referenceGroup = groups[0];

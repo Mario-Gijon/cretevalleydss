@@ -142,12 +142,12 @@ const AdminIssueAddExpertsDialog = ({
             placeholder="Search by name, email or university..."
             autoComplete="off"
             color="info"
-            sx={{
+            /* sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 3,
                 bgcolor: alpha(theme.palette.common.white, 0.04),
               },
-            }}
+            }} */
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">

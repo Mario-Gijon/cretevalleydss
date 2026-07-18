@@ -82,10 +82,10 @@ export const scoreChartContainerSx = (minWidth, chartHeight) => ({
 
 export const comparisonOutcomeGridSx = {
   display: "grid",
-  gridTemplateColumns: { xs: "minmax(0, 1fr)", xl: "minmax(0, 1.15fr) minmax(420px, 0.95fr)" },
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1.35fr) minmax(340px, 0.65fr)" },
   gap: 1.2,
   alignItems: "start",
-  "& > :first-of-type": { gridRow: { xl: "span 2" } },
+  "& > :first-of-type": { gridColumn: { lg: "1 / -1" } },
 };
 
 export const comparisonRankingsGridSx = (count) => ({

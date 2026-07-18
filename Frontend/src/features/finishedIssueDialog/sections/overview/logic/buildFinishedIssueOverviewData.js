@@ -403,6 +403,16 @@ export const buildOverviewPreview = (data) => ({
   participantsCount: data.counts.participants,
   acceptedParticipantsCount: data.participation.accepted,
   completedAlternativeEvaluationsCount: data.participation.completed,
+  alternatives: data.alternatives.map(({ id, name }) => ({ id, name })),
+  leafCriteria: (() => {
+    const leaves = [];
+    const visit = (criteria) => criteria.forEach((criterion) => {
+      if (criterion.isLeaf) leaves.push({ id: criterion.id, name: criterion.name });
+      visit(criterion.children || []);
+    });
+    visit(data.criteria || []);
+    return leaves;
+  })(),
 });
 
 export default buildOverviewData;

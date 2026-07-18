@@ -10,6 +10,7 @@ import {
   Title,
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
+import { buildComparativeAnalyticalScatterData } from "../logic/buildComparativeAnalyticalScatterData.js";
 
 ChartJS.register(ScatterController, LinearScale, PointElement, CTooltip, Legend, Title, zoomPlugin);
 
@@ -26,31 +27,7 @@ const coordinates = (point) => `(${point.x.toFixed(2)}, ${point.y.toFixed(2)})`;
 export const ComparativeAnalyticalScatterChart = ({ groups = [], scatterPlotRef, compact = false }) => {
   const points = groups.flatMap((group) => [...group.expertPoints, group.collectivePoint]);
   if (!points.length) return null;
-  const chartData = {
-    datasets: groups.flatMap((group) => [
-      {
-        id: `experts-${group.representedExecutions.map((execution) => execution.key).join("-")}`,
-        label: `Experts — ${group.groupLabel}`,
-        data: group.expertPoints.map((point) => ({ ...point, executionLabel: group.groupLabel, pointType: "expert" })),
-        backgroundColor: alpha(group.color, 0.68),
-        borderColor: alpha(group.color, 0.95),
-        pointStyle: "circle",
-        pointRadius: compact ? 4 : 7,
-        pointHoverRadius: compact ? 6 : 10,
-      },
-      {
-        id: `collective-${group.representedExecutions.map((execution) => execution.key).join("-")}`,
-        label: `Collective — ${group.groupLabel}`,
-        data: [{ ...group.collectivePoint, executionLabel: group.groupLabel, pointType: "collective" }],
-        backgroundColor: alpha(group.color, 0.95),
-        borderColor: alpha("#fff", 0.9),
-        borderWidth: 1.5,
-        pointStyle: "rectRot",
-        pointRadius: compact ? 5 : 9,
-        pointHoverRadius: compact ? 7 : 12,
-      },
-    ]),
-  };
+  const chartData = buildComparativeAnalyticalScatterData({ groups, compact });
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,

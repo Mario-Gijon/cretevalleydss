@@ -4,14 +4,17 @@ import {
   alignProjectionToReference,
   areAnalyticalProjectionsEquivalent,
   buildCanonicalAnalyticalProjection,
+  formatComparisonLegendLabel,
   buildResultsVisualizationsData,
 } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsVisualizationsData.js";
+import { buildComparativeAnalyticalScatterData } from "../../../../../src/features/finishedIssueDialog/graphs/logic/buildComparativeAnalyticalScatterData.js";
+import { collectiveColorFor } from "../../../../../src/features/finishedIssueDialog/graphs/logic/analyticalScatterColors.js";
 
 const colors = ["#27d5e4", "#6fdc68", "#a960e8"];
-const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test", "b@example.test"], rawOutput, modelSpecificOutput, color = colors[["base", "scenario-a", "scenario-b"].indexOf(key)] }) => ({
+const execution = ({ key, points, collective = [0, 0], labels = ["a@example.test", "b@example.test"], rawOutput, modelSpecificOutput, color = colors[["base", "scenario-a", "scenario-b"].indexOf(key)], name = key, displayLabel = key }) => ({
   key,
-  name: key,
-  displayLabel: key,
+  name,
+  displayLabel,
   modelName: "Model",
   color,
   standardizedOutput: { plotsGraphic: { expert_points: points, collective_point: collective, expert_labels: labels } },
@@ -103,5 +106,53 @@ describe("Results Analysis analytical projection comparison", () => {
     ] });
     expect(result.expertCollectiveComparison).toMatchObject({ presentation: "separate", separateExecutions: [{ representedExecutions: [{ key: "base" }, { key: "scenario-a" }] }, { representedExecutions: [{ key: "scenario-b" }] }] });
     expect(result.expertCollectiveComparison.footerMessage).toBe("The different stored projections could not be aligned safely, so each unique projection is shown separately.");
+  });
+
+  it("uses exactly Experts and Collective for a fully shared projection legend", () => {
+    const result = buildResultsVisualizationsData({ payload, executions: [
+      execution({ key: "base", name: "Base", displayLabel: "Base · TOPSIS", points: [[1, 0], [0, 1]] }),
+      execution({ key: "scenario-a", name: "Scenario A", displayLabel: "Scenario A · BORDA", points: [[1, 0], [0, 1]] }),
+    ] });
+    const data = buildComparativeAnalyticalScatterData({ groups: [result.expertCollectiveComparison.sharedProjection] });
+    expect(data.datasets.map((dataset) => dataset.label)).toEqual(["Experts", "Collective"]);
+    expect(data.datasets[0].data[0].executionLabel).toBe("Base · TOPSIS and Scenario A · BORDA");
+  });
+
+  it("uses concise natural execution names for partially shared groups and disambiguates duplicate names", () => {
+    const result = buildResultsVisualizationsData({ payload, executions: [
+      execution({ key: "base", name: "Base", displayLabel: "Base · TOPSIS", points: [[1, 0], [0, 1]] }),
+      execution({ key: "scenario-a", name: "Scenario A", displayLabel: "Scenario A · BORDA", points: [[1, 0], [0, 1]] }),
+      execution({ key: "scenario-b", name: "Scenario B", displayLabel: "Scenario B · MARCOS", points: [[2, 0], [0, 2]] }),
+    ] });
+    expect(buildComparativeAnalyticalScatterData({ groups: result.expertCollectiveComparison.alignedExecutions }).datasets.map((dataset) => dataset.label)).toEqual([
+      "Experts — Base and Scenario A", "Collective — Base and Scenario A", "Experts — Scenario B", "Collective — Scenario B",
+    ]);
+    const duplicate = buildResultsVisualizationsData({ payload, executions: [
+      execution({ key: "base", name: "Test", displayLabel: "Test · TOPSIS", points: [[1, 0], [0, 1]] }),
+      execution({ key: "scenario-a", name: "Test", displayLabel: "Test · BORDA", points: [[1, 0], [0, 1]] }),
+      execution({ key: "scenario-b", name: "Other", displayLabel: "Other · MARCOS", points: [[2, 0], [0, 2]] }),
+    ] });
+    expect(duplicate.expertCollectiveComparison.alignedExecutions[0].groupLabel).toBe("Test · TOPSIS and Test · BORDA");
+    expect(formatComparisonLegendLabel([
+      { executionName: "Scenario A", displayLabel: "Scenario A · TOPSIS" },
+      { executionName: "Scenario B", displayLabel: "Scenario B · BORDA" },
+      { executionName: "Scenario C", displayLabel: "Scenario C · MARCOS" },
+    ])).toBe("Scenario A, Scenario B, and Scenario C");
+  });
+
+  it("uses a darker version of every execution color for Collective datasets", () => {
+    const group = {
+      color: "#27d5e4",
+      representedExecutions: [{ key: "base" }],
+      groupLabel: "Base",
+      tooltipLabel: "Base · TOPSIS",
+      expertPoints: [{ x: 0, y: 0, label: "Expert" }],
+      collectivePoint: { x: 1, y: 1 },
+    };
+    const datasets = buildComparativeAnalyticalScatterData({ groups: [group] }).datasets;
+    expect(datasets[0]).toMatchObject({ pointStyle: "circle", backgroundColor: "rgba(39, 213, 228, 0.68)" });
+    expect(datasets[1]).toMatchObject({ pointStyle: "rectRot", backgroundColor: expect.stringContaining("rgba"), borderColor: "rgba(39, 213, 228, 0.95)", borderWidth: 2 });
+    expect(datasets[1].backgroundColor).not.toBe(datasets[0].backgroundColor);
+    expect(collectiveColorFor("#6fdc68")).not.toBe("#6fdc68");
   });
 });

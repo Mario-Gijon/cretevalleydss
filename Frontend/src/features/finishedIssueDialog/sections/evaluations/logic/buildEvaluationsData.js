@@ -160,6 +160,7 @@ export const buildEvaluationsPreview = (data) => ({
     data.selectedPhase === null ? "—" : `Phase ${data.selectedPhase}`,
   expertsCount: data.expertOptions.length,
   completedExpertsCount: data.completedExpertCount,
+  evaluationsCount: data.expertOptions.length,
   hasCollective: data.canShowCollective === true,
   showCollective: data.showCollective === true,
   renderer: data.renderer

@@ -30,7 +30,7 @@ const Header = ({ title, subtitle, resettable, onResetZoom }) => (
 
 const GroupChips = ({ group }) => (
   <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mb: 0.9 }}>
-    {group.representedExecutions.map((execution) => <Chip key={execution.key} label={execution.label} size="small" sx={{ borderColor: execution.color, color: execution.color }} variant="outlined" />)}
+    {group.representedExecutions.map((execution) => <Chip key={execution.key} label={execution.label} title={execution.fullLabel} size="small" sx={{ borderColor: execution.color, color: execution.color }} variant="outlined" />)}
     {group.id === group.referenceGroupId ? <Chip label="Reference projection" size="small" variant="outlined" /> : null}
   </Stack>
 );
@@ -69,7 +69,6 @@ const ComparisonVisualization = ({ comparison, scatterPlotRef, onResetZoom }) =>
   const groups = comparison.presentation === "shared" ? [comparison.sharedProjection] : comparison.alignedExecutions;
   return <Box sx={cardSx}>
     <Header title="Expert–collective map" subtitle="Dispersion of expert points and the collective position." resettable onResetZoom={onResetZoom} />
-    <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">{groups.flatMap((group) => group.representedExecutions.map((execution) => <Chip key={execution.key} label={execution.label} size="small" sx={{ borderColor: execution.color, color: execution.color }} variant="outlined" />))}</Stack>
     <Box sx={{ ...chartFrameSx, mt: 1 }}><ComparativeAnalyticalScatterChart groups={groups} scatterPlotRef={scatterPlotRef} /></Box>
     <Stack spacing={0.3} sx={{ mt: 1 }}>{comparison.footerMessages.map((message) => <Typography key={message} color="text.secondary" sx={{ fontSize: 11.5 }}>{message}</Typography>)}</Stack>
   </Box>;

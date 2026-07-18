@@ -3,13 +3,23 @@ import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import { BarChart } from "@mui/x-charts/BarChart";
 
 import { getScoreOverviewChartHeight } from "../logic/scoreOverviewChartHeight.js";
+import { buildScoreOverviewSeries, formatOriginalScore } from "../logic/buildScoreOverviewSeries.js";
 import { scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx } from "../resultsAnalysis.styles.js";
+import { PERFORMANCE_BAR_TOKENS, performanceBarBorderFor } from "../../../shared/logic/chartVisualTokens.js";
+
+const barOnlyProps = new Set(["ownerState", "skipAnimation", "id", "dataIndex", "xOrigin", "yOrigin", "color", "layout"]);
+
+const ScoreOverviewBar = (props) => {
+  const rectProps = Object.fromEntries(Object.entries(props).filter(([key]) => !barOnlyProps.has(key)));
+  return <rect {...rectProps} stroke={performanceBarBorderFor(props.color)} strokeWidth={1.25} />;
+};
 
 const ScoreOverviewChart = ({ ranking }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isDesktop = useMediaQuery(theme.breakpoints.up("xl"));
   const chartEntries = ranking;
+  const series = buildScoreOverviewSeries(chartEntries);
   const minWidth = Math.max(620, chartEntries.length * 90);
   const chartHeight = getScoreOverviewChartHeight({ isMobile, isDesktop });
 
@@ -39,15 +49,14 @@ const ScoreOverviewChart = ({ ranking }) => {
                 },
               ]}
               series={[
-                {
-                  data: chartEntries.map((entry) => entry.score),
-                  label: "Score (original)",
-                  valueFormatter: (value) =>
-                    typeof value === "number"
-                      ? Number(value.toFixed(4)).toString()
-                      : "—",
-                },
+                ...series,
               ]}
+              hideLegend
+              borderRadius={PERFORMANCE_BAR_TOKENS.radius}
+              barLabel={(item) => typeof item.value === "number" && Number.isFinite(item.value) ? formatOriginalScore(item.value) : null}
+              axisHighlight={{ x: "none", y: "none" }}
+              slots={{ bar: ScoreOverviewBar }}
+              slotProps={{ tooltip: { trigger: "none" }, barLabel: { style: { fill: theme.palette.text.primary, fontSize: 11, fontWeight: 700 } } }}
               grid={{ horizontal: true }}
               margin={{ top: 30, right: 20, bottom: 48, left: 58 }}
             />

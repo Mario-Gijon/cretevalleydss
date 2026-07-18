@@ -58,13 +58,6 @@ export const buildModelsData = ({ payload, selectedExecution }) => ({
   scenarios: Array.isArray(payload?.scenarios) ? payload.scenarios : [],
   executionOptions: buildFinishedIssueExecutionOptions(payload),
   selectedExecution: selectedExecution || null,
-  configuredParameters: selectedExecution?.configuration?.configuredParameters ?? selectedExecution?.model?.configuredParameters ?? null,
-  effectiveParameters: selectedExecution?.configuration?.normalizedParameters ?? selectedExecution?.model?.effectiveParameters ?? null,
-  status: selectedExecution?.scenario?.status || "completed",
-  error: selectedExecution?.scenario?.error ?? null,
-  modelSpecificOutput: selectedExecution?.modelSpecificOutput ?? null,
-  rawOutput: selectedExecution?.rawOutput ?? null,
-  completeness: payload?.executionMetadata?.completeness ?? null,
 });
 
 export const buildModelsPreview = (data) => ({
@@ -72,12 +65,9 @@ export const buildModelsPreview = (data) => ({
   selectedExecutionKey: data.selectedExecution?.key || "base",
   selectedExecutionLabel: data.selectedExecution?.label || "Base",
   selectedExecutionIsBase: data.selectedExecution?.type !== "scenario",
-  additionalRunsCount: data.scenarios.length,
+  runsGenerated: data.scenarios.length,
   selectedModelName: data.selectedExecution?.model?.name || data.baseModel?.name || "—",
   selectedModelDescription: resolveModelDescription(
     data.selectedExecution?.model || data.baseModel
   ),
-  status: data.status,
-  error: data.error,
-  parameters: data.effectiveParameters || data.configuredParameters || {},
 });

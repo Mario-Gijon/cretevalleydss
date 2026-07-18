@@ -114,10 +114,10 @@ export default function AdminExpertsSection() {
                   color="info"
                   sx={{
                     minWidth: { xs: "100%", md: 420 },
-                    "& .MuiOutlinedInput-root": {
+                    /* "& .MuiOutlinedInput-root": {
                       borderRadius: 3,
                       bgcolor: alpha(theme.palette.common.white, 0.04),
-                    },
+                    }, */
                   }}
                   InputProps={{
                     startAdornment: (

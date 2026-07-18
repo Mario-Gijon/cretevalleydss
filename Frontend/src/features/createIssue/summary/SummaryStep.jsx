@@ -240,7 +240,7 @@ export const SummaryStep = () => {
 
         <Divider />
 
-        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+        <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader(
               "Alternatives",
@@ -271,7 +271,7 @@ export const SummaryStep = () => {
 
         <Divider />
 
-        <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
+        <Accordion disableGutters elevation={0} sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             {sectionHeader(
               "Criteria",
@@ -321,7 +321,7 @@ export const SummaryStep = () => {
           <>
             <Divider />
 
-            <Accordion disableGutters elevation={0} sx={accordionSx}>
+            <Accordion disableGutters elevation={0} defaultExpanded sx={accordionSx}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 {sectionHeader("Model parameters", null)}
               </AccordionSummary>

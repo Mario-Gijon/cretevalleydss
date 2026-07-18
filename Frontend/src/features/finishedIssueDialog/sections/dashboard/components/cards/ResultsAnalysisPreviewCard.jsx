@@ -18,18 +18,20 @@ const positionStyle = (position) => ({
 const ResultsAnalysisPreviewCard = ({ resultsAnalysis, onViewResultsAnalysis }) => {
   const ranking = resultsAnalysis.outcome?.topRanking || [];
   const winner = resultsAnalysis.outcome?.winner || ranking[0] || null;
-  return <DashboardPreviewCard number="2" title="Results analysis" subtitle={`${resultsAnalysis.context.executionLabel || "—"} · ${resultsAnalysis.context.phaseLabel || "—"}`} actionLabel="View results analysis" onAction={onViewResultsAnalysis} accent="cyan">
+  const rankingHeading = resultsAnalysis.rankingTitle || "Ranking";
+  const performanceHeading = resultsAnalysis.performanceTitle || "Performance overview";
+  return <DashboardPreviewCard number="3" title="Results analysis" subtitle={`${resultsAnalysis.context.executionLabel || "—"} · ${resultsAnalysis.context.phaseLabel || "—"}`} actionLabel="View results analysis" onAction={onViewResultsAnalysis} accent="cyan">
     {resultsAnalysis.outcome.available ? <Stack spacing={1}>
       <Box sx={dashboardResultsUpperGridSx}>
         <DashboardInnerPanel>
-          <Typography sx={{ fontSize: 13, fontWeight: 900, mb: 0.9 }}>Top 3 ranking</Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 900, mb: 0.9 }}>{rankingHeading}</Typography>
           <Stack spacing={0.75}>{ranking.map((item) => <Stack key={item.id} direction="row" alignItems="center" spacing={0.8}>
             <Box sx={{ ...positionStyle(item.position), width: 26, height: 26, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "50%", fontSize: 12, fontWeight: 950 }}>{item.position}</Box>
             <Typography noWrap title={item.name} sx={{ minWidth: 0, flex: 1, fontSize: 13.5, fontWeight: item.position === 1 ? 950 : 750 }}>{item.name}</Typography>
             <Typography sx={{ color: item.position === 1 ? "success.light" : "secondary.light", fontSize: 12.5, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{scoreText(item)}</Typography>
           </Stack>)}</Stack>
         </DashboardInnerPanel>
-        <DashboardInnerPanel><Typography sx={{ fontSize: 13, fontWeight: 900, mb: 0.35 }}>Performance overview</Typography><ResultsRankingBarChart ranking={ranking} /></DashboardInnerPanel>
+        <DashboardInnerPanel><Typography sx={{ fontSize: 13, fontWeight: 900, mb: 0.35 }}>{performanceHeading}</Typography><ResultsRankingBarChart ranking={ranking} /></DashboardInnerPanel>
       </Box>
       {winner ? <DashboardInnerPanel><Stack direction="row" spacing={1} alignItems="center"><Box sx={{ width: 38, height: 38, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: "50%", color: "secondary.light", bgcolor: "rgba(48, 153, 198, 0.13)" }}><AutoGraphRoundedIcon fontSize="small" /></Box><Typography sx={{ color: "text.secondary", fontSize: 13, lineHeight: 1.5, fontWeight: 650 }}><Box component="span" sx={{ color: "text.primary", fontWeight: 900 }}>{winner.name}</Box> is ranked first with a score of <Box component="span" sx={{ color: "success.light", fontWeight: 900 }}>{scoreText(winner)}</Box>.</Typography></Stack></DashboardInnerPanel> : null}
       <Stack direction="row" spacing={0.7} alignItems="center"><InfoOutlinedIcon sx={{ color: "secondary.light", fontSize: 17 }} /><Typography sx={{ color: "text.secondary", fontSize: 12, fontWeight: 650 }}>Interpretation is not available yet.</Typography></Stack>

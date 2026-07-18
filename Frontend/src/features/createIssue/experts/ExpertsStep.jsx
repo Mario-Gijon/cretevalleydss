@@ -646,7 +646,7 @@ export const ExpertsStep = ({
               </InputAdornment>
             ),
           }}
-          sx={getCreateIssueExpertsSearchInputSx(theme)}
+          /* sx={getCreateIssueExpertsSearchInputSx(theme)} */
         />
 
         {!isMdUp ? (
