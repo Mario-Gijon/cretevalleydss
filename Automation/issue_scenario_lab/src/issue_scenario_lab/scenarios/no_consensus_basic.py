@@ -62,28 +62,33 @@ def _compatible_model(models_data: Any) -> dict[str, Any]:
         "usesExpertWeights": model.get("usesExpertWeights") is False,
         "evaluationStructureKey": model.get("evaluationStructureKey") == "alternativeCriteriaMatrix",
     }
+    if not ({"numericDiscrete", "numericContinuous"} & supported_domain_type_keys(model)):
+        checks["supportedExpressionDomains"] = False
     if not all(checks.values()) or not _id(model):
         failed = ", ".join(key for key, valid in checks.items() if not valid) or "missing model id"
         raise ScenarioLabError(f"BORDA model is incompatible: {failed}")
     return model
 
 
+def supported_domain_type_keys(model: dict[str, Any]) -> set[str]:
+    entries = model.get("supportedExpressionDomains")
+    if not isinstance(entries, list):
+        raise ScenarioLabError("BORDA metadata supportedExpressionDomains must be an array")
+    if any(not isinstance(entry, dict) or not isinstance(entry.get("typeKey"), str) or not entry["typeKey"].strip() for entry in entries):
+        raise ScenarioLabError("BORDA metadata contains malformed supportedExpressionDomains entries")
+    return {entry["typeKey"].strip() for entry in entries}
+
+
 def _compatible_domain(domains_data: Any, supported: set[str]) -> dict[str, Any]:
-    domains = (
-        [
-            item
-            for key in ("globalDomains", "expressionDomains", "domains")
-            for item in _items(domains_data.get(key) if isinstance(domains_data, dict) else None)
-        ]
-        if isinstance(domains_data, dict)
-        else _items(domains_data)
-    )
-    preferred = [("global", "numericDiscrete"), ("owner", "numericDiscrete"), ("global", "numericContinuous"), ("owner", "numericContinuous")]
-    for visibility, type_key in preferred:
-        for domain in domains:
+    if not isinstance(domains_data, dict):
+        raise ScenarioLabError("expression domain response must be an object")
+    globals_, user_domains = domains_data.get("globals", []), domains_data.get("userDomains", [])
+    if not isinstance(globals_, list) or not isinstance(user_domains, list):
+        raise ScenarioLabError("expression domain globals and userDomains must be arrays")
+    preferred = [(globals_, "numericDiscrete"), (user_domains, "numericDiscrete"), (globals_, "numericContinuous"), (user_domains, "numericContinuous")]
+    for collection, type_key in preferred:
+        for domain in _items(collection):
             if domain.get("typeKey") != type_key or type_key not in supported or not _id(domain):
-                continue
-            if domain.get("scope", domain.get("visibility", "global")) not in {visibility, "global" if visibility == "global" else "owner"}:
                 continue
             try:
                 numeric_levels(domain)
@@ -130,7 +135,7 @@ def _matrix(context_payload: dict[str, Any], expert_b: bool = False) -> dict[str
     criteria = _items(context, "criteria", "leafCriteria")
     by_name = {item.get("name"): item for item in alternatives}
     quality, cost = _find_name(criteria, "Quality"), _find_name(criteria, "Cost")
-    if set(by_name) < {"Balanced choice", "Premium choice", "Budget choice"} or not quality or not cost:
+    if set(by_name) != {"Balanced choice", "Premium choice", "Budget choice"} or not quality or not cost:
         raise ScenarioLabError("evaluation context is missing the expected persisted alternatives or criteria")
     quality_id, cost_id = _id(quality), _id(cost)
     if not quality_id or not cost_id:
@@ -142,11 +147,51 @@ def _matrix(context_payload: dict[str, Any], expert_b: bool = False) -> dict[str
     if expert_b:
         quality_values = {"Balanced choice": high, "Premium choice": medium, "Budget choice": low}
         cost_values = {"Budget choice": cost_low, "Premium choice": cost_medium, "Balanced choice": cost_high}
-    return {
+    matrix = {
         item_id: {quality_id: {"value": quality_values[name]}, cost_id: {"value": cost_values[name]}}
         for name, item in by_name.items()
         if (item_id := _id(item))
     }
+    if len(matrix) != 3 or any(set(row) != {quality_id, cost_id} for row in matrix.values()):
+        raise ScenarioLabError("evaluation matrix is not a complete persisted three-by-two matrix")
+    return matrix
+
+
+def _context_identity(context_payload: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Capture the persisted IDs the two experts must evaluate against."""
+
+    context = context_payload.get("context") if isinstance(context_payload.get("context"), dict) else context_payload
+    alternatives = _items(context, "alternatives")
+    criteria = _items(context, "criteria", "leafCriteria")
+    entries = alternatives + [item for item in criteria if item.get("name") in {"Quality", "Cost"}]
+    identity = tuple(sorted((str(item.get("name")), _id(item) or "") for item in entries))
+    if len(identity) != 5 or any(not persisted_id for _, persisted_id in identity):
+        raise ScenarioLabError("evaluation context has incomplete persisted identities")
+    return identity
+
+
+def _validate_finished_detail(detail: Any, issue_id: str) -> None:
+    if not isinstance(detail, dict):
+        raise ScenarioLabError("finished issue detail must be an object")
+    issue = detail.get("issue")
+    alternatives = _items(detail, "alternatives")
+    criteria = _items(detail.get("criteria"), "nodes") if isinstance(detail.get("criteria"), dict) else []
+    phase_results = _items(detail, "phaseResults")
+    consensus = detail.get("consensus")
+    model_key = ((detail.get("models") or {}).get("base") or {}).get("technical", {}).get("apiModelKey") if isinstance(detail.get("models"), dict) else None
+    if not isinstance(issue, dict) or _id(issue) != issue_id or model_key != "borda":
+        raise ScenarioLabError("finished issue detail does not identify the generated BORDA issue")
+    if issue.get("isConsensus") is True or (
+        isinstance(consensus, dict) and (consensus.get("enabled") is not False or consensus.get("rounds") not in (None, []))
+    ):
+        raise ScenarioLabError("finished issue detail incorrectly reports consensus rounds")
+    if {item.get("name") for item in alternatives} != {"Balanced choice", "Premium choice", "Budget choice"}:
+        raise ScenarioLabError("finished issue detail is missing the expected alternatives")
+    if not {"Quality", "Cost"}.issubset({item.get("name") for item in criteria}):
+        raise ScenarioLabError("finished issue detail is missing Quality or Cost")
+    alternative_results = [item for item in phase_results if item.get("stage") == STAGE]
+    if len(alternative_results) != 1 or len(_items(alternative_results[0], "rankedAlternatives")) != 3:
+        raise ScenarioLabError("finished issue detail does not contain a three-alternative final ranking")
 
 
 def _new_generation_id(store: ManifestStore) -> str:
@@ -176,9 +221,9 @@ def generate(
         catalog_users = _items(owner_api.users(), "users")
         for email in emails[1:]:
             user = next((item for item in catalog_users if str(item.get("email", "")).casefold() == email.casefold()), None)
-            if not user or user.get("confirmed") is False or user.get("selectable") is False:
-                raise ScenarioLabError(f"configured expert is not a confirmed selectable user: {email}")
-        domain = _compatible_domain(owner_api.expression_domains(), set(model.get("supportedExpressionDomains") or []))
+            if not user:
+                raise ScenarioLabError(f"configured expert is absent from the Backend user catalogue: {email}")
+        domain = _compatible_domain(owner_api.expression_domains(), supported_domain_type_keys(model))
         owner_api.create_issue(_issue_payload(issue_name, _id(model) or "", emails[1:], _id(domain) or ""))
         active = _items(owner_api.active_issues(), "issues")
         matches = [item for item in active if item.get("name") == issue_name]
@@ -201,7 +246,7 @@ def generate(
         progress = accepted_issue.get("progress") if isinstance(accepted_issue, dict) else None
         if isinstance(progress, dict) and progress.get("totalAccepted") not in (None, 2):
             raise ScenarioLabError("accepted participant count is not two after invitations")
-        matrices = []
+        matrices, context_identity = [], None
         for index, alias in enumerate(aliases[1:]):
             context = IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE)
             if (
@@ -211,6 +256,10 @@ def generate(
                 or context.get("completed") is not False
             ):
                 raise ScenarioLabError("expert evaluation context is incompatible")
+            current_identity = _context_identity(context.get("payload", {}))
+            if context_identity is not None and current_identity != context_identity:
+                raise ScenarioLabError("expert evaluation contexts do not use compatible persisted identities")
+            context_identity = current_identity
             matrix = _matrix(context.get("payload", {}), expert_b=index == 1)
             matrices.append(matrix)
             response = IssuesApi(sessions.client_for(alias)).submit_evaluation(issue_id, STAGE, matrix)
@@ -225,14 +274,22 @@ def generate(
         computed = owner_api.compute_evaluation(issue_id, STAGE)
         result = computed.get("result") if isinstance(computed, dict) else None
         ranked = result.get("rankedAlternatives") if isinstance(result, dict) else None
-        if computed.get("currentStage") != "finished" or not isinstance(ranked, list) or len(ranked) != 3 or computed.get("consensusLifecycle") not in (None,):
+        if (
+            computed.get("stage") != STAGE
+            or computed.get("currentStage") != "finished"
+            or not isinstance(result, dict)
+            or not isinstance(ranked, list)
+            or len(ranked) != 3
+            or result.get("consensusLifecycle") is not None
+            or result.get("consensusMeasure") is not None
+        ):
             raise ScenarioLabError("BORDA computation did not finish with three ranked alternatives")
         finished = _items(owner_api.finished_issues(), "issues")
-        if not any(_id(item) == issue_id or item.get("name") == issue_name for item in finished):
-            raise ScenarioLabError("computed issue is absent from finished issues")
+        finished_matches = [item for item in finished if _id(item) == issue_id or item.get("name") == issue_name]
+        if len(finished_matches) != 1:
+            raise ScenarioLabError("computed issue could not be resolved uniquely from finished issues")
         detail = owner_api.finished_issue(issue_id)
-        if not isinstance(detail, dict) or not detail or detail.get("isConsensus") is True:
-            raise ScenarioLabError("finished issue detail is invalid")
+        _validate_finished_detail(detail, issue_id)
         entry = GeneratedIssue(
             generationId=generation_id, scenarioId=SCENARIO_ID, issueId=issue_id, issueName=issue_name, ownerAlias=owner_alias, visibleUserAliases=list(aliases)
         )

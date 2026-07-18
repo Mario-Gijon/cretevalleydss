@@ -20,7 +20,10 @@ def numeric_levels(domain: dict[str, Any]) -> tuple[float, float, float]:
     """Return domain-valid low/medium/high values without stepped float drift."""
 
     type_key = domain.get("typeKey")
-    minimum, maximum = _decimal(domain.get("min"), "min"), _decimal(domain.get("max"), "max")
+    definition = domain.get("definition")
+    if not isinstance(definition, dict):
+        raise ScenarioLabError("expression domain definition must be an object")
+    minimum, maximum = _decimal(definition.get("min"), "definition.min"), _decimal(definition.get("max"), "definition.max")
     if maximum <= minimum:
         raise ScenarioLabError("expression domain max must be greater than min")
     if type_key == "numericContinuous":
@@ -28,13 +31,16 @@ def numeric_levels(domain: dict[str, Any]) -> tuple[float, float, float]:
         return float(minimum + delta), float(minimum + delta * 2), float(minimum + delta * 3)
     if type_key != "numericDiscrete":
         raise ScenarioLabError(f"unsupported numeric expression domain type: {type_key!r}")
-    step = _decimal(domain.get("step"), "step")
+    step = _decimal(definition.get("step"), "definition.step")
     if step <= 0:
         raise ScenarioLabError("numericDiscrete expression domain step must be positive")
-    count = int((maximum - minimum) / step) + 1
-    if count < 2:
+    values = []
+    current = minimum
+    while current <= maximum:
+        values.append(current)
+        current += step
+    if len(values) < 2:
         raise ScenarioLabError("numericDiscrete domain needs at least two representable values")
-    values = [minimum + step * index for index in range(count) if minimum + step * index <= maximum]
     low, high = values[0], values[-1]
     medium = values[len(values) // 2] if len(values) >= 3 else high
     return float(low), float(medium), float(high)
