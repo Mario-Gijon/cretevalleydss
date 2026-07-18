@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 
-import { rankingListViewportSx, rankingRowSx } from "../resultsAnalysis.styles.js";
+import { rankingListViewportSx, rankingRowSx, rankingScoreTrackSx } from "../resultsAnalysis.styles.js";
 
 const widthPercent = ({ score, min, max }) => {
   if (typeof score !== "number" || !Number.isFinite(score)) return 0;
@@ -68,16 +68,7 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                     {entry.description}
                   </Typography>
                 ) : null}
-                <Box
-                  sx={{
-                    mt: 0.65,
-                    height: 5,
-                    maxWidth: compact ? 170 : 300,
-                    borderRadius: 99,
-                    bgcolor: "rgba(255,255,255,0.055)",
-                    overflow: "hidden",
-                  }}
-                >
+                <Box sx={rankingScoreTrackSx(compact)}>
                   <Box
                     sx={{
                       width: `${scoreWidth}%`,

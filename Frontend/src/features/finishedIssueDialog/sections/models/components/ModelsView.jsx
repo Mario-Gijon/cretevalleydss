@@ -16,7 +16,6 @@ const ModelsView = ({ data, parameterContext, addParameterContext, state, action
   <Stack spacing={1.5} sx={modelsRootSx}>
     <ExecutionGallery
       executions={data.executions}
-      scenarioCount={data.scenarioCount}
       formatDateTime={formatDateTime}
       onSelect={actions.selectExecution}
       onRemove={actions.removeScenario}

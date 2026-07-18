@@ -8,7 +8,7 @@ const localScrollbarSx = {
 
 export const modelsRootSx = { width: "100%", minWidth: 0 };
 
-export const executionGalleryGridSx = ({ scenarioCount, carousel }) => ({
+export const executionGalleryGridSx = ({ executionCount, carousel }) => ({
   width: "100%",
   minWidth: 0,
   display: "grid",
@@ -16,35 +16,51 @@ export const executionGalleryGridSx = ({ scenarioCount, carousel }) => ({
     xs: "minmax(0, 1fr)",
     sm: "repeat(2, minmax(260px, 1fr))",
     lg: carousel
-      ? "minmax(260px, 1fr) minmax(0, 2fr) minmax(260px, 1fr)"
-      : `repeat(${scenarioCount + 2}, minmax(260px, 1fr))`,
+      ? "minmax(0, 1fr)"
+      : `repeat(${executionCount + 1}, minmax(260px, 1fr))`,
   },
   gap: 1.2,
   alignItems: "stretch",
 });
 
-export const scenarioCarouselShellSx = {
+export const executionCarouselShellSx = {
   minWidth: 0,
   display: "grid",
-  gridTemplateColumns: "36px minmax(0, 1fr) 36px",
+  gridTemplateColumns: "40px minmax(0, 1fr) 40px",
   gap: 0.65,
-  alignItems: "center",
+  alignItems: "stretch",
 };
 
-export const scenarioCarouselWindowSx = (capacity) => ({
+export const executionCarouselViewportSx = {
   minWidth: 0,
-  display: "grid",
-  gridTemplateColumns: {
-    xs: "minmax(0, 1fr)",
-    lg: `repeat(${capacity}, minmax(0, 1fr))`,
+  width: "100%",
+  overflow: "hidden",
+};
+
+const executionCarouselGap = 10;
+
+export const executionCarouselTrackSx = ({ capacity, start }) => ({
+  display: "flex",
+  gap: `${executionCarouselGap}px`,
+  transform: `translateX(calc(-${(start * 100) / capacity}% - ${(start * executionCarouselGap) / capacity}px))`,
+  transition: "transform 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+  willChange: "transform",
+  "@media (prefers-reduced-motion: reduce)": {
+    transitionDuration: "1ms",
   },
-  gap: 1.2,
-  alignItems: "stretch",
 });
 
-export const scenarioCarouselControlSx = {
-  width: 36,
-  height: 76,
+export const executionCarouselItemSx = (capacity) => ({
+  flex: `0 0 calc((100% - ${(capacity - 1) * executionCarouselGap}px) / ${capacity})`,
+  minWidth: 0,
+  "& > *": { height: "100%" },
+});
+
+export const executionCarouselControlSx = {
+  width: 40,
+  height: "100%",
+  minHeight: "100%",
+  alignSelf: "stretch",
   borderRadius: 2,
   border: "1px solid rgba(83, 198, 214, 0.22)",
   bgcolor: "#081521",
@@ -85,8 +101,8 @@ export const executionCardIconSx = { width: 46, height: 46, flex: "0 0 auto", di
 
 export const executionCardDescriptionSx = { mt: 1.5, mb: 1.5, color: "text.secondary", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "4.5em" };
 
-export const addModelCardSx = () => ({
-  appearance: "none", width: "100%", minWidth: { xs: 0, sm: 260 }, minHeight: { xs: 250, md: 290 }, px: 2, borderRadius: 3,
+export const addModelCardSx = ({ carousel = false } = {}) => ({
+  appearance: "none", width: "100%", minWidth: carousel ? 0 : { xs: 0, sm: 260 }, height: carousel ? "100%" : "auto", minHeight: { xs: 250, md: 290 }, px: 2, borderRadius: 3,
   border: "1px dashed rgba(255,255,255,0.27)", bgcolor: "rgba(8, 18, 29, 0.50)", color: "text.primary", display: "grid", placeItems: "center", alignContent: "center", gap: 0.7, cursor: "pointer",
   "&:hover": { borderColor: "secondary.main", color: "secondary.light", bgcolor: "rgba(18, 75, 91, 0.20)" },
   "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 3 },

@@ -1,20 +1,12 @@
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 
-import { correlationMatrixViewportSx, resultsPanelSx } from "../resultsAnalysis.styles.js";
-
-const backgroundFor = (value) => {
-  if (typeof value !== "number") return "rgba(255,255,255,0.035)";
-  if (value >= 0.75) return "rgba(111, 220, 104, 0.45)";
-  if (value >= 0.25) return "rgba(39, 213, 228, 0.30)";
-  if (value > -0.25) return "rgba(255,255,255,0.09)";
-  return "rgba(169, 96, 232, 0.34)";
-};
+import { comparisonDetailPanelSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx } from "../resultsAnalysis.styles.js";
 
 const RankingCorrelationMatrix = ({ correlations }) => {
   if (!correlations.available) {
     return (
-      <Box sx={resultsPanelSx}>
+      <Box sx={comparisonDetailPanelSx}>
         <Typography variant="h6" component="h2">
           Ranking correlations
         </Typography>
@@ -33,7 +25,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
   );
 
   return (
-    <Box sx={resultsPanelSx}>
+    <Box sx={comparisonDetailPanelSx}>
       <Stack direction="row" spacing={1} alignItems="center">
         <GridViewRoundedIcon sx={{ color: "secondary.light" }} />
         <Box>
@@ -47,14 +39,7 @@ const RankingCorrelationMatrix = ({ correlations }) => {
       </Stack>
 
       <Box sx={correlationMatrixViewportSx}>
-        <Box
-          sx={{
-            minWidth: 620,
-            display: "grid",
-            gridTemplateColumns: `220px repeat(${correlations.executions.length}, minmax(130px, 1fr))`,
-            mt: 1.1,
-          }}
-        >
+        <Box sx={correlationMatrixSx(correlations.executions.length)}>
           <Box />
           {correlations.executions.map((execution) => (
             <Typography
@@ -105,11 +90,17 @@ const RankingCorrelationMatrix = ({ correlations }) => {
                     sx={{
                       display: "grid",
                       placeItems: "center",
-                      minHeight: 44,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      bgcolor: backgroundFor(cell?.value),
+                      minHeight: 48,
+                      border: "1px solid",
+                      borderRadius: 1,
                       typography: "body2",
                       fontWeight: "fontWeightBold",
+                      transition: "border-color 160ms ease, background-color 160ms ease",
+                      ...correlationCellSx(cell?.value),
+                      "&:hover": {
+                        borderColor: "rgba(255,255,255,0.82)",
+                        bgcolor: "rgba(255,255,255,0.065)",
+                      },
                     }}
                   >
                     {cell?.formattedValue ?? "—"}

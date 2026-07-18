@@ -46,7 +46,7 @@ const getUnavailableReason = (execution, ranking) => {
   return ranking.length ? null : "This execution does not contain a standardized ranking.";
 };
 
-const baseLabel = (modelName) => `Base · ${modelName || "—"}`;
+const baseLabel = (modelName) => `Base (${modelName || "—"})`;
 
 const visibleExecutionLabels = (executions) => {
   const candidateCounts = executions.reduce((counts, execution) => {
