@@ -27,6 +27,12 @@ const completeScenario = (id, ranks) => ({
 });
 
 describe("Results analysis workspace", () => {
+  it("uses blue, green, and purple Results Analysis slots in selection order", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.scenarios = [completeScenario("scenario-forward", [["a", 1, 1], ["b", 2, 0]]), completeScenario("scenario-reverse", [["b", 1, 1], ["a", 2, 0]])];
+    const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["scenario-forward", "base", "scenario-reverse"] });
+    expect(data.selected.map((entry) => entry.color)).toEqual(["#27d5e4", "#6fdc68", "#a960e8"]);
+  });
   it("resolves the latest base evaluation, keeps every ranking entry, and excludes failed runs", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios = [

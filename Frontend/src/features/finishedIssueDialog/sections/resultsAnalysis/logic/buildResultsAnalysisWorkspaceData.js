@@ -1,8 +1,8 @@
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../../../logic/selectFinishedIssueExecution.js";
-import { normalizePlotsGraphic } from "../../../shared/logic/buildFinishedIssueGraphs.js";
 import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRankingComparison.js";
+import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
+import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
 
-const SLOT_COLORS = ["#6fdc68", "#27d5e4", "#a960e8"];
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
 const formatScore = (value) => {
@@ -17,8 +17,6 @@ const resolveFinalBaseExecution = (payload) => {
     ...execution,
     sourcePhase: finalPhase?.phase ?? execution.sourcePhase ?? null,
     standardizedOutput: finalPhase?.standardizedOutput ?? execution.standardizedOutput ?? null,
-    modelSpecificOutput: finalPhase?.modelSpecificOutput ?? execution.modelSpecificOutput ?? null,
-    rawOutput: finalPhase?.rawOutput ?? execution.rawOutput ?? null,
   };
 };
 
@@ -52,25 +50,20 @@ const buildExecution = ({ payload, option, slotIndex = 0 }) => {
   const execution = resolveExecution(payload, option.key);
   const ranking = normalizeRanking({ payload, execution });
   const unavailableReason = getUnavailableReason(execution, ranking);
-  const normalizedPlots = normalizePlotsGraphic(execution?.standardizedOutput?.plotsGraphic);
-
   return {
     key: option.key,
     type: execution?.type || option.type,
     name: option.label || execution?.label || "—",
     modelName: option.modelName || execution?.model?.name || "—",
     displayLabel: `${option.label || execution?.label || "—"} · ${option.modelName || execution?.model?.name || "—"}`,
-    color: SLOT_COLORS[slotIndex],
+    color: RESULTS_ANALYSIS_SLOT_COLORS[slotIndex],
     ranking,
     available: !unavailableReason,
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
-    visualizations: {
-      hasPerformanceMap: Boolean(normalizedPlots?.isValid),
-      performanceMapData: normalizedPlots?.isValid ? [{ expertPoints: normalizedPlots.expertPoints, collectivePoint: normalizedPlots.collectivePoint }] : null,
-      selectedPhase: execution?.sourcePhase ?? null,
-      unavailableReason: normalizedPlots?.reason || null,
-    },
+    // Keep the controlled source on this local execution shape. The
+    // visualization builder reads only standardizedOutput.plotsGraphic.
+    standardizedOutput: execution?.standardizedOutput ?? null,
   };
 };
 
@@ -96,11 +89,13 @@ export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKe
     .filter(Boolean);
   const mode = selected.length > 1 ? "comparison" : "single";
   const primary = selected[0] || null;
+  const visualizations = buildResultsVisualizationsData({ payload, executions: selected });
 
   return {
     mode,
     selected,
     primary,
+    visualizations,
     selectableOptions,
     selection: {
       count: selected.length,
@@ -118,4 +113,4 @@ export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKe
   };
 };
 
-export const RESULTS_ANALYSIS_SLOT_COLORS = SLOT_COLORS;
+export { RESULTS_ANALYSIS_SLOT_COLORS };

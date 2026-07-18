@@ -1,4 +1,4 @@
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import { Scatter } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -28,8 +28,7 @@ ChartJS.register(
  * @param {Object} props Props del componente.
  * @returns {JSX.Element|null}
  */
-export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = false }) => {
-  const theme = useTheme();
+export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = false, color }) => {
   const viewModel = buildAnalyticalScatterViewModel({ data, phase });
 
   if (!viewModel) return null;
@@ -41,14 +40,16 @@ export const AnalyticalScatterChart = ({ data, phase, scatterPlotRef, compact = 
       {
         label: "Experts",
         data: expertPoints,
-        backgroundColor: alpha(theme.palette.info.main, 0.85),
+        backgroundColor: alpha(color, 0.85),
         pointRadius: compact ? 4 : 8,
         pointHoverRadius: compact ? 6 : 11,
       },
       {
         label: "Collective",
         data: [collectivePoint],
-        backgroundColor: alpha(theme.palette.error.main, 0.95),
+        backgroundColor: alpha(color, 0.95),
+        borderColor: alpha("#fff", 0.85),
+        borderWidth: 1.5,
         pointRadius: compact ? 5 : 10,
         pointStyle: "rectRot",
         pointHoverRadius: compact ? 7 : 13,
