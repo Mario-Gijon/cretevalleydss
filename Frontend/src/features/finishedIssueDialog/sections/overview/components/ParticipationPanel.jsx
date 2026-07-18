@@ -64,8 +64,8 @@ const ParticipationPanel = ({ participation }) => (
                     height: 36,
                     bgcolor: "rgba(47, 159, 194, 0.23)",
                     color: "secondary.light",
-                    fontSize: 14,
-                    fontWeight: 900,
+                    typography: "body2",
+                    fontWeight: "fontWeightBold",
                   }}
                 >
                   {initialFor(participant.name)}
@@ -73,20 +73,21 @@ const ParticipationPanel = ({ participation }) => (
 
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
+                    variant="body2"
                     noWrap
                     title={participant.name}
-                    sx={{ fontSize: 13, fontWeight: 900 }}
+                    sx={{ fontWeight: "fontWeightBold" }}
                   >
                     {participant.name}
                   </Typography>
                   {participant.email ? (
                     <Typography
+                      variant="caption"
                       noWrap
                       title={participant.email}
                       sx={{
                         mt: 0.1,
                         color: "text.secondary",
-                        fontSize: 10.8,
                       }}
                     >
                       {participant.email}
@@ -101,8 +102,7 @@ const ParticipationPanel = ({ participation }) => (
                   label={status.label}
                   sx={{
                     height: 23,
-                    fontSize: 10.3,
-                    fontWeight: 850,
+                    fontWeight: "fontWeightBold",
                   }}
                 />
               </Box>
@@ -116,15 +116,15 @@ const ParticipationPanel = ({ participation }) => (
       <Box data-testid="overview-participation-chart" sx={overviewParticipationChartSx}>
         <Stack alignItems="center" spacing={0.55}>
           <ParticipationDonutChart participation={participation} />
-          <Typography sx={{ fontSize: 12.5, fontWeight: 850 }}>
+          <Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>
             {participation.accepted > 0
               ? `${participation.completed}/${participation.accepted} accepted experts completed`
               : "No accepted participants"}
           </Typography>
           <Typography
+            variant="caption"
             sx={{
               color: "text.secondary",
-              fontSize: 10.8,
               textAlign: "center",
             }}
           >

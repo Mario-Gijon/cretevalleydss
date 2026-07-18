@@ -18,21 +18,20 @@ const ConfigRow = ({ icon, label, value, tone }) => (
   <Box sx={overviewConfigRowSx}>
     <Box sx={overviewInformationIconSx(tone)}>{icon}</Box>
     <Typography
+      variant="caption"
       sx={{
         color: "text.secondary",
-        fontSize: 11.5,
-        fontWeight: 700,
       }}
     >
       {label}
     </Typography>
     <Typography
+      variant="body2"
       title={String(value)}
       sx={{
         minWidth: 0,
         overflowWrap: "anywhere",
-        fontSize: 12.5,
-        fontWeight: 850,
+        fontWeight: "fontWeightBold",
       }}
     >
       {value}
@@ -96,7 +95,7 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
                   useFlexGap
                   flexWrap="wrap"
                 >
-                  <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>
+                  <Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>
                     {domain.name}
                   </Typography>
                   {domain.typeLabel && domain.typeLabel !== "—" ? (
@@ -105,16 +104,16 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
                       variant="outlined"
                       color="secondary"
                       label={domain.typeLabel}
-                      sx={{ height: 22, fontSize: 10.2 }}
+                      sx={{ height: 22 }}
                     />
                   ) : null}
                 </Stack>
 
                 <Typography
+                  variant="caption"
                   sx={{
                     mt: 0.35,
                     color: "text.secondary",
-                    fontSize: 10.8,
                     lineHeight: 1.4,
                   }}
                 >
@@ -126,7 +125,7 @@ const ConfigurationDomainsPanel = ({ configuration }) => {
             ))}
           </Stack>
         ) : (
-          <Typography color="text.secondary" sx={{ fontSize: 12 }}>
+          <Typography variant="body2" color="text.secondary">
             No expression-domain snapshots are available.
           </Typography>
         )}

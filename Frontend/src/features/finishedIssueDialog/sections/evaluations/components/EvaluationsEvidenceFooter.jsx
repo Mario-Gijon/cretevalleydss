@@ -20,14 +20,16 @@ const Item = ({ icon, label, value }) => (
   <Stack direction="row" spacing={0.55} alignItems="center" sx={{ width: { xs: "100%", sm: "auto" }, minWidth: 0 }}>
     <Box sx={{ color: "secondary.light", display: "grid" }}>{icon}</Box>
     <Typography
-      sx={{ color: "text.secondary", fontSize: 11.2, fontWeight: 700 }}
+      variant="caption"
+      sx={{ color: "text.secondary", fontWeight: "fontWeightBold" }}
     >
       {label}:
     </Typography>
     <Typography
+      variant="caption"
       noWrap
       title={String(value)}
-      sx={{ minWidth: 0, fontSize: 11.5, fontWeight: 850 }}
+      sx={{ minWidth: 0, fontWeight: "fontWeightBold" }}
     >
       {value}
     </Typography>

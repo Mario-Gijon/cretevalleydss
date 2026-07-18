@@ -7,7 +7,7 @@ import { buildModelsCardsData } from "../../../../../src/features/finishedIssueD
 import { capacityForExecutionGallery } from "../../../../../src/features/finishedIssueDialog/sections/models/logic/executionGalleryCapacity.js";
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../../../../../src/features/finishedIssueDialog/logic/selectFinishedIssueExecution.js";
 import { buildParameterContext } from "../../../../../src/features/modelParameters/logic/buildModelParameterContext.js";
-import { addModelCardSx, executionCardSx, executionGalleryGridSx, scenarioCarouselControlSx } from "../../../../../src/features/finishedIssueDialog/sections/models/models.styles.js";
+import { addModelCardSx, executionCardSx, executionCarouselControlSx, executionCarouselItemSx, executionCarouselTrackSx, executionGalleryGridSx } from "../../../../../src/features/finishedIssueDialog/sections/models/models.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 const actions = {
@@ -22,12 +22,14 @@ const buildState = (payload, overrides = {}) => ({
   sourcePhases: [0, 5], selectedSourcePhase: 5, scenarioParamValues: {}, availableModels: payload.models.compatible, ...overrides,
 });
 
-const renderView = (payload, selectedKey = "base", state = buildState(payload)) => {
+const viewFor = (payload, selectedKey = "base", state = buildState(payload)) => {
   const selectedExecution = selectFinishedIssueExecution(payload, selectedKey);
   const data = buildModelsCardsData({ payload, selectedExecution, executionOptions: buildFinishedIssueExecutionOptions(payload) });
   const context = buildParameterContext({ model: data.selectedExecution.model });
-  return render(<ThemeProvider theme={createTheme()}><ModelsView data={data} parameterContext={context} addParameterContext={context} state={{ add: state }} actions={actions} /></ThemeProvider>);
+  return <ThemeProvider theme={createTheme()}><ModelsView data={data} parameterContext={context} addParameterContext={context} state={{ add: state }} actions={actions} /></ThemeProvider>;
 };
+
+const renderView = (payload, selectedKey = "base", state = buildState(payload)) => render(viewFor(payload, selectedKey, state));
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -37,11 +39,16 @@ describe("ModelsView", () => {
     payload.scenarios = [];
     renderView(payload);
     const gallery = screen.getByTestId("models-execution-gallery");
-    expect(within(gallery).getAllByText("Base").length).toBeGreaterThan(0);
+    const carousel = within(gallery).getByTestId("models-execution-carousel");
+    expect(within(carousel).getAllByTitle("Base")).toHaveLength(1);
     expect(within(gallery).getByLabelText("Add model")).toBeInTheDocument();
-    expect(within(gallery).queryByLabelText("Previous scenarios")).not.toBeInTheDocument();
-    expect(within(gallery).queryByLabelText("Next scenarios")).not.toBeInTheDocument();
-    expect(screen.getByTitle("Base · Base model")).toHaveTextContent("Selected execution");
+    expect(within(carousel).queryByLabelText("Add model")).not.toBeInTheDocument();
+    expect(within(gallery).queryByLabelText("Previous executions")).not.toBeInTheDocument();
+    expect(within(gallery).queryByLabelText("Next executions")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Selected execution — Base")).toHaveTextContent("Selected execution — Base");
+    expect(screen.getByTitle("Selected execution — Base")).not.toHaveTextContent("·");
+    expect(screen.getByTitle("Selected execution — Base")).not.toHaveTextContent("Base model");
+    expect(screen.queryByTitle("Base · Base model")).not.toBeInTheDocument();
     expect(screen.getByText("Raw output")).toBeInTheDocument();
   });
 
@@ -52,7 +59,7 @@ describe("ModelsView", () => {
     payload.scenarios[0].computedAt = "2026-01-02T10:00:00.000Z";
     renderView(payload, "scenario-ok");
     expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
-    expect(screen.getByText("Scenario")).toBeInTheDocument();
+    expect(screen.getByTitle("Scenario")).toBeInTheDocument();
     expect(screen.getByText("Test description")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Add model")).toHaveLength(1);
     expect(screen.getAllByText("Computed at")).toHaveLength(2);
@@ -70,7 +77,7 @@ describe("ModelsView", () => {
     expect(actions.selectExecution).not.toHaveBeenCalled();
   });
 
-  it("keeps Base and Add model fixed while only scenarios move through the desktop carousel", () => {
+  it("moves Base, scenarios, and the final Add model action through one execution carousel", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios.push({
       ...payload.scenarios[0],
@@ -80,23 +87,36 @@ describe("ModelsView", () => {
     });
     renderView(payload);
 
-    expect(screen.getByTestId("models-scenario-carousel")).toBeInTheDocument();
-    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Add model")).toBeInTheDocument();
-    expect(screen.getByText("Scenario")).toBeInTheDocument();
-    expect(screen.queryByText("Third scenario")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Previous scenarios")).toBeDisabled();
-    expect(screen.getByLabelText("Next scenarios")).not.toBeDisabled();
+    const carousel = screen.getByTestId("models-execution-carousel");
+    expect(within(carousel).getAllByTitle("Base")).toHaveLength(1);
+    const track = screen.getByTestId("models-execution-carousel-track");
+    expect(within(track).getByTestId("models-add-model-carousel-slide")).toContainElement(within(track).getByLabelText("Add model"));
+    expect(screen.getAllByLabelText("Add model")).toHaveLength(1);
+    expect(screen.getByTitle("Scenario")).toBeInTheDocument();
+    expect(screen.getByTitle("Third scenario")).toBeInTheDocument();
+    expect(track).toHaveAttribute("data-carousel-start", "0");
+    expect(screen.getByLabelText("Previous executions")).toBeDisabled();
+    expect(screen.getByLabelText("Next executions")).not.toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText("Next scenarios"));
-    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Add model")).toBeInTheDocument();
-    expect(screen.getByText("Third scenario")).toBeInTheDocument();
-    expect(screen.getByLabelText("Previous scenarios")).not.toBeDisabled();
-    expect(screen.getByLabelText("Next scenarios")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Next executions"));
+    expect(track).toHaveAttribute("data-carousel-start", "1");
+    expect(screen.getByLabelText("Previous executions")).not.toBeDisabled();
+    expect(screen.getByLabelText("Next executions")).not.toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("Next executions"));
+    expect(track).toHaveAttribute("data-carousel-start", "2");
+    expect(screen.getByLabelText("Next executions")).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText("Previous executions"));
+    expect(track).toHaveAttribute("data-carousel-start", "1");
+
+    fireEvent.click(screen.getByLabelText("Add model"));
+    expect(actions.openAdd).toHaveBeenCalledOnce();
+    expect(actions.selectExecution).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Add model")).not.toHaveAttribute("aria-pressed");
   });
 
-  it("brings a selected scenario into the scenario-only window", () => {
+  it("brings a selected execution into the shared carousel window and keeps Base selectable", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.scenarios.push({
       ...payload.scenarios[0],
@@ -104,10 +124,45 @@ describe("ModelsView", () => {
       name: "Third scenario",
       description: "Third scenario description",
     });
-    renderView(payload, "scenario-third");
+    const { unmount } = renderView(payload, "scenario-third");
 
-    expect(screen.getByText("Third scenario")).toBeInTheDocument();
-    expect(screen.getAllByText("Base").length).toBeGreaterThan(0);
+    expect(screen.getByTitle("Third scenario")).toBeInTheDocument();
+    expect(screen.getByTestId("models-execution-carousel-track")).toHaveAttribute("data-carousel-start", "1");
+
+    unmount();
+    renderView(payload);
+    fireEvent.click(screen.getByTitle("Base"));
+    expect(actions.selectExecution).toHaveBeenCalledWith("base");
+    expect(actions.removeScenario).not.toHaveBeenCalledWith("base");
+  });
+
+  it("clamps the carousel window after scenarios are removed", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    payload.scenarios.push({
+      ...payload.scenarios[0],
+      id: "scenario-third",
+      name: "Third scenario",
+    });
+    const view = renderView(payload, "scenario-third");
+
+    expect(screen.getByTitle("Third scenario")).toBeInTheDocument();
+
+    payload.scenarios = [payload.scenarios[0]];
+    view.rerender(viewFor(payload, "base"));
+
+    expect(screen.getByTitle("Base")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Previous executions")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Next executions")).not.toBeInTheDocument();
+  });
+
+  it("keeps exactly three desktop executions static with the full Add model card", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    renderView(payload);
+
+    expect(screen.queryByLabelText("Previous executions")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Next executions")).not.toBeInTheDocument();
+    expect(screen.getByTestId("models-add-model-card")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Add model")).toHaveLength(1);
   });
 
   it("opens one Dialog with required name and description fields", () => {
@@ -138,13 +193,20 @@ describe("ModelsView", () => {
 
   it("keeps responsive scenario capacities and meaningful card dimensions", () => {
     expect(capacityForExecutionGallery({ mobile: true, tablet: false })).toBe(1);
-    expect(capacityForExecutionGallery({ mobile: false, tablet: true })).toBe(1);
-    expect(capacityForExecutionGallery({ mobile: false, tablet: false })).toBe(2);
-    expect(executionGalleryGridSx({ scenarioCount: 0, carousel: false }).gridTemplateColumns.lg).toBe("repeat(2, minmax(260px, 1fr))");
-    expect(executionGalleryGridSx({ scenarioCount: 2, carousel: false }).gridTemplateColumns.lg).toBe("repeat(4, minmax(260px, 1fr))");
+    expect(capacityForExecutionGallery({ mobile: false, tablet: true })).toBe(2);
+    expect(capacityForExecutionGallery({ mobile: false, tablet: false })).toBe(3);
+    expect(executionGalleryGridSx({ executionCount: 1, carousel: false }).gridTemplateColumns.lg).toBe("repeat(2, minmax(260px, 1fr))");
+    expect(executionGalleryGridSx({ executionCount: 3, carousel: false }).gridTemplateColumns.lg).toBe("repeat(4, minmax(260px, 1fr))");
     expect(executionCardSx(false, false).minHeight).toEqual({ xs: 250, md: 290 });
     expect(addModelCardSx().minHeight).toEqual({ xs: 250, md: 290 });
     expect(addModelCardSx().minWidth).toEqual({ xs: 0, sm: 260 });
-    expect(scenarioCarouselControlSx).toMatchObject({ width: 36, height: 76, borderRadius: 2 });
+    expect(addModelCardSx({ carousel: true })).toMatchObject({ width: "100%", minWidth: 0, height: "100%" });
+    expect(executionCarouselItemSx(3)).toMatchObject({ flex: "0 0 calc((100% - 20px) / 3)", minWidth: 0, "& > *": { height: "100%" } });
+    expect(executionCarouselControlSx).toMatchObject({ width: 40, height: "100%", alignSelf: "stretch", borderRadius: 2 });
+    expect(executionCarouselTrackSx({ capacity: 3, start: 1 })).toMatchObject({
+      transform: "translateX(calc(-33.333333333333336% - 3.3333333333333335px))",
+      transition: "transform 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+    });
+    expect(executionCarouselTrackSx({ capacity: 3, start: 1 })["@media (prefers-reduced-motion: reduce)"]).toEqual({ transitionDuration: "1ms" });
   });
 });

@@ -54,7 +54,7 @@ export default function AdminIssueExpertsProgress({
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <PeopleAltIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Experts progress
             </Typography>
             <AdminIssueMetaChip tone="info">{issueExpertsProgress.length}</AdminIssueMetaChip>

@@ -276,8 +276,8 @@ const SelectedExpertsPanelContent = ({
                 border: `1px solid ${alpha(theme.palette[expertWeightValidation.tone].main, 0.28)}`,
                 bgcolor: alpha(theme.palette[expertWeightValidation.tone].main, 0.12),
                 color: `${expertWeightValidation.tone}.main`,
-                fontSize: 12,
-                fontWeight: 900,
+                typography: "caption",
+                fontWeight: "fontWeightBold",
                 alignSelf: { xs: "flex-start", sm: "auto" },
               }}
             >
@@ -299,8 +299,8 @@ const SelectedExpertsPanelContent = ({
                   ? "rgba(75, 210, 207, 0.72)"
                   : "rgba(255,255,255,0.16)",
               color: expertWeightsMode === "equal" ? "info.main" : "text.secondary",
-              fontWeight: 900,
-              fontSize: 11,
+              fontWeight: "fontWeightBold",
+              typography: "caption",
               letterSpacing: 0.25,
               textTransform: "uppercase",
               "&.Mui-selected": {
@@ -618,7 +618,7 @@ export const ExpertsStep = ({
           </Avatar>
 
           <Stack spacing={0.15} sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+            <Typography variant="h6">
               Add experts
             </Typography>
             <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>

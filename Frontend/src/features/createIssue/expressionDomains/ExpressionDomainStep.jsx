@@ -81,7 +81,7 @@ const AssignmentModeCard = ({ selected, title, description, onClick }) => {
       }}
     >
       <Stack spacing={0.25}>
-        <Typography variant="body2" sx={{ fontWeight: 950, lineHeight: 1.15 }}>
+        <Typography variant="subtitle2">
           {title}
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 750 }}>
@@ -238,7 +238,7 @@ export const ExpressionDomainStep = () => {
             </Avatar>
 
             <Stack spacing={0.15} sx={{ minWidth: 0 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+              <Typography variant="h6">
                 Expression domains
               </Typography>
               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 850 }}>

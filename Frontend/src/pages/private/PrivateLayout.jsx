@@ -63,8 +63,8 @@ const PrivateLayout = () => {
           >
             <EULogoIcon sx={{ fontSize: 190, height: "auto" }} />
             <Typography
+              variant="caption"
               sx={{
-                fontSize: 12,
                 textAlign: "justify",
                 width: { sm: "100%", md: "60%", lg: "40%" },
               }}

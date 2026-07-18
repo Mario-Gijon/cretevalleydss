@@ -79,7 +79,7 @@ const EvaluationsView = ({ data, state, actions }) => {
         <Alert
           severity="info"
           variant="outlined"
-          sx={{ mt: 1.5, fontSize: 12 }}
+          sx={{ mt: 1.5 }}
         >
           No stored criteria-weighting evaluations exist for this issue.
           Alternative evaluation is shown at full width.

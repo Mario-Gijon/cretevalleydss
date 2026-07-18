@@ -31,18 +31,19 @@ const FooterItem = ({ icon, label, value }) => (
       {icon}
     </Box>
     <Typography
+      variant="caption"
       sx={{
         color: "text.secondary",
-        fontSize: 11.5,
-        fontWeight: 700,
+        fontWeight: "fontWeightBold",
       }}
     >
       {label}:
     </Typography>
     <Typography
+      variant="caption"
       noWrap
       title={String(value)}
-      sx={{ fontSize: 11.8, fontWeight: 850 }}
+      sx={{ fontWeight: "fontWeightBold" }}
     >
       {value}
     </Typography>
@@ -93,10 +94,10 @@ const OverviewExecutionFooter = ({ evidence }) => {
         sx={{ minWidth: 0 }}
       >
         <Typography
+          variant="caption"
           sx={{
             color: "text.secondary",
-            fontSize: 11.5,
-            fontWeight: 700,
+            fontWeight: "fontWeightBold",
           }}
         >
           Result ID

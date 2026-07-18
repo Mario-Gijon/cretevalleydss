@@ -38,41 +38,32 @@ const EvaluationPluginPanel = ({
     <Box sx={evaluationPluginPanelSx}>
       <Box sx={{ minWidth: 0 }}>
         <Stack direction="row" spacing={0.7} alignItems="center" useFlexGap flexWrap="wrap">
-          <Typography
-            component="h2"
-            sx={{ fontSize: 17, fontWeight: 950 }}
-          >
+          <Typography variant="h6" component="h2">
             {stageData.title}
           </Typography>
-          <Typography
+          <Typography variant="caption"
             sx={{
               color: "text.secondary",
-              fontSize: 12,
-              fontWeight: 700,
             }}
           >
             (read-only)
           </Typography>
           <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16, flexShrink: 0 }} />
         </Stack>
-        <Typography
+        <Typography variant="body2"
           sx={{
             mt: 0.25,
             color: "text.secondary",
-            fontSize: 12,
-            fontWeight: 600,
           }}
         >
           {stageData.subtitle}
         </Typography>
       </Box>
 
-      <Typography
+      <Typography variant="caption"
         sx={{
           mt: 0.75,
           color: "text.secondary",
-          fontSize: 11.5,
-          fontWeight: 650,
           textAlign: { xs: "left", md: "right" },
         }}
       >
@@ -80,7 +71,7 @@ const EvaluationPluginPanel = ({
       </Typography>
 
       {!stageData.hasSelectedExpertSubmission ? (
-        <Alert severity="info" variant="outlined" sx={{ mt: 1, fontSize: 12 }}>
+        <Alert severity="info" variant="outlined" sx={{ mt: 1 }}>
           {stageData.emptySubmissionMessage}
         </Alert>
       ) : null}

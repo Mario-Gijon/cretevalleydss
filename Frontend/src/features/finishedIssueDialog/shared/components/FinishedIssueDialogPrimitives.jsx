@@ -70,8 +70,9 @@ export const SectionCard = ({ title, icon, right, children, sx }) => {
 
             {title ? (
               <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 980, lineHeight: 1, whiteSpace: "nowrap" }}
+                variant="h6"
+                component="h2"
+                sx={{ whiteSpace: "nowrap" }}
               >
                 {title}
               </Typography>

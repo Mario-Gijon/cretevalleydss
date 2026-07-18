@@ -105,7 +105,7 @@ export const AlternativesStep = () => {
   return (
     <Stack spacing={1.5} sx={createIssueStepContainerSx}>
       <Stack spacing={0.25}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+        <Typography variant="h6">
           Alternatives
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>

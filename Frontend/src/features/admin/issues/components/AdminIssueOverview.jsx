@@ -63,7 +63,7 @@ export default function AdminIssueOverview({
         <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <InfoOutlinedIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Issue information
             </Typography>
           </Stack>
@@ -111,7 +111,7 @@ export default function AdminIssueOverview({
         <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <RuleOutlinedIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Owner actions
             </Typography>
           </Stack>
@@ -170,7 +170,7 @@ export default function AdminIssueOverview({
       <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <InfoOutlinedIcon fontSize="small" />
-          <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+          <Typography variant="h6" component="h2">
             Model parameters
           </Typography>
         </Stack>
@@ -192,7 +192,7 @@ export default function AdminIssueOverview({
         <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <AssignmentIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Alternatives
             </Typography>
           </Stack>
@@ -226,7 +226,7 @@ export default function AdminIssueOverview({
         <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <CategoryIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Leaf criteria / final weights
             </Typography>
           </Stack>
@@ -273,7 +273,7 @@ export default function AdminIssueOverview({
         <Paper elevation={0} sx={getAdminIssueDetailCardSx(theme)}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <PsychologyIcon fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 980 }}>
+            <Typography variant="h6" component="h2">
               Scenarios
             </Typography>
           </Stack>

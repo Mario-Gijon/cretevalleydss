@@ -24,10 +24,10 @@ const ExecutionCard = ({ execution, formattedComputedAt, onSelect, onRemove }) =
         <Box sx={executionCardIconSx}>{isBase ? <LayersRoundedIcon /> : <ShowChartRoundedIcon />}</Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Stack direction="row" spacing={0.8} alignItems="center">
-            <Typography noWrap title={execution.name} sx={{ fontSize: { xs: 18, md: 20 }, fontWeight: 950 }}>{execution.name}</Typography>
+            <Typography variant="h6" component="h2" noWrap title={execution.name}>{execution.name}</Typography>
             {isBase ? <Chip size="small" color="secondary" variant="outlined" label="Base" sx={{ height: 23, fontWeight: 900 }} /> : null}
           </Stack>
-          <Typography noWrap title={execution.modelName} sx={{ mt: 0.2, color: "secondary.light", fontSize: 13, fontWeight: 900 }}>{execution.modelName}</Typography>
+          <Typography variant="body2" noWrap title={execution.modelName} sx={{ mt: 0.2, color: "secondary.light", fontWeight: "fontWeightBold" }}>{execution.modelName}</Typography>
         </Box>
         <Box sx={{ width: 40, minWidth: 40, display: "flex", justifyContent: "flex-end" }}>
           {execution.removable ? (
@@ -58,13 +58,13 @@ const ExecutionCard = ({ execution, formattedComputedAt, onSelect, onRemove }) =
           )}
         </Box>
       </Stack>
-      <Typography title={execution.description} sx={executionCardDescriptionSx}>{execution.description}</Typography>
-      {execution.failed && execution.error ? <Typography title={execution.error} sx={{ mt: -0.7, mb: 1, color: "error.light", fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{execution.error}</Typography> : null}
+      <Typography variant="body2" title={execution.description} sx={executionCardDescriptionSx}>{execution.description}</Typography>
+      {execution.failed && execution.error ? <Typography variant="caption" title={execution.error} sx={{ mt: -0.7, mb: 1, color: "error.light", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{execution.error}</Typography> : null}
       <Box sx={{ mt: "auto", pt: 1.2, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <Stack direction="row" spacing={0.7} alignItems="center"><CalendarMonthRoundedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
-          <Box><Typography sx={{ color: "text.secondary", fontSize: 10.5, fontWeight: 800 }}>Computed at</Typography><Typography sx={{ fontSize: 12, fontWeight: 800 }}>{formattedComputedAt || "—"}</Typography></Box>
+          <Box><Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "fontWeightBold" }}>Computed at</Typography><Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>{formattedComputedAt || "—"}</Typography></Box>
         </Stack>
-        <Link href={execution.paperUrl} target="_blank" rel="noreferrer noopener" underline="none" onClick={(event) => event.stopPropagation()} sx={{ mt: 1, display: "inline-flex", alignItems: "center", gap: 0.55, color: "secondary.light", fontSize: 12.5, fontWeight: 900 }}>View paper <LaunchRoundedIcon sx={{ fontSize: 16 }} /></Link>
+        <Link href={execution.paperUrl} target="_blank" rel="noreferrer noopener" underline="none" onClick={(event) => event.stopPropagation()} variant="body2" sx={{ mt: 1, display: "inline-flex", alignItems: "center", gap: 0.55, color: "secondary.light", fontWeight: "fontWeightBold" }}>View paper <LaunchRoundedIcon sx={{ fontSize: 16 }} /></Link>
       </Box>
     </Box>
   );

@@ -121,11 +121,7 @@ export const overviewPanelIconSx = {
   border: "1px solid rgba(89, 213, 218, 0.13)",
 };
 
-export const overviewPanelTitleSx = {
-  fontSize: { xs: 17, xl: 18 },
-  lineHeight: 1.2,
-  fontWeight: 950,
-};
+export const overviewPanelTitleSx = {};
 
 export const overviewPanelCountSx = {
   ml: "auto",
@@ -135,8 +131,8 @@ export const overviewPanelCountSx = {
   color: "secondary.light",
   bgcolor: "rgba(50, 163, 194, 0.11)",
   border: "1px solid rgba(74, 200, 210, 0.16)",
-  fontSize: 11.5,
-  fontWeight: 850,
+  typography: "caption",
+  fontWeight: "fontWeightBold",
 };
 
 export const overviewInnerSurfaceSx = {

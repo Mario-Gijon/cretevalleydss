@@ -49,7 +49,7 @@ const LogInForm = () => {
             </Avatar>
 
             <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-              <Typography variant="h4" sx={{ fontWeight: 980, lineHeight: 1.05 }}>
+              <Typography variant="h4">
                 Log In
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 850 }}>

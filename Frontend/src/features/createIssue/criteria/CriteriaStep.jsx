@@ -463,7 +463,7 @@ export const CriteriaStep = () => {
   return (
     <Stack spacing={1.5} sx={createIssueStepContainerSx}>
       <Stack spacing={0.25}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+        <Typography variant="h6">
           Criteria
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>
@@ -497,8 +497,8 @@ export const CriteriaStep = () => {
                 ? "rgba(75, 210, 207, 0.72)"
                 : "rgba(255,255,255,0.16)",
               color: equalWeightsActive ? "info.main" : "text.secondary",
-              fontWeight: 900,
-              fontSize: 11,
+              fontWeight: "fontWeightBold",
+              typography: "caption",
               letterSpacing: 0.25,
               textTransform: "uppercase",
               "&.Mui-selected": {
@@ -649,7 +649,7 @@ export const CriteriaStep = () => {
           <Stack spacing={2}>
             <Stack spacing={2.5}>
               <Stack spacing={0.5}>
-                <Typography fontWeight={900} fontSize={22}>
+                <Typography variant="h6" component="h2">
                   Add child criterion
                 </Typography>
                 {selectedParent?.name ? (

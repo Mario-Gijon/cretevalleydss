@@ -84,7 +84,7 @@ const CreateIssueViewContent = () => {
               </Avatar>
 
               <Stack spacing={0.2} sx={{ minWidth: 0 }}>
-                <Typography variant="h6" sx={{ fontWeight: 980, lineHeight: 1.1 }}>
+                <Typography variant="h6">
                   Create issue
                 </Typography>
                 <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 900 }}>

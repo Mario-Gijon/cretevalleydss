@@ -23,10 +23,10 @@ const RawOutputPanel = ({ rawOutput }) => {
 
   return <Accordion expanded={expanded} onChange={(_, next) => setExpanded(next)} disableGutters sx={rawOutputShellSx}>
     <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-      <Stack direction="row" spacing={0.8} alignItems="center"><CodeRoundedIcon sx={{ color: "secondary.light" }} /><Box><Typography sx={{ fontSize: 15, fontWeight: 950 }}>Raw output</Typography><Typography sx={{ color: "text.secondary", fontSize: 10.8 }}>Complete technical output returned by this execution.</Typography></Box></Stack>
+      <Stack direction="row" spacing={0.8} alignItems="center"><CodeRoundedIcon sx={{ color: "secondary.light" }} /><Box><Typography variant="subtitle1" sx={{ fontWeight: "fontWeightBold" }}>Raw output</Typography><Typography variant="caption" sx={{ color: "text.secondary" }}>Complete technical output returned by this execution.</Typography></Box></Stack>
     </AccordionSummary>
     <AccordionDetails>
-      {text ? <><Stack direction="row" justifyContent="flex-end" sx={{ mb: 0.8 }}><Button size="small" color="secondary" variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={copy}>Copy JSON</Button></Stack><Box component="pre" sx={rawOutputPreSx}>{text}</Box></> : <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>No raw output is available.</Typography>}
+      {text ? <><Stack direction="row" justifyContent="flex-end" sx={{ mb: 0.8 }}><Button size="small" color="secondary" variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={copy}>Copy JSON</Button></Stack><Box component="pre" sx={rawOutputPreSx}>{text}</Box></> : <Typography variant="body2" color="text.secondary">No raw output is available.</Typography>}
     </AccordionDetails>
   </Accordion>;
 };

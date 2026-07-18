@@ -24,14 +24,16 @@ const AlternativesPanel = ({ alternatives }) => (
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography
+                variant="body2"
                 noWrap
                 title={alternative.name}
-                sx={{ fontSize: 13.5, fontWeight: 900 }}
+                sx={{ fontWeight: "fontWeightBold" }}
               >
                 {alternative.name}
               </Typography>
               {alternative.description ? (
                 <Typography
+                  variant="caption"
                   title={alternative.description}
                   sx={{
                     mt: 0.15,
@@ -40,7 +42,6 @@ const AlternativesPanel = ({ alternatives }) => (
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: "vertical",
                     overflow: "hidden",
-                    fontSize: 11.5,
                     lineHeight: 1.4,
                   }}
                 >
@@ -49,10 +50,10 @@ const AlternativesPanel = ({ alternatives }) => (
               ) : null}
             </Box>
             <Typography
+              variant="caption"
               sx={{
                 color: "text.secondary",
-                fontSize: 11,
-                fontWeight: 800,
+                fontWeight: "fontWeightBold",
               }}
             >
               {alternative.position ?? index + 1}

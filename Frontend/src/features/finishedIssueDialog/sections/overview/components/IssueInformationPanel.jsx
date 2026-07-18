@@ -38,22 +38,21 @@ const InformationRow = ({
     <Box sx={overviewInformationIconSx(tone)}>{icon}</Box>
     <Box sx={{ minWidth: 0 }}>
       <Typography
+        variant="caption"
         sx={{
           color: "text.secondary",
-          fontSize: 11,
-          fontWeight: 700,
         }}
       >
         {label}
       </Typography>
       {valueNode || (
         <Typography
+          variant="body2"
           noWrap
           title={String(value)}
           sx={{
             mt: 0.15,
-            fontSize: 13.5,
-            fontWeight: 900,
+            fontWeight: "fontWeightBold",
           }}
         >
           {value}
@@ -61,13 +60,12 @@ const InformationRow = ({
       )}
       {secondary ? (
         <Typography
+          variant="caption"
           noWrap
           title={secondary}
           sx={{
             mt: 0.1,
             color: "text.secondary",
-            fontSize: 10.8,
-            fontWeight: 600,
           }}
         >
           {secondary}
@@ -172,8 +170,7 @@ const IssueInformationPanel = ({ data }) => {
                   sx={{
                     mt: 0.25,
                     height: 24,
-                    fontSize: 11.5,
-                    fontWeight: 900,
+                    fontWeight: "fontWeightBold",
                   }}
                 />
               }
@@ -191,16 +188,15 @@ const IssueInformationPanel = ({ data }) => {
                 <SubjectRoundedIcon fontSize="small" />
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <Typography
+                <Typography variant="caption"
                   sx={{
                     color: "text.secondary",
-                    fontSize: 11.5,
-                    fontWeight: 750,
+                    fontWeight: "fontWeightMedium",
                   }}
                 >
                   Description
                 </Typography>
-                <Typography
+                <Typography variant="body2"
                   sx={{
                     mt: 0.4,
                     color: data.description
@@ -208,9 +204,7 @@ const IssueInformationPanel = ({ data }) => {
                       : "text.secondary",
                     whiteSpace: "pre-wrap",
                     overflowWrap: "anywhere",
-                    fontSize: 13,
                     lineHeight: 1.55,
-                    fontWeight: 600,
                   }}
                 >
                   {data.description || "No description was provided."}

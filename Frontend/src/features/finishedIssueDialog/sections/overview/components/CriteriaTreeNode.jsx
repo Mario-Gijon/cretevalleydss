@@ -100,12 +100,12 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
               />
             ) : null}
             <Typography
+              variant="body2"
               noWrap
               title={criterion.name}
               sx={{
                 minWidth: 0,
-                fontSize: 13.5,
-                fontWeight: hasChildren ? 950 : 800,
+                fontWeight: hasChildren ? "fontWeightBold" : "fontWeightMedium",
               }}
             >
               {criterion.name}
@@ -113,12 +113,12 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
           </Stack>
           {criterion.description ? (
             <Typography
+              variant="caption"
               noWrap
               title={criterion.description}
               sx={{
                 mt: 0.1,
                 color: "text.secondary",
-                fontSize: 10.8,
               }}
             >
               {criterion.description}
@@ -139,7 +139,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
               variant="outlined"
               color={criterion.type === "cost" ? "error" : "success"}
               label={typeLabel}
-              sx={{ height: 23, fontSize: 10.5, fontWeight: 850 }}
+              sx={{ height: 23, fontWeight: "fontWeightBold" }}
             />
           ) : null}
 
@@ -149,7 +149,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
               variant="outlined"
               color="secondary"
               label={`Weight ${weightLabel}`}
-              sx={{ height: 23, fontSize: 10.5, fontWeight: 850 }}
+              sx={{ height: 23, fontWeight: "fontWeightBold" }}
             />
           ) : null}
 
@@ -159,7 +159,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
               variant="outlined"
               label={criterion.expressionDomain.name}
               title={`Expression domain: ${criterion.expressionDomain.name}`}
-              sx={{ height: 23, fontSize: 10.5, fontWeight: 750 }}
+              sx={{ height: 23, fontWeight: "fontWeightMedium" }}
             />
           ) : null}
 
@@ -170,7 +170,7 @@ const CriteriaTreeNode = ({ criterion, depth = 0 }) => {
               label={`${children.length} ${
                 children.length === 1 ? "child" : "children"
               }`}
-              sx={{ height: 23, fontSize: 10.5, fontWeight: 750 }}
+              sx={{ height: 23, fontWeight: "fontWeightMedium" }}
             />
           ) : null}
         </Stack>

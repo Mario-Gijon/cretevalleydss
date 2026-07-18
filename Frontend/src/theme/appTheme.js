@@ -5,40 +5,50 @@ const FONT_FAMILY = "Source Sans Pro, Arial, sans-serif";
 let theme = extendTheme({
   typography: {
     fontFamily: FONT_FAMILY,
+    fontSize: 15,
+
     h1: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "bold",
     },
     h2: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "bold",
     },
     h3: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "bold",
     },
     h4: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "bold",
     },
+    h5: {
+      fontWeight: "bold",
+    },
+    h6: {
+      fontWeight: "bold",
+    },
+
+    subtitle1: {
+      fontWeight: "normal",
+    },
+    subtitle2: {
+      fontWeight: "bold",
+    },
+
     body1: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "normal",
     },
     body2: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "normal",
     },
+
     button: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "bold",
     },
+
     caption: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "normal",
     },
+
     overline: {
-      fontFamily: FONT_FAMILY,
       fontWeight: "normal",
     },
   },

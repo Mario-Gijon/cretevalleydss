@@ -29,7 +29,7 @@ describe("DashboardView", () => {
     renderView({
       data: {
         kpis: { winner: { name: "Alternative", formattedScore: "0.8" }, consensus: { enabled: false, label: "Disabled" }, phase: { label: "Final" } },
-        overview: { name: "Finished issue", description: "Description", owner: "Owner", baseModelName: "Model", creationDate: "2026-01-01", closureDate: null, consensusEnabled: false, lifecycleStage: "Finished", acceptedParticipantsCount: 1, alternatives: [{ id: "a", name: "Alternative" }], leafCriteria: [{ id: "c", name: "Cost" }] },
+        overview: { name: "Finished issue", description: "Description", owner: "Test owner", baseModelName: "Model", creationDate: "2026-01-01", closureDate: null, consensusEnabled: false, lifecycleStage: "Completed", acceptedParticipantsCount: 1, alternatives: [{ id: "a", name: "Alternative" }], leafCriteria: [{ id: "c", name: "Cost" }] },
         models: { baseModelName: "Model", selectedExecutionLabel: "Base", selectedModelName: "Model", runsGenerated: 0 },
         resultsAnalysis: {
           context: { executionLabel: "Base", phaseLabel: "Final" },
@@ -53,7 +53,9 @@ describe("DashboardView", () => {
     expect(screen.getByText("Leaf criteria")).toBeInTheDocument();
     expect(screen.getByText("Cost")).toBeInTheDocument();
     expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(screen.getByText("Test owner")).toBeInTheDocument();
     expect(screen.getByText("Finished")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
     expect(screen.getByText("Consensus")).toBeInTheDocument();
     expect(screen.getByText("Ranking")).toBeInTheDocument();
     expect(screen.getByText("Performance overview")).toBeInTheDocument();

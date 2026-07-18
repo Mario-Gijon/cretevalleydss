@@ -6,8 +6,8 @@ import DashboardPreviewCard from "../DashboardPreviewCard";
 
 const ModelInfoRow = ({ label, value, tone = "default", multiline = false }) => (
   <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "minmax(118px, 0.42fr) minmax(0, 1fr)" }, gap: { xs: 0.2, sm: 0.8 }, px: 0.95, py: 0.62, borderBottom: "1px solid rgba(255,255,255,0.075)", minWidth: 0 }}>
-    <Typography sx={{ color: "text.secondary", fontSize: 11.5, fontWeight: 750 }}>{label}</Typography>
-    <Typography title={typeof value === "string" ? value : undefined} sx={multiline ? { minWidth: 0, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", color: tone === "cyan" ? "secondary.light" : "text.primary", fontSize: 12.5, lineHeight: 1.45, fontWeight: 700 } : { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: tone === "cyan" ? "secondary.light" : "text.primary", fontSize: 12.5, fontWeight: 850 }}>{value}</Typography>
+    <Typography variant="caption" sx={{ color: "text.secondary" }}>{label}</Typography>
+    <Typography variant="body2" title={typeof value === "string" ? value : undefined} sx={multiline ? { minWidth: 0, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", color: tone === "cyan" ? "secondary.light" : "text.primary", lineHeight: 1.45 } : { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: tone === "cyan" ? "secondary.light" : "text.primary", fontWeight: "fontWeightBold" }}>{value}</Typography>
   </Box>
 );
 
