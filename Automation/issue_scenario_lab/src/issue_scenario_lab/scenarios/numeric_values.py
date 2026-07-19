@@ -44,3 +44,39 @@ def numeric_levels(domain: dict[str, Any]) -> tuple[float, float, float]:
     low, high = values[0], values[-1]
     medium = values[len(values) // 2] if len(values) >= 3 else high
     return float(low), float(medium), float(high)
+
+
+def positive_numeric_levels(domain: dict[str, Any]) -> tuple[float, float, float]:
+    """Return three distinct, domain-valid values suitable for weighted products."""
+
+    type_key = domain.get("typeKey")
+    definition = domain.get("definition")
+    if not isinstance(definition, dict):
+        raise ScenarioLabError("expression domain definition must be an object")
+    minimum, maximum = _decimal(definition.get("min"), "definition.min"), _decimal(definition.get("max"), "definition.max")
+    if maximum <= 0:
+        raise ScenarioLabError("expression domain cannot provide positive values")
+    if type_key == "numericContinuous":
+        lower = max(minimum, Decimal(0))
+        span = maximum - lower
+        if span <= 0:
+            raise ScenarioLabError("expression domain cannot provide three positive values")
+        values = (lower + span / Decimal(4), lower + span / Decimal(2), lower + span * Decimal(3) / Decimal(4))
+    elif type_key == "numericDiscrete":
+        step = _decimal(definition.get("step"), "definition.step")
+        if step <= 0:
+            raise ScenarioLabError("numericDiscrete expression domain step must be positive")
+        values = []
+        current = minimum
+        while current <= maximum:
+            if current > 0:
+                values.append(current)
+            current += step
+        if len(values) < 3:
+            raise ScenarioLabError("expression domain cannot provide three distinct positive values")
+        values = (values[0], values[len(values) // 2], values[-1])
+    else:
+        raise ScenarioLabError(f"unsupported numeric expression domain type: {type_key!r}")
+    if not (values[0] > 0 and values[0] < values[1] < values[2] <= maximum):
+        raise ScenarioLabError("expression domain cannot provide three distinct positive values")
+    return tuple(float(value) for value in values)

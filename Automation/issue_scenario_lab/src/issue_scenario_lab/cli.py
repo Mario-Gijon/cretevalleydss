@@ -17,6 +17,8 @@ from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARIO_ID as CRITERIA_WEIGHTING_SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import generate as generate_no_consensus_criteria_weighting
+from issue_scenario_lab.scenarios.no_consensus_expert_weights import SCENARIO_ID as EXPERT_WEIGHTS_SCENARIO_ID
+from issue_scenario_lab.scenarios.no_consensus_expert_weights import generate as generate_no_consensus_expert_weights
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -205,6 +207,10 @@ def generate(
         CRITERIA_WEIGHTING_SCENARIO_ID: (
             generate_no_consensus_criteria_weighting,
             {"model": "TOPSIS", "criteriaWeightingModel": "Manual Criteria Weights"},
+        ),
+        EXPERT_WEIGHTS_SCENARIO_ID: (
+            generate_no_consensus_expert_weights,
+            {"model": "WASPAS", "expertWeights": {"expert_a": 0.75, "expert_b": 0.25}, "criteriaWeights": {"Quality": 0.60, "Cost": 0.40}, "lambda": 0.5},
         ),
     }
     selected = generators.get(scenario_id)

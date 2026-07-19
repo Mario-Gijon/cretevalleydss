@@ -2,7 +2,8 @@
 
 Issue Scenario Lab is a small Python CLI/library for generating local
 CreteValleyDSS issue variants through the real Backend HTTP API. It currently
-implements `no-consensus-basic` and `no-consensus-criteria-weighting`.
+implements `no-consensus-basic`, `no-consensus-criteria-weighting`, and
+`no-consensus-expert-weights`.
 
 Every future operation will use existing HTTP routes so that authentication,
 authorization, workflows, and persistence match normal development users. The
@@ -42,6 +43,7 @@ python -m issue_scenario_lab list-generated
 python -m issue_scenario_lab show-config
 python -m issue_scenario_lab generate no-consensus-basic
 python -m issue_scenario_lab generate no-consensus-criteria-weighting
+python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID
@@ -68,6 +70,14 @@ executes real expert manual weighting through `criteriaWeighting` →
 `weightsFinished` → `alternativeEvaluation` → `finished`, requiring the local
 Backend, DecisionModelsService, configured confirmed users, and a compatible
 numeric expression domain.
+
+`no-consensus-expert-weights` uses WASPAS with creator-defined Quality/Cost
+weights of 0.60/0.40, explicit `lambda: 0.5`, and expert weights of 0.75/0.25.
+The project aggregates the two expert matrices into a weighted collective matrix
+before executing WASPAS. Its numeric values are deliberately strictly positive,
+because WASPAS includes a weighted-product component. It requires the normal
+local Backend and DecisionModelsService services; it never accesses MongoDB
+directly.
 
 ## Development checks
 
