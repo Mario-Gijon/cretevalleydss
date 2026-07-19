@@ -45,6 +45,7 @@ python -m issue_scenario_lab generate no-consensus-basic
 python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab generate consensus-first-round
+python -m issue_scenario_lab generate consensus-later-round
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID
@@ -87,6 +88,14 @@ pairwise evaluations on an exact continuous `[0, 1]` domain, threshold `0.9`,
 and maximum phase index `3`; its deliberately similar expert matrices reach
 consensus in phase zero. It requires the normal local Backend and
 DecisionModelsService services, and never accesses MongoDB directly.
+
+`consensus-later-round` uses the same single global `Overall preference`
+criterion, normal (non-simulated) consensus, and an exact continuous `[0, 1]`
+domain. Opposed phase-zero expert matrices produce disagreement and a previous
+collective reference for phase one; distinct manually converged phase-one
+matrices reach the `0.9` threshold and finish in phase one. Its maximum phase
+index is `3`. It requires the normal local Backend and DecisionModelsService,
+never accesses MongoDB directly, and is for local development only.
 
 ## Development checks
 
