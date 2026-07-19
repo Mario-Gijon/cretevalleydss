@@ -12,6 +12,7 @@ const AlternativePairwiseByCriterionView = (
     evaluationContext,
     evaluationPayload,
     setEvaluationPayload,
+    collectivePayload,
     readOnly,
     loading,
   },
@@ -81,6 +82,34 @@ const AlternativePairwiseByCriterionView = (
     return <Alert severity="error">Pairwise criterion payload is unavailable.</Alert>;
   }
 
+  let collectiveEvaluations = null;
+  if (collectivePayload !== null && collectivePayload !== undefined) {
+    try {
+      if (!isPlainObject(collectivePayload)) {
+        throw new Error("Collective pairwise payload must be an object.");
+      }
+      const matrix = collectivePayload[currentCriterion.id];
+      if (!isPlainObject(matrix)) {
+        throw new Error("Collective pairwise payload is missing the selected criterion.");
+      }
+      const alternativeIds = alternativeItems.map((alternative) => alternative.id);
+      if (Object.keys(matrix).some((rowId) => !alternativeIds.includes(rowId))) {
+        throw new Error("Collective pairwise payload contains unknown alternatives.");
+      }
+      alternativeIds.forEach((rowId) => {
+        const row = matrix[rowId];
+        if (!isPlainObject(row)) throw new Error("Collective pairwise payload has an invalid row.");
+        const expectedColumns = alternativeIds.filter((columnId) => columnId !== rowId);
+        if (Object.keys(row).length !== expectedColumns.length || expectedColumns.some((columnId) => !Object.prototype.hasOwnProperty.call(row, columnId))) {
+          throw new Error("Collective pairwise payload has an invalid matrix.");
+        }
+      });
+      collectiveEvaluations = matrix;
+    } catch (error) {
+      return <Alert severity="error">{error instanceof Error ? error.message : "Collective pairwise payload is invalid."}</Alert>;
+    }
+  }
+
   return (
     <Stack spacing={1.25} sx={{ width: "100%", maxWidth: "none", minWidth: 0 }}>
       <Box
@@ -93,28 +122,16 @@ const AlternativePairwiseByCriterionView = (
         }}
       >
         <Stack spacing={1.2}>
-          {criteriaItems.length > 1 ? (
-            <CriterionCompactSelector
-              criteria={criteriaItems}
-              currentIndex={safeCurrentCriterionIndex}
-              onSelectCriterion={setCurrentCriterionIndex}
-              onPreviousCriterion={() =>
-                setCurrentCriterionIndex((previous) => Math.max(previous - 1, 0))
-              }
-              onNextCriterion={() =>
-                setCurrentCriterionIndex((previous) =>
-                  Math.min(previous + 1, criteriaItems.length - 1)
-                )
-              }
-            />
-          ) : null}
+          <CriterionCompactSelector
+            criteria={criteriaItems}
+            currentIndex={safeCurrentCriterionIndex}
+            onSelectCriterion={setCurrentCriterionIndex}
+            onPreviousCriterion={() => setCurrentCriterionIndex((previous) => Math.max(previous - 1, 0))}
+            onNextCriterion={() => setCurrentCriterionIndex((previous) => Math.min(previous + 1, criteriaItems.length - 1))}
+          />
 
           {currentCriterion ? (
             <Stack spacing={0.75}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                {currentCriterion.name}
-              </Typography>
-
               <PairwiseAlternativesGrid
                 alternatives={alternativeItems}
                 evaluations={evaluationPayload[currentCriterion.id]}
@@ -135,6 +152,7 @@ const AlternativePairwiseByCriterionView = (
                   });
                 }}
                 expressionDomain={currentCriterion.expressionDomain}
+                collectiveEvaluations={collectiveEvaluations}
                 permitEdit={permitEdit}
               />
             </Stack>

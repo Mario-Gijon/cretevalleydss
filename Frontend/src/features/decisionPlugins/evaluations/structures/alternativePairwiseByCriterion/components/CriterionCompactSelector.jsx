@@ -25,6 +25,9 @@ const CriterionCompactSelector = ({
   const currentCriterion = criteria[safeCurrentIndex] || null;
   const currentTypeLabel =
     currentCriterion?.type ? String(currentCriterion.type) : "";
+  const readableTypeLabel = currentTypeLabel
+    ? `${currentTypeLabel.charAt(0).toUpperCase()}${currentTypeLabel.slice(1)}`
+    : "";
 
   return (
     <Stack spacing={0.9} sx={{ mb: 1 }}>
@@ -98,7 +101,12 @@ const CriterionCompactSelector = ({
       ) : null}
 
       <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
-        {currentTypeLabel ? (
+        {currentCriterion?.name ? (
+          <Typography variant="subtitle2" sx={{ fontWeight: 850 }}>
+            {currentCriterion.name}
+          </Typography>
+        ) : null}
+        {readableTypeLabel ? (
           <Typography
             variant="caption"
             sx={{
@@ -107,10 +115,10 @@ const CriterionCompactSelector = ({
               lineHeight: 1.2,
               fontWeight: 700,
               letterSpacing: 0.2,
-              textTransform: "lowercase",
+              textTransform: "none",
             }}
           >
-            {currentTypeLabel}
+            {readableTypeLabel}
           </Typography>
         ) : null}
       </Stack>
