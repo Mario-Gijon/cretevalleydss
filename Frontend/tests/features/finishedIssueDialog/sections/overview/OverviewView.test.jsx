@@ -10,6 +10,7 @@ import OverviewView from "../../../../../src/features/finishedIssueDialog/sectio
 import { buildOverviewData, buildOverviewPreview } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 import {
   overviewCriteriaViewportSx,
+  overviewCriterionRowSx,
   overviewDomainListSx,
   overviewParticipationListSx,
   overviewScrollableListSx,
@@ -21,6 +22,15 @@ const renderView = (data) => render(
 );
 
 describe("OverviewView", () => {
+  it("keeps criteria connectors at one CSS pixel instead of MUI ratio sizing", () => {
+    const nested = overviewCriterionRowSx(1, false);
+    expect(nested["&::before"]).toMatchObject({ width: "1px", left: -15, top: -10, bottom: -10, bgcolor: "rgba(76, 201, 211, 0.20)" });
+    expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
+    expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
+    expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
+    expect(overviewCriteriaViewportSx.overflow).toBe("auto");
+  });
+
   it("renders the approved provider-free factual Overview composition", () => {
     renderView(buildOverviewData(buildFinishedIssuePayloadFixture()));
 

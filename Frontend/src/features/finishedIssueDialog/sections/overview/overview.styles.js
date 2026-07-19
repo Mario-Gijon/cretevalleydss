@@ -306,7 +306,7 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
           left: -15,
           top: -10,
           bottom: -10,
-          width: 1,
+          width: "1px",
           bgcolor: "rgba(76, 201, 211, 0.20)",
         }
       : undefined,
@@ -318,7 +318,7 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
           left: -15,
           top: 23,
           width: 12,
-          height: 1,
+          height: "1px",
           bgcolor: "rgba(76, 201, 211, 0.30)",
         }
       : undefined,
