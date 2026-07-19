@@ -229,7 +229,11 @@ class ConsensusClient:
                 "reachedPhase": 0, "finalizationReason": "consensusReached", "rounds": [{"phase": 0}],
             },
             "criteria": {
-                "nodes": [{"id": "quality", "name": "Quality"}, {"id": "cost", "name": "Cost"}],
+                "nodes": [
+                    {"id": "root", "name": "Decision factors", "type": "group", "isLeaf": False},
+                    {"id": "quality", "name": "Quality", "type": "benefit", "isLeaf": True},
+                    {"id": "cost", "name": "Cost", "type": "benefit", "isLeaf": True},
+                ],
                 "finalWeights": {"source": {"kind": "directModelParameters", "stageResultId": None}, "byCriterionId": weights},
             },
             "participants": [
@@ -297,6 +301,45 @@ def test_complete_fake_http_flow_validates_finished_weights_before_one_manifest_
     assert not any(call[1] == "DELETE" for call in calls)
 
 
+def _validate_finished_fixture(detail: dict[str, Any]) -> None:
+    _validate_finished(
+        detail,
+        "issue",
+        "[AUTO:test] Consensus · first round",
+        _collective(_context(_context_payload(), "issue")),
+        {"a@example.test", "b@example.test"},
+    )
+
+
+def test_real_three_node_finished_criteria_tree_and_leaf_only_weights_succeed() -> None:
+    sessions = ConsensusSessions()
+    sessions.state["creation"] = {"issueName": "[AUTO:test] Consensus · first round"}
+    _validate_finished_fixture(sessions.clients["owner"]._finished())
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda detail: detail["criteria"]["nodes"].pop(0),
+        lambda detail: detail["criteria"]["nodes"][0].update({"isLeaf": True}),
+        lambda detail: detail["criteria"]["nodes"][1].update({"isLeaf": False}),
+        lambda detail: detail["criteria"]["nodes"][2].update({"isLeaf": False}),
+        lambda detail: detail["criteria"]["nodes"].pop(1),
+        lambda detail: detail["criteria"]["nodes"].pop(2),
+        lambda detail: detail["criteria"]["nodes"].append({"id": "extra", "name": "Risk", "type": "benefit", "isLeaf": True}),
+        lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"root": 0.0}),
+        lambda detail: detail["models"]["base"]["effectiveParameters"]["weights"].update({"root": 0.0}),
+    ],
+)
+def test_finished_criteria_tree_rejects_noncanonical_nodes_and_group_weights(mutation: Any) -> None:
+    sessions = ConsensusSessions()
+    sessions.state["creation"] = {"issueName": "[AUTO:test] Consensus · first round"}
+    detail = sessions.clients["owner"]._finished()
+    mutation(detail)
+    with pytest.raises(ScenarioLabError, match="criteria"):
+        _validate_finished_fixture(detail)
+
+
 @pytest.mark.parametrize(
     "mutation, message",
     [
@@ -312,9 +355,7 @@ def test_finished_weight_contract_rejects_mismatches(mutation: Any, message: str
     detail = sessions.clients["owner"]._finished()
     mutation(detail)
     with pytest.raises(ScenarioLabError, match=message):
-        _validate_finished(
-            detail, "issue", "[AUTO:test] Consensus · first round", _collective(_context(_context_payload(), "issue")), {"a@example.test", "b@example.test"}
-        )
+        _validate_finished_fixture(detail)
 
 
 def test_failed_finished_weight_validation_does_not_write_manifest(tmp_path: Path) -> None:
@@ -323,7 +364,7 @@ def test_failed_finished_weight_validation_does_not_write_manifest(tmp_path: Pat
 
     def invalid_finished() -> dict[str, Any]:
         detail = original()
-        detail["criteria"]["finalWeights"]["byCriterionId"]["quality"] = 0.5
+        detail["criteria"]["nodes"].pop(0)
         return detail
 
     sessions.clients["owner"]._finished = invalid_finished  # type: ignore[method-assign]

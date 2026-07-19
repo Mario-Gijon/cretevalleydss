@@ -330,14 +330,27 @@ def _validate_compute(response: Any, expected: dict[str, Any], alternative_ids: 
 
 def _validate_finished_weights(detail: dict[str, Any], effective_parameters: Any) -> None:
     criteria = detail.get("criteria")
-    nodes = _items(criteria, "nodes")
-    criterion_ids = {item.get("name"): _id(item) for item in nodes}
-    if set(criterion_ids) != set(CRITERIA_WEIGHTS) or any(not value for value in criterion_ids.values()):
-        raise ScenarioLabError("finished issue does not use exactly the persisted Quality and Cost criteria")
+    nodes = criteria.get("nodes") if isinstance(criteria, dict) else None
+    if not isinstance(nodes, list) or len(nodes) != 3 or any(not isinstance(node, dict) for node in nodes):
+        raise ScenarioLabError("finished issue criteria tree is incompatible")
+    nodes_by_name = {node.get("name"): node for node in nodes}
+    if len(nodes_by_name) != 3 or set(nodes_by_name) != {"Decision factors", *CRITERIA_WEIGHTS}:
+        raise ScenarioLabError("finished issue criteria tree is incompatible")
+    group = nodes_by_name["Decision factors"]
+    leaves = {name: nodes_by_name[name] for name in CRITERIA_WEIGHTS}
+    group_id, leaf_ids = _id(group), {name: _id(node) for name, node in leaves.items()}
+    if (
+        group.get("isLeaf") is not False
+        or group.get("type") != "group"
+        or not group_id
+        or any(node.get("isLeaf") is not True or not leaf_ids[name] for name, node in leaves.items())
+        or len({group_id, *leaf_ids.values()}) != 3
+    ):
+        raise ScenarioLabError("finished issue criteria tree is incompatible")
     final_weights = criteria.get("finalWeights") if isinstance(criteria, dict) else None
     source = final_weights.get("source") if isinstance(final_weights, dict) else None
     by_criterion_id = final_weights.get("byCriterionId") if isinstance(final_weights, dict) else None
-    expected = {criterion_ids[name]: weight for name, weight in CRITERIA_WEIGHTS.items()}
+    expected = {leaf_ids[name]: weight for name, weight in CRITERIA_WEIGHTS.items()}
     if (
         not isinstance(final_weights, dict)
         or not isinstance(source, dict)
