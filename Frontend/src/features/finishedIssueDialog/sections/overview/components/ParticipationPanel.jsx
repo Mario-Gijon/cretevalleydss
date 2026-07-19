@@ -1,11 +1,7 @@
-import {
-  Avatar,
-  Box,
-  Chip,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Chip, Stack, Tooltip, Typography } from "@mui/material";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 
 import {
   overviewParticipantRowSx,
@@ -16,33 +12,7 @@ import {
 import OverviewPanel from "./OverviewPanel";
 import ParticipationDonutChart from "./charts/ParticipationDonutChart";
 
-const participantStatus = (participant) => {
-  if (participant.invitationStatus === "declined") {
-    return { label: "Declined", color: "error" };
-  }
-
-  if (participant.invitationStatus === "pending") {
-    return { label: "Pending", color: "default" };
-  }
-
-  if (
-    participant.invitationStatus === "accepted" &&
-    participant.evaluationCompleted
-  ) {
-    return { label: "Completed", color: "success" };
-  }
-
-  if (participant.invitationStatus === "accepted") {
-    return { label: "Accepted", color: "secondary" };
-  }
-
-  return { label: "Unknown", color: "default" };
-};
-
-const initialFor = (name) =>
-  typeof name === "string" && name.trim()
-    ? name.trim().charAt(0).toUpperCase()
-    : "?";
+const formatWeight = (weight) => String(Number(weight));
 
 const ParticipationPanel = ({ participation }) => (
   <OverviewPanel
@@ -54,23 +24,11 @@ const ParticipationPanel = ({ participation }) => (
       {participation.records.length ? (
         <Stack data-testid="overview-participant-list" spacing={0.7} sx={overviewParticipationListSx}>
           {participation.records.map((participant) => {
-            const status = participantStatus(participant);
+            const participated = participant.participated === true;
+            const hasWeight = participation.usesExpertWeights && participated && Number.isFinite(participant.weight);
 
             return (
               <Box key={participant.id} sx={overviewParticipantRowSx}>
-                <Avatar
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    bgcolor: "rgba(47, 159, 194, 0.23)",
-                    color: "secondary.light",
-                    typography: "body2",
-                    fontWeight: "fontWeightBold",
-                  }}
-                >
-                  {initialFor(participant.name)}
-                </Avatar>
-
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
                     variant="body2"
@@ -95,16 +53,14 @@ const ParticipationPanel = ({ participation }) => (
                   ) : null}
                 </Box>
 
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  color={status.color}
-                  label={status.label}
-                  sx={{
-                    height: 23,
-                    fontWeight: "fontWeightBold",
-                  }}
-                />
+                <Stack direction="row" spacing={0.45} alignItems="center">
+                  {hasWeight ? <Tooltip title={`${Math.round(participant.weight * 100)}% expert influence`}><Chip size="small" variant="outlined" label={`Weight ${formatWeight(participant.weight)}`} sx={{ height: 23 }} /></Tooltip> : null}
+                  <Tooltip title={participated ? "Participated" : "Did not participate"}>
+                    <Box component="span" aria-label={participated ? "Participated" : "Did not participate"} sx={{ display: "inline-flex", color: participated ? "success.light" : "text.secondary" }}>
+                      {participated ? <CheckCircleRoundedIcon fontSize="small" /> : <CancelOutlinedIcon fontSize="small" />}
+                    </Box>
+                  </Tooltip>
+                </Stack>
               </Box>
             );
           })}
@@ -116,20 +72,6 @@ const ParticipationPanel = ({ participation }) => (
       <Box data-testid="overview-participation-chart" sx={overviewParticipationChartSx}>
         <Stack alignItems="center" spacing={0.55}>
           <ParticipationDonutChart participation={participation} />
-          <Typography variant="body2" sx={{ fontWeight: "fontWeightBold" }}>
-            {participation.accepted > 0
-              ? `${participation.completed}/${participation.accepted} accepted experts completed`
-              : "No accepted participants"}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              textAlign: "center",
-            }}
-          >
-            {participation.pending} pending · {participation.declined} declined
-          </Typography>
         </Stack>
       </Box>
     </Box>

@@ -16,28 +16,22 @@ const ParticipationDonutChart = ({ participation }) => {
     () => ({
       labels: hasParticipants
         ? [
-            "Completed",
-            "Accepted, not evaluated",
-            "Pending",
-            "Declined",
+            "Participated",
+            "Did not participate",
           ]
         : ["No participants"],
       datasets: [
         {
           data: hasParticipants
             ? [
-                participation.chart.completed,
-                participation.chart.acceptedIncomplete,
-                participation.chart.pending,
-                participation.chart.declined,
+                participation.chart.participated,
+                participation.chart.notParticipated,
               ]
             : [1],
           backgroundColor: hasParticipants
             ? [
                 "rgba(65, 196, 139, 0.88)",
-                "rgba(48, 161, 205, 0.78)",
-                "rgba(99, 122, 148, 0.62)",
-                "rgba(231, 75, 75, 0.78)",
+                "rgba(124, 144, 165, 0.58)",
               ]
             : ["rgba(100, 120, 140, 0.22)"],
           borderWidth: 0,
@@ -53,21 +47,26 @@ const ParticipationDonutChart = ({ participation }) => {
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      animation: false,
+      animation: true,
       plugins: {
         legend: { display: false },
         tooltip: {
           enabled: hasParticipants,
+          callbacks: { label: (context) => {
+            const value = context.raw || 0;
+            const percentage = participation.total ? Math.round((value / participation.total) * 100) : 0;
+            return `${context.label}: ${value} (${percentage}%)`;
+          } },
         },
       },
     }),
-    [hasParticipants]
+    [hasParticipants, participation.total]
   );
 
   const percentage =
-    participation.completionPercentage === null
+    participation.participatedPercentage === null
       ? "—"
-      : `${participation.completionPercentage}%`;
+      : `${participation.participatedPercentage}%`;
 
   return (
     <Box
@@ -98,7 +97,7 @@ const ParticipationDonutChart = ({ participation }) => {
               fontWeight: 700,
             }}
           >
-            completed
+            participation
           </Typography>
         </Box>
       </Box>

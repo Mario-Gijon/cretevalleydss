@@ -278,7 +278,7 @@ export const overviewCriteriaViewportSx = {
 export const overviewParticipationListSx = {
   ...overviewScrollableSurfaceSx,
   minHeight: 0,
-  maxHeight: { xs: 300, md: 330, xl: 370 },
+  maxHeight: { xs: 260, md: 218, xl: 250 },
   overflowY: "auto",
   overflowX: "hidden",
   pr: 0.35,
@@ -357,7 +357,7 @@ export const overviewParticipationGridSx = {
 
 export const overviewParticipantRowSx = {
   display: "grid",
-  gridTemplateColumns: "38px minmax(0, 1fr) auto",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 0.8,
   alignItems: "center",
   minWidth: 0,

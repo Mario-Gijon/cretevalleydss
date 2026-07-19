@@ -21,8 +21,9 @@ const safePerson = (person) => ({
 });
 
 const participantLabel = (participant) => {
-  const name = safeText(participant?.expert?.name, "Unknown participant");
-  const email = isNonEmptyString(participant?.expert?.email) ? participant.expert.email : null;
+  const person = participant?.expert || participant;
+  const name = safeText(person?.name, "Unknown participant");
+  const email = isNonEmptyString(person?.email) ? person.email : null;
   return email ? `${name} (${email})` : name;
 };
 
@@ -145,7 +146,30 @@ const buildDomainSummaries = (domains, criteriaNodes) => {
   }));
 };
 
-const buildParticipantSummary = (participants) => {
+const buildParticipantSummary = (participants, participantHistory, usesExpertWeights) => {
+  const historyRecords = asArray(participantHistory?.records);
+  const historySummary = participantHistory?.summary;
+  if (historyRecords.length || historySummary) {
+    const records = historyRecords.map((record) => ({
+      id: safeIdentifier(record?.expert?.id),
+      expertId: safeIdentifier(record?.expert?.id),
+      name: safeText(record?.expert?.name, "Unknown participant"),
+      email: isNonEmptyString(record?.expert?.email) ? record.expert.email : null,
+      university: isNonEmptyString(record?.expert?.university) ? record.expert.university : null,
+      participated: record?.participated === true,
+      participationKey: record?.participationKey === "participated" ? "participated" : "notParticipated",
+      weight: Number.isFinite(record?.weight) ? record.weight : null,
+    }));
+    const total = Number.isInteger(historySummary?.total) ? historySummary.total : records.length;
+    const participated = Number.isInteger(historySummary?.participated) ? historySummary.participated : records.filter((record) => record.participated).length;
+    const notParticipated = Number.isInteger(historySummary?.notParticipated) ? historySummary.notParticipated : total - participated;
+    return {
+      records, total, participated, notParticipated,
+      participatedPercentage: Number.isInteger(historySummary?.participatedPercentage) ? historySummary.participatedPercentage : total ? Math.round((participated / total) * 100) : null,
+      usesExpertWeights,
+      chart: { participated, notParticipated, total },
+    };
+  }
   const records = asArray(participants).map((participant) => {
     const status = isNonEmptyString(participant?.invitationStatus)
       ? participant.invitationStatus
@@ -168,6 +192,9 @@ const buildParticipantSummary = (participants) => {
       joinedAt: participant?.joinedAt || null,
       accepted,
       completed,
+      participated: completed,
+      participationKey: completed ? "participated" : "notParticipated",
+      weight: Number.isFinite(participant?.currentWeight) ? participant.currentWeight : null,
     };
   });
 
@@ -197,11 +224,13 @@ const buildParticipantSummary = (participants) => {
       accepted.length > 0
         ? Math.round((completedAccepted.length / accepted.length) * 100)
         : null,
+    participated: completedAccepted.length,
+    notParticipated: records.length - completedAccepted.length,
+    participatedPercentage: accepted.length > 0 ? Math.round((completedAccepted.length / accepted.length) * 100) : null,
+    usesExpertWeights,
     chart: {
-      completed: completedAccepted.length,
-      acceptedIncomplete: acceptedIncomplete.length,
-      pending: pending.length,
-      declined: declined.length,
+      participated: completedAccepted.length,
+      notParticipated: records.length - completedAccepted.length,
       total: records.length,
     },
   };
@@ -211,18 +240,13 @@ export const buildOverviewData = (payload) => {
   const lifecycle = payload?.lifecycle || {};
   const consensus = payload?.consensus || {};
   const participants = asArray(payload?.participants);
-  const acceptedParticipants = participants.filter(
-    (participant) => participant?.invitationStatus === "accepted"
-  );
-  const notAcceptedParticipants = participants.filter(
-    (participant) => participant?.invitationStatus !== "accepted"
-  );
   const criteria = payload?.criteria || {};
   const criteriaNodes = asArray(criteria.nodes);
   const finalWeights =
     criteria?.finalWeights || { source: null, byCriterionId: {} };
   const expressionDomains = asArray(payload?.expressionDomains);
-  const participation = buildParticipantSummary(participants);
+  const usesExpertWeights = payload?.models?.base?.capabilities?.usesExpertWeights === true;
+  const participation = buildParticipantSummary(participants, payload?.participantHistory, usesExpertWeights);
   const criteriaTree = buildCriteriaTree({
     nodes: criteriaNodes,
     rootIds: criteria.rootIds,
@@ -321,7 +345,7 @@ export const buildOverviewData = (payload) => {
       createdAt:
         lifecycle.creationDate ?? lifecycle.createdAt ?? null,
       execution: "Base",
-      acceptedParticipants: participation.accepted,
+      acceptedParticipants: participation.participated,
       consensusEnabled: consensus.enabled === true,
     },
     description: issue.description,
@@ -344,14 +368,14 @@ export const buildOverviewData = (payload) => {
     participation,
     experts: {
       total: participants.length,
-      participated: acceptedParticipants.map(participantLabel),
-      notAccepted: notAcceptedParticipants.map(participantLabel),
+      participated: participation.records.filter((participant) => participant.participated).map(participantLabel),
+      notAccepted: participation.records.filter((participant) => !participant.participated).map(participantLabel),
     },
     counts: {
       alternatives: asArray(payload?.alternatives).length,
       criteria: criteriaNodes.length,
       leafCriteria: criteriaNodes.filter((node) => node?.isLeaf).length,
-      participants: participants.length,
+      participants: participation.total,
       expressionDomains: expressionDomains.length,
     },
     consensus: consensus.enabled
@@ -401,8 +425,8 @@ export const buildOverviewPreview = (data) => ({
   alternativesCount: data.counts.alternatives,
   criteriaCount: data.counts.criteria,
   participantsCount: data.counts.participants,
-  acceptedParticipantsCount: data.participation.accepted,
-  completedAlternativeEvaluationsCount: data.participation.completed,
+  acceptedParticipantsCount: data.participation.participated,
+  completedAlternativeEvaluationsCount: data.participation.participated,
   alternatives: data.alternatives.map(({ id, name }) => ({ id, name })),
   leafCriteria: (() => {
     const leaves = [];
