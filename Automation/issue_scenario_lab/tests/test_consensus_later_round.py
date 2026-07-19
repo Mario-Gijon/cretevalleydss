@@ -11,6 +11,7 @@ from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.consensus_first_round import PARAMETERS
 from issue_scenario_lab.scenarios.consensus_later_round import (
     PHASE_ONE_FORWARD,
+    PHASE_ONE_SCORES,
     PHASE_ZERO_FORWARD,
     SCENARIO_ID,
     _context,
@@ -95,8 +96,10 @@ class FakeClient:
         if path.endswith("/invitation-response"):
             return {}
         if path.endswith("/evaluations/alternativeEvaluation") and method == "GET":
+            self.state["evaluation_get_phases"].append(self.state["phase"])
             return _empty(self.state["phase"], self._phase_zero_collective() if self.state["phase"] == 1 else None)
         if path.endswith("/submit"):
+            self.state["evaluation_submit_phases"].append(self.state["phase"])
             return {
                 "completed": True,
                 "stage": "alternativeEvaluation",
@@ -105,8 +108,10 @@ class FakeClient:
                 "currentStage": "alternativeEvaluation",
             }
         if path.endswith("/compute"):
+            self.state["compute_phases"].append(self.state["phase"])
             return self._compute()
         if path == "/issues/finished":
+            self.state["finished_lookup_call_index"] = len(self.state["calls"]) - 1
             return {"issues": [{"id": "issue", "name": self.state["name"]}]}
         if path == "/issues/finished/issue":
             return self._finished()
@@ -155,7 +160,7 @@ class FakeClient:
         collective = self._phase_one_collective() if reached else self._phase_zero_collective()
         names = ["Balanced choice", "Premium choice", "Budget choice"] if reached else ["Premium choice", "Budget choice", "Balanced choice"]
         ids = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
-        scores = [0.53564, 0.42496, 0.241] if reached else [0.4133, 0.4266, 0.4199]
+        scores = list(PHASE_ONE_SCORES) if reached else [0.4133, 0.4266, 0.4199]
         score_by_name = dict(zip(("Balanced choice", "Premium choice", "Budget choice"), scores, strict=True))
         lifecycle = {
             "consensusReached": reached,
@@ -287,7 +292,13 @@ class FakeSessions:
             alias: UserCredentials(email=email, password="secret")
             for alias, email in {"owner": "owner@example.test", "expert_a": "a@example.test", "expert_b": "b@example.test"}.items()
         }
-        self.state: dict[str, Any] = {"calls": [], "phase": 0}
+        self.state: dict[str, Any] = {
+            "calls": [],
+            "phase": 0,
+            "evaluation_get_phases": [],
+            "evaluation_submit_phases": [],
+            "compute_phases": [],
+        }
         self.clients = {alias: FakeClient(alias, self.state) for alias in self.users}
 
     def login(self, alias: str) -> dict[str, str]:
@@ -305,8 +316,14 @@ def test_two_round_fake_http_flow_writes_manifest_after_finished_validation(tmp_
     assert result.issue_id == "issue" and store.list_entries()[0].scenario_id == SCENARIO_ID
     assert [call[0] for call in calls if call[1] == "LOGIN"] == ["owner", "expert_a", "expert_b"]
     assert [call[2] for call in calls if call[2].endswith("/compute")] == ["/issues/issue/evaluations/alternativeEvaluation/compute"] * 2
-    assert len([call for call in calls if call[2].endswith("/evaluations/alternativeEvaluation")]) == 4
-    assert not any(call[1] == "DELETE" or "/1/" in call[2] for call in calls)
+    assert sessions.state["evaluation_get_phases"] == [0, 0, 1, 1]
+    assert sessions.state["evaluation_submit_phases"] == [0, 0, 1, 1]
+    assert sessions.state["compute_phases"] == [0, 1]
+    assert sessions.state["phase"] == 1
+    final_compute_index = max(index for index, call in enumerate(calls) if call[2].endswith("/compute"))
+    assert calls[final_compute_index + 1][2] == "/issues/finished"
+    assert sessions.state["finished_lookup_call_index"] == final_compute_index + 1
+    assert not any(call[2].endswith("/evaluations/alternativeEvaluation") or call[2].endswith("/submit") for call in calls[final_compute_index + 1 :])
 
 
 def test_phase_matrices_are_complete_reciprocal_and_distinct() -> None:
@@ -315,6 +332,49 @@ def test_phase_matrices_are_complete_reciprocal_and_distinct() -> None:
     one = [_matrix(context, values) for values in PHASE_ONE_FORWARD]
     assert zero[0] != zero[1] and one[0] != one[1]
     assert set(zero[0]) == {"overall"} and set(one[0]) == {"overall"}
+
+
+def test_phase_one_scores_are_derived_from_unrounded_owa_and_qgdd_values() -> None:
+    expert_weights, alternative_weights = (0.4, 0.6), (0.0, 0.33, 0.67)
+    first, second = PHASE_ONE_FORWARD
+
+    def expert_owa(values: tuple[float, float]) -> float:
+        return sum(weight * value for weight, value in zip(expert_weights, sorted(values, reverse=True), strict=True))
+
+    balanced_premium = expert_owa((first[0], second[0]))
+    balanced_budget = expert_owa((first[1], second[1]))
+    premium_budget = expert_owa((first[2], second[2]))
+    premium_balanced = expert_owa((1 - first[0], 1 - second[0]))
+    budget_balanced = expert_owa((1 - first[1], 1 - second[1]))
+    budget_premium = expert_owa((1 - first[2], 1 - second[2]))
+    collective = (
+        (0.5, balanced_premium, balanced_budget),
+        (premium_balanced, 0.5, premium_budget),
+        (budget_balanced, budget_premium, 0.5),
+    )
+    scores = tuple(round(sum(weight * value for weight, value in zip(alternative_weights, sorted(row, reverse=True), strict=True)), 5) for row in collective)
+
+    assert scores == (0.54224, 0.41156, 0.35532)
+    assert PHASE_ONE_SCORES == scores
+    assert sorted(range(len(scores)), key=scores.__getitem__, reverse=True) == [0, 1, 2]
+    assert (round(balanced_premium, 2), round(balanced_budget, 2), round(premium_budget, 2)) == (0.63, 0.64, 0.64)
+    assert (round(premium_balanced, 2), round(budget_balanced, 2), round(budget_premium, 2)) == (0.37, 0.36, 0.35)
+
+
+def test_old_phase_one_scores_are_rejected_without_writing_manifest(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    original = sessions.clients["owner"]._result
+
+    def old_scores(phase: int) -> dict[str, Any]:
+        result = original(phase)
+        if phase == 1:
+            result["rawOutput"]["collective_scores"] = [0.53564, 0.42496, 0.241]
+        return result
+
+    sessions.clients["owner"]._result = old_scores  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="consensus raw output is incompatible"):
+        generate(sessions, store)
+    assert store.list_entries() == []
 
 
 def test_phase_transition_failure_does_not_write_manifest(tmp_path: Path) -> None:

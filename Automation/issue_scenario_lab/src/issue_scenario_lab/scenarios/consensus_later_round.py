@@ -29,7 +29,7 @@ SCENARIO_ID = "consensus-later-round"
 PHASE_ZERO_FORWARD = ((0.90, 0.95, 0.80), (0.10, 0.05, 0.20))
 PHASE_ONE_FORWARD = ((0.64, 0.65, 0.65), (0.62, 0.63, 0.64))
 PHASE_ZERO_SCORES = (0.4133, 0.4266, 0.4199)
-PHASE_ONE_SCORES = (0.53564, 0.42496, 0.241)
+PHASE_ONE_SCORES = (0.54224, 0.41156, 0.35532)
 
 
 def _context(response: Any, issue_id: str, phase: int, previous: dict[str, Any] | None = None) -> dict[str, Any]:
