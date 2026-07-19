@@ -17,7 +17,7 @@ MODEL_KEY = "herrera_viedma_crp"
 THRESHOLD = 0.9
 MAX_PHASES = 3
 PARAMETERS = {"ag_lq": [0.3, 0.8], "ex_lq": [0.5, 1.0], "b": 1, "beta": 0.8}
-CRITERIA_WEIGHTS = {"Quality": 0.6, "Cost": 0.4}
+CRITERIA_WEIGHTS = {"Overall preference": 1.0}
 NAMES = {"Balanced choice", "Premium choice", "Budget choice"}
 
 
@@ -70,6 +70,7 @@ def _select_model(data: Any) -> dict[str, Any]:
         "consensus": model.get("supportsConsensus") is True,
         "simulation": model.get("supportsConsensusSimulation") is True,
         "criteriaWeights": model.get("usesCriteriaWeights") is True,
+        "multiCriteria": model.get("isMultiCriteria") is False,
         "expertWeights": model.get("usesExpertWeights") is False,
         "criterionTypes": model.get("usesCriterionTypes") is False,
         "structure": model.get("evaluationStructureKey") == "alternativePairwiseByCriterion",
@@ -125,8 +126,7 @@ def _payload(name: str, model_id: str, emails: list[str], domain_id: str) -> dic
                 "name": "Decision factors",
                 "type": "group",
                 "children": [
-                    {"id": "criterion-quality", "name": "Quality", "type": "benefit", "children": []},
-                    {"id": "criterion-cost", "name": "Cost", "type": "benefit", "children": []},
+                    {"id": "criterion-overall", "name": "Overall preference", "type": "benefit", "children": []},
                 ],
             }
         ],
@@ -144,7 +144,7 @@ def _payload(name: str, model_id: str, emails: list[str], domain_id: str) -> dic
             "source": "creator",
             "method": "manual",
             "structureKey": "manualCriteriaWeights",
-            "payload": {"weightsByCriterion": {"criterion-quality": 0.60, "criterion-cost": 0.40}},
+            "payload": {"weightsByCriterion": {"criterion-overall": 1.0}},
         },
     }
 
@@ -229,10 +229,10 @@ def _validate_empty(payload: Any, context: dict[str, Any]) -> None:
 def _pairwise(context: dict[str, Any], *, expert_b: bool) -> dict[str, Any]:
     alternatives, criteria = _ids(context)
     b, p, u = alternatives["Balanced choice"], alternatives["Premium choice"], alternatives["Budget choice"]
-    values = {"Quality": (0.62, 0.78, 0.68), "Cost": (0.57, 0.73, 0.63)} if expert_b else {"Quality": (0.60, 0.80, 0.70), "Cost": (0.55, 0.75, 0.65)}
+    values = (0.62, 0.78, 0.68) if expert_b else (0.60, 0.80, 0.70)
     output: dict[str, Any] = {}
-    for name, criterion_id in criteria.items():
-        bp, bu, pu = values[name]
+    for criterion_id in criteria.values():
+        bp, bu, pu = values
         output[criterion_id] = {
             b: {p: {"value": bp}, u: {"value": bu}},
             p: {b: {"value": 1 - bp}, u: {"value": pu}},
@@ -261,8 +261,8 @@ def _validate_pairwise(payload: Any, criterion_ids: set[str], alternative_ids: s
 def _collective(context: dict[str, Any]) -> dict[str, Any]:
     alternatives, criteria = _ids(context)
     b, p, u = alternatives["Balanced choice"], alternatives["Premium choice"], alternatives["Budget choice"]
-    first = criteria["Quality"]
-    return {first: {b: {p: 0.59, u: 0.77}, p: {b: 0.41, u: 0.67}, u: {b: 0.23, p: 0.33}}}
+    overall = criteria["Overall preference"]
+    return {overall: {b: {p: 0.61, u: 0.79}, p: {b: 0.39, u: 0.69}, u: {b: 0.21, p: 0.31}}}
 
 
 def _validate_collective(actual: Any, expected: dict[str, Any]) -> None:
@@ -331,10 +331,10 @@ def _validate_compute(response: Any, expected: dict[str, Any], alternative_ids: 
 def _validate_finished_weights(detail: dict[str, Any], effective_parameters: Any) -> None:
     criteria = detail.get("criteria")
     nodes = criteria.get("nodes") if isinstance(criteria, dict) else None
-    if not isinstance(nodes, list) or len(nodes) != 3 or any(not isinstance(node, dict) for node in nodes):
+    if not isinstance(nodes, list) or len(nodes) != 2 or any(not isinstance(node, dict) for node in nodes):
         raise ScenarioLabError("finished issue criteria tree is incompatible")
     nodes_by_name = {node.get("name"): node for node in nodes}
-    if len(nodes_by_name) != 3 or set(nodes_by_name) != {"Decision factors", *CRITERIA_WEIGHTS}:
+    if len(nodes_by_name) != 2 or set(nodes_by_name) != {"Decision factors", *CRITERIA_WEIGHTS}:
         raise ScenarioLabError("finished issue criteria tree is incompatible")
     group = nodes_by_name["Decision factors"]
     leaves = {name: nodes_by_name[name] for name in CRITERIA_WEIGHTS}
@@ -344,7 +344,7 @@ def _validate_finished_weights(detail: dict[str, Any], effective_parameters: Any
         or group.get("type") != "group"
         or not group_id
         or any(node.get("isLeaf") is not True or not leaf_ids[name] for name, node in leaves.items())
-        or len({group_id, *leaf_ids.values()}) != 3
+        or len({group_id, *leaf_ids.values()}) != 2
     ):
         raise ScenarioLabError("finished issue criteria tree is incompatible")
     final_weights = criteria.get("finalWeights") if isinstance(criteria, dict) else None

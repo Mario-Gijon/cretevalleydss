@@ -80,10 +80,11 @@ because WASPAS includes a weighted-product component. It requires the normal
 local Backend and DecisionModelsService services; it never accesses MongoDB
 directly.
 
-`consensus-first-round` uses Herrera Viedma CRP with normal consensus,
-simulation disabled, creator weights of 0.60/0.40, and reciprocal pairwise
-evaluations on an exact continuous `[0, 1]` domain. It uses threshold `0.9` and
-maximum phase index `3`; its deliberately similar expert matrices reach
+`consensus-first-round` uses the current public single-criterion Herrera Viedma
+CRP contract: one global `Overall preference` pairwise criterion with its fixed
+weight of `1.0`. It uses normal consensus, simulation disabled, reciprocal
+pairwise evaluations on an exact continuous `[0, 1]` domain, threshold `0.9`,
+and maximum phase index `3`; its deliberately similar expert matrices reach
 consensus in phase zero. It requires the normal local Backend and
 DecisionModelsService services, and never accesses MongoDB directly.
 

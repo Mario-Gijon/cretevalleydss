@@ -38,6 +38,7 @@ def _model() -> dict[str, Any]:
         "supportsConsensus": True,
         "supportsConsensusSimulation": True,
         "usesCriteriaWeights": True,
+        "isMultiCriteria": False,
         "usesExpertWeights": False,
         "usesFuzzyCriteriaWeights": False,
         "usesCriterionTypes": False,
@@ -54,7 +55,7 @@ def _model() -> dict[str, Any]:
 
 def _context_payload() -> dict[str, Any]:
     ids = {"Balanced choice": "balanced", "Premium choice": "premium", "Budget choice": "budget"}
-    criteria = {"Quality": "quality", "Cost": "cost"}
+    criteria = {"Overall preference": "overall"}
     empty = {
         criterion_id: {row: {column: {"value": ""} for column in ids.values() if column != row} for row in ids.values()} for criterion_id in criteria.values()
     }
@@ -82,13 +83,54 @@ def test_herrera_viedma_catalogue_and_explicit_parameters_succeed() -> None:
 
 
 @pytest.mark.parametrize(
-    "field,value", [("supportsConsensus", False), ("supportsConsensusSimulation", False), ("usesExpertWeights", True), ("evaluationStructureKey", "wrong")]
+    "field,value",
+    [
+        ("supportsConsensus", False),
+        ("supportsConsensusSimulation", False),
+        ("usesExpertWeights", True),
+        ("evaluationStructureKey", "wrong"),
+        ("isMultiCriteria", True),
+    ],
 )
 def test_herrera_viedma_catalogue_rejects_incompatible_contract(field: str, value: Any) -> None:
     model = _model()
     model[field] = value
     with pytest.raises(ScenarioLabError, match="incompatible"):
         _select_model({"models": [model]})
+
+
+def test_missing_single_criterion_catalogue_flag_fails_before_issue_creation(tmp_path: Path) -> None:
+    sessions = ConsensusSessions()
+    original_request = sessions.clients["owner"].request
+
+    def missing_flag(method: str, path: str, *, json: Any = None) -> Any:
+        if path == "/issues/models":
+            model = _model()
+            model.pop("isMultiCriteria")
+            return {"models": [model]}
+        return original_request(method, path, json=json)
+
+    sessions.clients["owner"].request = missing_flag  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="multiCriteria"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+    assert not any(path == "/issues" for _, _, path, _ in sessions.state["calls"])
+
+
+def test_multi_criterion_catalogue_flag_fails_before_issue_creation(tmp_path: Path) -> None:
+    sessions = ConsensusSessions()
+    original_request = sessions.clients["owner"].request
+
+    def multi_criterion(method: str, path: str, *, json: Any = None) -> Any:
+        if path == "/issues/models":
+            model = _model()
+            model["isMultiCriteria"] = True
+            return {"models": [model]}
+        return original_request(method, path, json=json)
+
+    sessions.clients["owner"].request = multi_criterion  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="multiCriteria"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+    assert not any(path == "/issues" for _, _, path, _ in sessions.state["calls"])
 
 
 def test_exact_continuous_domain_and_creation_payload() -> None:
@@ -104,7 +146,10 @@ def test_exact_continuous_domain_and_creation_payload() -> None:
     assert domain["id"] == "full"
     payload = _payload("name", "hv", ["a@example.test", "b@example.test"], "full")
     assert payload["isConsensus"] is True and payload["simulateConsensus"] is False
-    assert payload["criteriaWeightingConfig"]["payload"] == {"weightsByCriterion": {"criterion-quality": 0.60, "criterion-cost": 0.40}}
+    assert payload["criteriaWeightingConfig"]["payload"] == {"weightsByCriterion": {"criterion-overall": 1.0}}
+    leaves = payload["criteria"][0]["children"]
+    assert leaves == [{"id": "criterion-overall", "name": "Overall preference", "type": "benefit", "children": []}]
+    assert "Quality" not in str(payload) and "Cost" not in str(payload)
 
 
 def test_empty_pairwise_and_distinct_reciprocal_payloads() -> None:
@@ -112,18 +157,21 @@ def test_empty_pairwise_and_distinct_reciprocal_payloads() -> None:
     context = _context(response, "issue")
     first, second = _pairwise(context, expert_b=False), _pairwise(context, expert_b=True)
     assert first != second
-    _validate_pairwise(first, {"quality", "cost"}, {"balanced", "premium", "budget"})
+    _validate_pairwise(first, {"overall"}, {"balanced", "premium", "budget"})
+    assert set(first) == {"overall"} and set(second) == {"overall"}
     broken = deepcopy(first)
-    broken["quality"]["balanced"]["premium"]["value"] = 0.5
+    broken["overall"]["balanced"]["premium"]["value"] = 0.5
     with pytest.raises(ScenarioLabError, match="reciprocal"):
-        _validate_pairwise(broken, {"quality", "cost"}, {"balanced", "premium", "budget"})
+        _validate_pairwise(broken, {"overall"}, {"balanced", "premium", "budget"})
 
 
-def test_collective_uses_only_first_persisted_criterion() -> None:
+def test_collective_uses_the_persisted_overall_preference_criterion() -> None:
     expected = _collective(_context(_context_payload(), "issue"))
     _validate_collective(deepcopy(expected), expected)
+    assert expected["overall"]["balanced"] == {"premium": 0.61, "budget": 0.79}
+    assert expected["overall"]["premium"]["budget"] == 0.69
     with pytest.raises(ScenarioLabError, match="aggregated first criterion"):
-        _validate_collective({"quality": expected["quality"], "cost": {}}, expected)
+        _validate_collective({"quality": expected["overall"]}, expected)
 
 
 def test_active_contract_requires_consensus_current_phase() -> None:
@@ -194,9 +242,9 @@ class ConsensusClient:
     def _compute(self) -> dict[str, Any]:
         expected = _collective(_context(_context_payload(), "issue"))
         ranking = [
-            {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.52904, "rank": 1},
-            {"alternativeId": "premium", "name": "Premium choice", "score": 0.43836, "rank": 2},
-            {"alternativeId": "budget", "name": "Budget choice", "score": 0.261, "rank": 3},
+            {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.53564, "rank": 1},
+            {"alternativeId": "premium", "name": "Premium choice", "score": 0.42496, "rank": 2},
+            {"alternativeId": "budget", "name": "Budget choice", "score": 0.241, "rank": 3},
         ]
         lifecycle = {
             "consensusReached": True, "maxPhasesReached": False, "finalizationReason": "consensusReached",
@@ -206,13 +254,13 @@ class ConsensusClient:
             "stage": "alternativeEvaluation", "structureKey": "alternativePairwiseByCriterion", "consensusPhase": 0, "currentStage": "finished",
             "result": {
                 "consensusMeasure": 1.0, "rankedAlternatives": ranking, "collectiveEvaluations": expected, "consensusLifecycle": lifecycle,
-                "rawOutput": {"cm": 1.0, "collective_scores": [0.52904, 0.43836, 0.261], "suggested_next_evaluations": {}, "collective_evaluations": expected},
+                "rawOutput": {"cm": 1.0, "collective_scores": [0.53564, 0.42496, 0.241], "suggested_next_evaluations": {}, "collective_evaluations": expected},
             },
         }
 
     def _finished(self) -> dict[str, Any]:
         result = self._compute()["result"]
-        weights = {"quality": 0.6, "cost": 0.4}
+        weights = {"overall": 1.0}
         return {
             "issue": {"id": "issue", "name": self.state["creation"]["issueName"]}, "lifecycle": {"currentStage": "finished", "active": False},
             "models": {
@@ -231,8 +279,7 @@ class ConsensusClient:
             "criteria": {
                 "nodes": [
                     {"id": "root", "name": "Decision factors", "type": "group", "isLeaf": False},
-                    {"id": "quality", "name": "Quality", "type": "benefit", "isLeaf": True},
-                    {"id": "cost", "name": "Cost", "type": "benefit", "isLeaf": True},
+                    {"id": "overall", "name": "Overall preference", "type": "benefit", "isLeaf": True},
                 ],
                 "finalWeights": {"source": {"kind": "directModelParameters", "stageResultId": None}, "byCriterionId": weights},
             },
@@ -311,7 +358,7 @@ def _validate_finished_fixture(detail: dict[str, Any]) -> None:
     )
 
 
-def test_real_three_node_finished_criteria_tree_and_leaf_only_weights_succeed() -> None:
+def test_real_two_node_finished_criteria_tree_and_leaf_only_weights_succeed() -> None:
     sessions = ConsensusSessions()
     sessions.state["creation"] = {"issueName": "[AUTO:test] Consensus · first round"}
     _validate_finished_fixture(sessions.clients["owner"]._finished())
@@ -323,12 +370,12 @@ def test_real_three_node_finished_criteria_tree_and_leaf_only_weights_succeed() 
         lambda detail: detail["criteria"]["nodes"].pop(0),
         lambda detail: detail["criteria"]["nodes"][0].update({"isLeaf": True}),
         lambda detail: detail["criteria"]["nodes"][1].update({"isLeaf": False}),
-        lambda detail: detail["criteria"]["nodes"][2].update({"isLeaf": False}),
         lambda detail: detail["criteria"]["nodes"].pop(1),
-        lambda detail: detail["criteria"]["nodes"].pop(2),
         lambda detail: detail["criteria"]["nodes"].append({"id": "extra", "name": "Risk", "type": "benefit", "isLeaf": True}),
         lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"root": 0.0}),
         lambda detail: detail["models"]["base"]["effectiveParameters"]["weights"].update({"root": 0.0}),
+        lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"quality": 1.0}),
+        lambda detail: detail["models"]["base"]["effectiveParameters"]["weights"].update({"cost": 1.0}),
     ],
 )
 def test_finished_criteria_tree_rejects_noncanonical_nodes_and_group_weights(mutation: Any) -> None:
@@ -344,8 +391,7 @@ def test_finished_criteria_tree_rejects_noncanonical_nodes_and_group_weights(mut
     "mutation, message",
     [
         (lambda detail: detail["models"]["base"]["effectiveParameters"].pop("beta"), "model and lifecycle"),
-        (lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"quality": 0.5}), "criteria weights"),
-        (lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"cost": 0.5}), "criteria weights"),
+        (lambda detail: detail["criteria"]["finalWeights"]["byCriterionId"].update({"overall": 0.5}), "criteria weights"),
         (lambda detail: detail["criteria"]["finalWeights"]["source"].update({"kind": "wrong"}), "criteria weights"),
     ],
 )
