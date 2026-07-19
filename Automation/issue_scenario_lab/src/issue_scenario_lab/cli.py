@@ -8,6 +8,8 @@ from rich.table import Table
 
 from issue_scenario_lab.api.client import ApiClient
 from issue_scenario_lab.api.session_pool import SessionPool
+from issue_scenario_lab.cleanup.active import delete_active_issue
+from issue_scenario_lab.cleanup.finished import delete_finished_generation
 from issue_scenario_lab.config import Settings
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
@@ -106,6 +108,74 @@ def list_generated() -> None:
     for entry in entries:
         table.add_row(entry.generation_id, entry.scenario_id, entry.issue_id, entry.issue_name)
     console.print(table)
+
+
+def _finished_result_output(result: Any) -> dict[str, Any]:
+    return {
+        "generationId": result.generation_id,
+        "issueId": result.issue_id,
+        "issueName": result.issue_name,
+        "processedAliases": list(result.processed_aliases),
+        "alreadyHiddenAliases": list(result.already_hidden_aliases),
+        "deletionConfirmed": result.deletion_confirmed,
+        "manifestEntryRemoved": result.manifest_entry_removed,
+    }
+
+
+@app.command("delete")
+def delete(generation_id: str) -> None:
+    """Hide and permanently remove one generated finished issue through the Backend."""
+
+    try:
+        settings = _settings()
+        with SessionPool.from_settings(settings) as sessions:
+            result = delete_finished_generation(sessions, ManifestStore(settings.manifest_file), generation_id)
+    except ScenarioLabError as error:
+        _raise_cli_error(error)
+    console.print(_finished_result_output(result))
+
+
+@app.command("delete-all")
+def delete_all() -> None:
+    """Sequentially clean up every generated finished issue in the local manifest."""
+
+    try:
+        settings = _settings()
+        store = ManifestStore(settings.manifest_file)
+        entries = list(store.list_entries())
+    except ScenarioLabError as error:
+        _raise_cli_error(error)
+    if not entries:
+        console.print("No generated issues are recorded in the local manifest.")
+        return
+    table = Table("Generation ID", "Issue ID", "Status", "Message")
+    failures = 0
+    for entry in entries:
+        try:
+            with SessionPool.from_settings(settings) as sessions:
+                result = delete_finished_generation(sessions, store, entry.generation_id)
+            table.add_row(result.generation_id, result.issue_id, "[green]deleted[/green]", "permanent deletion confirmed")
+        except ScenarioLabError as error:
+            failures += 1
+            table.add_row(entry.generation_id, entry.issue_id, "[red]failed[/red]", str(error))
+    console.print(table)
+    if failures:
+        raise typer.Exit(code=1)
+
+
+@app.command("delete-active")
+def delete_active(issue_id: str, owner_alias: str = "owner") -> None:
+    """Permanently remove one owner-owned, automated active issue through the Backend."""
+
+    try:
+        settings = _settings()
+        with SessionPool.from_settings(settings) as sessions:
+            result = delete_active_issue(sessions, issue_id, owner_alias=owner_alias)
+    except ScenarioLabError as error:
+        _raise_cli_error(error)
+    console.print(
+        {"issueId": result.issue_id, "issueName": result.issue_name, "ownerAlias": result.owner_alias, "deletionConfirmed": result.deletion_confirmed}
+    )
 
 
 @app.command("show-config")

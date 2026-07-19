@@ -41,15 +41,26 @@ python -m issue_scenario_lab check-users
 python -m issue_scenario_lab list-generated
 python -m issue_scenario_lab show-config
 python -m issue_scenario_lab generate no-consensus-basic
+python -m issue_scenario_lab delete GENERATION_ID
+python -m issue_scenario_lab delete-all
+python -m issue_scenario_lab delete-active ISSUE_ID
 ```
 
 `SCENARIO_LAB_ALLOW_NON_LOCALHOST=true` is required before a non-localhost API
 URL can be used. This is an explicit safety override, not a production feature.
 
-The generated issue remains in the development database until cleanup commands
-are implemented. Find it by its `[AUTO:<id>] No consensus · basic` name. All
-operations pass through the real HTTP API; cleanup commands are not implemented
-yet.
+All commands are for local/development use only and use real Backend HTTP
+routes; Scenario Lab never accesses MongoDB directly. Finished-issue cleanup
+processes every visible expert before the owner. Each user first hides the
+finished issue, and the manifest entry is removed only after the owner receives
+HTTP 404 for the finished detail endpoint, confirming permanent deletion.
+
+`delete` is resumable: aliases that already no longer see an issue are skipped.
+If an accepted visible user is absent from the manifest, physical deletion cannot
+be confirmed and the manifest is retained. `delete-all` handles manifest entries
+sequentially and continues after failures. `delete-active` is only for partial
+active generation failures and refuses any issue whose name does not begin with
+`[AUTO:`.
 
 ## Development checks
 
@@ -58,8 +69,3 @@ python -m compileall src tests
 python -m pytest
 python -m ruff check .
 ```
-
-## Next milestone
-
-The next milestone after review is cleanup commands using the existing active
-and finished issue deletion routes.

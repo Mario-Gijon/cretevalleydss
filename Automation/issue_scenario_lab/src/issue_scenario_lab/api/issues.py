@@ -43,3 +43,9 @@ class IssuesApi:
 
     def finished_issue(self, issue_id: str) -> Any:
         return self.client.request("GET", f"/issues/finished/{issue_id}")
+
+    def delete_finished_issue(self, issue_id: str) -> Any:
+        return self.client.request("DELETE", f"/issues/finished/{issue_id}")
+
+    def delete_active_issue(self, issue_id: str) -> Any:
+        return self.client.request("DELETE", f"/issues/{issue_id}")
