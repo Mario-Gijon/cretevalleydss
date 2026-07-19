@@ -2,7 +2,7 @@
 
 Issue Scenario Lab is a small Python CLI/library for generating local
 CreteValleyDSS issue variants through the real Backend HTTP API. It currently
-implements only `no-consensus-basic`.
+implements `no-consensus-basic` and `no-consensus-criteria-weighting`.
 
 Every future operation will use existing HTTP routes so that authentication,
 authorization, workflows, and persistence match normal development users. The
@@ -41,6 +41,7 @@ python -m issue_scenario_lab check-users
 python -m issue_scenario_lab list-generated
 python -m issue_scenario_lab show-config
 python -m issue_scenario_lab generate no-consensus-basic
+python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID
@@ -61,6 +62,12 @@ be confirmed and the manifest is retained. `delete-all` handles manifest entries
 sequentially and continues after failures. `delete-active` is only for partial
 active generation failures and refuses any issue whose name does not begin with
 `[AUTO:`.
+
+`no-consensus-criteria-weighting` uses TOPSIS with Manual Criteria Weights. It
+executes real expert manual weighting through `criteriaWeighting` →
+`weightsFinished` → `alternativeEvaluation` → `finished`, requiring the local
+Backend, DecisionModelsService, configured confirmed users, and a compatible
+numeric expression domain.
 
 ## Development checks
 

@@ -15,6 +15,8 @@ from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
+from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARIO_ID as CRITERIA_WEIGHTING_SCENARIO_ID
+from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import generate as generate_no_consensus_criteria_weighting
 
 app = typer.Typer(add_completion=False, help="Local HTTP foundation for CreteValleyDSS issue variants.")
 console = Console()
@@ -198,13 +200,21 @@ def generate(
 ) -> None:
     """Generate one supported local issue scenario through the real HTTP API."""
 
-    if scenario_id != SCENARIO_ID:
-        console.print(f"[red]Unsupported scenario:[/red] {scenario_id}. Supported: {SCENARIO_ID}")
+    generators = {
+        SCENARIO_ID: (generate_no_consensus_basic, {"model": "BORDA"}),
+        CRITERIA_WEIGHTING_SCENARIO_ID: (
+            generate_no_consensus_criteria_weighting,
+            {"model": "TOPSIS", "criteriaWeightingModel": "Manual Criteria Weights"},
+        ),
+    }
+    selected = generators.get(scenario_id)
+    if selected is None:
+        console.print(f"[red]Unsupported scenario:[/red] {scenario_id}. Supported: {', '.join(generators)}")
         raise typer.Exit(code=1)
     try:
         settings = _settings()
         with SessionPool.from_settings(settings) as sessions:
-            result = generate_no_consensus_basic(
+            result = selected[0](
                 sessions,
                 ManifestStore(settings.manifest_file),
                 owner_alias=owner_alias,
@@ -216,10 +226,10 @@ def generate(
     console.print(
         {
             "generationId": result.generation_id,
-            "scenarioId": SCENARIO_ID,
+            "scenarioId": scenario_id,
             "issueId": result.issue_id,
             "issueName": result.issue_name,
-            "model": "BORDA",
+            **selected[1],
             "experts": result.expert_aliases,
             "finalStage": "finished",
             "manifest": result.manifest_path,

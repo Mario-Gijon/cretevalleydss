@@ -197,7 +197,7 @@ def _validate_empty_matrix(payload: Any, evaluation_context: dict[str, Any]) -> 
             raise ScenarioLabError("evaluation payload contains an unexpected stored value")
 
 
-def _validate_evaluation_response(response: Any, issue_id: str) -> dict[str, Any]:
+def _validate_evaluation_response(response: Any, issue_id: str, *, model_key: str = "borda") -> dict[str, Any]:
     if not isinstance(response, dict):
         raise ScenarioLabError("expert evaluation response must be an object")
     if (
@@ -221,8 +221,8 @@ def _validate_evaluation_response(response: Any, issue_id: str) -> dict[str, Any
     ):
         raise ScenarioLabError("evaluationContext issue is incompatible")
     model = evaluation_context.get("model")
-    if model is not None and (not isinstance(model, dict) or ("apiModelKey" in model and model.get("apiModelKey") != "borda")):
-        raise ScenarioLabError("evaluationContext model is incompatible with BORDA")
+    if model is not None and (not isinstance(model, dict) or ("apiModelKey" in model and model.get("apiModelKey") != model_key)):
+        raise ScenarioLabError(f"evaluationContext model is incompatible with {model_key}")
     _context_identity(evaluation_context)
     _validate_empty_matrix(response.get("payload"), evaluation_context)
     return evaluation_context
