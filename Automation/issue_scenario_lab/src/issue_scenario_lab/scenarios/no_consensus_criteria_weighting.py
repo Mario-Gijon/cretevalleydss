@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from issue_scenario_lab.api.issues import IssuesApi
@@ -26,11 +27,40 @@ MAIN_MODEL_KEY = "topsis"
 WEIGHTING_MODEL_KEY = "manual_criteria_weights"
 
 
-def _required_parameters(model: dict[str, Any]) -> bool:
+def _required_parameters(model: dict[str, Any], supplied_values: dict[str, Any] | None = None) -> bool:
     parameters = model.get("parameters", [])
+    supplied = supplied_values or {}
     return isinstance(parameters, list) and any(
-        isinstance(parameter, dict) and parameter.get("required") is True and "default" not in parameter for parameter in parameters
+        isinstance(parameter, dict) and parameter.get("required") is True and parameter.get("key") not in supplied and parameter.get("default") is None
+        for parameter in parameters
     )
+
+
+def _ranking_alternative_id(entry: dict[str, Any]) -> str | None:
+    """TOPSIS and Finished serializers identify rankings with alternativeId, not id."""
+
+    value = entry.get("alternativeId")
+    return value if isinstance(value, str) and value else None
+
+
+def _validate_ranking(entries: Any, alternative_ids: set[str]) -> None:
+    if not isinstance(entries, list) or len(entries) != 3 or any(not isinstance(entry, dict) for entry in entries):
+        raise ScenarioLabError("TOPSIS ranking must contain exactly three alternative entries")
+    ids = [_ranking_alternative_id(entry) for entry in entries]
+    names = [entry.get("name") for entry in entries]
+    scores = [entry.get("score") for entry in entries]
+    ranks = [entry.get("rank") for entry in entries]
+    if (
+        any(not alternative_id for alternative_id in ids)
+        or set(ids) != alternative_ids
+        or len(set(ids)) != 3
+        or set(names) != {"Balanced choice", "Premium choice", "Budget choice"}
+        or len(set(names)) != 3
+        or any(not isinstance(score, (int, float)) or isinstance(score, bool) or not math.isfinite(score) for score in scores)
+        or set(ranks) != {1, 2, 3}
+        or any(not isinstance(rank, int) or isinstance(rank, bool) for rank in ranks)
+    ):
+        raise ScenarioLabError("TOPSIS ranking does not use the canonical alternativeId, score, and rank contract")
 
 
 def _select_main_model(models_data: Any) -> dict[str, Any]:
@@ -121,6 +151,7 @@ def _weight_context(response: Any, issue_id: str) -> tuple[dict[str, Any], tuple
         or response.get("structureKey") != "manualCriteriaWeights"
         or response.get("consensusPhase") != 0
         or response.get("completed") is not False
+        or response.get("submittedAt") is not None
     ):
         raise ScenarioLabError("criteria-weighting evaluation response is incompatible")
     context, payload = response.get("evaluationContext"), response.get("payload")
@@ -187,7 +218,7 @@ def _validate_weight_compute(response: Any, criterion_ids: set[str]) -> None:
         raise ScenarioLabError("criteria-weighting computation did not report MCC for two experts")
 
 
-def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_ids: set[str]) -> None:
+def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_ids: set[str], expert_emails: set[str]) -> None:
     if not isinstance(detail, dict):
         raise ScenarioLabError("finished issue detail must be an object")
     issue, lifecycle, models, configuration, criteria, consensus = (
@@ -211,15 +242,65 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         or weighting_key != WEIGHTING_MODEL_KEY
     ):
         raise ScenarioLabError("finished issue does not identify the TOPSIS and Manual Criteria Weights models")
-    if not isinstance(configuration, dict) or ((configuration.get("criteriaWeighting") or {}).get("source") != "expertCriteriaWeighting"):
+    weighting_configuration = configuration.get("criteriaWeighting") if isinstance(configuration, dict) else None
+    alternative_configuration = configuration.get("alternativeEvaluation") if isinstance(configuration, dict) else None
+    if (
+        not isinstance(weighting_configuration, dict)
+        or weighting_configuration.get("required") is not True
+        or weighting_configuration.get("source") != "expertCriteriaWeighting"
+        or weighting_configuration.get("structureKey") != "manualCriteriaWeights"
+        or not isinstance(alternative_configuration, dict)
+        or alternative_configuration.get("structureKey") != "alternativeCriteriaMatrix"
+    ):
         raise ScenarioLabError("finished issue does not identify expert criteria weighting")
     if not isinstance(consensus, dict) or consensus.get("enabled") is not False or consensus.get("rounds") not in (None, []):
         raise ScenarioLabError("finished issue incorrectly reports consensus")
+    participants = _items(detail, "participants")
+    accepted = [item for item in participants if item.get("invitationStatus") == "accepted"]
+    accepted_emails = {((item.get("expert") or {}).get("email")) for item in accepted if isinstance(item.get("expert"), dict)}
+    if (
+        len(accepted) != 2
+        or accepted_emails != expert_emails
+        or any(item.get("weightsCompleted") is not True or item.get("evaluationCompleted") is not True for item in accepted)
+    ):
+        raise ScenarioLabError("finished issue participants are incomplete or incompatible")
+    evaluations = detail.get("evaluations")
+    individual = evaluations.get("individual") if isinstance(evaluations, dict) else None
+    contexts = evaluations.get("contexts") if isinstance(evaluations, dict) else None
+    if not isinstance(individual, list) or len(individual) != 4 or not isinstance(contexts, list):
+        raise ScenarioLabError("finished issue evaluations are incomplete")
+    stage_experts: dict[str, set[str]] = {CRITERIA_STAGE: set(), ALTERNATIVE_STAGE: set()}
+    for evaluation in individual:
+        if (
+            not isinstance(evaluation, dict)
+            or evaluation.get("stage") not in stage_experts
+            or evaluation.get("completed") is not True
+            or evaluation.get("phase") != 0
+            or not isinstance(evaluation.get("expertId"), str)
+            or not evaluation.get("expertId")
+            or not evaluation.get("submittedAt")
+        ):
+            raise ScenarioLabError("finished issue individual evaluation is incompatible")
+        expected_structure = "manualCriteriaWeights" if evaluation["stage"] == CRITERIA_STAGE else "alternativeCriteriaMatrix"
+        if evaluation.get("structureKey") != expected_structure:
+            raise ScenarioLabError("finished issue individual evaluation structure is incompatible")
+        stage_experts[evaluation["stage"]].add(evaluation["expertId"])
+    if len(stage_experts[CRITERIA_STAGE]) != 2 or stage_experts[CRITERIA_STAGE] != stage_experts[ALTERNATIVE_STAGE]:
+        raise ScenarioLabError("finished issue individual evaluation experts are incompatible")
+    context_by_stage = {item.get("stage"): item for item in contexts if isinstance(item, dict) and item.get("phase") == 0}
+    if (
+        set(context_by_stage) != {CRITERIA_STAGE, ALTERNATIVE_STAGE}
+        or context_by_stage[CRITERIA_STAGE].get("structureKey") != "manualCriteriaWeights"
+        or context_by_stage[ALTERNATIVE_STAGE].get("structureKey") != "alternativeCriteriaMatrix"
+    ):
+        raise ScenarioLabError("finished issue evaluation contexts are incomplete")
     leaves = [item for item in _items(criteria, "nodes") if item.get("name") in {"Quality", "Cost"}]
     final = criteria.get("finalWeights") if isinstance(criteria, dict) else None
     phase_results = _items(detail, "phaseResults")
     weighting_results = [item for item in phase_results if item.get("stage") == CRITERIA_STAGE and item.get("phase") == 0]
     alternatives = [item for item in phase_results if item.get("stage") == ALTERNATIVE_STAGE and item.get("phase") == 0]
+    persisted_alternatives = _items(detail, "alternatives")
+    alternative_ids = {_id(item) for item in persisted_alternatives}
     if (
         len(leaves) != 2
         or {_id(item) for item in leaves} != criterion_ids
@@ -228,6 +309,13 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         or len(_items(alternatives[0], "rankedAlternatives")) != 3
     ):
         raise ScenarioLabError("finished issue is missing expected criteria or phase results")
+    if {item.get("name") for item in persisted_alternatives} != {"Balanced choice", "Premium choice", "Budget choice"} or len(alternative_ids) != 3:
+        raise ScenarioLabError("finished issue alternatives are incompatible")
+    _validate_ranking(alternatives[0].get("rankedAlternatives"), alternative_ids)
+    criteria_collective = weighting_results[0].get("collectiveEvaluations")
+    criteria_phase_weights = criteria_collective.get("weightsByCriterion") if isinstance(criteria_collective, dict) else None
+    if weighting_results[0].get("consensusMeasure") is not None or not isinstance(criteria_phase_weights, dict) or set(criteria_phase_weights) != criterion_ids:
+        raise ScenarioLabError("finished issue criteria-weighting phase result is incompatible")
     weights = final.get("byCriterionId") if isinstance(final, dict) else None
     source = final.get("source") if isinstance(final, dict) else None
     if (
@@ -238,6 +326,8 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         or not isinstance(source, dict)
         or source.get("kind") != "criteriaWeightingStageResult"
         or source.get("stageResultId") != weighting_results[0].get("id")
+        or source.get("stage") != CRITERIA_STAGE
+        or source.get("phase") != 0
     ):
         raise ScenarioLabError("finished issue final criteria weights are incompatible")
 
@@ -306,6 +396,12 @@ def generate(
             raise ScenarioLabError("issue did not reach weightsFinished after expert criteria submissions")
         criterion_ids = {persisted_id for _, persisted_id in weight_identity}
         _validate_weight_compute(owner.compute_evaluation(issue_id, CRITERIA_STAGE), criterion_ids)
+        active = next((item for item in _items(owner.active_issues(), "issues") if _id(item) == issue_id), None)
+        active_weights = active.get("criteriaWeights") if isinstance(active, dict) else None
+        if not isinstance(active, dict) or active.get("currentStage") != ALTERNATIVE_STAGE:
+            raise ScenarioLabError("criteria-weighting computation did not expose alternativeEvaluation as the active stage")
+        if active_weights is not None and (not isinstance(active_weights, dict) or set(active_weights) != criterion_ids):
+            raise ScenarioLabError("active issue exposes incompatible criteria weights after criteria computation")
         matrices, alternative_identity = [], None
         for index, alias in enumerate(aliases[1:]):
             response = IssuesApi(sessions.client_for(alias)).evaluation(issue_id, ALTERNATIVE_STAGE)
@@ -325,22 +421,21 @@ def generate(
         result = computed.get("result") if isinstance(computed, dict) else None
         ranked = result.get("rankedAlternatives") if isinstance(result, dict) else None
         alternative_ids = {persisted_id for name, persisted_id in alternative_identity or () if name in {"Balanced choice", "Premium choice", "Budget choice"}}
-        ranked_ids = {_id(item) for item in ranked if isinstance(item, dict)} if isinstance(ranked, list) else set()
         if (
             not isinstance(computed, dict)
             or computed.get("stage") != ALTERNATIVE_STAGE
             or computed.get("currentStage") != "finished"
             or not isinstance(ranked, list)
             or len(ranked) != 3
-            or ranked_ids != alternative_ids
             or result.get("consensusMeasure") not in (None,)
             or result.get("consensusLifecycle") not in (None,)
         ):
             raise ScenarioLabError("TOPSIS computation did not finish with three ranked alternatives")
+        _validate_ranking(ranked, alternative_ids)
         finished = [item for item in _items(owner.finished_issues(), "issues") if _id(item) == issue_id or item.get("name") == issue_name]
         if len(finished) != 1:
             raise ScenarioLabError("computed issue could not be resolved uniquely from finished issues")
-        _validate_finished(owner.finished_issue(issue_id), issue_id, issue_name, criterion_ids)
+        _validate_finished(owner.finished_issue(issue_id), issue_id, issue_name, criterion_ids, set(emails[1:]))
         try:
             store.add(
                 GeneratedIssue(

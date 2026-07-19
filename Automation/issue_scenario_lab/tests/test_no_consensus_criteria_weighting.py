@@ -11,8 +11,10 @@ from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import (
     SCENARIO_ID,
+    _required_parameters,
     _select_main_model,
     _select_weighting_model,
+    _validate_ranking,
     generate,
 )
 
@@ -86,7 +88,11 @@ class CriteriaClient:
                 "stage": "alternativeEvaluation",
                 "currentStage": "finished",
                 "result": {
-                    "rankedAlternatives": [{"id": "balanced"}, {"id": "premium"}, {"id": "budget"}],
+                    "rankedAlternatives": [
+                        {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.8, "rank": 1},
+                        {"alternativeId": "premium", "name": "Premium choice", "score": 0.6, "rank": 2},
+                        {"alternativeId": "budget", "name": "Budget choice", "score": 0.4, "rank": 3},
+                    ],
                     "consensusMeasure": None,
                     "consensusLifecycle": None,
                 },
@@ -155,18 +161,95 @@ class CriteriaClient:
             "issue": {"id": "issue", "name": self.state["name"]},
             "lifecycle": {"currentStage": "finished", "active": False},
             "models": {"base": {"technical": {"apiModelKey": "topsis"}}, "criteriaWeighting": {"technical": {"apiModelKey": "manual_criteria_weights"}}},
-            "configuration": {"criteriaWeighting": {"source": "expertCriteriaWeighting"}},
+            "configuration": {
+                "criteriaWeighting": {"required": True, "source": "expertCriteriaWeighting", "structureKey": "manualCriteriaWeights"},
+                "alternativeEvaluation": {"structureKey": "alternativeCriteriaMatrix"},
+            },
             "consensus": {"enabled": False, "rounds": []},
+            "participants": [
+                {
+                    "expert": {"id": "expert-a", "email": "a@example.test"},
+                    "invitationStatus": "accepted",
+                    "weightsCompleted": True,
+                    "evaluationCompleted": True,
+                },
+                {
+                    "expert": {"id": "expert-b", "email": "b@example.test"},
+                    "invitationStatus": "accepted",
+                    "weightsCompleted": True,
+                    "evaluationCompleted": True,
+                },
+            ],
+            "evaluations": {
+                "individual": [
+                    {
+                        "stage": "criteriaWeighting",
+                        "phase": 0,
+                        "structureKey": "manualCriteriaWeights",
+                        "completed": True,
+                        "expertId": "expert-a",
+                        "submittedAt": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "stage": "criteriaWeighting",
+                        "phase": 0,
+                        "structureKey": "manualCriteriaWeights",
+                        "completed": True,
+                        "expertId": "expert-b",
+                        "submittedAt": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "stage": "alternativeEvaluation",
+                        "phase": 0,
+                        "structureKey": "alternativeCriteriaMatrix",
+                        "completed": True,
+                        "expertId": "expert-a",
+                        "submittedAt": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "stage": "alternativeEvaluation",
+                        "phase": 0,
+                        "structureKey": "alternativeCriteriaMatrix",
+                        "completed": True,
+                        "expertId": "expert-b",
+                        "submittedAt": "2026-01-01T00:00:00Z",
+                    },
+                ],
+                "contexts": [
+                    {"stage": "criteriaWeighting", "phase": 0, "structureKey": "manualCriteriaWeights"},
+                    {"stage": "alternativeEvaluation", "phase": 0, "structureKey": "alternativeCriteriaMatrix"},
+                ],
+            },
+            "alternatives": [
+                {"id": "balanced", "name": "Balanced choice"},
+                {"id": "premium", "name": "Premium choice"},
+                {"id": "budget", "name": "Budget choice"},
+            ],
             "criteria": {
                 "nodes": [{"id": "quality", "name": "Quality"}, {"id": "cost", "name": "Cost"}],
                 "finalWeights": {
-                    "source": {"kind": "criteriaWeightingStageResult", "stageResultId": "weights"},
+                    "source": {"kind": "criteriaWeightingStageResult", "stageResultId": "weights", "stage": "criteriaWeighting", "phase": 0},
                     "byCriterionId": {"quality": 0.6, "cost": 0.4},
                 },
             },
             "phaseResults": [
-                {"id": "weights", "stage": "criteriaWeighting", "phase": 0},
-                {"id": "alternatives", "stage": "alternativeEvaluation", "phase": 0, "rankedAlternatives": [{}, {}, {}]},
+                {
+                    "id": "weights",
+                    "stage": "criteriaWeighting",
+                    "phase": 0,
+                    "consensusMeasure": None,
+                    "collectiveEvaluations": {"weightsByCriterion": {"quality": 0.6, "cost": 0.4}},
+                },
+                {
+                    "id": "alternatives",
+                    "stage": "alternativeEvaluation",
+                    "phase": 0,
+                    "rankedAlternatives": [
+                        {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.8, "rank": 1},
+                        {"alternativeId": "premium", "name": "Premium choice", "score": 0.6, "rank": 2},
+                        {"alternativeId": "budget", "name": "Budget choice", "score": 0.4, "rank": 3},
+                    ],
+                },
             ],
         }
 
@@ -261,4 +344,57 @@ def test_manual_catalogue_contract_is_required() -> None:
     models = CriteriaSessions().state["models"]
     models["criteriaWeightingModels"][0]["supportsExpertCriteriaWeighting"] = False
     with pytest.raises(ScenarioLabError, match="Manual Criteria Weights model is incompatible"):
+        _select_weighting_model(models)
+
+
+def test_topsis_ranking_requires_real_alternative_id_contract() -> None:
+    ranking = [
+        {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.8, "rank": 1},
+        {"alternativeId": "premium", "name": "Premium choice", "score": 0.6, "rank": 2},
+        {"alternativeId": "budget", "name": "Budget choice", "score": 0.4, "rank": 3},
+    ]
+    _validate_ranking(ranking, {"balanced", "premium", "budget"})
+    ranking[0] = {"id": "balanced", "name": "Balanced choice", "score": 0.8, "rank": 1}
+    with pytest.raises(ScenarioLabError, match="canonical alternativeId"):
+        _validate_ranking(ranking, {"balanced", "premium", "budget"})
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        {"name": "Balanced choice", "score": 0.8, "rank": 1},
+        {"alternativeId": "premium", "name": "Balanced choice", "score": 0.8, "rank": 1},
+        {"alternativeId": "unknown", "name": "Balanced choice", "score": 0.8, "rank": 1},
+        {"alternativeId": "balanced", "name": "Balanced choice", "rank": 1},
+        {"alternativeId": "balanced", "name": "Balanced choice", "score": float("nan"), "rank": 1},
+        {"alternativeId": "balanced", "name": "Balanced choice", "score": 0.8, "rank": 2},
+    ],
+)
+def test_topsis_ranking_rejects_invalid_canonical_entries(replacement: dict[str, Any]) -> None:
+    ranking = [
+        replacement,
+        {"alternativeId": "premium", "name": "Premium choice", "score": 0.6, "rank": 2},
+        {"alternativeId": "budget", "name": "Budget choice", "score": 0.4, "rank": 3},
+    ]
+    with pytest.raises(ScenarioLabError, match="canonical alternativeId"):
+        _validate_ranking(ranking, {"balanced", "premium", "budget"})
+
+
+@pytest.mark.parametrize(
+    ("parameters", "expected"),
+    [
+        ([{"key": "required", "required": True, "default": None}], True),
+        ([{"key": "required", "required": True, "default": 0}], False),
+        ([{"key": "optional", "required": False, "default": None}], False),
+        ([], False),
+    ],
+)
+def test_required_parameter_detection_uses_null_normalized_default(parameters: list[dict[str, Any]], expected: bool) -> None:
+    assert _required_parameters({"parameters": parameters}) is expected
+
+
+def test_manual_model_rejects_required_null_default() -> None:
+    models = CriteriaSessions().state["models"]
+    models["criteriaWeightingModels"][0]["parameters"] = [{"key": "precision", "required": True, "default": None}]
+    with pytest.raises(ScenarioLabError, match="requiredParameters"):
         _select_weighting_model(models)
