@@ -13,6 +13,8 @@ from issue_scenario_lab.cleanup.finished import delete_finished_generation
 from issue_scenario_lab.config import Settings
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
+from issue_scenario_lab.scenarios.consensus_first_round import SCENARIO_ID as CONSENSUS_FIRST_ROUND_SCENARIO_ID
+from issue_scenario_lab.scenarios.consensus_first_round import generate as generate_consensus_first_round
 from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARIO_ID as CRITERIA_WEIGHTING_SCENARIO_ID
@@ -211,6 +213,10 @@ def generate(
         EXPERT_WEIGHTS_SCENARIO_ID: (
             generate_no_consensus_expert_weights,
             {"model": "WASPAS", "expertWeights": {"expert_a": 0.75, "expert_b": 0.25}, "criteriaWeights": {"Quality": 0.60, "Cost": 0.40}, "lambda": 0.5},
+        ),
+        CONSENSUS_FIRST_ROUND_SCENARIO_ID: (
+            generate_consensus_first_round,
+            {"model": "Herrera Viedma CRP", "consensusThreshold": 0.9, "consensusMaxPhases": 3, "finalConsensusPhase": 0, "consensusReached": True},
         ),
     }
     selected = generators.get(scenario_id)
