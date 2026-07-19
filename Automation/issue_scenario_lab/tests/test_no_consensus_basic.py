@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -82,26 +83,46 @@ class FakeClient:
                 "structureKey": "alternativeCriteriaMatrix",
                 "consensusPhase": 0,
                 "completed": False,
+                "submittedAt": None,
+                "collectiveReference": None,
+                "evaluationContext": {
+                    "issue": {
+                        "id": "issue-id",
+                        "name": next(call[2]["issueInfo"]["issueName"] for call in self.calls if call[1] == "/issues"),
+                        "currentStage": "alternativeEvaluation",
+                        "consensusPhase": 0,
+                        "isConsensus": False,
+                        "consensusThreshold": None,
+                        "consensusMaxPhases": None,
+                    },
+                    "structure": {"key": "alternativeCriteriaMatrix", "stage": "alternativeEvaluation"},
+                    "model": {"id": "borda-id", "name": "BORDA", "apiModelKey": "borda"},
+                    "alternatives": [
+                        {"id": "balanced", "name": "Balanced choice"},
+                        {"id": "premium", "name": "Premium choice"},
+                        {"id": "budget", "name": "Budget choice"},
+                    ],
+                    "criteriaTree": [],
+                    "leafCriteria": [
+                        {
+                            "id": "quality",
+                            "name": "Quality",
+                            "type": "benefit",
+                            "expressionDomain": {"name": "Discrete 0-10", "typeKey": "numericDiscrete", "definition": {"min": 0, "max": 10, "step": 1}},
+                        },
+                        {
+                            "id": "cost",
+                            "name": "Cost",
+                            "type": "cost",
+                            "expressionDomain": {"name": "Discrete 0-10", "typeKey": "numericDiscrete", "definition": {"min": 0, "max": 10, "step": 1}},
+                        },
+                    ],
+                    "consensus": {"phase": 0, "maxPhases": None, "threshold": None, "currentCollectiveEvaluations": {}, "previousCollectiveEvaluations": {}},
+                },
                 "payload": {
-                    "context": {
-                        "alternatives": [
-                            {"id": "balanced", "name": "Balanced choice"},
-                            {"id": "premium", "name": "Premium choice"},
-                            {"id": "budget", "name": "Budget choice"},
-                        ],
-                        "criteria": [
-                            {
-                                "id": "quality",
-                                "name": "Quality",
-                                "expressionDomain": {"name": "Discrete 0-10", "typeKey": "numericDiscrete", "definition": {"min": 0, "max": 10, "step": 1}},
-                            },
-                            {
-                                "id": "cost",
-                                "name": "Cost",
-                                "expressionDomain": {"name": "Discrete 0-10", "typeKey": "numericDiscrete", "definition": {"min": 0, "max": 10, "step": 1}},
-                            },
-                        ],
-                    }
+                    "balanced": {"quality": {"value": ""}, "cost": {"value": ""}},
+                    "premium": {"quality": {"value": ""}, "cost": {"value": ""}},
+                    "budget": {"quality": {"value": ""}, "cost": {"value": ""}},
                 },
             }
         if path.endswith("/submit"):
@@ -276,3 +297,95 @@ def test_incomplete_finished_detail_is_rejected_without_manifest_entry(tmp_path:
     with pytest.raises(ScenarioLabError, match="after issue creation"):
         generate(sessions, store)
     assert store.list_entries() == []
+
+
+def _mutate_first_evaluation_response(sessions: FakeSessions, mutate: Any) -> None:
+    original_request = sessions.clients["expert_a"].request
+
+    def modified_response(method: str, path: str, *, json: Any = None) -> Any:
+        response = original_request(method, path, json=json)
+        if method == "GET" and path.endswith("/evaluations/alternativeEvaluation"):
+            return mutate(deepcopy(response))
+        return response
+
+    sessions.clients["expert_a"].request = modified_response  # type: ignore[method-assign]
+
+
+def test_old_fictional_payload_context_response_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def old_response(response: dict[str, Any]) -> dict[str, Any]:
+        response.pop("evaluationContext")
+        response["payload"] = {"context": {"alternatives": [], "criteria": []}}
+        return response
+
+    _mutate_first_evaluation_response(sessions, old_response)
+    with pytest.raises(ScenarioLabError, match="missing evaluationContext"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_missing_evaluation_context_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+    _mutate_first_evaluation_response(sessions, lambda response: {key: value for key, value in response.items() if key != "evaluationContext"})
+    with pytest.raises(ScenarioLabError, match="missing evaluationContext"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_missing_leaf_criteria_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def remove_leaf_criteria(response: dict[str, Any]) -> dict[str, Any]:
+        response["evaluationContext"].pop("leafCriteria")
+        return response
+
+    _mutate_first_evaluation_response(sessions, remove_leaf_criteria)
+    with pytest.raises(ScenarioLabError, match="leafCriteria"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_missing_persisted_alternative_id_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def remove_alternative_id(response: dict[str, Any]) -> dict[str, Any]:
+        response["evaluationContext"]["alternatives"][0].pop("id")
+        return response
+
+    _mutate_first_evaluation_response(sessions, remove_alternative_id)
+    with pytest.raises(ScenarioLabError, match="persisted alternative id"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_missing_persisted_criterion_id_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def remove_criterion_id(response: dict[str, Any]) -> dict[str, Any]:
+        response["evaluationContext"]["leafCriteria"][0].pop("id")
+        return response
+
+    _mutate_first_evaluation_response(sessions, remove_criterion_id)
+    with pytest.raises(ScenarioLabError, match="persisted criterion id"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_unexpected_alternative_name_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def rename_alternative(response: dict[str, Any]) -> dict[str, Any]:
+        response["evaluationContext"]["alternatives"][0]["name"] = "Unexpected choice"
+        return response
+
+    _mutate_first_evaluation_response(sessions, rename_alternative)
+    with pytest.raises(ScenarioLabError, match="alternatives do not match"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
+
+
+def test_unexpected_criterion_name_is_rejected(tmp_path: Path) -> None:
+    sessions = FakeSessions()
+
+    def rename_criterion(response: dict[str, Any]) -> dict[str, Any]:
+        response["evaluationContext"]["leafCriteria"][0]["name"] = "Unexpected criterion"
+        return response
+
+    _mutate_first_evaluation_response(sessions, rename_criterion)
+    with pytest.raises(ScenarioLabError, match="leafCriteria do not match"):
+        generate(sessions, ManifestStore(tmp_path / "manifest.json"))
