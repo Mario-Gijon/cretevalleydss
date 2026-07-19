@@ -267,7 +267,8 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
     evaluations = detail.get("evaluations")
     individual = evaluations.get("individual") if isinstance(evaluations, dict) else None
     contexts = evaluations.get("contexts") if isinstance(evaluations, dict) else None
-    if not isinstance(individual, list) or len(individual) != 4 or not isinstance(contexts, list):
+    collective = evaluations.get("collective") if isinstance(evaluations, dict) else None
+    if not isinstance(individual, list) or len(individual) != 4 or not isinstance(contexts, list) or not isinstance(collective, list):
         raise ScenarioLabError("finished issue evaluations are incomplete")
     stage_experts: dict[str, set[str]] = {CRITERIA_STAGE: set(), ALTERNATIVE_STAGE: set()}
     for evaluation in individual:
@@ -294,6 +295,23 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         or context_by_stage[ALTERNATIVE_STAGE].get("structureKey") != "alternativeCriteriaMatrix"
     ):
         raise ScenarioLabError("finished issue evaluation contexts are incomplete")
+    for stage, model_key in ((CRITERIA_STAGE, WEIGHTING_MODEL_KEY), (ALTERNATIVE_STAGE, MAIN_MODEL_KEY)):
+        context = context_by_stage[stage]
+        serialized = context.get("serializedContext")
+        active_model = serialized.get("activeModel") if isinstance(serialized, dict) else None
+        if (
+            not isinstance(context.get("id"), str)
+            or not context["id"]
+            or not isinstance(context.get("modelId"), str)
+            or not context["modelId"]
+            or not isinstance(context.get("activeModelId"), str)
+            or not context["activeModelId"]
+            or not isinstance(serialized, dict)
+            or _id(serialized.get("issue")) != issue_id
+            or not isinstance(active_model, dict)
+            or active_model.get("apiModelKey") != model_key
+        ):
+            raise ScenarioLabError("finished issue evaluation context model is incompatible")
     leaves = [item for item in _items(criteria, "nodes") if item.get("name") in {"Quality", "Cost"}]
     final = criteria.get("finalWeights") if isinstance(criteria, dict) else None
     phase_results = _items(detail, "phaseResults")
@@ -312,9 +330,19 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
     if {item.get("name") for item in persisted_alternatives} != {"Balanced choice", "Premium choice", "Budget choice"} or len(alternative_ids) != 3:
         raise ScenarioLabError("finished issue alternatives are incompatible")
     _validate_ranking(alternatives[0].get("rankedAlternatives"), alternative_ids)
-    criteria_collective = weighting_results[0].get("collectiveEvaluations")
-    criteria_phase_weights = criteria_collective.get("weightsByCriterion") if isinstance(criteria_collective, dict) else None
-    if weighting_results[0].get("consensusMeasure") is not None or not isinstance(criteria_phase_weights, dict) or set(criteria_phase_weights) != criterion_ids:
+    collective_by_stage = {item.get("stage"): item for item in collective if isinstance(item, dict) and item.get("phase") == 0}
+    if set(collective_by_stage) != {CRITERIA_STAGE, ALTERNATIVE_STAGE}:
+        raise ScenarioLabError("finished issue collective evaluations are incomplete")
+    for stage, result in ((CRITERIA_STAGE, weighting_results[0]), (ALTERNATIVE_STAGE, alternatives[0])):
+        entry = collective_by_stage[stage]
+        if (
+            not isinstance(entry.get("phaseResultId"), str)
+            or not entry["phaseResultId"]
+            or entry["phaseResultId"] != result.get("id")
+            or not isinstance(entry.get("rawPayload"), dict)
+        ):
+            raise ScenarioLabError("finished issue collective evaluation does not match its phase result")
+    if weighting_results[0].get("consensusMeasure") is not None:
         raise ScenarioLabError("finished issue criteria-weighting phase result is incompatible")
     weights = final.get("byCriterionId") if isinstance(final, dict) else None
     source = final.get("source") if isinstance(final, dict) else None
@@ -330,6 +358,18 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, criterion_id
         or source.get("phase") != 0
     ):
         raise ScenarioLabError("finished issue final criteria weights are incompatible")
+    criteria_collective = collective_by_stage[CRITERIA_STAGE]["rawPayload"].get("weightsByCriterion")
+    if (
+        not isinstance(criteria_collective, dict)
+        or set(criteria_collective) != criterion_ids
+        or any(
+            not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not 0 <= value <= 1
+            for value in criteria_collective.values()
+        )
+        or abs(sum(criteria_collective.values()) - 1) > 0.001
+        or any(abs(criteria_collective[key] - weights[key]) > 1e-9 for key in criterion_ids)
+    ):
+        raise ScenarioLabError("finished issue collective criteria weights are incompatible")
 
 
 def generate(
@@ -397,11 +437,27 @@ def generate(
         criterion_ids = {persisted_id for _, persisted_id in weight_identity}
         _validate_weight_compute(owner.compute_evaluation(issue_id, CRITERIA_STAGE), criterion_ids)
         active = next((item for item in _items(owner.active_issues(), "issues") if _id(item) == issue_id), None)
-        active_weights = active.get("criteriaWeights") if isinstance(active, dict) else None
+        model_parameters = active.get("modelParameters") if isinstance(active, dict) else None
+        final_weights = active.get("finalWeights") if isinstance(active, dict) else None
         if not isinstance(active, dict) or active.get("currentStage") != ALTERNATIVE_STAGE:
             raise ScenarioLabError("criteria-weighting computation did not expose alternativeEvaluation as the active stage")
-        if active_weights is not None and (not isinstance(active_weights, dict) or set(active_weights) != criterion_ids):
-            raise ScenarioLabError("active issue exposes incompatible criteria weights after criteria computation")
+        active_weights = model_parameters.get("weights") if isinstance(model_parameters, dict) else None
+        if model_parameters is not None and not isinstance(model_parameters, dict):
+            raise ScenarioLabError("active issue exposes invalid modelParameters after criteria computation")
+        if active_weights is not None and (
+            not isinstance(active_weights, dict)
+            or set(active_weights) != criterion_ids
+            or any(not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1 for value in active_weights.values())
+            or abs(sum(active_weights.values()) - 1) > 0.001
+        ):
+            raise ScenarioLabError("active issue exposes incompatible modelParameters.weights after criteria computation")
+        if final_weights is not None and (
+            not isinstance(final_weights, dict)
+            or set(final_weights) != {"Quality", "Cost"}
+            or any(not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1 for value in final_weights.values())
+            or abs(sum(final_weights.values()) - 1) > 0.001
+        ):
+            raise ScenarioLabError("active issue exposes incompatible finalWeights after criteria computation")
         matrices, alternative_identity = [], None
         for index, alias in enumerate(aliases[1:]):
             response = IssuesApi(sessions.client_for(alias)).evaluation(issue_id, ALTERNATIVE_STAGE)

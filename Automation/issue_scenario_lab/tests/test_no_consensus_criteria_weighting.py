@@ -14,6 +14,7 @@ from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import (
     _required_parameters,
     _select_main_model,
     _select_weighting_model,
+    _validate_finished,
     _validate_ranking,
     generate,
 )
@@ -216,8 +217,34 @@ class CriteriaClient:
                     },
                 ],
                 "contexts": [
-                    {"stage": "criteriaWeighting", "phase": 0, "structureKey": "manualCriteriaWeights"},
-                    {"stage": "alternativeEvaluation", "phase": 0, "structureKey": "alternativeCriteriaMatrix"},
+                    {
+                        "id": "criteriaWeighting:0",
+                        "stage": "criteriaWeighting",
+                        "phase": 0,
+                        "structureKey": "manualCriteriaWeights",
+                        "modelId": "topsis",
+                        "activeModelId": "manual",
+                        "serializedContext": {"issue": {"id": "issue"}, "activeModel": {"apiModelKey": "manual_criteria_weights"}},
+                    },
+                    {
+                        "id": "alternativeEvaluation:0",
+                        "stage": "alternativeEvaluation",
+                        "phase": 0,
+                        "structureKey": "alternativeCriteriaMatrix",
+                        "modelId": "topsis",
+                        "activeModelId": "topsis",
+                        "serializedContext": {"issue": {"id": "issue"}, "activeModel": {"apiModelKey": "topsis"}},
+                    },
+                ],
+                "collective": [
+                    {
+                        "phaseResultId": "weights",
+                        "stage": "criteriaWeighting",
+                        "phase": 0,
+                        "rawPayload": {"weightsByCriterion": {"quality": 0.6, "cost": 0.4}},
+                        "displayPayload": None,
+                    },
+                    {"phaseResultId": "alternatives", "stage": "alternativeEvaluation", "phase": 0, "rawPayload": {}, "displayPayload": None},
                 ],
             },
             "alternatives": [
@@ -238,7 +265,6 @@ class CriteriaClient:
                     "stage": "criteriaWeighting",
                     "phase": 0,
                     "consensusMeasure": None,
-                    "collectiveEvaluations": {"weightsByCriterion": {"quality": 0.6, "cost": 0.4}},
                 },
                 {
                     "id": "alternatives",
@@ -398,3 +424,37 @@ def test_manual_model_rejects_required_null_default() -> None:
     models["criteriaWeightingModels"][0]["parameters"] = [{"key": "precision", "required": True, "default": None}]
     with pytest.raises(ScenarioLabError, match="requiredParameters"):
         _select_weighting_model(models)
+
+
+def _finished_detail() -> dict[str, Any]:
+    sessions = CriteriaSessions()
+    sessions.state["name"] = "[AUTO:test] No consensus · criteria weighting"
+    return sessions.clients["owner"]._finished()
+
+
+def _validate_real_finished(detail: dict[str, Any]) -> None:
+    _validate_finished(detail, "issue", "[AUTO:test] No consensus · criteria weighting", {"quality", "cost"}, {"a@example.test", "b@example.test"})
+
+
+def test_finished_collective_payload_is_separate_from_phase_results() -> None:
+    detail = _finished_detail()
+    _validate_real_finished(detail)
+    assert "collectiveEvaluations" not in detail["phaseResults"][0]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda detail: detail["evaluations"].pop("collective"),
+        lambda detail: detail["evaluations"]["collective"].pop(),
+        lambda detail: detail["evaluations"]["collective"][0].update({"phaseResultId": "wrong"}),
+        lambda detail: detail["evaluations"]["collective"][0]["rawPayload"].update({"weightsByCriterion": {"quality": 1.0}}),
+        lambda detail: detail["evaluations"]["collective"][0]["rawPayload"].update({"weightsByCriterion": {"quality": 0.2, "cost": 0.8}}),
+        lambda detail: detail["evaluations"]["contexts"][0]["serializedContext"]["activeModel"].update({"apiModelKey": "topsis"}),
+    ],
+)
+def test_finished_collective_and_context_contract_rejects_mismatches(mutation: Any) -> None:
+    detail = _finished_detail()
+    mutation(detail)
+    with pytest.raises(ScenarioLabError):
+        _validate_real_finished(detail)
