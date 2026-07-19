@@ -8,7 +8,7 @@ from issue_scenario_lab.api.session_pool import SessionPool
 from issue_scenario_lab.errors import ManifestError, ScenarioLabError
 from issue_scenario_lab.manifest.models import GeneratedIssue
 from issue_scenario_lab.manifest.store import ManifestStore
-from issue_scenario_lab.scenarios.no_consensus_basic import GenerationResult, _context_identity, _id, _items, _new_generation_id
+from issue_scenario_lab.scenarios.no_consensus_basic import GenerationResult, _id, _items, _new_generation_id
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import _required_parameters, _validate_ranking
 
 SCENARIO_ID = "consensus-first-round"
@@ -175,6 +175,22 @@ def _context(response: Any, issue_id: str) -> dict[str, Any]:
     return context
 
 
+def _validate_active(active: Any) -> None:
+    if (
+        not isinstance(active, dict)
+        or active.get("currentStage") != STAGE
+        or active.get("isConsensus") is not True
+        or active.get("simulateConsensus") is not False
+        or active.get("consensusCurrentPhase") != 0
+        or active.get("consensusThreshold") != THRESHOLD
+        or active.get("consensusMaxPhases") != MAX_PHASES
+        or active.get("isIssueOwner") is not True
+        or active.get("evaluationStructureKey") != "alternativePairwiseByCriterion"
+        or active.get("criteriaWeightsStructureKey") != "manualCriteriaWeights"
+    ):
+        raise ScenarioLabError("created issue does not use the phase-zero Herrera-Viedma lifecycle")
+
+
 def _ids(context: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
     alternatives = {item.get("name"): _id(item) for item in _items(context, "alternatives")}
     criteria = {item.get("name"): _id(item) for item in _items(context, "leafCriteria")}
@@ -190,6 +206,11 @@ def _ids(context: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
         ):
             raise ScenarioLabError("pairwise context domain is not numericContinuous [0, 1]")
     return alternatives, criteria
+
+
+def _persisted_identity(context: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    alternatives, criteria = _ids(context)
+    return tuple(sorted([*alternatives.items(), *criteria.items()]))
 
 
 def _validate_empty(payload: Any, context: dict[str, Any]) -> None:
@@ -307,6 +328,35 @@ def _validate_compute(response: Any, expected: dict[str, Any], alternative_ids: 
         raise ScenarioLabError("Herrera-Viedma phase-zero output is incompatible")
 
 
+def _validate_finished_weights(detail: dict[str, Any], effective_parameters: Any) -> None:
+    criteria = detail.get("criteria")
+    nodes = _items(criteria, "nodes")
+    criterion_ids = {item.get("name"): _id(item) for item in nodes}
+    if set(criterion_ids) != set(CRITERIA_WEIGHTS) or any(not value for value in criterion_ids.values()):
+        raise ScenarioLabError("finished issue does not use exactly the persisted Quality and Cost criteria")
+    final_weights = criteria.get("finalWeights") if isinstance(criteria, dict) else None
+    source = final_weights.get("source") if isinstance(final_weights, dict) else None
+    by_criterion_id = final_weights.get("byCriterionId") if isinstance(final_weights, dict) else None
+    expected = {criterion_ids[name]: weight for name, weight in CRITERIA_WEIGHTS.items()}
+    if (
+        not isinstance(final_weights, dict)
+        or not isinstance(source, dict)
+        or source.get("kind") != "directModelParameters"
+        or source.get("stageResultId") is not None
+        or not isinstance(by_criterion_id, dict)
+        or set(by_criterion_id) != set(expected)
+        or any(by_criterion_id.get(key) != value for key, value in expected.items())
+    ):
+        raise ScenarioLabError("finished issue canonical criteria weights are incompatible")
+    weights = effective_parameters.get("weights") if isinstance(effective_parameters, dict) else None
+    if weights is not None and (
+        not isinstance(weights, dict)
+        or set(weights) != set(expected)
+        or any(weights.get(key) != value for key, value in expected.items())
+    ):
+        raise ScenarioLabError("finished issue effective criteria weights are incompatible")
+
+
 def _validate_finished(detail: Any, issue_id: str, issue_name: str, expected: dict[str, Any], emails: set[str]) -> None:
     issue, lifecycle, models, configuration, consensus = (
         (detail.get("issue"), detail.get("lifecycle"), detail.get("models"), detail.get("configuration"), detail.get("consensus"))
@@ -315,6 +365,7 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, expected: di
     )
     base = (models or {}).get("base") if isinstance(models, dict) else None
     capabilities = (base or {}).get("capabilities")
+    effective_parameters = (base or {}).get("effectiveParameters")
     if (
         not isinstance(issue, dict)
         or _id(issue) != issue_id
@@ -327,10 +378,12 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, expected: di
             for key, value in (("supportsConsensus", True), ("supportsConsensusSimulation", True), ("usesCriteriaWeights", True), ("usesExpertWeights", False))
         )
         or (base or {}).get("evaluationStructureKey") != "alternativePairwiseByCriterion"
-        or (base or {}).get("effectiveParameters") != PARAMETERS
+        or not isinstance(effective_parameters, dict)
+        or any(effective_parameters.get(key) != value for key, value in PARAMETERS.items())
         or (models or {}).get("criteriaWeighting") is not None
     ):
         raise ScenarioLabError("finished issue model and lifecycle are incompatible")
+    _validate_finished_weights(detail, effective_parameters)
     weighting = (configuration or {}).get("criteriaWeighting")
     if (
         not isinstance(weighting, dict)
@@ -416,24 +469,13 @@ def generate(
         if len(matches) != 1 or not _id(matches[0]):
             raise ScenarioLabError("created issue could not be resolved uniquely from owner active issues")
         issue_id, active = _id(matches[0]), matches[0]
-        if (
-            active.get("currentStage") != STAGE
-            or active.get("isConsensus") is not True
-            or active.get("simulateConsensus") is not False
-            or active.get("consensusPhase") != 0
-            or active.get("consensusThreshold") != THRESHOLD
-            or active.get("consensusMaxPhases") != MAX_PHASES
-            or active.get("isIssueOwner") is not True
-            or active.get("evaluationStructureKey") != "alternativePairwiseByCriterion"
-            or active.get("criteriaWeightsStructureKey") != "manualCriteriaWeights"
-        ):
-            raise ScenarioLabError("created issue does not use the phase-zero Herrera-Viedma lifecycle")
+        _validate_active(active)
         for alias in aliases[1:]:
             IssuesApi(sessions.client_for(alias)).respond_to_invitation(issue_id, "accepted")
         contexts, matrices, identity = [], [], None
         for index, alias in enumerate(aliases[1:]):
             context = _context(IssuesApi(sessions.client_for(alias)).evaluation(issue_id, STAGE), issue_id)
-            current = _context_identity(context)
+            current = _persisted_identity(context)
             if identity is not None and current != identity:
                 raise ScenarioLabError("expert pairwise contexts do not use compatible persisted identities")
             identity = current
