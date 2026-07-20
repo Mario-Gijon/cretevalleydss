@@ -46,6 +46,7 @@ python -m issue_scenario_lab generate no-consensus-criteria-weighting
 python -m issue_scenario_lab generate no-consensus-expert-weights
 python -m issue_scenario_lab generate consensus-first-round
 python -m issue_scenario_lab generate consensus-later-round
+python -m issue_scenario_lab generate consensus-max-rounds
 python -m issue_scenario_lab delete GENERATION_ID
 python -m issue_scenario_lab delete-all
 python -m issue_scenario_lab delete-active ISSUE_ID
@@ -96,6 +97,17 @@ collective reference for phase one; distinct manually converged phase-one
 matrices reach the `0.9` threshold and finish in phase one. Its maximum phase
 index is `3`. It requires the normal local Backend and DecisionModelsService,
 never accesses MongoDB directly, and is for local development only.
+
+`consensus-max-rounds` uses the same public single-criterion Herrera Viedma
+CRP contract on an exact continuous `[0, 1]` domain. It uses normal consensus
+with simulation disabled and manually submits two reciprocal expert matrices in
+each phase. Its consensus measures increase from `0.50` through `0.65`, `0.73`,
+and `0.80`, but remain below its `0.9` threshold. The inclusive maximum phase
+index is `3`, so phases `0` through `3` retain their previous-round collective
+references; phase three finalizes through `maxPhasesReached` and no phase four
+is created. It requires the normal local Backend and DecisionModelsService,
+remains compatible with `list-generated` and `delete`, and never accesses
+MongoDB directly.
 
 ## Development checks
 

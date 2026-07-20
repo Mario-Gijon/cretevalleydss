@@ -17,6 +17,8 @@ from issue_scenario_lab.scenarios.consensus_first_round import SCENARIO_ID as CO
 from issue_scenario_lab.scenarios.consensus_first_round import generate as generate_consensus_first_round
 from issue_scenario_lab.scenarios.consensus_later_round import SCENARIO_ID as CONSENSUS_LATER_ROUND_SCENARIO_ID
 from issue_scenario_lab.scenarios.consensus_later_round import generate as generate_consensus_later_round
+from issue_scenario_lab.scenarios.consensus_max_rounds import SCENARIO_ID as CONSENSUS_MAX_ROUNDS_SCENARIO_ID
+from issue_scenario_lab.scenarios.consensus_max_rounds import generate as generate_consensus_max_rounds
 from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARIO_ID as CRITERIA_WEIGHTING_SCENARIO_ID
@@ -223,6 +225,17 @@ def generate(
         CONSENSUS_LATER_ROUND_SCENARIO_ID: (
             generate_consensus_later_round,
             {"model": "Herrera Viedma CRP", "consensusThreshold": 0.9, "consensusMaxPhases": 3, "finalConsensusPhase": 1, "consensusReached": True},
+        ),
+        CONSENSUS_MAX_ROUNDS_SCENARIO_ID: (
+            generate_consensus_max_rounds,
+            {
+                "model": "Herrera Viedma CRP",
+                "consensusThreshold": 0.9,
+                "consensusMaxPhases": 3,
+                "finalConsensusPhase": 3,
+                "consensusReached": False,
+                "finalizationReason": "maxPhasesReached",
+            },
         ),
     }
     selected = generators.get(scenario_id)
