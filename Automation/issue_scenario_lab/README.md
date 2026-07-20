@@ -40,6 +40,7 @@ python -m issue_scenario_lab health
 python -m issue_scenario_lab check-user owner
 python -m issue_scenario_lab check-users
 python -m issue_scenario_lab list-generated
+python -m issue_scenario_lab recover-finished consensus-max-rounds --generation-id GENERATION_ID --issue-id ISSUE_ID
 python -m issue_scenario_lab show-config
 python -m issue_scenario_lab generate no-consensus-basic
 python -m issue_scenario_lab generate no-consensus-criteria-weighting
@@ -67,6 +68,12 @@ be confirmed and the manifest is retained. `delete-all` handles manifest entries
 sequentially and continues after failures. `delete-active` is only for partial
 active generation failures and refuses any issue whose name does not begin with
 `[AUTO:`.
+
+`recover-finished` is only for a scenario that already reached Finished but
+could not be recorded locally because validation or manifest persistence failed.
+It performs Finished list/detail reads, validates the full scenario contract,
+and writes the normal minimal manifest entry; it never recomputes or modifies
+the Backend issue.
 
 `no-consensus-criteria-weighting` uses TOPSIS with Manual Criteria Weights. It
 executes real expert manual weighting through `criteriaWeighting` →

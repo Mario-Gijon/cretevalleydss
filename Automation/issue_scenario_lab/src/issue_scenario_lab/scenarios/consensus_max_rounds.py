@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from issue_scenario_lab.api.issues import IssuesApi
@@ -55,6 +56,23 @@ PHASE_COLLECTIVE_VALUES = (
 )
 _CANONICAL_NAMES = ("Balanced choice", "Premium choice", "Budget choice")
 _TOLERANCE = 1e-6
+
+
+@dataclass(frozen=True)
+class RecoveryResult:
+    generation_id: str
+    issue_id: str
+    issue_name: str
+    manifest_path: str
+    recovered: bool
+
+
+@dataclass(frozen=True)
+class _FinishedCriteriaIdentity:
+    group_id: str
+    overall_id: str
+    all_ids: frozenset[str]
+    leaf_ids: frozenset[str]
 
 
 def _close(actual: Any, expected: float) -> bool:
@@ -310,27 +328,80 @@ def _validate_initial_participants(active: Any, emails: set[str]) -> None:
         raise ScenarioLabError("created issue does not contain exactly the configured expert invitations")
 
 
+def _finished_criteria_identity(detail: dict[str, Any]) -> _FinishedCriteriaIdentity:
+    criteria = detail.get("criteria")
+    nodes = criteria.get("nodes") if isinstance(criteria, dict) else None
+    if not isinstance(nodes, list) or len(nodes) != 2 or any(not isinstance(node, dict) for node in nodes):
+        raise ScenarioLabError("finished issue criteria tree is incompatible")
+    by_name = {node.get("name"): node for node in nodes}
+    group, overall = by_name.get("Decision factors"), by_name.get("Overall preference")
+    group_id, overall_id = _id(group) if isinstance(group, dict) else None, _id(overall) if isinstance(overall, dict) else None
+    if (
+        len(by_name) != 2
+        or not isinstance(group, dict)
+        or not isinstance(overall, dict)
+        or not group_id
+        or not overall_id
+        or group_id == overall_id
+        or group.get("type") != "group"
+        or group.get("isLeaf") is not False
+        or overall.get("isLeaf") is not True
+    ):
+        raise ScenarioLabError("finished issue criteria tree is incompatible")
+    return _FinishedCriteriaIdentity(group_id, overall_id, frozenset((group_id, overall_id)), frozenset((overall_id,)))
+
+
 def _validate_finished_contexts(
-    contexts: list[dict[str, Any]], issue_id: str, expected_contexts: list[dict[str, Any]], collectives: list[dict[str, Any]]
+    contexts: list[dict[str, Any]],
+    issue_id: str,
+    expected_contexts: list[dict[str, Any]],
+    collectives: list[dict[str, Any]],
+    criteria_identity: _FinishedCriteriaIdentity,
 ) -> None:
     if len(contexts) != 4 or [item.get("phase") for item in contexts] != [0, 1, 2, 3]:
         raise ScenarioLabError("finished issue evaluation contexts are incompatible")
     for phase, record in enumerate(contexts):
         source = record.get("serializedContext")
         alternatives, criteria = _ids(expected_contexts[phase])
+        criterion_ids = record.get("criterionIds")
+        leaf_criteria = _items(source, "leafCriteria") if isinstance(source, dict) else []
+        leaf_ids = [item.get("id") for item in leaf_criteria]
+        criteria_tree = source.get("criteriaTree") if isinstance(source, dict) else None
         if (
             record.get("structureKey") != "alternativePairwiseByCriterion"
             or record.get("modelId") is None
             or record.get("activeModelId") != record.get("modelId")
             or set(record.get("alternativeIds") or []) != set(alternatives.values())
-            or set(record.get("criterionIds") or []) != {next(iter(criteria.values()))}
+            or not isinstance(criterion_ids, list)
+            or len(criterion_ids) != len(criteria_identity.all_ids)
+            or set(criterion_ids) != criteria_identity.all_ids
             or not isinstance(source, dict)
             or _id(source.get("issue") or {}) != issue_id
             or (source.get("consensus") or {}).get("phase") != phase
             or {item.get("id") for item in _items(source, "alternatives")} != set(alternatives.values())
-            or {item.get("id") for item in _items(source, "leafCriteria")} != set(criteria.values())
+            or len(leaf_ids) != len(criteria_identity.leaf_ids)
+            or set(leaf_ids) != criteria_identity.leaf_ids
+            or set(criteria.values()) != criteria_identity.leaf_ids
+            or not isinstance(criteria_tree, list)
+            or len(criteria_tree) != 1
+            or not isinstance(criteria_tree[0], dict)
         ):
             raise ScenarioLabError("finished issue evaluation context identities are incompatible")
+        group = criteria_tree[0]
+        children = group.get("children")
+        if (
+            group.get("id") != criteria_identity.group_id
+            or group.get("name") != "Decision factors"
+            or group.get("type") != "group"
+            or not isinstance(children, list)
+            or len(children) != 1
+            or not isinstance(children[0], dict)
+            or children[0].get("id") != criteria_identity.overall_id
+            or children[0].get("name") != "Overall preference"
+            or children[0].get("type") != "benefit"
+            or children[0].get("children") != []
+        ):
+            raise ScenarioLabError("finished issue serialized criteria tree is incompatible")
         previous = (source.get("consensus") or {}).get("previousCollectiveEvaluations")
         if phase == 0 and previous not in ({}, None):
             raise ScenarioLabError("finished phase-zero context unexpectedly has previous collective evidence")
@@ -377,7 +448,7 @@ def _validate_finished(
     contexts: list[dict[str, Any]],
     collectives: list[dict[str, Any]],
     emails: set[str],
-    live_suggestion_keys: list[set[str]],
+    live_suggestion_keys: list[set[str]] | None,
 ) -> None:
     if not isinstance(detail, dict):
         raise ScenarioLabError("finished issue detail is incompatible")
@@ -399,6 +470,7 @@ def _validate_finished(
     ):
         raise ScenarioLabError("finished issue model and lifecycle are incompatible")
     _validate_finished_weights(detail, effective)
+    criteria_identity = _finished_criteria_identity(detail)
     rounds = consensus.get("rounds") if isinstance(consensus, dict) else None
     if (
         not isinstance(consensus, dict)
@@ -440,7 +512,7 @@ def _validate_finished(
         )
     ):
         raise ScenarioLabError("finished issue four-round evidence is incompatible")
-    _validate_finished_contexts(finished_contexts, issue_id, contexts, collectives)
+    _validate_finished_contexts(finished_contexts, issue_id, contexts, collectives, criteria_identity)
     for phase in range(4):
         alternatives, criteria = _ids(contexts[phase])
         for evaluation in [item for item in individual if item.get("phase") == phase]:
@@ -476,22 +548,91 @@ def _validate_finished(
         if "plots_graphic" in raw:
             _validate_plots(raw["plots_graphic"])
         finished_keys = set(raw.get("suggested_next_evaluations", {})) if isinstance(raw, dict) else set()
-        if finished_keys != live_suggestion_keys[phase] or finished_keys != participant_ids:
+        if finished_keys != participant_ids or (live_suggestion_keys is not None and finished_keys != live_suggestion_keys[phase]):
             raise ScenarioLabError("finished consensus suggestion identities are incompatible")
         _validate_suggestions(raw, contexts[phase], set())
+
+
+def _validate_aliases(sessions: SessionPool, aliases: tuple[str, str, str]) -> list[str]:
+    if len(set(aliases)) != 3 or any(alias not in sessions.users for alias in aliases):
+        raise ScenarioLabError(f"{SCENARIO_ID} requires distinct configured aliases: owner, expert_a, expert_b")
+    emails = [sessions.users[alias].email.strip().casefold() for alias in aliases]
+    if len(set(emails)) != 3:
+        raise ScenarioLabError("owner and expert emails must be distinct")
+    return emails
+
+
+def recover_finished(
+    sessions: SessionPool,
+    store: ManifestStore,
+    *,
+    generation_id: str,
+    issue_id: str,
+    owner_alias: str = "owner",
+    expert_a_alias: str = "expert_a",
+    expert_b_alias: str = "expert_b",
+) -> RecoveryResult:
+    """Validate and register one known Finished issue without changing Backend state.
+
+    Live compute suggestion keys are intentionally unavailable after a failed process;
+    recovery therefore validates their Finished internal identity consistency only.
+    """
+
+    aliases = (owner_alias, expert_a_alias, expert_b_alias)
+    emails = _validate_aliases(sessions, aliases)
+    issue_name = f"[AUTO:{generation_id}] Consensus · maximum rounds"
+    entries = store.list_entries()
+    by_generation = [entry for entry in entries if entry.generation_id == generation_id]
+    by_issue = [entry for entry in entries if entry.issue_id == issue_id]
+    if by_generation or by_issue:
+        exact = len(by_generation) == len(by_issue) == 1 and by_generation[0] == by_issue[0]
+        if exact and by_generation[0].scenario_id == SCENARIO_ID and by_generation[0].issue_name == issue_name:
+            return RecoveryResult(generation_id, issue_id, issue_name, str(store.path), True)
+        raise ScenarioLabError("recovery manifest identity conflicts with an existing generated issue")
+    try:
+        sessions.login(owner_alias)
+        owner = IssuesApi(sessions.client_for(owner_alias))
+        matches = [item for item in _items(owner.finished_issues(), "issues") if _id(item) == issue_id and item.get("name") == issue_name]
+        if len(matches) != 1:
+            raise ScenarioLabError("Finished issue does not match the requested generation ID, issue ID, and issue name")
+        detail = owner.finished_issue(issue_id)
+        evaluations = detail.get("evaluations") if isinstance(detail, dict) else None
+        finished_contexts = [item for item in _items(evaluations, "contexts") if item.get("stage") == STAGE]
+        if len(finished_contexts) != 4:
+            raise ScenarioLabError("Finished issue does not contain four alternative-evaluation contexts")
+        contexts = [item.get("serializedContext") for item in finished_contexts]
+        if any(not isinstance(context, dict) for context in contexts):
+            raise ScenarioLabError("Finished issue context is missing serializedContext")
+        typed_contexts = [context for context in contexts if isinstance(context, dict)]
+        collectives = [_collective(context, PHASE_COLLECTIVE_VALUES[phase]) for phase, context in enumerate(typed_contexts)]
+        _validate_finished(detail, issue_id, issue_name, typed_contexts, collectives, set(emails[1:]), None)
+        store.add(
+            GeneratedIssue(
+                generationId=generation_id,
+                scenarioId=SCENARIO_ID,
+                issueId=issue_id,
+                issueName=issue_name,
+                ownerAlias=owner_alias,
+                visibleUserAliases=list(aliases),
+            )
+        )
+        return RecoveryResult(generation_id, issue_id, issue_name, str(store.path), True)
+    except ManifestError as error:
+        raise ScenarioLabError(f"Finished issue validated but manifest persistence failed; issueId={issue_id}, issueName={issue_name}: {error}") from error
+    except ScenarioLabError:
+        raise
+    except Exception as error:
+        raise ScenarioLabError(f"{SCENARIO_ID} recovery failed (generationId={generation_id}, issueName={issue_name}, issueId={issue_id}): {error}") from error
 
 
 def generate(
     sessions: SessionPool, store: ManifestStore, *, owner_alias: str = "owner", expert_a_alias: str = "expert_a", expert_b_alias: str = "expert_b"
 ) -> GenerationResult:
     aliases = (owner_alias, expert_a_alias, expert_b_alias)
-    if len(set(aliases)) != 3 or any(alias not in sessions.users for alias in aliases):
-        raise ScenarioLabError(f"{SCENARIO_ID} requires distinct configured aliases: owner, expert_a, expert_b")
-    emails = [sessions.users[alias].email.strip().casefold() for alias in aliases]
-    if len(set(emails)) != 3:
-        raise ScenarioLabError("owner and expert emails must be distinct")
+    emails = _validate_aliases(sessions, aliases)
     generation_id, issue_id = _new_generation_id(store), None
     issue_name = f"[AUTO:{generation_id}] Consensus · maximum rounds"
+    known_finished = False
     try:
         for alias in aliases:
             sessions.login(alias)
@@ -542,6 +683,8 @@ def generate(
                 alternative_ids=alternative_ids,
                 forbidden=forbidden,
             )
+            if phase == 3:
+                known_finished = True
             contexts.append(phase_contexts[0])
             collectives.append(collective)
             live_suggestion_keys.append(keys)
@@ -554,6 +697,7 @@ def generate(
         finished = [item for item in _items(owner.finished_issues(), "issues") if _id(item) == issue_id or item.get("name") == issue_name]
         if len(finished) != 1:
             raise ScenarioLabError("computed issue could not be resolved uniquely from finished issues")
+        known_finished = True
         _validate_finished(owner.finished_issue(issue_id), issue_id, issue_name, contexts, collectives, set(emails[1:]), live_suggestion_keys)
         try:
             store.add(
@@ -571,6 +715,12 @@ def generate(
         return GenerationResult(generation_id, issue_id, issue_name, owner_alias, (expert_a_alias, expert_b_alias), str(store.path))
     except Exception as error:
         if issue_id:
+            if known_finished:
+                raise ScenarioLabError(
+                    f"{SCENARIO_ID} failed after the issue finished (generationId={generation_id}, issueName={issue_name}, issueId={issue_id}); "
+                    f"no manifest entry was written. Recover it with: python -m issue_scenario_lab recover-finished {SCENARIO_ID} "
+                    f"--generation-id {generation_id} --issue-id {issue_id}: {error}"
+                ) from error
             raise ScenarioLabError(
                 f"{SCENARIO_ID} failed after issue creation (generationId={generation_id}, issueName={issue_name}, issueId={issue_id}): {error}. "
                 f"If the issue remains active, use: python -m issue_scenario_lab delete-active {issue_id}"

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from typer.testing import CliRunner
 
 import issue_scenario_lab.scenarios.consensus_max_rounds as consensus_max_rounds
 from issue_scenario_lab.config import UserCredentials
 from issue_scenario_lab.errors import ScenarioLabError
+from issue_scenario_lab.manifest.models import GeneratedIssue
 from issue_scenario_lab.manifest.store import ManifestStore
 from issue_scenario_lab.scenarios.consensus_first_round import PARAMETERS
 from issue_scenario_lab.scenarios.consensus_max_rounds import (
@@ -17,12 +20,18 @@ from issue_scenario_lab.scenarios.consensus_max_rounds import (
     PHASE_RANKINGS,
     PHASE_SCORES,
     SCENARIO_ID,
+    RecoveryResult,
     _context,
     _matrix,
     _validate_plots,
     _validate_raw_collective,
     generate,
+    recover_finished,
 )
+
+RECOVERY_GENERATION_ID = "b93674b5d8"
+RECOVERY_ISSUE_ID = "6a5de767cacf4f65a174ce26"
+RECOVERY_ISSUE_NAME = "[AUTO:b93674b5d8] Consensus · maximum rounds"
 
 
 def _model() -> dict[str, Any]:
@@ -87,7 +96,7 @@ def _empty(phase: int) -> dict[str, Any]:
                     "id": "overall",
                     "name": "Overall preference",
                     "type": "benefit",
-                    "expressionDomain": {"typeKey": "numericContinuous", "definition": {"min": 0, "max": 1}},
+                    "expressionDomain": {"id": "domain", "typeKey": "numericContinuous", "definition": {"min": 0, "max": 1}},
                 }
             ],
             "consensus": {"phase": phase, "currentCollectiveEvaluations": {}, "previousCollectiveEvaluations": previous},
@@ -140,14 +149,18 @@ class FakeClient:
             return response
         if path == "/issues/finished":
             self.state["finished_index"] = len(self.state["calls"]) - 1
-            return {"issues": [{"id": "issue", "name": self.state["name"]}]}
-        if path == "/issues/finished/issue":
+            return {"issues": [{"id": self._issue_id, "name": self.state["name"]}]}
+        if path == f"/issues/finished/{self._issue_id}":
             return self._finished()
         raise AssertionError(f"unexpected request {self.alias} {method} {path}")
 
+    @property
+    def _issue_id(self) -> str:
+        return str(self.state.get("issue_id", "issue"))
+
     def _active(self) -> dict[str, Any]:
         return {
-            "id": "issue",
+            "id": self._issue_id,
             "name": self.state["name"],
             "currentStage": "alternativeEvaluation",
             "consensusCurrentPhase": self.state["phase"],
@@ -219,6 +232,24 @@ class FakeClient:
 
         def evaluation_context(phase: int) -> dict[str, Any]:
             serialized = _empty(phase)["evaluationContext"]
+            serialized["issue"]["id"] = self._issue_id
+            serialized["criteriaTree"] = [
+                {
+                    "id": "root",
+                    "name": "Decision factors",
+                    "type": "group",
+                    "expressionDomainId": None,
+                    "children": [
+                        {
+                            "id": "overall",
+                            "name": "Overall preference",
+                            "type": "benefit",
+                            "expressionDomainId": "domain",
+                            "children": [],
+                        }
+                    ],
+                }
+            ]
             return {
                 "stage": "alternativeEvaluation",
                 "phase": phase,
@@ -226,7 +257,7 @@ class FakeClient:
                 "modelId": "hv",
                 "activeModelId": "hv",
                 "alternativeIds": ["balanced", "premium", "budget"],
-                "criterionIds": ["overall"],
+                "criterionIds": ["root", "overall"],
                 "serializedContext": serialized,
             }
 
@@ -260,7 +291,7 @@ class FakeClient:
                 )
 
         return {
-            "issue": {"id": "issue", "name": self.state["name"]},
+            "issue": {"id": self._issue_id, "name": self.state["name"]},
             "lifecycle": {"currentStage": "finished", "active": False},
             "models": {
                 "base": {
@@ -326,6 +357,19 @@ class FakeSessions:
 
     def client_for(self, alias: str) -> FakeClient:
         return self.clients[alias]
+
+    def __enter__(self) -> FakeSessions:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+
+def _recovery_sessions() -> FakeSessions:
+    sessions = FakeSessions()
+    sessions.state["name"] = RECOVERY_ISSUE_NAME
+    sessions.state["issue_id"] = RECOVERY_ISSUE_ID
+    return sessions
 
 
 def test_four_round_flow_validates_finished_evidence_before_manifest(tmp_path: Path) -> None:
@@ -498,6 +542,172 @@ def test_compute_raw_or_plot_mismatch_does_not_write_manifest(tmp_path: Path, mi
     owner._compute = broken  # type: ignore[method-assign]
     with pytest.raises(ScenarioLabError):
         generate(sessions, store)
+    assert store.list_entries() == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "leaf-only-criterion-ids",
+        "group-only-criterion-ids",
+        "duplicate-criterion-ids",
+        "extra-criterion-id",
+        "group-in-leaf-criteria",
+        "missing-leaf-criteria",
+        "wrong-node-classification",
+        "wrong-criteria-tree",
+    ),
+)
+def test_finished_context_identity_mismatches_do_not_write_manifest(tmp_path: Path, mutation: str) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original = owner._finished
+
+    def broken() -> dict[str, Any]:
+        detail = original()
+        context = detail["evaluations"]["contexts"][0]
+        serialized = context["serializedContext"]
+        if mutation == "leaf-only-criterion-ids":
+            context["criterionIds"] = ["overall"]
+        elif mutation == "group-only-criterion-ids":
+            context["criterionIds"] = ["root"]
+        elif mutation == "duplicate-criterion-ids":
+            context["criterionIds"] = ["root", "root"]
+        elif mutation == "extra-criterion-id":
+            context["criterionIds"].append("unexpected")
+        elif mutation == "group-in-leaf-criteria":
+            serialized["leafCriteria"] = [{"id": "root", "name": "Decision factors", "type": "group"}]
+        elif mutation == "missing-leaf-criteria":
+            serialized["leafCriteria"] = []
+        elif mutation == "wrong-node-classification":
+            detail["criteria"]["nodes"][0]["isLeaf"] = True
+        else:
+            serialized["criteriaTree"][0]["children"] = []
+        return detail
+
+    owner._finished = broken  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError):
+        generate(sessions, store)
+    assert store.list_entries() == []
+
+
+def test_recover_finished_validates_and_registers_with_finished_reads_only(tmp_path: Path) -> None:
+    sessions, store = _recovery_sessions(), ManifestStore(tmp_path / "manifest.json")
+    result = recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id=RECOVERY_ISSUE_ID)
+    assert result.recovered is True
+    assert store.list_entries()[0].model_dump(by_alias=True) == {
+        "generationId": RECOVERY_GENERATION_ID,
+        "scenarioId": SCENARIO_ID,
+        "issueId": RECOVERY_ISSUE_ID,
+        "issueName": RECOVERY_ISSUE_NAME,
+        "ownerAlias": "owner",
+        "visibleUserAliases": ["owner", "expert_a", "expert_b"],
+    }
+    assert [(alias, method, path) for alias, method, path, _ in sessions.state["calls"]] == [
+        ("owner", "LOGIN", ""),
+        ("owner", "GET", "/issues/finished"),
+        ("owner", "GET", f"/issues/finished/{RECOVERY_ISSUE_ID}"),
+    ]
+
+
+def test_recover_finished_is_idempotent(tmp_path: Path) -> None:
+    sessions, store = _recovery_sessions(), ManifestStore(tmp_path / "manifest.json")
+    recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id=RECOVERY_ISSUE_ID)
+    calls_before = list(sessions.state["calls"])
+    result = recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id=RECOVERY_ISSUE_ID)
+    assert result.recovered is True
+    assert len(store.list_entries()) == 1
+    assert sessions.state["calls"] == calls_before
+
+
+def test_recover_finished_rejects_a_wrong_issue_id(tmp_path: Path) -> None:
+    sessions, store = _recovery_sessions(), ManifestStore(tmp_path / "manifest.json")
+    with pytest.raises(ScenarioLabError):
+        recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id="wrong-issue")
+    assert store.list_entries() == []
+
+
+def test_recover_finished_cli_uses_the_explicit_mapping(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from issue_scenario_lab import cli
+
+    sessions = _recovery_sessions()
+    settings = SimpleNamespace(manifest_file=tmp_path / "manifest.json")
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    monkeypatch.setattr("issue_scenario_lab.cli.SessionPool.from_settings", lambda _: sessions)
+    monkeypatch.setattr(
+        cli,
+        "recover_consensus_max_rounds_finished",
+        lambda *_args, **_kwargs: RecoveryResult(RECOVERY_GENERATION_ID, RECOVERY_ISSUE_ID, RECOVERY_ISSUE_NAME, str(settings.manifest_file), True),
+    )
+    result = CliRunner().invoke(
+        cli.app,
+        ["recover-finished", SCENARIO_ID, "--generation-id", RECOVERY_GENERATION_ID, "--issue-id", RECOVERY_ISSUE_ID],
+    )
+    assert result.exit_code == 0
+    assert "maxPhasesReached" in result.output
+    unsupported = CliRunner().invoke(cli.app, ["recover-finished", "not-supported", "--generation-id", "a", "--issue-id", "b"])
+    assert unsupported.exit_code == 1
+
+
+def test_finished_generation_failure_offers_recovery_not_delete_active(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original = owner._finished
+
+    def broken() -> dict[str, Any]:
+        detail = original()
+        detail["phaseResults"].pop()
+        return detail
+
+    owner._finished = broken  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError) as error:
+        generate(sessions, store)
+    assert "recover-finished consensus-max-rounds" in str(error.value)
+    assert "delete-active" not in str(error.value)
+
+
+@pytest.mark.parametrize("conflict", ("generation", "issue"))
+def test_recover_finished_rejects_manifest_identity_conflicts(tmp_path: Path, conflict: str) -> None:
+    sessions, store = _recovery_sessions(), ManifestStore(tmp_path / "manifest.json")
+    store.add(
+        GeneratedIssue(
+            generationId=RECOVERY_GENERATION_ID if conflict == "generation" else "other-generation",
+            scenarioId=SCENARIO_ID,
+            issueId="other-issue" if conflict == "generation" else RECOVERY_ISSUE_ID,
+            issueName="[AUTO:other] Consensus · maximum rounds",
+            ownerAlias="owner",
+            visibleUserAliases=["owner", "expert_a", "expert_b"],
+        )
+    )
+    with pytest.raises(ScenarioLabError):
+        recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id=RECOVERY_ISSUE_ID)
+    assert sessions.state["calls"] == []
+
+
+@pytest.mark.parametrize("mutation", ("wrong-name", "wrong-contract", "broken-context", "broken-evidence", "wrong-suggestion-ids"))
+def test_recover_finished_rejects_invalid_finished_contract_without_manifest(tmp_path: Path, mutation: str) -> None:
+    sessions, store = _recovery_sessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    if mutation == "wrong-name":
+        sessions.state["name"] = "[AUTO:b93674b5d8] Wrong name"
+    else:
+        original = owner._finished
+
+        def broken() -> dict[str, Any]:
+            detail = original()
+            if mutation == "wrong-contract":
+                detail["consensus"]["finalizationReason"] = "consensusReached"
+            elif mutation == "broken-context":
+                detail["evaluations"]["contexts"][0]["criterionIds"] = ["overall"]
+            elif mutation == "broken-evidence":
+                detail["phaseResults"].pop()
+            else:
+                detail["phaseResults"][0]["rawOutput"]["suggested_next_evaluations"] = {"unexpected": {}}
+            return detail
+
+        owner._finished = broken  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError):
+        recover_finished(sessions, store, generation_id=RECOVERY_GENERATION_ID, issue_id=RECOVERY_ISSUE_ID)
     assert store.list_entries() == []
 
 

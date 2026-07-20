@@ -19,6 +19,7 @@ from issue_scenario_lab.scenarios.consensus_later_round import SCENARIO_ID as CO
 from issue_scenario_lab.scenarios.consensus_later_round import generate as generate_consensus_later_round
 from issue_scenario_lab.scenarios.consensus_max_rounds import SCENARIO_ID as CONSENSUS_MAX_ROUNDS_SCENARIO_ID
 from issue_scenario_lab.scenarios.consensus_max_rounds import generate as generate_consensus_max_rounds
+from issue_scenario_lab.scenarios.consensus_max_rounds import recover_finished as recover_consensus_max_rounds_finished
 from issue_scenario_lab.scenarios.no_consensus_basic import SCENARIO_ID
 from issue_scenario_lab.scenarios.no_consensus_basic import generate as generate_no_consensus_basic
 from issue_scenario_lab.scenarios.no_consensus_criteria_weighting import SCENARIO_ID as CRITERIA_WEIGHTING_SCENARIO_ID
@@ -185,6 +186,49 @@ def delete_active(issue_id: str, owner_alias: str = "owner") -> None:
         _raise_cli_error(error)
     console.print(
         {"issueId": result.issue_id, "issueName": result.issue_name, "ownerAlias": result.owner_alias, "deletionConfirmed": result.deletion_confirmed}
+    )
+
+
+@app.command("recover-finished")
+def recover_finished(
+    scenario_id: str,
+    generation_id: str = typer.Option(..., "--generation-id"),
+    issue_id: str = typer.Option(..., "--issue-id"),
+    owner_alias: str = "owner",
+    expert_a_alias: str = "expert_a",
+    expert_b_alias: str = "expert_b",
+) -> None:
+    """Validate and register one Finished scenario that was not recorded locally."""
+
+    if scenario_id != CONSENSUS_MAX_ROUNDS_SCENARIO_ID:
+        _raise_cli_error(ScenarioLabError(f"Unsupported recovery scenario: {scenario_id}. Supported: {CONSENSUS_MAX_ROUNDS_SCENARIO_ID}"))
+    try:
+        settings = _settings()
+        with SessionPool.from_settings(settings) as sessions:
+            result = recover_consensus_max_rounds_finished(
+                sessions,
+                ManifestStore(settings.manifest_file),
+                generation_id=generation_id,
+                issue_id=issue_id,
+                owner_alias=owner_alias,
+                expert_a_alias=expert_a_alias,
+                expert_b_alias=expert_b_alias,
+            )
+    except ScenarioLabError as error:
+        _raise_cli_error(error)
+    console.print(
+        {
+            "generationId": result.generation_id,
+            "scenarioId": scenario_id,
+            "issueId": result.issue_id,
+            "issueName": result.issue_name,
+            "recovered": result.recovered,
+            "finalConsensusPhase": 3,
+            "consensusReached": False,
+            "finalizationReason": "maxPhasesReached",
+            "finalStage": "finished",
+            "manifest": result.manifest_path,
+        }
     )
 
 
