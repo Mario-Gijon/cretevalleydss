@@ -85,7 +85,12 @@ class FakeClient:
         if path == "/issues/models":
             return {"models": [_model()]}
         if path == "/issues/users":
-            return {"users": [{"id": "expert-a-id", "email": "a@example.test"}, {"id": "expert-b-id", "email": "b@example.test"}]}
+            return {
+                "users": [
+                    {"name": "Expert A", "university": "Test University", "email": "a@example.test"},
+                    {"name": "Expert B", "university": "Test University", "email": "b@example.test"},
+                ]
+            }
         if path == "/issues/expression-domains":
             return {"globals": [{"id": "domain", "typeKey": "numericContinuous", "definition": {"min": 0, "max": 1}}], "userDomains": []}
         if path == "/issues" and method == "POST":
@@ -256,12 +261,15 @@ class FakeClient:
                 "finalWeights": {"source": {"kind": "directModelParameters", "stageResultId": None}, "byCriterionId": {"overall": 1.0}},
             },
             "participants": [
-                {"invitationStatus": "accepted", "evaluationCompleted": True, "expert": {"email": "a@example.test"}},
-                {"invitationStatus": "accepted", "evaluationCompleted": True, "expert": {"email": "b@example.test"}},
+                {"invitationStatus": "accepted", "evaluationCompleted": True, "expert": {"id": "expert-a-id", "email": "a@example.test"}},
+                {"invitationStatus": "accepted", "evaluationCompleted": True, "expert": {"id": "expert-b-id", "email": "b@example.test"}},
             ],
             "participantHistory": {
                 "summary": {"total": 2, "participated": 2, "notParticipated": 0, "participatedPercentage": 100},
-                "records": [{"participated": True, "participationKey": "participated", "weight": None}] * 2,
+                "records": [
+                    {"participated": True, "participationKey": "participated", "weight": None, "expert": {"id": "expert-a-id", "email": "a@example.test"}},
+                    {"participated": True, "participationKey": "participated", "weight": None, "expert": {"id": "expert-b-id", "email": "b@example.test"}},
+                ],
             },
             "evaluations": {
                 "individual": [
@@ -324,6 +332,131 @@ def test_two_round_fake_http_flow_writes_manifest_after_finished_validation(tmp_
     assert calls[final_compute_index + 1][2] == "/issues/finished"
     assert sessions.state["finished_lookup_call_index"] == final_compute_index + 1
     assert not any(call[2].endswith("/evaluations/alternativeEvaluation") or call[2].endswith("/submit") for call in calls[final_compute_index + 1 :])
+
+
+def test_idless_catalogue_still_requires_each_configured_expert_email_before_creation(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_request = owner.request
+
+    def missing_expert(method: str, path: str, *, json: Any = None) -> Any:
+        if path == "/issues/users":
+            return {"users": [{"name": "Expert A", "university": "Test University", "email": "a@example.test"}]}
+        return original_request(method, path, json=json)
+
+    owner.request = missing_expert  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="absent from the Backend user catalogue"):
+        generate(sessions, store)
+    assert not any(call[1] == "POST" and call[2] == "/issues" for call in sessions.state["calls"])
+    assert store.list_entries() == []
+
+
+def test_duplicate_configured_expert_email_fails_before_creation(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    sessions.users["expert_b"] = UserCredentials(email="a@example.test", password="secret")
+
+    with pytest.raises(ScenarioLabError, match="emails must be distinct"):
+        generate(sessions, store)
+    assert not any(call[1] == "POST" and call[2] == "/issues" for call in sessions.state["calls"])
+    assert store.list_entries() == []
+
+
+@pytest.mark.parametrize("keys", [("", "expert-b-id"), ("expert_a", "expert-b-id"), ("a@example.test", "expert-b-id"), ("expert-a-id",)])
+def test_phase_zero_suggestion_identity_shape_is_rejected_without_a_manifest(tmp_path: Path, keys: tuple[str, ...]) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_result = owner._result
+
+    def invalid_suggestions(phase: int) -> dict[str, Any]:
+        result = original_result(phase)
+        if phase == 0:
+            suggestion = next(iter(result["rawOutput"]["suggested_next_evaluations"].values()))
+            result["rawOutput"]["suggested_next_evaluations"] = {key: suggestion for key in keys}
+        return result
+
+    owner._result = invalid_suggestions  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="phase-zero suggestions"):
+        generate(sessions, store)
+    assert store.list_entries() == []
+
+
+def test_phase_zero_suggestion_payload_shape_remains_required(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_result = owner._result
+
+    def missing_payload(phase: int) -> dict[str, Any]:
+        result = original_result(phase)
+        if phase == 0:
+            result["rawOutput"]["suggested_next_evaluations"]["expert-a-id"] = {}
+        return result
+
+    owner._result = missing_payload  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="suggestion payload"):
+        generate(sessions, store)
+    assert store.list_entries() == []
+
+
+@pytest.mark.parametrize("keys", [("expert-a-id", "unknown-expert-id"), ("unknown-a", "unknown-b")])
+def test_finished_cross_checks_phase_zero_suggestion_ids_against_participants(tmp_path: Path, keys: tuple[str, str]) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_result = owner._result
+
+    def unknown_suggestions(phase: int) -> dict[str, Any]:
+        result = original_result(phase)
+        if phase == 0:
+            suggestion = next(iter(result["rawOutput"]["suggested_next_evaluations"].values()))
+            result["rawOutput"]["suggested_next_evaluations"] = {key: suggestion for key in keys}
+        return result
+
+    owner._result = unknown_suggestions  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="finished consensus suggestion identities"):
+        generate(sessions, store)
+    assert store.list_entries() == []
+
+
+def test_finished_reconciles_live_phase_zero_suggestion_keys_with_its_raw_output(tmp_path: Path) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_compute = owner._compute
+
+    def mismatched_compute() -> dict[str, Any]:
+        response = original_compute()
+        if response["consensusPhase"] == 1 and response["currentStage"] == "alternativeEvaluation":
+            suggestions = response["result"]["rawOutput"]["suggested_next_evaluations"]
+            suggestion = next(iter(suggestions.values()))
+            response["result"]["rawOutput"]["suggested_next_evaluations"] = {"expert-a-id": suggestion, "expert-b-mismatch": suggestion}
+        return response
+
+    owner._compute = mismatched_compute  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError, match="finished consensus suggestion identities"):
+        generate(sessions, store)
+    assert store.list_entries() == []
+
+
+@pytest.mark.parametrize("mutation", ["missing-id", "duplicate-id", "evaluation-id", "phase-one-suggestions"])
+def test_finished_identity_contract_mismatches_do_not_write_a_manifest(tmp_path: Path, mutation: str) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original_finished = owner._finished
+
+    def invalid_finished() -> dict[str, Any]:
+        detail = original_finished()
+        if mutation == "missing-id":
+            detail["participants"][0]["expert"].pop("id")
+        elif mutation == "duplicate-id":
+            detail["participants"][1]["expert"]["id"] = "expert-a-id"
+        elif mutation == "evaluation-id":
+            detail["evaluations"]["individual"][0]["expertId"] = "unknown-expert-id"
+        else:
+            detail["phaseResults"][1]["rawOutput"]["suggested_next_evaluations"] = {"expert-a-id": {}}
+        return detail
+
+    owner._finished = invalid_finished  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError):
+        generate(sessions, store)
+    assert store.list_entries() == []
 
 
 def test_phase_matrices_are_complete_reciprocal_and_distinct() -> None:

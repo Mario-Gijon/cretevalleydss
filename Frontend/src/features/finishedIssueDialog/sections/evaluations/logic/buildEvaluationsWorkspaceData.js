@@ -235,11 +235,11 @@ const latestEvidence = (payload, alternativePhase) =>
         new Date(left?.updatedAt || left?.createdAt || 0).getTime()
     )[0] || null;
 
-const selectionFor = ({ payload, selectedConsensusPhase, selectedExpertId }) => {
+const selectionFor = ({ payload, selectedPhase, selectedExpertId }) => {
   const consensusEnabled = payload?.consensus?.enabled === true;
   const alternativePhase = defaultPhase(
     stagePhases(payload, "alternativeEvaluation"),
-    consensusEnabled ? selectedConsensusPhase : null
+    consensusEnabled ? selectedPhase : null
   );
   const criteriaPhase = stagePhases(payload, "criteriaWeighting").at(-1) ?? null;
   const expertOptions = expertOptionsFor({
@@ -261,12 +261,12 @@ const selectionFor = ({ payload, selectedConsensusPhase, selectedExpertId }) => 
 
 export const resolveEvaluationsWorkspaceSelection = ({
   payload,
-  selectedConsensusPhase,
+  selectedPhase,
   selectedExpertId,
 }) => {
   const selection = selectionFor({
     payload,
-    selectedConsensusPhase,
+    selectedPhase,
     selectedExpertId,
   });
   const criteria = stageDataFor({
@@ -283,18 +283,15 @@ export const resolveEvaluationsWorkspaceSelection = ({
   });
 
   return {
-    selectedConsensusPhase: selection.consensusEnabled
-      ? selection.alternativePhase
-      : null,
     selectedExpertId: selection.selectedExpertId,
     canShowCollective: criteria.canShowCollective || alternative.canShowCollective,
   };
 };
 
-export const buildEvaluationsWorkspaceData = ({ payload, selection }) => {
+export const buildEvaluationsWorkspaceData = ({ payload, selection, selectedPhase = null }) => {
   const resolved = selectionFor({
     payload,
-    selectedConsensusPhase: selection?.selectedConsensusPhase,
+    selectedPhase,
     selectedExpertId: selection?.selectedExpertId,
   });
   const criteriaWeighting = stageDataFor({

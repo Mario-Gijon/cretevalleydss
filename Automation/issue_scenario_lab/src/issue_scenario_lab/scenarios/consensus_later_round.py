@@ -144,11 +144,16 @@ def _validate_compute(
         raise ScenarioLabError("consensus raw output is incompatible")
 
 
-def _validate_phase_zero_suggestions(raw: Any, expert_ids: set[str], collective: dict[str, Any]) -> None:
+def _validate_phase_zero_suggestions(raw: Any, collective: dict[str, Any], forbidden_identity_strings: set[str]) -> set[str]:
     suggestions = raw.get("suggested_next_evaluations") if isinstance(raw, dict) else None
     criterion_ids, alternative_ids = set(collective), set(next(iter(collective.values()), {}))
-    if not isinstance(suggestions, dict) or set(suggestions) != expert_ids:
-        raise ScenarioLabError("phase-zero suggestions do not use the persisted expert identities")
+    keys = set(suggestions) if isinstance(suggestions, dict) else set()
+    if (
+        not isinstance(suggestions, dict)
+        or len(keys) != 2
+        or any(not isinstance(key, str) or not key.strip() or key.casefold() in forbidden_identity_strings for key in keys)
+    ):
+        raise ScenarioLabError("phase-zero suggestions do not use two persisted expert identity keys")
     for suggestion in suggestions.values():
         payload = suggestion.get("payload") if isinstance(suggestion, dict) else None
         if not isinstance(payload, dict) or set(payload) != criterion_ids:
@@ -161,6 +166,7 @@ def _validate_phase_zero_suggestions(raw: Any, expert_ids: set[str], collective:
                     raise ScenarioLabError("phase-zero suggestion matrix is incomplete")
                 if any(not isinstance(cell, dict) or not _finite(cell.get("value")) or not 0 <= cell["value"] <= 1 for cell in row.values()):
                     raise ScenarioLabError("phase-zero suggestion values are incompatible")
+    return keys
 
 
 def _validate_active(active: Any, phase: int, emails: set[str] | None = None) -> None:
@@ -192,7 +198,15 @@ def _validate_active(active: Any, phase: int, emails: set[str] | None = None) ->
             raise ScenarioLabError("active issue participants were not reset for the next consensus phase")
 
 
-def _validate_finished(detail: Any, issue_id: str, issue_name: str, phase_zero: dict[str, Any], phase_one: dict[str, Any], emails: set[str]) -> None:
+def _validate_finished(
+    detail: Any,
+    issue_id: str,
+    issue_name: str,
+    phase_zero: dict[str, Any],
+    phase_one: dict[str, Any],
+    emails: set[str],
+    phase_zero_suggestion_keys: set[str],
+) -> None:
     if not isinstance(detail, dict):
         raise ScenarioLabError("finished issue detail is incompatible")
     issue, lifecycle, models, consensus = detail.get("issue"), detail.get("lifecycle"), detail.get("models"), detail.get("consensus")
@@ -227,10 +241,19 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, phase_zero: 
     ):
         raise ScenarioLabError("finished issue consensus rounds are incompatible")
     participants = [item for item in _items(detail, "participants") if item.get("invitationStatus") == "accepted"]
+    participant_ids_by_email: dict[str, str] = {}
+    for participant in participants:
+        expert = participant.get("expert")
+        email = str((expert or {}).get("email", "")).casefold()
+        expert_id = (expert or {}).get("id")
+        if not isinstance(expert, dict) or not isinstance(expert_id, str) or not expert_id.strip() or email in participant_ids_by_email:
+            raise ScenarioLabError("finished participant does not expose a distinct persisted expert identity")
+        participant_ids_by_email[email] = expert_id
     history = detail.get("participantHistory")
     if (
         len(participants) != 2
-        or {str((item.get("expert") or {}).get("email", "")).casefold() for item in participants} != emails
+        or set(participant_ids_by_email) != emails
+        or len(set(participant_ids_by_email.values())) != 2
         or any(item.get("evaluationCompleted") is not True for item in participants)
         or not isinstance(history, dict)
         or history.get("summary") != {"total": 2, "participated": 2, "notParticipated": 0, "participatedPercentage": 100}
@@ -248,7 +271,7 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, phase_zero: 
     phases = [item for item in _items(detail, "phaseResults") if item.get("stage") == STAGE]
     if (
         len(individual) != 4
-        or {(item.get("phase"), item.get("expertId")) for item in individual}.__len__() != 4
+        or any({item.get("expertId") for item in individual if item.get("phase") == phase} != set(participant_ids_by_email.values()) for phase in (0, 1))
         or any(
             item.get("completed") is not True or item.get("structureKey") != "alternativePairwiseByCriterion" or not item.get("submittedAt")
             for item in individual
@@ -266,6 +289,16 @@ def _validate_finished(detail: Any, issue_id: str, issue_name: str, phase_zero: 
     _validate_ranking(phases[1].get("rankedAlternatives"), alternative_ids)
     _validate_lifecycle((phases[0].get("modelSpecificOutput") or {}).get("consensusLifecycle"), phase=0, reached=False)
     _validate_lifecycle((phases[1].get("modelSpecificOutput") or {}).get("consensusLifecycle"), phase=1, reached=True)
+    phase_zero_raw = phases[0].get("rawOutput")
+    phase_one_raw = phases[1].get("rawOutput")
+    phase_zero_finished_keys = set((phase_zero_raw or {}).get("suggested_next_evaluations", {})) if isinstance(phase_zero_raw, dict) else set()
+    if (
+        phase_zero_finished_keys != set(participant_ids_by_email.values())
+        or phase_zero_suggestion_keys != phase_zero_finished_keys
+        or not isinstance(phase_one_raw, dict)
+        or phase_one_raw.get("suggested_next_evaluations") != {}
+    ):
+        raise ScenarioLabError("finished consensus suggestion identities are incompatible")
 
 
 def generate(
@@ -288,9 +321,6 @@ def generate(
         user_by_email = {str(item.get("email", "")).casefold(): item for item in users}
         if not set(emails[1:]) <= set(user_by_email):
             raise ScenarioLabError("configured expert is absent from the Backend user catalogue")
-        expert_ids = {_id(user_by_email[email]) for email in emails[1:]}
-        if None in expert_ids:
-            raise ScenarioLabError("configured expert is missing a persisted user ID")
         domain = _domain(owner.expression_domains())
         owner.create_issue(_payload(issue_name, _id(model) or "", emails[1:], _id(domain) or ""))
         matches = [item for item in _items(owner.active_issues(), "issues") if item.get("name") == issue_name]
@@ -319,10 +349,10 @@ def generate(
             reached=False,
             alternative_ids=alternative_ids,
         )
-        _validate_phase_zero_suggestions(
+        phase_zero_suggestion_keys = _validate_phase_zero_suggestions(
             (phase_zero_result.get("result") or {}).get("rawOutput"),
-            {str(value) for value in expert_ids},
             phase_zero_collective,
+            {identity.casefold() for identity in (*aliases, *emails)},
         )
         active_after = [item for item in _items(owner.active_issues(), "issues") if _id(item) == issue_id]
         if len(active_after) != 1:
@@ -348,7 +378,9 @@ def generate(
         finished = [item for item in _items(owner.finished_issues(), "issues") if _id(item) == issue_id or item.get("name") == issue_name]
         if len(finished) != 1:
             raise ScenarioLabError("computed issue could not be resolved uniquely from finished issues")
-        _validate_finished(owner.finished_issue(issue_id), issue_id, issue_name, phase_zero_collective, phase_one_collective, set(emails[1:]))
+        _validate_finished(
+            owner.finished_issue(issue_id), issue_id, issue_name, phase_zero_collective, phase_one_collective, set(emails[1:]), phase_zero_suggestion_keys
+        )
         try:
             store.add(
                 GeneratedIssue(

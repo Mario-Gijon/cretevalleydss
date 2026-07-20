@@ -1,26 +1,25 @@
 import { Box, Stack, Typography } from "@mui/material";
 
 import { rankingListViewportSx, rankingRowSx, rankingScoreTrackSx } from "../resultsAnalysis.styles.js";
-
-const widthPercent = ({ score, min, max }) => {
-  if (typeof score !== "number" || !Number.isFinite(score)) return 0;
-  if (max === min) return 100;
-  return 12 + ((score - min) / (max - min)) * 88;
-};
+import { buildScoreBarGeometry } from "../logic/buildScoreBarGeometry.js";
 
 const RankingList = ({ ranking, compact = false, showDescriptions = false }) => {
   const numericScores = ranking
     .map((entry) => entry.score)
     .filter((score) => typeof score === "number" && Number.isFinite(score));
-  const min = numericScores.length ? Math.min(...numericScores) : 0;
-  const max = numericScores.length ? Math.max(...numericScores) : 0;
+  const domainMin = numericScores.length ? Math.min(0, ...numericScores) : 0;
+  const domainMax = numericScores.length ? Math.max(0, ...numericScores) : 0;
 
   return (
     <Box sx={rankingListViewportSx(compact)}>
       <Stack spacing={0.8}>
         {ranking.map((entry) => {
           const winner = entry.position === 1;
-          const scoreWidth = widthPercent({ score: entry.score, min, max });
+          const scoreBarGeometry = buildScoreBarGeometry({
+            score: entry.score,
+            domainMin,
+            domainMax,
+          });
 
           return (
             <Box key={entry.id} sx={rankingRowSx(winner, compact)}>
@@ -68,15 +67,35 @@ const RankingList = ({ ranking, compact = false, showDescriptions = false }) => 
                     {entry.description}
                   </Typography>
                 ) : null}
-                <Box sx={rankingScoreTrackSx(compact)}>
+                <Box
+                  sx={{ ...rankingScoreTrackSx(compact), position: "relative" }}
+                  data-score-zero-percent={scoreBarGeometry.zeroPercent}
+                  data-score-bar-width={scoreBarGeometry.widthPercent}
+                >
                   <Box
                     sx={{
-                      width: `${scoreWidth}%`,
+                      position: "absolute",
+                      left: `${scoreBarGeometry.leftPercent}%`,
+                      width: `${scoreBarGeometry.widthPercent}%`,
                       height: "100%",
                       borderRadius: 99,
                       bgcolor: winner ? "success.main" : "secondary.main",
                     }}
                   />
+                  {scoreBarGeometry.showZeroMarker ? (
+                    <Box
+                      aria-hidden="true"
+                      sx={{
+                        position: "absolute",
+                        left: `${scoreBarGeometry.zeroPercent}%`,
+                        top: 0,
+                        width: 1,
+                        height: "100%",
+                        bgcolor: "rgba(255,255,255,0.42)",
+                        transform: "translateX(-0.5px)",
+                      }}
+                    />
+                  ) : null}
                 </Box>
               </Box>
               <Box sx={{ textAlign: "right", flex: "0 0 auto" }}>

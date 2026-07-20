@@ -1,4 +1,5 @@
 import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from "../../../logic/selectFinishedIssueExecution.js";
+import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssuePhaseLabel.js";
 import { buildRankingMovement, buildSpearmanCorrelationMatrix } from "./buildRankingComparison.js";
 import { buildResultsVisualizationsData } from "./buildResultsVisualizationsData.js";
 import { RESULTS_ANALYSIS_SLOT_COLORS } from "./resultsAnalysisColors.js";
@@ -10,17 +11,7 @@ const formatScore = (value) => {
   return Number(value.toFixed(4)).toString();
 };
 
-const resolveFinalBaseExecution = (payload) => {
-  const execution = selectFinishedIssueExecution(payload, "base");
-  const finalPhase = asArray(execution.phaseResults).at(-1) || null;
-  return {
-    ...execution,
-    sourcePhase: finalPhase?.phase ?? execution.sourcePhase ?? null,
-    standardizedOutput: finalPhase?.standardizedOutput ?? execution.standardizedOutput ?? null,
-  };
-};
-
-const resolveExecution = (payload, key) => key === "base" ? resolveFinalBaseExecution(payload) : selectFinishedIssueExecution(payload, key);
+const resolveExecution = (payload, key, selectedPhase) => selectFinishedIssueExecution(payload, key, key === "base" ? selectedPhase : null);
 
 const normalizeRanking = ({ payload, execution }) => {
   const alternatives = new Map(asArray(payload?.alternatives).map((alternative) => [alternative?.id, alternative]));
@@ -46,7 +37,7 @@ const getUnavailableReason = (execution, ranking) => {
   return ranking.length ? null : "This execution does not contain a standardized ranking.";
 };
 
-const baseLabel = (modelName) => `Base (${modelName || "—"})`;
+const baseLabel = () => "Base";
 
 const visibleExecutionLabels = (executions) => {
   const candidateCounts = executions.reduce((counts, execution) => {
@@ -63,8 +54,8 @@ const visibleExecutionLabels = (executions) => {
   });
 };
 
-const buildExecution = ({ payload, option, slotIndex = 0 }) => {
-  const execution = resolveExecution(payload, option.key);
+const buildExecution = ({ payload, option, selectedPhase = null, slotIndex = 0 }) => {
+  const execution = resolveExecution(payload, option.key, selectedPhase);
   const ranking = normalizeRanking({ payload, execution });
   const unavailableReason = getUnavailableReason(execution, ranking);
   const name = option.label || execution?.label || "—";
@@ -85,9 +76,13 @@ const buildExecution = ({ payload, option, slotIndex = 0 }) => {
     available: !unavailableReason,
     unavailableReason,
     sourcePhase: execution?.sourcePhase ?? null,
+    phaseLabel: type === "base" ? formatFinishedIssuePhaseLabel({ phase: execution?.sourcePhase, orderedPhases: execution?.phaseResults?.map((result) => result.phase) }) : null,
     // Keep the controlled source on this local execution shape. The
     // visualization builder reads only standardizedOutput.plotsGraphic.
     standardizedOutput: execution?.standardizedOutput ?? null,
+    consensusMeasure: execution?.consensusMeasure ?? null,
+    modelSpecificOutput: execution?.modelSpecificOutput ?? null,
+    rawOutput: execution?.rawOutput ?? null,
   };
 };
 
@@ -101,14 +96,14 @@ export const buildResultsAnalysisSelectableOptions = (payload) => buildFinishedI
   };
 });
 
-export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKeys }) => {
+export const buildResultsAnalysisWorkspaceData = ({ payload, selectedExecutionKeys, selectedPhase = null }) => {
   const selectableOptions = buildResultsAnalysisSelectableOptions(payload);
   const optionsByKey = new Map(selectableOptions.map((option) => [option.key, option]));
   const selected = visibleExecutionLabels(asArray(selectedExecutionKeys)
     .slice(0, 3)
     .map((key, slotIndex) => {
       const option = optionsByKey.get(key);
-      return option ? buildExecution({ payload, option, slotIndex }) : null;
+      return option ? buildExecution({ payload, option, selectedPhase, slotIndex }) : null;
     })
     .filter(Boolean));
   const mode = selected.length > 1 ? "comparison" : "single";

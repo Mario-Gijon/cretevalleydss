@@ -1,4 +1,4 @@
-import { buildConsensusData } from "../../consensus/logic/buildConsensusData.js";
+import { buildConsensusEvolutionData } from "./buildConsensusEvolutionData.js";
 import { normalizePlotsGraphic } from "../../../shared/logic/buildFinishedIssueGraphs.js";
 
 export const ANALYTICAL_PROJECTION_TOLERANCE = 1e-4;
@@ -182,7 +182,7 @@ const visualGroup = (group, projection = group.representative) => ({
 });
 
 const buildConsensusVisualization = (payload) => {
-  const consensus = buildConsensusData(payload);
+  const consensus = buildConsensusEvolutionData(payload);
   const data = consensus.graph.data.map((value) => finite(value) ? value : null);
   return { enabled: consensus.enabled === true, available: consensus.enabled === true && data.some((value) => value !== null), graph: { labels: consensus.graph.labels, data, threshold: finite(consensus.threshold) ? consensus.threshold : null } };
 };
@@ -194,7 +194,8 @@ const buildSingleScatter = (execution) => {
     unavailableReason: unavailableReason(normalized),
     // Single-execution rendering intentionally keeps the approved stored view;
     // absolute reconstruction is only needed to compare independent MDS frames.
-    data: normalized?.isValid ? [{ expertPoints: normalized.expertPoints, collectivePoint: normalized.collectivePoint }] : null,
+    sourcePhase: execution?.sourcePhase ?? 0,
+    data: normalized?.isValid ? { [execution?.sourcePhase ?? 0]: { expertPoints: normalized.expertPoints, collectivePoint: normalized.collectivePoint } } : null,
   };
 };
 

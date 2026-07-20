@@ -11,7 +11,6 @@ vi.mock("../../../../src/features/finishedIssueDialog/context/finishedIssueDialo
 vi.mock("../../../../src/features/finishedIssueDialog/sections/dashboard", () => ({ DashboardSection: () => <div>Dashboard section</div> }));
 vi.mock("../../../../src/features/finishedIssueDialog/sections/overview", () => ({ OverviewSection: () => <div>Overview section</div> }));
 vi.mock("../../../../src/features/finishedIssueDialog/sections/resultsAnalysis", () => ({ ResultsAnalysisSection: () => <div>Results section</div> }));
-vi.mock("../../../../src/features/finishedIssueDialog/sections/consensus", () => ({ ConsensusSection: () => <div>Consensus section</div> }));
 vi.mock("../../../../src/features/finishedIssueDialog/sections/evaluations", () => ({ EvaluationsSection: () => <div>Evaluations section</div> }));
 vi.mock("../../../../src/features/finishedIssueDialog/sections/models", () => ({ ModelsSection: () => <div>Models section</div> }));
 

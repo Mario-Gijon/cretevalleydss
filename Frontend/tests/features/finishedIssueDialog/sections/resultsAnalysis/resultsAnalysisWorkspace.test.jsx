@@ -14,6 +14,7 @@ import RankingCorrelationMatrix from "../../../../../src/features/finishedIssueD
 import RankingMovementChart from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/components/RankingMovementChart.jsx";
 import { getScoreOverviewChartHeight } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/scoreOverviewChartHeight.js";
 import { buildScoreOverviewSeries } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildScoreOverviewSeries.js";
+import { buildConsensusEvolutionData } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildConsensusEvolutionData.js";
 import { comparisonDetailPanelSx, comparisonOutcomeGridSx, correlationCellSx, correlationMatrixSx, correlationMatrixViewportSx, movementChartViewportSx, rankingListViewportSx, rankingScoreTrackSx, scoreChartContainerSx, scoreChartViewportSx, scoreOverviewPanelSx, singleOutcomeGridSx } from "../../../../../src/features/finishedIssueDialog/sections/resultsAnalysis/resultsAnalysis.styles.js";
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -54,6 +55,40 @@ describe("Results analysis workspace", () => {
     expect(JSON.stringify(payload)).toBe(snapshot);
   });
 
+  it("uses the selected stored base phase consistently and falls back safely to the final phase", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const initial = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"], selectedPhase: 0 });
+    const final = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"], selectedPhase: 5 });
+    const fallback = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"], selectedPhase: 99 });
+    const nullFallback = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base"], selectedPhase: null });
+
+    expect(initial.primary).toMatchObject({ sourcePhase: 0, phaseLabel: "Initial", modelSpecificOutput: { token: "base-initial" }, rawOutput: { token: "base-initial-raw" }, consensusMeasure: 0.4 });
+    expect(initial.primary.ranking.map((entry) => [entry.name, entry.score])).toEqual([["Alpha", 0.7], ["Beta", 0.3]]);
+    expect(initial.visualizations.singleScatter).toMatchObject({ sourcePhase: 0, data: { 0: { collectivePoint: { x: -0.5, y: 0.25 } } } });
+    expect(final.primary).toMatchObject({ sourcePhase: 5, phaseLabel: "Final (Round 1)", modelSpecificOutput: { token: "base" }, rawOutput: { token: "base-raw" }, consensusMeasure: 0.9 });
+    expect(final.primary.ranking.map((entry) => [entry.name, entry.score])).toEqual([["Beta", 0.8], ["Alpha", 0.2]]);
+    expect(final.visualizations.singleScatter).toMatchObject({ sourcePhase: 5, data: { 5: { collectivePoint: { x: 3.5, y: 1 } } } });
+    expect(fallback.primary.sourcePhase).toBe(5);
+    expect(nullFallback.primary.sourcePhase).toBe(5);
+  });
+
+  it("keeps scenarios static while changing only the selected Base comparison", () => {
+    const payload = buildFinishedIssuePayloadFixture();
+    const initial = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-ok"], selectedPhase: 0 });
+    const final = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-ok"], selectedPhase: 5 });
+
+    expect(initial.selected[0].ranking.map((entry) => entry.name)).toEqual(["Alpha", "Beta"]);
+    expect(final.selected[0].ranking.map((entry) => entry.name)).toEqual(["Beta", "Alpha"]);
+    expect(initial.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].outputs.standardResult });
+    expect(final.selected[1]).toMatchObject({ sourcePhase: 5, standardizedOutput: payload.scenarios[0].outputs.standardResult });
+    expect(initial.comparison.movement).not.toEqual(final.comparison.movement);
+  });
+
+  it("keeps the consensus evolution complete and labels every round with the shared formatter", () => {
+    const graph = buildConsensusEvolutionData(buildFinishedIssuePayloadFixture()).graph;
+    expect(graph).toEqual({ labels: ["Initial", "Final (Round 1)"], data: [0.4, 0.9] });
+  });
+
   it("uses short Results Analysis labels while retaining full scenario labels for detail", () => {
     const payload = buildFinishedIssuePayloadFixture();
     const topsis = completeScenario("scenario-topsis", [["a", 1, 1], ["b", 2, 0]]);
@@ -61,7 +96,7 @@ describe("Results analysis workspace", () => {
     topsis.targetModel.name = "TOPSIS";
     payload.scenarios = [topsis];
     const data = buildResultsAnalysisWorkspaceData({ payload, selectedExecutionKeys: ["base", "scenario-topsis"] });
-    expect(data.selected[0].shortLabel).toContain("Base ·");
+    expect(data.selected[0].shortLabel).toBe("Base");
     expect(data.selected[1]).toMatchObject({ shortLabel: "TOPSIS v2", displayLabel: "TOPSIS v2", fullLabel: "TOPSIS v2 · TOPSIS", modelName: "TOPSIS" });
   });
 

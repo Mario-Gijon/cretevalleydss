@@ -14,9 +14,9 @@ export const selectAlternativePhaseResults = (payload) =>
     .slice()
     .sort((left, right) => left.phase - right.phase);
 
-export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "base") => {
+export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "base", selectedPhase = null) => {
   const basePhaseResults = selectAlternativePhaseResults(payload);
-  const basePhase = basePhaseResults.at(-1) || null;
+  const basePhase = basePhaseResults.find((result) => result.phase === selectedPhase) || basePhaseResults.at(-1) || null;
   const scenarios = asArray(payload?.scenarios);
   const scenario = scenarios.find((entry) => entry?.id === selectedExecutionKey) || null;
 
@@ -30,6 +30,7 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
       sourcePhase: basePhase?.phase ?? null,
       phaseResults: basePhaseResults,
       standardizedOutput: basePhase?.standardizedOutput ?? null,
+      consensusMeasure: basePhase?.consensusMeasure ?? null,
       modelSpecificOutput: basePhase?.modelSpecificOutput ?? null,
       rawOutput: basePhase?.rawOutput ?? null,
       scenario: null,
@@ -53,6 +54,7 @@ export const selectFinishedIssueExecution = (payload, selectedExecutionKey = "ba
       : null,
     phaseResults: [],
     standardizedOutput: scenario?.outputs?.standardResult ?? null,
+    consensusMeasure: scenario?.outputs?.standardResult?.consensusMeasure ?? null,
     modelSpecificOutput: scenario?.outputs?.modelExecution ?? null,
     rawOutput: scenario?.outputs?.rawOutput ?? null,
     scenario,

@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { resolveEvaluationsWorkspaceSelection } from "../sections/evaluations";
 
-export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
-  const [selectedConsensusPhase, setSelectedConsensusPhase] = useState(null);
+export const useFinishedIssueEvaluationsSelection = ({ payload, selectedPhase }) => {
   const [selectedExpertId, setSelectedExpertId] = useState(null);
   const [showCollective, setShowCollective] = useState(false);
 
@@ -11,22 +10,19 @@ export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
     () =>
       resolveEvaluationsWorkspaceSelection({
         payload,
-        selectedConsensusPhase,
+        selectedPhase,
         selectedExpertId,
         showCollective,
       }),
     [
       payload,
-      selectedConsensusPhase,
+      selectedPhase,
       selectedExpertId,
       showCollective,
     ]
   );
 
   useEffect(() => {
-    if (selection.selectedConsensusPhase !== selectedConsensusPhase) {
-      setSelectedConsensusPhase(selection.selectedConsensusPhase);
-    }
     if (selection.selectedExpertId !== selectedExpertId) {
       setSelectedExpertId(selection.selectedExpertId);
     }
@@ -34,18 +30,15 @@ export const useFinishedIssueEvaluationsSelection = ({ payload }) => {
       setShowCollective(false);
     }
   }, [
-    selectedConsensusPhase,
     selectedExpertId,
     selection,
     showCollective,
   ]);
 
   return {
-    selectedConsensusPhase,
     selectedExpertId,
     showCollective,
 
-    setSelectedConsensusPhase,
     setSelectedExpertId,
     setShowCollective,
   };

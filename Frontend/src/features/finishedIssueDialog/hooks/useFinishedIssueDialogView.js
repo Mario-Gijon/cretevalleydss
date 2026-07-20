@@ -19,9 +19,8 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
   });
   const navigation = useFinishedIssueNavigation({
     payload: data.payload,
-    selectedExecutionType: runs.selectedExecution.type,
   });
-  const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload });
+  const evaluationsSelection = useFinishedIssueEvaluationsSelection({ payload: data.payload, selectedPhase: navigation.selectedPhase });
   const resultsExecutionOptions = useMemo(
     () => buildResultsAnalysisSelectableOptions(data.payload),
     [data.payload]
@@ -40,7 +39,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       selectedExecutionKey: runs.selectedExecutionKey,
       selectedModelName: runs.selectedExecution.model?.name || "—",
       executionOptions: runs.executionOptions,
-      showRounds: runs.selectedExecution.type === "base" && navigation.basePhases.length > 1,
+      showRounds: navigation.basePhases.length > 1,
       selectedPhase: navigation.selectedPhase,
       basePhases: navigation.basePhases,
       selectExecution: runs.selectExecution,
@@ -66,7 +65,7 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       selectedPhase: navigation.selectedPhase,
       selection: resultsSelection,
     },
-    evaluationsSelection,
+    evaluationsSelection: { ...evaluationsSelection, selectedPhase: navigation.selectedPhase },
     runs,
     models: {
       addDialog: runs.addDialog,

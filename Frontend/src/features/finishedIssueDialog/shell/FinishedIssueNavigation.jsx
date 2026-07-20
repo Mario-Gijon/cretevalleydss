@@ -3,7 +3,6 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
 import { finishedIssueNavigationSx } from "./finishedIssueShell.styles";
@@ -13,7 +12,6 @@ const TAB_LABELS = {
   overview: "Overview",
   "results-analysis": "Results analysis",
   evaluations: "Evaluations",
-  consensus: "Consensus",
   models: "Models",
 };
 
@@ -22,7 +20,6 @@ const TAB_ICONS = {
   overview: <InfoOutlinedIcon fontSize="small" />,
   "results-analysis": <InsightsRoundedIcon fontSize="small" />,
   evaluations: <GroupsRoundedIcon fontSize="small" />,
-  consensus: <TimelineRoundedIcon fontSize="small" />,
   models: <ScienceRoundedIcon fontSize="small" />,
 };
 
