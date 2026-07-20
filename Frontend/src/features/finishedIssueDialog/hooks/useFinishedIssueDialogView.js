@@ -39,7 +39,8 @@ export const useFinishedIssueDialogView = ({ selectedIssue, openFinishedIssueDia
       selectedExecutionKey: runs.selectedExecutionKey,
       selectedModelName: runs.selectedExecution.model?.name || "—",
       executionOptions: runs.executionOptions,
-      showRounds: navigation.basePhases.length > 1,
+      showRounds:
+        runs.selectedExecution.type === "base" && navigation.basePhases.length > 1,
       selectedPhase: navigation.selectedPhase,
       basePhases: navigation.basePhases,
       selectExecution: runs.selectExecution,

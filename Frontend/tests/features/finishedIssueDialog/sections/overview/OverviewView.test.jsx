@@ -41,7 +41,7 @@ describe("OverviewView", () => {
     expect(screen.getByRole("heading", { name: "Configuration & domains" })).toBeInTheDocument();
     expect(screen.getByText("Finished issue")).toBeInTheDocument();
     expect(screen.getByText("Canonical fixture")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 experts participated")).toBeInTheDocument();
+    expect(screen.getByText("1/1 accepted experts completed")).toBeInTheDocument();
     expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,1");
 
     ["Issue information", "Alternatives", "Criteria structure", "Experts & participation", "Configuration & domains"].forEach((title) => {
@@ -108,7 +108,7 @@ describe("OverviewView", () => {
     expect(data.evidence.resultId).toBe("alt-5");
     expect(data.participation.completionPercentage).toBeNull();
     renderView(data);
-    expect(screen.getByText("0 of 1 experts participated")).toBeInTheDocument();
+    expect(screen.getByText("No accepted participants")).toBeInTheDocument();
     expect(screen.getByText("alt-5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy result ID" })).toBeEnabled();
   });

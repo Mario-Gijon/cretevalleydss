@@ -1,5 +1,5 @@
 import { createRef, useState } from "react";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@mui/x-data-grid", () => ({
@@ -127,7 +127,10 @@ describe("AlternativeCriteriaMatrixView", () => {
     );
 
     const input = screen.getByRole("spinbutton");
-    const validationResult = viewRef.current.validatePayloadRead();
+    let validationResult;
+    act(() => {
+      validationResult = viewRef.current.validatePayloadRead();
+    });
 
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Value must be between 0 and 10.")).not.toBeInTheDocument();
