@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+import issue_scenario_lab.scenarios.consensus_max_rounds as consensus_max_rounds
 from issue_scenario_lab.config import UserCredentials
 from issue_scenario_lab.errors import ScenarioLabError
 from issue_scenario_lab.manifest.store import ManifestStore
@@ -18,6 +19,8 @@ from issue_scenario_lab.scenarios.consensus_max_rounds import (
     SCENARIO_ID,
     _context,
     _matrix,
+    _validate_plots,
+    _validate_raw_collective,
     generate,
 )
 
@@ -52,6 +55,17 @@ def _model() -> dict[str, Any]:
 def _collective(phase: int) -> dict[str, Any]:
     bp, pb, bu, ub, pu, up = PHASE_COLLECTIVE_VALUES[phase]
     return {"overall": {"balanced": {"premium": bp, "budget": bu}, "premium": {"balanced": pb, "budget": pu}, "budget": {"balanced": ub, "premium": up}}}
+
+
+def _raw_collective(phase: int) -> dict[str, list[list[float]]]:
+    rows = _collective(phase)["overall"]
+    alternative_ids = ("balanced", "premium", "budget")
+    return {
+        "overall": [
+            [0.5 if row_id == column_id else rows[row_id][column_id] for column_id in alternative_ids]
+            for row_id in alternative_ids
+        ]
+    }
 
 
 def _empty(phase: int) -> dict[str, Any]:
@@ -185,7 +199,7 @@ class FakeClient:
             "rawOutput": {
                 "cm": PHASE_MEASURES[phase],
                 "collective_scores": list(scores),
-                "collective_evaluations": collective,
+                "collective_evaluations": _raw_collective(phase),
                 "plots_graphic": plots,
                 "suggested_next_evaluations": suggestions,
             },
@@ -320,6 +334,9 @@ def test_four_round_flow_validates_finished_evidence_before_manifest(tmp_path: P
     calls = sessions.state["calls"]
     assert result.issue_id == "issue"
     assert store.list_entries()[0].scenario_id == SCENARIO_ID
+    assert [sessions.clients["owner"]._result(phase)["rawOutput"]["collective_evaluations"] for phase in range(4)] == [
+        _raw_collective(phase) for phase in range(4)
+    ]
     assert sessions.state["gets"] == [(alias, phase) for phase in range(4) for alias in ("expert_a", "expert_b")]
     assert [phase for _, phase, _ in sessions.state["submits"]] == [0, 0, 1, 1, 2, 2, 3, 3]
     assert sessions.state["computes"] == [0, 1, 2, 3]
@@ -375,6 +392,86 @@ def test_all_four_matrix_pairs_are_complete_reciprocal_and_distinct() -> None:
     assert all(left < right < 0.9 for left, right in zip(PHASE_MEASURES, PHASE_MEASURES[1:], strict=False))
 
 
+@pytest.mark.parametrize("phase", range(4))
+def test_real_raw_collective_matrices_are_accepted(phase: int) -> None:
+    _validate_raw_collective(_raw_collective(phase), _collective(phase), "overall")
+
+
+def test_canonical_raw_collective_compatibility_representation_is_accepted() -> None:
+    _validate_raw_collective(_collective(0), _collective(0), "overall")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda raw: raw["overall"][0].__setitem__(0, 0.0),
+        lambda raw: raw["overall"][0].__setitem__(1, 0.0),
+        lambda raw: raw["overall"].pop(),
+        lambda raw: raw["overall"][0].pop(),
+        lambda raw: raw["overall"][0].__setitem__(1, float("nan")),
+    ],
+    ids=("wrong-diagonal", "wrong-off-diagonal", "missing-row", "wrong-row-length", "non-finite-cell"),
+)
+def test_invalid_raw_collective_matrices_are_rejected(mutate: Any) -> None:
+    raw = _raw_collective(0)
+    mutate(raw)
+    with pytest.raises(ScenarioLabError):
+        _validate_raw_collective(raw, _collective(0), "overall")
+
+
+def test_raw_collective_rejects_an_unexpected_criterion_id() -> None:
+    raw = {"unexpected": _raw_collective(0)["overall"]}
+    with pytest.raises(ScenarioLabError):
+        _validate_raw_collective(raw, _collective(0), "overall")
+
+
+def test_list_valued_raw_collective_is_never_validated_as_canonical(monkeypatch: pytest.MonkeyPatch) -> None:
+    called = False
+    original = consensus_max_rounds._validate_collective
+
+    def canonical_only(raw_collective: Any, expected: dict[str, Any]) -> None:
+        nonlocal called
+        called = True
+        assert isinstance(raw_collective["overall"], dict)
+        original(raw_collective, expected)
+
+    monkeypatch.setattr(consensus_max_rounds, "_validate_collective", canonical_only)
+    consensus_max_rounds._validate_raw_collective(_raw_collective(0), _collective(0), "overall")
+    assert called is False
+
+
+def test_valid_snake_case_plots_graphic_is_accepted() -> None:
+    _validate_plots({"expert_points": [[0.1, -0.1], [-0.1, 0.1]], "collective_point": [0.0, 0.0], "extra": "tolerated"})
+
+
+@pytest.mark.parametrize(
+    "plots_graphic",
+    [
+        {"collective_point": [0.0, 0.0]},
+        {"expert_points": [[0.0, 0.0]], "collective_point": [0.0, 0.0]},
+        {"expert_points": [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], "collective_point": [0.0, 0.0]},
+        {"expert_points": [[0.0, "bad"], [0.0, 0.0]], "collective_point": [0.0, 0.0]},
+        {"expert_points": [[0.0, None], [0.0, 0.0]], "collective_point": [0.0, 0.0]},
+        {"expert_points": [[0.0, 0.0], [0.0, 0.0]]},
+        {"expert_points": [[0.0, 0.0], [0.0, 0.0]], "collective_point": [0.0, float("nan")]},
+        {"expert_points": [[0.0, 0.0], [0.0, 0.0]], "collective_point": [0.0, float("inf")]},
+    ],
+    ids=(
+        "missing-expert-points",
+        "one-expert-point",
+        "three-expert-points",
+        "bad-expert-coordinate",
+        "null-expert-coordinate",
+        "missing-collective-point",
+        "nan-collective-coordinate",
+        "non-finite-collective-coordinate",
+    ),
+)
+def test_invalid_snake_case_plots_graphic_is_rejected(plots_graphic: dict[str, Any]) -> None:
+    with pytest.raises(ScenarioLabError):
+        _validate_plots(plots_graphic)
+
+
 def test_creation_payload_and_idless_user_catalogue_are_supported(tmp_path: Path) -> None:
     sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
     generate(sessions, store)
@@ -382,6 +479,26 @@ def test_creation_payload_and_idless_user_catalogue_are_supported(tmp_path: Path
     assert payload["criteriaWeightingConfig"]["payload"] == {"weightsByCriterion": {"criterion-overall": 1.0}}
     assert payload["addedExperts"] == ["a@example.test", "b@example.test"]
     assert payload["paramValues"] == PARAMETERS
+
+
+@pytest.mark.parametrize("mismatch", ("raw", "plots"))
+def test_compute_raw_or_plot_mismatch_does_not_write_manifest(tmp_path: Path, mismatch: str) -> None:
+    sessions, store = FakeSessions(), ManifestStore(tmp_path / "manifest.json")
+    owner = sessions.clients["owner"]
+    original = owner._compute
+
+    def broken(phase: int) -> dict[str, Any]:
+        response = original(phase)
+        if phase == 0 and mismatch == "raw":
+            response["result"]["rawOutput"]["collective_evaluations"]["overall"][0][0] = 0.0
+        if phase == 0 and mismatch == "plots":
+            response["result"]["plotsGraphic"]["expert_points"] = [[0.0, 0.0]]
+        return response
+
+    owner._compute = broken  # type: ignore[method-assign]
+    with pytest.raises(ScenarioLabError):
+        generate(sessions, store)
+    assert store.list_entries() == []
 
 
 @pytest.mark.parametrize("mutation", ["transition", "previous", "finished-phase", "phase-four"])

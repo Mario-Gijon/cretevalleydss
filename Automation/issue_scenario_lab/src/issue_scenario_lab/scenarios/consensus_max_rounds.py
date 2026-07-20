@@ -145,40 +145,46 @@ def _collective(context: dict[str, Any], values: tuple[float, float, float, floa
     return {criteria["Overall preference"]: {balanced: {premium: bp, budget: bu}, premium: {balanced: pb, budget: pu}, budget: {balanced: ub, premium: up}}}
 
 
-def _validate_plots(value: Any) -> None:
-    if not isinstance(value, dict):
+def _validate_plots(plots_graphic: Any) -> None:
+    if not isinstance(plots_graphic, dict):
+        raise ScenarioLabError("consensus plotsGraphic is incompatible")
+    expert_points = plots_graphic.get("expert_points")
+    collective_point = plots_graphic.get("collective_point")
+    if (
+        not isinstance(expert_points, list)
+        or len(expert_points) != 2
+        or any(
+            not isinstance(point, list) or len(point) != 2 or any(not _finite(coordinate) for coordinate in point)
+            for point in expert_points
+        )
+        or not isinstance(collective_point, list)
+        or len(collective_point) != 2
+        or any(not _finite(coordinate) for coordinate in collective_point)
+    ):
         raise ScenarioLabError("consensus plotsGraphic is incompatible")
 
 
 def _validate_raw_collective(raw_collective: Any, expected: dict[str, Any], criterion_id: str) -> None:
     """Validate either canonical matrices or the model's matrix-with-diagonal form."""
 
-    if isinstance(raw_collective, dict) and set(raw_collective) == set(expected):
+    if not isinstance(raw_collective, dict) or set(raw_collective) != {criterion_id}:
+        raise ScenarioLabError("consensus raw collective matrix is incompatible")
+    candidate = raw_collective[criterion_id]
+    if isinstance(candidate, dict):
         _validate_collective(raw_collective, expected)
         return
-    matrix = raw_collective.get(criterion_id) if isinstance(raw_collective, dict) else raw_collective
-    if not isinstance(matrix, list) or len(matrix) != 3 or any(not isinstance(row, list) or len(row) != 3 for row in matrix):
+    if not isinstance(candidate, list) or len(candidate) != 3 or any(not isinstance(row, list) or len(row) != 3 for row in candidate):
         raise ScenarioLabError("consensus raw collective matrix is incompatible")
-    rows = expected[criterion_id]
-    alternative_ids = list(rows)
+    expected_rows = expected[criterion_id]
+    alternative_ids = tuple(expected_rows)
     for row_index, row_id in enumerate(alternative_ids):
         for column_index, column_id in enumerate(alternative_ids):
-            value = matrix[row_index][column_index]
-            if not _finite(value):
+            cell = candidate[row_index][column_index]
+            if not _finite(cell):
                 raise ScenarioLabError("consensus raw collective matrix contains a non-finite value")
-            expected_value = 0.5 if row_index == column_index else rows[row_id][column_id]
-            if not _close(value, expected_value):
+            expected_cell = 0.5 if row_index == column_index else expected_rows[row_id][column_id]
+            if not _close(cell, expected_cell):
                 raise ScenarioLabError("consensus raw collective matrix does not match the computed phase")
-    points, collective = value.get("expert_points"), value.get("collective_point")
-    if (
-        not isinstance(points, list)
-        or len(points) != 2
-        or any(not isinstance(point, list) or len(point) != 2 or any(not _finite(cell) for cell in point) for point in points)
-        or not isinstance(collective, list)
-        or len(collective) != 2
-        or any(not _finite(cell) for cell in collective)
-    ):
-        raise ScenarioLabError("consensus plotsGraphic is incompatible")
 
 
 def _validate_suggestions(raw: Any, context: dict[str, Any], forbidden: set[str]) -> set[str]:
