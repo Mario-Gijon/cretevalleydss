@@ -4,7 +4,7 @@ import { buildResultsAnalysisData, RESULTS_ANALYSIS_VIEWS } from "../resultsAnal
 import { buildEvaluationsData } from "../evaluations";
 import { buildEvaluationsPreview } from "../evaluations";
 import { buildOverviewData, buildOverviewPreview } from "../overview";
-import { buildConsensusData, buildConsensusPreview } from "../consensus";
+import { buildConsensusEvolutionData, buildConsensusEvolutionPreview } from "../resultsAnalysis/logic/buildConsensusEvolutionData.js";
 import { buildModelsData, buildModelsPreview } from "../models";
 import { buildDashboardData } from "./logic/buildFinishedIssueDashboardData";
 import DashboardView from "./components/DashboardView";
@@ -17,7 +17,7 @@ const DashboardSection = () => {
     overview: buildOverviewPreview(buildOverviewData(dialog.payload)),
     evaluations: buildEvaluationsPreview(evaluations),
     results,
-    consensus: buildConsensusPreview(buildConsensusData(dialog.payload)),
+    consensus: buildConsensusEvolutionPreview(buildConsensusEvolutionData(dialog.payload)),
     models: buildModelsPreview(buildModelsData({ payload: dialog.payload, selectedExecution: runs.selectedExecution })),
   });
   const open = (view) => () => navigation.selectTab(view);

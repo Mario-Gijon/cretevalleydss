@@ -4,7 +4,7 @@ import { selectAlternativePhaseResults } from "../logic/selectFinishedIssueExecu
 import { FINISHED_ISSUE_TABS, FINISHED_ISSUE_VIEWS } from "../shared/logic/finishedIssueNavigation.js";
 import { RESULTS_ANALYSIS_VIEWS } from "../sections/resultsAnalysis";
 
-export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) => {
+export const useFinishedIssueNavigation = ({ payload }) => {
   const [activeView, setActiveView] = useState(FINISHED_ISSUE_VIEWS.DASHBOARD);
   const [activeResultsAnalysisView, setActiveResultsAnalysisView] = useState(RESULTS_ANALYSIS_VIEWS.OUTCOME);
   const [selectedPhase, setSelectedPhase] = useState(null);
@@ -12,22 +12,15 @@ export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) =
     () => selectAlternativePhaseResults(payload).map((result) => result.phase),
     [payload]
   );
-  const hasConsensus = payload?.consensus?.enabled === true;
 
   useEffect(() => {
     setSelectedPhase(basePhases.at(-1) ?? null);
   }, [payload, basePhases]);
   useEffect(() => {
-    if (selectedExecutionType === "base" && !basePhases.includes(selectedPhase)) {
+    if (!basePhases.includes(selectedPhase)) {
       setSelectedPhase(basePhases.at(-1) ?? null);
     }
-  }, [basePhases, selectedExecutionType, selectedPhase]);
-  useEffect(() => {
-    if (activeView === FINISHED_ISSUE_VIEWS.CONSENSUS && !hasConsensus) {
-      setActiveView(FINISHED_ISSUE_VIEWS.DASHBOARD);
-    }
-  }, [activeView, hasConsensus]);
-
+  }, [basePhases, selectedPhase]);
   const handleSelectTab = (tab) => {
     if (tab === FINISHED_ISSUE_TABS.RESULTS_ANALYSIS) {
       setActiveResultsAnalysisView(RESULTS_ANALYSIS_VIEWS.OUTCOME);
@@ -36,14 +29,13 @@ export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) =
   };
   const handleChangePhase = (phase) => {
     const next = Number(phase);
-    if (selectedExecutionType === "base" && basePhases.includes(next)) setSelectedPhase(next);
+    if (basePhases.includes(next)) setSelectedPhase(next);
   };
   const availableTabs = [
     FINISHED_ISSUE_TABS.DASHBOARD,
     FINISHED_ISSUE_TABS.OVERVIEW,
     FINISHED_ISSUE_TABS.RESULTS_ANALYSIS,
     FINISHED_ISSUE_TABS.EVALUATIONS,
-    ...(hasConsensus ? [FINISHED_ISSUE_TABS.CONSENSUS] : []),
     FINISHED_ISSUE_TABS.MODELS,
   ];
 
@@ -52,7 +44,6 @@ export const useFinishedIssueNavigation = ({ payload, selectedExecutionType }) =
     activeResultsAnalysisView,
     selectedPhase,
     basePhases,
-    hasConsensus,
     availableTabs,
     setActiveResultsAnalysisView,
     handleChangePhase,

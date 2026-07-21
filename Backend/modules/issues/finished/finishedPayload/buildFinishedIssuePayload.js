@@ -12,6 +12,7 @@ import { serializeExpressionDomains } from "./serializers/serializeExpressionDom
 import { serializeIssue, serializeLifecycle } from "./serializers/serializeIssue.js";
 import { serializeModels } from "./serializers/serializeModels.js";
 import { serializeParticipants } from "./serializers/serializeParticipants.js";
+import { serializeParticipantHistory } from "./serializers/serializeParticipantHistory.js";
 import { serializePhaseResults } from "./serializers/serializePhaseResults.js";
 import { serializeScenarios } from "./serializers/serializeScenarios.js";
 import {
@@ -83,6 +84,7 @@ export const buildFinishedIssuePayload = async ({ issue }) => {
     criteria,
     expressionDomains,
     participants: serializeParticipants(loaded),
+    participantHistory: serializeParticipantHistory(loaded),
     evaluations,
     phaseResults,
     consensus: serializeConsensus({ issue, phaseResults }),

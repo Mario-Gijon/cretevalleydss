@@ -44,3 +44,11 @@ ApiModels/.env.*
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Local Issue Scenario Lab state and Python tooling
+Automation/issue_scenario_lab/.venv/
+Automation/issue_scenario_lab/.env
+Automation/issue_scenario_lab/users.local.yaml
+Automation/issue_scenario_lab/.issue-scenario-lab/
+Automation/issue_scenario_lab/.pytest_cache/
+Automation/issue_scenario_lab/.ruff_cache/

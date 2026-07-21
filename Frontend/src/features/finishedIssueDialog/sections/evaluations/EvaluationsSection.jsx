@@ -10,6 +10,7 @@ const EvaluationsSection = () => {
   const data = buildEvaluationsWorkspaceData({
     payload: dialog.payload,
     selection: evaluationsSelection,
+    selectedPhase: evaluationsSelection.selectedPhase,
   });
 
   return (

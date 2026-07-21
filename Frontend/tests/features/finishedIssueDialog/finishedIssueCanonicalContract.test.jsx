@@ -10,7 +10,7 @@ import { buildFinishedIssueExecutionOptions, selectFinishedIssueExecution } from
 import { buildEvaluationsData } from "../../../src/features/finishedIssueDialog/sections/evaluations/logic/buildEvaluationsData.js";
 import { buildOverviewData } from "../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 import { buildResultsAnalysisData } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildResultsAnalysisData.js";
-import { buildConsensusData } from "../../../src/features/finishedIssueDialog/sections/consensus/logic/buildConsensusData.js";
+import { buildConsensusEvolutionData } from "../../../src/features/finishedIssueDialog/sections/resultsAnalysis/logic/buildConsensusEvolutionData.js";
 import { createIssueScenario, getFinishedIssueInfo, removeIssueScenario } from "../../../src/services/issue.service";
 import { buildFinishedIssuePayloadFixture } from "../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
@@ -38,7 +38,7 @@ describe("Finished Issue canonical contract", () => {
     expect(buildOverviewData(payload).general.model).toBe("Base model");
     expect(buildResultsAnalysisData({ payload, selectedExecution: base, selectedPhase: 5 }).outcome.winner.name).toBe("Beta");
     expect(buildResultsAnalysisData({ payload, selectedExecution: scenario, selectedPhase: 5 }).outcome.winner.name).toBe("Alpha");
-    expect(buildConsensusData(payload).rounds.map((round) => round.phase)).toEqual([0, 5]);
+    expect(buildConsensusEvolutionData(payload).rounds.map((round) => round.phase)).toEqual([0, 5]);
     const evaluations = buildEvaluationsData({ payload, selectedStage: "criteriaWeighting", selectedPhase: 1, selectedExpertId: "expert-1" });
     expect(evaluations.renderer).toMatchObject({ stage: "criteriaWeighting", readOnly: true });
     expect(evaluations.individual.payload).toEqual({ weights: [0.4, 0.6] });
@@ -55,6 +55,7 @@ describe("Finished Issue canonical contract", () => {
     await waitFor(() => expect(result.current.dialog.loading).toBe(false));
     expect(getFinishedIssueInfo).toHaveBeenCalledTimes(1);
     expect(result.current.header.selectedPhase).toBe(5);
+    expect(result.current.navigation.availableTabs).toEqual(["dashboard", "overview", "results-analysis", "evaluations", "models"]);
     act(() => result.current.header.selectExecution("scenario-ok"));
     expect(result.current.runs.selectedExecution.type).toBe("scenario");
     expect(result.current.header.showRounds).toBe(false);

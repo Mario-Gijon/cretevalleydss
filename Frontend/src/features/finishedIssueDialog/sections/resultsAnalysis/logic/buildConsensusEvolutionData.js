@@ -1,12 +1,14 @@
+import { formatFinishedIssuePhaseLabel } from "../../../logic/formatFinishedIssuePhaseLabel.js";
+
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
-export const buildConsensusData = (payload) => {
+export const buildConsensusEvolutionData = (payload) => {
   const consensus = payload?.consensus || {};
   const phaseById = new Map(asArray(payload?.phaseResults).map((result) => [result?.id, result]));
   const rounds = asArray(consensus.rounds)
     .map((round) => ({ ...round, phaseResult: phaseById.get(round?.phaseResultId) || null }))
     .sort((left, right) => (left.phase ?? 0) - (right.phase ?? 0));
-
+  const orderedPhases = rounds.map((round) => round.phase).filter(Number.isInteger);
   const series = rounds.map((round) => ({
     phase: round.phase,
     measure: round.phaseResult?.consensusMeasure ?? null,
@@ -26,13 +28,16 @@ export const buildConsensusData = (payload) => {
     finalizationReason: consensus.finalizationReason ?? null,
     rounds,
     series,
-    graph: { labels: series.map((entry) => `Phase ${entry.phase}`), data: series.map((entry) => entry.measure) },
+    graph: {
+      labels: series.map((entry) => formatFinishedIssuePhaseLabel({ phase: entry.phase, orderedPhases })),
+      data: series.map((entry) => entry.measure),
+    },
   };
 };
 
-export const buildConsensusPreview = (data) => data.enabled ? {
+export const buildConsensusEvolutionPreview = (data) => data.enabled ? {
   phasesCount: data.rounds.length,
-  phaseLabel: data.finalPhase === null ? "—" : `Phase ${data.finalPhase}`,
+  phaseLabel: data.finalPhase === null ? "—" : formatFinishedIssuePhaseLabel({ phase: data.finalPhase, orderedPhases: data.rounds.map((round) => round.phase) }),
   finalPhase: data.finalPhase,
   threshold: data.threshold,
   finalMeasure: data.series.at(-1)?.measure ?? null,
@@ -41,4 +46,4 @@ export const buildConsensusPreview = (data) => data.enabled ? {
   consensusEvolutionData: data.graph,
 } : null;
 
-export default buildConsensusData;
+export default buildConsensusEvolutionData;

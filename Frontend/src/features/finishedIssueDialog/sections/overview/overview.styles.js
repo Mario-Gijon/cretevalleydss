@@ -278,7 +278,7 @@ export const overviewCriteriaViewportSx = {
 export const overviewParticipationListSx = {
   ...overviewScrollableSurfaceSx,
   minHeight: 0,
-  maxHeight: { xs: 300, md: 330, xl: 370 },
+  maxHeight: { xs: 260, md: 218, xl: 250 },
   overflowY: "auto",
   overflowX: "hidden",
   pr: 0.35,
@@ -306,7 +306,7 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
           left: -15,
           top: -10,
           bottom: -10,
-          width: 1,
+          width: "1px",
           bgcolor: "rgba(76, 201, 211, 0.20)",
         }
       : undefined,
@@ -318,7 +318,7 @@ export const overviewCriterionRowSx = (depth, hasChildren) => ({
           left: -15,
           top: 23,
           width: 12,
-          height: 1,
+          height: "1px",
           bgcolor: "rgba(76, 201, 211, 0.30)",
         }
       : undefined,
@@ -357,7 +357,7 @@ export const overviewParticipationGridSx = {
 
 export const overviewParticipantRowSx = {
   display: "grid",
-  gridTemplateColumns: "38px minmax(0, 1fr) auto",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 0.8,
   alignItems: "center",
   minWidth: 0,

@@ -1,0 +1,15 @@
+owner:
+  email: scenario.owner@example.test
+  password: replace-me
+
+expert_a:
+  email: scenario.expert.a@example.test
+  password: replace-me
+
+expert_b:
+  email: scenario.expert.b@example.test
+  password: replace-me
+
+expert_c:
+  email: scenario.expert.c@example.test
+  password: replace-me

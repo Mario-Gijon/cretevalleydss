@@ -79,11 +79,6 @@ export const evaluationsStageDividerNarrowSx = {
   mx: { xs: 1.35, md: 1.65 },
 };
 
-export const evaluationsRoundControlSx = {
-  width: { xs: "100%", sm: "auto" },
-  minWidth: { sm: 190 },
-};
-
 export const evaluationsToggleSx = {
   width: { xs: "100%", sm: "auto" },
   justifyContent: "center",

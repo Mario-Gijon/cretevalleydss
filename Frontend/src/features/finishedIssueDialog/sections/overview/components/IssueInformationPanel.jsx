@@ -169,6 +169,7 @@ const IssueInformationPanel = ({ data }) => {
                   label={finished ? "Finished" : "Active"}
                   sx={{
                     mt: 0.25,
+                    ml:2,
                     height: 24,
                     fontWeight: "fontWeightBold",
                   }}

@@ -10,6 +10,7 @@ import OverviewView from "../../../../../src/features/finishedIssueDialog/sectio
 import { buildOverviewData, buildOverviewPreview } from "../../../../../src/features/finishedIssueDialog/sections/overview/logic/buildFinishedIssueOverviewData.js";
 import {
   overviewCriteriaViewportSx,
+  overviewCriterionRowSx,
   overviewDomainListSx,
   overviewParticipationListSx,
   overviewScrollableListSx,
@@ -21,6 +22,15 @@ const renderView = (data) => render(
 );
 
 describe("OverviewView", () => {
+  it("keeps criteria connectors at one CSS pixel instead of MUI ratio sizing", () => {
+    const nested = overviewCriterionRowSx(1, false);
+    expect(nested["&::before"]).toMatchObject({ width: "1px", left: -15, top: -10, bottom: -10, bgcolor: "rgba(76, 201, 211, 0.20)" });
+    expect(nested["&::after"]).toMatchObject({ height: "1px", left: -15, top: 23, width: 12, bgcolor: "rgba(76, 201, 211, 0.30)" });
+    expect(overviewCriterionRowSx(0, false)["&::before"]).toBeUndefined();
+    expect(overviewCriterionRowSx(0, false)["&::after"]).toBeUndefined();
+    expect(overviewCriteriaViewportSx.overflow).toBe("auto");
+  });
+
   it("renders the approved provider-free factual Overview composition", () => {
     renderView(buildOverviewData(buildFinishedIssuePayloadFixture()));
 
@@ -31,8 +41,9 @@ describe("OverviewView", () => {
     expect(screen.getByRole("heading", { name: "Configuration & domains" })).toBeInTheDocument();
     expect(screen.getByText("Finished issue")).toBeInTheDocument();
     expect(screen.getByText("Canonical fixture")).toBeInTheDocument();
-    expect(screen.getByText("1/1 accepted experts completed")).toBeInTheDocument();
-    expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,0,0,1");
+    expect(screen.getByLabelText("Participated")).toBeInTheDocument();
+    expect(screen.getByLabelText("Did not participate")).toBeInTheDocument();
+    expect(screen.getByTestId("participation-chart")).toHaveTextContent("1,1");
 
     ["Issue information", "Alternatives", "Criteria structure", "Experts & participation", "Configuration & domains"].forEach((title) => {
       const heading = screen.getByRole("heading", { name: title });
@@ -83,7 +94,7 @@ describe("OverviewView", () => {
 
     expect(data.criteria.map((criterion) => criterion.id)).toEqual(["a", "orphan"]);
     expect(data.participation).toMatchObject({ accepted: 1, completed: 0, pending: 1, declined: 1, completionPercentage: 0 });
-    expect(buildOverviewPreview(data)).toMatchObject({ acceptedParticipantsCount: 1, completedAlternativeEvaluationsCount: 0 });
+    expect(buildOverviewPreview(data)).toMatchObject({ acceptedParticipantsCount: 0, completedAlternativeEvaluationsCount: 0 });
     renderView(data);
     expect(screen.getAllByText("Accepted").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
@@ -98,7 +109,9 @@ describe("OverviewView", () => {
     expect(data.evidence.resultId).toBe("alt-5");
     expect(data.participation.completionPercentage).toBeNull();
     renderView(data);
-    expect(screen.getByText("No accepted participants")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Participated")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Did not participate")).toBeInTheDocument();
+    expect(screen.getByTestId("participation-chart")).toHaveTextContent("0,1");
     expect(screen.getByText("alt-5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy result ID" })).toBeEnabled();
   });
@@ -148,7 +161,7 @@ describe("OverviewView", () => {
     expect(screen.getByTestId("overview-domain-list")).not.toContainElement(screen.getByText("Model", { exact: true }));
 
     expect(overviewScrollableListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 360, md: 390, xl: 430 } });
-    expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 300, md: 330, xl: 370 } });
+    expect(overviewParticipationListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 260, md: 218, xl: 250 } });
     expect(overviewDomainListSx).toMatchObject({ overflowY: "auto", overflowX: "hidden", maxHeight: { xs: 220, md: 250, xl: 290 } });
     expect(overviewCriteriaViewportSx).toMatchObject({ overflow: "auto", maxWidth: "100%", maxHeight: { xs: 420, md: 460, xl: 520 } });
   });

@@ -93,7 +93,7 @@ const EvaluationParticipationDonut = ({
               fontWeight: 700,
             }}
           >
-            evaluators
+            Experts
           </Typography>
         </Box>
       </Box>

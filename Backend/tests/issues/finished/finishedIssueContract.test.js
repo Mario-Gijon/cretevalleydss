@@ -308,7 +308,7 @@ describe("definitive Finished Issue contract", () => {
     expect(Object.keys(payload).sort()).toEqual([
       "alternatives", "configuration", "consensus", "criteria", "evaluations",
       "executionMetadata", "expressionDomains", "issue", "lifecycle", "models",
-      "participants", "phaseResults", "scenarios",
+      "participantHistory", "participants", "phaseResults", "scenarios",
     ]);
     expect(payload).not.toHaveProperty("summary");
     expect(payload).not.toHaveProperty("alternativesRankings");
@@ -363,6 +363,17 @@ describe("definitive Finished Issue contract", () => {
       expect.objectContaining({ invitationStatus: "pending" }),
       expect.objectContaining({ invitationStatus: "declined" }),
     ]));
+    expect(payload.participantHistory).toMatchObject({
+      summary: { total: 4, participated: 1, notParticipated: 3, participatedPercentage: 25 },
+      records: expect.arrayContaining([
+        expect.objectContaining({
+          expert: expect.objectContaining({ id: String(fixture.users.accepted._id) }),
+          participated: true,
+          participationKey: "participated",
+          weight: 0.7,
+        }),
+      ]),
+    });
     expect(payload.evaluations.individual).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: String(fixture.evaluations.criteriaEvaluation._id),

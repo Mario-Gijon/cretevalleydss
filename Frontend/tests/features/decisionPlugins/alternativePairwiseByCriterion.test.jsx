@@ -71,6 +71,7 @@ const GridHarness = ({
   expressionDomain,
   initialEvaluations = canonicalEmptyEvaluations,
   permitEdit = true,
+  collectiveEvaluations = null,
 }) => {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
 
@@ -82,6 +83,7 @@ const GridHarness = ({
         evaluations={evaluations}
         setEvaluations={setEvaluations}
         permitEdit={permitEdit}
+        collectiveEvaluations={collectiveEvaluations}
       />
       <pre data-testid="evaluations">{JSON.stringify(evaluations)}</pre>
     </>
@@ -96,6 +98,16 @@ describe("PairwiseAlternativesGrid", () => {
 
     expect(screen.getAllByLabelText("expression-domain-input")).toHaveLength(1);
     expect(screen.getAllByText("Neutral")).toHaveLength(2);
+    expect(document.querySelectorAll(".diagonal-cell")).toHaveLength(2);
+  });
+
+  it("renders a DataGrid matrix with alternative row and column headers", () => {
+    renderWithProviders(<GridHarness expressionDomain={numericContinuousDomain} />);
+
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    expect(screen.getAllByText("Alternative A").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Alternative B").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Alternatives")).toBeInTheDocument();
   });
 
   it("changing a numeric upper value updates the reflected lower value", async () => {
@@ -157,5 +169,21 @@ describe("PairwiseAlternativesGrid", () => {
     expect(
       screen.getByText('Pairwise evaluations are missing row "alt-b".')
     ).toBeInTheDocument();
+  });
+
+  it("renders collective chips only for non-diagonal canonical cells", () => {
+    renderWithProviders(
+      <GridHarness
+        expressionDomain={numericContinuousDomain}
+        collectiveEvaluations={{
+          "alt-a": { "alt-b": 0.6 },
+          "alt-b": { "alt-a": 0.4 },
+        }}
+      />
+    );
+
+    expect(screen.getAllByText("0.6")).toHaveLength(1);
+    expect(screen.getAllByText("0.4")).toHaveLength(1);
+    expect(document.querySelectorAll(".diagonal-cell .MuiChip-root")).toHaveLength(0);
   });
 });

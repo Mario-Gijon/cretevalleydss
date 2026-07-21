@@ -4,25 +4,43 @@ from services import model_manifest_service
 from services.model_manifest_service import (
     _build_manifest_entry,
     _build_parameters,
-    _build_supported_domains,
+    _build_supported_expression_domains,
     _get_request_example,
     _get_response_example,
     build_model_manifest,
 )
 
 
-def test_supported_domain_normalization():
-    supported_domains = _build_supported_domains(
-        [" numericcontinuous ", "NUMERICDISCRETE", "Linguistic", ""]
+def test_supported_domain_normalization(model_definition_factory):
+    model = model_definition_factory(
+        supported_expression_domains=[
+            {
+                "typeKey": " numericContinuous ",
+                "constraints": {"min": 0, "max": 10},
+            },
+            {
+                "typeKey": "linguisticFuzzy",
+                "constraints": None,
+            },
+        ]
     )
 
-    assert supported_domains == {
-        "numeric": {
-            "continuous": True,
-            "discrete": True,
+    supported_expression_domains = _build_supported_expression_domains(model)
+
+    assert supported_expression_domains == [
+        {
+            "typeKey": "numericContinuous",
+            "constraints": {"min": 0, "max": 10},
         },
-        "linguistic": ["triangular"],
-    }
+        {
+            "typeKey": "linguisticFuzzy",
+            "constraints": {},
+        },
+    ]
+    assert (
+        supported_expression_domains[0]["constraints"]
+        is not model.supported_expression_domains[0]["constraints"]
+    )
 
 
 def test_parameter_scope_defaults_to_global(model_definition_factory):
@@ -134,7 +152,10 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
         supports_consensus_simulation=True,
         uses_criteria_weights=True,
         uses_expert_weights=True,
-        supported_domains=["numericContinuous", "linguistic"],
+        supported_expression_domains=[
+            {"typeKey": "numericContinuous", "constraints": {"min": 0, "max": 10}},
+            {"typeKey": "linguisticFuzzy", "constraints": {}},
+        ],
         parameters=[{"key": "lambda", "label": "Lambda"}],
         request_examples={"sample": {"value": {"payload": 1}}},
         response_examples={"success": {"value": {"success": True}}},
@@ -153,10 +174,10 @@ def test_manifest_entry_includes_stable_public_fields(model_definition_factory):
     assert manifest_entry["supportsConsensusSimulation"] is True
     assert manifest_entry["usesCriteriaWeights"] is True
     assert manifest_entry["usesExpertWeights"] is True
-    assert manifest_entry["supportedDomains"] == {
-        "numeric": {"continuous": True, "discrete": False},
-        "linguistic": ["triangular"],
-    }
+    assert manifest_entry["supportedExpressionDomains"] == [
+        {"typeKey": "numericContinuous", "constraints": {"min": 0, "max": 10}},
+        {"typeKey": "linguisticFuzzy", "constraints": {}},
+    ]
     assert manifest_entry["parameters"] == [
         {"key": "lambda", "label": "Lambda", "scope": "global"}
     ]

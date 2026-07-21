@@ -74,18 +74,6 @@ const EvaluationsView = ({ data, state, actions }) => {
         />
       </Box>
 
-      {!data.criteriaWeighting.available &&
-      data.alternativeEvaluation.available ? (
-        <Alert
-          severity="info"
-          variant="outlined"
-          sx={{ mt: 1.5 }}
-        >
-          No stored criteria-weighting evaluations exist for this issue.
-          Alternative evaluation is shown at full width.
-        </Alert>
-      ) : null}
-
       <EvaluationsEvidenceFooter evidence={data.evidence} />
     </Box>
   );

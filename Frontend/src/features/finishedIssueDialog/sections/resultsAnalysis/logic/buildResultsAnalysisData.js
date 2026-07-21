@@ -31,8 +31,8 @@ export const buildResultsAnalysisData = ({ payload, selectedExecution, selectedP
           : null;
 
   return {
-    context: { executionLabel: execution.label || "—", phaseLabel: execution.type === "base" ? formatFinishedIssuePhaseLabel({ phase, orderedPhases: phases }) : execution.sourcePhase === null || execution.sourcePhase === undefined ? "Scenario execution" : `Source phase ${execution.sourcePhase}`, sourcePhase: execution.sourcePhase ?? null, availablePhases: phases },
-    outcome: { available: !unavailableReason, unavailableReason, winner: normalizedRanking[0] || null, ranking: normalizedRanking, consensusMeasure: standard?.consensusMeasure ?? null, modelSpecificOutput: execution.modelSpecificOutput ?? null, rawOutput: execution.rawOutput ?? null },
+    context: { executionLabel: execution.label || "—", phaseLabel: execution.type === "base" ? formatFinishedIssuePhaseLabel({ phase, orderedPhases: phases }) : execution.sourcePhase === null || execution.sourcePhase === undefined ? "Scenario execution" : `Source phase ${execution.sourcePhase}`, sourcePhase: phase ?? execution.sourcePhase ?? null, availablePhases: phases },
+    outcome: { available: !unavailableReason, unavailableReason, winner: normalizedRanking[0] || null, ranking: normalizedRanking, consensusMeasure: execution.type === "base" ? result?.consensusMeasure ?? null : standard?.consensusMeasure ?? null, modelSpecificOutput: execution.type === "base" ? result?.modelSpecificOutput ?? null : execution.modelSpecificOutput ?? null, rawOutput: execution.type === "base" ? result?.rawOutput ?? null : execution.rawOutput ?? null },
     visualizations: { hasPerformanceMap: Boolean(normalizedPlots?.isValid), performanceMapData: normalizedPlots?.isValid ? [{ expertPoints: normalizedPlots.expertPoints, collectivePoint: normalizedPlots.collectivePoint }] : null, selectedPhase: phase ?? null, unavailableReason: normalizedPlots?.reason || null },
     interpretation: { available: false },
   };

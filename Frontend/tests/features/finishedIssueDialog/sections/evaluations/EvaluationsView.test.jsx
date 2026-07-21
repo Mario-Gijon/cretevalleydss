@@ -22,7 +22,6 @@ import {
   evaluationPluginRendererViewportSx,
   evaluationParticipantRowSx,
   evaluationsExpertControlSx,
-  evaluationsRoundControlSx,
   evaluationsActionGroupSx,
   evaluationsSelectorGroupSx,
   evaluationsStageDividerNarrowSx,
@@ -33,13 +32,11 @@ import {
 import { buildFinishedIssuePayloadFixture } from "../../../../mocks/fixtures/finishedIssueDialog.fixtures.js";
 
 const actions = {
-  setSelectedConsensusPhase: vi.fn(),
   setSelectedExpertId: vi.fn(),
   setShowCollective: vi.fn(),
 };
 
 const selection = {
-  selectedConsensusPhase: 5,
   selectedExpertId: "expert-1",
   showCollective: false,
 };
@@ -89,6 +86,41 @@ const payloadWithPartialParticipation = () => {
   return payload;
 };
 
+const twoPhasePayload = () => {
+  const payload = buildFinishedIssuePayloadFixture();
+  payload.evaluations.contexts.push({
+    id: "alternativeEvaluation:0",
+    stage: "alternativeEvaluation",
+    phase: 0,
+    structureKey: "alternativeCriteriaMatrix",
+    serializedContext: { phase: 0, source: "initial" },
+  });
+  payload.evaluations.individual.push({
+    id: "eval-a-0",
+    expertId: "expert-1",
+    stage: "alternativeEvaluation",
+    phase: 0,
+    structureKey: "alternativeCriteriaMatrix",
+    rawPayload: { phase: "zero" },
+    completed: true,
+    submittedAt: "2026-01-01T00:00:00.000Z",
+    contextId: "alternativeEvaluation:0",
+  });
+  payload.evaluations.collective.push({
+    phaseResultId: "alt-0",
+    stage: "alternativeEvaluation",
+    phase: 0,
+    rawPayload: { collective: "zero" },
+    displayPayload: { collective: "zero" },
+    contextId: "alternativeEvaluation:0",
+  });
+  const finalIndividual = payload.evaluations.individual.find((entry) => entry.id === "eval-a");
+  finalIndividual.rawPayload = { phase: "one" };
+  finalIndividual.displayPayload = { phase: "one" };
+  payload.evaluations.collective.find((entry) => entry.phaseResultId === "alt-5").displayPayload = { collective: "one" };
+  return payload;
+};
+
 describe("EvaluationsView", () => {
   beforeEach(() => {
     rendererSpy.mockClear();
@@ -99,13 +131,13 @@ describe("EvaluationsView", () => {
     const data = buildEvaluationsWorkspaceData({
       payload: buildFinishedIssuePayloadFixture(),
       selection,
+      selectedPhase: 5,
     });
     renderView(data);
 
     const workspace = screen.getByTestId("evaluations-workspace");
     const selectors = within(workspace).getByTestId("evaluations-selector-group");
     const actions = within(workspace).getByTestId("evaluations-action-group");
-    expect(within(selectors).getByLabelText("Consensus round")).toBeInTheDocument();
     expect(within(selectors).getByLabelText("Expert")).toBeInTheDocument();
     expect(within(actions).getByLabelText("Show collective values")).toBeInTheDocument();
     expect(selectors.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -116,7 +148,7 @@ describe("EvaluationsView", () => {
     expect(screen.getByRole("heading", { name: "Criteria weighting" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alternative evaluation" })).toBeInTheDocument();
     expect(screen.getAllByLabelText("Expert")).toHaveLength(1);
-    expect(screen.getByLabelText("Consensus round")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Consensus round")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Show collective values")).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-wide")).toBeInTheDocument();
     expect(screen.getByTestId("evaluations-stage-divider-narrow")).toBeInTheDocument();
@@ -129,6 +161,7 @@ describe("EvaluationsView", () => {
     const data = buildEvaluationsWorkspaceData({
       payload,
       selection: { ...selection, selectedExpertId: "expert-4" },
+      selectedPhase: 5,
     });
     renderView(data, { ...selection, selectedExpertId: "expert-4" });
 
@@ -153,6 +186,7 @@ describe("EvaluationsView", () => {
     const data = buildEvaluationsWorkspaceData({
       payload,
       selection: { ...selection, showCollective: true },
+      selectedPhase: 5,
     });
     renderView(data, { ...selection, showCollective: true });
 
@@ -165,7 +199,7 @@ describe("EvaluationsView", () => {
     payload.evaluations.individual = payload.evaluations.individual.filter((entry) => entry.stage !== "criteriaWeighting");
     payload.evaluations.collective = payload.evaluations.collective.filter((entry) => entry.stage !== "criteriaWeighting");
     payload.evaluations.contexts = payload.evaluations.contexts.filter((entry) => entry.stage !== "criteriaWeighting");
-    const data = buildEvaluationsWorkspaceData({ payload, selection });
+    const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
     renderView(data);
 
     expect(screen.queryByRole("heading", { name: "Criteria weighting" })).not.toBeInTheDocument();
@@ -182,7 +216,7 @@ describe("EvaluationsView", () => {
     const payload = buildFinishedIssuePayloadFixture();
     payload.criteria.nodes.find((criterion) => criterion.id === "cost").type = "cost";
     payload.criteria.nodes.find((criterion) => criterion.id === "quality").type = "benefit";
-    const data = buildEvaluationsWorkspaceData({ payload, selection });
+    const data = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 5 });
     renderView(data);
 
     expect(screen.getByRole("table", { name: "Expression domains by criterion" })).toBeInTheDocument();
@@ -194,7 +228,6 @@ describe("EvaluationsView", () => {
     expect(evaluationParticipantRowSx).not.toHaveProperty("minWidth", 620);
     expect(evaluationParticipantRowSx.gridTemplateAreas.xs).toContain("coverage coverage coverage");
     expect(evaluationsExpertControlSx).toMatchObject({ width: { xs: "100%", sm: 230 } });
-    expect(evaluationsRoundControlSx).toMatchObject({ width: { xs: "100%", sm: "auto" } });
     expect(evaluationsHeaderSx).toMatchObject({
       justifyContent: "space-between",
       flexDirection: { xs: "column", md: "row" },
@@ -210,13 +243,29 @@ describe("EvaluationsView", () => {
     payload.consensus.enabled = false;
     const data = buildEvaluationsWorkspaceData({
       payload,
-      selection: { ...selection, selectedConsensusPhase: null },
+      selection,
+      selectedPhase: null,
     });
-    renderView(data, { ...selection, selectedConsensusPhase: null });
+    renderView(data, selection);
 
     expect(screen.queryByLabelText("Consensus round")).not.toBeInTheDocument();
     expect(screen.getAllByLabelText("Expert")).toHaveLength(1);
     expect(screen.queryByText("Round 0")).not.toBeInTheDocument();
     expect(screen.queryByText("Phase 0")).not.toBeInTheDocument();
+  });
+
+  it("uses the global selected phase for alternative evidence while keeping criteria weighting stable", () => {
+    const payload = twoPhasePayload();
+    const initial = buildEvaluationsWorkspaceData({ payload, selection: { ...selection, showCollective: true }, selectedPhase: 0 });
+    const final = buildEvaluationsWorkspaceData({ payload, selection: { ...selection, showCollective: true }, selectedPhase: 5 });
+    const fallback = buildEvaluationsWorkspaceData({ payload, selection, selectedPhase: 99 });
+
+    expect(initial.alternativeEvaluation).toMatchObject({ selectedPhase: 0, submittedAt: "2026-01-01T00:00:00.000Z", individual: { payload: { phase: "zero" } }, collective: { payload: { collective: "zero" } }, renderer: { evaluationContext: { phase: 0, source: "initial" } } });
+    expect(initial.evidence).toMatchObject({ resultId: "alt-0", phase: 0 });
+    expect(final.alternativeEvaluation).toMatchObject({ selectedPhase: 5, individual: { payload: { phase: "one" } }, collective: { payload: { collective: "one" } } });
+    expect(final.evidence).toMatchObject({ resultId: "alt-5", phase: 5 });
+    expect(initial.criteriaWeighting).toMatchObject({ selectedPhase: 1, individual: { id: "eval-c" } });
+    expect(final.criteriaWeighting).toEqual(initial.criteriaWeighting);
+    expect(fallback.alternativeEvaluation.selectedPhase).toBe(5);
   });
 });
